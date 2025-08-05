@@ -45,18 +45,6 @@ client/src/
 
 ## Recent Changes (January 2025)
 
-### Common Reusable Input Components Library
-- **Date**: January 5, 2025
-- **Changes**:
-  - Created comprehensive common input components library in `client/src/components/common/FormInputs.tsx`
-  - Implemented 9 standardized input types: TextInput, TextareaInput, SelectInput, DateInput, CheckboxInput, RadioInput, SwitchInput, FileInput, SearchInput
-  - Added consistent styling, validation, accessibility, and TypeScript support across all components
-  - Created interactive demo page accessible at `/component-demo` route
-  - Added comprehensive documentation in README.md with usage examples and migration guide
-  - All components follow BaseInputProps interface for consistency
-  - Integrated with existing shadcn/ui components while providing higher-level abstractions
-  - Added navigation link from main page to component demo
-
 ### Major Refactoring - Module-First Architecture (Preserving Original UI)
 - **Date**: January 5, 2025
 - **Changes**:
@@ -70,8 +58,6 @@ client/src/
   - Preserved all existing functionality while improving code organization
 
 ### Key Features Implemented
-- **Common Input Components**: Standardized reusable input library with 9 component types
-- **Component Demo Page**: Interactive showcase of all input components with examples
 - **Crew Management**: Complete CRUD operations for crew members
 - **Performance Ratings**: Visual rating badges with color coding
 - **Advanced Filtering**: Search and filter by multiple criteria
@@ -88,19 +74,12 @@ client/src/
 - Use async/await over promise chains
 - Implement consistent error handling
 - Follow naming conventions: PascalCase for components, camelCase for functions
-- **New**: Use common input components from `/components/common` for all forms and filters
 
 ### Communication Style  
 - Be concise and professional
 - Focus on technical accuracy
 - Provide clear implementation details
 - Document architectural decisions
-
-### Form Development Standards
-- **Required**: All forms and filters must use components from `/components/common/FormInputs.tsx`
-- **Consistency**: Follow BaseInputProps interface for all new input components
-- **Documentation**: Update component README when adding new input types
-- **Demo**: Add examples to `/component-demo` page for new components
 
 ## Development Guidelines
 

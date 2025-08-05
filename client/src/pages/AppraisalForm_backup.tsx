@@ -13,7 +13,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 
 // Comprehensive list of world nationalities
@@ -177,33 +176,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
   const [behaviouralComments, setBehaviouralComments] = useState<{[key: string]: string}>({});
   const [trainingNeedsComments, setTrainingNeedsComments] = useState<{[key: string]: string}>({});
   const [recommendationComments, setRecommendationComments] = useState<{[key: string]: string}>({});
-  const [trainingFollowupComments, setTrainingFollowupComments] = useState<{[key: string]: string}>({});
   const [editingAppraiserComment, setEditingAppraiserComment] = useState<string | null>(null);
   const [editingSeafarerComment, setEditingSeafarerComment] = useState<string | null>(null);
   const [nationalityOpen, setNationalityOpen] = useState(false);
   const [editingOfficeReview, setEditingOfficeReview] = useState<string | null>(null);
-  
-  // States for tracking which comments are being edited
-  const [editingTrainingComment, setEditingTrainingComment] = useState<string | null>(null);
-  const [editingTargetComment, setEditingTargetComment] = useState<string | null>(null);
-  const [editingCompetenceComment, setEditingCompetenceComment] = useState<string | null>(null);
-  const [editingBehaviouralComment, setEditingBehaviouralComment] = useState<string | null>(null);
-  const [editingTrainingNeedsComment, setEditingTrainingNeedsComment] = useState<string | null>(null);
-  const [editingRecommendationComment, setEditingRecommendationComment] = useState<string | null>(null);
-  const [editingTrainingFollowupComment, setEditingTrainingFollowupComment] = useState<string | null>(null);
-  
-  // Confirmation dialog state
-  const [confirmDialog, setConfirmDialog] = useState<{
-    isOpen: boolean;
-    title: string;
-    description: string;
-    onConfirm: () => void;
-  }>({
-    isOpen: false,
-    title: "",
-    description: "",
-    onConfirm: () => {}
-  });
 
   const form = useForm<AppraisalFormData>({
     resolver: zodResolver(appraisalSchema),
@@ -283,25 +259,6 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
     onClose();
   };
 
-  // Helper function to show confirmation dialog
-  const showConfirmDialog = (title: string, description: string, onConfirm: () => void) => {
-    setConfirmDialog({
-      isOpen: true,
-      title,
-      description,
-      onConfirm
-    });
-  };
-
-  const closeConfirmDialog = () => {
-    setConfirmDialog({
-      isOpen: false,
-      title: "",
-      description: "",
-      onConfirm: () => {}
-    });
-  };
-
   // Training management functions
   const addTraining = () => {
     const newTraining = {
@@ -315,20 +272,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
   };
 
   const deleteTraining = (id: string) => {
-    showConfirmDialog(
-      "Delete Training",
-      "Are you sure you want to delete this training record?",
-      () => {
-        const currentTrainings = form.getValues("trainings");
-        form.setValue("trainings", currentTrainings.filter(t => t.id !== id));
-        setTrainingComments(prev => {
-          const newComments = { ...prev };
-          delete newComments[id];
-          return newComments;
-        });
-        closeConfirmDialog();
-      }
-    );
+    const currentTrainings = form.getValues("trainings");
+    form.setValue("trainings", currentTrainings.filter(t => t.id !== id));
+    setTrainingComments(prev => {
+      const newComments = { ...prev };
+      delete newComments[id];
+      return newComments;
+    });
   };
 
   const updateTraining = (id: string, field: string, value: string) => {
@@ -352,20 +302,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
   };
 
   const deleteTarget = (id: string) => {
-    showConfirmDialog(
-      "Delete Target",
-      "Are you sure you want to delete this target?",
-      () => {
-        const currentTargets = form.getValues("targets");
-        form.setValue("targets", currentTargets.filter(t => t.id !== id));
-        setTargetComments(prev => {
-          const newComments = { ...prev };
-          delete newComments[id];
-          return newComments;
-        });
-        closeConfirmDialog();
-      }
-    );
+    const currentTargets = form.getValues("targets");
+    form.setValue("targets", currentTargets.filter(t => t.id !== id));
+    setTargetComments(prev => {
+      const newComments = { ...prev };
+      delete newComments[id];
+      return newComments;
+    });
   };
 
   const updateTarget = (id: string, field: string, value: string) => {
@@ -397,11 +340,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
   // Helper function to get score colors based on rating value
   const getScoreColors = (score: number) => {
     if (score >= 4.0) {
-      return { bgColor: 'bg-[#c3f2cb]', textColor: 'text-[#286e34]' };
+      return { bgColor: 'bg-green-500', textColor: 'text-white' };
     } else if (score >= 3.0) {
-      return { bgColor: 'bg-[#ffeaa7]', textColor: 'text-[#814c02]' };
+      return { bgColor: 'bg-yellow-400', textColor: 'text-black' };
     } else if (score >= 2.0) {
-      return { bgColor: 'bg-[#f9ecef]', textColor: 'text-[#811f1a]' };
+      return { bgColor: 'bg-red-200', textColor: 'text-red-800' };
     } else {
       return { bgColor: 'bg-red-600', textColor: 'text-white' };
     }
@@ -455,119 +398,6 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
     return totalWeight > 0 ? (totalScore * 100 / totalWeight).toFixed(1) : "0.0";
   };
 
-  // Comment management helper functions
-  const deleteTrainingComment = (id: string) => {
-    showConfirmDialog(
-      "Delete Comment",
-      "Are you sure you want to delete this comment?",
-      () => {
-        setTrainingComments(prev => {
-          const newComments = { ...prev };
-          delete newComments[id];
-          return newComments;
-        });
-        setEditingTrainingComment(null);
-        closeConfirmDialog();
-      }
-    );
-  };
-  
-  const deleteTargetComment = (id: string) => {
-    showConfirmDialog(
-      "Delete Comment",
-      "Are you sure you want to delete this comment?",
-      () => {
-        setTargetComments(prev => {
-          const newComments = { ...prev };
-          delete newComments[id];
-          return newComments;
-        });
-        setEditingTargetComment(null);
-        closeConfirmDialog();
-      }
-    );
-  };
-  
-  const deleteCompetenceComment = (id: string) => {
-    showConfirmDialog(
-      "Delete Comment",
-      "Are you sure you want to delete this comment?",
-      () => {
-        setCompetenceComments(prev => {
-          const newComments = { ...prev };
-          delete newComments[id];
-          return newComments;
-        });
-        setEditingCompetenceComment(null);
-        closeConfirmDialog();
-      }
-    );
-  };
-  
-  const deleteBehaviouralComment = (id: string) => {
-    showConfirmDialog(
-      "Delete Comment",
-      "Are you sure you want to delete this comment?",
-      () => {
-        setBehaviouralComments(prev => {
-          const newComments = { ...prev };
-          delete newComments[id];
-          return newComments;
-        });
-        setEditingBehaviouralComment(null);
-        closeConfirmDialog();
-      }
-    );
-  };
-  
-  const deleteTrainingNeedsComment = (id: string) => {
-    showConfirmDialog(
-      "Delete Comment",
-      "Are you sure you want to delete this comment?",
-      () => {
-        setTrainingNeedsComments(prev => {
-          const newComments = { ...prev };
-          delete newComments[id];
-          return newComments;
-        });
-        setEditingTrainingNeedsComment(null);
-        closeConfirmDialog();
-      }
-    );
-  };
-  
-  const deleteRecommendationComment = (id: string) => {
-    showConfirmDialog(
-      "Delete Comment",
-      "Are you sure you want to delete this comment?",
-      () => {
-        setRecommendationComments(prev => {
-          const newComments = { ...prev };
-          delete newComments[id];
-          return newComments;
-        });
-        setEditingRecommendationComment(null);
-        closeConfirmDialog();
-      }
-    );
-  };
-  
-  const deleteTrainingFollowupComment = (id: string) => {
-    showConfirmDialog(
-      "Delete Comment",
-      "Are you sure you want to delete this comment?",
-      () => {
-        setTrainingFollowupComments(prev => {
-          const newComments = { ...prev };
-          delete newComments[id];
-          return newComments;
-        });
-        setEditingTrainingFollowupComment(null);
-        closeConfirmDialog();
-      }
-    );
-  };
-
   // Training Needs management functions
   const addTrainingNeed = (type: 'database' | 'new') => {
     const newTrainingNeed = {
@@ -580,20 +410,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
   };
 
   const deleteTrainingNeed = (id: string) => {
-    showConfirmDialog(
-      "Delete Training Need",
-      "Are you sure you want to delete this training need?",
-      () => {
-        const currentTrainingNeeds = form.getValues("trainingNeeds");
-        form.setValue("trainingNeeds", currentTrainingNeeds.filter(t => t.id !== id));
-        setTrainingNeedsComments(prev => {
-          const newComments = { ...prev };
-          delete newComments[id];
-          return newComments;
-        });
-        closeConfirmDialog();
-      }
-    );
+    const currentTrainingNeeds = form.getValues("trainingNeeds");
+    form.setValue("trainingNeeds", currentTrainingNeeds.filter(t => t.id !== id));
+    setTrainingNeedsComments(prev => {
+      const newComments = { ...prev };
+      delete newComments[id];
+      return newComments;
+    });
   };
 
   const updateTrainingNeed = (id: string, field: string, value: string) => {
@@ -642,15 +465,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
   };
 
   const deleteAppraiserComment = (id: string) => {
-    showConfirmDialog(
-      "Delete Appraiser Comment",
-      "Are you sure you want to delete this appraiser comment?",
-      () => {
-        const currentComments = form.getValues("appraiserComments");
-        form.setValue("appraiserComments", currentComments.filter(c => c.id !== id));
-        closeConfirmDialog();
-      }
-    );
+    const currentComments = form.getValues("appraiserComments");
+    form.setValue("appraiserComments", currentComments.filter(c => c.id !== id));
   };
 
   // Seafarer Comments management
@@ -684,15 +500,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
   };
 
   const deleteOfficeReview = (id: string) => {
-    showConfirmDialog(
-      "Delete Office Review",
-      "Are you sure you want to delete this office review?",
-      () => {
-        const currentReviews = form.getValues("officeReviews");
-        form.setValue("officeReviews", currentReviews.filter(r => r.id !== id));
-        closeConfirmDialog();
-      }
-    );
+    const currentReviews = form.getValues("officeReviews");
+    form.setValue("officeReviews", currentReviews.filter(r => r.id !== id));
   };
 
   // Training Followup management
@@ -719,15 +528,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
   };
 
   const deleteTrainingFollowup = (id: string) => {
-    showConfirmDialog(
-      "Delete Training Followup",
-      "Are you sure you want to delete this training followup?",
-      () => {
-        const currentFollowups = form.getValues("trainingFollowups");
-        form.setValue("trainingFollowups", currentFollowups.filter(f => f.id !== id));
-        closeConfirmDialog();
-      }
-    );
+    const currentFollowups = form.getValues("trainingFollowups");
+    form.setValue("trainingFollowups", currentFollowups.filter(f => f.id !== id));
   };
 
   const RatingRadioGroup = ({ name, label }: { name: string; label: string }) => (
@@ -768,8 +570,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
   ];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-lg w-full max-h-[95vh] sm:max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b p-3 sm:p-4 flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-4">
@@ -884,7 +686,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                             <FormItem>
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Seafarer's Name</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="Enter seafarer's name" className="bg-[#ffffff]" />
+                                <Input {...field} placeholder="Enter seafarer's name" className="bg-gray-50" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -898,7 +700,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Seafarer's Rank</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
-                                  <SelectTrigger className="bg-[#ffffff]">
+                                  <SelectTrigger className="bg-gray-50">
                                     <SelectValue placeholder="Select rank" />
                                   </SelectTrigger>
                                 </FormControl>
@@ -933,7 +735,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                       role="combobox"
                                       aria-expanded={nationalityOpen}
                                       className={cn(
-                                        "w-full justify-between bg-[#ffffff] border-gray-200 hover:bg-gray-100",
+                                        "w-full justify-between bg-gray-50 border-gray-200 hover:bg-gray-100",
                                         !field.value && "text-muted-foreground"
                                       )}
                                     >
@@ -992,7 +794,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Vessel</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
-                                  <SelectTrigger className="bg-[#ffffff]">
+                                  <SelectTrigger className="bg-gray-50">
                                     <SelectValue placeholder="Select vessel" />
                                   </SelectTrigger>
                                 </FormControl>
@@ -1020,7 +822,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                             <FormItem>
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Sign On Date</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="dd/mm/yyyy" type="date" className="bg-[#ffffff]" />
+                                <Input {...field} placeholder="dd/mm/yyyy" type="date" className="bg-gray-50" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1034,7 +836,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Type</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
-                                  <SelectTrigger className="bg-[#ffffff]">
+                                  <SelectTrigger className="bg-gray-50">
                                     <SelectValue placeholder="Select type" />
                                   </SelectTrigger>
                                 </FormControl>
@@ -1060,7 +862,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                             <FormItem>
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Period From</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="dd.mm.yyyy" type="date" className="bg-[#ffffff]" />
+                                <Input {...field} placeholder="dd.mm.yyyy" type="date" className="bg-gray-50" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1073,7 +875,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                             <FormItem>
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Period To</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="dd.mm.yyyy" type="date" className="bg-[#ffffff]" />
+                                <Input {...field} placeholder="dd.mm.yyyy" type="date" className="bg-gray-50" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1087,7 +889,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Primary Appraiser</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
-                                  <SelectTrigger className="bg-[#ffffff]">
+                                  <SelectTrigger className="bg-gray-50">
                                     <SelectValue placeholder="Select appraiser" />
                                   </SelectTrigger>
                                 </FormControl>
@@ -1113,7 +915,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Personality Index (PI) Category</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
-                                  <SelectTrigger className="bg-[#ffffff]">
+                                  <SelectTrigger className="bg-gray-50">
                                     <SelectValue placeholder="Select category" />
                                   </SelectTrigger>
                                 </FormControl>
@@ -1153,7 +955,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                       {/* B1. Trainings conducted prior joining vessel */}
                       <div>
                         <div className="flex justify-between items-center mb-4">
-                          <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>B1. Trainings conducted prior joining vessel (To Assess Effectiveness)</h3>
+                          <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>B1. Trainings conducted prior joining vessel (To Assess Effectiveness)</h3>
                           <Button
                             type="button"
                             onClick={addTraining}
@@ -1166,36 +968,36 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                           </Button>
                         </div>
                         
-                        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                        <div className="border rounded-lg overflow-hidden">
                           <div className="overflow-x-auto">
                             <table className="w-full min-w-[600px]">
                               <thead className="bg-gray-100">
                                 <tr>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                                  <th className="text-left p-2 sm:p-3 text-xs sm:text-sm font-medium text-gray-600">S.No</th>
+                                  <th className="text-left p-2 sm:p-3 text-xs sm:text-sm font-medium text-gray-600">Training</th>
+                                  <th className="text-left p-2 sm:p-3 text-xs sm:text-sm font-medium text-gray-600">Evaluation</th>
+                                  <th className="text-left p-2 sm:p-3 text-xs sm:text-sm font-medium text-gray-600">Actions</th>
                                 </tr>
                               </thead>
-                              <tbody className="bg-white">
+                              <tbody>
                               {form.watch("trainings").map((training, index) => (
                                 <React.Fragment key={training.id}>
-                                  <tr className="border-b border-gray-200 bg-white hover:bg-gray-50">
-                                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
-                                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                  <tr className="border-t">
+                                    <td className="p-3 text-sm">{index + 1}.</td>
+                                    <td className="p-3">
                                       <Input
                                         value={training.training}
                                         onChange={(e) => updateTraining(training.id, "training", e.target.value)}
                                         placeholder={`Training ${index + 1}`}
-                                        className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                                        className="border-0 bg-transparent p-0 focus-visible:ring-0"
                                       />
                                     </td>
-                                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                    <td className="p-3">
                                       <Select
                                         value={training.evaluation}
                                         onValueChange={(value) => updateTraining(training.id, "evaluation", value)}
                                       >
-                                        <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                                        <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0">
                                           <SelectValue placeholder="Select Rating" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -1207,29 +1009,34 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                         </SelectContent>
                                       </Select>
                                     </td>
-                                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                      <div className="flex gap-2 justify-center">
+                                    <td className="p-3">
+                                      <div className="flex space-x-2">
                                         <Button
                                           type="button"
                                           variant="ghost"
-                                          size="icon"
-                                          className="h-6 w-6"
+                                          size="sm"
                                           onClick={() => setTrainingComments(prev => ({
                                             ...prev,
                                             [training.id]: prev[training.id] || ""
                                           }))}
                                         >
-                                          <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
+                                          <MessageSquare className="h-4 w-4" />
                                         </Button>
-
                                         <Button
                                           type="button"
                                           variant="ghost"
-                                          size="icon"
-                                          className="h-6 w-6"
+                                          size="sm"
+                                          onClick={() => setEditingTraining(training.id)}
+                                        >
+                                          <Edit2 className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
                                           onClick={() => deleteTraining(training.id)}
                                         >
-                                          <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                                          <Trash2 className="h-4 w-4" />
                                         </Button>
                                       </div>
                                     </td>
@@ -1238,42 +1045,19 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                     <tr>
                                       <td></td>
                                       <td colSpan={3} className="p-3">
-                                        {editingTrainingComment === training.id ? (
-                                          <Textarea
-                                            value={trainingComments[training.id]}
-                                            onChange={(e) => {
-                                              setTrainingComments(prev => ({
-                                                ...prev,
-                                                [training.id]: e.target.value
-                                              }));
-                                              updateTraining(training.id, "comment", e.target.value);
-                                            }}
-                                            onBlur={() => setEditingTrainingComment(null)}
-                                            placeholder="Comment: Add your observations here..."
-                                            className="text-blue-600 italic border-blue-200"
-                                            rows={2}
-                                            autoFocus
-                                          />
-                                        ) : (
-                                          <div className="flex justify-between items-start">
-                                            <div 
-                                              className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50"
-                                              onClick={() => setEditingTrainingComment(training.id)}
-                                            >
-                                              {trainingComments[training.id] || "Click to add comment..."}
-                                            </div>
-                                            <div className="ml-2">
-                                              <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => deleteTrainingComment(training.id)}
-                                              >
-                                                <Trash2 className="h-4 w-4" />
-                                              </Button>
-                                            </div>
-                                          </div>
-                                        )}
+                                        <Textarea
+                                          value={trainingComments[training.id]}
+                                          onChange={(e) => {
+                                            setTrainingComments(prev => ({
+                                              ...prev,
+                                              [training.id]: e.target.value
+                                            }));
+                                            updateTraining(training.id, "comment", e.target.value);
+                                          }}
+                                          placeholder="Comment: Add your observations here..."
+                                          className="text-blue-600 italic border-blue-200"
+                                          rows={2}
+                                        />
                                       </td>
                                     </tr>
                                   )}
@@ -1295,7 +1079,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                       {/* B2. Target Setting */}
                       <div>
                         <div className="flex justify-between items-center mb-4">
-                          <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>B2. Target Setting</h3>
+                          <h3 className="text-lg font-medium text-blue-700">B2. Target Setting</h3>
                           <Button
                             type="button"
                             onClick={addTarget}
@@ -1308,35 +1092,35 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                           </Button>
                         </div>
                         
-                        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                        <div className="border rounded-lg overflow-hidden">
                           <table className="w-full">
                             <thead className="bg-gray-100">
                               <tr>
-                                <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
-                                <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Target Setting</th>
-                                <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>
-                                <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                                <th className="text-left p-3 text-sm font-medium text-gray-600">S.No</th>
+                                <th className="text-left p-3 text-sm font-medium text-gray-600">Target Setting</th>
+                                <th className="text-left p-3 text-sm font-medium text-gray-600">Evaluation</th>
+                                <th className="text-left p-3 text-sm font-medium text-gray-600">Actions</th>
                               </tr>
                             </thead>
-                            <tbody className="bg-white">
+                            <tbody>
                               {form.watch("targets").map((target, index) => (
                                 <React.Fragment key={target.id}>
-                                  <tr className="border-b border-gray-200 bg-white hover:bg-gray-50">
-                                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
-                                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                  <tr className="border-t">
+                                    <td className="p-3 text-sm">{index + 1}.</td>
+                                    <td className="p-3">
                                       <Input
                                         value={target.targetSetting}
                                         onChange={(e) => updateTarget(target.id, "targetSetting", e.target.value)}
                                         placeholder={`Target ${index + 1}`}
-                                        className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                                        className="border-0 bg-transparent p-0 focus-visible:ring-0"
                                       />
                                     </td>
-                                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                    <td className="p-3">
                                       <Select
                                         value={target.evaluation}
                                         onValueChange={(value) => updateTarget(target.id, "evaluation", value)}
                                       >
-                                        <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                                        <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0">
                                           <SelectValue placeholder="Select Rating" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -1348,29 +1132,34 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                         </SelectContent>
                                       </Select>
                                     </td>
-                                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                      <div className="flex gap-2 justify-center">
+                                    <td className="p-3">
+                                      <div className="flex space-x-2">
                                         <Button
                                           type="button"
                                           variant="ghost"
-                                          size="icon"
-                                          className="h-6 w-6"
+                                          size="sm"
                                           onClick={() => setTargetComments(prev => ({
                                             ...prev,
                                             [target.id]: prev[target.id] || ""
                                           }))}
                                         >
-                                          <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
+                                          <MessageSquare className="h-4 w-4" />
                                         </Button>
-
                                         <Button
                                           type="button"
                                           variant="ghost"
-                                          size="icon"
-                                          className="h-6 w-6"
+                                          size="sm"
+                                          onClick={() => setEditingTarget(target.id)}
+                                        >
+                                          <Edit2 className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
                                           onClick={() => deleteTarget(target.id)}
                                         >
-                                          <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                                          <Trash2 className="h-4 w-4" />
                                         </Button>
                                       </div>
                                     </td>
@@ -1379,42 +1168,19 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                     <tr>
                                       <td></td>
                                       <td colSpan={3} className="p-3">
-                                        {editingTargetComment === target.id ? (
-                                          <Textarea
-                                            value={targetComments[target.id]}
-                                            onChange={(e) => {
-                                              setTargetComments(prev => ({
-                                                ...prev,
-                                                [target.id]: e.target.value
-                                              }));
-                                              updateTarget(target.id, "comment", e.target.value);
-                                            }}
-                                            onBlur={() => setEditingTargetComment(null)}
-                                            placeholder="Comment: Add your observations here..."
-                                            className="text-blue-600 italic border-blue-200"
-                                            rows={2}
-                                            autoFocus
-                                          />
-                                        ) : (
-                                          <div className="flex justify-between items-start">
-                                            <div 
-                                              className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50"
-                                              onClick={() => setEditingTargetComment(target.id)}
-                                            >
-                                              {targetComments[target.id] || "Click to add comment..."}
-                                            </div>
-                                            <div className="ml-2">
-                                              <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => deleteTargetComment(target.id)}
-                                              >
-                                                <Trash2 className="h-4 w-4" />
-                                              </Button>
-                                            </div>
-                                          </div>
-                                        )}
+                                        <Textarea
+                                          value={targetComments[target.id]}
+                                          onChange={(e) => {
+                                            setTargetComments(prev => ({
+                                              ...prev,
+                                              [target.id]: e.target.value
+                                            }));
+                                            updateTarget(target.id, "comment", e.target.value);
+                                          }}
+                                          placeholder="Comment: Add your observations here..."
+                                          className="text-blue-600 italic border-blue-200"
+                                          rows={2}
+                                        />
                                       </td>
                                     </tr>
                                   )}
@@ -1451,33 +1217,33 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                     <CardContent className="p-6">
                       <div className="pb-4 mb-6">
                         <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part C: Competence Assessment (Professional Knowledge & Skills)</h3>
-                        <div style={{ color: '#16569e' }} className="text-sm">Select the most appropriate rating basis assessment of the specific criterion</div>
+                        <div style={{ color: '#16569e' }} className="text-sm">Description</div>
                         <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
                       </div>
                       <div className="border rounded-lg overflow-hidden">
                         <table className="w-full">
                           <thead className="bg-gray-100">
                             <tr>
-                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
-                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Assessment Criteria</th>
-                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Weight %</th>
-                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Effectiveness</th>
-                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                              <th className="text-left p-3 text-sm font-medium text-gray-600">S.No</th>
+                              <th className="text-left p-3 text-sm font-medium text-gray-600">Assessment Criteria</th>
+                              <th className="text-left p-3 text-sm font-medium text-gray-600">Weight %</th>
+                              <th className="text-left p-3 text-sm font-medium text-gray-600">Effectiveness</th>
+                              <th className="text-left p-3 text-sm font-medium text-gray-600">Actions</th>
                             </tr>
                           </thead>
                           <tbody>
                             {form.watch("competenceAssessments").map((assessment, index) => (
                               <React.Fragment key={assessment.id}>
                                 <tr className="border-t">
-                                  <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
-                                  <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{assessment.assessmentCriteria}</td>
-                                  <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{assessment.weight}%</td>
-                                  <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                  <td className="p-3 text-sm">{index + 1}.</td>
+                                  <td className="p-3 text-sm">{assessment.assessmentCriteria}</td>
+                                  <td className="p-3 text-sm">{assessment.weight}%</td>
+                                  <td className="p-3">
                                     <Select
                                       value={assessment.effectiveness}
                                       onValueChange={(value) => updateCompetenceAssessment(assessment.id, "effectiveness", value)}
                                     >
-                                      <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                                      <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0">
                                         <SelectValue placeholder="Select Rating" />
                                       </SelectTrigger>
                                       <SelectContent>
@@ -1489,28 +1255,32 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                       </SelectContent>
                                     </Select>
                                   </td>
-                                  <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                    <div className="flex gap-2 justify-center">
+                                  <td className="p-3">
+                                    <div className="flex space-x-2">
                                       <Button
                                         type="button"
                                         variant="ghost"
-                                        size="icon"
-                                        className="h-6 w-6"
+                                        size="sm"
                                         onClick={() => setCompetenceComments(prev => ({
                                           ...prev,
                                           [assessment.id]: prev[assessment.id] || ""
                                         }))}
                                       >
-                                        <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
+                                        <MessageSquare className="h-4 w-4" />
                                       </Button>
-
                                       <Button
                                         type="button"
                                         variant="ghost"
-                                        size="icon"
-                                        className="h-6 w-6"
+                                        size="sm"
                                       >
-                                        <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                                        <Edit2 className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
                                       </Button>
                                     </div>
                                   </td>
@@ -1519,42 +1289,19 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                   <tr>
                                     <td></td>
                                     <td colSpan={4} className="p-3">
-                                      {editingCompetenceComment === assessment.id ? (
-                                        <Textarea
-                                          value={competenceComments[assessment.id]}
-                                          onChange={(e) => {
-                                            setCompetenceComments(prev => ({
-                                              ...prev,
-                                              [assessment.id]: e.target.value
-                                            }));
-                                            updateCompetenceAssessment(assessment.id, "comment", e.target.value);
-                                          }}
-                                          onBlur={() => setEditingCompetenceComment(null)}
-                                          placeholder="Comment: Add your observations here..."
-                                          className="text-blue-600 italic border-blue-200"
-                                          rows={2}
-                                          autoFocus
-                                        />
-                                      ) : (
-                                        <div className="flex justify-between items-start">
-                                          <div 
-                                            className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50"
-                                            onClick={() => setEditingCompetenceComment(assessment.id)}
-                                          >
-                                            {competenceComments[assessment.id] || "Click to add comment..."}
-                                          </div>
-                                          <div className="ml-2">
-                                            <Button
-                                              type="button"
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => deleteCompetenceComment(assessment.id)}
-                                            >
-                                              <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                          </div>
-                                        </div>
-                                      )}
+                                      <Textarea
+                                        value={competenceComments[assessment.id]}
+                                        onChange={(e) => {
+                                          setCompetenceComments(prev => ({
+                                            ...prev,
+                                            [assessment.id]: e.target.value
+                                          }));
+                                          updateCompetenceAssessment(assessment.id, "comment", e.target.value);
+                                        }}
+                                        placeholder="Comment: Add your observations here..."
+                                        className="text-blue-600 italic border-blue-200"
+                                        rows={2}
+                                      />
                                     </td>
                                   </tr>
                                 )}
@@ -1587,34 +1334,45 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                     <CardContent className="p-6">
                       <div className="pb-4 mb-6">
                         <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part D: Behavioural Assessment (Soft Skills)</h3>
-                        <div style={{ color: '#16569e' }} className="text-sm">Select the most appropriate rating basis assessment of the specific criterion</div>
+                        <div style={{ color: '#16569e' }} className="text-sm">Description</div>
                         <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
                       </div>
-
+                      <div className="flex justify-between items-center mb-4">
+                        <div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="text-gray-600 border-gray-300"
+                          >
+                            + Add Criterion
+                          </Button>
+                        </div>
+                      </div>
                       <div className="border rounded-lg overflow-hidden">
                         <table className="w-full">
                           <thead className="bg-gray-100">
                             <tr>
-                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
-                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Assessment Criteria</th>
-                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Weight %</th>
-                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Effectiveness</th>
-                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                              <th className="text-left p-3 text-sm font-medium text-gray-600">S.No</th>
+                              <th className="text-left p-3 text-sm font-medium text-gray-600">Assessment Criteria</th>
+                              <th className="text-left p-3 text-sm font-medium text-gray-600">Weight %</th>
+                              <th className="text-left p-3 text-sm font-medium text-gray-600">Effectiveness</th>
+                              <th className="text-left p-3 text-sm font-medium text-gray-600">Actions</th>
                             </tr>
                           </thead>
                           <tbody>
                           {form.watch("behaviouralAssessments").map((assessment, index) => (
                             <React.Fragment key={assessment.id}>
                               <tr className="border-t">
-                                <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
-                                <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{assessment.assessmentCriteria}</td>
-                                <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4 text-center">{assessment.weight}%</td>
-                                <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                <td className="p-3 text-sm">{index + 1}.</td>
+                                <td className="p-3 text-sm">{assessment.assessmentCriteria}</td>
+                                <td className="p-3 text-sm text-center">{assessment.weight}%</td>
+                                <td className="p-3">
                                   <Select
                                     value={assessment.effectiveness}
                                     onValueChange={(value) => updateBehaviouralAssessment(assessment.id, "effectiveness", value)}
                                   >
-                                    <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                                    <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0">
                                       <SelectValue placeholder="Select Rating" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -1626,27 +1384,32 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                     </SelectContent>
                                   </Select>
                                 </td>
-                                <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                  <div className="flex gap-2 justify-center">
+                                <td className="p-3">
+                                  <div className="flex space-x-2">
                                     <Button
                                       type="button"
                                       variant="ghost"
-                                      size="icon"
-                                      className="h-6 w-6"
+                                      size="sm"
                                       onClick={() => setBehaviouralComments(prev => ({
                                         ...prev,
                                         [assessment.id]: prev[assessment.id] || ""
                                       }))}
                                     >
-                                      <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
+                                      <MessageSquare className="h-4 w-4" />
                                     </Button>
                                     <Button
                                       type="button"
                                       variant="ghost"
-                                      size="icon"
-                                      className="h-6 w-6"
+                                      size="sm"
                                     >
-                                      <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                                      <Edit2 className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
                                     </Button>
                                   </div>
                                 </td>
@@ -1655,42 +1418,19 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                 <tr>
                                   <td></td>
                                   <td colSpan={4} className="p-3">
-                                    {editingBehaviouralComment === assessment.id ? (
-                                      <Textarea
-                                        value={behaviouralComments[assessment.id]}
-                                        onChange={(e) => {
-                                          setBehaviouralComments(prev => ({
-                                            ...prev,
-                                            [assessment.id]: e.target.value
-                                          }));
-                                          updateBehaviouralAssessment(assessment.id, "comment", e.target.value);
-                                        }}
-                                        onBlur={() => setEditingBehaviouralComment(null)}
-                                        placeholder="Comment: Add your observations here..."
-                                        className="text-blue-600 italic border-blue-200"
-                                        rows={2}
-                                        autoFocus
-                                      />
-                                    ) : (
-                                      <div className="flex justify-between items-start">
-                                        <div 
-                                          className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50"
-                                          onClick={() => setEditingBehaviouralComment(assessment.id)}
-                                        >
-                                          {behaviouralComments[assessment.id] || "Click to add comment..."}
-                                        </div>
-                                        <div className="ml-2">
-                                          <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => deleteBehaviouralComment(assessment.id)}
-                                          >
-                                            <Trash2 className="h-4 w-4" />
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    )}
+                                    <Textarea
+                                      value={behaviouralComments[assessment.id]}
+                                      onChange={(e) => {
+                                        setBehaviouralComments(prev => ({
+                                          ...prev,
+                                          [assessment.id]: e.target.value
+                                        }));
+                                        updateBehaviouralAssessment(assessment.id, "comment", e.target.value);
+                                      }}
+                                      placeholder="Comment: Add your observations here..."
+                                      className="text-blue-600 italic border-blue-200"
+                                      rows={2}
+                                    />
                                   </td>
                                 </tr>
                               )}
@@ -1753,46 +1493,51 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                         <table className="w-full">
                           <thead className="bg-gray-100">
                             <tr>
-                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
-                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
-                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                              <th className="text-left p-3 text-sm font-medium text-gray-600">S.No</th>
+                              <th className="text-left p-3 text-sm font-medium text-gray-600">Training</th>
+                              <th className="text-left p-3 text-sm font-medium text-gray-600">Actions</th>
                             </tr>
                           </thead>
                           <tbody>
                           {form.watch("trainingNeeds").map((trainingNeed, index) => (
                             <React.Fragment key={trainingNeed.id}>
                               <tr className="border-t">
-                                <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
-                                <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                <td className="p-3 text-sm">{index + 1}.</td>
+                                <td className="p-3">
                                   <Input
                                     value={trainingNeed.training}
                                     onChange={(e) => updateTrainingNeed(trainingNeed.id, "training", e.target.value)}
                                     placeholder={`Training ${index + 1}`}
-                                    className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                                    className="border-0 bg-transparent p-0 focus-visible:ring-0"
                                   />
                                 </td>
-                                <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                  <div className="flex gap-2 justify-center">
+                                <td className="p-3">
+                                  <div className="flex space-x-2">
                                     <Button
                                       type="button"
                                       variant="ghost"
-                                      size="icon"
-                                      className="h-6 w-6"
+                                      size="sm"
                                       onClick={() => setTrainingNeedsComments(prev => ({
                                         ...prev,
                                         [trainingNeed.id]: prev[trainingNeed.id] || ""
                                       }))}
                                     >
-                                      <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
+                                      <MessageSquare className="h-4 w-4" />
                                     </Button>
                                     <Button
                                       type="button"
                                       variant="ghost"
-                                      size="icon"
-                                      className="h-6 w-6"
+                                      size="sm"
+                                    >
+                                      <Edit2 className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
                                       onClick={() => deleteTrainingNeed(trainingNeed.id)}
                                     >
-                                      <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                                      <Trash2 className="h-4 w-4" />
                                     </Button>
                                   </div>
                                 </td>
@@ -1801,42 +1546,19 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                 <tr>
                                   <td></td>
                                   <td colSpan={2} className="p-3">
-                                    {editingTrainingNeedsComment === trainingNeed.id ? (
-                                      <Textarea
-                                        value={trainingNeedsComments[trainingNeed.id]}
-                                        onChange={(e) => {
-                                          setTrainingNeedsComments(prev => ({
-                                            ...prev,
-                                            [trainingNeed.id]: e.target.value
-                                          }));
-                                          updateTrainingNeed(trainingNeed.id, "comment", e.target.value);
-                                        }}
-                                        onBlur={() => setEditingTrainingNeedsComment(null)}
-                                        placeholder="Comment: Add your observations here..."
-                                        className="text-blue-600 italic border-blue-200"
-                                        rows={2}
-                                        autoFocus
-                                      />
-                                    ) : (
-                                      <div className="flex justify-between items-start">
-                                        <div 
-                                          className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50"
-                                          onClick={() => setEditingTrainingNeedsComment(trainingNeed.id)}
-                                        >
-                                          {trainingNeedsComments[trainingNeed.id] || "Click to add comment..."}
-                                        </div>
-                                        <div className="ml-2">
-                                          <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => deleteTrainingNeedsComment(trainingNeed.id)}
-                                          >
-                                            <Trash2 className="h-4 w-4" />
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    )}
+                                    <Textarea
+                                      value={trainingNeedsComments[trainingNeed.id]}
+                                      onChange={(e) => {
+                                        setTrainingNeedsComments(prev => ({
+                                          ...prev,
+                                          [trainingNeed.id]: e.target.value
+                                        }));
+                                        updateTrainingNeed(trainingNeed.id, "comment", e.target.value);
+                                      }}
+                                      placeholder="Comment: Add your observations here..."
+                                      className="text-blue-600 italic border-blue-200"
+                                      rows={2}
+                                    />
                                   </td>
                                 </tr>
                               )}
@@ -1875,7 +1597,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
 
                         {/* F1: Overall Score */}
                         <div className="flex justify-between items-center mb-6">
-                          <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>F1. Overall Score</h3>
+                          <h3 className="text-lg font-semibold" style={{ color: '#16569e' }}>F1. Overall Score</h3>
                           <div className={`px-4 py-2 rounded text-lg font-bold min-w-[64px] text-center ${getScoreColors(parseFloat(calculateOverallScore())).bgColor} ${getScoreColors(parseFloat(calculateOverallScore())).textColor}`}>
                             {calculateOverallScore()}
                           </div>
@@ -1884,27 +1606,35 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                         {/* F2: Appraiser's Recommendations */}
                         <div className="space-y-4 mb-6">
                           <div className="flex justify-between items-center">
-                            <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>F2. Appraiser's Recommendations</h3>
+                            <h3 className="text-lg font-semibold" style={{ color: '#16569e' }}>F2. Appraiser's Recommendations</h3>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="text-blue-600 border-blue-300"
+                            >
+                              + Add Recommendation
+                            </Button>
                           </div>
                           <div className="border rounded-lg overflow-hidden">
                             <table className="w-full">
                               <thead className="bg-gray-100">
                                 <tr>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Recommendations</th>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Yes</th>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">No</th>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">NA</th>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
+                                  <th className="text-left p-3 text-sm font-medium text-gray-600">S.No</th>
+                                  <th className="text-left p-3 text-sm font-medium text-gray-600">Recommendations</th>
+                                  <th className="text-center p-3 text-sm font-medium text-gray-600">Yes</th>
+                                  <th className="text-center p-3 text-sm font-medium text-gray-600">No</th>
+                                  <th className="text-center p-3 text-sm font-medium text-gray-600">NA</th>
+                                  <th className="text-center p-3 text-sm font-medium text-gray-600">Actions</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {form.watch("recommendations").map((recommendation, index) => (
                                   <React.Fragment key={recommendation.id}>
                                     <tr className="border-t">
-                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
-                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{recommendation.question}</td>
-                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4 text-center">
+                                      <td className="p-3 text-sm">{index + 1}.</td>
+                                      <td className="p-3 text-sm">{recommendation.question}</td>
+                                      <td className="text-center p-3">
                                         <input
                                           type="radio"
                                           name={`recommendation-${recommendation.id}`}
@@ -1913,7 +1643,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                           className="w-4 h-4"
                                         />
                                       </td>
-                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4 text-center">
+                                      <td className="text-center p-3">
                                         <input
                                           type="radio"
                                           name={`recommendation-${recommendation.id}`}
@@ -1922,7 +1652,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                           className="w-4 h-4"
                                         />
                                       </td>
-                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4 text-center">
+                                      <td className="text-center p-3">
                                         <input
                                           type="radio"
                                           name={`recommendation-${recommendation.id}`}
@@ -1931,19 +1661,32 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                           className="w-4 h-4"
                                         />
                                       </td>
-                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                        <div className="flex justify-center">
+                                      <td className="p-3">
+                                        <div className="flex justify-center space-x-2">
                                           <Button
                                             type="button"
                                             variant="ghost"
-                                            size="icon"
+                                            size="sm"
                                             onClick={() => setRecommendationComments(prev => ({
                                               ...prev,
                                               [recommendation.id]: prev[recommendation.id] || ""
                                             }))}
-                                            className="h-6 w-6"
                                           >
-                                            <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
+                                            <MessageSquare className="h-4 w-4" />
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                          >
+                                            <Edit2 className="h-4 w-4" />
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                          >
+                                            <Trash2 className="h-4 w-4" />
                                           </Button>
                                         </div>
                                       </td>
@@ -1952,42 +1695,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                       <tr>
                                         <td></td>
                                         <td colSpan={5} className="p-3">
-                                          {editingRecommendationComment === recommendation.id ? (
-                                            <Textarea
-                                              value={recommendationComments[recommendation.id]}
-                                              onChange={(e) => {
-                                                setRecommendationComments(prev => ({
-                                                  ...prev,
-                                                  [recommendation.id]: e.target.value
-                                                }));
-                                                updateRecommendation(recommendation.id, "comment", e.target.value);
-                                              }}
-                                              onBlur={() => setEditingRecommendationComment(null)}
-                                              placeholder="Comment: Add your observations here..."
-                                              className="text-blue-600 italic border-blue-200"
-                                              rows={2}
-                                              autoFocus
-                                            />
-                                          ) : (
-                                            <div className="flex justify-between items-start">
-                                              <div 
-                                                className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50"
-                                                onClick={() => setEditingRecommendationComment(recommendation.id)}
-                                              >
-                                                {recommendationComments[recommendation.id] || "Click to add comment..."}
-                                              </div>
-                                              <div className="ml-2">
-                                                <Button
-                                                  type="button"
-                                                  variant="ghost"
-                                                  size="sm"
-                                                  onClick={() => deleteRecommendationComment(recommendation.id)}
-                                                >
-                                                  <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                              </div>
-                                            </div>
-                                          )}
+                                          <p className="text-blue-600 italic text-sm">
+                                            Comment: Recommended as there seemed to be a large gap in officer's understanding.
+                                          </p>
                                         </td>
                                       </tr>
                                     )}
@@ -2001,7 +1711,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                         {/* F3: Appraiser Comments */}
                         <div className="space-y-4 mb-6">
                           <div className="flex justify-between items-center">
-                            <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>F3. Appraiser Comments</h3>
+                            <h3 className="text-lg font-semibold" style={{ color: '#16569e' }}>F3. Appraiser Comments</h3>
                             <Button
                               type="button"
                               variant="outline"
@@ -2019,7 +1729,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                               <div key={appraiser.id} className="space-y-2">
                                 <div className="flex justify-between items-center">
                                   <div>
-                                    <p className="font-medium text-[14px] text-[#3164f4]">
+                                    <p className="font-medium text-blue-600">
                                       {index === 0 ? form.watch("primaryAppraiser") || "Capt. John Leki, Master (Primary Appraiser)" : `${appraiser.name}, ${appraiser.rank}`}
                                     </p>
                                   </div>
@@ -2076,13 +1786,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
 
                         {/* F4: Seafarer Comments */}
                         <div className="space-y-4">
-                          <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>F4. Seafarer Comments</h3>
+                          <h3 className="text-lg font-semibold" style={{ color: '#16569e' }}>F4. Seafarer Comments</h3>
                           <div className="space-y-4">
                             {form.watch("seafarerComments").map((seafarer, index) => (
                               <div key={seafarer.id} className="space-y-2">
                                 <div className="flex justify-between items-center">
                                   <div>
-                                    <p className="font-medium text-[14px] text-[#3164f4]">
+                                    <p className="font-medium text-blue-600">
                                       {`${form.watch("seafarersName") || "Derek Cole"}, ${form.watch("seafarersRank") || "3rd Officer"}`}
                                     </p>
                                   </div>
@@ -2155,7 +1865,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                         {/* G1: Office Review */}
                         <div className="space-y-4 mb-6">
                           <div className="flex justify-between items-center">
-                            <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>G1. Office Review</h3>
+                            <h3 className="text-lg font-semibold" style={{ color: '#16569e' }}>G1. Office Review</h3>
                             <Button
                               type="button"
                               variant="outline"
@@ -2171,39 +1881,32 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                               <div key={review.id} className="space-y-2">
                                 <div className="flex justify-between items-start">
                                   <div className="flex-1">
-                                    <p className="font-medium text-[14px]" style={{ color: '#3164f4' }}>
+                                    <p className="font-medium text-blue-600">
                                       {review.name}, <span className="font-normal italic">{review.position}:</span>
                                     </p>
-                                    {editingOfficeReview === review.id ? (
-                                      <Textarea
-                                        value={review.feedback}
-                                        onChange={(e) => updateOfficeReview(review.id, "feedback", e.target.value)}
-                                        onBlur={() => setEditingOfficeReview(null)}
-                                        placeholder="Add office review feedback..."
-                                        className="text-blue-600 italic border-blue-200 mt-1"
-                                        rows={2}
-                                        autoFocus
-                                      />
-                                    ) : (
-                                      <p 
-                                        className="text-blue-600 italic text-sm mt-1 cursor-pointer p-2 rounded hover:bg-gray-50"
-                                        onClick={() => setEditingOfficeReview(review.id)}
-                                      >
-                                        {review.feedback || "Click to add feedback..."}
-                                      </p>
-                                    )}
+                                    <p className="text-blue-600 italic text-sm mt-1">
+                                      {review.feedback}
+                                    </p>
                                   </div>
                                   <div className="flex space-x-2 ml-4">
                                     <Button
                                       type="button"
                                       variant="ghost"
                                       size="sm"
-                                      onClick={() => deleteOfficeReview(review.id)}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </div>
+                                      onClick={() => setEditingOfficeReview(review.id)}
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => deleteOfficeReview(review.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
                           </div>
                         ))}
                           </div>
@@ -2212,174 +1915,141 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                         {/* G2: Training Followup */}
                         <div className="space-y-4">
                           <div className="flex justify-between items-center">
-                            <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>G2. Training Followup</h3>
+                            <h3 className="text-lg font-semibold" style={{ color: '#16569e' }}>G2. Training Followup</h3>
                             <div className="flex gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="text-gray-600 border-gray-300"
-                                onClick={() => addTrainingFollowup('database')}
-                              >
-                                + Add Training from Database
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="text-gray-600 border-gray-300"
-                                onClick={() => addTrainingFollowup('new')}
-                              >
-                                + Add New Training
-                              </Button>
-                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="text-gray-600 border-gray-300"
+                              onClick={() => addTrainingFollowup('database')}
+                            >
+                              + Add Training from Database
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="text-gray-600 border-gray-300"
+                              onClick={() => addTrainingFollowup('new')}
+                            >
+                              + Add New Training
+                            </Button>
                           </div>
                           <div className="border rounded-lg overflow-hidden">
                             <table className="w-full">
-                              <thead className="bg-gray-100">
-                                <tr>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Corresponding in DB</th>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Category</th>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Status</th>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Target or Compl. Date</th>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {form.watch("trainingFollowups").map((followup, index) => (
-                                  <React.Fragment key={followup.id}>
-                                    <tr className="border-t">
-                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
-                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                        <Input
-                                          value={followup.training}
-                                          onChange={(e) => updateTrainingFollowup(followup.id, "training", e.target.value)}
-                                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                                        />
-                                      </td>
-                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                        <select
-                                          value={followup.correspondingInDB}
-                                          onChange={(e) => updateTrainingFollowup(followup.id, "correspondingInDB", e.target.value)}
-                                          className="w-full p-1 border rounded text-[13px] h-6"
+                            <thead className="bg-gray-100">
+                              <tr>
+                                <th className="text-left p-3 text-sm font-medium text-gray-600">S.No</th>
+                                <th className="text-left p-3 text-sm font-medium text-gray-600">Training</th>
+                                <th className="text-left p-3 text-sm font-medium text-gray-600">Corresponding in DB</th>
+                                <th className="text-left p-3 text-sm font-medium text-gray-600">Category</th>
+                                <th className="text-left p-3 text-sm font-medium text-gray-600">Status</th>
+                                <th className="text-left p-3 text-sm font-medium text-gray-600">Target or Compl. Date</th>
+                                <th className="text-center p-3 text-sm font-medium text-gray-600">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {form.watch("trainingFollowups").map((followup, index) => (
+                                <React.Fragment key={followup.id}>
+                                  <tr className="border-t">
+                                    <td className="p-3 text-sm">{index + 1}.</td>
+                                    <td className="p-3">
+                                      <Input
+                                        value={followup.training}
+                                        onChange={(e) => updateTrainingFollowup(followup.id, "training", e.target.value)}
+                                        className="border-0 bg-transparent p-0 focus-visible:ring-0"
+                                      />
+                                    </td>
+                                    <td className="p-3">
+                                      <select
+                                        value={followup.correspondingInDB}
+                                        onChange={(e) => updateTrainingFollowup(followup.id, "correspondingInDB", e.target.value)}
+                                        className="w-full p-1 border rounded text-sm"
+                                      >
+                                        <option>Select Training from DB</option>
+                                        <option>Training Option 1</option>
+                                        <option>Training Option 2</option>
+                                      </select>
+                                    </td>
+                                    <td className="p-3">
+                                      <select
+                                        value={followup.category}
+                                        onChange={(e) => updateTrainingFollowup(followup.id, "category", e.target.value)}
+                                        className="w-full p-1 border rounded text-sm"
+                                      >
+                                        <option>Select Rating</option>
+                                        <option>1. Competence</option>
+                                        <option>2- Soft Skills</option>
+                                      </select>
+                                    </td>
+                                    <td className="p-3">
+                                      <select
+                                        value={followup.status}
+                                        onChange={(e) => updateTrainingFollowup(followup.id, "status", e.target.value)}
+                                        className={`w-full p-1 border rounded text-sm ${
+                                          followup.status === "Proposed" ? "bg-gray-200" :
+                                          followup.status === "Approved" ? "bg-blue-200" :
+                                          followup.status === "Planned" ? "bg-yellow-200" :
+                                          followup.status === "Declined" ? "bg-red-200" :
+                                          followup.status === "Completed" ? "bg-green-200" : ""
+                                        }`}
+                                      >
+                                        <option value="Proposed">Proposed</option>
+                                        <option value="Approved">Approved</option>
+                                        <option value="Planned">Planned</option>
+                                        <option value="Declined">Declined</option>
+                                        <option value="Completed">Completed</option>
+                                      </select>
+                                    </td>
+                                    <td className="p-3">
+                                      <Input
+                                        type="date"
+                                        value={followup.targetDate}
+                                        onChange={(e) => updateTrainingFollowup(followup.id, "targetDate", e.target.value)}
+                                        className="w-full"
+                                      />
+                                    </td>
+                                    <td className="p-3">
+                                      <div className="flex justify-center space-x-2">
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
                                         >
-                                          <option>Select Training from DB</option>
-                                          <option>Training Option 1</option>
-                                          <option>Training Option 2</option>
-                                        </select>
-                                      </td>
-                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                        <select
-                                          value={followup.category}
-                                          onChange={(e) => updateTrainingFollowup(followup.id, "category", e.target.value)}
-                                          className="w-full p-1 border rounded text-[13px] h-6"
+                                          <MessageSquare className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
                                         >
-                                          <option>Select Rating</option>
-                                          <option>1. Competence</option>
-                                          <option>2- Soft Skills</option>
-                                        </select>
-                                      </td>
-                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                        <select
-                                          value={followup.status}
-                                          onChange={(e) => updateTrainingFollowup(followup.id, "status", e.target.value)}
-                                          className={`w-full p-1 border rounded text-[13px] h-6 ${
-                                            followup.status === "Proposed" ? "bg-gray-200" :
-                                            followup.status === "Approved" ? "bg-blue-200" :
-                                            followup.status === "Planned" ? "bg-yellow-200" :
-                                            followup.status === "Declined" ? "bg-red-200" :
-                                            followup.status === "Completed" ? "bg-green-200" : ""
-                                          }`}
+                                          <Edit2 className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => deleteTrainingFollowup(followup.id)}
                                         >
-                                          <option value="Proposed">Proposed</option>
-                                          <option value="Approved">Approved</option>
-                                          <option value="Planned">Planned</option>
-                                          <option value="Declined">Declined</option>
-                                          <option value="Completed">Completed</option>
-                                        </select>
-                                      </td>
-                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                        <Input
-                                          type="date"
-                                          value={followup.targetDate}
-                                          onChange={(e) => updateTrainingFollowup(followup.id, "targetDate", e.target.value)}
-                                          className="w-full text-[13px] h-6"
-                                        />
-                                      </td>
-                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                        <div className="flex justify-center gap-2">
-                                          <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-6 w-6"
-                                            onClick={() => setTrainingFollowupComments(prev => ({
-                                              ...prev,
-                                              [followup.id]: prev[followup.id] || ""
-                                            }))}
-                                          >
-                                            <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
-                                          </Button>
-                                          <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-6 w-6"
-                                            onClick={() => deleteTrainingFollowup(followup.id)}
-                                          >
-                                            <Trash2 className="h-[18px] w-[18px] text-gray-500" />
-                                          </Button>
-                                        </div>
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                  {followup.comment && (
+                                    <tr>
+                                      <td></td>
+                                      <td colSpan={6} className="p-3">
+                                        <p className="text-blue-600 italic text-sm">
+                                          Comment: {followup.comment}
+                                        </p>
                                       </td>
                                     </tr>
-                                    {trainingFollowupComments[followup.id] !== undefined && (
-                                      <tr>
-                                        <td></td>
-                                        <td colSpan={6} className="p-3">
-                                          {editingTrainingFollowupComment === followup.id ? (
-                                            <Textarea
-                                              value={trainingFollowupComments[followup.id]}
-                                              onChange={(e) => {
-                                                setTrainingFollowupComments(prev => ({
-                                                  ...prev,
-                                                  [followup.id]: e.target.value
-                                                }));
-                                                updateTrainingFollowup(followup.id, "comment", e.target.value);
-                                              }}
-                                              onBlur={() => setEditingTrainingFollowupComment(null)}
-                                              placeholder="Comment: Add your observations here..."
-                                              className="text-blue-600 italic border-blue-200"
-                                              rows={2}
-                                              autoFocus
-                                            />
-                                          ) : (
-                                            <div className="flex justify-between items-start">
-                                              <div 
-                                                className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[14px]"
-                                                onClick={() => setEditingTrainingFollowupComment(followup.id)}
-                                              >
-                                                {trainingFollowupComments[followup.id] || "Click to add comment..."}
-                                              </div>
-                                              <div className="ml-2">
-                                                <Button
-                                                  type="button"
-                                                  variant="ghost"
-                                                  size="sm"
-                                                  onClick={() => deleteTrainingFollowupComment(followup.id)}
-                                                >
-                                                  <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                              </div>
-                                            </div>
-                                          )}
-                                        </td>
-                                      </tr>
-                                    )}
-                                  </React.Fragment>
-                                ))}
-                              </tbody>
+                                  )}
+                                </React.Fragment>
+                              ))}
+                            </tbody>
                             </table>
                           </div>
                         </div>
@@ -2403,21 +2073,6 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
           </div>
         </div>
       </div>
-      {/* Confirmation Dialog */}
-      <AlertDialog open={confirmDialog.isOpen} onOpenChange={closeConfirmDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{confirmDialog.title}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmDialog.description}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={closeConfirmDialog}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDialog.onConfirm}>Yes</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };
