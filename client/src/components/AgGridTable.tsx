@@ -107,7 +107,7 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
     filter: true,
     resizable: true,
     menuTabs: ['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'],
-    floatingFilter: true
+    floatingFilter: false
   }), []);
 
   // Side bar configuration
