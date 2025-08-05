@@ -34,9 +34,12 @@ import {
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 
-// Set AG Grid Enterprise License
-if (import.meta.env.VITE_AG_GRID_LICENSE_KEY) {
-  LicenseManager.setLicenseKey(import.meta.env.VITE_AG_GRID_LICENSE_KEY);
+// Set AG Grid Enterprise License - check both possible environment variable names
+const licenseKey = import.meta.env.VITE_AG_GRID_LICENSE_KEY || import.meta.env.AG_GRID_LICENSE_KEY;
+if (licenseKey) {
+  LicenseManager.setLicenseKey(licenseKey);
+} else {
+  console.warn('AG Grid Enterprise license key not found. Please set VITE_AG_GRID_LICENSE_KEY environment variable.');
 }
 
 // Register AG Grid Enterprise modules
