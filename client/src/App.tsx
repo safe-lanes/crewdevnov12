@@ -4,17 +4,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Switch, Route } from "wouter";
 import { ElementCrewAppraisals } from "./pages/ElementCrewAppraisals";
 import ComponentDemo from "./pages/ComponentDemo";
-import { DynamicRouter } from "@/components/routing/DynamicRouter";
-import { AppLayout } from "@/components/layout/AppLayout";
+import { useMicroFrontendConfig } from "./micro-frontend/MicroFrontendWrapper";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      retry: 2,
-    },
-  },
-});
+const queryClient = new QueryClient();
 
 function App() {
   // Check if we're running in micro frontend mode
@@ -22,7 +14,7 @@ function App() {
     (window as any).__MICRO_FRONTEND_MODE__;
 
   if (isMicroFrontend) {
-    // In micro frontend mode, use simple routing without layout
+    // In micro frontend mode, still need QueryClientProvider
     return (
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
@@ -37,13 +29,15 @@ function App() {
     );
   }
 
-  // Standalone mode with dynamic routing and layout
+  // Standalone mode with full providers
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AppLayout>
-          <DynamicRouter />
-        </AppLayout>
+        <Switch>
+          <Route path="/" component={ElementCrewAppraisals} />
+          <Route path="/component-demo" component={ComponentDemo} />
+          <Route component={ElementCrewAppraisals} />
+        </Switch>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
