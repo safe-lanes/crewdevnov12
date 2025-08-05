@@ -9,12 +9,67 @@ import React, { useState, useMemo, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { AgGridReact } from 'ag-grid-react';
-import { ColDef, GridReadyEvent, GridApi, ICellRendererParams, ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
+import { 
+  ColDef, 
+  GridReadyEvent, 
+  GridApi, 
+  ICellRendererParams, 
+  ModuleRegistry
+} from 'ag-grid-community';
+import { 
+  AllEnterpriseModule,
+  SetFilterModule,
+  MultiFilterModule,
+  MenuModule,
+  ColumnsToolPanelModule,
+  FiltersToolPanelModule,
+  StatusBarModule,
+  SideBarModule,
+  RangeSelectionModule,
+  RowGroupingModule,
+  AggregationModule,
+  PivotModule,
+  MasterDetailModule,
+  ViewportRowModelModule,
+  ServerSideRowModelModule,
+  InfiniteRowModelModule,
+  ExcelExportModule,
+  CsvExportModule,
+  ClipboardModule,
+  AdvancedFilterModule,
+  LicenseManager
+} from 'ag-grid-enterprise';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 
-// Register AgGrid modules
-ModuleRegistry.registerModules([AllCommunityModule]);
+// Set AG Grid Enterprise License
+if (import.meta.env.VITE_AG_GRID_LICENSE_KEY) {
+  LicenseManager.setLicenseKey(import.meta.env.VITE_AG_GRID_LICENSE_KEY);
+}
+
+// Register AG Grid Enterprise modules
+ModuleRegistry.registerModules([
+  AllEnterpriseModule,
+  SetFilterModule,
+  MultiFilterModule,
+  MenuModule,
+  ColumnsToolPanelModule,
+  FiltersToolPanelModule,
+  StatusBarModule,
+  SideBarModule,
+  RangeSelectionModule,
+  RowGroupingModule,
+  AggregationModule,
+  PivotModule,
+  MasterDetailModule,
+  ViewportRowModelModule,
+  ServerSideRowModelModule,
+  InfiniteRowModelModule,
+  ExcelExportModule,
+  CsvExportModule,
+  ClipboardModule,
+  AdvancedFilterModule
+]);
 import { AppraisalForm } from "./AppraisalForm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -258,83 +313,144 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       return true;
     }), [allCrewData, filters]);
 
-  // Column definitions for AG Grid
+  // Column definitions for AG Grid with Enterprise features
   const columnDefs: ColDef[] = useMemo(() => [
     {
       headerName: 'Crew ID',
       field: 'id',
       width: 100,
-      cellStyle: { fontSize: '13px', color: '#4f5863' }
+      cellStyle: { fontSize: '13px', color: '#4f5863' },
+      filter: 'agTextColumnFilter',
+      floatingFilter: true,
+      sortable: true,
+      resizable: true,
+      pinned: 'left'
     },
     {
       headerName: 'Name',
       field: 'fullName',
       width: 180,
       valueGetter: (params) => `${params.data.name.first} ${params.data.name.middle} ${params.data.name.last}`,
-      cellStyle: { fontSize: '13px', color: '#4f5863' }
+      cellStyle: { fontSize: '13px', color: '#4f5863' },
+      filter: 'agTextColumnFilter',
+      floatingFilter: true,
+      sortable: true,
+      resizable: true,
+      pinned: 'left'
     },
     {
       headerName: 'Rank',
       field: 'rank',
       width: 120,
-      cellStyle: { fontSize: '13px', color: '#4f5863' }
+      cellStyle: { fontSize: '13px', color: '#4f5863' },
+      filter: 'agSetColumnFilter',
+      floatingFilter: true,
+      sortable: true,
+      resizable: true,
+      enableRowGroup: true
     },
     {
       headerName: 'Nationality',
       field: 'nationality',
       width: 120,
-      cellStyle: { fontSize: '13px', color: '#4f5863' }
+      cellStyle: { fontSize: '13px', color: '#4f5863' },
+      filter: 'agSetColumnFilter',
+      floatingFilter: true,
+      sortable: true,
+      resizable: true,
+      enableRowGroup: true
     },
     {
       headerName: 'Vessel',
       field: 'vessel',
       width: 140,
-      cellStyle: { fontSize: '13px', color: '#4f5863' }
+      cellStyle: { fontSize: '13px', color: '#4f5863' },
+      filter: 'agSetColumnFilter',
+      floatingFilter: true,
+      sortable: true,
+      resizable: true,
+      enableRowGroup: true
     },
     {
       headerName: 'Vessel Type',
       field: 'vesselType',
       width: 120,
-      cellStyle: { fontSize: '13px', color: '#4f5863' }
+      cellStyle: { fontSize: '13px', color: '#4f5863' },
+      filter: 'agSetColumnFilter',
+      floatingFilter: true,
+      sortable: true,
+      resizable: true,
+      enableRowGroup: true
     },
     {
       headerName: 'Sign-On',
       field: 'signOn',
       width: 110,
-      cellStyle: { fontSize: '13px', color: '#4f5863' }
+      cellStyle: { fontSize: '13px', color: '#4f5863' },
+      filter: 'agDateColumnFilter',
+      floatingFilter: true,
+      sortable: true,
+      resizable: true
     },
     {
       headerName: 'Appraisal Type',
       field: 'appraisalType',
       width: 130,
-      cellStyle: { fontSize: '13px', color: '#4f5863' }
+      cellStyle: { fontSize: '13px', color: '#4f5863' },
+      filter: 'agSetColumnFilter',
+      floatingFilter: true,
+      sortable: true,
+      resizable: true,
+      enableRowGroup: true
     },
     {
       headerName: 'Appraisal Date',
       field: 'appraisalDate',
       width: 120,
-      cellStyle: { fontSize: '13px', color: '#4f5863' }
+      cellStyle: { fontSize: '13px', color: '#4f5863' },
+      filter: 'agDateColumnFilter',
+      floatingFilter: true,
+      sortable: true,
+      resizable: true
     },
     {
       headerName: 'Competence Rating',
       field: 'competenceRating.value',
       width: 140,
       cellRenderer: RatingCellRenderer,
-      cellClass: 'flex items-center justify-center'
+      cellClass: 'flex items-center justify-center',
+      filter: 'agNumberColumnFilter',
+      floatingFilter: true,
+      sortable: true,
+      resizable: true,
+      enableValue: true,
+      aggFunc: 'avg'
     },
     {
       headerName: 'Behavioral Rating',
       field: 'behavioralRating.value',
       width: 140,
       cellRenderer: RatingCellRenderer,
-      cellClass: 'flex items-center justify-center'
+      cellClass: 'flex items-center justify-center',
+      filter: 'agNumberColumnFilter',
+      floatingFilter: true,
+      sortable: true,
+      resizable: true,
+      enableValue: true,
+      aggFunc: 'avg'
     },
     {
       headerName: 'Overall Rating',
       field: 'overallRating.value',
       width: 130,
       cellRenderer: RatingCellRenderer,
-      cellClass: 'flex items-center justify-center'
+      cellClass: 'flex items-center justify-center',
+      filter: 'agNumberColumnFilter',
+      floatingFilter: true,
+      sortable: true,
+      resizable: true,
+      enableValue: true,
+      aggFunc: 'avg'
     },
     {
       headerName: 'Actions',
@@ -343,7 +459,9 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       cellRenderer: ActionsCellRenderer,
       sortable: false,
       filter: false,
-      cellClass: 'flex items-center justify-center'
+      cellClass: 'flex items-center justify-center',
+      pinned: 'right',
+      lockPosition: true
     }
   ], []);
 
@@ -435,17 +553,33 @@ export const ElementCrewAppraisals = (): JSX.Element => {
         {/* Main Content */}
         <main className="h-[833px] bg-white px-6 py-2">
           <div className="flex flex-col h-full">
-            {/* Top section with title and toggle filters */}
+            {/* Top section with title and action buttons */}
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-2xl font-bold text-black">Crew Appraisals</h1>
-              <Button 
-                variant="outline" 
-                className="h-8 w-32 text-[#8798ad] text-xs border-[#e1e8ed]"
-                onClick={() => setShowFilters(!showFilters)}
-              >
-                <FilterIcon className="h-3 w-3 mr-1" />
-                Toggle Filters
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className="h-8 w-32 text-[#8798ad] text-xs border-[#e1e8ed]"
+                  onClick={() => setShowFilters(!showFilters)}
+                >
+                  <FilterIcon className="h-3 w-3 mr-1" />
+                  Toggle Filters
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="h-8 w-28 text-[#8798ad] text-xs border-[#e1e8ed]"
+                  onClick={() => gridApi?.exportDataAsCsv({ fileName: 'crew-appraisals.csv' })}
+                >
+                  Export CSV
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="h-8 w-28 text-[#8798ad] text-xs border-[#e1e8ed]"
+                  onClick={() => gridApi?.exportDataAsExcel({ fileName: 'crew-appraisals.xlsx' })}
+                >
+                  Export Excel
+                </Button>
+              </div>
             </div>
 
             {/* Filters Section */}
@@ -561,27 +695,92 @@ export const ElementCrewAppraisals = (): JSX.Element => {
               </div>
             )}
 
-            {/* AG Grid Table */}
+            {/* AG Grid Enterprise Table */}
             <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
               <CardContent className="p-4 bg-[#f7fafc]">
-                <div className="ag-theme-alpine bg-white rounded-lg shadow-md overflow-hidden" style={{ height: '500px', width: '100%' }}>
+                <div className="ag-theme-alpine bg-white rounded-lg shadow-md overflow-hidden" style={{ height: '600px', width: '100%' }}>
                   <AgGridReact
                     rowData={crewData}
                     columnDefs={columnDefs}
                     onGridReady={onGridReady}
                     context={{ handleEditClick }}
+                    theme="legacy"
                     defaultColDef={{
                       sortable: true,
                       filter: true,
-                      resizable: true
+                      resizable: true,
+                      menuTabs: ['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'],
+                      floatingFilter: true
                     }}
                     headerHeight={50}
                     rowHeight={50}
                     suppressHorizontalScroll={false}
-                    suppressRowClickSelection={true}
                     animateRows={true}
-                    rowSelection="single"
+                    rowSelection={{
+                      mode: 'singleRow',
+                      enableClickSelection: false
+                    }}
                     getRowStyle={() => ({ backgroundColor: 'white' })}
+                    cellSelection={true}
+                    enableAdvancedFilter={false}
+                    sideBar={{
+                      toolPanels: [
+                        {
+                          id: 'columns',
+                          labelDefault: 'Columns',
+                          labelKey: 'columns',
+                          iconKey: 'columns',
+                          toolPanel: 'agColumnsToolPanel',
+                          toolPanelParams: {
+                            suppressRowGroups: false,
+                            suppressValues: false,
+                            suppressPivots: false,
+                            suppressPivotMode: false,
+                            suppressColumnFilter: false,
+                            suppressColumnSelectAll: false,
+                            suppressColumnExpandAll: false
+                          }
+                        },
+                        {
+                          id: 'filters',
+                          labelDefault: 'Filters',
+                          labelKey: 'filters',
+                          iconKey: 'filter',
+                          toolPanel: 'agFiltersToolPanel'
+                        }
+                      ],
+                      defaultToolPanel: 'columns'
+                    }}
+                    statusBar={{
+                      statusPanels: [
+                        {
+                          statusPanel: 'agTotalAndFilteredRowCountComponent',
+                          align: 'left'
+                        },
+                        {
+                          statusPanel: 'agAggregationComponent',
+                          align: 'center'
+                        },
+                        {
+                          statusPanel: 'agSelectedRowCountComponent',
+                          align: 'right'
+                        }
+                      ]
+                    }}
+                    allowContextMenuWithControlKey={true}
+                    copyHeadersToClipboard={true}
+                    copyGroupHeadersToClipboard={true}
+                    enableCellTextSelection={true}
+
+                    enableBrowserTooltips={false}
+                    tooltipShowDelay={2000}
+                    rowGroupPanelShow="always"
+                    pivotPanelShow="always"
+                    functionsReadOnly={false}
+                    suppressAggFuncInHeader={false}
+                    alwaysShowHorizontalScroll={false}
+                    alwaysShowVerticalScroll={false}
+                    debug={false}
                   />
                 </div>
               </CardContent>
