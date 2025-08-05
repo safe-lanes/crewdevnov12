@@ -42,17 +42,16 @@
 }
 
 .ag-theme-alpine .ag-row {
-  border-bottom: none !important;
+  border-bottom: 1px solid #e5e7eb !important;
 }
 
 .ag-theme-alpine .ag-row:hover {
   background-color: #f9fafb !important;
 }
 
-/* Remove all cell borders */
+/* Remove cell right borders only */
 .ag-theme-alpine .ag-cell {
   border-right: none !important;
-  border-bottom: none !important;
 }
 
 /* Remove grid borders */
