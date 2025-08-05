@@ -637,7 +637,9 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                   columnDefs={columnDefs}
                   onGridReady={onGridReady}
                   context={{ handleEditClick }}
-                  height="650px"
+                  autoHeight={true}
+                  maxHeight="500px"
+                  minHeight="200px"
                   width="100%"
                   enableExport={true}
                   enableSideBar={false}

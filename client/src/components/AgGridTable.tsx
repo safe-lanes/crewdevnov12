@@ -80,6 +80,9 @@ export interface AgGridTableProps {
   rowSelection?: 'single' | 'multiple' | false;
   theme?: 'alpine' | 'balham' | 'material' | 'legacy';
   gridOptions?: Partial<GridOptions>;
+  autoHeight?: boolean;
+  maxHeight?: string | number;
+  minHeight?: string | number;
 }
 
 export const AgGridTable: React.FC<AgGridTableProps> = ({
@@ -98,7 +101,10 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
   enableAdvancedFilter = false,
   rowSelection = 'single',
   theme = 'alpine',
-  gridOptions = {}
+  gridOptions = {},
+  autoHeight = false,
+  maxHeight = '600px',
+  minHeight = '200px'
 }) => {
 
   // Default column definitions with enterprise features
@@ -213,16 +219,40 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
     enablePivoting
   ]);
 
+  // Calculate dynamic height based on row count
+  const dynamicHeight = useMemo(() => {
+    if (!autoHeight) return height;
+    
+    const headerHeight = 50; // Header row height
+    const rowHeight = 50; // Data row height
+    const footerHeight = enableStatusBar ? 40 : 0; // Status bar height
+    const padding = 4; // Container padding
+    
+    const calculatedHeight = headerHeight + (rowData.length * rowHeight) + footerHeight + padding;
+    
+    // Convert maxHeight and minHeight to numbers for comparison
+    const maxHeightNum = typeof maxHeight === 'string' ? parseInt(maxHeight) : maxHeight;
+    const minHeightNum = typeof minHeight === 'string' ? parseInt(minHeight) : minHeight;
+    
+    // Constrain within min/max bounds
+    const constrainedHeight = Math.max(minHeightNum, Math.min(calculatedHeight, maxHeightNum));
+    
+    return `${constrainedHeight}px`;
+  }, [autoHeight, height, rowData.length, enableStatusBar, maxHeight, minHeight]);
+
   // Merge default options with provided options
   const finalGridOptions = useMemo(() => ({
     ...defaultGridOptions,
-    ...gridOptions
-  }), [defaultGridOptions, gridOptions]);
+    ...gridOptions,
+    ...(autoHeight && rowData.length * 50 > parseInt(maxHeight as string) && {
+      alwaysShowVerticalScroll: true
+    })
+  }), [defaultGridOptions, gridOptions, autoHeight, rowData.length, maxHeight]);
 
   return (
     <div 
       className={`ag-theme-${theme} bg-white rounded-lg shadow-md overflow-hidden ${className}`} 
-      style={{ height, width }}
+      style={{ height: dynamicHeight, width }}
     >
       <AgGridReact
         rowData={rowData}
