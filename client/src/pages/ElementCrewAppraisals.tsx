@@ -509,6 +509,13 @@ export const ElementCrewAppraisals = (): JSX.Element => {
               <div className="flex gap-2">
                 <Button 
                   variant="outline" 
+                  className="h-8 w-40 text-[#8798ad] text-xs border-[#e1e8ed]"
+                  onClick={() => window.location.href = '/component-demo'}
+                >
+                  View Input Components
+                </Button>
+                <Button 
+                  variant="outline" 
                   className="h-8 w-32 text-[#8798ad] text-xs border-[#e1e8ed]"
                   onClick={() => setShowFilters(!showFilters)}
                 >

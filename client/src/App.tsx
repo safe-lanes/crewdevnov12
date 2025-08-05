@@ -3,6 +3,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { Switch, Route } from "wouter";
 import { ElementCrewAppraisals } from "./pages/ElementCrewAppraisals";
+import ComponentDemo from "./pages/ComponentDemo";
 import { useMicroFrontendConfig } from "./micro-frontend/MicroFrontendWrapper";
 
 const queryClient = new QueryClient();
@@ -19,6 +20,7 @@ function App() {
         <TooltipProvider>
           <Switch>
             <Route path="/" component={ElementCrewAppraisals} />
+            <Route path="/component-demo" component={ComponentDemo} />
             <Route component={ElementCrewAppraisals} />
           </Switch>
           <Toaster />
@@ -33,6 +35,7 @@ function App() {
       <TooltipProvider>
         <Switch>
           <Route path="/" component={ElementCrewAppraisals} />
+          <Route path="/component-demo" component={ComponentDemo} />
           <Route component={ElementCrewAppraisals} />
         </Switch>
         <Toaster />
