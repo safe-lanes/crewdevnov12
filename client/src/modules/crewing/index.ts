@@ -3,10 +3,8 @@
  * Re-exports all public components, hooks, types, and services
  */
 
-// Pages
+// Pages - using original UI components
 export { CrewingListPage } from './pages/CrewingListPage';
-export { CrewingAddPage } from './pages/CrewingAddPage';
-export { CrewingEditPage } from './pages/CrewingEditPage';
 
 // Components
 export { CrewForm } from './components/CrewForm';

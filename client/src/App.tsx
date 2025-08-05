@@ -2,8 +2,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { Switch, Route } from "wouter";
-import { ElementCrewAppraisals } from "./pages/ElementCrewAppraisals";
-import { AdminModule } from "./pages/AdminModule";
+import { CrewingListPage } from "./modules/crewing";
+import { AdminModule } from "./modules/admin";
 import NotFound from "./pages/not-found";
 import { useMicroFrontendConfig } from "./micro-frontend/MicroFrontendWrapper";
 
@@ -20,7 +20,7 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Switch>
-            <Route path="/" component={ElementCrewAppraisals} />
+            <Route path="/" component={CrewingListPage} />
             <Route path="/admin" component={AdminModule} />
             <Route component={NotFound} />
           </Switch>
@@ -35,7 +35,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Switch>
-          <Route path="/" component={ElementCrewAppraisals} />
+          <Route path="/" component={CrewingListPage} />
           <Route path="/admin" component={AdminModule} />
           <Route component={NotFound} />
         </Switch>
