@@ -1,301 +1,273 @@
 # AG Grid Enterprise Component Guide
 
-This guide explains how to use the reusable AG Grid Enterprise components across the project.
+This guide provides comprehensive documentation for using the AG Grid Enterprise components in the Element Crew Appraisals System.
 
-## Components Overview
+## Overview
 
-### 1. AgGridTable Component
-**Location**: `client/src/components/AgGridTable.tsx`
+The system uses AG Grid Enterprise as the standard table component across all modules. The reusable `AgGridTable` component provides consistent implementation with enterprise features pre-configured, optimized for clean appearance and responsive behavior.
 
-A fully-featured AG Grid Enterprise wrapper with all enterprise features pre-configured.
+## Key Features
 
-#### Features
-- ✅ AG Grid Enterprise with license key integration
-- ✅ Advanced filtering (Set, Multi, Text, Number, Date filters)
-- ✅ Floating filters on all columns
-- ✅ Row grouping and aggregation
-- ✅ Pivoting capabilities
-- ✅ Side panel with Columns and Filters tools
-- ✅ Status bar with row counts and aggregation info
-- ✅ Excel and CSV export functionality
-- ✅ Cell selection and range selection
-- ✅ Context menu support
-- ✅ Clipboard operations
-- ✅ Customizable theme support
+- **Enterprise License**: Fully licensed AG Grid Enterprise with all premium features
+- **Clean Design**: Single header row, no checkbox columns by default, optimized spacing
+- **Dynamic Height**: Auto-adjusting table height with smart scroll behavior
+- **Advanced Filtering**: Column filters and advanced filter builder (floating filters disabled)
+- **Data Export**: Excel and CSV export capabilities
+- **Row Grouping**: Hierarchical data organization
+- **Pivoting**: Data summarization and analysis
+- **Column Management**: Resizable, sortable, and moveable columns
+- **Status Bar**: Row count and aggregation display (selection count hidden when no selection)
+- **Side Bar**: Column and filter management panels
+- **Responsive Scroll**: Vertical scroll only appears when content exceeds screen height
 
-#### Basic Usage
+## Component Architecture
+
+### AgGridTable Component
+
+The main reusable table component with the following props:
+
+```typescript
+interface AgGridTableProps {
+  rowData: any[];
+  columnDefs: ColDef[];
+  onGridReady?: (event: GridReadyEvent) => void;
+  gridOptions?: Partial<GridOptions>;
+  className?: string;
+  width?: string;
+  height?: string;
+  enableSideBar?: boolean;
+  enableStatusBar?: boolean;
+  enableRowGrouping?: boolean;
+  enablePivoting?: boolean;
+  enableAdvancedFilter?: boolean;
+  rowSelection?: 'single' | 'multiple' | false; // Default: false (no checkboxes)
+  theme?: 'alpine' | 'balham' | 'material';
+  context?: any;
+  autoHeight?: boolean; // Enable dynamic height calculation
+  maxHeight?: string; // Maximum table height
+  minHeight?: string; // Minimum table height
+}
+```
+
+### Default Configuration
+
+The component comes with these optimized defaults:
+
+- **Single Header Row**: No floating filters for cleaner appearance
+- **No Row Selection**: Checkbox columns disabled by default
+- **Dynamic Height**: Automatically adjusts to content with smart scrolling
+- **Blue Header**: #52baf3 background with white text
+- **Row Hover**: Light gray hover effect on rows
+- **No Cell Borders**: Clean appearance without vertical cell borders
+- **Rounded Corners**: 8px border radius for modern look
+
+## Usage Examples
+
+### Basic Table
 
 ```tsx
 import AgGridTable from '@/components/AgGridTable';
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 
-// Define your column definitions
-const columnDefs: ColDef[] = [
-  {
-    headerName: 'Name',
-    field: 'name',
-    filter: 'agTextColumnFilter',
-    floatingFilter: true,
-    enableRowGroup: true
-  },
-  {
-    headerName: 'Age',
-    field: 'age',
-    filter: 'agNumberColumnFilter',
-    floatingFilter: true,
-    enableValue: true,
-    aggFunc: 'avg'
-  }
-];
-
-// Your component
 const MyComponent = () => {
-  const [gridApi, setGridApi] = useState<GridApi | null>(null);
-  
-  const onGridReady = (event: GridReadyEvent) => {
-    setGridApi(event.api);
-  };
+  const columnDefs = [
+    { field: 'name', headerName: 'Name' },
+    { field: 'age', headerName: 'Age', filter: 'agNumberColumnFilter' },
+    { field: 'country', headerName: 'Country' }
+  ];
+
+  const rowData = [
+    { name: 'John Doe', age: 30, country: 'USA' },
+    { name: 'Jane Smith', age: 25, country: 'UK' }
+  ];
 
   return (
     <AgGridTable
-      rowData={myData}
+      rowData={rowData}
       columnDefs={columnDefs}
-      onGridReady={onGridReady}
-      height="500px"
-      enableExport={true}
-      enableSideBar={true}
-      enableStatusBar={true}
-      rowSelection="single"
+      autoHeight={true}
+      theme="alpine"
     />
   );
 };
 ```
 
-#### Props Interface
+### Advanced Table with Enterprise Features
 
 ```tsx
-interface AgGridTableProps {
-  rowData: any[];                    // Required: Your data array
-  columnDefs: ColDef[];             // Required: Column definitions
-  onGridReady?: (event: GridReadyEvent) => void;
-  context?: any;                    // Context passed to cell renderers
-  height?: string | number;         // Default: '500px'
-  width?: string | number;          // Default: '100%'
-  className?: string;               // Additional CSS classes
-  enableExport?: boolean;           // Default: true
-  enableSideBar?: boolean;          // Default: true
-  enableStatusBar?: boolean;        // Default: true
-  enableRowGrouping?: boolean;      // Default: true
-  enablePivoting?: boolean;         // Default: true
-  enableAdvancedFilter?: boolean;   // Default: false
-  rowSelection?: 'single' | 'multiple' | false; // Default: 'single'
-  theme?: 'alpine' | 'balham' | 'material' | 'legacy'; // Default: 'alpine'
-  gridOptions?: Partial<GridOptions>; // Override any grid options
-}
+const AdvancedTable = () => {
+  const columnDefs = [
+    {
+      field: 'name',
+      headerName: 'Name',
+      enableRowGroup: true,
+      filter: 'agTextColumnFilter'
+    },
+    {
+      field: 'department',
+      headerName: 'Department',
+      enableRowGroup: true,
+      enablePivot: true
+    },
+    {
+      field: 'salary',
+      headerName: 'Salary',
+      filter: 'agNumberColumnFilter',
+      enableValue: true,
+      aggFunc: 'sum'
+    }
+  ];
+
+  return (
+    <AgGridTable
+      rowData={employeeData}
+      columnDefs={columnDefs}
+      enableSideBar={true}
+      enableStatusBar={true}
+      enableRowGrouping={true}
+      enablePivoting={true}
+      autoHeight={true}
+      maxHeight="600px"
+    />
+  );
+};
 ```
 
-### 2. AgGridTableActions Component
-**Location**: `client/src/components/AgGridTableActions.tsx`
-
-Pre-built action buttons for common AG Grid operations.
-
-#### Usage
+### Table with Export Actions
 
 ```tsx
+import AgGridTable from '@/components/AgGridTable';
 import AgGridTableActions from '@/components/AgGridTableActions';
 
-<AgGridTableActions 
-  gridApi={gridApi}
-  exportFilename="my-data"
-  showExportButtons={true}
-  showFilterButtons={true}
-  showGroupButtons={true}
-  showSelectionButtons={false}
-/>
+const TableWithActions = () => {
+  const [gridApi, setGridApi] = useState(null);
+
+  const onGridReady = (event) => {
+    setGridApi(event.api);
+  };
+
+  return (
+    <div>
+      <AgGridTable
+        rowData={data}
+        columnDefs={columns}
+        onGridReady={onGridReady}
+        autoHeight={true}
+      />
+      
+      <AgGridTableActions
+        gridApi={gridApi}
+        filename="export_data"
+        showExcelExport={true}
+        showCsvExport={true}
+        showPdfExport={false}
+      />
+    </div>
+  );
+};
 ```
 
-#### Available Actions
-- **Export Buttons**: CSV and Excel export
-- **Filter Buttons**: Clear all filters
-- **Group Buttons**: Expand/Collapse all groups
-- **Selection Buttons**: Select/Deselect all rows
+## CSS Customization
 
-## Column Definition Examples
+The component includes custom CSS for optimal appearance:
 
-### Basic Column with Enterprise Features
-```tsx
-{
-  headerName: 'Employee Name',
-  field: 'name',
-  width: 200,
-  filter: 'agTextColumnFilter',    // Text filter
-  floatingFilter: true,            // Show floating filter
-  sortable: true,
-  resizable: true,
-  enableRowGroup: true,            // Enable row grouping
-  pinned: 'left'                   // Pin to left
+```css
+/* Blue header styling */
+.ag-theme-alpine .ag-header {
+  background-color: #52baf3 !important;
+}
+
+.ag-theme-alpine .ag-header-cell {
+  background-color: #52baf3 !important;
+  color: white !important;
+  font-size: 12px !important;
+  font-weight: normal !important;
+  border-right: none !important;
+}
+
+/* Row styling */
+.ag-theme-alpine .ag-row:hover {
+  background-color: #f9fafb !important;
+}
+
+/* Remove cell borders */
+.ag-theme-alpine .ag-cell {
+  border-right: none !important;
+  padding: 8px 16px !important;
+}
+
+/* Scroll control */
+.ag-theme-alpine.no-scroll .ag-body-viewport {
+  overflow-y: hidden !important;
+}
+
+.ag-theme-alpine.needs-scroll .ag-body-viewport {
+  overflow-y: auto !important;
 }
 ```
 
-### Numeric Column with Aggregation
-```tsx
-{
-  headerName: 'Salary',
-  field: 'salary',
-  width: 120,
-  filter: 'agNumberColumnFilter',  // Number filter
-  floatingFilter: true,
-  sortable: true,
-  resizable: true,
-  enableValue: true,               // Enable as value column
-  aggFunc: 'sum',                  // Aggregation function
-  valueFormatter: (params) => 
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(params.value)
+## AgGridTableActions Component
+
+Companion component for export functionality:
+
+```typescript
+interface AgGridTableActionsProps {
+  gridApi: GridApi | null;
+  filename?: string;
+  showExcelExport?: boolean;
+  showCsvExport?: boolean;
+  showPdfExport?: boolean;
+  customActions?: React.ReactNode;
+  className?: string;
 }
 ```
-
-### Set Filter Column (Great for Categories)
-```tsx
-{
-  headerName: 'Department',
-  field: 'department',
-  width: 150,
-  filter: 'agSetColumnFilter',     // Set filter (dropdown with checkboxes)
-  floatingFilter: true,
-  enableRowGroup: true,
-  cellStyle: { fontWeight: 'bold' }
-}
-```
-
-### Date Column
-```tsx
-{
-  headerName: 'Start Date',
-  field: 'startDate',
-  width: 130,
-  filter: 'agDateColumnFilter',    // Date filter
-  floatingFilter: true,
-  sortable: true,
-  valueFormatter: (params) => 
-    new Date(params.value).toLocaleDateString()
-}
-```
-
-### Custom Cell Renderer
-```tsx
-{
-  headerName: 'Status',
-  field: 'status',
-  width: 100,
-  cellRenderer: (params) => {
-    const status = params.value;
-    const color = status === 'Active' ? 'green' : 'red';
-    return `<span style="color: ${color}; font-weight: bold;">${status}</span>`;
-  },
-  filter: 'agSetColumnFilter',
-  floatingFilter: true
-}
-```
-
-## Utility Functions
-
-The `agGridUtils` object provides common operations:
-
-```tsx
-import { agGridUtils } from '@/components/AgGridTable';
-
-// Export data
-agGridUtils.exportToCsv(gridApi, 'my-export.csv');
-agGridUtils.exportToExcel(gridApi, 'my-export.xlsx');
-
-// Filter operations
-agGridUtils.clearFilters(gridApi);
-
-// Column operations
-agGridUtils.resetColumns(gridApi);
-
-// Group operations
-agGridUtils.expandAllGroups(gridApi);
-agGridUtils.collapseAllGroups(gridApi);
-
-// Selection operations
-agGridUtils.selectAll(gridApi);
-agGridUtils.deselectAll(gridApi);
-const selectedRows = agGridUtils.getSelectedRows(gridApi);
-```
-
-## Styling
-
-The component uses the existing CSS styling in `client/src/index.css` which includes:
-- Blue header background (#52baf3) with white text and icons
-- Consistent row styling and hover effects
-- Rounded corners and shadows
-- White filter icons to match the header theme
-
-## License Configuration
-
-The component automatically configures the AG Grid Enterprise license using the `VITE_AG_GRID_LICENSE_KEY` environment variable. If no license is provided, it runs in trial mode.
-
-## Migration from Regular AG Grid
-
-To migrate existing AG Grid implementations:
-
-1. **Replace imports**:
-   ```tsx
-   // Old
-   import { AgGridReact } from 'ag-grid-react';
-   
-   // New
-   import AgGridTable from '@/components/AgGridTable';
-   ```
-
-2. **Update JSX**:
-   ```tsx
-   // Old
-   <AgGridReact
-     rowData={data}
-     columnDefs={columns}
-     // ... many props
-   />
-   
-   // New
-   <AgGridTable
-     rowData={data}
-     columnDefs={columns}
-     height="500px"
-     enableExport={true}
-   />
-   ```
-
-3. **Update column definitions** to use enterprise features:
-   ```tsx
-   // Add enterprise filter types
-   filter: 'agSetColumnFilter',
-   floatingFilter: true,
-   enableRowGroup: true,
-   enableValue: true,
-   aggFunc: 'sum'
-   ```
 
 ## Best Practices
 
-1. **Always specify filter types** for better UX
-2. **Use floating filters** for quick filtering
-3. **Enable row grouping** on categorical columns
-4. **Use set filters** for columns with limited unique values
-5. **Configure aggregation** on numeric columns
-6. **Pin important columns** to left or right
-7. **Use the actions component** for consistent UI
-8. **Leverage the utility functions** for common operations
+1. **Column Definitions**: Always define proper field names and header names
+2. **Filtering**: Use appropriate filter types (agTextColumnFilter, agNumberColumnFilter, agDateColumnFilter)
+3. **Height Management**: Use autoHeight with maxHeight for responsive behavior
+4. **Export Naming**: Provide meaningful filenames for exports
+5. **Performance**: Use virtual scrolling for large datasets (handled automatically)
+6. **Accessibility**: Column headers and data are properly labeled for screen readers
 
-## Example Implementation
+## Enterprise Features
 
-See `client/src/pages/ElementCrewAppraisals.tsx` for a complete implementation example showing how to integrate the reusable component with:
-- Complex column definitions
-- Custom cell renderers
-- Action buttons integration
-- Grid API management
-- Data filtering and search
+- **Set Filtering**: Multi-select dropdown filters
+- **Advanced Filtering**: Complex filter expressions
+- **Row Grouping**: Hierarchical data organization
+- **Pivoting**: Data summarization and analysis
+- **Excel Export**: Full Excel export with formatting
+- **Range Selection**: Multi-cell selection and operations
+- **Status Bar**: Comprehensive data statistics
+- **Side Bar**: Advanced column and filter management
+
+## License Configuration
+
+The component automatically handles AG Grid Enterprise licensing:
+
+```typescript
+// License is set automatically from environment variables
+const licenseKey = import.meta.env.VITE_AG_GRID_LICENSE_KEY || import.meta.env.AG_GRID_LICENSE_KEY;
+if (licenseKey) {
+  LicenseManager.setLicenseKey(licenseKey);
+}
+```
+
+Ensure your environment has the `VITE_AG_GRID_LICENSE_KEY` variable set for frontend access.
+
+## Troubleshooting
+
+### License Issues
+- Ensure `VITE_AG_GRID_LICENSE_KEY` is set in your environment
+- Restart the development server after adding the license key
+- Check browser console for license warnings
+
+### Scroll Issues
+- Use `autoHeight={true}` for automatic height management
+- Set `maxHeight` to prevent tables from becoming too tall
+- The component automatically manages scroll behavior based on content size
+
+### Performance
+- For large datasets (>1000 rows), consider server-side row model
+- Use column virtualization for tables with many columns
+- Implement lazy loading for better initial load times
