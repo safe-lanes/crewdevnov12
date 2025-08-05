@@ -494,7 +494,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
         {/* Main Content */}
         <main className="h-[833px] bg-white px-6 py-2">
           <div className="flex flex-col h-full">
-            {/* Top section with title and action buttons */}
+            {/* Top section with title and custom filter toggle */}
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-2xl font-bold text-black">Crew Appraisals</h1>
               <div className="flex gap-2">
@@ -506,14 +506,6 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                   <FilterIcon className="h-3 w-3 mr-1" />
                   Toggle Filters
                 </Button>
-                <AgGridTableActions 
-                  gridApi={gridApi}
-                  exportFilename="crew-appraisals"
-                  showExportButtons={true}
-                  showFilterButtons={true}
-                  showGroupButtons={true}
-                  showSelectionButtons={false}
-                />
               </div>
             </div>
 
@@ -630,9 +622,21 @@ export const ElementCrewAppraisals = (): JSX.Element => {
               </div>
             )}
 
-            {/* AG Grid Enterprise Table */}
+            {/* AG Grid Enterprise Table with Actions */}
             <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
               <CardContent className="p-4 bg-[#f7fafc]">
+                {/* AG Grid Table Actions positioned above the table */}
+                <div className="mb-3">
+                  <AgGridTableActions 
+                    gridApi={gridApi}
+                    exportFilename="crew-appraisals"
+                    showExportButtons={true}
+                    showFilterButtons={true}
+                    showGroupButtons={true}
+                    showSelectionButtons={false}
+                  />
+                </div>
+                
                 <AgGridTable
                   rowData={crewData}
                   columnDefs={columnDefs}
