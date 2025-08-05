@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CrewMember, AppraisalResult } from "@shared/schema";
+import { ModuleNavigator } from "@/components/ModuleNavigator";
 
 // Interface for combined crew member and appraisal data
 interface CrewAppraisalData {
@@ -150,7 +151,20 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     setSelectedCrewMember(null);
   }, []);
 
-  // Removed handleModuleChange - no longer needed
+  const handleModuleChange = useCallback((moduleId: string) => {
+    switch (moduleId) {
+      case "crewing":
+        // Already on crewing module, no need to navigate
+        break;
+      case "technical":
+        // Navigate to technical module when available
+        console.log("Navigate to technical module");
+        break;
+      default:
+        // Stay on current module
+        break;
+    }
+  }, []);
 
   // Helper function to get rating color based on value
   const getRatingColor = useCallback((rating: string): string => {
@@ -412,7 +426,13 @@ export const ElementCrewAppraisals = (): JSX.Element => {
 
             {/* Navigation Menu */}
             <nav className="flex ml-8">
-              {/* Module Navigator - Removed */}
+              {/* Module Navigator */}
+              <div className="flex flex-col items-center justify-center w-[100px] h-[67px] bg-[#E8E8E8] border-r border-gray-300">
+                <ModuleNavigator 
+                  currentModule="crewing" 
+                  onModuleChange={handleModuleChange}
+                />
+              </div>
 
               {/* Crewing Section */}
               <div className="flex flex-col items-center justify-center w-[100px] h-[67px] bg-[#E8E8E8] border-r border-gray-300">
