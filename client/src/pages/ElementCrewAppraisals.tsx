@@ -5,9 +5,13 @@ import {
   SearchIcon,
   Trash2Icon,
 } from "lucide-react";
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { AgGridReact } from 'ag-grid-react';
+import { ColDef, GridReadyEvent, GridApi } from 'ag-grid-community';
+import 'ag-grid-community/styles/ag-grid.css';
+import 'ag-grid-community/styles/ag-theme-alpine.css';
 import { AppraisalForm } from "./AppraisalForm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,14 +24,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { CrewMember, AppraisalResult } from "@shared/schema";
 import { ModuleNavigator } from "@/components/ModuleNavigator";
 
@@ -53,6 +49,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
   const [selectedCrewMember, setSelectedCrewMember] = useState<CrewAppraisalData | null>(null);
   const [showAppraisalForm, setShowAppraisalForm] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
+  const [gridApi, setGridApi] = useState<GridApi | null>(null);
 
   const handleModuleChange = (moduleId: string) => {
     switch (moduleId) {
@@ -235,6 +232,128 @@ export const ElementCrewAppraisals = (): JSX.Element => {
         {formattedValue}
       </Badge>
     );
+  };
+
+  // Cell renderers for AG Grid
+  const RatingCellRenderer = (params: any) => {
+    if (params.value === "N/A") {
+      return <Badge className="rounded-md px-2.5 py-1 font-bold bg-gray-400 text-white min-w-[48px] text-center">N/A</Badge>;
+    }
+    return <RatingBadge value={params.value} color={params.data.competenceRating.color} />;
+  };
+
+  const ActionsCellRenderer = (params: any) => {
+    return (
+      <div className="flex gap-2 justify-center">
+        <Button variant="ghost" size="icon" className="h-6 w-6">
+          <EyeIcon className="h-[18px] w-[18px] text-gray-500" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          onClick={() => handleEditClick(params.data)}
+        >
+          <EditIcon className="h-[18px] w-[18px] text-gray-500" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-6 w-6">
+          <Trash2Icon className="h-[18px] w-[18px] text-gray-500" />
+        </Button>
+      </div>
+    );
+  };
+
+  // Column definitions for AG Grid
+  const columnDefs: ColDef[] = useMemo(() => [
+    {
+      headerName: 'Crew ID',
+      field: 'id',
+      width: 100,
+      cellStyle: { fontSize: '13px', color: '#4f5863' }
+    },
+    {
+      headerName: 'Name',
+      field: 'fullName',
+      width: 180,
+      valueGetter: (params) => `${params.data.name.first} ${params.data.name.middle} ${params.data.name.last}`,
+      cellStyle: { fontSize: '13px', color: '#4f5863' }
+    },
+    {
+      headerName: 'Rank',
+      field: 'rank',
+      width: 120,
+      cellStyle: { fontSize: '13px', color: '#4f5863' }
+    },
+    {
+      headerName: 'Nationality',
+      field: 'nationality',
+      width: 120,
+      cellStyle: { fontSize: '13px', color: '#4f5863' }
+    },
+    {
+      headerName: 'Vessel',
+      field: 'vessel',
+      width: 140,
+      cellStyle: { fontSize: '13px', color: '#4f5863' }
+    },
+    {
+      headerName: 'Vessel Type',
+      field: 'vesselType',
+      width: 120,
+      cellStyle: { fontSize: '13px', color: '#4f5863' }
+    },
+    {
+      headerName: 'Sign-On',
+      field: 'signOn',
+      width: 110,
+      cellStyle: { fontSize: '13px', color: '#4f5863' }
+    },
+    {
+      headerName: 'Appraisal Type',
+      field: 'appraisalType',
+      width: 130,
+      cellStyle: { fontSize: '13px', color: '#4f5863' }
+    },
+    {
+      headerName: 'Appraisal Date',
+      field: 'appraisalDate',
+      width: 120,
+      cellStyle: { fontSize: '13px', color: '#4f5863', textAlign: 'center' }
+    },
+    {
+      headerName: 'Competence Rating',
+      field: 'competenceRating.value',
+      width: 140,
+      cellRenderer: RatingCellRenderer,
+      cellStyle: { textAlign: 'center' }
+    },
+    {
+      headerName: 'Behavioral Rating',
+      field: 'behavioralRating.value',
+      width: 140,
+      cellRenderer: RatingCellRenderer,
+      cellStyle: { textAlign: 'center' }
+    },
+    {
+      headerName: 'Overall Rating',
+      field: 'overallRating.value',
+      width: 130,
+      cellRenderer: RatingCellRenderer,
+      cellStyle: { textAlign: 'center' }
+    },
+    {
+      headerName: 'Actions',
+      field: 'actions',
+      width: 100,
+      cellRenderer: ActionsCellRenderer,
+      sortable: false,
+      filter: false,
+      cellStyle: { textAlign: 'center' }
+    }
+  ], []);
+
+  const onGridReady = (params: GridReadyEvent) => {
+    setGridApi(params.api);
   };
 
   return (
@@ -469,140 +588,32 @@ export const ElementCrewAppraisals = (): JSX.Element => {
 
 
 
-            {/* Table */}
+            {/* AG Grid Table */}
             <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
               <CardContent className="p-4 bg-[#f7fafc]">
-                <Table className="bg-white rounded-lg shadow-md overflow-hidden">
-                  <TableHeader className="bg-[#52baf3]">
-                    <TableRow>
-                      <TableHead className="text-white text-xs font-normal">
-                        Crew ID
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal">
-                        Name
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal">
-                        Rank
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal">
-                        Nationality
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal">
-                        Vessel
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal">
-                        Vessel Type
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal">
-                        Sign-On
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal">
-                        Appraisal Type
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal text-center">
-                        Appraisal
-                        <br />
-                        Date
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal text-center">
-                        Competence
-                        <br />
-                        Rating
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal text-center">
-                        Behavioral
-                        <br />
-                        Rating
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal">
-                        Overall Rating
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal w-24">
-                        Actions
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody className="bg-white">
-                    {crewData.map((crew, index) => (
-                      <TableRow
-                        key={index}
-                        className="border-b border-gray-200 bg-white hover:bg-gray-50"
-                      >
-                        <TableCell className="text-[#4f5863] text-[13px] font-normal py-3">
-                          {crew.id}
-                        </TableCell>
-                        <TableCell className="text-[#4f5863] text-[13px] font-normal">
-                          {crew.name.first} {crew.name.middle} {crew.name.last}
-                        </TableCell>
-                        <TableCell className="text-[#4f5863] text-[13px] font-normal">
-                          {crew.rank}
-                        </TableCell>
-                        <TableCell className="text-[#4f5863] text-[13px] font-normal">
-                          {crew.nationality}
-                        </TableCell>
-                        <TableCell className="text-[#4f5863] text-[13px] font-normal">
-                          {crew.vessel}
-                        </TableCell>
-                        <TableCell className="text-[#4f5863] text-[13px] font-normal">
-                          {crew.vesselType}
-                        </TableCell>
-                        <TableCell className="text-[#4f5863] text-[13px] font-normal">
-                          {crew.signOn}
-                        </TableCell>
-                        <TableCell className="text-[#4f5863] text-[13px] font-normal">
-                          {crew.appraisalType}
-                        </TableCell>
-                        <TableCell className="text-[#4f5863] text-[13px] font-normal text-center">
-                          {crew.appraisalDate}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <RatingBadge
-                            value={crew.competenceRating.value}
-                            color={crew.competenceRating.color}
-                          />
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <RatingBadge
-                            value={crew.behavioralRating.value}
-                            color={crew.behavioralRating.color}
-                          />
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <RatingBadge
-                            value={crew.overallRating.value}
-                            color={crew.overallRating.color}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2 justify-center">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                            >
-                              <EyeIcon className="h-[18px] w-[18px] text-gray-500" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => handleEditClick(crew)}
-                            >
-                              <EditIcon className="h-[18px] w-[18px] text-gray-500" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                            >
-                              <Trash2Icon className="h-[18px] w-[18px] text-gray-500" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <div className="ag-theme-alpine bg-white rounded-lg shadow-md overflow-hidden" style={{ height: '500px', width: '100%' }}>
+                  <AgGridReact
+                    rowData={crewData}
+                    columnDefs={columnDefs}
+                    onGridReady={onGridReady}
+                    defaultColDef={{
+                      sortable: true,
+                      filter: true,
+                      resizable: true,
+                      headerHeight: 50,
+                      rowHeight: 50
+                    }}
+                    headerHeight={50}
+                    rowHeight={50}
+                    suppressHorizontalScroll={false}
+                    suppressRowClickSelection={true}
+                    animateRows={true}
+                    rowSelection="single"
+                    getRowStyle={(params) => {
+                      return { backgroundColor: 'white' };
+                    }}
+                  />
+                </div>
               </CardContent>
             </Card>
 
