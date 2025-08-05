@@ -511,7 +511,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
         </aside>
 
         {/* Main Content */}
-        <main className="ml-[67px] h-[833px] bg-white px-6 py-2">
+        <main className="ml-[67px] h-[833px] px-6 py-2 bg-[#f8fafc]">
           <div className="flex flex-col h-full">
             {/* Top section with title and custom filter toggle */}
             <div className="flex items-center justify-between mb-4">
