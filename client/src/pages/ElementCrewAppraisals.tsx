@@ -645,9 +645,9 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                   height="600px"
                   width="100%"
                   enableExport={true}
-                  enableSideBar={true}
+                  enableSideBar={false}
                   enableStatusBar={true}
-                  enableRowGrouping={false}
+                  enableRowGrouping={true}
                   enablePivoting={true}
                   enableAdvancedFilter={false}
                   rowSelection="single"
