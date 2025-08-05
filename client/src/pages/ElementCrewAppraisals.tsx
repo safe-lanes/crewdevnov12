@@ -644,18 +644,6 @@ export const ElementCrewAppraisals = (): JSX.Element => {
             {/* AG Grid Enterprise Table with Actions */}
             <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
               <CardContent className="p-4 bg-[#f7fafc]">
-                {/* AG Grid Table Actions positioned above the table */}
-                <div className="mb-3">
-                  <AgGridTableActions 
-                    gridApi={gridApi}
-                    exportFilename="crew-appraisals"
-                    showExportButtons={true}
-                    showFilterButtons={true}
-                    showGroupButtons={true}
-                    showSelectionButtons={false}
-                  />
-                </div>
-
                 <AgGridTable
                   rowData={crewData}
                   columnDefs={columnDefs}
@@ -675,9 +663,21 @@ export const ElementCrewAppraisals = (): JSX.Element => {
               </CardContent>
             </Card>
 
-            {/* Pagination */}
-            <div className="mt-4 text-xs font-normal font-['Mulish',Helvetica] text-black">
-              {crewData.length > 0 ? `1 to ${crewData.length} of ${crewData.length}` : "0 to 0 of 0"}
+            {/* Pagination and Export Actions */}
+            <div className="mt-4 flex justify-between items-center">
+              <div className="text-xs font-normal font-['Mulish',Helvetica] text-black">
+                Rows: {crewData.length > 0 ? crewData.length : 0}
+              </div>
+              <div>
+                <AgGridTableActions 
+                  gridApi={gridApi}
+                  exportFilename="crew-appraisals"
+                  showExportButtons={true}
+                  showFilterButtons={true}
+                  showGroupButtons={true}
+                  showSelectionButtons={false}
+                />
+              </div>
             </div>
           </div>
         </main>
