@@ -196,7 +196,7 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
     enableCellTextSelection: true,
     enableBrowserTooltips: false,
     tooltipShowDelay: 2000,
-    rowGroupPanelShow: enableRowGrouping ? 'always' : 'never',
+    rowGroupPanelShow: 'never',
     pivotPanelShow: enablePivoting ? 'always' : 'never',
     functionsReadOnly: false,
     suppressAggFuncInHeader: false,
