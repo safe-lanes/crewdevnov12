@@ -13,7 +13,7 @@
   color: white !important;
   font-size: 12px !important;
   font-weight: normal !important;
-  border-right: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-right: none !important;
 }
 
 .ag-theme-alpine .ag-header-cell-text {
@@ -42,11 +42,26 @@
 }
 
 .ag-theme-alpine .ag-row {
-  border-bottom: 1px solid #e5e7eb !important;
+  border-bottom: none !important;
 }
 
 .ag-theme-alpine .ag-row:hover {
   background-color: #f9fafb !important;
+}
+
+/* Remove all cell borders */
+.ag-theme-alpine .ag-cell {
+  border-right: none !important;
+  border-bottom: none !important;
+}
+
+/* Remove grid borders */
+.ag-theme-alpine .ag-root-wrapper {
+  border: none !important;
+}
+
+.ag-theme-alpine {
+  border: none !important;
 }
 
 .ag-theme-alpine .ag-cell {
