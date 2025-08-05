@@ -2,8 +2,11 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema } from "@shared/schema";
+import { registerNavigationRoutes } from "./routes/navigation";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Register navigation and auth routes
+  registerNavigationRoutes(app);
   // Forms API routes
   app.get("/api/forms", async (req, res) => {
     try {
