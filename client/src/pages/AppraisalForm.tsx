@@ -5,11 +5,9 @@ import { z } from "zod";
 import { ArrowLeft, Save, Send, Plus, MessageSquare, Edit2, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { TextInput, SelectInput, DateInput, TextareaInput } from "@/components/common";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -884,7 +882,14 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                             <FormItem>
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Seafarer's Name</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="Enter seafarer's name" className="bg-[#ffffff]" />
+                                <div className="w-full">
+                                  <TextInput
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    placeholder="Enter seafarer's name"
+                                    className="bg-[#ffffff] border border-input rounded-md"
+                                  />
+                                </div>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -896,25 +901,28 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Seafarer's Rank</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                  <SelectTrigger className="bg-[#ffffff]">
-                                    <SelectValue placeholder="Select rank" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="master">Master</SelectItem>
-                                  <SelectItem value="chief-engineer">Chief Engineer</SelectItem>
-                                  <SelectItem value="chief-mate">Chief Mate</SelectItem>
-                                  <SelectItem value="second-officer">Second Officer</SelectItem>
-                                  <SelectItem value="third-engineer">Third Engineer</SelectItem>
-                                  <SelectItem value="able-seaman">Able Seaman</SelectItem>
-                                  <SelectItem value="electrician">Electrician</SelectItem>
-                                  <SelectItem value="bosun">Bosun</SelectItem>
-                                  <SelectItem value="cook">Cook</SelectItem>
-                                  <SelectItem value="steward">Steward</SelectItem>
-                                </SelectContent>
-                              </Select>
+                              <FormControl>
+                                <div className="w-full">
+                                  <SelectInput
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    options={[
+                                      { value: "master", label: "Master" },
+                                      { value: "chief-engineer", label: "Chief Engineer" },
+                                      { value: "chief-mate", label: "Chief Mate" },
+                                      { value: "second-officer", label: "Second Officer" },
+                                      { value: "third-engineer", label: "Third Engineer" },
+                                      { value: "able-seaman", label: "Able Seaman" },
+                                      { value: "electrician", label: "Electrician" },
+                                      { value: "bosun", label: "Bosun" },
+                                      { value: "cook", label: "Cook" },
+                                      { value: "steward", label: "Steward" },
+                                    ]}
+                                    placeholder="Select rank"
+                                    className="[&>button]:bg-[#ffffff] [&>button]:border [&>button]:border-input"
+                                  />
+                                </div>
+                              </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -990,25 +998,28 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Vessel</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                  <SelectTrigger className="bg-[#ffffff]">
-                                    <SelectValue placeholder="Select vessel" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="mt-sail-one">MT Sail One</SelectItem>
-                                  <SelectItem value="mt-sail-two">MT Sail Two</SelectItem>
-                                  <SelectItem value="mt-sail-three">MT Sail Three</SelectItem>
-                                  <SelectItem value="mt-sail-four">MT Sail Four</SelectItem>
-                                  <SelectItem value="mt-sail-five">MT Sail Five</SelectItem>
-                                  <SelectItem value="mt-sail-ten">MT Sail Ten</SelectItem>
-                                  <SelectItem value="mt-sail-eight">MT Sail Eight</SelectItem>
-                                  <SelectItem value="mt-sail-eleven">MT Sail Eleven</SelectItem>
-                                  <SelectItem value="mt-sail-thirteen">MT Sail Thirteen</SelectItem>
-                                  <SelectItem value="mv-sail-seven">MV Sail Seven</SelectItem>
-                                </SelectContent>
-                              </Select>
+                              <FormControl>
+                                <div className="w-full">
+                                  <SelectInput
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    options={[
+                                      { value: "mt-sail-one", label: "MT Sail One" },
+                                      { value: "mt-sail-two", label: "MT Sail Two" },
+                                      { value: "mt-sail-three", label: "MT Sail Three" },
+                                      { value: "mt-sail-four", label: "MT Sail Four" },
+                                      { value: "mt-sail-five", label: "MT Sail Five" },
+                                      { value: "mt-sail-ten", label: "MT Sail Ten" },
+                                      { value: "mt-sail-eight", label: "MT Sail Eight" },
+                                      { value: "mt-sail-eleven", label: "MT Sail Eleven" },
+                                      { value: "mt-sail-thirteen", label: "MT Sail Thirteen" },
+                                      { value: "mv-sail-seven", label: "MV Sail Seven" },
+                                    ]}
+                                    placeholder="Select vessel"
+                                    className="[&>button]:bg-[#ffffff] [&>button]:border [&>button]:border-input"
+                                  />
+                                </div>
+                              </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -1020,7 +1031,14 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                             <FormItem>
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Sign On Date</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="dd/mm/yyyy" type="date" className="bg-[#ffffff]" />
+                                <div className="w-full">
+                                  <DateInput
+                                    value={field.value ? new Date(field.value) : undefined}
+                                    onChange={(date) => field.onChange(date ? date.toISOString().split('T')[0] : '')}
+                                    placeholder="Select date"
+                                    className="[&>button]:bg-[#ffffff] [&>button]:border [&>button]:border-input"
+                                  />
+                                </div>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1032,20 +1050,23 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Type</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                  <SelectTrigger className="bg-[#ffffff]">
-                                    <SelectValue placeholder="Select type" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="end-of-contract">End of Contract</SelectItem>
-                                  <SelectItem value="mid-term">Mid Term</SelectItem>
-                                  <SelectItem value="special">Special</SelectItem>
-                                  <SelectItem value="probation">Probation</SelectItem>
-                                  <SelectItem value="appraiser-s-off">Appraiser S/Off</SelectItem>
-                                </SelectContent>
-                              </Select>
+                              <FormControl>
+                                <div className="w-full">
+                                  <SelectInput
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    options={[
+                                      { value: "end-of-contract", label: "End of Contract" },
+                                      { value: "mid-term", label: "Mid Term" },
+                                      { value: "special", label: "Special" },
+                                      { value: "probation", label: "Probation" },
+                                      { value: "appraiser-s-off", label: "Appraiser S/Off" },
+                                    ]}
+                                    placeholder="Select type"
+                                    className="[&>button]:bg-[#ffffff] [&>button]:border [&>button]:border-input"
+                                  />
+                                </div>
+                              </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -1060,7 +1081,14 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                             <FormItem>
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Period From</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="dd.mm.yyyy" type="date" className="bg-[#ffffff]" />
+                                <div className="w-full">
+                                  <DateInput
+                                    value={field.value ? new Date(field.value) : undefined}
+                                    onChange={(date) => field.onChange(date ? date.toISOString().split('T')[0] : '')}
+                                    placeholder="Select date"
+                                    className="[&>button]:bg-[#ffffff] [&>button]:border [&>button]:border-input"
+                                  />
+                                </div>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1073,7 +1101,14 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                             <FormItem>
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Period To</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="dd.mm.yyyy" type="date" className="bg-[#ffffff]" />
+                                <div className="w-full">
+                                  <DateInput
+                                    value={field.value ? new Date(field.value) : undefined}
+                                    onChange={(date) => field.onChange(date ? date.toISOString().split('T')[0] : '')}
+                                    placeholder="Select date"
+                                    className="[&>button]:bg-[#ffffff] [&>button]:border [&>button]:border-input"
+                                  />
+                                </div>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1085,19 +1120,22 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Primary Appraiser</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                  <SelectTrigger className="bg-[#ffffff]">
-                                    <SelectValue placeholder="Select appraiser" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="captain">Captain</SelectItem>
-                                  <SelectItem value="chief-engineer">Chief Engineer</SelectItem>
-                                  <SelectItem value="chief-mate">Chief Mate</SelectItem>
-                                  <SelectItem value="shore-management">Shore Management</SelectItem>
-                                </SelectContent>
-                              </Select>
+                              <FormControl>
+                                <div className="w-full">
+                                  <SelectInput
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    options={[
+                                      { value: "captain", label: "Captain" },
+                                      { value: "chief-engineer", label: "Chief Engineer" },
+                                      { value: "chief-mate", label: "Chief Mate" },
+                                      { value: "shore-management", label: "Shore Management" },
+                                    ]}
+                                    placeholder="Select appraiser"
+                                    className="[&>button]:bg-[#ffffff] [&>button]:border [&>button]:border-input"
+                                  />
+                                </div>
+                              </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}

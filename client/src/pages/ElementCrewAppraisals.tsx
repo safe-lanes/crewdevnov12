@@ -15,14 +15,7 @@ import { AppraisalForm } from "./AppraisalForm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchInput, SelectInput } from "@/components/common";
 import { CrewMember, AppraisalResult } from "@shared/schema";
 import { ModuleNavigator } from "@/components/ModuleNavigator";
 
@@ -529,89 +522,118 @@ export const ElementCrewAppraisals = (): JSX.Element => {
             {showFilters && (
               <div className="flex flex-wrap gap-4 mb-4 p-4 bg-[#f7fafc] rounded-lg">
                 <div className="flex gap-4 flex-wrap">
-                  <Input
-                    placeholder="Search by name..."
-                    className="h-8 w-48 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
-                    value={filters.searchName}
-                    onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
-                  />
+                  <div className="relative">
+                    <SearchInput
+                      placeholder="Search by name..."
+                      className="h-8 w-48 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] bg-white border border-input rounded-md"
+                      value={filters.searchName}
+                      onChange={(value) => setFilters(prev => ({ ...prev, searchName: value }))}
+                      showSearchIcon={false}
+                      showClearButton={false}
+                      debounceMs={300}
+                    />
+                  </div>
 
-                  <Select value={filters.rank} onValueChange={(value) => setFilters(prev => ({ ...prev, rank: value }))}>
-                    <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                      <SelectValue placeholder="Rank" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Captain">Captain</SelectItem>
-                      <SelectItem value="Chief Officer">Chief Officer</SelectItem>
-                      <SelectItem value="Second Officer">Second Officer</SelectItem>
-                      <SelectItem value="Chief Engineer">Chief Engineer</SelectItem>
-                      <SelectItem value="Second Engineer">Second Engineer</SelectItem>
-                      <SelectItem value="Third Engineer">Third Engineer</SelectItem>
-                      <SelectItem value="Bosun">Bosun</SelectItem>
-                      <SelectItem value="AB">AB</SelectItem>
-                      <SelectItem value="OS">OS</SelectItem>
-                      <SelectItem value="Cook">Cook</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="relative">
+                    <SelectInput
+                      value={filters.rank}
+                      onChange={(value) => setFilters(prev => ({ ...prev, rank: value }))}
+                      options={[
+                        { value: "Captain", label: "Captain" },
+                        { value: "Chief Officer", label: "Chief Officer" },
+                        { value: "Second Officer", label: "Second Officer" },
+                        { value: "Chief Engineer", label: "Chief Engineer" },
+                        { value: "Second Engineer", label: "Second Engineer" },
+                        { value: "Third Engineer", label: "Third Engineer" },
+                        { value: "Bosun", label: "Bosun" },
+                        { value: "AB", label: "AB" },
+                        { value: "OS", label: "OS" },
+                        { value: "Cook", label: "Cook" },
+                      ]}
+                      placeholder="Rank"
+                      className="[&>button]:h-8 [&>button]:w-32 [&>button]:text-xs [&>button]:text-[#0f172a] [&>button]:bg-white [&>button]:border [&>button]:border-input"
+                      clearable
+                    />
+                  </div>
 
-                  <Select value={filters.vessel} onValueChange={(value) => setFilters(prev => ({ ...prev, vessel: value }))}>
-                    <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                      <SelectValue placeholder="Vessel" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="MV Ocean Star">MV Ocean Star</SelectItem>
-                      <SelectItem value="MV Sea Explorer">MV Sea Explorer</SelectItem>
-                      <SelectItem value="MV Atlantic Queen">MV Atlantic Queen</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="relative">
+                    <SelectInput
+                      value={filters.vessel}
+                      onChange={(value) => setFilters(prev => ({ ...prev, vessel: value }))}
+                      options={[
+                        { value: "MV Ocean Star", label: "MV Ocean Star" },
+                        { value: "MV Sea Explorer", label: "MV Sea Explorer" },
+                        { value: "MV Atlantic Queen", label: "MV Atlantic Queen" },
+                      ]}
+                      placeholder="Vessel"
+                      className="[&>button]:h-8 [&>button]:w-32 [&>button]:text-xs [&>button]:text-[#0f172a] [&>button]:bg-white [&>button]:border [&>button]:border-input"
+                      clearable
+                    />
+                  </div>
 
-                  <Select value={filters.vesselType} onValueChange={(value) => setFilters(prev => ({ ...prev, vesselType: value }))}>
-                    <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                      <SelectValue placeholder="Vessel Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Container">Container</SelectItem>
-                      <SelectItem value="Bulk Carrier">Bulk Carrier</SelectItem>
-                      <SelectItem value="Tanker">Tanker</SelectItem>
-                      <SelectItem value="General Cargo">General Cargo</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="relative">
+                    <SelectInput
+                      value={filters.vesselType}
+                      onChange={(value) => setFilters(prev => ({ ...prev, vesselType: value }))}
+                      options={[
+                        { value: "Container", label: "Container" },
+                        { value: "Bulk Carrier", label: "Bulk Carrier" },
+                        { value: "Tanker", label: "Tanker" },
+                        { value: "General Cargo", label: "General Cargo" },
+                      ]}
+                      placeholder="Vessel Type"
+                      className="[&>button]:h-8 [&>button]:w-32 [&>button]:text-xs [&>button]:text-[#0f172a] [&>button]:bg-white [&>button]:border [&>button]:border-input"
+                      clearable
+                    />
+                  </div>
 
-                  <Select value={filters.nationality} onValueChange={(value) => setFilters(prev => ({ ...prev, nationality: value }))}>
-                    <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                      <SelectValue placeholder="Nationality" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Philippines">Philippines</SelectItem>
-                      <SelectItem value="India">India</SelectItem>
-                      <SelectItem value="Ukraine">Ukraine</SelectItem>
-                      <SelectItem value="Romania">Romania</SelectItem>
-                      <SelectItem value="Poland">Poland</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="relative">
+                    <SelectInput
+                      value={filters.nationality}
+                      onChange={(value) => setFilters(prev => ({ ...prev, nationality: value }))}
+                      options={[
+                        { value: "Philippines", label: "Philippines" },
+                        { value: "India", label: "India" },
+                        { value: "Ukraine", label: "Ukraine" },
+                        { value: "Romania", label: "Romania" },
+                        { value: "Poland", label: "Poland" },
+                      ]}
+                      placeholder="Nationality"
+                      className="[&>button]:h-8 [&>button]:w-32 [&>button]:text-xs [&>button]:text-[#0f172a] [&>button]:bg-white [&>button]:border [&>button]:border-input"
+                      clearable
+                    />
+                  </div>
 
-                  <Select value={filters.appraisalType} onValueChange={(value) => setFilters(prev => ({ ...prev, appraisalType: value }))}>
-                    <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                      <SelectValue placeholder="Appraisal Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Mid-Contract">Mid-Contract</SelectItem>
-                      <SelectItem value="End-Contract">End-Contract</SelectItem>
-                      <SelectItem value="Annual">Annual</SelectItem>
-                      <SelectItem value="Promotion">Promotion</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="relative">
+                    <SelectInput
+                      value={filters.appraisalType}
+                      onChange={(value) => setFilters(prev => ({ ...prev, appraisalType: value }))}
+                      options={[
+                        { value: "Mid-Contract", label: "Mid-Contract" },
+                        { value: "End-Contract", label: "End-Contract" },
+                        { value: "Annual", label: "Annual" },
+                        { value: "Promotion", label: "Promotion" },
+                      ]}
+                      placeholder="Appraisal Type"
+                      className="[&>button]:h-8 [&>button]:w-32 [&>button]:text-xs [&>button]:text-[#0f172a] [&>button]:bg-white [&>button]:border [&>button]:border-input"
+                      clearable
+                    />
+                  </div>
 
-                  <Select value={filters.rating} onValueChange={(value) => setFilters(prev => ({ ...prev, rating: value }))}>
-                    <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                      <SelectValue placeholder="Rating" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="high">High (4-5)</SelectItem>
-                      <SelectItem value="medium">Medium (3-4)</SelectItem>
-                      <SelectItem value="low">Low (1-3)</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="relative">
+                    <SelectInput
+                      value={filters.rating}
+                      onChange={(value) => setFilters(prev => ({ ...prev, rating: value }))}
+                      options={[
+                        { value: "high", label: "High (4-5)" },
+                        { value: "medium", label: "Medium (3-4)" },
+                        { value: "low", label: "Low (1-3)" },
+                      ]}
+                      placeholder="Rating"
+                      className="[&>button]:h-8 [&>button]:w-32 [&>button]:text-xs [&>button]:text-[#0f172a] [&>button]:bg-white [&>button]:border [&>button]:border-input"
+                      clearable
+                    />
+                  </div>
                 </div>
 
                 <div className="flex gap-2">
