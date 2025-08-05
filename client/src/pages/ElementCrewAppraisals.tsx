@@ -288,7 +288,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       floatingFilter: true,
       sortable: true,
       resizable: true,
-      enableRowGroup: true
+      enableRowGroup: false
     },
     {
       headerName: 'Nationality',
@@ -299,7 +299,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       floatingFilter: true,
       sortable: true,
       resizable: true,
-      enableRowGroup: true
+      enableRowGroup: false
     },
     {
       headerName: 'Vessel',
@@ -310,7 +310,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       floatingFilter: true,
       sortable: true,
       resizable: true,
-      enableRowGroup: true
+      enableRowGroup: false
     },
     {
       headerName: 'Vessel Type',
@@ -321,7 +321,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       floatingFilter: true,
       sortable: true,
       resizable: true,
-      enableRowGroup: true
+      enableRowGroup: false
     },
     {
       headerName: 'Sign-On',
@@ -342,7 +342,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       floatingFilter: true,
       sortable: true,
       resizable: true,
-      enableRowGroup: true
+      enableRowGroup: false
     },
     {
       headerName: 'Appraisal Date',
@@ -636,7 +636,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                     showSelectionButtons={false}
                   />
                 </div>
-                
+
                 <AgGridTable
                   rowData={crewData}
                   columnDefs={columnDefs}
@@ -647,7 +647,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                   enableExport={true}
                   enableSideBar={true}
                   enableStatusBar={true}
-                  enableRowGrouping={true}
+                  enableRowGrouping={false}
                   enablePivoting={true}
                   enableAdvancedFilter={false}
                   rowSelection="single"

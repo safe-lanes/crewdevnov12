@@ -93,14 +93,14 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
   enableExport = true,
   enableSideBar = true,
   enableStatusBar = true,
-  enableRowGrouping = true,
+  enableRowGrouping = false,
   enablePivoting = true,
   enableAdvancedFilter = false,
   rowSelection = 'single',
   theme = 'alpine',
   gridOptions = {}
 }) => {
-  
+
   // Default column definitions with enterprise features
   const defaultColDef = useMemo(() => ({
     sortable: true,
@@ -113,7 +113,7 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
   // Side bar configuration
   const sideBar = useMemo(() => {
     if (!enableSideBar) return false;
-    
+
     return {
       toolPanels: [
         {
@@ -147,7 +147,7 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
   // Status bar configuration
   const statusBar = useMemo(() => {
     if (!enableStatusBar) return undefined;
-    
+
     return {
       statusPanels: [
         {
@@ -169,7 +169,7 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
   // Row selection configuration
   const rowSelectionConfig = useMemo(() => {
     if (rowSelection === false) return false;
-    
+
     return {
       mode: rowSelection === 'single' ? 'singleRow' : 'multiRow',
       enableClickSelection: true
@@ -240,19 +240,19 @@ export const agGridUtils = {
   exportToCsv: (gridApi: GridApi, filename = 'data.csv') => {
     gridApi.exportDataAsCsv({ fileName: filename });
   },
-  
+
   exportToExcel: (gridApi: GridApi, filename = 'data.xlsx') => {
     gridApi.exportDataAsExcel({ fileName: filename });
   },
-  
+
   clearFilters: (gridApi: GridApi) => {
     gridApi.setFilterModel(null);
   },
-  
+
   resetColumns: (gridApi: GridApi) => {
     gridApi.resetColumnState();
   },
-  
+
   expandAllGroups: (gridApi: GridApi) => {
     // Check if there are any row groups first
     const rowGroupCols = gridApi.getRowGroupColumns();
@@ -262,7 +262,7 @@ export const agGridUtils = {
       console.warn('No row groups found. Drag a column to the row group panel to create groups first.');
     }
   },
-  
+
   collapseAllGroups: (gridApi: GridApi) => {
     // Check if there are any row groups first
     const rowGroupCols = gridApi.getRowGroupColumns();
@@ -272,20 +272,20 @@ export const agGridUtils = {
       console.warn('No row groups found. Drag a column to the row group panel to create groups first.');
     }
   },
-  
+
   hasRowGroups: (gridApi: GridApi) => {
     const rowGroupCols = gridApi.getRowGroupColumns();
     return rowGroupCols && rowGroupCols.length > 0;
   },
-  
+
   getSelectedRows: (gridApi: GridApi) => {
     return gridApi.getSelectedRows();
   },
-  
+
   selectAll: (gridApi: GridApi) => {
     gridApi.selectAll();
   },
-  
+
   deselectAll: (gridApi: GridApi) => {
     gridApi.deselectAll();
   }
