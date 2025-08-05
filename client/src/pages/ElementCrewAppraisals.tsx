@@ -522,13 +522,13 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                 <div className="flex gap-4 flex-wrap">
                   <Input
                     placeholder="Search by name..."
-                    className="h-8 w-48 text-[11px] font-normal"
+                    className="h-8 w-48 text-sm font-normal text-[#0f172a]"
                     value={filters.searchName}
                     onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
                   />
 
                   <Select value={filters.rank} onValueChange={(value) => setFilters(prev => ({ ...prev, rank: value }))}>
-                    <SelectTrigger className="h-8 w-32 text-[11px]">
+                    <SelectTrigger className="h-8 w-32 text-sm text-[#0f172a]">
                       <SelectValue placeholder="Rank" />
                     </SelectTrigger>
                     <SelectContent>
@@ -546,7 +546,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                   </Select>
 
                   <Select value={filters.vessel} onValueChange={(value) => setFilters(prev => ({ ...prev, vessel: value }))}>
-                    <SelectTrigger className="h-8 w-32 text-[11px]">
+                    <SelectTrigger className="h-8 w-32 text-sm text-[#0f172a]">
                       <SelectValue placeholder="Vessel" />
                     </SelectTrigger>
                     <SelectContent>
@@ -557,7 +557,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                   </Select>
 
                   <Select value={filters.vesselType} onValueChange={(value) => setFilters(prev => ({ ...prev, vesselType: value }))}>
-                    <SelectTrigger className="h-8 w-32 text-[11px]">
+                    <SelectTrigger className="h-8 w-32 text-sm text-[#0f172a]">
                       <SelectValue placeholder="Vessel Type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -569,7 +569,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                   </Select>
 
                   <Select value={filters.nationality} onValueChange={(value) => setFilters(prev => ({ ...prev, nationality: value }))}>
-                    <SelectTrigger className="h-8 w-32 text-[11px]">
+                    <SelectTrigger className="h-8 w-32 text-sm text-[#0f172a]">
                       <SelectValue placeholder="Nationality" />
                     </SelectTrigger>
                     <SelectContent>
@@ -582,7 +582,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                   </Select>
 
                   <Select value={filters.appraisalType} onValueChange={(value) => setFilters(prev => ({ ...prev, appraisalType: value }))}>
-                    <SelectTrigger className="h-8 w-32 text-[11px]">
+                    <SelectTrigger className="h-8 w-32 text-sm text-[#0f172a]">
                       <SelectValue placeholder="Appraisal Type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -594,7 +594,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                   </Select>
 
                   <Select value={filters.rating} onValueChange={(value) => setFilters(prev => ({ ...prev, rating: value }))}>
-                    <SelectTrigger className="h-8 w-32 text-[11px]">
+                    <SelectTrigger className="h-8 w-32 text-sm text-[#0f172a]">
                       <SelectValue placeholder="Rating" />
                     </SelectTrigger>
                     <SelectContent>
