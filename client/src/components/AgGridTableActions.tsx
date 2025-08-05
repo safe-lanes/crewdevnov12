@@ -62,14 +62,28 @@ export const AgGridTableActions: React.FC<AgGridTableActionsProps> = ({
           <Button 
             variant="outline" 
             className="h-8 text-[#8798ad] text-xs border-[#e1e8ed]"
-            onClick={() => agGridUtils.expandAllGroups(gridApi)}
+            onClick={() => {
+              if (agGridUtils.hasRowGroups(gridApi)) {
+                agGridUtils.expandAllGroups(gridApi);
+              } else {
+                alert('No row groups found. Drag a column to the row group panel to create groups first.');
+              }
+            }}
+            title="Expand all row groups (drag columns to Row Groups panel first)"
           >
             Expand All
           </Button>
           <Button 
             variant="outline" 
             className="h-8 text-[#8798ad] text-xs border-[#e1e8ed]"
-            onClick={() => agGridUtils.collapseAllGroups(gridApi)}
+            onClick={() => {
+              if (agGridUtils.hasRowGroups(gridApi)) {
+                agGridUtils.collapseAllGroups(gridApi);
+              } else {
+                alert('No row groups found. Drag a column to the row group panel to create groups first.');
+              }
+            }}
+            title="Collapse all row groups (drag columns to Row Groups panel first)"
           >
             Collapse All
           </Button>

@@ -254,11 +254,28 @@ export const agGridUtils = {
   },
   
   expandAllGroups: (gridApi: GridApi) => {
-    gridApi.expandAll();
+    // Check if there are any row groups first
+    const rowGroupCols = gridApi.getRowGroupColumns();
+    if (rowGroupCols && rowGroupCols.length > 0) {
+      gridApi.expandAll();
+    } else {
+      console.warn('No row groups found. Drag a column to the row group panel to create groups first.');
+    }
   },
   
   collapseAllGroups: (gridApi: GridApi) => {
-    gridApi.collapseAll();
+    // Check if there are any row groups first
+    const rowGroupCols = gridApi.getRowGroupColumns();
+    if (rowGroupCols && rowGroupCols.length > 0) {
+      gridApi.collapseAll();
+    } else {
+      console.warn('No row groups found. Drag a column to the row group panel to create groups first.');
+    }
+  },
+  
+  hasRowGroups: (gridApi: GridApi) => {
+    const rowGroupCols = gridApi.getRowGroupColumns();
+    return rowGroupCols && rowGroupCols.length > 0;
   },
   
   getSelectedRows: (gridApi: GridApi) => {
