@@ -1,46 +1,145 @@
-# Element Crew Appraisals System
+# Seafarer Performance Management System
 
-## Overview
-This is a full-stack web application designed for managing crew appraisals in the maritime industry. Its primary purpose is to track and manage crew member performance evaluations across various vessels. The system aims to provide a comprehensive solution for appraisal data population, filtering, and administration, supporting detailed performance assessment, training needs identification, and overall crew management.
+## Project Overview
+
+A comprehensive seafarer performance management system that leverages advanced form configuration, responsive design, and intuitive user experience for maritime professionals. The system has been refactored to use a module-first architecture for better maintainability and scalability.
+
+## Architecture
+
+### Technology Stack
+- **Frontend**: React 18 + TypeScript + Vite
+- **Backend**: Express.js + TypeScript  
+- **Database**: PostgreSQL with Drizzle ORM
+- **UI Components**: shadcn/ui + Tailwind CSS
+- **Data Tables**: AG Grid Enterprise
+- **State Management**: TanStack Query v5
+- **Form Management**: React Hook Form + Zod validation
+- **Routing**: Wouter
+
+### Module Structure
+
+The application follows a module-first architecture:
+
+```
+client/src/
+├── app/                    # Application root and routing
+├── modules/               # Feature modules
+│   ├── crewing/          # Crew management module
+│   └── admin/            # Administration module
+├── components/           # Shared components
+│   ├── common/          # Pure UI components
+│   ├── layout/          # Layout components
+│   ├── feedback/        # Error handling & loading states
+│   ├── form/            # Form field components
+│   └── ui/              # shadcn/ui components
+├── utils/               # Utility functions
+│   ├── data/           # Static data and constants
+│   ├── http.ts         # HTTP client
+│   ├── format.ts       # Data formatting utilities
+│   └── validation.ts   # Common validation functions
+├── hooks/              # Global React hooks
+├── lib/                # Third-party library configs
+├── styles/             # Global styles
+└── types/              # Global type definitions
+```
+
+## Recent Changes (January 2025)
+
+### Major Refactoring - Module-First Architecture
+- **Date**: January 5, 2025
+- **Changes**:
+  - Restructured entire codebase to module-first architecture
+  - Created reusable form components (TextField, SelectField, DateField, TextAreaField)
+  - Implemented comprehensive error handling with AppErrorBoundary
+  - Added normalized HTTP client with consistent error handling
+  - Created crewing module with full CRUD operations
+  - Added layout components (Header, PageLayout)
+  - Implemented comprehensive validation utilities
+  - Added data formatting and utility functions
+  - Updated TypeScript path aliases for better imports
+
+### Key Features Implemented
+- **Crew Management**: Complete CRUD operations for crew members
+- **Performance Ratings**: Visual rating badges with color coding
+- **Advanced Filtering**: Search and filter by multiple criteria
+- **Form Validation**: Zod-based validation with user-friendly error messages
+- **Error Handling**: Global error boundary with retry functionality
+- **Loading States**: Consistent loading indicators throughout the app
+- **Responsive Design**: Mobile-first approach with responsive tables
 
 ## User Preferences
-Preferred communication style: Simple, everyday language.
 
-## System Architecture
-The application employs a modern full-stack architecture, separating frontend and backend concerns.
-- **Frontend**: Built with React 18 and TypeScript, using Vite for development and shadcn/ui with Tailwind CSS for UI components and styling. It leverages TanStack Query for server state management and Wouter for client-side routing.
-- **Backend**: An Express.js server developed with TypeScript, integrated with a PostgreSQL database via Drizzle ORM for type-safe operations.
-- **UI/UX Decisions**: Consistent design is maintained through shadcn/ui and Tailwind CSS with CSS variables for theming. Forms utilize React Hook Form with Zod validation.
-- **Data Grid System**: Implemented AG Grid Enterprise as the standard table component across the project with advanced features including column filtering, row grouping, pivoting, data export, and enterprise-grade functionality. The reusable `AgGridTable` component provides consistent table implementation with enterprise features pre-configured. Key optimizations include: single header row design (no floating filters), disabled row selection/checkboxes by default, dynamic height calculation with smart scroll behavior, and responsive design that adapts to screen size.
-- **Feature Specifications**:
-    - **Crew Appraisals**: Data is populated from submitted forms, with auto-populated fields for Crew ID and Vessel Type. Features robust filtering by name, rank, vessel type, nationality, appraisal type, and rating range. Uses AG Grid Enterprise for advanced table functionality with single header row, dynamic height adjustment, and optimized scroll behavior.
-    - **Admin Module**: Accessible via `/admin`, this module allows configuration of various forms. It includes a Form Editor for customizing appraisal forms (Parts A-G) with version control, configurable rank groups, and dynamic field/section hiding. It also supports configurable dropdowns for fields like "Appraisal Type" and "Effectiveness" ratings.
-    - **Standard Form Popup**: A reusable `FormPopup` component ensures consistent spacing and styling for all modal popups across the application.
-    - **Reusable AG Grid Components**: `AgGridTable` and `AgGridTableActions` components provide enterprise-grade table functionality that can be used across all modules requiring data tables.
-- **System Design Choices**: The architecture supports modern deployment practices with separate build processes for frontend and backend, environment-specific configurations, and static asset serving. It's designed for scalability and maintainability.
+### Code Style
+- Use functional components with hooks
+- Prefer TypeScript strict mode
+- Use async/await over promise chains
+- Implement consistent error handling
+- Follow naming conventions: PascalCase for components, camelCase for functions
 
-## External Dependencies
+### Communication Style  
+- Be concise and professional
+- Focus on technical accuracy
+- Provide clear implementation details
+- Document architectural decisions
 
-### Frontend Dependencies
-- `@radix-ui/*`: Accessible UI primitive components.
-- `@tanstack/react-query`: Server state management.
-- `wouter`: Lightweight routing solution.
-- `tailwindcss`: Utility-first CSS framework.
-- `lucide-react`: Icon library.
+## Development Guidelines
 
-### Backend Dependencies
-- `express`: Web application framework.
-- `drizzle-orm`: Type-safe ORM.
-- `@neondatabase/serverless`: Neon PostgreSQL driver.
-- `connect-pg-simple`: PostgreSQL session store.
+### File Organization
+- Group related functionality into modules
+- Use index.ts files for clean exports
+- Keep components focused and reusable
+- Separate concerns (validation, API, UI)
 
-### Development Dependencies
-- `vite`: Fast build tool and dev server.
-- `typescript`: Type checking and compilation.
-- `drizzle-kit`: Database migration tool.
+### Error Handling
+- Use AppErrorBoundary for React error catching
+- Implement consistent API error handling
+- Provide user-friendly error messages
+- Log errors for debugging
 
-### Database
-- **Type**: PostgreSQL (with a note indicating past migration to MySQL for specific compatibility).
-- **ORM**: Drizzle ORM.
-- **Tables**: `users`, `forms`, `available_ranks`, `rank_groups`, `crew_members`, `appraisal_results`.
-- **Functionality**: Full CRUD operations are available for all key entities, with automatic database seeding and persistent data storage.
+### Performance
+- Use TanStack Query for data caching
+- Implement loading states for better UX
+- Optimize AG Grid configurations
+- Use React.memo for expensive components
+
+## API Endpoints
+
+### Crew Management
+- `GET /api/crew-members` - List crew members with filtering
+- `POST /api/crew-members` - Create new crew member
+- `GET /api/crew-members/:id` - Get crew member details
+- `PATCH /api/crew-members/:id` - Update crew member
+- `DELETE /api/crew-members/:id` - Delete crew member
+
+### Appraisals
+- `GET /api/appraisals` - List appraisals with filtering
+- `POST /api/appraisals` - Create new appraisal
+- `GET /api/appraisals/:id` - Get appraisal details
+- `PATCH /api/appraisals/:id` - Update appraisal
+- `DELETE /api/appraisals/:id` - Delete appraisal
+
+## Database Schema
+
+Key entities:
+- `crew_members` - Personnel information
+- `appraisal_results` - Performance evaluations
+- `forms` - Appraisal form templates
+- `users` - System users
+- `rank_groups` - Rank classifications
+
+## Deployment
+
+The application is configured for Replit deployment with:
+- Automatic workflow management
+- Environment variable configuration
+- PostgreSQL database integration
+- Production-ready error handling
+
+## Future Roadmap
+
+- [ ] Real-time notifications
+- [ ] Bulk import/export functionality
+- [ ] Advanced reporting dashboard
+- [ ] Mobile application
+- [ ] Integration with vessel management systems
+- [ ] Multi-language support

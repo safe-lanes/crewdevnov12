@@ -74,6 +74,7 @@ export interface AgGridTableProps {
   height?: string | number;
   width?: string | number;
   className?: string;
+  loading?: boolean;
   enableExport?: boolean;
   enableSideBar?: boolean;
   enableStatusBar?: boolean;
@@ -86,6 +87,12 @@ export interface AgGridTableProps {
   autoHeight?: boolean;
   maxHeight?: string | number;
   minHeight?: string | number;
+  pagination?: boolean;
+  paginationPageSize?: number;
+  animateRows?: boolean;
+  enableRangeSelection?: boolean;
+  enableCharts?: boolean;
+  suppressRowClickSelection?: boolean;
 }
 
 export const AgGridTable: React.FC<AgGridTableProps> = ({
@@ -96,6 +103,7 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
   height = '500px',
   width = '100%',
   className = '',
+  loading = false,
   enableExport = true,
   enableSideBar = true,
   enableStatusBar = true,
@@ -107,7 +115,13 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
   gridOptions = {},
   autoHeight = false,
   maxHeight = '600px',
-  minHeight = '200px'
+  minHeight = '200px',
+  pagination = false,
+  paginationPageSize = 20,
+  animateRows = false,
+  enableRangeSelection = false,
+  enableCharts = false,
+  suppressRowClickSelection = false,
 }) => {
 
   // Default column definitions with enterprise features
