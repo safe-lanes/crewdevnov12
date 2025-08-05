@@ -219,7 +219,7 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
     enablePivoting
   ]);
 
-  // Calculate dynamic height based on row count
+  // Calculate dynamic height based on row count and screen size
   const dynamicHeight = useMemo(() => {
     if (!autoHeight) return height;
     
@@ -230,24 +230,37 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
     
     const calculatedHeight = headerHeight + (rowData.length * rowHeight) + footerHeight + padding;
     
+    // Get available screen height (subtract header, margins, etc.)
+    const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 900;
+    const reservedHeight = 200; // Reserve space for header, margins, padding, etc.
+    const availableHeight = screenHeight - reservedHeight;
+    
     // Convert maxHeight and minHeight to numbers for comparison
     const maxHeightNum = typeof maxHeight === 'string' ? parseInt(maxHeight) : maxHeight;
     const minHeightNum = typeof minHeight === 'string' ? parseInt(minHeight) : minHeight;
     
-    // Constrain within min/max bounds
-    const constrainedHeight = Math.max(minHeightNum, Math.min(calculatedHeight, maxHeightNum));
+    // Use the smaller of calculated height, available screen height, or maxHeight
+    const effectiveMaxHeight = Math.min(maxHeightNum, availableHeight);
+    const constrainedHeight = Math.max(minHeightNum, Math.min(calculatedHeight, effectiveMaxHeight));
     
     return `${constrainedHeight}px`;
   }, [autoHeight, height, rowData.length, enableStatusBar, maxHeight, minHeight]);
 
   // Merge default options with provided options
-  const finalGridOptions = useMemo(() => ({
-    ...defaultGridOptions,
-    ...gridOptions,
-    ...(autoHeight && rowData.length * 50 > parseInt(maxHeight as string) && {
-      alwaysShowVerticalScroll: true
-    })
-  }), [defaultGridOptions, gridOptions, autoHeight, rowData.length, maxHeight]);
+  const finalGridOptions = useMemo(() => {
+    const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 900;
+    const reservedHeight = 200;
+    const availableHeight = screenHeight - reservedHeight;
+    const calculatedHeight = 50 + (rowData.length * 50) + (enableStatusBar ? 40 : 0) + 4;
+    
+    return {
+      ...defaultGridOptions,
+      ...gridOptions,
+      ...(autoHeight && calculatedHeight > availableHeight && {
+        alwaysShowVerticalScroll: true
+      })
+    };
+  }, [defaultGridOptions, gridOptions, autoHeight, rowData.length, enableStatusBar]);
 
   return (
     <div 
