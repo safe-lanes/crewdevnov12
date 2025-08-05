@@ -522,7 +522,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                 <div className="flex gap-4 flex-wrap">
                   <Input
                     placeholder="Search by name..."
-                    className="h-8 w-48 text-[11px]"
+                    className="h-8 w-48 text-[11px] font-normal"
                     value={filters.searchName}
                     onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
                   />
