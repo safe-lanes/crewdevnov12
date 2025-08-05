@@ -86,6 +86,24 @@
   overflow: hidden !important;
 }
 
+/* Custom scroll control - hide vertical scrollbar when not needed */
+.ag-theme-alpine .ag-body-horizontal-scroll-viewport {
+  overflow-y: hidden !important;
+}
+
+.ag-theme-alpine .ag-body-viewport {
+  overflow-y: auto !important;
+}
+
+/* Only show scrollbar when content overflows */
+.ag-theme-alpine.no-scroll .ag-body-viewport {
+  overflow-y: hidden !important;
+}
+
+.ag-theme-alpine.needs-scroll .ag-body-viewport {
+  overflow-y: auto !important;
+}
+
 @layer components {
   .all-\[unset\] {
     all: unset;

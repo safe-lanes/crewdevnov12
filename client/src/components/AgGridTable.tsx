@@ -112,7 +112,7 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
     sortable: true,
     filter: true,
     resizable: true,
-    menuTabs: ['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'],
+    menuTabs: ['filterMenuTab' as const, 'generalMenuTab' as const, 'columnsMenuTab' as const],
     floatingFilter: false
   }), []);
 
@@ -259,20 +259,29 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
     return {
       ...defaultGridOptions,
       ...gridOptions,
-      alwaysShowVerticalScroll: needsScroll,
+      alwaysShowVerticalScroll: false,
       suppressHorizontalScroll: false,
-      // Force AG Grid to recalculate scroll based on actual content
-      suppressScrollOnNewData: !needsScroll
+      suppressScrollOnNewData: true,
+      // Control scrolling more precisely
+      domLayout: needsScroll ? ('normal' as const) : ('autoHeight' as const)
     };
   }, [defaultGridOptions, gridOptions, autoHeight, rowData.length, enableStatusBar]);
 
+  // Check if scroll is needed
+  const needsScroll = useMemo(() => {
+    if (!autoHeight) return false;
+    const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 900;
+    const calculatedHeight = 50 + (rowData.length * 50) + 4;
+    return calculatedHeight > (screenHeight - 200);
+  }, [autoHeight, rowData.length]);
+
   return (
     <div 
-      className={`ag-theme-${theme} bg-white rounded-lg shadow-md overflow-hidden ${className}`} 
+      className={`ag-theme-${theme} ${needsScroll ? 'needs-scroll' : 'no-scroll'} bg-white rounded-lg shadow-md ${className}`} 
       style={{ 
-        height: dynamicHeight, 
+        height: needsScroll ? dynamicHeight : 'auto', 
         width,
-        overflow: autoHeight && (50 + (rowData.length * 50) + 4) <= (typeof window !== 'undefined' ? window.innerHeight - 200 : 700) ? 'hidden' : 'auto'
+        overflow: needsScroll ? 'auto' : 'visible'
       }}
     >
       <AgGridReact
