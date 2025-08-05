@@ -647,7 +647,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                   enableRowGrouping={true}
                   enablePivoting={true}
                   enableAdvancedFilter={false}
-                  rowSelection="single"
+                  rowSelection={false}
                   theme="alpine"
                 />
                 
