@@ -491,9 +491,63 @@ export const ElementCrewAppraisals = (): JSX.Element => {
           </div>
         </header>
 
-        {/* Main Content */}
-        <main className="h-[833px] bg-white px-6 py-2">
-          <div className="flex flex-col h-full">
+        {/* Main Content with Left Sidebar */}
+        <div className="flex h-[833px]">
+          {/* Left Sidebar */}
+          <aside className="w-[200px] bg-[#f8f9fa] border-r border-gray-200 flex flex-col">
+            {/* Sidebar Header */}
+            <div className="p-4 border-b border-gray-200">
+              <h2 className="text-sm font-semibold text-gray-700">Crew Appraisals</h2>
+            </div>
+            
+            {/* Sidebar Navigation */}
+            <nav className="flex-1 p-2">
+              <div className="space-y-1">
+                <div className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Navigation
+                </div>
+                <a href="#" className="flex items-center px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-100 bg-blue-50 text-blue-700">
+                  <svg className="w-4 h-4 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  All
+                </a>
+                <a href="#" className="flex items-center px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-100">
+                  <svg className="w-4 h-4 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
+                  </svg>
+                  Crew ID
+                </a>
+              </div>
+              
+              <div className="mt-4 space-y-1">
+                <div className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Crew Members
+                </div>
+                <div className="max-h-[400px] overflow-y-auto">
+                  {crewData.map((crew) => (
+                    <a 
+                      key={crew.id} 
+                      href="#" 
+                      className="flex items-center px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-100"
+                    >
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-medium truncate">{crew.id}</div>
+                        <div className="text-xs text-gray-500 truncate">
+                          {`${crew.name.first} ${crew.name.last}`}
+                        </div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </nav>
+          </aside>
+
+          {/* Main Content Area */}
+          <main className="flex-1 bg-white px-6 py-2">
+            <div className="flex flex-col h-full">
             {/* Top section with title and custom filter toggle */}
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-2xl font-bold text-black">Crew Appraisals</h1>
@@ -660,8 +714,9 @@ export const ElementCrewAppraisals = (): JSX.Element => {
             <div className="mt-4 text-xs font-normal font-['Mulish',Helvetica] text-black">
               {crewData.length > 0 ? `1 to ${crewData.length} of ${crewData.length}` : "0 to 0 of 0"}
             </div>
-          </div>
-        </main>
+            </div>
+          </main>
+        </div>
       </div>
       {/* Appraisal Form Modal */}
       {showAppraisalForm && selectedCrewMember && (
