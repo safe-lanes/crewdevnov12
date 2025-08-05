@@ -262,7 +262,6 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       width: 100,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agTextColumnFilter',
-      floatingFilter: true,
       sortable: true,
       resizable: true,
       pinned: 'left'
@@ -274,7 +273,6 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       valueGetter: (params) => `${params.data.name.first} ${params.data.name.middle} ${params.data.name.last}`,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agTextColumnFilter',
-      floatingFilter: true,
       sortable: true,
       resizable: true,
       pinned: 'left'
@@ -285,7 +283,6 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       width: 120,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agSetColumnFilter',
-      floatingFilter: true,
       sortable: true,
       resizable: true,
       enableRowGroup: false
@@ -296,7 +293,6 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       width: 120,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agSetColumnFilter',
-      floatingFilter: true,
       sortable: true,
       resizable: true,
       enableRowGroup: false
@@ -307,7 +303,6 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       width: 140,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agSetColumnFilter',
-      floatingFilter: true,
       sortable: true,
       resizable: true,
       enableRowGroup: false
@@ -318,7 +313,6 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       width: 120,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agSetColumnFilter',
-      floatingFilter: true,
       sortable: true,
       resizable: true,
       enableRowGroup: false
@@ -329,7 +323,6 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       width: 110,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agDateColumnFilter',
-      floatingFilter: true,
       sortable: true,
       resizable: true
     },
@@ -339,7 +332,6 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       width: 130,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agSetColumnFilter',
-      floatingFilter: true,
       sortable: true,
       resizable: true,
       enableRowGroup: false
@@ -350,7 +342,6 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       width: 120,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agDateColumnFilter',
-      floatingFilter: true,
       sortable: true,
       resizable: true
     },
@@ -361,7 +352,6 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       cellRenderer: RatingCellRenderer,
       cellClass: 'flex items-center justify-center',
       filter: 'agNumberColumnFilter',
-      floatingFilter: true,
       sortable: true,
       resizable: true,
       enableValue: true,
@@ -374,7 +364,6 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       cellRenderer: RatingCellRenderer,
       cellClass: 'flex items-center justify-center',
       filter: 'agNumberColumnFilter',
-      floatingFilter: true,
       sortable: true,
       resizable: true,
       enableValue: true,
@@ -387,7 +376,6 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       cellRenderer: RatingCellRenderer,
       cellClass: 'flex items-center justify-center',
       filter: 'agNumberColumnFilter',
-      floatingFilter: true,
       sortable: true,
       resizable: true,
       enableValue: true,
