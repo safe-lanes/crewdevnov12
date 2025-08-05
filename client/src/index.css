@@ -20,6 +20,27 @@
   color: white !important;
 }
 
+/* Filter icons styling */
+.ag-theme-alpine .ag-header-icon {
+  color: white !important;
+}
+
+.ag-theme-alpine .ag-icon {
+  color: white !important;
+}
+
+.ag-theme-alpine .ag-header-cell .ag-icon {
+  color: white !important;
+}
+
+.ag-theme-alpine .ag-header-cell .ag-icon-filter {
+  color: white !important;
+}
+
+.ag-theme-alpine .ag-header-cell .ag-icon-menu {
+  color: white !important;
+}
+
 .ag-theme-alpine .ag-row {
   border-bottom: 1px solid #e5e7eb !important;
 }
