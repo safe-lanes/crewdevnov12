@@ -208,6 +208,7 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
     suppressAggFuncInHeader: false,
     alwaysShowHorizontalScroll: false,
     alwaysShowVerticalScroll: false,
+    suppressScrollOnNewData: true,
     debug: false
   }), [
     defaultColDef,
@@ -253,19 +254,26 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
     const availableHeight = screenHeight - reservedHeight;
     const calculatedHeight = 50 + (rowData.length * 50) + (enableStatusBar ? 40 : 0) + 4;
     
+    const needsScroll = autoHeight && calculatedHeight > availableHeight;
+    
     return {
       ...defaultGridOptions,
       ...gridOptions,
-      ...(autoHeight && calculatedHeight > availableHeight && {
-        alwaysShowVerticalScroll: true
-      })
+      alwaysShowVerticalScroll: needsScroll,
+      suppressHorizontalScroll: false,
+      // Force AG Grid to recalculate scroll based on actual content
+      suppressScrollOnNewData: !needsScroll
     };
   }, [defaultGridOptions, gridOptions, autoHeight, rowData.length, enableStatusBar]);
 
   return (
     <div 
       className={`ag-theme-${theme} bg-white rounded-lg shadow-md overflow-hidden ${className}`} 
-      style={{ height: dynamicHeight, width }}
+      style={{ 
+        height: dynamicHeight, 
+        width,
+        overflow: autoHeight && (50 + (rowData.length * 50) + 4) <= (typeof window !== 'undefined' ? window.innerHeight - 200 : 700) ? 'hidden' : 'auto'
+      }}
     >
       <AgGridReact
         rowData={rowData}
