@@ -649,7 +649,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                   columnDefs={columnDefs}
                   onGridReady={onGridReady}
                   context={{ handleEditClick }}
-                  height="600px"
+                  height="650px"
                   width="100%"
                   enableExport={true}
                   enableSideBar={false}
@@ -660,25 +660,27 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                   rowSelection="single"
                   theme="alpine"
                 />
+                
+                {/* Custom footer within the table area */}
+                <div className="bg-white border-t border-gray-200 px-4 py-3 flex justify-between items-center" style={{ marginTop: '-1px' }}>
+                  <div className="text-xs font-normal font-['Mulish',Helvetica] text-black">
+                    Rows: {crewData.length > 0 ? crewData.length : 0}
+                  </div>
+                  <div>
+                    <AgGridTableActions 
+                      gridApi={gridApi}
+                      exportFilename="crew-appraisals"
+                      showExportButtons={true}
+                      showFilterButtons={true}
+                      showGroupButtons={true}
+                      showSelectionButtons={false}
+                    />
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
-            {/* Pagination and Export Actions */}
-            <div className="mt-4 flex justify-between items-center">
-              <div className="text-xs font-normal font-['Mulish',Helvetica] text-black">
-                Rows: {crewData.length > 0 ? crewData.length : 0}
-              </div>
-              <div>
-                <AgGridTableActions 
-                  gridApi={gridApi}
-                  exportFilename="crew-appraisals"
-                  showExportButtons={true}
-                  showFilterButtons={true}
-                  showGroupButtons={true}
-                  showSelectionButtons={false}
-                />
-              </div>
-            </div>
+
           </div>
         </main>
       </div>
