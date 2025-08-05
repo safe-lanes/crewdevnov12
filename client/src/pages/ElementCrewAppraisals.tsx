@@ -8,68 +8,9 @@ import {
 import React, { useState, useMemo, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { AgGridReact } from 'ag-grid-react';
-import { 
-  ColDef, 
-  GridReadyEvent, 
-  GridApi, 
-  ICellRendererParams, 
-  ModuleRegistry
-} from 'ag-grid-community';
-import { 
-  AllEnterpriseModule,
-  SetFilterModule,
-  MultiFilterModule,
-  MenuModule,
-  ColumnsToolPanelModule,
-  FiltersToolPanelModule,
-  StatusBarModule,
-  SideBarModule,
-  RangeSelectionModule,
-  RowGroupingModule,
-  AggregationModule,
-  PivotModule,
-  MasterDetailModule,
-  ViewportRowModelModule,
-  ServerSideRowModelModule,
-  InfiniteRowModelModule,
-  ExcelExportModule,
-  CsvExportModule,
-  ClipboardModule,
-  AdvancedFilterModule,
-  LicenseManager
-} from 'ag-grid-enterprise';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-alpine.css';
-
-// Set AG Grid Enterprise License
-if (import.meta.env.VITE_AG_GRID_LICENSE_KEY) {
-  LicenseManager.setLicenseKey(import.meta.env.VITE_AG_GRID_LICENSE_KEY);
-}
-
-// Register AG Grid Enterprise modules
-ModuleRegistry.registerModules([
-  AllEnterpriseModule,
-  SetFilterModule,
-  MultiFilterModule,
-  MenuModule,
-  ColumnsToolPanelModule,
-  FiltersToolPanelModule,
-  StatusBarModule,
-  SideBarModule,
-  RangeSelectionModule,
-  RowGroupingModule,
-  AggregationModule,
-  PivotModule,
-  MasterDetailModule,
-  ViewportRowModelModule,
-  ServerSideRowModelModule,
-  InfiniteRowModelModule,
-  ExcelExportModule,
-  CsvExportModule,
-  ClipboardModule,
-  AdvancedFilterModule
-]);
+import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
+import AgGridTable from '@/components/AgGridTable';
+import AgGridTableActions from '@/components/AgGridTableActions';
 import { AppraisalForm } from "./AppraisalForm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -565,20 +506,14 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                   <FilterIcon className="h-3 w-3 mr-1" />
                   Toggle Filters
                 </Button>
-                <Button 
-                  variant="outline" 
-                  className="h-8 w-28 text-[#8798ad] text-xs border-[#e1e8ed]"
-                  onClick={() => gridApi?.exportDataAsCsv({ fileName: 'crew-appraisals.csv' })}
-                >
-                  Export CSV
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="h-8 w-28 text-[#8798ad] text-xs border-[#e1e8ed]"
-                  onClick={() => gridApi?.exportDataAsExcel({ fileName: 'crew-appraisals.xlsx' })}
-                >
-                  Export Excel
-                </Button>
+                <AgGridTableActions 
+                  gridApi={gridApi}
+                  exportFilename="crew-appraisals"
+                  showExportButtons={true}
+                  showFilterButtons={true}
+                  showGroupButtons={true}
+                  showSelectionButtons={false}
+                />
               </div>
             </div>
 
@@ -698,91 +633,22 @@ export const ElementCrewAppraisals = (): JSX.Element => {
             {/* AG Grid Enterprise Table */}
             <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
               <CardContent className="p-4 bg-[#f7fafc]">
-                <div className="ag-theme-alpine bg-white rounded-lg shadow-md overflow-hidden" style={{ height: '600px', width: '100%' }}>
-                  <AgGridReact
-                    rowData={crewData}
-                    columnDefs={columnDefs}
-                    onGridReady={onGridReady}
-                    context={{ handleEditClick }}
-                    theme="legacy"
-                    defaultColDef={{
-                      sortable: true,
-                      filter: true,
-                      resizable: true,
-                      menuTabs: ['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'],
-                      floatingFilter: true
-                    }}
-                    headerHeight={50}
-                    rowHeight={50}
-                    suppressHorizontalScroll={false}
-                    animateRows={true}
-                    rowSelection={{
-                      mode: 'singleRow',
-                      enableClickSelection: false
-                    }}
-                    getRowStyle={() => ({ backgroundColor: 'white' })}
-                    cellSelection={true}
-                    enableAdvancedFilter={false}
-                    sideBar={{
-                      toolPanels: [
-                        {
-                          id: 'columns',
-                          labelDefault: 'Columns',
-                          labelKey: 'columns',
-                          iconKey: 'columns',
-                          toolPanel: 'agColumnsToolPanel',
-                          toolPanelParams: {
-                            suppressRowGroups: false,
-                            suppressValues: false,
-                            suppressPivots: false,
-                            suppressPivotMode: false,
-                            suppressColumnFilter: false,
-                            suppressColumnSelectAll: false,
-                            suppressColumnExpandAll: false
-                          }
-                        },
-                        {
-                          id: 'filters',
-                          labelDefault: 'Filters',
-                          labelKey: 'filters',
-                          iconKey: 'filter',
-                          toolPanel: 'agFiltersToolPanel'
-                        }
-                      ],
-                      defaultToolPanel: 'columns'
-                    }}
-                    statusBar={{
-                      statusPanels: [
-                        {
-                          statusPanel: 'agTotalAndFilteredRowCountComponent',
-                          align: 'left'
-                        },
-                        {
-                          statusPanel: 'agAggregationComponent',
-                          align: 'center'
-                        },
-                        {
-                          statusPanel: 'agSelectedRowCountComponent',
-                          align: 'right'
-                        }
-                      ]
-                    }}
-                    allowContextMenuWithControlKey={true}
-                    copyHeadersToClipboard={true}
-                    copyGroupHeadersToClipboard={true}
-                    enableCellTextSelection={true}
-
-                    enableBrowserTooltips={false}
-                    tooltipShowDelay={2000}
-                    rowGroupPanelShow="always"
-                    pivotPanelShow="always"
-                    functionsReadOnly={false}
-                    suppressAggFuncInHeader={false}
-                    alwaysShowHorizontalScroll={false}
-                    alwaysShowVerticalScroll={false}
-                    debug={false}
-                  />
-                </div>
+                <AgGridTable
+                  rowData={crewData}
+                  columnDefs={columnDefs}
+                  onGridReady={onGridReady}
+                  context={{ handleEditClick }}
+                  height="600px"
+                  width="100%"
+                  enableExport={true}
+                  enableSideBar={true}
+                  enableStatusBar={true}
+                  enableRowGrouping={true}
+                  enablePivoting={true}
+                  enableAdvancedFilter={false}
+                  rowSelection="single"
+                  theme="alpine"
+                />
               </CardContent>
             </Card>
 
