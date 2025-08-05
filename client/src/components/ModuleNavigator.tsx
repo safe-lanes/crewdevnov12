@@ -1,10 +1,10 @@
 import React from "react";
+import { ChevronDown } from "lucide-react";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 
 interface ModuleNavigatorProps {
@@ -22,21 +22,17 @@ export const ModuleNavigator: React.FC<ModuleNavigatorProps> = ({
   ];
 
   return (
-    <div className="w-full">
-      <Select value={currentModule} onValueChange={onModuleChange}>
-        <SelectTrigger className="w-full h-8 text-xs bg-transparent border-none focus:ring-0 focus:ring-offset-0">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {modules.map((module) => (
-            <SelectItem key={module.id} value={module.id}>
-              <div className="flex items-center space-x-2">
-                <span className="text-xs">{module.label}</span>
-              </div>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
+    <Select value={currentModule} onValueChange={onModuleChange}>
+      <SelectTrigger className="w-3 h-3 p-0 border-none bg-transparent focus:ring-0 focus:ring-offset-0 hover:bg-gray-200 rounded-sm">
+        <ChevronDown className="w-3 h-3 text-[#4f5863]" />
+      </SelectTrigger>
+      <SelectContent>
+        {modules.map((module) => (
+          <SelectItem key={module.id} value={module.id}>
+            <span className="text-xs">{module.label}</span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 };

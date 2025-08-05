@@ -426,15 +426,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
 
             {/* Navigation Menu */}
             <nav className="flex ml-8">
-              {/* Module Navigator */}
-              <div className="flex flex-col items-center justify-center w-[100px] h-[67px] bg-[#E8E8E8] border-r border-gray-300">
-                <ModuleNavigator 
-                  currentModule="crewing" 
-                  onModuleChange={handleModuleChange}
-                />
-              </div>
-
-              {/* Crewing Section */}
+              {/* Crewing Section with Module Navigator */}
               <div className="flex flex-col items-center justify-center w-[100px] h-[67px] bg-[#E8E8E8] border-r border-gray-300">
                 <div className="w-6 h-6 mb-1">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -444,8 +436,16 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                     <rect x="14" y="14" width="7" height="7" rx="1" fill="#6B7280"/>
                   </svg>
                 </div>
-                <div className="text-[#4f5863] text-[10px] font-normal font-['Mulish',Helvetica]">
-                  Crewing
+                <div className="flex items-center space-x-1">
+                  <span className="text-[#4f5863] text-[10px] font-normal font-['Mulish',Helvetica]">
+                    Crewing
+                  </span>
+                  <div className="w-3 h-3">
+                    <ModuleNavigator 
+                      currentModule="crewing" 
+                      onModuleChange={handleModuleChange}
+                    />
+                  </div>
                 </div>
               </div>
 
