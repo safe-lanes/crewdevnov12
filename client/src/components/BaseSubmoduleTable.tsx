@@ -94,7 +94,7 @@ export const BaseSubmoduleTable: React.FC<BaseSubmoduleTableProps> = ({
 
   return (
     <div className="bg-transparent flex flex-row justify-center w-full">
-      <div className="overflow-hidden bg-[url(/figmaAssets/vector.svg)] bg-[100%_100%] w-[1440px] h-[900px] relative">
+      <div className="overflow-hidden bg-[url(/figmaAssets/vector.svg)] bg-[100%_100%] h-[900px] w-full">
         {/* Header */}
         <header className="w-full h-[67px] bg-[#E8E8E8] border-b-2 border-[#5DADE2]">
           <div className="flex items-center h-full">

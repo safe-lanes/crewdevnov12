@@ -17,8 +17,8 @@ import {
   deleteAppraisal,
   submitAppraisal,
   approveAppraisal
-} from "../services/crew.api";
-import { CrewMemberFormData, AppraisalFormData, CrewSearchData } from "../validation/crew.schema";
+} from "../modules/crewing/services/crew.api";
+import { CrewMemberFormData, AppraisalFormData, CrewSearchData } from "../modules/crewing/validation/crew.schema";
 import { useToast } from "@/hooks/use-toast";
 
 // Query keys for cache management

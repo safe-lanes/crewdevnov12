@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { FormEditor } from '@/pages/FormEditor';
+import { FormEditor } from '@/components/FormEditor';
 import { Form } from '@shared/schema';
 
 // Dynamic form editor mapping

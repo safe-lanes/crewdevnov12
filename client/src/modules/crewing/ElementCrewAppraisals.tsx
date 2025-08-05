@@ -8,10 +8,9 @@ import {
 import React, { useState, useMemo, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { AgGridReact } from 'ag-grid-react';
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-alpine.css';
+import AgGridTable from '@/components/AgGridTable';
+import AgGridTableActions from '@/components/AgGridTableActions';
 import { AppraisalForm } from "./AppraisalForm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -108,19 +107,6 @@ export const ElementCrewAppraisals = (): JSX.Element => {
   const [showFilters, setShowFilters] = useState(true);
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
 
-  const handleModuleChange = (moduleId: string) => {
-    switch (moduleId) {
-      case "crewing":
-        navigate("/");
-        break;
-      case "technical-pms":
-        navigate("/technical-pms");
-        break;
-      default:
-        navigate("/");
-    }
-  };
-
   // Filter state
   const [filters, setFilters] = useState({
     searchName: "",
@@ -155,197 +141,245 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     },
   });
 
-  const handleEditClick = (crewMember: CrewAppraisalData) => {
+  const handleEditClick = useCallback((crewMember: CrewAppraisalData) => {
     setSelectedCrewMember(crewMember);
     setShowAppraisalForm(true);
-  };
+  }, []);
 
-  const handleCloseForm = () => {
+  const handleCloseForm = useCallback(() => {
     setShowAppraisalForm(false);
     setSelectedCrewMember(null);
-  };
+  }, []);
+
+  const handleModuleChange = useCallback((moduleId: string) => {
+    switch (moduleId) {
+      case "crewing":
+        navigate("/");
+        break;
+      case "technical-pms":
+        navigate("/technical-pms");
+        break;
+      default:
+        navigate("/");
+    }
+  }, [navigate]);
 
   // Helper function to get rating color based on value
-  const getRatingColor = (rating: string): string => {
+  const getRatingColor = useCallback((rating: string): string => {
     const numRating = parseFloat(rating);
     if (numRating >= 4.0) return "bg-[#c3f2cb] text-[#286e34]"; // Green
     if (numRating >= 3.0) return "bg-[#ffeaa7] text-[#814c02]"; // Yellow
     if (numRating >= 2.0) return "bg-[#f9ecef] text-[#811f1a]"; // Light Pink
     return "bg-red-600 text-white"; // Dark Red
-  };
-
-  // Combine crew member and appraisal data
-  const allCrewData: CrewAppraisalData[] = crewMembers.map((crewMember) => {
-    const appraisal = appraisalResults.find(ar => ar.crewMemberId === crewMember.id);
-
-    return {
-      id: crewMember.id,
-      name: {
-        first: crewMember.firstName,
-        middle: crewMember.middleName || "",
-        last: crewMember.lastName || "",
-      },
-      rank: crewMember.rank,
-      nationality: crewMember.nationality,
-      vessel: crewMember.vessel,
-      vesselType: crewMember.vesselType,
-      signOn: crewMember.signOnDate,
-      appraisalType: appraisal?.appraisalType || "Not Started",
-      appraisalDate: appraisal?.appraisalDate || "N/A",
-      competenceRating: {
-        value: appraisal?.competenceRating || "N/A",
-        color: appraisal?.competenceRating ? getRatingColor(appraisal.competenceRating) : "bg-gray-400 text-white",
-      },
-      behavioralRating: {
-        value: appraisal?.behavioralRating || "N/A",
-        color: appraisal?.behavioralRating ? getRatingColor(appraisal.behavioralRating) : "bg-gray-400 text-white",
-      },
-      overallRating: {
-        value: appraisal?.overallRating || "N/A",
-        color: appraisal?.overallRating ? getRatingColor(appraisal.overallRating) : "bg-gray-400 text-white",
-      },
-      appraisalId: appraisal?.id,
-    };
-  });
-
-  // Filter crew data based on filter state
-  const crewData = allCrewData.filter((crew) => {
-    const fullName = `${crew.name.first} ${crew.name.middle} ${crew.name.last}`.toLowerCase();
-
-    // Name search filter
-    if (filters.searchName && !fullName.includes(filters.searchName.toLowerCase())) {
-      return false;
-    }
-
-    // Rank filter
-    if (filters.rank && crew.rank.toLowerCase() !== filters.rank.toLowerCase()) {
-      return false;
-    }
-
-    // Vessel filter
-    if (filters.vessel && crew.vessel.toLowerCase() !== filters.vessel.toLowerCase()) {
-      return false;
-    }
-
-    // Vessel type filter
-    if (filters.vesselType && crew.vesselType.toLowerCase() !== filters.vesselType.toLowerCase()) {
-      return false;
-    }
-
-    // Nationality filter
-    if (filters.nationality && crew.nationality.toLowerCase() !== filters.nationality.toLowerCase()) {
-      return false;
-    }
-
-    // Appraisal type filter
-    if (filters.appraisalType && crew.appraisalType.toLowerCase() !== filters.appraisalType.toLowerCase()) {
-      return false;
-    }
-
-    // Rating filter
-    if (filters.rating && crew.overallRating.value !== "N/A") {
-      const rating = parseFloat(crew.overallRating.value);
-      if (filters.rating === "high" && rating < 4.0) return false;
-      if (filters.rating === "medium" && (rating < 3.0 || rating >= 4.0)) return false;
-      if (filters.rating === "low" && rating >= 3.0) return false;
-    }
-
-    return true;
-  });
-
-  if (isLoadingCrew || isLoadingAppraisals) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-lg">Loading crew appraisals...</div>
-      </div>
-    );
-  }
-
-
-
-
-
-  const handleEditClickCallback = useCallback((data: CrewAppraisalData) => {
-    handleEditClick(data);
   }, []);
 
-  // Column definitions for AG Grid
+  // Combine crew member and appraisal data
+  const allCrewData: CrewAppraisalData[] = useMemo(() => 
+    crewMembers.map((crewMember) => {
+      const appraisal = appraisalResults.find(ar => ar.crewMemberId === crewMember.id);
+
+      return {
+        id: crewMember.id,
+        name: {
+          first: crewMember.firstName,
+          middle: crewMember.middleName || "",
+          last: crewMember.lastName || "",
+        },
+        rank: crewMember.rank,
+        nationality: crewMember.nationality,
+        vessel: crewMember.vessel,
+        vesselType: crewMember.vesselType,
+        signOn: crewMember.signOnDate,
+        appraisalType: appraisal?.appraisalType || "Not Started",
+        appraisalDate: appraisal?.appraisalDate || "N/A",
+        competenceRating: {
+          value: appraisal?.competenceRating || "N/A",
+          color: appraisal?.competenceRating ? getRatingColor(appraisal.competenceRating) : "bg-gray-400 text-white",
+        },
+        behavioralRating: {
+          value: appraisal?.behavioralRating || "N/A",
+          color: appraisal?.behavioralRating ? getRatingColor(appraisal.behavioralRating) : "bg-gray-400 text-white",
+        },
+        overallRating: {
+          value: appraisal?.overallRating || "N/A",
+          color: appraisal?.overallRating ? getRatingColor(appraisal.overallRating) : "bg-gray-400 text-white",
+        },
+        appraisalId: appraisal?.id,
+      };
+    }), [crewMembers, appraisalResults, getRatingColor]);
+
+  // Filter crew data based on filter state
+  const crewData = useMemo(() => 
+    allCrewData.filter((crew) => {
+      const fullName = `${crew.name.first} ${crew.name.middle} ${crew.name.last}`.toLowerCase();
+
+      // Name search filter
+      if (filters.searchName && !fullName.includes(filters.searchName.toLowerCase())) {
+        return false;
+      }
+
+      // Rank filter
+      if (filters.rank && crew.rank.toLowerCase() !== filters.rank.toLowerCase()) {
+        return false;
+      }
+
+      // Vessel filter
+      if (filters.vessel && crew.vessel.toLowerCase() !== filters.vessel.toLowerCase()) {
+        return false;
+      }
+
+      // Vessel type filter
+      if (filters.vesselType && crew.vesselType.toLowerCase() !== filters.vesselType.toLowerCase()) {
+        return false;
+      }
+
+      // Nationality filter
+      if (filters.nationality && crew.nationality.toLowerCase() !== filters.nationality.toLowerCase()) {
+        return false;
+      }
+
+      // Appraisal type filter
+      if (filters.appraisalType && crew.appraisalType.toLowerCase() !== filters.appraisalType.toLowerCase()) {
+        return false;
+      }
+
+      // Rating filter
+      if (filters.rating && crew.overallRating.value !== "N/A") {
+        const rating = parseFloat(crew.overallRating.value);
+        if (filters.rating === "high" && rating < 4.0) return false;
+        if (filters.rating === "medium" && (rating < 3.0 || rating >= 4.0)) return false;
+        if (filters.rating === "low" && rating >= 3.0) return false;
+      }
+
+      return true;
+    }), [allCrewData, filters]);
+
+  // Column definitions for AG Grid with Enterprise features
   const columnDefs: ColDef[] = useMemo(() => [
     {
       headerName: 'Crew ID',
       field: 'id',
       width: 100,
-      cellStyle: { fontSize: '13px', color: '#4f5863' }
+      cellStyle: { fontSize: '13px', color: '#4f5863' },
+      filter: 'agTextColumnFilter',
+      sortable: true,
+      resizable: true,
+      pinned: 'left'
     },
     {
       headerName: 'Name',
       field: 'fullName',
       width: 180,
       valueGetter: (params) => `${params.data.name.first} ${params.data.name.middle} ${params.data.name.last}`,
-      cellStyle: { fontSize: '13px', color: '#4f5863' }
+      cellStyle: { fontSize: '13px', color: '#4f5863' },
+      filter: 'agTextColumnFilter',
+      sortable: true,
+      resizable: true,
+      pinned: 'left'
     },
     {
       headerName: 'Rank',
       field: 'rank',
       width: 120,
-      cellStyle: { fontSize: '13px', color: '#4f5863' }
+      cellStyle: { fontSize: '13px', color: '#4f5863' },
+      filter: 'agSetColumnFilter',
+      sortable: true,
+      resizable: true,
+      enableRowGroup: false
     },
     {
       headerName: 'Nationality',
       field: 'nationality',
       width: 120,
-      cellStyle: { fontSize: '13px', color: '#4f5863' }
+      cellStyle: { fontSize: '13px', color: '#4f5863' },
+      filter: 'agSetColumnFilter',
+      sortable: true,
+      resizable: true,
+      enableRowGroup: false
     },
     {
       headerName: 'Vessel',
       field: 'vessel',
       width: 140,
-      cellStyle: { fontSize: '13px', color: '#4f5863' }
+      cellStyle: { fontSize: '13px', color: '#4f5863' },
+      filter: 'agSetColumnFilter',
+      sortable: true,
+      resizable: true,
+      enableRowGroup: false
     },
     {
       headerName: 'Vessel Type',
       field: 'vesselType',
       width: 120,
-      cellStyle: { fontSize: '13px', color: '#4f5863' }
+      cellStyle: { fontSize: '13px', color: '#4f5863' },
+      filter: 'agSetColumnFilter',
+      sortable: true,
+      resizable: true,
+      enableRowGroup: false
     },
     {
       headerName: 'Sign-On',
       field: 'signOn',
       width: 110,
-      cellStyle: { fontSize: '13px', color: '#4f5863' }
+      cellStyle: { fontSize: '13px', color: '#4f5863' },
+      filter: 'agDateColumnFilter',
+      sortable: true,
+      resizable: true
     },
     {
       headerName: 'Appraisal Type',
       field: 'appraisalType',
       width: 130,
-      cellStyle: { fontSize: '13px', color: '#4f5863' }
+      cellStyle: { fontSize: '13px', color: '#4f5863' },
+      filter: 'agSetColumnFilter',
+      sortable: true,
+      resizable: true,
+      enableRowGroup: false
     },
     {
       headerName: 'Appraisal Date',
       field: 'appraisalDate',
       width: 120,
-      cellStyle: { fontSize: '13px', color: '#4f5863' }
+      cellStyle: { fontSize: '13px', color: '#4f5863' },
+      filter: 'agDateColumnFilter',
+      sortable: true,
+      resizable: true
     },
     {
       headerName: 'Competence Rating',
       field: 'competenceRating.value',
       width: 140,
       cellRenderer: RatingCellRenderer,
-      cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' }
+      cellClass: 'flex items-center justify-center',
+      filter: 'agNumberColumnFilter',
+      sortable: true,
+      resizable: true,
+      enableValue: true,
+      aggFunc: 'avg'
     },
     {
       headerName: 'Behavioral Rating',
       field: 'behavioralRating.value',
       width: 140,
       cellRenderer: RatingCellRenderer,
-      cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' }
+      cellClass: 'flex items-center justify-center',
+      filter: 'agNumberColumnFilter',
+      sortable: true,
+      resizable: true,
+      enableValue: true,
+      aggFunc: 'avg'
     },
     {
       headerName: 'Overall Rating',
       field: 'overallRating.value',
       width: 130,
       cellRenderer: RatingCellRenderer,
-      cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' }
+      cellClass: 'flex items-center justify-center',
+      filter: 'agNumberColumnFilter',
+      sortable: true,
+      resizable: true,
+      enableValue: true,
+      aggFunc: 'avg'
     },
     {
       headerName: 'Actions',
@@ -354,17 +388,28 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       cellRenderer: ActionsCellRenderer,
       sortable: false,
       filter: false,
-      cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' }
+      cellClass: 'flex items-center justify-center',
+      pinned: 'right',
+      lockPosition: true
     }
   ], []);
 
-  const onGridReady = (params: GridReadyEvent) => {
+  const onGridReady = useCallback((params: GridReadyEvent) => {
     setGridApi(params.api);
-  };
+  }, []);
+
+  // Early return after all hooks
+  if (isLoadingCrew || isLoadingAppraisals) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg">Loading crew appraisals...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-transparent flex flex-row justify-center w-full">
-      <div className="overflow-hidden bg-[url(/figmaAssets/vector.svg)] bg-[100%_100%] w-[1440px] h-[900px] relative">
+      <div className="overflow-hidden bg-[url(/figmaAssets/vector.svg)] bg-[100%_100%]  h-[900px] w-full">
         {/* Header */}
         <header className="w-full h-[67px] bg-[#E8E8E8] border-b-2 border-[#5DADE2]">
           <div className="flex items-center h-full">
@@ -431,133 +476,125 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                 </div>
               </Link>
             </nav>
-
-            {/* User Profile */}
-            <div className="absolute top-2.5 right-[38px]">
-              <img
-                className="w-[38px] h-[37px]"
-                alt="User"
-                src="/figmaAssets/group-3.png"
-              />
-            </div>
           </div>
         </header>
 
-        {/* Left sidebar */}
-        <aside className="w-[67px] absolute left-0 top-[66px] h-[calc(100vh-66px)]">
-          {/* Light blue section with icon and "All" text */}
-          <div className="w-full h-[79px] flex flex-col items-center justify-center bg-[#52baf3]">
+        {/* Left Sidebar */}
+        <aside className="w-[67px] absolute left-0 top-[67px] h-[calc(100vh-67px)]">
+          {/* All Section (Active) */}
+          <div className="w-full h-[79px] flex flex-col items-center justify-center cursor-pointer bg-[#52baf3]">
             <div className="w-6 h-6 mb-1">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2L13.09 8.26L20 9L13.09 9.74L12 16L10.91 9.74L4 9L10.91 8.26L12 2Z" fill="white"/>
-                <path d="M19 15L19.74 17.74L22 18L19.74 18.26L19 21L18.26 18.26L16 18L18.26 17.74L19 15Z" fill="white"/>
-                <path d="M5 6L5.5 7.5L7 8L5.5 8.5L5 10L4.5 8.5L3 8L4.5 7.5L5 6Z" fill="white"/>
+                <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z" fill="white"/>
               </svg>
             </div>
             <div className="text-white text-[10px] font-normal font-['Roboto',Helvetica]">
               All
             </div>
           </div>
-
-          {/* Dark blue section */}
+          
+          {/* Dark blue section for rest of sidebar */}
           <div className="w-full h-[calc(100%-79px)] bg-[#16569e]">
           </div>
         </aside>
 
-        {/* Main content */}
-        <main className="absolute top-[67px] left-[67px] w-[calc(100%-67px)] h-[calc(100%-67px)]">
-          <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h1 className="font-['Mulish',Helvetica] font-bold text-black text-[22px] ml-[19px] mr-[19px]">
-                Crew Appraisals
-              </h1>
-              <Button
-                variant="outline"
-                className="h-10 border-[#e1e8ed] text-[#16569e] flex items-center gap-2 ml-[19px] mr-[19px]"
-                onClick={() => setShowFilters(!showFilters)}
-              >
-                <FilterIcon className="w-4 h-4" />
-                <span className="text-sm">Filters</span>
-              </Button>
+        {/* Main Content */}
+        <main className="ml-[67px] h-[833px] px-6 py-2 bg-[#f8fafc]">
+          <div className="flex flex-col h-full">
+            {/* Top section with title and custom filter toggle */}
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-2xl font-bold text-black">Crew Appraisals</h1>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className="h-8 w-32 text-[#8798ad] text-xs border-[#e1e8ed]"
+                  onClick={() => setShowFilters(!showFilters)}
+                >
+                  <FilterIcon className="h-3 w-3 mr-1" />
+                  Toggle Filters
+                </Button>
+              </div>
             </div>
 
-            {/* Filters */}
+            {/* Filters Section */}
             {showFilters && (
-              <div className="flex justify-between items-center gap-2 mb-6 ml-4 mr-4">
-                <div className="flex gap-2">
-                  <div className="relative w-[180px]">
-                    <Input
-                      className="h-8 pl-10 text-[#8798ad] text-xs"
-                      placeholder="Search Name"
-                      value={filters.searchName}
-                      onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
-                    />
-                    <SearchIcon className="w-4 h-4 absolute left-3 top-2 text-[#8798ad]" />
-                  </div>
+              <div className="flex flex-wrap gap-4 mb-4 p-4 bg-[#f7fafc] rounded-lg">
+                <div className="flex gap-4 flex-wrap">
+                  <Input
+                    placeholder="Search by name..."
+                    className="h-8 w-48 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
+                    value={filters.searchName}
+                    onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
+                  />
 
                   <Select value={filters.rank} onValueChange={(value) => setFilters(prev => ({ ...prev, rank: value }))}>
-                    <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs">
+                    <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
                       <SelectValue placeholder="Rank" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Master">Master</SelectItem>
+                      <SelectItem value="Captain">Captain</SelectItem>
+                      <SelectItem value="Chief Officer">Chief Officer</SelectItem>
+                      <SelectItem value="Second Officer">Second Officer</SelectItem>
                       <SelectItem value="Chief Engineer">Chief Engineer</SelectItem>
-                      <SelectItem value="Chief Mate">Chief Mate</SelectItem>
-                      <SelectItem value="Able Seaman">Able Seaman</SelectItem>
-                      <SelectItem value="Electrician">Electrician</SelectItem>
+                      <SelectItem value="Second Engineer">Second Engineer</SelectItem>
+                      <SelectItem value="Third Engineer">Third Engineer</SelectItem>
+                      <SelectItem value="Bosun">Bosun</SelectItem>
+                      <SelectItem value="AB">AB</SelectItem>
+                      <SelectItem value="OS">OS</SelectItem>
+                      <SelectItem value="Cook">Cook</SelectItem>
                     </SelectContent>
                   </Select>
 
                   <Select value={filters.vessel} onValueChange={(value) => setFilters(prev => ({ ...prev, vessel: value }))}>
-                    <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs">
+                    <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
                       <SelectValue placeholder="Vessel" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="MV Atlantic Star">MV Atlantic Star</SelectItem>
-                      <SelectItem value="MV Pacific Dawn">MV Pacific Dawn</SelectItem>
-                      <SelectItem value="MV Northern Light">MV Northern Light</SelectItem>
+                      <SelectItem value="MV Ocean Star">MV Ocean Star</SelectItem>
+                      <SelectItem value="MV Sea Explorer">MV Sea Explorer</SelectItem>
+                      <SelectItem value="MV Atlantic Queen">MV Atlantic Queen</SelectItem>
                     </SelectContent>
                   </Select>
 
                   <Select value={filters.vesselType} onValueChange={(value) => setFilters(prev => ({ ...prev, vesselType: value }))}>
-                    <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs">
-                      <SelectValue placeholder="Vessel type" />
+                    <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
+                      <SelectValue placeholder="Vessel Type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Oil Tanker">Oil Tanker</SelectItem>
-                      <SelectItem value="LPG Tanker">LPG Tanker</SelectItem>
                       <SelectItem value="Container">Container</SelectItem>
-                      <SelectItem value="Bulk">Bulk</SelectItem>
+                      <SelectItem value="Bulk Carrier">Bulk Carrier</SelectItem>
+                      <SelectItem value="Tanker">Tanker</SelectItem>
+                      <SelectItem value="General Cargo">General Cargo</SelectItem>
                     </SelectContent>
                   </Select>
 
                   <Select value={filters.nationality} onValueChange={(value) => setFilters(prev => ({ ...prev, nationality: value }))}>
-                    <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs">
+                    <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
                       <SelectValue placeholder="Nationality" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="British">British</SelectItem>
-                      <SelectItem value="Indian">Indian</SelectItem>
                       <SelectItem value="Philippines">Philippines</SelectItem>
+                      <SelectItem value="India">India</SelectItem>
+                      <SelectItem value="Ukraine">Ukraine</SelectItem>
+                      <SelectItem value="Romania">Romania</SelectItem>
+                      <SelectItem value="Poland">Poland</SelectItem>
                     </SelectContent>
                   </Select>
 
                   <Select value={filters.appraisalType} onValueChange={(value) => setFilters(prev => ({ ...prev, appraisalType: value }))}>
-                    <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs">
+                    <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
                       <SelectValue placeholder="Appraisal Type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="End of Contract">End of Contract</SelectItem>
-                      <SelectItem value="Mid Term">Mid Term</SelectItem>
-                      <SelectItem value="Special">Special</SelectItem>
-                      <SelectItem value="Probation">Probation</SelectItem>
-                      <SelectItem value="Appraiser SCOT">Appraiser SCOT</SelectItem>
-                      <SelectItem value="Not Started">Not Started</SelectItem>
+                      <SelectItem value="Mid-Contract">Mid-Contract</SelectItem>
+                      <SelectItem value="End-Contract">End-Contract</SelectItem>
+                      <SelectItem value="Annual">Annual</SelectItem>
+                      <SelectItem value="Promotion">Promotion</SelectItem>
                     </SelectContent>
                   </Select>
 
                   <Select value={filters.rating} onValueChange={(value) => setFilters(prev => ({ ...prev, rating: value }))}>
-                    <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs">
+                    <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
                       <SelectValue placeholder="Rating" />
                     </SelectTrigger>
                     <SelectContent>
@@ -592,38 +629,48 @@ export const ElementCrewAppraisals = (): JSX.Element => {
               </div>
             )}
 
-
-
-            {/* AG Grid Table */}
+            {/* AG Grid Enterprise Table with Actions */}
             <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
               <CardContent className="p-4 bg-[#f7fafc]">
-                <div className="ag-theme-alpine bg-white rounded-lg shadow-md overflow-hidden" style={{ height: '500px', width: '100%' }}>
-                  <AgGridReact
-                    rowData={crewData}
-                    columnDefs={columnDefs}
-                    onGridReady={onGridReady}
-                    context={{ handleEditClick: handleEditClickCallback }}
-                    defaultColDef={{
-                      sortable: true,
-                      filter: true,
-                      resizable: true
-                    }}
-                    headerHeight={50}
-                    rowHeight={50}
-                    suppressHorizontalScroll={false}
-                    suppressRowClickSelection={true}
-                    animateRows={true}
-                    rowSelection="single"
-                    getRowStyle={() => ({ backgroundColor: 'white' })}
-                  />
+                <AgGridTable
+                  rowData={crewData}
+                  columnDefs={columnDefs}
+                  onGridReady={onGridReady}
+                  context={{ handleEditClick }}
+                  autoHeight={true}
+                  maxHeight="500px"
+                  minHeight="200px"
+                  width="100%"
+                  enableExport={true}
+                  enableSideBar={false}
+                  enableStatusBar={false}
+                  enableRowGrouping={true}
+                  enablePivoting={true}
+                  enableAdvancedFilter={false}
+                  rowSelection={false}
+                  theme="alpine"
+                />
+                
+                {/* Custom footer within the table area */}
+                <div className="bg-white border-t border-gray-200 px-4 py-3 flex justify-between items-center" style={{ marginTop: '-1px' }}>
+                  <div className="text-xs font-normal font-['Mulish',Helvetica] text-black">
+                    Rows: {crewData.length > 0 ? crewData.length : 0}
+                  </div>
+                  <div>
+                    <AgGridTableActions 
+                      gridApi={gridApi}
+                      exportFilename="crew-appraisals"
+                      showExportButtons={true}
+                      showFilterButtons={true}
+                      showGroupButtons={true}
+                      showSelectionButtons={false}
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Pagination */}
-            <div className="mt-4 text-xs font-normal font-['Mulish',Helvetica] text-black">
-              {crewData.length > 0 ? `1 to ${crewData.length} of ${crewData.length}` : "0 to 0 of 0"}
-            </div>
+
           </div>
         </main>
       </div>

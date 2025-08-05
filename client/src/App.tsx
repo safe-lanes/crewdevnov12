@@ -3,9 +3,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { Switch, Route } from "wouter";
 import { CrewingListPage } from "./modules/crewing";
-import { AdminModule } from "./modules/admin";
-import NotFound from "./pages/not-found";
+import NotFound from "./modules/not-found";
 import { useMicroFrontendConfig } from "./micro-frontend/MicroFrontendWrapper";
+import { AdminModule } from "./modules/admin/AdminModule";
+import { ElementCrewAppraisals } from "./modules/crewing/ElementCrewAppraisals";
 
 const queryClient = new QueryClient();
 
@@ -20,7 +21,7 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Switch>
-            <Route path="/" component={CrewingListPage} />
+            <Route path="/" component={ElementCrewAppraisals} />
             <Route path="/admin" component={AdminModule} />
             <Route component={NotFound} />
           </Switch>
@@ -35,7 +36,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Switch>
-          <Route path="/" component={CrewingListPage} />
+          <Route path="/" component={ElementCrewAppraisals} />
           <Route path="/admin" component={AdminModule} />
           <Route component={NotFound} />
         </Switch>

@@ -38,7 +38,6 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Form, RankGroup, AvailableRank } from "@shared/schema";
-import { FormEditor } from "./FormEditor";
 import { FormEditorFactory } from "@/components/FormEditorFactory";
 import { formTemplates, createFormEditor } from "@/utils/formEditorGenerator";
 import { apiRequest } from "@/lib/queryClient";
@@ -464,7 +463,7 @@ export const AdminModule = (): JSX.Element => {
 
   return (
     <div className="bg-transparent flex flex-row justify-center w-full">
-      <div className="overflow-hidden bg-[url(/figmaAssets/vector.svg)] bg-[100%_100%] w-[1440px] h-[900px] relative">
+      <div className="overflow-hidden bg-[url(/figmaAssets/vector.svg)] bg-[100%_100%]  h-[900px] w-full">
         {/* Header */}
         <header className="w-full h-[67px] bg-[#E8E8E8] border-b-2 border-[#5DADE2]">
           <div className="flex items-center h-full">
