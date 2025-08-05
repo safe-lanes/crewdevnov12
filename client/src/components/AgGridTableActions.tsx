@@ -2,6 +2,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { GridApi } from 'ag-grid-community';
 import { agGridUtils } from './AgGridTable';
+import { useToast } from '@/hooks/use-toast';
 
 export interface AgGridTableActionsProps {
   gridApi: GridApi | null;
@@ -24,6 +25,8 @@ export const AgGridTableActions: React.FC<AgGridTableActionsProps> = ({
   customButtons,
   exportFilename = 'data'
 }) => {
+  const { toast } = useToast();
+  
   if (!gridApi) return null;
 
   return (
@@ -65,8 +68,16 @@ export const AgGridTableActions: React.FC<AgGridTableActionsProps> = ({
             onClick={() => {
               if (agGridUtils.hasRowGroups(gridApi)) {
                 agGridUtils.expandAllGroups(gridApi);
+                toast({
+                  title: "Groups Expanded",
+                  description: "All row groups have been expanded."
+                });
               } else {
-                alert('No row groups found. Drag a column to the row group panel to create groups first.');
+                toast({
+                  title: "No Row Groups",
+                  description: "Drag a column to the Row Groups panel to create groups first.",
+                  variant: "destructive"
+                });
               }
             }}
             title="Expand all row groups (drag columns to Row Groups panel first)"
@@ -79,8 +90,16 @@ export const AgGridTableActions: React.FC<AgGridTableActionsProps> = ({
             onClick={() => {
               if (agGridUtils.hasRowGroups(gridApi)) {
                 agGridUtils.collapseAllGroups(gridApi);
+                toast({
+                  title: "Groups Collapsed",
+                  description: "All row groups have been collapsed."
+                });
               } else {
-                alert('No row groups found. Drag a column to the row group panel to create groups first.');
+                toast({
+                  title: "No Row Groups",
+                  description: "Drag a column to the Row Groups panel to create groups first.",
+                  variant: "destructive"
+                });
               }
             }}
             title="Collapse all row groups (drag columns to Row Groups panel first)"
