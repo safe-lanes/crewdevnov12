@@ -42,7 +42,7 @@ export function ModuleNavigator({ currentModule, onModuleChange }: ModuleNavigat
           <Grid3X3 className="h-6 w-6 text-[#4f5863]" />
         </div>
         <div className="text-[#4f5863] text-[10px] font-normal font-['Mulish',Helvetica]">
-          Modules
+          Crewing
         </div>
       </div>
 

@@ -424,15 +424,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
 
             {/* Navigation Menu */}
             <nav className="flex ml-8">
-              {/* Module Navigator */}
-              <div className="flex flex-col items-center justify-center w-[100px] h-[67px] bg-[#E8E8E8] border-r border-gray-300">
-                <ModuleNavigator 
-                  currentModule="crewing" 
-                  onModuleChange={handleModuleChange}
-                />
-              </div>
-
-              {/* Crewing Section */}
+              {/* Crewing Section (renamed from Modules) */}
               <div className="flex flex-col items-center justify-center w-[100px] h-[67px] bg-[#E8E8E8] border-r border-gray-300">
                 <div className="w-6 h-6 mb-1">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
