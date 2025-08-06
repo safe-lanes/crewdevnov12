@@ -412,7 +412,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       <div className="overflow-hidden bg-[url(/figmaAssets/vector.svg)] bg-[100%_100%]  h-[900px] w-full">
         {/* Header */}
         <header className="w-full h-[67px] bg-[#E8E8E8] border-b-2 border-[#5DADE2]">
-          <div className="flex items-center h-full">
+          <div className="flex items-center h-full bg-[#f1f1f1]">
             {/* Logo */}
             <div className="flex items-center ml-4">
               <img
