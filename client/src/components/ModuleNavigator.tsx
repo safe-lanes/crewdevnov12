@@ -39,7 +39,12 @@ export function ModuleNavigator({ currentModule, onModuleChange }: ModuleNavigat
     <>
       <div className="flex flex-col items-center justify-center cursor-pointer" onClick={() => setShowModuleDialog(true)}>
         <div className="w-6 h-6 mb-1">
-          <Grid3X3 className="h-6 w-6 text-[#4f5863]" />
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="3" y="3" width="7" height="7" rx="1" fill="#6B7280" />
+            <rect x="14" y="3" width="7" height="7" rx="1" fill="#6B7280" />
+            <rect x="3" y="14" width="7" height="7" rx="1" fill="#6B7280" />
+            <rect x="14" y="14" width="7" height="7" rx="1" fill="#6B7280" />
+          </svg>
         </div>
         <div className="text-[#4f5863] text-[10px] font-normal font-['Mulish',Helvetica]">
           Crewing
