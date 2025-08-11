@@ -1,0 +1,49 @@
+import { File, UserPlus } from 'lucide-react';
+import React from 'react'
+
+type SideBarComponentProps = {
+    selectedAdminPage: string;
+    allowedPages: string[];
+    setSelectedAdminPage: (page: string) => void;
+};
+
+const sideBarList: { name: string; icon: React.ReactNode; page: string }[] = [
+    {
+        name: "All",
+        icon: <UserPlus size={20} className='mb-2' />,
+        page: "all"
+    },
+    {
+        name: "Forms",
+        icon: <File size={20} className='text-white' />,
+        page: "forms"
+    }
+]
+
+export default function SideBarComponent({ selectedAdminPage, setSelectedAdminPage, allowedPages }: SideBarComponentProps) {
+    return (
+        <>
+            <aside className="w-[67px] absolute left-0 top-[67px] h-[calc(100vh-67px)]">
+                {
+                    sideBarList.filter(item => allowedPages.includes(item.page)).map(item => (
+                        <div
+                            className={`w-full h-[79px] flex flex-col items-center justify-center cursor-pointer ${selectedAdminPage === item.page ? "bg-[#52baf3]" : "bg-[#16569e] hover:bg-[#1e5fa8]"
+                                }`}
+                            onClick={() => setSelectedAdminPage(item.page)}
+                        >
+                            <div className="text-white text-[10px] font-normal font-['Roboto',Helvetica]">
+                                {item.icon}
+                                {item.name}
+                            </div>
+                        </div>
+
+                    ))
+                }
+
+                {/* Dark blue section for rest of sidebar */}
+                <div className="w-full h-[calc(100%-79px)] bg-[#16569e]">
+                </div>
+            </aside>
+        </>
+    )
+}

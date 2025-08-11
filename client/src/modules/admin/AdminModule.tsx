@@ -44,6 +44,9 @@ import { apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import SideBarComponent from '../../components/Navbar/SideBarComponent';
+import MainLayout from "@/components/main/MainLayout";
+import SectionTitleComponents from "@/components/Section/SectionTitleComponents";
 
 const rankGroupSchema = z.object({
   name: z.string().min(1, "Rank group name is required"),
@@ -135,7 +138,7 @@ export const AdminModule = (): JSX.Element => {
 
   const handleCreateForm = () => {
     if (!newFormName.trim()) return;
-    
+
     const formData = {
       name: newFormName.trim(),
       versionNo: "00",
@@ -145,9 +148,9 @@ export const AdminModule = (): JSX.Element => {
         year: 'numeric'
       }).replace(/ /g, '-')
     };
-    
+
     createFormMutation.mutate(formData);
-    
+
     // If using a template, generate the form editor
     if (createFormType === "template" && selectedTemplate) {
       try {
@@ -213,7 +216,7 @@ export const AdminModule = (): JSX.Element => {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="ranks"
@@ -244,7 +247,7 @@ export const AdminModule = (): JSX.Element => {
                   </FormItem>
                 )}
               />
-              
+
               <div className="flex justify-end space-x-2">
                 <Button
                   type="button"
@@ -274,11 +277,8 @@ export const AdminModule = (): JSX.Element => {
   }, {} as Record<string, typeof formsData>);
 
   const renderFormsTable = () => (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="font-['Mulish',Helvetica] font-bold text-black text-[22px] ml-[19px] mr-[19px]">
-          Forms Configuration
-        </h1>
+    <div>
+      <SectionTitleComponents title={"Forms Configuration"}>
         <div className="flex items-center gap-2 ml-[19px] mr-[19px]">
           <Button
             variant="outline"
@@ -295,7 +295,7 @@ export const AdminModule = (): JSX.Element => {
             <span className="text-sm">Back</span>
           </Button>
         </div>
-      </div>
+      </SectionTitleComponents>
 
       {/* Loading state */}
       {isLoading && (
@@ -343,8 +343,8 @@ export const AdminModule = (): JSX.Element => {
                   <React.Fragment key={formName}>
                     {/* First level - Form name with rowspan */}
                     <TableRow className="border-b border-gray-200 bg-white hover:bg-gray-50">
-                      <TableCell 
-                        className="text-[#4f5863] text-[13px] font-semibold py-3 border-r border-gray-200 bg-[#ffffff]" 
+                      <TableCell
+                        className="text-[#4f5863] text-[13px] font-semibold py-3 border-r border-gray-200 bg-[#ffffff]"
                         rowSpan={forms.length}
                       >
                         <div className="flex items-center justify-between">
@@ -462,112 +462,16 @@ export const AdminModule = (): JSX.Element => {
   );
 
   return (
-    <div className="bg-transparent flex flex-row justify-center w-full">
-      <div className="overflow-hidden bg-[url(/figmaAssets/vector.svg)] bg-[100%_100%]  h-[900px] w-full">
-        {/* Header */}
-        <header className="w-full h-[67px] bg-[#E8E8E8] border-b-2 border-[#5DADE2]">
-          <div className="flex items-center h-full">
-            {/* Logo */}
-            <div className="flex items-center ml-4">
-              <img
-                className="w-14 h-10"
-                alt="Logo"
-                src="/figmaAssets/group-2.png"
-              />
-            </div>
+    <>
+      <SideBarComponent selectedAdminPage={selectedAdminPage} setSelectedAdminPage={setSelectedAdminPage} allowedPages={["forms"]} />
+      <MainLayout>
+        {selectedAdminPage === "forms" && renderFormsTable()}
+      </MainLayout>
 
-            {/* Navigation Menu */}
-            <nav className="flex ml-8">
-              {/* Crewing Section */}
-              <Link href="/">
-                <div className="flex flex-col items-center justify-center w-[100px] h-[67px] bg-[#E8E8E8] border-r border-gray-300 cursor-pointer hover:bg-gray-300">
-                  <div className="w-6 h-6 mb-1">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <rect x="3" y="3" width="7" height="7" rx="1" fill="#6B7280"/>
-                      <rect x="14" y="3" width="7" height="7" rx="1" fill="#6B7280"/>
-                      <rect x="3" y="14" width="7" height="7" rx="1" fill="#6B7280"/>
-                      <rect x="14" y="14" width="7" height="7" rx="1" fill="#6B7280"/>
-                    </svg>
-                  </div>
-                  <div className="text-[#4f5863] text-[10px] font-normal font-['Mulish',Helvetica]">
-                    Crewing
-                  </div>
-                </div>
-              </Link>
-
-              {/* Appraisals Section */}
-              <Link href="/">
-                <div className="flex flex-col items-center justify-center w-[100px] h-[67px] bg-[#E8E8E8] border-r border-gray-300 cursor-pointer hover:bg-gray-300">
-                  <div className="w-6 h-6 mb-1">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.89 22 5.99 22H18C19.1 22 20 21.1 20 20V8L14 2Z" fill="#6B7280"/>
-                      <path d="M14 2V8H20" fill="#6B7280"/>
-                      <path d="M16 11H8V13H16V11Z" fill="#6B7280"/>
-                      <path d="M16 15H8V17H16V15Z" fill="#6B7280"/>
-                    </svg>
-                  </div>
-                  <div className="text-[#4f5863] text-[10px] font-normal font-['Roboto',Helvetica]">
-                    Appraisals
-                  </div>
-                </div>
-              </Link>
-
-              {/* Admin Section (Active) */}
-              <div className="flex flex-col items-center justify-center w-[100px] h-[67px] bg-[#5DADE2] border-r border-gray-300">
-                <div className="w-6 h-6 mb-1">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 1L15.09 8.26L23 9L17 14.74L18.18 22.02L12 19L5.82 22.02L7 14.74L1 9L8.91 8.26L12 1Z" fill="white"/>
-                  </svg>
-                </div>
-                <div className="text-white text-[10px] font-normal font-['Mulish',Helvetica]">
-                  Admin
-                </div>
-              </div>
-            </nav>
-
-            {/* User Profile */}
-            <div className="absolute top-2.5 right-[38px]">
-              <img
-                className="w-[38px] h-[37px]"
-                alt="User"
-                src="/figmaAssets/group-3.png"
-              />
-            </div>
-          </div>
-        </header>
-
-        {/* Left sidebar */}
-        <aside className="w-[67px] absolute left-0 top-[66px] h-[calc(100vh-66px)]">
-          {/* Forms Section (Active) */}
-          <div 
-            className={`w-full h-[79px] flex flex-col items-center justify-center cursor-pointer ${
-              selectedAdminPage === "forms" ? "bg-[#52baf3]" : "bg-[#16569e] hover:bg-[#1e5fa8]"
-            }`}
-            onClick={() => setSelectedAdminPage("forms")}
-          >
-            <div className="w-6 h-6 mb-1">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.89 22 5.99 22H18C19.1 22 20 21.1 20 20V8L14 2Z" fill="white"/>
-                <path d="M14 2V8H20" fill="white"/>
-                <path d="M16 11H8V13H16V11Z" fill={selectedAdminPage === "forms" ? "#52baf3" : "white"}/>
-                <path d="M16 15H8V17H16V15Z" fill={selectedAdminPage === "forms" ? "#52baf3" : "white"}/>
-              </svg>
-            </div>
-            <div className="text-white text-[10px] font-normal font-['Roboto',Helvetica]">
-              Forms
-            </div>
-          </div>
-          
-          {/* Dark blue section for future admin pages */}
-          <div className="w-full h-[calc(100%-79px)] bg-[#16569e]">
-          </div>
-        </aside>
-
-        {/* Main content */}
-        <main className="absolute top-[67px] left-[67px] w-[calc(100%-67px)] h-[calc(100%-67px)]">
-          {selectedAdminPage === "forms" && renderFormsTable()}
-        </main>
-      </div>
+      {/* Main content */}
+      {/* <main className="absolute top-[67px] left-[67px] w-[calc(100%-67px)] h-[calc(100%-67px)]">
+       
+        </main> */}
 
       {/* Form Editor Modal */}
       {editingForm && (
@@ -598,7 +502,7 @@ export const AdminModule = (): JSX.Element => {
                 placeholder="Enter form name"
               />
             </div>
-            
+
             <div className="space-y-2">
               <FormLabel>Creation Type</FormLabel>
               <div className="flex gap-4">
@@ -622,7 +526,7 @@ export const AdminModule = (): JSX.Element => {
                 </label>
               </div>
             </div>
-            
+
             {createFormType === "template" && (
               <div className="space-y-2">
                 <FormLabel>Select Template</FormLabel>
@@ -641,7 +545,7 @@ export const AdminModule = (): JSX.Element => {
               </div>
             )}
           </div>
-          
+
           <div className="flex justify-end space-x-2">
             <Button
               type="button"
@@ -654,7 +558,7 @@ export const AdminModule = (): JSX.Element => {
               type="button"
               onClick={handleCreateForm}
               disabled={
-                !newFormName.trim() || 
+                !newFormName.trim() ||
                 (createFormType === "template" && !selectedTemplate) ||
                 createFormMutation.isPending
               }
@@ -664,6 +568,6 @@ export const AdminModule = (): JSX.Element => {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 };

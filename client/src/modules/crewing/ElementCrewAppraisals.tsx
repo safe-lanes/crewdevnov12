@@ -2,15 +2,13 @@ import {
   EditIcon,
   EyeIcon,
   FilterIcon,
-  SearchIcon,
   Trash2Icon,
 } from "lucide-react";
 import React, { useState, useMemo, useCallback } from "react";
-import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
-import AgGridTable from '@/components/AgGridTable';
-import AgGridTableActions from '@/components/AgGridTableActions';
+import AgGridTable from '@/components/AgGrid/AgGridTable';
+import AgGridTableActions from '@/components/AgGrid/AgGridTableActions';
 import { AppraisalForm } from "./AppraisalForm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,7 +22,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CrewMember, AppraisalResult } from "@shared/schema";
-import { ModuleNavigator } from "@/components/ModuleNavigator";
+import SectionTitleComponents from "@/components/Section/SectionTitleComponents";
+import SideBarComponent from "@/components/Navbar/SideBarComponent";
+import MainLayout from "@/components/main/MainLayout";
 
 // Interface for combined crew member and appraisal data
 interface CrewAppraisalData {
@@ -101,7 +101,7 @@ const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEd
 };
 
 export const ElementCrewAppraisals = (): JSX.Element => {
-  const [location, navigate] = useLocation();
+  const [selectedAdminPage, setSelectedAdminPage] = useState("all");
   const [selectedCrewMember, setSelectedCrewMember] = useState<CrewAppraisalData | null>(null);
   const [showAppraisalForm, setShowAppraisalForm] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
@@ -151,18 +151,6 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     setSelectedCrewMember(null);
   }, []);
 
-  const handleModuleChange = useCallback((moduleId: string) => {
-    switch (moduleId) {
-      case "crewing":
-        navigate("/");
-        break;
-      case "technical-pms":
-        navigate("/technical-pms");
-        break;
-      default:
-        navigate("/");
-    }
-  }, [navigate]);
 
   // Helper function to get rating color based on value
   const getRatingColor = useCallback((rating: string): string => {
@@ -174,7 +162,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
   }, []);
 
   // Combine crew member and appraisal data
-  const allCrewData: CrewAppraisalData[] = useMemo(() => 
+  const allCrewData: CrewAppraisalData[] = useMemo(() =>
     crewMembers.map((crewMember) => {
       const appraisal = appraisalResults.find(ar => ar.crewMemberId === crewMember.id);
 
@@ -209,7 +197,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     }), [crewMembers, appraisalResults, getRatingColor]);
 
   // Filter crew data based on filter state
-  const crewData = useMemo(() => 
+  const crewData = useMemo(() =>
     allCrewData.filter((crew) => {
       const fullName = `${crew.name.first} ${crew.name.middle} ${crew.name.last}`.toLowerCase();
 
@@ -408,279 +396,182 @@ export const ElementCrewAppraisals = (): JSX.Element => {
   }
 
   return (
-    <div className="bg-transparent flex flex-row justify-center w-full">
-      <div className="overflow-hidden bg-[url(/figmaAssets/vector.svg)] bg-[100%_100%]  h-[900px] w-full">
-        {/* Header */}
-        <header className="w-full h-[67px] bg-[#E8E8E8] border-b-2 border-[#5DADE2]">
-          <div className="flex items-center h-full">
-            {/* Logo */}
-            <div className="flex items-center ml-4">
-              <img
-                className="w-14 h-10"
-                alt="Logo"
-                src="/figmaAssets/group-2.png"
+    <>
+      <SideBarComponent selectedAdminPage={selectedAdminPage} setSelectedAdminPage={setSelectedAdminPage} allowedPages={["all"]} />
+      <MainLayout>
+        <SectionTitleComponents title="Crew Appraisals">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="h-8 w-32 text-[#8798ad] text-xs border-[#e1e8ed]"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <FilterIcon className="h-3 w-3 mr-1" />
+              Toggle Filters
+            </Button>
+          </div>
+        </SectionTitleComponents>
+        {/* Filters Section */}
+        {showFilters && (
+          <div className="flex flex-wrap gap-4 mb-4 p-4 bg-[#f7fafc] rounded-lg">
+            <div className="flex gap-4 flex-wrap">
+              <Input
+                placeholder="Search by name..."
+                className="h-8 w-48 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
+                value={filters.searchName}
+                onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
               />
+
+              <Select value={filters.rank} onValueChange={(value) => setFilters(prev => ({ ...prev, rank: value }))}>
+                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
+                  <SelectValue placeholder="Rank" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Captain">Captain</SelectItem>
+                  <SelectItem value="Chief Officer">Chief Officer</SelectItem>
+                  <SelectItem value="Second Officer">Second Officer</SelectItem>
+                  <SelectItem value="Chief Engineer">Chief Engineer</SelectItem>
+                  <SelectItem value="Second Engineer">Second Engineer</SelectItem>
+                  <SelectItem value="Third Engineer">Third Engineer</SelectItem>
+                  <SelectItem value="Bosun">Bosun</SelectItem>
+                  <SelectItem value="AB">AB</SelectItem>
+                  <SelectItem value="OS">OS</SelectItem>
+                  <SelectItem value="Cook">Cook</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={filters.vessel} onValueChange={(value) => setFilters(prev => ({ ...prev, vessel: value }))}>
+                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
+                  <SelectValue placeholder="Vessel" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MV Ocean Star">MV Ocean Star</SelectItem>
+                  <SelectItem value="MV Sea Explorer">MV Sea Explorer</SelectItem>
+                  <SelectItem value="MV Atlantic Queen">MV Atlantic Queen</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={filters.vesselType} onValueChange={(value) => setFilters(prev => ({ ...prev, vesselType: value }))}>
+                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
+                  <SelectValue placeholder="Vessel Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Container">Container</SelectItem>
+                  <SelectItem value="Bulk Carrier">Bulk Carrier</SelectItem>
+                  <SelectItem value="Tanker">Tanker</SelectItem>
+                  <SelectItem value="General Cargo">General Cargo</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={filters.nationality} onValueChange={(value) => setFilters(prev => ({ ...prev, nationality: value }))}>
+                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
+                  <SelectValue placeholder="Nationality" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Philippines">Philippines</SelectItem>
+                  <SelectItem value="India">India</SelectItem>
+                  <SelectItem value="Ukraine">Ukraine</SelectItem>
+                  <SelectItem value="Romania">Romania</SelectItem>
+                  <SelectItem value="Poland">Poland</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={filters.appraisalType} onValueChange={(value) => setFilters(prev => ({ ...prev, appraisalType: value }))}>
+                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
+                  <SelectValue placeholder="Appraisal Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Mid-Contract">Mid-Contract</SelectItem>
+                  <SelectItem value="End-Contract">End-Contract</SelectItem>
+                  <SelectItem value="Annual">Annual</SelectItem>
+                  <SelectItem value="Promotion">Promotion</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={filters.rating} onValueChange={(value) => setFilters(prev => ({ ...prev, rating: value }))}>
+                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
+                  <SelectValue placeholder="Rating" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="high">High (4-5)</SelectItem>
+                  <SelectItem value="medium">Medium (3-4)</SelectItem>
+                  <SelectItem value="low">Low (1-3)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Navigation Menu */}
-            <nav className="flex ml-8">
-              {/* Module Navigator */}
-              <div className="flex flex-col items-center justify-center w-[100px] h-[67px] bg-[#E8E8E8] border-r border-gray-300">
-                <ModuleNavigator 
-                  currentModule="crewing" 
-                  onModuleChange={handleModuleChange}
+            <div className="flex gap-2">
+              <Button className="h-8 w-20 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px]">
+                Apply
+              </Button>
+
+              <Button
+                variant="outline"
+                className="h-8 w-20 text-[#8798ad] text-xs border-[#e1e8ed]"
+                onClick={() => setFilters({
+                  searchName: "",
+                  rank: "",
+                  vessel: "",
+                  vesselType: "",
+                  nationality: "",
+                  appraisalType: "",
+                  rating: ""
+                })}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* AG Grid Enterprise Table with Actions */}
+        <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
+          <CardContent className="p-4 bg-[#f7fafc]">
+            <AgGridTable
+              rowData={crewData}
+              columnDefs={columnDefs}
+              onGridReady={onGridReady}
+              context={{ handleEditClick }}
+              autoHeight={true}
+              maxHeight="500px"
+              minHeight="200px"
+              width="100%"
+              enableExport={true}
+              enableSideBar={false}
+              enableStatusBar={false}
+              enableRowGrouping={true}
+              enablePivoting={true}
+              enableAdvancedFilter={false}
+              rowSelection={false}
+              theme="alpine"
+            />
+
+            {/* Custom footer within the table area */}
+            <div className="bg-white border-t border-gray-200 px-4 py-3 flex justify-between items-center" style={{ marginTop: '-1px' }}>
+              <div className="text-xs font-normal font-['Mulish',Helvetica] text-black">
+                Rows: {crewData.length > 0 ? crewData.length : 0}
+              </div>
+              <div>
+                <AgGridTableActions
+                  gridApi={gridApi}
+                  exportFilename="crew-appraisals"
+                  showExportButtons={true}
+                  showFilterButtons={true}
+                  showGroupButtons={true}
+                  showSelectionButtons={false}
                 />
               </div>
-
-              {/* Crewing Section */}
-              <div className="flex flex-col items-center justify-center w-[100px] h-[67px] bg-[#E8E8E8] border-r border-gray-300">
-                <div className="w-6 h-6 mb-1">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="3" y="3" width="7" height="7" rx="1" fill="#6B7280"/>
-                    <rect x="14" y="3" width="7" height="7" rx="1" fill="#6B7280"/>
-                    <rect x="3" y="14" width="7" height="7" rx="1" fill="#6B7280"/>
-                    <rect x="14" y="14" width="7" height="7" rx="1" fill="#6B7280"/>
-                  </svg>
-                </div>
-                <div className="text-[#4f5863] text-[10px] font-normal font-['Mulish',Helvetica]">
-                  Crewing
-                </div>
-              </div>
-
-              {/* Appraisals Section (Active) */}
-              <div className="flex flex-col items-center justify-center w-[100px] h-[67px] bg-[#5DADE2] border-r border-gray-300">
-                <div className="w-6 h-6 mb-1">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.89 22 5.99 22H18C19.1 22 20 21.1 20 20V8L14 2Z" fill="white"/>
-                    <path d="M14 2V8H20" fill="white"/>
-                    <path d="M16 11H8V13H16V11Z" fill="#5DADE2"/>
-                    <path d="M16 15H8V17H16V15Z" fill="#5DADE2"/>
-                  </svg>
-                </div>
-                <div className="text-white text-[10px] font-normal font-['Roboto',Helvetica]">
-                  Appraisals
-                </div>
-              </div>
-
-              {/* Admin Section */}
-              <Link href="/admin">
-                <div className="flex flex-col items-center justify-center w-[100px] h-[67px] bg-[#E8E8E8] cursor-pointer hover:bg-gray-300">
-                  <div className="w-6 h-6 mb-1">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M12 1L15.09 8.26L23 9L17 14.74L18.18 22.02L12 19L5.82 22.02L7 14.74L1 9L8.91 8.26L12 1Z" fill="#6B7280"/>
-                    </svg>
-                  </div>
-                  <div className="text-[#4f5863] text-[10px] font-normal font-['Mulish',Helvetica]">
-                    Admin
-                  </div>
-                </div>
-              </Link>
-            </nav>
-          </div>
-        </header>
-
-        {/* Left Sidebar */}
-        <aside className="w-[67px] absolute left-0 top-[67px] h-[calc(100vh-67px)]">
-          {/* All Section (Active) */}
-          <div className="w-full h-[79px] flex flex-col items-center justify-center cursor-pointer bg-[#52baf3]">
-            <div className="w-6 h-6 mb-1">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z" fill="white"/>
-              </svg>
             </div>
-            <div className="text-white text-[10px] font-normal font-['Roboto',Helvetica]">
-              All
-            </div>
-          </div>
-          
-          {/* Dark blue section for rest of sidebar */}
-          <div className="w-full h-[calc(100%-79px)] bg-[#16569e]">
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <main className="ml-[67px] h-[833px] px-6 py-2 bg-[#f8fafc]">
-          <div className="flex flex-col h-full">
-            {/* Top section with title and custom filter toggle */}
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-2xl font-bold text-black">Crew Appraisals</h1>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  className="h-8 w-32 text-[#8798ad] text-xs border-[#e1e8ed]"
-                  onClick={() => setShowFilters(!showFilters)}
-                >
-                  <FilterIcon className="h-3 w-3 mr-1" />
-                  Toggle Filters
-                </Button>
-              </div>
-            </div>
-
-            {/* Filters Section */}
-            {showFilters && (
-              <div className="flex flex-wrap gap-4 mb-4 p-4 bg-[#f7fafc] rounded-lg">
-                <div className="flex gap-4 flex-wrap">
-                  <Input
-                    placeholder="Search by name..."
-                    className="h-8 w-48 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
-                    value={filters.searchName}
-                    onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
-                  />
-
-                  <Select value={filters.rank} onValueChange={(value) => setFilters(prev => ({ ...prev, rank: value }))}>
-                    <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                      <SelectValue placeholder="Rank" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Captain">Captain</SelectItem>
-                      <SelectItem value="Chief Officer">Chief Officer</SelectItem>
-                      <SelectItem value="Second Officer">Second Officer</SelectItem>
-                      <SelectItem value="Chief Engineer">Chief Engineer</SelectItem>
-                      <SelectItem value="Second Engineer">Second Engineer</SelectItem>
-                      <SelectItem value="Third Engineer">Third Engineer</SelectItem>
-                      <SelectItem value="Bosun">Bosun</SelectItem>
-                      <SelectItem value="AB">AB</SelectItem>
-                      <SelectItem value="OS">OS</SelectItem>
-                      <SelectItem value="Cook">Cook</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={filters.vessel} onValueChange={(value) => setFilters(prev => ({ ...prev, vessel: value }))}>
-                    <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                      <SelectValue placeholder="Vessel" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="MV Ocean Star">MV Ocean Star</SelectItem>
-                      <SelectItem value="MV Sea Explorer">MV Sea Explorer</SelectItem>
-                      <SelectItem value="MV Atlantic Queen">MV Atlantic Queen</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={filters.vesselType} onValueChange={(value) => setFilters(prev => ({ ...prev, vesselType: value }))}>
-                    <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                      <SelectValue placeholder="Vessel Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Container">Container</SelectItem>
-                      <SelectItem value="Bulk Carrier">Bulk Carrier</SelectItem>
-                      <SelectItem value="Tanker">Tanker</SelectItem>
-                      <SelectItem value="General Cargo">General Cargo</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={filters.nationality} onValueChange={(value) => setFilters(prev => ({ ...prev, nationality: value }))}>
-                    <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                      <SelectValue placeholder="Nationality" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Philippines">Philippines</SelectItem>
-                      <SelectItem value="India">India</SelectItem>
-                      <SelectItem value="Ukraine">Ukraine</SelectItem>
-                      <SelectItem value="Romania">Romania</SelectItem>
-                      <SelectItem value="Poland">Poland</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={filters.appraisalType} onValueChange={(value) => setFilters(prev => ({ ...prev, appraisalType: value }))}>
-                    <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                      <SelectValue placeholder="Appraisal Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Mid-Contract">Mid-Contract</SelectItem>
-                      <SelectItem value="End-Contract">End-Contract</SelectItem>
-                      <SelectItem value="Annual">Annual</SelectItem>
-                      <SelectItem value="Promotion">Promotion</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={filters.rating} onValueChange={(value) => setFilters(prev => ({ ...prev, rating: value }))}>
-                    <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                      <SelectValue placeholder="Rating" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="high">High (4-5)</SelectItem>
-                      <SelectItem value="medium">Medium (3-4)</SelectItem>
-                      <SelectItem value="low">Low (1-3)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button className="h-8 w-20 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px]">
-                    Apply
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    className="h-8 w-20 text-[#8798ad] text-xs border-[#e1e8ed]"
-                    onClick={() => setFilters({
-                      searchName: "",
-                      rank: "",
-                      vessel: "",
-                      vesselType: "",
-                      nationality: "",
-                      appraisalType: "",
-                      rating: ""
-                    })}
-                  >
-                    Clear
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* AG Grid Enterprise Table with Actions */}
-            <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
-              <CardContent className="p-4 bg-[#f7fafc]">
-                <AgGridTable
-                  rowData={crewData}
-                  columnDefs={columnDefs}
-                  onGridReady={onGridReady}
-                  context={{ handleEditClick }}
-                  autoHeight={true}
-                  maxHeight="500px"
-                  minHeight="200px"
-                  width="100%"
-                  enableExport={true}
-                  enableSideBar={false}
-                  enableStatusBar={false}
-                  enableRowGrouping={true}
-                  enablePivoting={true}
-                  enableAdvancedFilter={false}
-                  rowSelection={false}
-                  theme="alpine"
-                />
-                
-                {/* Custom footer within the table area */}
-                <div className="bg-white border-t border-gray-200 px-4 py-3 flex justify-between items-center" style={{ marginTop: '-1px' }}>
-                  <div className="text-xs font-normal font-['Mulish',Helvetica] text-black">
-                    Rows: {crewData.length > 0 ? crewData.length : 0}
-                  </div>
-                  <div>
-                    <AgGridTableActions 
-                      gridApi={gridApi}
-                      exportFilename="crew-appraisals"
-                      showExportButtons={true}
-                      showFilterButtons={true}
-                      showGroupButtons={true}
-                      showSelectionButtons={false}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-
-          </div>
-        </main>
-      </div>
-      {/* Appraisal Form Modal */}
-      {showAppraisalForm && selectedCrewMember && (
-        <AppraisalForm
-          crewMember={selectedCrewMember}
-          onClose={handleCloseForm}
-        />
-      )}
-    </div>
+          </CardContent>
+        </Card>
+        {/* Appraisal Form Modal */}
+        {showAppraisalForm && selectedCrewMember && (
+          <AppraisalForm
+            crewMember={selectedCrewMember}
+            onClose={handleCloseForm}
+          />
+        )}
+      </MainLayout>
+    </>
   );
 };
