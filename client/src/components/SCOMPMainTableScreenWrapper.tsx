@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { SCOMPMainTableScreen } from 'scomp-ui';
 import 'scomp-ui/dist/index.css';
 import { ColDef } from 'ag-grid-community';
@@ -20,6 +20,43 @@ export function SCOMPMainTableScreenWrapper({
   onFilterChange,
   onPrimaryAction
 }: SCOMPMainTableScreenWrapperProps) {
+  
+  // Add state to ensure component stability
+  const [isVisible, setIsVisible] = useState(true);
+  
+  // Handle window focus/blur events to maintain component visibility
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Document is hidden, but keep component visible
+        console.log('Document hidden, but maintaining component state');
+      } else {
+        // Document is visible, ensure component is visible
+        setIsVisible(true);
+        console.log('Document visible, component restored');
+      }
+    };
+
+    const handleFocus = () => {
+      setIsVisible(true);
+      console.log('Window focused, ensuring component visibility');
+    };
+
+    const handleBlur = () => {
+      console.log('Window blurred, but maintaining component state');
+      // Don't hide the component on blur
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
   
   // Sample data if none provided
   const sampleData = data.length > 0 ? data : [
@@ -307,8 +344,18 @@ export function SCOMPMainTableScreenWrapper({
     }
   };
 
+  // Don't render if not visible (though this shouldn't happen now)
+  if (!isVisible) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg">Loading SCOMP Main Table Screen...</div>
+      </div>
+    );
+  }
+
   return (
-    <SCOMPMainTableScreen
+    <div className="scomp-wrapper" style={{ minHeight: '100vh', position: 'relative' }}>
+      <SCOMPMainTableScreen
       currentModule={currentModule}
       navigationItems={navigationItems}
       screenTitle={screenTitle}
@@ -321,23 +368,8 @@ export function SCOMPMainTableScreenWrapper({
         icon: '➕',
         onClick: handlePrimaryAction
       }}
-      // AG Grid configuration as per AG Grid Component Guide
-      gridOptions={{
-        enableSideBar: true,
-        enableStatusBar: true,
-        enableRowGrouping: true,
-        enableAdvancedFilter: true,
-        autoHeight: true,
-        maxHeight: '600px',
-        theme: 'alpine',
-        rowSelection: false, // No checkboxes by default as per guide
-        suppressCellFocus: true,
-        suppressRowClickSelection: true,
-        animateRows: true,
-        rowHeight: 40,
-        headerHeight: 45
-      }}
-    />
+      />
+    </div>
   );
 }
 
