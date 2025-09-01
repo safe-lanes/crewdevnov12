@@ -40,7 +40,7 @@ export default function HeaderComponent() {
     return (
         <>
             {/* Header */}
-            <header className="w-full h-[67px] bg-[#f1f1f1] border-b-2 border-[#5DADE2]">
+            <header className="w-full h-[67px] bg-[#f1f1f1] border-b-2 border-[#51baf4]">
                 <div className="flex items-center h-[67px] bg-[#f1f1f1]">
                     {/* Logo */}
                     <div className="flex items-center ml-4">
