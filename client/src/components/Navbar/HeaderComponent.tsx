@@ -10,7 +10,7 @@ const navItems = [
         icon: FileText,
         activeBg: "#5DADE2",
         activeText: "white",
-        inactiveBg: "#E8E8E8",
+        inactiveBg: "#f1f1f1",
         inactiveText: "#4f5863",
     },
     {
@@ -19,7 +19,7 @@ const navItems = [
         icon: Star,
         activeBg: "#5DADE2",
         activeText: "white",
-        inactiveBg: "#E8E8E8",
+        inactiveBg: "#f1f1f1",
         inactiveText: "#4f5863",
     },
 ];
@@ -40,7 +40,7 @@ export default function HeaderComponent() {
     return (
         <>
             {/* Header */}
-            <header className="w-full h-[67px] bg-[#E8E8E8] border-b-2 border-[#5DADE2]">
+            <header className="w-full h-[67px] bg-[#f1f1f1] border-b-2 border-[#5DADE2]">
                 <div className="flex items-center h-full bg-[#f1f1f1]">
                     {/* Logo */}
                     <div className="flex items-center ml-4">
@@ -56,7 +56,7 @@ export default function HeaderComponent() {
                     {/* Navigation Menu */}
                     <nav className="flex ml-8">
                         {/* Module Navigator */}
-                        <div className="flex flex-col items-center justify-center w-[100px] h-[67px] bg-[#E8E8E8] border-r border-gray-300">
+                        <div className="flex flex-col items-center justify-center w-[100px] h-[67px] bg-[#f1f1f1] border-r border-gray-300">
                             <ModuleNavigator
                                 currentModule="crewing"
                                 onModuleChange={handleModuleChange}
