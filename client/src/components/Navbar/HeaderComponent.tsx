@@ -75,7 +75,7 @@ export default function HeaderComponent() {
                                         >
                                             <Icon size={24} color={isActive ? activeText : "#6B7280"} className="mb-1" />
                                             <div
-                                                className="text-[10px] font-normal font-['Roboto',Helvetica] bg-[#f1f1f1]"
+                                                className="text-[10px] font-normal font-['Roboto',Helvetica]"
                                                 style={{ color: isActive ? activeText : inactiveText }}
                                             >
                                                 {label}
