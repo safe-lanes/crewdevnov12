@@ -41,7 +41,7 @@ export default function HeaderComponent() {
         <>
             {/* Header */}
             <header className="w-full h-[67px] bg-[#f1f1f1] border-b-2 border-[#51baf4]">
-                <div className="flex items-center h-[67px] bg-[#f1f1f1]">
+                <div className="flex items-center h-[65px] bg-[#f1f1f1]">
                     {/* Logo */}
                     <div className="flex items-center ml-4">
                         <Link to='/'>
@@ -54,7 +54,7 @@ export default function HeaderComponent() {
                     </div>
 
                     {/* Navigation Menu */}
-                    <nav className="flex ml-8 h-[67px]">
+                    <nav className="flex ml-8 h-[65px]">
                         {/* Module Navigator */}
                         <div className="flex flex-col items-center justify-center w-[100px] h-full bg-[#f1f1f1] border-r border-gray-300">
                             <ModuleNavigator
