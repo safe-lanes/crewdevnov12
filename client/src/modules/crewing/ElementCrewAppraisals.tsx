@@ -247,7 +247,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Crew ID',
       field: 'id',
-      width: 100,
+      flex: 0.8,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agTextColumnFilter',
       sortable: true,
@@ -257,7 +257,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Name',
       field: 'fullName',
-      width: 220,
+      flex: 1.5,
       valueGetter: (params) => `${params.data.name.first} ${params.data.name.middle} ${params.data.name.last}`,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agTextColumnFilter',
@@ -268,7 +268,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Rank',
       field: 'rank',
-      width: 140,
+      flex: 1,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agSetColumnFilter',
       sortable: true,
@@ -278,7 +278,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Nationality',
       field: 'nationality',
-      width: 140,
+      flex: 1,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agSetColumnFilter',
       sortable: true,
@@ -288,7 +288,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Vessel',
       field: 'vessel',
-      width: 180,
+      flex: 1.3,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agSetColumnFilter',
       sortable: true,
@@ -298,7 +298,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Vessel Type',
       field: 'vesselType',
-      width: 140,
+      flex: 1,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agSetColumnFilter',
       sortable: true,
@@ -308,7 +308,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Sign-On',
       field: 'signOn',
-      width: 110,
+      flex: 0.9,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agDateColumnFilter',
       sortable: true,
@@ -317,7 +317,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Appraisal Type',
       field: 'appraisalType',
-      width: 150,
+      flex: 1.1,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agSetColumnFilter',
       sortable: true,
@@ -327,7 +327,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Appraisal Date',
       field: 'appraisalDate',
-      width: 140,
+      flex: 1,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agDateColumnFilter',
       sortable: true,
@@ -336,7 +336,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Competence Rating',
       field: 'competenceRating.value',
-      width: 140,
+      flex: 1.1,
       cellRenderer: RatingCellRenderer,
       cellClass: 'flex items-center justify-center',
       filter: 'agNumberColumnFilter',
@@ -348,7 +348,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Behavioral Rating',
       field: 'behavioralRating.value',
-      width: 140,
+      flex: 1.1,
       cellRenderer: RatingCellRenderer,
       cellClass: 'flex items-center justify-center',
       filter: 'agNumberColumnFilter',
@@ -360,7 +360,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Overall Rating',
       field: 'overallRating.value',
-      width: 130,
+      flex: 1,
       cellRenderer: RatingCellRenderer,
       cellClass: 'flex items-center justify-center',
       filter: 'agNumberColumnFilter',
@@ -372,7 +372,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Actions',
       field: 'actions',
-      width: 100,
+      flex: 0.8,
       cellRenderer: ActionsCellRenderer,
       sortable: false,
       filter: false,
@@ -386,6 +386,20 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     setGridApi(params.api);
     // Auto-size columns to fit the available space
     params.api.sizeColumnsToFit();
+    
+    // Add window resize listener for responsive behavior
+    const handleResize = () => {
+      setTimeout(() => {
+        params.api.sizeColumnsToFit();
+      }, 100);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    // Cleanup function
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   // Early return after all hooks
