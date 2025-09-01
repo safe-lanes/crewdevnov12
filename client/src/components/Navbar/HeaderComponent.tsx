@@ -1,7 +1,8 @@
 import React, { useCallback } from 'react'
 import { Link, useLocation } from 'wouter'
 import { ModuleNavigator } from '../ModuleNavigator'
-import { FileText, Star } from "lucide-react"; // Import icons
+import { FileText, Star, Filter } from "lucide-react"; // Import icons
+import { Button } from '@/components/ui/button'
 
 const navItems = [
     {
@@ -23,7 +24,12 @@ const navItems = [
         inactiveText: "#4f5863",
     },
 ];
-export default function HeaderComponent() {
+interface HeaderComponentProps {
+    showFilters?: boolean;
+    onToggleFilters?: () => void;
+}
+
+export default function HeaderComponent({ showFilters = true, onToggleFilters }: HeaderComponentProps = {}) {
     const [location, navigate] = useLocation();
     const handleModuleChange = useCallback((moduleId: string) => {
         switch (moduleId) {
@@ -86,6 +92,21 @@ export default function HeaderComponent() {
                             })}
                         </div>
                     </nav>
+                    
+                    {/* Toggle Filters Button */}
+                    {onToggleFilters && (
+                        <div className="ml-auto mr-4">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={onToggleFilters}
+                                className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs h-8"
+                            >
+                                <Filter className="h-3 w-3 mr-1" />
+                                Toggle Filters
+                            </Button>
+                        </div>
+                    )}
                 </div>
             </header>
         </>

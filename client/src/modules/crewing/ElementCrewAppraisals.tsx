@@ -25,6 +25,8 @@ import { CrewMember, AppraisalResult } from "@shared/schema";
 import SectionTitleComponents from "@/components/Section/SectionTitleComponents";
 import SideBarComponent from "@/components/Navbar/SideBarComponent";
 import MainLayout from "@/components/main/MainLayout";
+import HeaderComponent from "@/components/Navbar/HeaderComponent";
+import ScompFiltersRow from "@/components/filters/ScompFiltersRow";
 
 // Interface for combined crew member and appraisal data
 interface CrewAppraisalData {
@@ -386,6 +388,23 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     setGridApi(params.api);
   }, []);
 
+  const handleApplyFilters = useCallback(() => {
+    // Apply filters - filters are already applied in the useMemo
+    console.log('Filters applied:', filters);
+  }, [filters]);
+
+  const handleClearFilters = useCallback(() => {
+    setFilters({
+      searchName: "",
+      rank: "",
+      vessel: "",
+      vesselType: "",
+      nationality: "",
+      appraisalType: "",
+      rating: ""
+    });
+  }, []);
+
   // Early return after all hooks
   if (isLoadingCrew || isLoadingAppraisals) {
     return (
@@ -397,136 +416,39 @@ export const ElementCrewAppraisals = (): JSX.Element => {
 
   return (
     <>
-      <SideBarComponent selectedAdminPage={selectedAdminPage} setSelectedAdminPage={setSelectedAdminPage} allowedPages={["all"]} />
+      {/* SCOMP Header with Toggle Filters Button */}
+      <HeaderComponent 
+        showFilters={showFilters}
+        onToggleFilters={() => setShowFilters(!showFilters)}
+      />
+      
+      {/* SCOMP Sidebar */}
+      <SideBarComponent 
+        selectedAdminPage={selectedAdminPage} 
+        setSelectedAdminPage={setSelectedAdminPage} 
+        allowedPages={["all"]} 
+      />
+      
+      {/* SCOMP Filters Row */}
+      <ScompFiltersRow
+        filters={filters}
+        onFiltersChange={setFilters}
+        onClearFilters={handleClearFilters}
+        onApplyFilters={handleApplyFilters}
+        showFilters={showFilters}
+      />
+      
       <MainLayout>
-        <SectionTitleComponents title="Crew Appraisals">
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              className="h-8 w-32 text-[#8798ad] text-xs border-[#e1e8ed]"
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              <FilterIcon className="h-3 w-3 mr-1" />
-              Toggle Filters
-            </Button>
-          </div>
-        </SectionTitleComponents>
-        {/* Filters Section */}
-        {showFilters && (
-          <div className="flex flex-wrap gap-4 mb-4 p-4 bg-[#f7fafc] rounded-lg">
-            <div className="flex gap-4 flex-wrap">
-              <Input
-                placeholder="Search by name..."
-                className="h-8 w-48 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
-                value={filters.searchName}
-                onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
-              />
+        {/* SCOMP Screen Title */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold text-[#1a202c] font-['Roboto',Helvetica]">
+            Crew Appraisals
+          </h1>
+        </div>
 
-              <Select value={filters.rank} onValueChange={(value) => setFilters(prev => ({ ...prev, rank: value }))}>
-                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                  <SelectValue placeholder="Rank" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Captain">Captain</SelectItem>
-                  <SelectItem value="Chief Officer">Chief Officer</SelectItem>
-                  <SelectItem value="Second Officer">Second Officer</SelectItem>
-                  <SelectItem value="Chief Engineer">Chief Engineer</SelectItem>
-                  <SelectItem value="Second Engineer">Second Engineer</SelectItem>
-                  <SelectItem value="Third Engineer">Third Engineer</SelectItem>
-                  <SelectItem value="Bosun">Bosun</SelectItem>
-                  <SelectItem value="AB">AB</SelectItem>
-                  <SelectItem value="OS">OS</SelectItem>
-                  <SelectItem value="Cook">Cook</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={filters.vessel} onValueChange={(value) => setFilters(prev => ({ ...prev, vessel: value }))}>
-                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                  <SelectValue placeholder="Vessel" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="MV Ocean Star">MV Ocean Star</SelectItem>
-                  <SelectItem value="MV Sea Explorer">MV Sea Explorer</SelectItem>
-                  <SelectItem value="MV Atlantic Queen">MV Atlantic Queen</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={filters.vesselType} onValueChange={(value) => setFilters(prev => ({ ...prev, vesselType: value }))}>
-                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                  <SelectValue placeholder="Vessel Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Container">Container</SelectItem>
-                  <SelectItem value="Bulk Carrier">Bulk Carrier</SelectItem>
-                  <SelectItem value="Tanker">Tanker</SelectItem>
-                  <SelectItem value="General Cargo">General Cargo</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={filters.nationality} onValueChange={(value) => setFilters(prev => ({ ...prev, nationality: value }))}>
-                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                  <SelectValue placeholder="Nationality" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Philippines">Philippines</SelectItem>
-                  <SelectItem value="India">India</SelectItem>
-                  <SelectItem value="Ukraine">Ukraine</SelectItem>
-                  <SelectItem value="Romania">Romania</SelectItem>
-                  <SelectItem value="Poland">Poland</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={filters.appraisalType} onValueChange={(value) => setFilters(prev => ({ ...prev, appraisalType: value }))}>
-                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                  <SelectValue placeholder="Appraisal Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Mid-Contract">Mid-Contract</SelectItem>
-                  <SelectItem value="End-Contract">End-Contract</SelectItem>
-                  <SelectItem value="Annual">Annual</SelectItem>
-                  <SelectItem value="Promotion">Promotion</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={filters.rating} onValueChange={(value) => setFilters(prev => ({ ...prev, rating: value }))}>
-                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                  <SelectValue placeholder="Rating" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="high">High (4-5)</SelectItem>
-                  <SelectItem value="medium">Medium (3-4)</SelectItem>
-                  <SelectItem value="low">Low (1-3)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex gap-2">
-              <Button className="h-8 w-20 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px]">
-                Apply
-              </Button>
-
-              <Button
-                variant="outline"
-                className="h-8 w-20 text-[#8798ad] text-xs border-[#e1e8ed]"
-                onClick={() => setFilters({
-                  searchName: "",
-                  rank: "",
-                  vessel: "",
-                  vesselType: "",
-                  nationality: "",
-                  appraisalType: "",
-                  rating: ""
-                })}
-              >
-                Clear
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* AG Grid Enterprise Table with Actions */}
-        <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
-          <CardContent className="p-4 bg-[#f7fafc]">
+        {/* SCOMP AG Grid Table */}
+        <Card className="border-0 shadow-sm bg-white rounded-lg">
+          <CardContent className="p-0 bg-white">
             <AgGridTable
               rowData={crewData}
               columnDefs={columnDefs}
