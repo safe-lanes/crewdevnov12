@@ -6,6 +6,7 @@ import NotFound from "./modules/not-found";
 import { AdminModule } from "./modules/admin/AdminModule";
 import { ElementCrewAppraisals } from "./modules/crewing/ElementCrewAppraisals";
 import HeaderComponent from "./components/Navbar/HeaderComponent";
+import { SCOMPMainTableScreenWrapper } from "./components/SCOMPMainTableScreenWrapper";
 
 const queryClient = new QueryClient();
 
@@ -18,6 +19,9 @@ function App() {
             <HeaderComponent />
             <Switch>
               <Route path="/" component={ElementCrewAppraisals} />
+              <Route path="/scomp-table">
+                <SCOMPMainTableScreenWrapper />
+              </Route>
               <Route path="/admin" component={AdminModule} />
               <Route component={NotFound} />
             </Switch>
