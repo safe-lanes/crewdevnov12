@@ -1,4 +1,4 @@
-import { File, UserPlus, Users, FileText } from 'lucide-react';
+import { File, UserPlus } from 'lucide-react';
 import React from 'react'
 
 type SideBarComponentProps = {
@@ -10,12 +10,12 @@ type SideBarComponentProps = {
 const sideBarList: { name: string; icon: React.ReactNode; page: string }[] = [
     {
         name: "All",
-        icon: <Users size={18} className='mb-1' />,
+        icon: <UserPlus size={20} className='mb-2' />,
         page: "all"
     },
     {
         name: "Forms",
-        icon: <FileText size={18} className='mb-1' />,
+        icon: <File size={20} className='text-white' />,
         page: "forms"
     }
 ]
@@ -25,18 +25,18 @@ export default function SideBarComponent({ selectedAdminPage, setSelectedAdminPa
         <>
             <aside className="w-[67px] absolute left-0 top-[67px] h-[calc(100vh-67px)]">
                 {
-                    sideBarList.filter(item => allowedPages.includes(item.page)).map((item, index) => (
+                    sideBarList.filter(item => allowedPages.includes(item.page)).map(item => (
                         <div
-                            key={item.page}
-                            className={`w-full h-[79px] flex flex-col items-center justify-center cursor-pointer transition-colors ${selectedAdminPage === item.page ? "bg-[#52baf3]" : "bg-[#16569e] hover:bg-[#1e5fa8]"
-                            }`}
+                            className={`w-full h-[79px] flex flex-col items-center justify-center cursor-pointer ${selectedAdminPage === item.page ? "bg-[#52baf3]" : "bg-[#16569e] hover:bg-[#1e5fa8]"
+                                }`}
                             onClick={() => setSelectedAdminPage(item.page)}
                         >
-                            <div className="text-white text-[10px] font-normal font-['Roboto',Helvetica] flex flex-col items-center">
+                            <div className="text-white text-[10px] font-normal font-['Roboto',Helvetica]">
                                 {item.icon}
-                                <span className="mt-1">{item.name}</span>
+                                {item.name}
                             </div>
                         </div>
+
                     ))
                 }
 
