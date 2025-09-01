@@ -384,6 +384,8 @@ export const ElementCrewAppraisals = (): JSX.Element => {
 
   const onGridReady = useCallback((params: GridReadyEvent) => {
     setGridApi(params.api);
+    // Auto-size columns to fit the available space
+    params.api.sizeColumnsToFit();
   }, []);
 
   // Early return after all hooks
