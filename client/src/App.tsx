@@ -6,7 +6,6 @@ import NotFound from "./modules/not-found";
 import { AdminModule } from "./modules/admin/AdminModule";
 import { ElementCrewAppraisals } from "./modules/crewing/ElementCrewAppraisals";
 import HeaderComponent from "./components/Navbar/HeaderComponent";
-import { Header } from "./components/layout/Header";
 
 const queryClient = new QueryClient();
 
