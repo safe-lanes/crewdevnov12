@@ -257,7 +257,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Name',
       field: 'fullName',
-      width: 180,
+      width: 220,
       valueGetter: (params) => `${params.data.name.first} ${params.data.name.middle} ${params.data.name.last}`,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agTextColumnFilter',
@@ -268,7 +268,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Rank',
       field: 'rank',
-      width: 120,
+      width: 140,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agSetColumnFilter',
       sortable: true,
@@ -278,7 +278,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Nationality',
       field: 'nationality',
-      width: 120,
+      width: 140,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agSetColumnFilter',
       sortable: true,
@@ -288,7 +288,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Vessel',
       field: 'vessel',
-      width: 140,
+      width: 180,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agSetColumnFilter',
       sortable: true,
@@ -298,7 +298,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Vessel Type',
       field: 'vesselType',
-      width: 120,
+      width: 140,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agSetColumnFilter',
       sortable: true,
@@ -317,7 +317,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Appraisal Type',
       field: 'appraisalType',
-      width: 130,
+      width: 150,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agSetColumnFilter',
       sortable: true,
@@ -327,7 +327,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Appraisal Date',
       field: 'appraisalDate',
-      width: 120,
+      width: 140,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agDateColumnFilter',
       sortable: true,
