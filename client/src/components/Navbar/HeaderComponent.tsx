@@ -3,6 +3,7 @@ import { Link, useLocation } from 'wouter'
 import { ModuleNavigator } from '../ModuleNavigator'
 import { 
     LayoutGrid, 
+    UserPlus,
     Users, 
     Ship, 
     Calendar, 
@@ -20,6 +21,15 @@ const navItems = [
         label: "Dashboard",
         href: "/dashboard",
         icon: LayoutGrid,
+        activeBg: "#5DADE2",
+        activeText: "white",
+        inactiveBg: "#f1f1f1",
+        inactiveText: "#4f5863",
+    },
+    {
+        label: "Recruitment",
+        href: "/recruitment",
+        icon: UserPlus,
         activeBg: "#5DADE2",
         activeText: "white",
         inactiveBg: "#f1f1f1",
