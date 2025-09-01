@@ -41,7 +41,7 @@ export default function HeaderComponent() {
         <>
             {/* Header */}
             <header className="w-full h-[67px] bg-[#E8E8E8] border-b-2 border-[#5DADE2]">
-                <div className="flex items-center h-full">
+                <div className="flex items-center h-full bg-[#f1f1f1]">
                     {/* Logo */}
                     <div className="flex items-center ml-4">
                         <Link to='/'>
