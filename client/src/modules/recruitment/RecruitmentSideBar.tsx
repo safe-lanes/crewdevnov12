@@ -42,9 +42,13 @@ export default function RecruitmentSideBar({ selectedRecruitmentPage, setSelecte
                                 }`}
                             onClick={() => setSelectedRecruitmentPage(item.page)}
                         >
-                            <div className="text-white text-[10px] font-normal font-['Roboto',Helvetica]">
-                                {item.icon}
-                                {item.name}
+                            <div className="flex flex-col items-center justify-center text-white text-[10px] font-normal font-['Roboto',Helvetica]">
+                                <div className="mb-1">
+                                    {item.icon}
+                                </div>
+                                <div className="text-center">
+                                    {item.name}
+                                </div>
                             </div>
                         </div>
                     ))
