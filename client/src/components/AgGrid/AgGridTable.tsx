@@ -162,8 +162,7 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
           iconKey: 'filter',
           toolPanel: 'agFiltersToolPanel'
         }
-      ],
-      defaultToolPanel: 'columns'
+      ]
     };
   }, [enableSideBar, enableRowGrouping, enablePivoting]);
 
