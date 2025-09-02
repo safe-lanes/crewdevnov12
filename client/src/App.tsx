@@ -5,6 +5,7 @@ import { Switch, Route } from "wouter";
 import NotFound from "./modules/not-found";
 import { AdminModule } from "./modules/admin/AdminModule";
 import { ElementCrewAppraisals } from "./modules/crewing/ElementCrewAppraisals";
+import { RecruitmentModule } from "./modules/recruitment/RecruitmentModule";
 import HeaderComponent from "./components/Navbar/HeaderComponent";
 
 const queryClient = new QueryClient();
@@ -18,6 +19,7 @@ function App() {
             <HeaderComponent />
             <Switch>
               <Route path="/" component={ElementCrewAppraisals} />
+              <Route path="/recruitment" component={RecruitmentModule} />
               <Route path="/admin" component={AdminModule} />
               <Route component={NotFound} />
             </Switch>
