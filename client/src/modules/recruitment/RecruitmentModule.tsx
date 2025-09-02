@@ -31,8 +31,9 @@ interface RecruitmentCandidate {
   status: string;
 }
 
-// Sample recruitment candidate data
+// Sample recruitment candidate data with all statuses
 const sampleRecruitmentData: RecruitmentCandidate[] = [
+  // In Progress entries
   {
     id: "2025-03-14",
     fileNo: "2025-05-14",
@@ -72,31 +73,99 @@ const sampleRecruitmentData: RecruitmentCandidate[] = [
     vesselType: "Container",
     status: "For Approval"
   },
+  // Recruited entries
   {
-    id: "2025-05-14-2",
-    fileNo: "2025-05-14",
-    firstName: "Emily",
-    middleName: "Grace",
-    familyName: "Davis",
-    dob: "1992-07-08",
-    nationality: "Indian",
-    rankAppliedFor: "Chief Mate",
-    presentRank: "Third Mate",
-    vesselType: "Bulk",
-    status: "Approved"
+    id: "2024-12-15",
+    fileNo: "2024-12-15",
+    firstName: "Michael",
+    middleName: "Robert",
+    familyName: "Thompson",
+    dob: "1988-03-20",
+    nationality: "British",
+    rankAppliedFor: "Second Officer",
+    presentRank: "Third Officer",
+    vesselType: "Container",
+    status: "Recruited"
   },
   {
-    id: "2025-03-12-2",
-    fileNo: "2025-03-12",
-    firstName: "John",
-    middleName: "Paul",
-    familyName: "Williams",
-    dob: "1985-10-01",
+    id: "2024-11-08",
+    fileNo: "2024-11-08",
+    firstName: "Sarah",
+    middleName: "Elizabeth",
+    familyName: "Wilson",
+    dob: "1987-09-12",
     nationality: "Indian",
-    rankAppliedFor: "Electrician",
-    presentRank: "Assistant Electrician",
+    rankAppliedFor: "Third Engineer",
+    presentRank: "Fourth Engineer",
     vesselType: "Bulk",
-    status: "Applied"
+    status: "Recruited"
+  },
+  {
+    id: "2024-10-22",
+    fileNo: "2024-10-22",
+    firstName: "Carlos",
+    middleName: "Antonio",
+    familyName: "Rodriguez",
+    dob: "1991-01-30",
+    nationality: "Philippines",
+    rankAppliedFor: "Bosun",
+    presentRank: "AB",
+    vesselType: "Oil Tanker",
+    status: "Recruited"
+  },
+  // Waitlisted entries
+  {
+    id: "2025-01-18",
+    fileNo: "2025-01-18",
+    firstName: "Lisa",
+    middleName: "Anne",
+    familyName: "Anderson",
+    dob: "1989-07-25",
+    nationality: "Romanian",
+    rankAppliedFor: "Cook",
+    presentRank: "Assistant Cook",
+    vesselType: "General Cargo",
+    status: "Waitlisted"
+  },
+  {
+    id: "2025-01-05",
+    fileNo: "2025-01-05",
+    firstName: "Ahmed",
+    middleName: "Hassan",
+    familyName: "Ali",
+    dob: "1986-11-14",
+    nationality: "Indian",
+    rankAppliedFor: "Chief Mate",
+    presentRank: "Second Mate",
+    vesselType: "Container",
+    status: "Waitlisted"
+  },
+  // Rejected entries
+  {
+    id: "2025-02-01",
+    fileNo: "2025-02-01",
+    firstName: "Peter",
+    middleName: "James",
+    familyName: "Clarke",
+    dob: "1983-05-17",
+    nationality: "British",
+    rankAppliedFor: "Captain",
+    presentRank: "Chief Officer",
+    vesselType: "LPG Tanker",
+    status: "Rejected"
+  },
+  {
+    id: "2025-01-20",
+    fileNo: "2025-01-20",
+    firstName: "Maria",
+    middleName: "Santos",
+    familyName: "Garcia",
+    dob: "1992-12-03",
+    nationality: "Philippines",
+    rankAppliedFor: "Second Engineer",
+    presentRank: "Third Engineer",
+    vesselType: "Bulk",
+    status: "Rejected"
   }
 ];
 
@@ -289,9 +358,36 @@ export const RecruitmentModule = (): JSX.Element => {
     };
   }, []);
 
-  // Filter the recruitment data based on filters
+  // Filter the recruitment data based on selected page and filters
   const filteredData = useMemo(() => {
-    return sampleRecruitmentData.filter(candidate => {
+    // First filter by page status
+    let pageFilteredData = sampleRecruitmentData;
+    
+    switch (selectedRecruitmentPage) {
+      case "in-progress":
+        pageFilteredData = sampleRecruitmentData.filter(candidate => 
+          ["Applied", "Screening", "For Approval"].includes(candidate.status)
+        );
+        break;
+      case "recruited":
+        pageFilteredData = sampleRecruitmentData.filter(candidate => 
+          candidate.status === "Recruited"
+        );
+        break;
+      case "waitlist":
+        pageFilteredData = sampleRecruitmentData.filter(candidate => 
+          candidate.status === "Waitlisted"
+        );
+        break;
+      case "rejected":
+        pageFilteredData = sampleRecruitmentData.filter(candidate => 
+          candidate.status === "Rejected"
+        );
+        break;
+    }
+    
+    // Then apply additional filters
+    return pageFilteredData.filter(candidate => {
       const matchesName = filters.searchName === "" || 
         `${candidate.firstName} ${candidate.middleName} ${candidate.familyName}`
           .toLowerCase().includes(filters.searchName.toLowerCase());
@@ -302,7 +398,7 @@ export const RecruitmentModule = (): JSX.Element => {
       
       return matchesName && matchesRank && matchesVesselType && matchesNationality && matchesStatus;
     });
-  }, [filters]);
+  }, [selectedRecruitmentPage, filters]);
 
   const getTitle = () => {
     switch (selectedRecruitmentPage) {
@@ -319,118 +415,139 @@ export const RecruitmentModule = (): JSX.Element => {
     }
   };
 
-  const renderContent = () => {
-    if (selectedRecruitmentPage === "in-progress") {
-      return (
-        <>
-          {/* Filters Section */}
-          {showFilters && (
-            <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-[#f7fafc] rounded-lg">
-              <div className="flex gap-4 flex-wrap">
-                <Input
-                  placeholder="Search Name..."
-                  className="h-8 w-48 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
-                  value={filters.searchName}
-                  onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
-                />
+  const renderFiltersAndTable = () => {
+    const getStatusOptions = () => {
+      switch (selectedRecruitmentPage) {
+        case "in-progress":
+          return [
+            <SelectItem key="applied" value="Applied">Applied</SelectItem>,
+            <SelectItem key="screening" value="Screening">Screening</SelectItem>,
+            <SelectItem key="for-approval" value="For Approval">For Approval</SelectItem>
+          ];
+        case "recruited":
+          return [<SelectItem key="recruited" value="Recruited">Recruited</SelectItem>];
+        case "waitlist":
+          return [<SelectItem key="waitlisted" value="Waitlisted">Waitlisted</SelectItem>];
+        case "rejected":
+          return [<SelectItem key="rejected" value="Rejected">Rejected</SelectItem>];
+        default:
+          return [];
+      }
+    };
 
-                <Select value={filters.rankAppliedFor} onValueChange={(value) => setFilters(prev => ({ ...prev, rankAppliedFor: value }))}>
-                  <SelectTrigger className="h-8 w-40 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                    <SelectValue placeholder="Rank Applied for" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Captain">Captain</SelectItem>
-                    <SelectItem value="Chief Engineer">Chief Engineer</SelectItem>
-                    <SelectItem value="Chief Mate">Chief Mate</SelectItem>
-                    <SelectItem value="First Officer">First Officer</SelectItem>
-                    <SelectItem value="Second Engineer">Second Engineer</SelectItem>
-                    <SelectItem value="Third Engineer">Third Engineer</SelectItem>
-                    <SelectItem value="Able Seaman">Able Seaman</SelectItem>
-                    <SelectItem value="Electrician">Electrician</SelectItem>
-                    <SelectItem value="Bosun">Bosun</SelectItem>
-                    <SelectItem value="Cook">Cook</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select value={filters.vesselType} onValueChange={(value) => setFilters(prev => ({ ...prev, vesselType: value }))}>
-                  <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                    <SelectValue placeholder="Vessel Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Container">Container</SelectItem>
-                    <SelectItem value="Bulk">Bulk</SelectItem>
-                    <SelectItem value="Oil Tanker">Oil Tanker</SelectItem>
-                    <SelectItem value="LPG Tanker">LPG Tanker</SelectItem>
-                    <SelectItem value="General Cargo">General Cargo</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select value={filters.nationality} onValueChange={(value) => setFilters(prev => ({ ...prev, nationality: value }))}>
-                  <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                    <SelectValue placeholder="Nationality" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="British">British</SelectItem>
-                    <SelectItem value="Indian">Indian</SelectItem>
-                    <SelectItem value="Philippines">Philippines</SelectItem>
-                    <SelectItem value="Ukrainian">Ukrainian</SelectItem>
-                    <SelectItem value="Romanian">Romanian</SelectItem>
-                    <SelectItem value="Polish">Polish</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
-                  <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Applied">Applied</SelectItem>
-                    <SelectItem value="Screening">Screening</SelectItem>
-                    <SelectItem value="For Approval">For Approval</SelectItem>
-                    <SelectItem value="Approved">Approved</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex gap-2">
-                <Button className="h-8 w-20 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px]">
-                  Apply
-                </Button>
-
-                <Button 
-                  variant="outline" 
-                  className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
-                  onClick={() => setFilters({ searchName: "", rankAppliedFor: "", vesselType: "", nationality: "", status: "" })}
-                >
-                  Clear
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* AG Grid Table */}
-          <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
-            <CardContent className="p-4 pl-0 bg-[#f7fafc]">
-              <AgGridTable
-                rowData={filteredData}
-                columnDefs={columnDefs}
-                onGridReady={onGridReady}
-                autoHeight={true}
-                maxHeight="500px"
-                minHeight="200px"
-                width="100%"
-                enableExport={true}
-                enableSideBar={true}
-                enableStatusBar={false}
-                enableRowGrouping={true}
-                enablePivoting={true}
-                enableAdvancedFilter={false}
-                rowSelection={false}
+    return (
+      <>
+        {/* Filters Section */}
+        {showFilters && (
+          <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-[#f7fafc] rounded-lg">
+            <div className="flex gap-4 flex-wrap">
+              <Input
+                placeholder="Search Name..."
+                className="h-8 w-48 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
+                value={filters.searchName}
+                onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
               />
-            </CardContent>
-          </Card>
-        </>
-      );
+
+              <Select value={filters.rankAppliedFor} onValueChange={(value) => setFilters(prev => ({ ...prev, rankAppliedFor: value }))}>
+                <SelectTrigger className="h-8 w-40 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
+                  <SelectValue placeholder="Rank Applied for" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Captain">Captain</SelectItem>
+                  <SelectItem value="Chief Engineer">Chief Engineer</SelectItem>
+                  <SelectItem value="Chief Mate">Chief Mate</SelectItem>
+                  <SelectItem value="First Officer">First Officer</SelectItem>
+                  <SelectItem value="Second Officer">Second Officer</SelectItem>
+                  <SelectItem value="Second Engineer">Second Engineer</SelectItem>
+                  <SelectItem value="Third Engineer">Third Engineer</SelectItem>
+                  <SelectItem value="Able Seaman">Able Seaman</SelectItem>
+                  <SelectItem value="Electrician">Electrician</SelectItem>
+                  <SelectItem value="Bosun">Bosun</SelectItem>
+                  <SelectItem value="Cook">Cook</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={filters.vesselType} onValueChange={(value) => setFilters(prev => ({ ...prev, vesselType: value }))}>
+                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
+                  <SelectValue placeholder="Vessel Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Container">Container</SelectItem>
+                  <SelectItem value="Bulk">Bulk</SelectItem>
+                  <SelectItem value="Oil Tanker">Oil Tanker</SelectItem>
+                  <SelectItem value="LPG Tanker">LPG Tanker</SelectItem>
+                  <SelectItem value="General Cargo">General Cargo</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={filters.nationality} onValueChange={(value) => setFilters(prev => ({ ...prev, nationality: value }))}>
+                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
+                  <SelectValue placeholder="Nationality" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="British">British</SelectItem>
+                  <SelectItem value="Indian">Indian</SelectItem>
+                  <SelectItem value="Philippines">Philippines</SelectItem>
+                  <SelectItem value="Ukrainian">Ukrainian</SelectItem>
+                  <SelectItem value="Romanian">Romanian</SelectItem>
+                  <SelectItem value="Polish">Polish</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
+                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {getStatusOptions()}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex gap-2">
+              <Button className="h-8 w-20 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px]">
+                Apply
+              </Button>
+
+              <Button 
+                variant="outline" 
+                className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
+                onClick={() => setFilters({ searchName: "", rankAppliedFor: "", vesselType: "", nationality: "", status: "" })}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* AG Grid Table */}
+        <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
+          <CardContent className="p-4 pl-0 bg-[#f7fafc]">
+            <AgGridTable
+              rowData={filteredData}
+              columnDefs={columnDefs}
+              onGridReady={onGridReady}
+              autoHeight={true}
+              maxHeight="500px"
+              minHeight="200px"
+              width="100%"
+              enableExport={true}
+              enableSideBar={true}
+              enableStatusBar={false}
+              enableRowGrouping={true}
+              enablePivoting={true}
+              enableAdvancedFilter={false}
+              rowSelection={false}
+            />
+          </CardContent>
+        </Card>
+      </>
+    );
+  };
+
+  const renderContent = () => {
+    if (["in-progress", "recruited", "waitlist", "rejected"].includes(selectedRecruitmentPage)) {
+      return renderFiltersAndTable();
     }
     
     return (
