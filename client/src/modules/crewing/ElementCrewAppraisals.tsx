@@ -429,7 +429,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
         </SectionTitleComponents>
         {/* Filters Section */}
         {showFilters && (
-          <div className="flex flex-wrap gap-4 mb-4 p-4 bg-[#f7fafc] rounded-lg">
+          <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-[#f7fafc] rounded-lg">
             <div className="flex gap-4 flex-wrap">
               <Input
                 placeholder="Search by name..."
@@ -542,7 +542,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
 
         {/* AG Grid Enterprise Table with Actions */}
         <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
-          <CardContent className="p-4 bg-[#f7fafc]">
+          <CardContent className="p-4 pl-0 bg-[#f7fafc]">
             <AgGridTable
               rowData={crewData}
               columnDefs={columnDefs}
