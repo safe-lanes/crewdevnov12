@@ -264,9 +264,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           </Button>
         </div>
           
-        <div className="grid grid-cols-12 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* Photo Upload Area */}
-          <div className="col-span-3 space-y-4">
+          <div className="lg:col-span-3 space-y-4">
             <div className="w-32 h-40 bg-gray-200 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
               <div className="text-center">
                 <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
@@ -318,7 +318,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           </div>
           
           {/* Form Fields */}
-          <div className="col-span-9 grid grid-cols-3 gap-4">
+          <div className="lg:col-span-9 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">First Name</Label>
               {isEditing ? (
@@ -575,7 +575,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           </Button>
         </div>
           
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <Label className="text-xs text-gray-500 tracking-wide">Country of Residence</Label>
             {isEditing ? (
@@ -691,7 +691,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           
         <div className="space-y-6">
           {/* Basic Family Info */}
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">Marital Status</Label>
               {isEditing ? (
@@ -752,7 +752,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           </div>
 
           {/* Spouse Information */}
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">Spouse First Name</Label>
               {isEditing ? (
@@ -825,105 +825,107 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div className="border rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
-                    <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">First Name</th>
-                    <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Middle Name</th>
-                    <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Family Name</th>
-                    <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Date of Birth</th>
-                    <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Gender</th>
-                    {isEditing && <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {formData.children.map((child, index) => (
-                    <tr key={index} className="border-t">
-                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
-                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                        {isEditing ? (
-                          <Input
-                            value={child.firstName}
-                            onChange={(e) => updateChild(index, 'firstName', e.target.value)}
-                            className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                          />
-                        ) : (
-                          child.firstName
-                        )}
-                      </td>
-                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                        {isEditing ? (
-                          <Input
-                            value={child.middleName}
-                            onChange={(e) => updateChild(index, 'middleName', e.target.value)}
-                            className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                          />
-                        ) : (
-                          child.middleName
-                        )}
-                      </td>
-                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                        {isEditing ? (
-                          <Input
-                            value={child.familyName}
-                            onChange={(e) => updateChild(index, 'familyName', e.target.value)}
-                            className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                          />
-                        ) : (
-                          child.familyName
-                        )}
-                      </td>
-                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                        {isEditing ? (
-                          <Input
-                            value={child.dateOfBirth}
-                            onChange={(e) => updateChild(index, 'dateOfBirth', e.target.value)}
-                            className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                          />
-                        ) : (
-                          child.dateOfBirth
-                        )}
-                      </td>
-                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                        {isEditing ? (
-                          <Select value={child.gender} onValueChange={(value) => updateChild(index, 'gender', value)}>
-                            <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
-                              <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Son">Son</SelectItem>
-                              <SelectItem value="Daughter">Daughter</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          child.gender
-                        )}
-                      </td>
-                      {isEditing && (
-                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                          <div className="flex gap-2 justify-center">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => removeChild(index)}
-                              className="h-6 w-6"
-                            >
-                              <Trash2 className="h-[18px] w-[18px] text-gray-500" />
-                            </Button>
-                          </div>
-                        </td>
-                      )}
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[600px]">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">S.No</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">First Name</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Middle Name</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Family Name</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Date of Birth</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Gender</th>
+                      {isEditing && <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Actions</th>}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {formData.children.map((child, index) => (
+                      <tr key={index} className="border-t">
+                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">{index + 1}.</td>
+                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                          {isEditing ? (
+                            <Input
+                              value={child.firstName}
+                              onChange={(e) => updateChild(index, 'firstName', e.target.value)}
+                              className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                            />
+                          ) : (
+                            child.firstName
+                          )}
+                        </td>
+                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                          {isEditing ? (
+                            <Input
+                              value={child.middleName}
+                              onChange={(e) => updateChild(index, 'middleName', e.target.value)}
+                              className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                            />
+                          ) : (
+                            child.middleName
+                          )}
+                        </td>
+                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                          {isEditing ? (
+                            <Input
+                              value={child.familyName}
+                              onChange={(e) => updateChild(index, 'familyName', e.target.value)}
+                              className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                            />
+                          ) : (
+                            child.familyName
+                          )}
+                        </td>
+                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                          {isEditing ? (
+                            <Input
+                              value={child.dateOfBirth}
+                              onChange={(e) => updateChild(index, 'dateOfBirth', e.target.value)}
+                              className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                            />
+                          ) : (
+                            child.dateOfBirth
+                          )}
+                        </td>
+                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                          {isEditing ? (
+                            <Select value={child.gender} onValueChange={(value) => updateChild(index, 'gender', value)}>
+                              <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                                <SelectValue placeholder="Select" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Son">Son</SelectItem>
+                                <SelectItem value="Daughter">Daughter</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            child.gender
+                          )}
+                        </td>
+                        {isEditing && (
+                          <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                            <div className="flex gap-2 justify-center">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeChild(index)}
+                                className="h-6 w-6"
+                              >
+                                <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                              </Button>
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
           {/* NOK Information */}
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">NOK: First Name</Label>
               {isEditing ? (
@@ -1026,15 +1028,29 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       case 'A1':
         return (
           <Card className="bg-white border border-gray-200 shadow-sm">
-            <CardContent className="p-6">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="pb-4 mb-6">
                 <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A1 Seafarers' Particulars</h2>
                 <div style={{ color: '#16569e' }} className="text-sm">Enter details as applicable</div>
                 <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
               </div>
-              {renderA11GeneralParticulars()}
-              {renderA12AddressContact()}
-              {renderA13FamilyNOK()}
+              {/* Responsive Layout for Sections */}
+              <div className="space-y-6">
+                {/* External Monitor: A1.1 & A1.2 side by side, Desktop/Tablet/Mobile: stacked */}
+                <div className="grid grid-cols-1 3xl:grid-cols-2 gap-6">
+                  <div className="3xl:col-span-1">
+                    {renderA11GeneralParticulars()}
+                  </div>
+                  <div className="3xl:col-span-1">
+                    {renderA12AddressContact()}
+                  </div>
+                </div>
+                
+                {/* A1.3 always full width below */}
+                <div>
+                  {renderA13FamilyNOK()}
+                </div>
+              </div>
               
               {/* Action Buttons */}
               <div className="flex justify-end gap-2 mt-6 pt-4">
@@ -1058,15 +1074,18 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-lg w-full max-w-none 3xl:max-w-[95vw] h-[calc(100vh-1rem)] sm:h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b p-3 sm:p-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 sm:gap-4">
+        <div className="sticky top-0 bg-white border-b p-2 sm:p-3 lg:p-4 flex items-center justify-between">
+          <div className="flex items-center gap-1 sm:gap-2 lg:gap-4">
             <Button variant="ghost" size="icon" onClick={onClose}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <h1 className="text-lg sm:text-xl font-bold">Recruitment Application - {candidate.firstName} {candidate.familyName}</h1>
+            <h1 className="text-sm sm:text-lg lg:text-xl font-bold truncate">
+              <span className="hidden sm:inline">Recruitment Application - </span>
+              {candidate.firstName} {candidate.familyName}
+            </h1>
           </div>
           <div className="flex gap-1 sm:gap-2">
             <Button 
@@ -1124,7 +1143,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           </div>
           
           {/* Main Content Area */}
-          <div className="flex-1 overflow-y-auto p-6 bg-[#f9fafb]">
+          <div className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 bg-[#f9fafb]">
             {renderContent()}
           </div>
         </div>
