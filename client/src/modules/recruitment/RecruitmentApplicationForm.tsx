@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Edit, Plus, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, Edit, Plus, Save, Trash2, Upload } from 'lucide-react';
 
 interface RecruitmentCandidate {
   id: string;
@@ -218,10 +218,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     const isEditing = editingSections['A1.1'];
     
     return (
-      <Card className="mb-6">
+      <Card className="mb-6 bg-white border border-gray-200 shadow-sm">
         <CardContent className="p-6">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium text-blue-700">A1.1 General Particulars</h3>
+            <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>A1.1 General Particulars</h3>
             <Button
               variant="ghost"
               size="sm"
@@ -231,6 +231,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <Edit className="h-4 w-4" />
             </Button>
           </div>
+          <div className="w-full h-0.5 mb-6" style={{ backgroundColor: '#16569e' }}></div>
           
           <div className="grid grid-cols-12 gap-4">
             {/* Photo Upload Area */}
@@ -489,10 +490,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     const isEditing = editingSections['A1.2'];
     
     return (
-      <Card className="mb-6">
+      <Card className="mb-6 bg-white border border-gray-200 shadow-sm">
         <CardContent className="p-6">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium text-blue-700">A1.2 Address& Contact Info</h3>
+            <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>A1.2 Address& Contact Info</h3>
             <Button
               variant="ghost"
               size="sm"
@@ -502,6 +503,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <Edit className="h-4 w-4" />
             </Button>
           </div>
+          <div className="w-full h-0.5 mb-6" style={{ backgroundColor: '#16569e' }}></div>
           
           <div className="grid grid-cols-4 gap-4">
             <div>
@@ -605,10 +607,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     const isEditing = editingSections['A1.3'];
     
     return (
-      <Card className="mb-6">
+      <Card className="mb-6 bg-white border border-gray-200 shadow-sm">
         <CardContent className="p-6">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium text-blue-700">A1.3 Family and NOK</h3>
+            <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>A1.3 Family and NOK</h3>
             <Button
               variant="ghost"
               size="sm"
@@ -618,6 +620,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <Edit className="h-4 w-4" />
             </Button>
           </div>
+          <div className="w-full h-0.5 mb-6" style={{ backgroundColor: '#16569e' }}></div>
           
           <div className="space-y-6">
             {/* Basic Family Info */}
@@ -919,13 +922,24 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       case 'A1':
         return (
           <div className="space-y-0">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-blue-700 mb-1">Part A1 Seafarers' Particulars</h2>
-              <p className="text-sm text-gray-600">Enter details as applicable</p>
+            <div className="pb-4 mb-6">
+              <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A1 Seafarers' Particulars</h2>
+              <div style={{ color: '#16569e' }} className="text-sm">Enter details as applicable</div>
+              <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
             </div>
             {renderA11GeneralParticulars()}
             {renderA12AddressContact()}
             {renderA13FamilyNOK()}
+            
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-2 mt-6 pt-4">
+              <Button 
+                className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8"
+                onClick={onClose}
+              >
+                Save & Continue
+              </Button>
+            </div>
           </div>
         );
       default:
@@ -938,58 +952,77 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   };
 
   return (
-    <StandardFormPopup onClose={onClose} title={`Recruitment Application - ${candidate.firstName} ${candidate.familyName}`}>
-      <div className="flex h-full overflow-hidden">
-        {/* Left Sidebar - Stepper */}
-        <div className="w-20 bg-gray-50 border-r overflow-y-auto">
-          <div className="p-4">
-            <nav className="space-y-2">
-              {sections.map((section, index) => {
-                const isActive = activeSection === section.id;
-                const isCompleted = false; // You can add completion logic here
-                
-                return (
-                  <div key={section.id} className="relative">
-                    <button
-                      onClick={() => setActiveSection(section.id)}
-                      className={`w-full flex flex-col items-center p-2 rounded-lg text-center transition-colors hover:bg-gray-100 ${
-                        isActive ? "bg-blue-50" : ""
-                      }`}
-                      title={section.title}
-                    >
-                      <div 
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm ${
-                          isActive ? "bg-blue-600" : isCompleted ? "bg-green-500" : "bg-gray-400"
-                        }`}
-                      >
-                        {section.number}
-                      </div>
-                    </button>
-                    {index < sections.length - 1 && (
-                      <div className="absolute left-[1.75rem] top-12 w-0.5 h-4 bg-gray-300"></div>
-                    )}
-                  </div>
-                );
-              })}
-            </nav>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg w-full h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b p-3 sm:p-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <h1 className="text-lg sm:text-xl font-bold">Recruitment Application - {candidate.firstName} {candidate.familyName}</h1>
+          </div>
+          <div className="flex gap-1 sm:gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Save Draft
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="sm:hidden"
+            >
+              <Save className="h-4 w-4" />
+            </Button>
           </div>
         </div>
-        
-        {/* Main Content Area */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {renderContent()}
+
+        <div className="flex h-full overflow-hidden">
+          {/* Left Sidebar - Stepper */}
+          <div className="w-20 bg-gray-50 border-r overflow-y-auto">
+            <div className="p-4">
+              <nav className="space-y-2">
+                {sections.map((section, index) => {
+                  const isActive = activeSection === section.id;
+                  const isCompleted = false; // You can add completion logic here
+                  
+                  return (
+                    <div key={section.id} className="relative">
+                      <button
+                        onClick={() => setActiveSection(section.id)}
+                        className={`w-full flex flex-col items-center p-2 rounded-lg text-center transition-colors hover:bg-gray-100 ${
+                          isActive ? "bg-blue-50" : ""
+                        }`}
+                        title={section.title}
+                      >
+                        <div 
+                          className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm ${
+                            isActive ? "bg-blue-600" : isCompleted ? "bg-green-500" : "bg-gray-400"
+                          }`}
+                        >
+                          {section.number}
+                        </div>
+                      </button>
+                      {index < sections.length - 1 && (
+                        <div className="absolute left-[1.75rem] top-12 w-0.5 h-4 bg-gray-300"></div>
+                      )}
+                    </div>
+                  );
+                })}
+              </nav>
+            </div>
+          </div>
           
-          {/* Action Buttons */}
-          <div className="sticky bottom-0 bg-white border-t pt-4 mt-6 flex justify-end gap-2">
-            <Button variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button className="bg-blue-600 hover:bg-blue-700">
-              Save & Continue
-            </Button>
+          {/* Main Content Area */}
+          <div className="flex-1 overflow-y-auto p-6">
+            {renderContent()}
           </div>
         </div>
       </div>
-    </StandardFormPopup>
+    </div>
   );
 };
