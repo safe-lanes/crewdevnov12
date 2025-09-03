@@ -1020,7 +1020,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           </div>
           
           {/* Main Content Area */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-6 bg-[#f9fafb]">
             {renderContent()}
           </div>
         </div>
