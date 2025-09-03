@@ -220,7 +220,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     return (
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>A1.1 General Particulars</h3>
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A1.1 General Particulars</h3>
           <Button
             variant="ghost"
             size="sm"
@@ -489,7 +489,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     return (
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>A1.2 Address& Contact Info</h3>
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A1.2 Address& Contact Info</h3>
           <Button
             variant="ghost"
             size="sm"
@@ -603,7 +603,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     return (
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>A1.3 Family and NOK</h3>
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A1.3 Family and NOK</h3>
           <Button
             variant="ghost"
             size="sm"
