@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { StandardFormPopup } from '@/components/ui/form-popup';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -99,6 +99,11 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     'A1.3': false,
   });
 
+  // Refs for click outside detection
+  const sectionA11Ref = useRef<HTMLDivElement>(null);
+  const sectionA12Ref = useRef<HTMLDivElement>(null);
+  const sectionA13Ref = useRef<HTMLDivElement>(null);
+
   const [formData, setFormData] = useState<FormData>({
     // Initialize with candidate data
     firstName: candidate.firstName || '',
@@ -162,6 +167,33 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     nokRelationship: 'Wife'
   });
 
+  // Handle click outside to auto-save sections
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      
+      // Check if click is outside section A1.1
+      if (editingSections['A1.1'] && sectionA11Ref.current && !sectionA11Ref.current.contains(target)) {
+        setEditingSections(prev => ({ ...prev, 'A1.1': false }));
+      }
+      
+      // Check if click is outside section A1.2
+      if (editingSections['A1.2'] && sectionA12Ref.current && !sectionA12Ref.current.contains(target)) {
+        setEditingSections(prev => ({ ...prev, 'A1.2': false }));
+      }
+      
+      // Check if click is outside section A1.3
+      if (editingSections['A1.3'] && sectionA13Ref.current && !sectionA13Ref.current.contains(target)) {
+        setEditingSections(prev => ({ ...prev, 'A1.3': false }));
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [editingSections]);
+
   const sections = [
     { id: 'A1', title: 'Seafarers\' Particulars', number: 'A1' },
     { id: 'A2', title: 'Experience', number: 'A2' },
@@ -219,7 +251,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     const isEditing = editingSections['A1.1'];
     
     return (
-      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+      <div ref={sectionA11Ref} className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A1.1 General Particulars</h3>
           <Button
@@ -530,7 +562,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     const isEditing = editingSections['A1.2'];
     
     return (
-      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+      <div ref={sectionA12Ref} className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A1.2 Address& Contact Info</h3>
           <Button
@@ -644,7 +676,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     const isEditing = editingSections['A1.3'];
     
     return (
-      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+      <div ref={sectionA13Ref} className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A1.3 Family and NOK</h3>
           <Button
