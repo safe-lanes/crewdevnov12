@@ -750,96 +750,102 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               )}
             </div>
             
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs text-gray-500 tracking-wide">First Name</TableHead>
-                  <TableHead className="text-xs text-gray-500 tracking-wide">Middle Name</TableHead>
-                  <TableHead className="text-xs text-gray-500 tracking-wide">Family Name</TableHead>
-                  <TableHead className="text-xs text-gray-500 tracking-wide">Date of Birth</TableHead>
-                  <TableHead className="text-xs text-gray-500 tracking-wide">Gender</TableHead>
-                  {isEditing && <TableHead className="text-xs text-gray-500 tracking-wide">Actions</TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {formData.children.map((child, index) => (
-                  <TableRow key={index}>
-                    <TableCell>
-                      {isEditing ? (
-                        <Input
-                          value={child.firstName}
-                          onChange={(e) => updateChild(index, 'firstName', e.target.value)}
-                          className="h-8"
-                        />
-                      ) : (
-                        <div className="text-sm text-gray-900">{child.firstName}</div>
+            <div className="border rounded-lg overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
+                    <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">First Name</th>
+                    <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Middle Name</th>
+                    <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Family Name</th>
+                    <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Date of Birth</th>
+                    <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Gender</th>
+                    {isEditing && <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {formData.children.map((child, index) => (
+                    <tr key={index} className="border-t">
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                        {isEditing ? (
+                          <Input
+                            value={child.firstName}
+                            onChange={(e) => updateChild(index, 'firstName', e.target.value)}
+                            className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          />
+                        ) : (
+                          child.firstName
+                        )}
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                        {isEditing ? (
+                          <Input
+                            value={child.middleName}
+                            onChange={(e) => updateChild(index, 'middleName', e.target.value)}
+                            className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          />
+                        ) : (
+                          child.middleName
+                        )}
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                        {isEditing ? (
+                          <Input
+                            value={child.familyName}
+                            onChange={(e) => updateChild(index, 'familyName', e.target.value)}
+                            className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          />
+                        ) : (
+                          child.familyName
+                        )}
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                        {isEditing ? (
+                          <Input
+                            value={child.dateOfBirth}
+                            onChange={(e) => updateChild(index, 'dateOfBirth', e.target.value)}
+                            className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          />
+                        ) : (
+                          child.dateOfBirth
+                        )}
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                        {isEditing ? (
+                          <Select value={child.gender} onValueChange={(value) => updateChild(index, 'gender', value)}>
+                            <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                              <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Son">Son</SelectItem>
+                              <SelectItem value="Daughter">Daughter</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          child.gender
+                        )}
+                      </td>
+                      {isEditing && (
+                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                          <div className="flex gap-2 justify-center">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeChild(index)}
+                              className="h-6 w-6"
+                            >
+                              <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                            </Button>
+                          </div>
+                        </td>
                       )}
-                    </TableCell>
-                    <TableCell>
-                      {isEditing ? (
-                        <Input
-                          value={child.middleName}
-                          onChange={(e) => updateChild(index, 'middleName', e.target.value)}
-                          className="h-8"
-                        />
-                      ) : (
-                        <div className="text-sm text-gray-900">{child.middleName}</div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {isEditing ? (
-                        <Input
-                          value={child.familyName}
-                          onChange={(e) => updateChild(index, 'familyName', e.target.value)}
-                          className="h-8"
-                        />
-                      ) : (
-                        <div className="text-sm text-gray-900">{child.familyName}</div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {isEditing ? (
-                        <Input
-                          value={child.dateOfBirth}
-                          onChange={(e) => updateChild(index, 'dateOfBirth', e.target.value)}
-                          className="h-8"
-                        />
-                      ) : (
-                        <div className="text-sm text-gray-900">{child.dateOfBirth}</div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {isEditing ? (
-                        <Select value={child.gender} onValueChange={(value) => updateChild(index, 'gender', value)}>
-                          <SelectTrigger className="h-8">
-                            <SelectValue placeholder="Select" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Son">Son</SelectItem>
-                            <SelectItem value="Daughter">Daughter</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <div className="text-sm text-gray-900">{child.gender}</div>
-                      )}
-                    </TableCell>
-                    {isEditing && (
-                      <TableCell>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeChild(index)}
-                          className="text-red-600 hover:text-red-700 h-8 w-8 p-0"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* NOK Information */}
