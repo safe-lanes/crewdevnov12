@@ -444,19 +444,6 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Rank Applied For</Label>
-              {isEditing ? (
-                <Input
-                  value={formData.rankAppliedFor}
-                  onChange={(e) => updateFormData('rankAppliedFor', e.target.value)}
-                  className="mt-1"
-                />
-              ) : (
-                <div className="mt-1 text-sm text-gray-900">{formData.rankAppliedFor}</div>
-              )}
-            </div>
-            
-            <div>
               <Label className="text-xs text-gray-500 tracking-wide">Height( Cm )</Label>
               {isEditing ? (
                 <Input
@@ -479,19 +466,6 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 />
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.weightKg}</div>
-              )}
-            </div>
-            
-            <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Manning Agent</Label>
-              {isEditing ? (
-                <Input
-                  value={formData.manningAgent}
-                  onChange={(e) => updateFormData('manningAgent', e.target.value)}
-                  className="mt-1"
-                />
-              ) : (
-                <div className="mt-1 text-sm text-gray-900">{formData.manningAgent}</div>
               )}
             </div>
             
@@ -540,18 +514,6 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               )}
             </div>
             
-            <div>
-              <Label className="text-xs text-gray-500 tracking-wide">File No</Label>
-              {isEditing ? (
-                <Input
-                  value={formData.fileNo}
-                  onChange={(e) => updateFormData('fileNo', e.target.value)}
-                  className="mt-1"
-                />
-              ) : (
-                <div className="mt-1 text-sm text-gray-900">{formData.fileNo}</div>
-              )}
-            </div>
           </div>
         </div>
       </div>
