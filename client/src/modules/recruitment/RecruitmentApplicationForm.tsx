@@ -245,7 +245,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           {/* Form Fields */}
           <div className="col-span-9 grid grid-cols-3 gap-4">
             <div>
-              <Label className="text-sm font-medium text-gray-700">First Name</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">First Name</Label>
               {isEditing ? (
                 <Input
                   value={formData.firstName}
@@ -258,7 +258,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">Middle Name</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Middle Name</Label>
               {isEditing ? (
                 <Input
                   value={formData.middleName}
@@ -271,7 +271,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">Family Name</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Family Name</Label>
               {isEditing ? (
                 <Input
                   value={formData.familyName}
@@ -284,7 +284,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">Nationality</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Nationality</Label>
               {isEditing ? (
                 <Select value={formData.nationality} onValueChange={(value) => updateFormData('nationality', value)}>
                   <SelectTrigger className="mt-1">
@@ -303,7 +303,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">Present Rank</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Present Rank</Label>
               {isEditing ? (
                 <Input
                   value={formData.presentRank}
@@ -316,7 +316,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">Date of birth</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Date of birth</Label>
               {isEditing ? (
                 <Input
                   type="date"
@@ -330,7 +330,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">Age( Years )</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Age( Years )</Label>
               {isEditing ? (
                 <Input
                   value={formData.ageInYears}
@@ -343,7 +343,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">Place of birth( City )</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Place of birth( City )</Label>
               {isEditing ? (
                 <Input
                   value={formData.placeOfBirthCity}
@@ -356,7 +356,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">Place of birth( Country )</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Place of birth( Country )</Label>
               {isEditing ? (
                 <Input
                   value={formData.placeOfBirthCountry}
@@ -369,7 +369,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">Rank Applied For</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Rank Applied For</Label>
               {isEditing ? (
                 <Input
                   value={formData.rankAppliedFor}
@@ -382,7 +382,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">Height( Cm )</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Height( Cm )</Label>
               {isEditing ? (
                 <Input
                   value={formData.heightCm}
@@ -395,7 +395,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">Weight( kg )</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Weight( kg )</Label>
               {isEditing ? (
                 <Input
                   value={formData.weightKg}
@@ -408,7 +408,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">Manning Agent</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Manning Agent</Label>
               {isEditing ? (
                 <Input
                   value={formData.manningAgent}
@@ -421,7 +421,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">Native Language</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Native Language</Label>
               {isEditing ? (
                 <Input
                   value={formData.nativeLanguage}
@@ -434,7 +434,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">Foreign Languages</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Foreign Languages</Label>
               {isEditing ? (
                 <Input
                   value={formData.foreignLanguages}
@@ -447,7 +447,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">English Proficiency</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">English Proficiency</Label>
               {isEditing ? (
                 <Select value={formData.englishProficiency} onValueChange={(value) => updateFormData('englishProficiency', value)}>
                   <SelectTrigger className="mt-1">
@@ -466,7 +466,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">File No</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">File No</Label>
               {isEditing ? (
                 <Input
                   value={formData.fileNo}
@@ -502,7 +502,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           
         <div className="grid grid-cols-4 gap-4">
           <div>
-            <Label className="text-sm font-medium text-gray-700">Country of Residence</Label>
+            <Label className="text-xs text-gray-500 tracking-wide">Country of Residence</Label>
             {isEditing ? (
               <Input
                 value={formData.countryOfResidence}
@@ -515,7 +515,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           </div>
           
           <div>
-            <Label className="text-sm font-medium text-gray-700">Nearest Airport</Label>
+            <Label className="text-xs text-gray-500 tracking-wide">Nearest Airport</Label>
             {isEditing ? (
               <Input
                 value={formData.nearestAirport}
@@ -528,7 +528,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           </div>
           
           <div>
-            <Label className="text-sm font-medium text-gray-700">Mobile</Label>
+            <Label className="text-xs text-gray-500 tracking-wide">Mobile</Label>
             {isEditing ? (
               <Input
                 value={formData.mobile}
@@ -541,7 +541,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           </div>
           
           <div>
-            <Label className="text-sm font-medium text-gray-700">Email</Label>
+            <Label className="text-xs text-gray-500 tracking-wide">Email</Label>
             {isEditing ? (
               <Input
                 type="email"
@@ -555,7 +555,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           </div>
           
           <div className="col-span-2">
-            <Label className="text-sm font-medium text-gray-700">Residential Address Line 1( House No./Building/Street )</Label>
+            <Label className="text-xs text-gray-500 tracking-wide">Residential Address Line 1( House No./Building/Street )</Label>
             {isEditing ? (
               <Input
                 value={formData.residentialAddressLine1}
@@ -568,7 +568,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           </div>
           
           <div className="col-span-2">
-            <Label className="text-sm font-medium text-gray-700">Residential Address Line 2( City, State, PIN )</Label>
+            <Label className="text-xs text-gray-500 tracking-wide">Residential Address Line 2( City, State, PIN )</Label>
             {isEditing ? (
               <Input
                 value={formData.residentialAddressLine2}
@@ -581,7 +581,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           </div>
           
           <div>
-            <Label className="text-sm font-medium text-gray-700">Contact Landline</Label>
+            <Label className="text-xs text-gray-500 tracking-wide">Contact Landline</Label>
             {isEditing ? (
               <Input
                 value={formData.contactLandline}
@@ -618,7 +618,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           {/* Basic Family Info */}
           <div className="grid grid-cols-4 gap-4">
             <div>
-              <Label className="text-sm font-medium text-gray-700">Marital Status</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Marital Status</Label>
               {isEditing ? (
                 <Select value={formData.maritalStatus} onValueChange={(value) => updateFormData('maritalStatus', value)}>
                   <SelectTrigger className="mt-1">
@@ -637,7 +637,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">No. of Dependant Children</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">No. of Dependant Children</Label>
               {isEditing ? (
                 <Input
                   value={formData.numberOfDependentChildren}
@@ -650,7 +650,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">Father's Name</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Father's Name</Label>
               {isEditing ? (
                 <Input
                   value={formData.fatherName}
@@ -663,7 +663,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">Mother's Name</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Mother's Name</Label>
               {isEditing ? (
                 <Input
                   value={formData.motherName}
@@ -679,7 +679,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           {/* Spouse Information */}
           <div className="grid grid-cols-4 gap-4">
             <div>
-              <Label className="text-sm font-medium text-gray-700">Spouse First Name</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Spouse First Name</Label>
               {isEditing ? (
                 <Input
                   value={formData.spouseFirstName}
@@ -692,7 +692,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">Spouse Middle Name</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Spouse Middle Name</Label>
               {isEditing ? (
                 <Input
                   value={formData.spouseMiddleName}
@@ -705,7 +705,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">Spouse Family Name</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Spouse Family Name</Label>
               {isEditing ? (
                 <Input
                   value={formData.spouseFamilyName}
@@ -718,7 +718,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">Spouse Date of Birth</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Spouse Date of Birth</Label>
               {isEditing ? (
                 <Input
                   value={formData.spouseDateOfBirth}
@@ -734,7 +734,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           {/* Children Information */}
           <div>
             <div className="flex justify-between items-center mb-4">
-              <Label className="text-sm font-medium text-gray-700">Children Information</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Children Information</Label>
               {isEditing && (
                 <Button
                   type="button"
@@ -752,7 +752,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             {formData.children.map((child, index) => (
               <div key={index} className="grid grid-cols-6 gap-4 mb-4 p-4 border rounded-lg">
                 <div>
-                  <Label className="text-sm font-medium text-gray-700">First Name</Label>
+                  <Label className="text-xs text-gray-500 tracking-wide">First Name</Label>
                   {isEditing ? (
                     <Input
                       value={child.firstName}
@@ -765,7 +765,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 </div>
                 
                 <div>
-                  <Label className="text-sm font-medium text-gray-700">Middle Name</Label>
+                  <Label className="text-xs text-gray-500 tracking-wide">Middle Name</Label>
                   {isEditing ? (
                     <Input
                       value={child.middleName}
@@ -778,7 +778,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 </div>
                 
                 <div>
-                  <Label className="text-sm font-medium text-gray-700">Family Name</Label>
+                  <Label className="text-xs text-gray-500 tracking-wide">Family Name</Label>
                   {isEditing ? (
                     <Input
                       value={child.familyName}
@@ -791,7 +791,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 </div>
                 
                 <div>
-                  <Label className="text-sm font-medium text-gray-700">Date of Birth</Label>
+                  <Label className="text-xs text-gray-500 tracking-wide">Date of Birth</Label>
                   {isEditing ? (
                     <Input
                       value={child.dateOfBirth}
@@ -804,7 +804,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 </div>
                 
                 <div>
-                  <Label className="text-sm font-medium text-gray-700">Gender</Label>
+                  <Label className="text-xs text-gray-500 tracking-wide">Gender</Label>
                   {isEditing ? (
                     <Select value={child.gender} onValueChange={(value) => updateChild(index, 'gender', value)}>
                       <SelectTrigger className="mt-1">
@@ -840,7 +840,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           {/* NOK Information */}
           <div className="grid grid-cols-4 gap-4">
             <div>
-              <Label className="text-sm font-medium text-gray-700">NOK: First Name</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">NOK: First Name</Label>
               {isEditing ? (
                 <Input
                   value={formData.nokFirstName}
@@ -853,7 +853,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">NOK: Middle Name</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">NOK: Middle Name</Label>
               {isEditing ? (
                 <Input
                   value={formData.nokMiddleName}
@@ -866,7 +866,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">NOK: Family Name</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">NOK: Family Name</Label>
               {isEditing ? (
                 <Input
                   value={formData.nokFamilyName}
@@ -879,7 +879,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">NOK: Email</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">NOK: Email</Label>
               {isEditing ? (
                 <Input
                   type="email"
@@ -893,7 +893,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">NOK: Address</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">NOK: Address</Label>
               {isEditing ? (
                 <Input
                   value={formData.nokAddress}
@@ -906,7 +906,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">NOK: Relationship</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">NOK: Relationship</Label>
               {isEditing ? (
                 <Input
                   value={formData.nokRelationship}
@@ -919,7 +919,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
-              <Label className="text-sm font-medium text-gray-700">NOK: Tel</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">NOK: Tel</Label>
               {isEditing ? (
                 <Input
                   value={formData.nokTelephone}
