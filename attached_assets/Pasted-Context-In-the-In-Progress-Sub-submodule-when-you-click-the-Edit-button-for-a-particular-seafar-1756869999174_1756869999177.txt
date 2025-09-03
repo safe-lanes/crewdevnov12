@@ -1,0 +1,21 @@
+Context: 
+In the ‘In Progress’ Sub submodule when you click the Edit button for a particular seafarer (in the AG Grid Table) , the Application form opens. We will use the standard SAIL Form component for this form.
+
+Note: This is the form that the candidates applying to the company will complete. We can keep the option open to later work on providing a direct link to (just) this form on the company website, or import this data from another source. For now we can keep it simple to allow data entry directly in this form.
+
+This form will have parts A1, A2, A3, A4, A5, B, C (See image 1).
+Parts A1, A2, A3, A4, A5 will be completed and submitted by the applicant.
+Part B would be used by the Company to process the application.
+Part C would be used by the Company for the approval process.
+
+Note: As this form will be used by different clients, there may be some customization necessary (Additional fields or nomenclature of the fields, so we will provide option to configure some aspects of this form in the Admin module, as we have already done for the ‘Appraisals’ form. We need exactly the same functionality for this (But this is for context and we will build this when we go to the admin module later) 
+
+Action:
+As a first step create only the form popup, show the steppers, and generate Part A1 (See image 2). This part captures the Seafarer’s personal particulars.
+
+Note: While we will use the standard SAIL form component, I want to give it a landscape orientation view as the data can be difficult to fit in a portrait view. So we will only show the stepper numbers but not the stepper title as we have been doing for other standard forms.
+
+Within part A1 you will see 3 sections A1.1, A1.2 and A1.3.
+Each section has an edit button on the top right. The idea is that when the user clicks on this edit button, the section changes from read only mode to edit mode with clear input fields. Once the user clicks outside of this edit mode, the data should save.  
+
+Important: We will create all the parts one by one so do not create other parts on your own. Wait for instructions. 

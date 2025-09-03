@@ -3,6 +3,7 @@ import { FilterIcon, PlusIcon, PaperclipIcon, EditIcon, Trash2Icon } from 'lucid
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
 import MainLayout from '../../components/main/MainLayout';
 import RecruitmentSideBar from './RecruitmentSideBar';
+import { RecruitmentApplicationForm } from './RecruitmentApplicationForm';
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
 import { Button } from '@/components/ui/button';
@@ -172,6 +173,8 @@ const sampleRecruitmentData: RecruitmentCandidate[] = [
 export const RecruitmentModule = (): JSX.Element => {
   const [selectedRecruitmentPage, setSelectedRecruitmentPage] = useState("in-progress");
   const [showFilters, setShowFilters] = useState(true);
+  const [showApplicationForm, setShowApplicationForm] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState<RecruitmentCandidate | null>(null);
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
 
   // Define allowed pages for the recruitment module
@@ -194,6 +197,8 @@ export const RecruitmentModule = (): JSX.Element => {
 
     const handleEditClick = () => {
       console.log('Edit clicked for:', params.data.id);
+      setSelectedCandidate(params.data);
+      setShowApplicationForm(true);
     };
 
     const handleDeleteClick = () => {
@@ -585,6 +590,17 @@ export const RecruitmentModule = (): JSX.Element => {
         </SectionTitleComponents>
         {renderContent()}
       </MainLayout>
+
+      {/* Recruitment Application Form Popup */}
+      {showApplicationForm && selectedCandidate && (
+        <RecruitmentApplicationForm
+          candidate={selectedCandidate}
+          onClose={() => {
+            setShowApplicationForm(false);
+            setSelectedCandidate(null);
+          }}
+        />
+      )}
     </>
   );
 };

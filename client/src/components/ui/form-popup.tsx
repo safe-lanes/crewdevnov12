@@ -68,7 +68,7 @@ StandardFormPopup.displayName = "StandardFormPopup"
 /**
  * FormPopupOverlay - A standalone overlay component for custom implementations
  */
-export const FormPopupOverlay = React.forwardRef<
+const FormPopupOverlay = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
@@ -86,7 +86,7 @@ FormPopupOverlay.displayName = "FormPopupOverlay"
 /**
  * FormPopupContent - A content wrapper with consistent spacing
  */
-export const FormPopupContent = React.forwardRef<
+const FormPopupContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
