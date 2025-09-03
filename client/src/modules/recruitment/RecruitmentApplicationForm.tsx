@@ -1037,11 +1037,11 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               {/* Responsive Layout for Sections */}
               <div className="space-y-6">
                 {/* External Monitor: A1.1 & A1.2 side by side, Desktop/Tablet/Mobile: stacked */}
-                <div className="grid grid-cols-1 3xl:grid-cols-2 gap-6">
-                  <div className="3xl:col-span-1">
+                <div className="grid grid-cols-1 2xl:grid-cols-2 gap-6">
+                  <div className="2xl:col-span-1">
                     {renderA11GeneralParticulars()}
                   </div>
-                  <div className="3xl:col-span-1">
+                  <div className="2xl:col-span-1">
                     {renderA12AddressContact()}
                   </div>
                 </div>
@@ -1075,7 +1075,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-      <div className="bg-white rounded-lg w-full max-w-none 3xl:max-w-[95vw] h-[calc(100vh-1rem)] sm:h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
+      <div className="bg-white rounded-lg w-full max-w-none 2xl:max-w-[95vw] h-[calc(100vh-1rem)] sm:h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b p-2 sm:p-3 lg:p-4 flex items-center justify-between">
           <div className="flex items-center gap-1 sm:gap-2 lg:gap-4">
