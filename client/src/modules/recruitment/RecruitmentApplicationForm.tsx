@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Edit, Plus, Save, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, Edit, Plus, Save, Trash2, Upload, Paperclip } from 'lucide-react';
 
 interface RecruitmentCandidate {
   id: string;
@@ -86,6 +86,26 @@ interface FormData {
   nokEmail: string;
   nokAddress: string;
   nokRelationship: string;
+
+  // A2.1 Travel and Identification Documents
+  documents: Array<{
+    id: string;
+    document: string;
+    number: string;
+    issued: string;
+    expiry: string;
+    issuingAuthority: string;
+  }>;
+
+  // A2.2 Visas
+  visas: Array<{
+    id: string;
+    issuingCountry: string;
+    serialNo: string;
+    issued: string;
+    expiry: string;
+    visaType: string;
+  }>;
 }
 
 export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProps> = ({
@@ -164,7 +184,24 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     nokTelephone: '+91 76543212',
     nokEmail: 'sunita@gmail.com',
     nokAddress: 'House No XX, Building/ Street XX, City, State',
-    nokRelationship: 'Wife'
+    nokRelationship: 'Wife',
+    
+    // A2.1 Default documents
+    documents: [
+      { id: '1', document: 'Passport', number: 'Z1398745', issued: '30 Jan 2022', expiry: '23 Mar 2032', issuingAuthority: 'MOFA Govt. of India' },
+      { id: '2', document: 'National Seaman\'s Book', number: 'Z1398745', issued: '30 Jan 2022', expiry: '23 Mar 2032', issuingAuthority: 'Shipping Office Govt. Of India' },
+      { id: '3', document: 'Yellow Fever Vaccination', number: 'Z1398745', issued: '30 Jan 2022', expiry: '23 Mar 2032', issuingAuthority: 'Liberian Maritime Authority' },
+      { id: '4', document: 'INDOS No.( Indian personnel only )', number: 'Z1398745', issued: '30 Jan 2022', expiry: '23 Mar 2032', issuingAuthority: 'DMA' }
+    ],
+    
+    // A2.2 Default visas
+    visas: [
+      { id: '1', issuingCountry: 'U.S.A', serialNo: 'BAH 2345678', issued: '30 Jan 2022', expiry: '23 Mar 2032', visaType: 'B1 B2' },
+      { id: '2', issuingCountry: 'U.S.A', serialNo: 'BAH 2345678', issued: '30 Jan 2022', expiry: '23 Mar 2032', visaType: 'B1 B2' },
+      { id: '3', issuingCountry: 'U.S.A', serialNo: 'BAH 2345678', issued: '30 Jan 2022', expiry: '23 Mar 2032', visaType: 'B1 B2' },
+      { id: '4', issuingCountry: 'U.S.A', serialNo: 'BAH 2345678', issued: '30 Jan 2022', expiry: '23 Mar 2032', visaType: 'B1 B2' },
+      { id: '5', issuingCountry: 'U.S.A', serialNo: 'BAH 2345678', issued: '30 Jan 2022', expiry: '23 Mar 2032', visaType: 'B1 B2' }
+    ]
   });
 
   // Handle click outside to auto-save sections
@@ -196,7 +233,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
 
   const sections = [
     { id: 'A1', title: 'Seafarers\' Particulars', number: 'A1' },
-    { id: 'A2', title: 'Experience', number: 'A2' },
+    { id: 'A2', title: 'Travel & ID Documents', number: 'A2' },
     { id: 'A3', title: 'Certificates', number: 'A3' },
     { id: 'A4', title: 'Medical', number: 'A4' },
     { id: 'A5', title: 'References', number: 'A5' },
@@ -243,6 +280,70 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       ...prev,
       children: prev.children.map((child, i) => 
         i === index ? { ...child, [field]: value } : child
+      )
+    }));
+  };
+
+  // Document management functions
+  const addDocument = () => {
+    const newDoc = {
+      id: Date.now().toString(),
+      document: '',
+      number: '',
+      issued: '',
+      expiry: '',
+      issuingAuthority: ''
+    };
+    setFormData(prev => ({
+      ...prev,
+      documents: [...prev.documents, newDoc]
+    }));
+  };
+
+  const removeDocument = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      documents: prev.documents.filter(doc => doc.id !== id)
+    }));
+  };
+
+  const updateDocument = (id: string, field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      documents: prev.documents.map(doc => 
+        doc.id === id ? { ...doc, [field]: value } : doc
+      )
+    }));
+  };
+
+  // Visa management functions
+  const addVisa = () => {
+    const newVisa = {
+      id: Date.now().toString(),
+      issuingCountry: '',
+      serialNo: '',
+      issued: '',
+      expiry: '',
+      visaType: ''
+    };
+    setFormData(prev => ({
+      ...prev,
+      visas: [...prev.visas, newVisa]
+    }));
+  };
+
+  const removeVisa = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      visas: prev.visas.filter(visa => visa.id !== id)
+    }));
+  };
+
+  const updateVisa = (id: string, field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      visas: prev.visas.map(visa => 
+        visa.id === id ? { ...visa, [field]: value } : visa
       )
     }));
   };
@@ -634,6 +735,192 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     );
   };
 
+  const renderA21TravelDocs = () => {
+    return (
+      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A2.1 Travel and Identification Docs</h3>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={addDocument}
+            className="text-gray-600 border-gray-300 hover:bg-gray-50"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            ADD
+          </Button>
+        </div>
+        
+        <Table className="w-full">
+          <TableHeader>
+            <TableRow className="bg-gray-100">
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Document</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Number</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Authority</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {formData.documents.map((doc) => (
+              <TableRow key={doc.id} className="border-b border-gray-200">
+                <TableCell className="p-3">
+                  <Input
+                    value={doc.document}
+                    onChange={(e) => updateDocument(doc.id, 'document', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={doc.number}
+                    onChange={(e) => updateDocument(doc.id, 'number', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    type="date"
+                    value={doc.issued}
+                    onChange={(e) => updateDocument(doc.id, 'issued', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    type="date"
+                    value={doc.expiry}
+                    onChange={(e) => updateDocument(doc.id, 'expiry', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={doc.issuingAuthority}
+                    onChange={(e) => updateDocument(doc.id, 'issuingAuthority', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                      <Paperclip className="h-3 w-3" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-gray-400 hover:text-red-600"
+                      onClick={() => removeDocument(doc.id)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  };
+
+  const renderA22Visas = () => {
+    return (
+      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A2.2 Visas</h3>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={addVisa}
+            className="text-gray-600 border-gray-300 hover:bg-gray-50"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            ADD
+          </Button>
+        </div>
+        
+        <Table className="w-full">
+          <TableHeader>
+            <TableRow className="bg-gray-100">
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Country</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">S.No.( If Applicable )</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Visa Type</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {formData.visas.map((visa) => (
+              <TableRow key={visa.id} className="border-b border-gray-200">
+                <TableCell className="p-3">
+                  <Input
+                    value={visa.issuingCountry}
+                    onChange={(e) => updateVisa(visa.id, 'issuingCountry', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={visa.serialNo}
+                    onChange={(e) => updateVisa(visa.id, 'serialNo', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    type="date"
+                    value={visa.issued}
+                    onChange={(e) => updateVisa(visa.id, 'issued', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    type="date"
+                    value={visa.expiry}
+                    onChange={(e) => updateVisa(visa.id, 'expiry', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={visa.visaType}
+                    onChange={(e) => updateVisa(visa.id, 'visaType', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                      <Paperclip className="h-3 w-3" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-gray-400 hover:text-red-600"
+                      onClick={() => removeVisa(visa.id)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  };
+
   const renderA13FamilyNOK = () => {
     const isEditing = editingSections['A1.3'];
     
@@ -1012,6 +1299,34 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 <div>
                   {renderA13FamilyNOK()}
                 </div>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-2 mt-6 pt-4">
+                <Button 
+                  className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8"
+                  onClick={onClose}
+                >
+                  Save & Continue
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      case 'A2':
+        return (
+          <Card className="bg-white border border-gray-200 shadow-sm">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
+              <div className="pb-4 mb-6">
+                <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A2 - Travel & ID Documents</h2>
+                <div style={{ color: '#16569e' }} className="text-sm">Add from the list all applicable identification & travel documents</div>
+                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+              </div>
+              
+              {/* A2 Sections */}
+              <div className="space-y-6">
+                {renderA21TravelDocs()}
+                {renderA22Visas()}
               </div>
               
               {/* Action Buttons */}
