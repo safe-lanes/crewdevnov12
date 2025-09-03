@@ -218,7 +218,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     const isEditing = editingSections['A1.1'];
     
     return (
-      <div className="mb-6">
+      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A1.1 General Particulars</h3>
           <Button
@@ -487,7 +487,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     const isEditing = editingSections['A1.2'];
     
     return (
-      <div className="mb-6">
+      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A1.2 Address& Contact Info</h3>
           <Button
@@ -601,7 +601,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     const isEditing = editingSections['A1.3'];
     
     return (
-      <div className="mb-6">
+      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A1.3 Family and NOK</h3>
           <Button
