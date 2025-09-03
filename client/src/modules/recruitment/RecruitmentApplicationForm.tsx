@@ -921,26 +921,28 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     switch (activeSection) {
       case 'A1':
         return (
-          <div className="space-y-0">
-            <div className="pb-4 mb-6">
-              <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A1 Seafarers' Particulars</h2>
-              <div style={{ color: '#16569e' }} className="text-sm">Enter details as applicable</div>
-              <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
-            </div>
-            {renderA11GeneralParticulars()}
-            {renderA12AddressContact()}
-            {renderA13FamilyNOK()}
-            
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-2 mt-6 pt-4">
-              <Button 
-                className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8"
-                onClick={onClose}
-              >
-                Save & Continue
-              </Button>
-            </div>
-          </div>
+          <Card className="bg-white">
+            <CardContent className="p-6">
+              <div className="pb-4 mb-6">
+                <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A1 Seafarers' Particulars</h2>
+                <div style={{ color: '#16569e' }} className="text-sm">Enter details as applicable</div>
+                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+              </div>
+              {renderA11GeneralParticulars()}
+              {renderA12AddressContact()}
+              {renderA13FamilyNOK()}
+              
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-2 mt-6 pt-4">
+                <Button 
+                  className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8"
+                  onClick={onClose}
+                >
+                  Save & Continue
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         );
       default:
         return (
