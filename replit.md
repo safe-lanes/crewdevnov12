@@ -115,6 +115,12 @@ client/src/
 - **Table Containers**: Use `p-4 pl-0` for CardContent wrapping AG Grid tables to align with screen titles
 - **Standard Pattern**: Remove left padding (`pl-0`) from main content containers while maintaining other padding for proper spacing
 
+### SAIL Form Standards
+- **Input Field Labels**: Use `text-xs text-gray-500 tracking-wide` for all form field labels (color #6b7280, font size 12px)
+- **Subsection Headings**: Use `text-base font-medium` with color #16569e for subsection headings (font size 16px)
+- **Subsection Containers**: Use `mb-6 border border-[#EAEBEF] rounded-lg p-4` for subsection borders (fine border #EAEBEF, no shadow, rounded corners with padding)
+- **Standard Pattern**: All SAIL forms should follow these consistent styling patterns for visual uniformity across the application
+
 ## API Endpoints
 
 ### Crew Management
