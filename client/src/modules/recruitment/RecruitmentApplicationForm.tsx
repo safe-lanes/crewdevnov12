@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowLeft, Edit, Plus, Save, Trash2, Upload } from 'lucide-react';
 
 interface RecruitmentCandidate {
@@ -749,92 +750,96 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               )}
             </div>
             
-            {formData.children.map((child, index) => (
-              <div key={index} className="grid grid-cols-6 gap-4 mb-4 p-4 border rounded-lg">
-                <div>
-                  <Label className="text-xs text-gray-500 tracking-wide">First Name</Label>
-                  {isEditing ? (
-                    <Input
-                      value={child.firstName}
-                      onChange={(e) => updateChild(index, 'firstName', e.target.value)}
-                      className="mt-1"
-                    />
-                  ) : (
-                    <div className="mt-1 text-sm text-gray-900">{child.firstName}</div>
-                  )}
-                </div>
-                
-                <div>
-                  <Label className="text-xs text-gray-500 tracking-wide">Middle Name</Label>
-                  {isEditing ? (
-                    <Input
-                      value={child.middleName}
-                      onChange={(e) => updateChild(index, 'middleName', e.target.value)}
-                      className="mt-1"
-                    />
-                  ) : (
-                    <div className="mt-1 text-sm text-gray-900">{child.middleName}</div>
-                  )}
-                </div>
-                
-                <div>
-                  <Label className="text-xs text-gray-500 tracking-wide">Family Name</Label>
-                  {isEditing ? (
-                    <Input
-                      value={child.familyName}
-                      onChange={(e) => updateChild(index, 'familyName', e.target.value)}
-                      className="mt-1"
-                    />
-                  ) : (
-                    <div className="mt-1 text-sm text-gray-900">{child.familyName}</div>
-                  )}
-                </div>
-                
-                <div>
-                  <Label className="text-xs text-gray-500 tracking-wide">Date of Birth</Label>
-                  {isEditing ? (
-                    <Input
-                      value={child.dateOfBirth}
-                      onChange={(e) => updateChild(index, 'dateOfBirth', e.target.value)}
-                      className="mt-1"
-                    />
-                  ) : (
-                    <div className="mt-1 text-sm text-gray-900">{child.dateOfBirth}</div>
-                  )}
-                </div>
-                
-                <div>
-                  <Label className="text-xs text-gray-500 tracking-wide">Gender</Label>
-                  {isEditing ? (
-                    <Select value={child.gender} onValueChange={(value) => updateChild(index, 'gender', value)}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Son">Son</SelectItem>
-                        <SelectItem value="Daughter">Daughter</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <div className="mt-1 text-sm text-gray-900">{child.gender}</div>
-                  )}
-                </div>
-                
-                {isEditing && (
-                  <div className="flex items-end">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeChild(index)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ))}
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs text-gray-500 tracking-wide">First Name</TableHead>
+                  <TableHead className="text-xs text-gray-500 tracking-wide">Middle Name</TableHead>
+                  <TableHead className="text-xs text-gray-500 tracking-wide">Family Name</TableHead>
+                  <TableHead className="text-xs text-gray-500 tracking-wide">Date of Birth</TableHead>
+                  <TableHead className="text-xs text-gray-500 tracking-wide">Gender</TableHead>
+                  {isEditing && <TableHead className="text-xs text-gray-500 tracking-wide">Actions</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {formData.children.map((child, index) => (
+                  <TableRow key={index}>
+                    <TableCell>
+                      {isEditing ? (
+                        <Input
+                          value={child.firstName}
+                          onChange={(e) => updateChild(index, 'firstName', e.target.value)}
+                          className="h-8"
+                        />
+                      ) : (
+                        <div className="text-sm text-gray-900">{child.firstName}</div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <Input
+                          value={child.middleName}
+                          onChange={(e) => updateChild(index, 'middleName', e.target.value)}
+                          className="h-8"
+                        />
+                      ) : (
+                        <div className="text-sm text-gray-900">{child.middleName}</div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <Input
+                          value={child.familyName}
+                          onChange={(e) => updateChild(index, 'familyName', e.target.value)}
+                          className="h-8"
+                        />
+                      ) : (
+                        <div className="text-sm text-gray-900">{child.familyName}</div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <Input
+                          value={child.dateOfBirth}
+                          onChange={(e) => updateChild(index, 'dateOfBirth', e.target.value)}
+                          className="h-8"
+                        />
+                      ) : (
+                        <div className="text-sm text-gray-900">{child.dateOfBirth}</div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <Select value={child.gender} onValueChange={(value) => updateChild(index, 'gender', value)}>
+                          <SelectTrigger className="h-8">
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Son">Son</SelectItem>
+                            <SelectItem value="Daughter">Daughter</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <div className="text-sm text-gray-900">{child.gender}</div>
+                      )}
+                    </TableCell>
+                    {isEditing && (
+                      <TableCell>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeChild(index)}
+                          className="text-red-600 hover:text-red-700 h-8 w-8 p-0"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
 
           {/* NOK Information */}
