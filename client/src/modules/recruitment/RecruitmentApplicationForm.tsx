@@ -218,20 +218,18 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     const isEditing = editingSections['A1.1'];
     
     return (
-      <Card className="mb-6 bg-white border border-gray-200 shadow-sm">
-        <CardContent className="p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>A1.1 General Particulars</h3>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => toggleEditSection('A1.1')}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="w-full h-0.5 mb-6" style={{ backgroundColor: '#16569e' }}></div>
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>A1.1 General Particulars</h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => toggleEditSection('A1.1')}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+        </div>
           
           <div className="grid grid-cols-12 gap-4">
             {/* Photo Upload Area */}
@@ -481,8 +479,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   };
 
@@ -490,20 +488,18 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     const isEditing = editingSections['A1.2'];
     
     return (
-      <Card className="mb-6 bg-white border border-gray-200 shadow-sm">
-        <CardContent className="p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>A1.2 Address& Contact Info</h3>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => toggleEditSection('A1.2')}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="w-full h-0.5 mb-6" style={{ backgroundColor: '#16569e' }}></div>
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>A1.2 Address& Contact Info</h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => toggleEditSection('A1.2')}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+        </div>
           
           <div className="grid grid-cols-4 gap-4">
             <div>
@@ -597,9 +593,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 <div className="mt-1 text-sm text-gray-900">{formData.contactLandline}</div>
               )}
             </div>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   };
 
@@ -607,20 +602,18 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     const isEditing = editingSections['A1.3'];
     
     return (
-      <Card className="mb-6 bg-white border border-gray-200 shadow-sm">
-        <CardContent className="p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>A1.3 Family and NOK</h3>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => toggleEditSection('A1.3')}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="w-full h-0.5 mb-6" style={{ backgroundColor: '#16569e' }}></div>
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>A1.3 Family and NOK</h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => toggleEditSection('A1.3')}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+        </div>
           
           <div className="space-y-6">
             {/* Basic Family Info */}
@@ -911,9 +904,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 )}
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   };
 
