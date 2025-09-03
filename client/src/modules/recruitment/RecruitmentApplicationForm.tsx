@@ -234,11 +234,53 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           
         <div className="grid grid-cols-12 gap-4">
           {/* Photo Upload Area */}
-          <div className="col-span-3">
+          <div className="col-span-3 space-y-4">
             <div className="w-32 h-40 bg-gray-200 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
               <div className="text-center">
                 <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
                 <div className="text-sm text-gray-500">Upload Photo</div>
+              </div>
+            </div>
+            
+            {/* Fields below photograph */}
+            <div className="space-y-4">
+              <div>
+                <Label className="text-xs text-gray-500 tracking-wide">Rank Applied For</Label>
+                {isEditing ? (
+                  <Input
+                    value={formData.rankAppliedFor}
+                    onChange={(e) => updateFormData('rankAppliedFor', e.target.value)}
+                    className="mt-1"
+                  />
+                ) : (
+                  <div className="mt-1 text-sm text-gray-900">{formData.rankAppliedFor}</div>
+                )}
+              </div>
+              
+              <div>
+                <Label className="text-xs text-gray-500 tracking-wide">Manning Agent</Label>
+                {isEditing ? (
+                  <Input
+                    value={formData.manningAgent}
+                    onChange={(e) => updateFormData('manningAgent', e.target.value)}
+                    className="mt-1"
+                  />
+                ) : (
+                  <div className="mt-1 text-sm text-gray-900">{formData.manningAgent}</div>
+                )}
+              </div>
+              
+              <div>
+                <Label className="text-xs text-gray-500 tracking-wide">File No</Label>
+                {isEditing ? (
+                  <Input
+                    value={formData.fileNo}
+                    onChange={(e) => updateFormData('fileNo', e.target.value)}
+                    className="mt-1"
+                  />
+                ) : (
+                  <div className="mt-1 text-sm text-gray-900">{formData.fileNo}</div>
+                )}
               </div>
             </div>
           </div>
