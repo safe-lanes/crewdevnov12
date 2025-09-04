@@ -313,8 +313,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     { id: 'A2', title: 'Travel & ID Documents', number: 'A2' },
     { id: 'A3', title: 'Training & Certificates', number: 'A3' },
     { id: 'A4', title: 'Sea Service', number: 'A4' },
-    { id: 'A4', title: 'Medical', number: 'A4' },
-    { id: 'A5', title: 'References', number: 'A5' },
+    { id: 'A5', title: 'Medical', number: 'A5' },
+    { id: 'A6', title: 'References', number: 'A6' },
     { id: 'B', title: 'Company Processing', number: 'B' },
     { id: 'C', title: 'Approval', number: 'C' }
   ];
