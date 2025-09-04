@@ -266,18 +266,18 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       { id: 'A 02', trainingCourse: 'Safety Officer', abbr: 'DCEO', requirement: 'STCW IV/2', certificateNo: 'BAH 2345678', issuingAuthority: 'Authority 2', issued: '30 Jan 2022', expiry: '23 Mar 2032' }
     ],
     
-    // A4.1 Default sea service records
+    // A4.1 Default sea service records (with proper date format)
     seaService: [
-      { id: '1', vesselName: 'SS Mariner', vesselType: 'Cargo', deadweight: '20000 DWT', engineTypePower: 'MAN B&W / 16000 kW', ownerOperator: 'Oceanic Shipping Co.', rank: 'Captain', from: '01/01/2023', to: '31/03/2023', periodMonths: '3M' },
-      { id: '2', vesselName: 'MV Neptune', vesselType: 'Tanker', deadweight: '30000 DWT', engineTypePower: 'Wartsila / 18000 kW', ownerOperator: 'Blue Wave Ltd.', rank: 'First Mate', from: '01/04/2023', to: '30/06/2023', periodMonths: '3M' },
-      { id: '3', vesselName: 'SS Voyager', vesselType: 'Container', deadweight: '25000 DWT', engineTypePower: 'Sulzer / 14000 kW', ownerOperator: 'Global Maritime Inc.', rank: 'Chief Engineer', from: '01/07/2023', to: '30/09/2023', periodMonths: '3M' },
-      { id: '4', vesselName: 'MV Explorer', vesselType: 'Bulk', deadweight: '28000 DWT', engineTypePower: 'MAN B&W / 15000 kW', ownerOperator: 'Seaspan Corporation', rank: 'Navigator', from: '01/10/2023', to: '31/12/2023', periodMonths: '5M' },
-      { id: '5', vesselName: 'SS Discovery', vesselType: 'Oil Tanker', deadweight: '35000 DWT', engineTypePower: 'Wartsila / 20000 kW', ownerOperator: 'Maritime Solutions Ltd.', rank: 'Second Mate', from: '01/01/2024', to: '31/03/2024', periodMonths: '4.5M' },
-      { id: '6', vesselName: 'MV Pioneer', vesselType: 'Cargo', deadweight: '22000 DWT', engineTypePower: 'Sulzer / 17000 kW', ownerOperator: 'Ocean Fleet Corp.', rank: 'Bosun', from: '01/04/2024', to: '30/06/2024', periodMonths: '5.3M' },
-      { id: '7', vesselName: 'SS Adventurer', vesselType: 'Container', deadweight: '27000 DWT', engineTypePower: 'MAN B&W / 16000 kW', ownerOperator: 'Global Maritime Inc.', rank: 'Deckhand', from: '01/07/2024', to: '30/09/2024', periodMonths: '3M' },
-      { id: '8', vesselName: 'MV Navigator', vesselType: 'Bulk Carrier', deadweight: '24000 DWT', engineTypePower: 'Wartsila / 18000 kW', ownerOperator: 'Seaspan Corporation', rank: 'Able Seaman', from: '01/10/2024', to: '31/12/2024', periodMonths: '3M' },
-      { id: '9', vesselName: 'SS Endeavor', vesselType: 'Oil Tanker', deadweight: '32000 DWT', engineTypePower: 'Sulzer / 19000 kW', ownerOperator: 'Maritime Solutions Ltd.', rank: 'Chief Officer', from: '01/01/2025', to: '31/03/2025', periodMonths: '3M' },
-      { id: '10', vesselName: 'MV Explorer', vesselType: 'Tanker', deadweight: '31000 DWT', engineTypePower: 'Wartsila / 17000 kW', ownerOperator: 'Blue Wave Ltd.', rank: 'Third Mate', from: '01/04/2025', to: '30/06/2025', periodMonths: '5.4M' }
+      { id: '1', vesselName: 'SS Mariner', vesselType: 'Cargo', deadweight: '20000 DWT', engineTypePower: 'MAN B&W / 16000 kW', ownerOperator: 'Oceanic Shipping Co.', rank: 'Captain', from: '2023-01-01', to: '2023-03-31', periodMonths: '3.0M' },
+      { id: '2', vesselName: 'MV Neptune', vesselType: 'Tanker', deadweight: '30000 DWT', engineTypePower: 'Wartsila / 18000 kW', ownerOperator: 'Blue Wave Ltd.', rank: 'First Mate', from: '2023-04-01', to: '2023-06-30', periodMonths: '3.0M' },
+      { id: '3', vesselName: 'SS Voyager', vesselType: 'Container', deadweight: '25000 DWT', engineTypePower: 'Sulzer / 14000 kW', ownerOperator: 'Global Maritime Inc.', rank: 'Chief Engineer', from: '2023-07-01', to: '2023-09-30', periodMonths: '3.0M' },
+      { id: '4', vesselName: 'MV Explorer', vesselType: 'Bulk', deadweight: '28000 DWT', engineTypePower: 'MAN B&W / 15000 kW', ownerOperator: 'Seaspan Corporation', rank: 'Navigator', from: '2023-10-01', to: '2023-12-31', periodMonths: '3.0M' },
+      { id: '5', vesselName: 'SS Discovery', vesselType: 'Oil Tanker', deadweight: '35000 DWT', engineTypePower: 'Wartsila / 20000 kW', ownerOperator: 'Maritime Solutions Ltd.', rank: 'Second Mate', from: '2024-01-01', to: '2024-03-31', periodMonths: '3.0M' },
+      { id: '6', vesselName: 'MV Pioneer', vesselType: 'Cargo', deadweight: '22000 DWT', engineTypePower: 'Sulzer / 17000 kW', ownerOperator: 'Ocean Fleet Corp.', rank: 'Bosun', from: '2024-04-01', to: '2024-06-30', periodMonths: '3.0M' },
+      { id: '7', vesselName: 'SS Adventurer', vesselType: 'Container', deadweight: '27000 DWT', engineTypePower: 'MAN B&W / 16000 kW', ownerOperator: 'Global Maritime Inc.', rank: 'Deckhand', from: '2024-07-01', to: '2024-09-30', periodMonths: '3.0M' },
+      { id: '8', vesselName: 'MV Navigator', vesselType: 'Bulk Carrier', deadweight: '24000 DWT', engineTypePower: 'Wartsila / 18000 kW', ownerOperator: 'Seaspan Corporation', rank: 'Able Seaman', from: '2024-10-01', to: '2024-12-31', periodMonths: '3.0M' },
+      { id: '9', vesselName: 'SS Endeavor', vesselType: 'Oil Tanker', deadweight: '32000 DWT', engineTypePower: 'Sulzer / 19000 kW', ownerOperator: 'Maritime Solutions Ltd.', rank: 'Chief Officer', from: '2025-01-01', to: '2025-03-31', periodMonths: '3.0M' },
+      { id: '10', vesselName: 'MV Explorer', vesselType: 'Tanker', deadweight: '31000 DWT', engineTypePower: 'Wartsila / 17000 kW', ownerOperator: 'Blue Wave Ltd.', rank: 'Third Mate', from: '2025-04-01', to: '2025-06-30', periodMonths: '3.0M' }
     ]
   });
 
@@ -553,13 +553,63 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   };
 
   const updateSeaService = (id: string, field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      seaService: prev.seaService.map(service => 
-        service.id === id ? { ...service, [field]: value } : service
-      )
-    }));
+    setFormData(prev => {
+      const updatedServices = prev.seaService.map(service => {
+        if (service.id === id) {
+          const updatedService = { ...service, [field]: value };
+          
+          // Auto-calculate period if from or to date changes
+          if (field === 'from' || field === 'to') {
+            updatedService.periodMonths = calculatePeriod(updatedService.from, updatedService.to);
+          }
+          
+          return updatedService;
+        }
+        return service;
+      });
+      
+      return {
+        ...prev,
+        seaService: updatedServices
+      };
+    });
   };
+
+  // Calculate period in months between two dates
+  const calculatePeriod = (fromDate: string, toDate: string): string => {
+    if (!fromDate || !toDate) return '';
+    
+    try {
+      const from = new Date(fromDate);
+      const to = new Date(toDate);
+      
+      if (isNaN(from.getTime()) || isNaN(to.getTime())) return '';
+      
+      const months = (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
+      const days = to.getDate() - from.getDate();
+      
+      // Add fraction for partial months
+      const totalMonths = months + (days / 30);
+      
+      return totalMonths > 0 ? `${totalMonths.toFixed(1)}M` : '';
+    } catch {
+      return '';
+    }
+  };
+
+  // Placeholder master data (until Crew Admin masters are created)
+  const vesselMasterData = [
+    'SS Mariner', 'MV Neptune', 'SS Voyager', 'MV Explorer', 'SS Discovery',
+    'MV Pioneer', 'SS Adventurer', 'MV Navigator', 'SS Endeavor', 'MV Atlantic',
+    'SS Pacific', 'MV Freedom', 'SS Liberty', 'MV Enterprise', 'SS Horizon'
+  ];
+
+  const rankMasterData = [
+    'Captain', 'Chief Officer', 'First Mate', 'Second Mate', 'Third Mate',
+    'Chief Engineer', 'Second Engineer', 'Third Engineer', 'Navigator',
+    'Bosun', 'Able Seaman', 'Ordinary Seaman', 'Deckhand', 'Radio Officer',
+    'Electrical Officer', 'Cadet', 'Motorman', 'Oiler', 'Wiper', 'Cook'
+  ];
 
   const renderA11GeneralParticulars = () => {
     const isEditing = editingSections['A1.1'];
@@ -1492,11 +1542,21 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             {formData.seaService.map((service) => (
               <TableRow key={service.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  <Input
+                  <Select
                     value={service.vesselName}
-                    onChange={(e) => updateSeaService(service.id, 'vesselName', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
-                  />
+                    onValueChange={(value) => updateSeaService(service.id, 'vesselName', value)}
+                  >
+                    <SelectTrigger className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto">
+                      <SelectValue placeholder="Select vessel" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vesselMasterData.map((vessel) => (
+                        <SelectItem key={vessel} value={vessel}>
+                          {vessel}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
@@ -1527,14 +1587,25 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
+                  <Select
                     value={service.rank}
-                    onChange={(e) => updateSeaService(service.id, 'rank', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
-                  />
+                    onValueChange={(value) => updateSeaService(service.id, 'rank', value)}
+                  >
+                    <SelectTrigger className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto">
+                      <SelectValue placeholder="Select rank" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {rankMasterData.map((rank) => (
+                        <SelectItem key={rank} value={rank}>
+                          {rank}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
+                    type="date"
                     value={service.from}
                     onChange={(e) => updateSeaService(service.id, 'from', e.target.value)}
                     className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
@@ -1542,6 +1613,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
+                    type="date"
                     value={service.to}
                     onChange={(e) => updateSeaService(service.id, 'to', e.target.value)}
                     className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
@@ -1550,8 +1622,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 <TableCell className="p-3">
                   <Input
                     value={service.periodMonths}
-                    onChange={(e) => updateSeaService(service.id, 'periodMonths', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    readOnly
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto bg-gray-50 cursor-not-allowed"
+                    title="Auto-calculated based on From & To dates"
                   />
                 </TableCell>
                 <TableCell className="p-3">
