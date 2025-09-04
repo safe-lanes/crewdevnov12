@@ -196,11 +196,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     
     // A2.2 Default visas
     visas: [
-      { id: '1', issuingCountry: 'U.S.A', serialNo: 'BAH 2345678', issued: '30 Jan 2022', expiry: '23 Mar 2032', visaType: 'B1 B2' },
-      { id: '2', issuingCountry: 'U.S.A', serialNo: 'BAH 2345678', issued: '30 Jan 2022', expiry: '23 Mar 2032', visaType: 'B1 B2' },
-      { id: '3', issuingCountry: 'U.S.A', serialNo: 'BAH 2345678', issued: '30 Jan 2022', expiry: '23 Mar 2032', visaType: 'B1 B2' },
-      { id: '4', issuingCountry: 'U.S.A', serialNo: 'BAH 2345678', issued: '30 Jan 2022', expiry: '23 Mar 2032', visaType: 'B1 B2' },
-      { id: '5', issuingCountry: 'U.S.A', serialNo: 'BAH 2345678', issued: '30 Jan 2022', expiry: '23 Mar 2032', visaType: 'B1 B2' }
+      { id: '1', issuingCountry: 'U.S.A', serialNo: 'UHR 2345678', issued: 'dd/mm/yyyy', expiry: 'dd/mm/yyyy', visaType: 'B1 B2' },
+      { id: '2', issuingCountry: 'Australia', serialNo: 'SMH 2345678', issued: 'dd/mm/yyyy', expiry: 'dd/mm/yyyy', visaType: 'ABC' },
+      { id: '3', issuingCountry: 'Schengen', serialNo: 'SCH 2345678', issued: 'dd/mm/yyyy', expiry: 'dd/mm/yyyy', visaType: 'Multi' }
     ]
   });
 
