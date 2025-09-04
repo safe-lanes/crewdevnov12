@@ -106,6 +106,39 @@ interface FormData {
     expiry: string;
     visaType: string;
   }>;
+
+  // A3.1 Education
+  education: Array<{
+    id: string;
+    dateOfCompletion: string;
+    schoolCollegeUniversity: string;
+    subjectsField: string;
+    qualifications: string;
+  }>;
+
+  // A3.2 License & DCE
+  licenses: Array<{
+    id: string;
+    certificateDocument: string;
+    abbr: string;
+    requirement: string;
+    certificateNo: string;
+    issuingAuthority: string;
+    issued: string;
+    expiry: string;
+  }>;
+
+  // A3.3 Training Course
+  trainingCourses: Array<{
+    id: string;
+    trainingCourse: string;
+    abbr: string;
+    requirement: string;
+    certificateNo: string;
+    issuingAuthority: string;
+    issued: string;
+    expiry: string;
+  }>;
 }
 
 export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProps> = ({
@@ -199,6 +232,24 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       { id: '1', issuingCountry: 'U.S.A', serialNo: 'UHR 2345678', issued: 'dd/mm/yyyy', expiry: 'dd/mm/yyyy', visaType: 'B1 B2' },
       { id: '2', issuingCountry: 'Australia', serialNo: 'SMH 2345678', issued: 'dd/mm/yyyy', expiry: 'dd/mm/yyyy', visaType: 'ABC' },
       { id: '3', issuingCountry: 'Schengen', serialNo: 'SCH 2345678', issued: 'dd/mm/yyyy', expiry: 'dd/mm/yyyy', visaType: 'Multi' }
+    ],
+    
+    // A3.1 Default education
+    education: [
+      { id: '1', dateOfCompletion: '30 Jan 2022', schoolCollegeUniversity: 'University of XX', subjectsField: 'Marine Engineering', qualifications: 'B.Tech' },
+      { id: '2', dateOfCompletion: '30 Jan 2018', schoolCollegeUniversity: 'XYZ High School', subjectsField: 'Science', qualifications: '12 th' }
+    ],
+    
+    // A3.2 Default licenses
+    licenses: [
+      { id: 'A 01', certificateDocument: 'Certificate of Competency', abbr: 'COC', requirement: 'STCW II & III', certificateNo: 'BAH 2345678', issuingAuthority: 'Authority 1', issued: '30 Jan 2022', expiry: '23 Mar 2032' },
+      { id: 'A 02', certificateDocument: 'Course 2', abbr: 'DCEO', requirement: 'STCW IV/2', certificateNo: 'BAH 2345678', issuingAuthority: 'Authority 2', issued: '30 Jan 2022', expiry: '23 Mar 2032' }
+    ],
+    
+    // A3.3 Default training courses
+    trainingCourses: [
+      { id: 'A 01', trainingCourse: 'Certificate of Competency', abbr: 'COC', requirement: 'STCW II & III', certificateNo: 'BAH 2345678', issuingAuthority: 'Authority 1', issued: '30 Jan 2022', expiry: '23 Mar 2032' },
+      { id: 'A 02', trainingCourse: 'Course 2', abbr: 'DCEO', requirement: 'STCW IV/2', certificateNo: 'BAH 2345678', issuingAuthority: 'Authority 2', issued: '30 Jan 2022', expiry: '23 Mar 2032' }
     ]
   });
 
@@ -232,7 +283,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const sections = [
     { id: 'A1', title: 'Seafarers\' Particulars', number: 'A1' },
     { id: 'A2', title: 'Travel & ID Documents', number: 'A2' },
-    { id: 'A3', title: 'Certificates', number: 'A3' },
+    { id: 'A3', title: 'Training & Certificates', number: 'A3' },
     { id: 'A4', title: 'Medical', number: 'A4' },
     { id: 'A5', title: 'References', number: 'A5' },
     { id: 'B', title: 'Company Processing', number: 'B' },
@@ -342,6 +393,105 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       ...prev,
       visas: prev.visas.map(visa => 
         visa.id === id ? { ...visa, [field]: value } : visa
+      )
+    }));
+  };
+
+  // Education management functions
+  const addEducation = () => {
+    const newEducation = {
+      id: Date.now().toString(),
+      dateOfCompletion: '',
+      schoolCollegeUniversity: '',
+      subjectsField: '',
+      qualifications: ''
+    };
+    setFormData(prev => ({
+      ...prev,
+      education: [...prev.education, newEducation]
+    }));
+  };
+
+  const removeEducation = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      education: prev.education.filter(edu => edu.id !== id)
+    }));
+  };
+
+  const updateEducation = (id: string, field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      education: prev.education.map(edu => 
+        edu.id === id ? { ...edu, [field]: value } : edu
+      )
+    }));
+  };
+
+  // License management functions
+  const addLicense = () => {
+    const newLicense = {
+      id: `A ${String(formData.licenses.length + 1).padStart(2, '0')}`,
+      certificateDocument: '',
+      abbr: '',
+      requirement: '',
+      certificateNo: '',
+      issuingAuthority: '',
+      issued: '',
+      expiry: ''
+    };
+    setFormData(prev => ({
+      ...prev,
+      licenses: [...prev.licenses, newLicense]
+    }));
+  };
+
+  const removeLicense = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      licenses: prev.licenses.filter(license => license.id !== id)
+    }));
+  };
+
+  const updateLicense = (id: string, field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      licenses: prev.licenses.map(license => 
+        license.id === id ? { ...license, [field]: value } : license
+      )
+    }));
+  };
+
+  // Training Course management functions
+  const addTrainingCourse = () => {
+    const newCourse = {
+      id: `A ${String(formData.trainingCourses.length + 1).padStart(2, '0')}`,
+      trainingCourse: '',
+      abbr: '',
+      requirement: '',
+      certificateNo: '',
+      issuingAuthority: '',
+      issued: '',
+      expiry: ''
+    };
+    setFormData(prev => ({
+      ...prev,
+      trainingCourses: [...prev.trainingCourses, newCourse]
+    }));
+  };
+
+  const removeTrainingCourse = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      trainingCourses: prev.trainingCourses.filter(course => course.id !== id)
+    }));
+  };
+
+  const updateTrainingCourse = (id: string, field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      trainingCourses: prev.trainingCourses.map(course => 
+        course.id === id ? { ...course, [field]: value } : course
       )
     }));
   };
@@ -919,6 +1069,329 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     );
   };
 
+  const renderA31Education = () => {
+    return (
+      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A3.1 Education</h3>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={addEducation}
+            className="text-gray-600 border-gray-300 hover:bg-gray-50"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            ADD
+          </Button>
+        </div>
+        
+        <Table className="w-full">
+          <TableHeader>
+            <TableRow className="bg-gray-100">
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Date of completion</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">School, College, University</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Subjects/ Field</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Qualifications</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {formData.education.map((edu) => (
+              <TableRow key={edu.id} className="border-b border-gray-200">
+                <TableCell className="p-3">
+                  <Input
+                    value={edu.dateOfCompletion}
+                    onChange={(e) => updateEducation(edu.id, 'dateOfCompletion', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={edu.schoolCollegeUniversity}
+                    onChange={(e) => updateEducation(edu.id, 'schoolCollegeUniversity', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={edu.subjectsField}
+                    onChange={(e) => updateEducation(edu.id, 'subjectsField', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={edu.qualifications}
+                    onChange={(e) => updateEducation(edu.id, 'qualifications', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                      <Paperclip className="h-3 w-3" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-gray-400 hover:text-red-600"
+                      onClick={() => removeEducation(edu.id)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  };
+
+  const renderA32LicenseDCE = () => {
+    return (
+      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A3.2 License & DCE</h3>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-gray-600 border-gray-300 hover:bg-gray-50 text-xs"
+            >
+              + ADD FROM DATABASE
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={addLicense}
+              className="text-gray-600 border-gray-300 hover:bg-gray-50"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              ADD
+            </Button>
+          </div>
+        </div>
+        
+        <Table className="w-full">
+          <TableHeader>
+            <TableRow className="bg-gray-100">
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">ID</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Certificate/ Document</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Abbr</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Requirement</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Certificate No</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Authority</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {formData.licenses.map((license) => (
+              <TableRow key={license.id} className="border-b border-gray-200">
+                <TableCell className="p-3">
+                  <div className="text-[#4f5863] text-[13px]">{license.id}</div>
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={license.certificateDocument}
+                    onChange={(e) => updateLicense(license.id, 'certificateDocument', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={license.abbr}
+                    onChange={(e) => updateLicense(license.id, 'abbr', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={license.requirement}
+                    onChange={(e) => updateLicense(license.id, 'requirement', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={license.certificateNo}
+                    onChange={(e) => updateLicense(license.id, 'certificateNo', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={license.issuingAuthority}
+                    onChange={(e) => updateLicense(license.id, 'issuingAuthority', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={license.issued}
+                    onChange={(e) => updateLicense(license.id, 'issued', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={license.expiry}
+                    onChange={(e) => updateLicense(license.id, 'expiry', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                      <Paperclip className="h-3 w-3" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-gray-400 hover:text-red-600"
+                      onClick={() => removeLicense(license.id)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  };
+
+  const renderA33TrainingCourse = () => {
+    return (
+      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A3.3 Training Course</h3>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-gray-600 border-gray-300 hover:bg-gray-50 text-xs"
+            >
+              + ADD FROM DATABASE
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={addTrainingCourse}
+              className="text-gray-600 border-gray-300 hover:bg-gray-50"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              ADD
+            </Button>
+          </div>
+        </div>
+        
+        <Table className="w-full">
+          <TableHeader>
+            <TableRow className="bg-gray-100">
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">ID</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Training/ Course</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Abbr</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Requirement</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Certificate No</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Authority</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {formData.trainingCourses.map((course) => (
+              <TableRow key={course.id} className="border-b border-gray-200">
+                <TableCell className="p-3">
+                  <div className="text-[#4f5863] text-[13px]">{course.id}</div>
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={course.trainingCourse}
+                    onChange={(e) => updateTrainingCourse(course.id, 'trainingCourse', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={course.abbr}
+                    onChange={(e) => updateTrainingCourse(course.id, 'abbr', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={course.requirement}
+                    onChange={(e) => updateTrainingCourse(course.id, 'requirement', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={course.certificateNo}
+                    onChange={(e) => updateTrainingCourse(course.id, 'certificateNo', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={course.issuingAuthority}
+                    onChange={(e) => updateTrainingCourse(course.id, 'issuingAuthority', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={course.issued}
+                    onChange={(e) => updateTrainingCourse(course.id, 'issued', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={course.expiry}
+                    onChange={(e) => updateTrainingCourse(course.id, 'expiry', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                      <Paperclip className="h-3 w-3" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-gray-400 hover:text-red-600"
+                      onClick={() => removeTrainingCourse(course.id)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  };
+
   const renderA13FamilyNOK = () => {
     const isEditing = editingSections['A1.3'];
     
@@ -1325,6 +1798,35 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <div className="space-y-6">
                 {renderA21TravelDocs()}
                 {renderA22Visas()}
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-2 mt-6 pt-4">
+                <Button 
+                  className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8"
+                  onClick={onClose}
+                >
+                  Save & Continue
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      case 'A3':
+        return (
+          <Card className="bg-white border border-gray-200 shadow-sm">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
+              <div className="pb-4 mb-6">
+                <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A3 - Training & Certificates</h2>
+                <div style={{ color: '#16569e' }} className="text-sm">Add Education, Competency & Training Information</div>
+                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+              </div>
+              
+              {/* A3 Sections */}
+              <div className="space-y-6">
+                {renderA31Education()}
+                {renderA32LicenseDCE()}
+                {renderA33TrainingCourse()}
               </div>
               
               {/* Action Buttons */}
