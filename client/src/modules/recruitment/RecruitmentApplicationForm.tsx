@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Edit, Plus, Save, Trash2, Upload, Paperclip } from 'lucide-react';
+import { ArrowLeft, Edit, Plus, Save, Trash2, Upload, Paperclip, X, Camera } from 'lucide-react';
 
 interface RecruitmentCandidate {
   id: string;
@@ -171,6 +171,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const sectionA12Ref = useRef<HTMLDivElement>(null);
   const sectionA13Ref = useRef<HTMLDivElement>(null);
 
+  // State for uploaded photo
+  const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+
   const [formData, setFormData] = useState<FormData>({
     // Initialize with candidate data
     firstName: candidate.firstName || '',
@@ -327,10 +331,28 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   };
 
   const updateFormData = (field: keyof FormData, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setFormData(prev => {
+      const newData = {
+        ...prev,
+        [field]: value
+      };
+      
+      // Auto-calculate age when date of birth changes
+      if (field === 'dateOfBirth' && value) {
+        const birthDate = new Date(value);
+        const today = new Date();
+        const age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          newData.ageInYears = (age - 1).toString();
+        } else {
+          newData.ageInYears = age.toString();
+        }
+      }
+      
+      return newData;
+    });
   };
 
   const addChild = () => {
@@ -597,6 +619,29 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     }
   };
 
+  // Comprehensive nationality list matching AppraisalForm standards
+  const NATIONALITIES = [
+    "Afghan", "Albanian", "Algerian", "American", "Andorran", "Angolan", "Antiguan", "Argentine", "Armenian", "Australian",
+    "Austrian", "Azerbaijani", "Bahamian", "Bahraini", "Bangladeshi", "Barbadian", "Belarusian", "Belgian", "Belizean", "Beninese",
+    "Bhutanese", "Bolivian", "Bosnian", "Brazilian", "British", "Bruneian", "Bulgarian", "Burkinabe", "Burmese", "Burundian",
+    "Cambodian", "Cameroonian", "Canadian", "Cape Verdean", "Central African", "Chadian", "Chilean", "Chinese", "Colombian", "Comoran",
+    "Congolese", "Costa Rican", "Croatian", "Cuban", "Cypriot", "Czech", "Danish", "Djibouti", "Dominican", "Dutch",
+    "East Timorese", "Ecuadorean", "Egyptian", "Emirian", "Equatorial Guinean", "Eritrean", "Estonian", "Ethiopian", "Fijian", "Filipino",
+    "Finnish", "French", "Gabonese", "Gambian", "Georgian", "German", "Ghanaian", "Greek", "Grenadian", "Guatemalan",
+    "Guinea-Bissauan", "Guinean", "Guyanese", "Haitian", "Herzegovinian", "Honduran", "Hungarian", "I-Kiribati", "Icelander", "Indian",
+    "Indonesian", "Iranian", "Iraqi", "Irish", "Israeli", "Italian", "Ivorian", "Jamaican", "Japanese", "Jordanian",
+    "Kazakhstani", "Kenyan", "Kittian and Nevisian", "Kuwaiti", "Kyrgyz", "Laotian", "Latvian", "Lebanese", "Liberian", "Libyan",
+    "Liechtensteiner", "Lithuanian", "Luxembourger", "Macedonian", "Malagasy", "Malawian", "Malaysian", "Maldivan", "Malian", "Maltese",
+    "Marshallese", "Mauritanian", "Mauritian", "Mexican", "Micronesian", "Moldovan", "Monacan", "Mongolian", "Moroccan", "Mosotho",
+    "Motswana", "Mozambican", "Namibian", "Nauruan", "Nepalese", "New Zealander", "Nicaraguan", "Nigerian", "Nigerien", "North Korean",
+    "Northern Irish", "Norwegian", "Omani", "Pakistani", "Palauan", "Panamanian", "Papua New Guinean", "Paraguayan", "Peruvian", "Polish",
+    "Portuguese", "Qatari", "Romanian", "Russian", "Rwandan", "Saint Lucian", "Salvadoran", "Samoan", "San Marinese", "Sao Tomean",
+    "Saudi", "Scottish", "Senegalese", "Serbian", "Seychellois", "Sierra Leonean", "Singaporean", "Slovakian", "Slovenian", "Solomon Islander",
+    "Somali", "South African", "South Korean", "Spanish", "Sri Lankan", "Sudanese", "Surinamer", "Swazi", "Swedish", "Swiss",
+    "Syrian", "Taiwanese", "Tajik", "Tanzanian", "Thai", "Togolese", "Tongan", "Trinidadian or Tobagonian", "Tunisian", "Turkish",
+    "Tuvaluan", "Ugandan", "Ukrainian", "Uruguayan", "Uzbekistani", "Venezuelan", "Vietnamese", "Welsh", "Yemenite", "Zambian", "Zimbabwean"
+  ];
+
   // Placeholder master data (until Crew Admin masters are created)
   const vesselTypeMasterData = [
     'Cargo', 'Tanker', 'Container', 'Bulk Carrier', 'Oil Tanker', 'Chemical Tanker',
@@ -610,6 +655,38 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     'Bosun', 'Able Seaman', 'Ordinary Seaman', 'Deckhand', 'Radio Officer',
     'Electrical Officer', 'Cadet', 'Motorman', 'Oiler', 'Wiper', 'Cook'
   ];
+
+  // Photo upload handling
+  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size must be less than 5MB');
+        return;
+      }
+      
+      setPhotoFile(file);
+      
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setUploadedPhoto(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removePhoto = () => {
+    setUploadedPhoto(null);
+    setPhotoFile(null);
+  };
 
   const renderA11GeneralParticulars = () => {
     const isEditing = editingSections['A1.1'];
@@ -631,11 +708,66 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* Photo Upload Area */}
           <div className="lg:col-span-3 space-y-4">
-            <div className="w-32 h-40 bg-gray-200 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
-              <div className="text-center">
-                <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                <div className="text-sm text-gray-500">Upload Photo</div>
-              </div>
+            <div className="relative">
+              {uploadedPhoto ? (
+                <div className="relative w-32 h-40 rounded-lg overflow-hidden border-2 border-gray-300">
+                  <img 
+                    src={uploadedPhoto} 
+                    alt="Uploaded photo" 
+                    className="w-full h-full object-cover"
+                  />
+                  {isEditing && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-1 right-1 h-6 w-6"
+                      onClick={removePhoto}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="w-32 h-40 bg-gray-50 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300 hover:border-gray-400 transition-colors">
+                  <div className="text-center">
+                    <Camera className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                    <div className="text-sm text-gray-500 mb-2">Upload Photo</div>
+                    {isEditing && (
+                      <label htmlFor="photo-upload" className="cursor-pointer">
+                        <input
+                          id="photo-upload"
+                          type="file"
+                          accept="image/*"
+                          onChange={handlePhotoUpload}
+                          className="hidden"
+                        />
+                        <div className="text-xs text-blue-600 hover:text-blue-800">Choose file</div>
+                      </label>
+                    )}
+                  </div>
+                </div>
+              )}
+              {isEditing && uploadedPhoto && (
+                <label htmlFor="photo-upload" className="mt-2 block">
+                  <input
+                    id="photo-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full text-xs"
+                    onClick={() => document.getElementById('photo-upload')?.click()}
+                  >
+                    Change Photo
+                  </Button>
+                </label>
+              )}
             </div>
             
             {/* Fields below photograph */}
@@ -643,11 +775,16 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <div>
                 <Label className="text-xs text-gray-500 tracking-wide">Rank Applied For</Label>
                 {isEditing ? (
-                  <Input
-                    value={formData.rankAppliedFor}
-                    onChange={(e) => updateFormData('rankAppliedFor', e.target.value)}
-                    className="mt-1"
-                  />
+                  <Select value={formData.rankAppliedFor} onValueChange={(value) => updateFormData('rankAppliedFor', value)}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select rank" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {rankMasterData.map(rank => (
+                        <SelectItem key={rank} value={rank}>{rank}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <div className="mt-1 text-sm text-gray-900">{formData.rankAppliedFor}</div>
                 )}
@@ -729,11 +866,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Select nationality" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Indian">Indian</SelectItem>
-                    <SelectItem value="British">British</SelectItem>
-                    <SelectItem value="Philippines">Philippines</SelectItem>
-                    <SelectItem value="Ukrainian">Ukrainian</SelectItem>
+                  <SelectContent className="max-h-[200px]">
+                    {NATIONALITIES.map(nationality => (
+                      <SelectItem key={nationality} value={nationality}>{nationality}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               ) : (
@@ -744,11 +880,16 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">Present Rank</Label>
               {isEditing ? (
-                <Input
-                  value={formData.presentRank}
-                  onChange={(e) => updateFormData('presentRank', e.target.value)}
-                  className="mt-1"
-                />
+                <Select value={formData.presentRank} onValueChange={(value) => updateFormData('presentRank', value)}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select rank" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[200px]">
+                    {rankMasterData.map(rank => (
+                      <SelectItem key={rank} value={rank}>{rank}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.presentRank}</div>
               )}
@@ -774,7 +915,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 <Input
                   value={formData.ageInYears}
                   onChange={(e) => updateFormData('ageInYears', e.target.value)}
-                  className="mt-1"
+                  className="mt-1 bg-gray-50"
+                  placeholder="Auto-calculated from DOB"
+                  readOnly
                 />
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.ageInYears}</div>
@@ -811,9 +954,13 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <Label className="text-xs text-gray-500 tracking-wide">Height( Cm )</Label>
               {isEditing ? (
                 <Input
+                  type="number"
                   value={formData.heightCm}
                   onChange={(e) => updateFormData('heightCm', e.target.value)}
                   className="mt-1"
+                  min="100"
+                  max="250"
+                  placeholder="e.g. 175"
                 />
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.heightCm}</div>
@@ -824,9 +971,13 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <Label className="text-xs text-gray-500 tracking-wide">Weight( kg )</Label>
               {isEditing ? (
                 <Input
+                  type="number"
                   value={formData.weightKg}
                   onChange={(e) => updateFormData('weightKg', e.target.value)}
                   className="mt-1"
+                  min="40"
+                  max="200"
+                  placeholder="e.g. 75"
                 />
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.weightKg}</div>
@@ -890,7 +1041,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     return (
       <div ref={sectionA12Ref} className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A1.2 Address& Contact Info</h3>
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A1.2 Address & Contact Info</h3>
           <Button
             variant="ghost"
             size="sm"
