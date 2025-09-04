@@ -1088,10 +1088,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Date of completion</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Qualifications</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">School, College, University</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Subjects/ Field</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Qualifications</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Date of completion</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -1100,8 +1100,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <TableRow key={edu.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
                   <Input
-                    value={edu.dateOfCompletion}
-                    onChange={(e) => updateEducation(edu.id, 'dateOfCompletion', e.target.value)}
+                    value={edu.qualifications}
+                    onChange={(e) => updateEducation(edu.id, 'qualifications', e.target.value)}
                     className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
                   />
                 </TableCell>
@@ -1121,8 +1121,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
-                    value={edu.qualifications}
-                    onChange={(e) => updateEducation(edu.id, 'qualifications', e.target.value)}
+                    value={edu.dateOfCompletion}
+                    onChange={(e) => updateEducation(edu.id, 'dateOfCompletion', e.target.value)}
                     className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
                   />
                 </TableCell>
