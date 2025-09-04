@@ -139,6 +139,20 @@ interface FormData {
     issued: string;
     expiry: string;
   }>;
+
+  // A4.1 Sea Service
+  seaService: Array<{
+    id: string;
+    vesselName: string;
+    vesselType: string;
+    deadweight: string;
+    engineTypePower: string;
+    ownerOperator: string;
+    rank: string;
+    from: string;
+    to: string;
+    periodMonths: string;
+  }>;
 }
 
 export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProps> = ({
@@ -250,6 +264,20 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     trainingCourses: [
       { id: 'A 01', trainingCourse: 'Risk Assessment', abbr: 'COC', requirement: 'STCW II & III', certificateNo: 'BAH 2345678', issuingAuthority: 'Authority 1', issued: '30 Jan 2022', expiry: '23 Mar 2032' },
       { id: 'A 02', trainingCourse: 'Safety Officer', abbr: 'DCEO', requirement: 'STCW IV/2', certificateNo: 'BAH 2345678', issuingAuthority: 'Authority 2', issued: '30 Jan 2022', expiry: '23 Mar 2032' }
+    ],
+    
+    // A4.1 Default sea service records
+    seaService: [
+      { id: '1', vesselName: 'SS Mariner', vesselType: 'Cargo', deadweight: '20000 DWT', engineTypePower: 'MAN B&W / 16000 kW', ownerOperator: 'Oceanic Shipping Co.', rank: 'Captain', from: '01/01/2023', to: '31/03/2023', periodMonths: '3M' },
+      { id: '2', vesselName: 'MV Neptune', vesselType: 'Tanker', deadweight: '30000 DWT', engineTypePower: 'Wartsila / 18000 kW', ownerOperator: 'Blue Wave Ltd.', rank: 'First Mate', from: '01/04/2023', to: '30/06/2023', periodMonths: '3M' },
+      { id: '3', vesselName: 'SS Voyager', vesselType: 'Container', deadweight: '25000 DWT', engineTypePower: 'Sulzer / 14000 kW', ownerOperator: 'Global Maritime Inc.', rank: 'Chief Engineer', from: '01/07/2023', to: '30/09/2023', periodMonths: '3M' },
+      { id: '4', vesselName: 'MV Explorer', vesselType: 'Bulk', deadweight: '28000 DWT', engineTypePower: 'MAN B&W / 15000 kW', ownerOperator: 'Seaspan Corporation', rank: 'Navigator', from: '01/10/2023', to: '31/12/2023', periodMonths: '5M' },
+      { id: '5', vesselName: 'SS Discovery', vesselType: 'Oil Tanker', deadweight: '35000 DWT', engineTypePower: 'Wartsila / 20000 kW', ownerOperator: 'Maritime Solutions Ltd.', rank: 'Second Mate', from: '01/01/2024', to: '31/03/2024', periodMonths: '4.5M' },
+      { id: '6', vesselName: 'MV Pioneer', vesselType: 'Cargo', deadweight: '22000 DWT', engineTypePower: 'Sulzer / 17000 kW', ownerOperator: 'Ocean Fleet Corp.', rank: 'Bosun', from: '01/04/2024', to: '30/06/2024', periodMonths: '5.3M' },
+      { id: '7', vesselName: 'SS Adventurer', vesselType: 'Container', deadweight: '27000 DWT', engineTypePower: 'MAN B&W / 16000 kW', ownerOperator: 'Global Maritime Inc.', rank: 'Deckhand', from: '01/07/2024', to: '30/09/2024', periodMonths: '3M' },
+      { id: '8', vesselName: 'MV Navigator', vesselType: 'Bulk Carrier', deadweight: '24000 DWT', engineTypePower: 'Wartsila / 18000 kW', ownerOperator: 'Seaspan Corporation', rank: 'Able Seaman', from: '01/10/2024', to: '31/12/2024', periodMonths: '3M' },
+      { id: '9', vesselName: 'SS Endeavor', vesselType: 'Oil Tanker', deadweight: '32000 DWT', engineTypePower: 'Sulzer / 19000 kW', ownerOperator: 'Maritime Solutions Ltd.', rank: 'Chief Officer', from: '01/01/2025', to: '31/03/2025', periodMonths: '3M' },
+      { id: '10', vesselName: 'MV Explorer', vesselType: 'Tanker', deadweight: '31000 DWT', engineTypePower: 'Wartsila / 17000 kW', ownerOperator: 'Blue Wave Ltd.', rank: 'Third Mate', from: '01/04/2025', to: '30/06/2025', periodMonths: '5.4M' }
     ]
   });
 
@@ -284,6 +312,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     { id: 'A1', title: 'Seafarers\' Particulars', number: 'A1' },
     { id: 'A2', title: 'Travel & ID Documents', number: 'A2' },
     { id: 'A3', title: 'Training & Certificates', number: 'A3' },
+    { id: 'A4', title: 'Sea Service', number: 'A4' },
     { id: 'A4', title: 'Medical', number: 'A4' },
     { id: 'A5', title: 'References', number: 'A5' },
     { id: 'B', title: 'Company Processing', number: 'B' },
@@ -492,6 +521,42 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       ...prev,
       trainingCourses: prev.trainingCourses.map(course => 
         course.id === id ? { ...course, [field]: value } : course
+      )
+    }));
+  };
+
+  // Sea Service management functions
+  const addSeaService = () => {
+    const newService = {
+      id: Date.now().toString(),
+      vesselName: '',
+      vesselType: '',
+      deadweight: '',
+      engineTypePower: '',
+      ownerOperator: '',
+      rank: '',
+      from: '',
+      to: '',
+      periodMonths: ''
+    };
+    setFormData(prev => ({
+      ...prev,
+      seaService: [...prev.seaService, newService]
+    }));
+  };
+
+  const removeSeaService = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      seaService: prev.seaService.filter(service => service.id !== id)
+    }));
+  };
+
+  const updateSeaService = (id: string, field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      seaService: prev.seaService.map(service => 
+        service.id === id ? { ...service, [field]: value } : service
       )
     }));
   };
@@ -1392,6 +1457,126 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     );
   };
 
+  const renderA41SeaService = () => {
+    return (
+      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A4.1 Details of Sea Service</h3>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={addSeaService}
+            className="text-gray-600 border-gray-300 hover:bg-gray-50"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            ADD
+          </Button>
+        </div>
+        
+        <Table className="w-full">
+          <TableHeader>
+            <TableRow className="bg-gray-100">
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Vessel Name</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Vessel Type</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Deadweight</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Engine Type/ Power</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Owner / operator</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Rank</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">From</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">To</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Period(M)</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {formData.seaService.map((service) => (
+              <TableRow key={service.id} className="border-b border-gray-200">
+                <TableCell className="p-3">
+                  <Input
+                    value={service.vesselName}
+                    onChange={(e) => updateSeaService(service.id, 'vesselName', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={service.vesselType}
+                    onChange={(e) => updateSeaService(service.id, 'vesselType', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={service.deadweight}
+                    onChange={(e) => updateSeaService(service.id, 'deadweight', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={service.engineTypePower}
+                    onChange={(e) => updateSeaService(service.id, 'engineTypePower', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={service.ownerOperator}
+                    onChange={(e) => updateSeaService(service.id, 'ownerOperator', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={service.rank}
+                    onChange={(e) => updateSeaService(service.id, 'rank', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={service.from}
+                    onChange={(e) => updateSeaService(service.id, 'from', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={service.to}
+                    onChange={(e) => updateSeaService(service.id, 'to', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={service.periodMonths}
+                    onChange={(e) => updateSeaService(service.id, 'periodMonths', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-gray-400 hover:text-red-600"
+                      onClick={() => removeSeaService(service.id)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  };
+
   const renderA13FamilyNOK = () => {
     const isEditing = editingSections['A1.3'];
     
@@ -1827,6 +2012,33 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 {renderA31Education()}
                 {renderA32LicenseDCE()}
                 {renderA33TrainingCourse()}
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-2 mt-6 pt-4">
+                <Button 
+                  className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8"
+                  onClick={onClose}
+                >
+                  Save & Continue
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      case 'A4':
+        return (
+          <Card className="bg-white border border-gray-200 shadow-sm">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
+              <div className="pb-4 mb-6">
+                <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A4 - Sea Service</h2>
+                <div style={{ color: '#16569e' }} className="text-sm">Add Sea service details, latest on top</div>
+                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+              </div>
+              
+              {/* A4 Section */}
+              <div className="space-y-6">
+                {renderA41SeaService()}
               </div>
               
               {/* Action Buttons */}
