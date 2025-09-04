@@ -243,13 +243,13 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     // A3.2 Default licenses
     licenses: [
       { id: 'A 01', certificateDocument: 'Certificate of Competency', abbr: 'COC', requirement: 'STCW II & III', certificateNo: 'BAH 2345678', issuingAuthority: 'Authority 1', issued: '30 Jan 2022', expiry: '23 Mar 2032' },
-      { id: 'A 02', certificateDocument: 'Course 2', abbr: 'DCEO', requirement: 'STCW IV/2', certificateNo: 'BAH 2345678', issuingAuthority: 'Authority 2', issued: '30 Jan 2022', expiry: '23 Mar 2032' }
+      { id: 'A 02', certificateDocument: 'DCE Oil', abbr: 'DCEO', requirement: 'STCW IV/2', certificateNo: 'BAH 2345678', issuingAuthority: 'Authority 2', issued: '30 Jan 2022', expiry: '23 Mar 2032' }
     ],
     
     // A3.3 Default training courses
     trainingCourses: [
-      { id: 'A 01', trainingCourse: 'Certificate of Competency', abbr: 'COC', requirement: 'STCW II & III', certificateNo: 'BAH 2345678', issuingAuthority: 'Authority 1', issued: '30 Jan 2022', expiry: '23 Mar 2032' },
-      { id: 'A 02', trainingCourse: 'Course 2', abbr: 'DCEO', requirement: 'STCW IV/2', certificateNo: 'BAH 2345678', issuingAuthority: 'Authority 2', issued: '30 Jan 2022', expiry: '23 Mar 2032' }
+      { id: 'A 01', trainingCourse: 'Risk Assessment', abbr: 'COC', requirement: 'STCW II & III', certificateNo: 'BAH 2345678', issuingAuthority: 'Authority 1', issued: '30 Jan 2022', expiry: '23 Mar 2032' },
+      { id: 'A 02', trainingCourse: 'Safety Officer', abbr: 'DCEO', requirement: 'STCW IV/2', certificateNo: 'BAH 2345678', issuingAuthority: 'Authority 2', issued: '30 Jan 2022', expiry: '23 Mar 2032' }
     ]
   });
 
