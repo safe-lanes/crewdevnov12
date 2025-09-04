@@ -598,10 +598,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   };
 
   // Placeholder master data (until Crew Admin masters are created)
-  const vesselMasterData = [
-    'SS Mariner', 'MV Neptune', 'SS Voyager', 'MV Explorer', 'SS Discovery',
-    'MV Pioneer', 'SS Adventurer', 'MV Navigator', 'SS Endeavor', 'MV Atlantic',
-    'SS Pacific', 'MV Freedom', 'SS Liberty', 'MV Enterprise', 'SS Horizon'
+  const vesselTypeMasterData = [
+    'Cargo', 'Tanker', 'Container', 'Bulk Carrier', 'Oil Tanker', 'Chemical Tanker',
+    'Gas Carrier', 'Ro-Ro', 'Passenger', 'Cruise', 'Ferry', 'Offshore',
+    'Tug', 'Dredger', 'Research Vessel', 'Naval Vessel'
   ];
 
   const rankMasterData = [
@@ -1542,28 +1542,29 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             {formData.seaService.map((service) => (
               <TableRow key={service.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  <Select
+                  <Input
                     value={service.vesselName}
-                    onValueChange={(value) => updateSeaService(service.id, 'vesselName', value)}
+                    onChange={(e) => updateSeaService(service.id, 'vesselName', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    placeholder="Enter vessel name"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Select
+                    value={service.vesselType}
+                    onValueChange={(value) => updateSeaService(service.id, 'vesselType', value)}
                   >
                     <SelectTrigger className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto">
-                      <SelectValue placeholder="Select vessel" />
+                      <SelectValue placeholder="Select vessel type" />
                     </SelectTrigger>
                     <SelectContent>
-                      {vesselMasterData.map((vessel) => (
-                        <SelectItem key={vessel} value={vessel}>
-                          {vessel}
+                      {vesselTypeMasterData.map((vesselType) => (
+                        <SelectItem key={vesselType} value={vesselType}>
+                          {vesselType}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                </TableCell>
-                <TableCell className="p-3">
-                  <Input
-                    value={service.vesselType}
-                    onChange={(e) => updateSeaService(service.id, 'vesselType', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
-                  />
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
