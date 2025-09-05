@@ -2574,7 +2574,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="pb-4 mb-6">
                 <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A5 - Additional Information</h2>
-                <div style={{ color: '#40E0D0' }} className="text-sm">Provide additional information as below</div>
+                <div className="text-sm text-[#16569e]">Provide additional information as below</div>
                 <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
               </div>
               
