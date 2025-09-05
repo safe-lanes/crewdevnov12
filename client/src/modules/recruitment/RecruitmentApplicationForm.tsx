@@ -302,8 +302,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
 
   // State for B7 Training Needs
   const [b7TrainingNeeds, setB7TrainingNeeds] = useState<Array<{id: string, training: string, identifiedBy: string, category: string, dueDate: string, comments: string}>>([
-    { id: '1', training: 'Training 1', identifiedBy: 'Authority 1', category: 'Mandatory', dueDate: '30 Jan 2022', comments: '' },
-    { id: '2', training: 'Training 2', identifiedBy: 'Authority 2', category: 'Recommended', dueDate: '30 Jan 2022', comments: '' }
+    { id: '1', training: 'Basic Safety Training', identifiedBy: 'Port State Control', category: 'Mandatory', dueDate: '2024-01-30', comments: 'Required for STCW compliance' },
+    { id: '2', training: 'Advanced Fire Fighting', identifiedBy: 'Safety Officer', category: 'Recommended', dueDate: '2024-03-15', comments: 'Due for renewal' }
   ]);
 
   // State for B8 multiple comments per question
@@ -814,6 +814,29 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     } catch {
       return '';
     }
+  };
+
+  // B7 Training Needs management functions
+  const addB7TrainingNeed = () => {
+    const newTraining = {
+      id: Date.now().toString(),
+      training: '',
+      identifiedBy: '',
+      category: '',
+      dueDate: '',
+      comments: ''
+    };
+    setB7TrainingNeeds(prev => [...prev, newTraining]);
+  };
+
+  const removeB7TrainingNeed = (id: string) => {
+    setB7TrainingNeeds(prev => prev.filter(training => training.id !== id));
+  };
+
+  const updateB7TrainingNeed = (id: string, field: string, value: string) => {
+    setB7TrainingNeeds(prev => prev.map(training => 
+      training.id === id ? { ...training, [field]: value } : training
+    ));
   };
 
   // Additional Information management functions
@@ -4890,72 +4913,100 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const renderB7TrainingNeeds = () => {
     return (
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B7. Training Needs Identified</h3>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={addB7TrainingNeed}
+            className="text-gray-600 border-gray-300 hover:bg-gray-50"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            ADD
+          </Button>
         </div>
         
         <div className="space-y-4">
-          {/* Action buttons */}
-          <div className="flex gap-2 mb-4">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="text-gray-600 border-gray-300 hover:bg-gray-50"
-            >
-              + ADD FROM DATABASE
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="text-gray-600 border-gray-300 hover:bg-gray-50"
-            >
-              + ADD
-            </Button>
-          </div>
-
           {/* Training needs table */}
-          <div className="overflow-x-auto">
-            <div className="grid grid-cols-6 gap-4 mb-2 text-xs font-medium text-gray-500 bg-gray-50 p-2 rounded">
-              <div>Training/ Course</div>
-              <div>Identified by</div>
-              <div>Category</div>
-              <div>Due Date</div>
-              <div>Comments</div>
-              <div></div>
-            </div>
-            {b7TrainingNeeds.map((training) => (
-              <div key={training.id} className="grid grid-cols-6 gap-4 py-2 border-b border-gray-100">
-                <div className="text-sm">{training.training}</div>
-                <div className="text-sm">{training.identifiedBy}</div>
-                <div className="text-sm">{training.category}</div>
-                <div className="text-sm">{training.dueDate}</div>
-                <div className="text-sm">{training.comments}</div>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={() => {
-                      setB7TrainingNeeds(prev => prev.filter(t => t.id !== training.id));
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+          <Table className="w-full">
+            <TableHeader>
+              <TableRow className="bg-gray-100">
+                <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Training/ Course</TableHead>
+                <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Identified by</TableHead>
+                <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Category</TableHead>
+                <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Due Date</TableHead>
+                <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Comments</TableHead>
+                <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-20">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {b7TrainingNeeds.map((training) => (
+                <TableRow key={training.id} className="border-b border-gray-200">
+                  <TableCell className="p-3">
+                    <Input
+                      value={training.training}
+                      onChange={(e) => updateB7TrainingNeed(training.id, 'training', e.target.value)}
+                      className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                      placeholder="Enter training/course name"
+                    />
+                  </TableCell>
+                  <TableCell className="p-3">
+                    <Input
+                      value={training.identifiedBy}
+                      onChange={(e) => updateB7TrainingNeed(training.id, 'identifiedBy', e.target.value)}
+                      className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                      placeholder="Enter identifier"
+                    />
+                  </TableCell>
+                  <TableCell className="p-3">
+                    <Select
+                      value={training.category}
+                      onValueChange={(value) => updateB7TrainingNeed(training.id, 'category', value)}
+                    >
+                      <SelectTrigger className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Mandatory">Mandatory</SelectItem>
+                        <SelectItem value="Recommended">Recommended</SelectItem>
+                        <SelectItem value="Optional">Optional</SelectItem>
+                        <SelectItem value="Refresher">Refresher</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell className="p-3">
+                    <Input
+                      type="date"
+                      value={training.dueDate}
+                      onChange={(e) => updateB7TrainingNeed(training.id, 'dueDate', e.target.value)}
+                      className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    />
+                  </TableCell>
+                  <TableCell className="p-3">
+                    <Input
+                      value={training.comments}
+                      onChange={(e) => updateB7TrainingNeed(training.id, 'comments', e.target.value)}
+                      className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                      placeholder="Enter comments"
+                    />
+                  </TableCell>
+                  <TableCell className="p-3">
+                    <div className="flex gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => removeB7TrainingNeed(training.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
 
           {/* Submitted by section */}
           <div className="mt-4 pt-4 border-t border-gray-200">
