@@ -188,6 +188,25 @@ interface FormData {
   b4AuthenticationResults: string;
   b4SubmittedBy: string;
   b4SubmittedDate: string;
+  
+  // B5 CES/Language Test Results fields
+  b5CesTestsCompleted: string;
+  b5SubmittedBy: string;
+  b5SubmittedDate: string;
+  
+  // B6 Interviews fields
+  b6InterviewCompleted: string;
+  b6SubmittedBy: string;
+  b6SubmittedDate: string;
+  
+  // B7 Training Needs Identified fields
+  b7SubmittedBy: string;
+  b7SubmittedDate: string;
+  
+  // B8 Short Listing fields
+  b8Shortlisted: string;
+  b8SubmittedBy: string;
+  b8SubmittedDate: string;
 }
 
 export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProps> = ({
@@ -251,6 +270,33 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const [b4Certificates, setB4Certificates] = useState<Array<{id: string, date: string, certificate: string, authority: string}>>([
     { id: '1', date: '', certificate: '', authority: '' }
   ]);
+
+  // State for B5 multiple comments per question
+  const [b5Comments, setB5Comments] = useState<{[key: string]: Array<{user: string, text: string, id: string}>}>({});
+  const [editingB5Comment, setEditingB5Comment] = useState<string | null>(null);
+  const [newB5Comment, setNewB5Comment] = useState<{[key: string]: string}>({});
+  const [b5Tests, setB5Tests] = useState<Array<{id: string, date: string, subject: string, score: string, result: string}>>([
+    { id: '1', date: '', subject: '', score: '', result: '' }
+  ]);
+
+  // State for B6 multiple comments per question
+  const [b6Comments, setB6Comments] = useState<{[key: string]: Array<{user: string, text: string, id: string}>}>({});
+  const [editingB6Comment, setEditingB6Comment] = useState<string | null>(null);
+  const [newB6Comment, setNewB6Comment] = useState<{[key: string]: string}>({});
+  const [b6Interviews, setB6Interviews] = useState<Array<{id: string, date: string, interviewer: string, status: string, result: string, comments: string}>>([
+    { id: '1', date: '', interviewer: '', status: '', result: '', comments: '' }
+  ]);
+
+  // State for B7 Training Needs
+  const [b7TrainingNeeds, setB7TrainingNeeds] = useState<Array<{id: string, training: string, identifiedBy: string, category: string, dueDate: string, comments: string}>>([
+    { id: '1', training: 'Training 1', identifiedBy: 'Authority 1', category: 'Mandatory', dueDate: '30 Jan 2022', comments: '' },
+    { id: '2', training: 'Training 2', identifiedBy: 'Authority 2', category: 'Recommended', dueDate: '30 Jan 2022', comments: '' }
+  ]);
+
+  // State for B8 multiple comments per question
+  const [b8Comments, setB8Comments] = useState<{[key: string]: Array<{user: string, text: string, id: string}>}>({});
+  const [editingB8Comment, setEditingB8Comment] = useState<string | null>(null);
+  const [newB8Comment, setNewB8Comment] = useState<{[key: string]: string}>({});
 
   const [formData, setFormData] = useState<FormData>({
     // Initialize with candidate data
@@ -393,7 +439,26 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     b4CertificatesAuthenticated: '',
     b4AuthenticationResults: '',
     b4SubmittedBy: '',
-    b4SubmittedDate: ''
+    b4SubmittedDate: '',
+    
+    // B5 CES/Language Test Results defaults
+    b5CesTestsCompleted: '',
+    b5SubmittedBy: '',
+    b5SubmittedDate: '',
+    
+    // B6 Interviews defaults
+    b6InterviewCompleted: '',
+    b6SubmittedBy: '',
+    b6SubmittedDate: '',
+    
+    // B7 Training Needs Identified defaults
+    b7SubmittedBy: '',
+    b7SubmittedDate: '',
+    
+    // B8 Short Listing defaults
+    b8Shortlisted: '',
+    b8SubmittedBy: '',
+    b8SubmittedDate: ''
   });
 
   // Handle click outside to auto-save sections
@@ -3954,6 +4019,909 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     );
   };
 
+  const renderB5CESLanguageTests = () => {
+    return (
+      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B5. CES / Language Test Results</h3>
+          <div className="cursor-help" title="Guidance for CES/Language Test process">
+            <Info className="h-4 w-4 text-gray-400" />
+          </div>
+        </div>
+        
+        <div className="space-y-6">
+          {/* B5.1 Applicable CES/Language Tests completed */}
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                B5.1 Applicable CES / Language Tests completed?
+              </Label>
+              <div className="flex items-center min-w-[300px]">
+                <div className="flex gap-6 w-[200px]">
+                  <div className="flex items-center space-x-2 w-[50px]">
+                    <RadioGroup 
+                      value={formData.b5CesTestsCompleted as string} 
+                      onValueChange={(value) => updateFormData('b5CesTestsCompleted', value)}
+                      className="flex"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="yes" id="b5-completed-yes" />
+                        <Label htmlFor="b5-completed-yes" className="text-sm cursor-pointer">Yes</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                  <div className="flex items-center space-x-2 w-[50px]">
+                    <RadioGroup 
+                      value={formData.b5CesTestsCompleted as string} 
+                      onValueChange={(value) => updateFormData('b5CesTestsCompleted', value)}
+                      className="flex"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="no" id="b5-completed-no" />
+                        <Label htmlFor="b5-completed-no" className="text-sm cursor-pointer">No</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                  <div className="flex items-center space-x-2 w-[50px]">
+                    <RadioGroup 
+                      value={formData.b5CesTestsCompleted as string} 
+                      onValueChange={(value) => updateFormData('b5CesTestsCompleted', value)}
+                      className="flex"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="na" id="b5-completed-na" />
+                        <Label htmlFor="b5-completed-na" className="text-sm cursor-pointer">NA</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 ml-4"
+                  onClick={() => setNewB5Comment(prev => ({
+                    ...prev,
+                    'b5-completed': ""
+                  }))}
+                >
+                  <MessageSquare className="h-4 w-4 text-gray-400" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Test details when Yes is selected */}
+            {formData.b5CesTestsCompleted === 'yes' && (
+              <div className="ml-4 mb-4 space-y-3">
+                {b5Tests.map((test, index) => (
+                  <div key={test.id} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                      <Input
+                        type="date"
+                        placeholder="Date"
+                        className="text-sm"
+                        value={test.date}
+                        onChange={(e) => {
+                          setB5Tests(prev => prev.map(t => 
+                            t.id === test.id 
+                              ? { ...t, date: e.target.value }
+                              : t
+                          ));
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <Select
+                        value={test.subject}
+                        onValueChange={(value) => {
+                          setB5Tests(prev => prev.map(t => 
+                            t.id === test.id 
+                              ? { ...t, subject: value }
+                              : t
+                          ));
+                        }}
+                      >
+                        <SelectTrigger className="text-sm">
+                          <SelectValue placeholder="Subject" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="english">English</SelectItem>
+                          <SelectItem value="mathematics">Mathematics</SelectItem>
+                          <SelectItem value="navigation">Navigation</SelectItem>
+                          <SelectItem value="seamanship">Seamanship</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Input
+                        type="text"
+                        placeholder="Score"
+                        className="text-sm"
+                        value={test.score}
+                        onChange={(e) => {
+                          setB5Tests(prev => prev.map(t => 
+                            t.id === test.id 
+                              ? { ...t, score: e.target.value }
+                              : t
+                          ));
+                        }}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Select
+                        value={test.result}
+                        onValueChange={(value) => {
+                          setB5Tests(prev => prev.map(t => 
+                            t.id === test.id 
+                              ? { ...t, result: value }
+                              : t
+                          ));
+                        }}
+                      >
+                        <SelectTrigger className="text-sm flex-1">
+                          <SelectValue placeholder="Result" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pass">Pass</SelectItem>
+                          <SelectItem value="fail">Fail</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {index === b5Tests.length - 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-10 w-10 p-0 border-gray-300"
+                          onClick={() => {
+                            const newId = (b5Tests.length + 1).toString();
+                            setB5Tests(prev => [...prev, { 
+                              id: newId, 
+                              date: '', 
+                              subject: '',
+                              score: '',
+                              result: '' 
+                            }]);
+                          }}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {b5Tests.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-10 w-10 p-0"
+                          onClick={() => {
+                            setB5Tests(prev => prev.filter(t => t.id !== test.id));
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Comments for B5.1 */}
+            {(b5Comments['b5-completed']?.length > 0 || newB5Comment['b5-completed'] !== undefined) && (
+              <div className="ml-4 mb-4 space-y-2">
+                {b5Comments['b5-completed']?.map((comment) => (
+                  <div key={comment.id} className="flex justify-between items-start">
+                    <div className="flex-1 text-blue-600 italic text-[13px] p-1">
+                      <span className="text-blue-600 italic text-[13px]">{comment.user}: </span>
+                      {comment.text}
+                    </div>
+                    <div className="ml-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setB5Comments(prev => ({
+                            ...prev,
+                            'b5-completed': prev['b5-completed']?.filter(c => c.id !== comment.id) || []
+                          }));
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                
+                {newB5Comment['b5-completed'] !== undefined && (
+                  <div>
+                    <div className="text-sm font-medium text-gray-600 mb-2">Roxanne, Crewing Executive</div>
+                    <Textarea
+                      value={newB5Comment['b5-completed']}
+                      onChange={(e) => {
+                        setNewB5Comment(prev => ({
+                          ...prev,
+                          'b5-completed': e.target.value
+                        }));
+                      }}
+                      onBlur={() => {
+                        if (newB5Comment['b5-completed']?.trim()) {
+                          const commentId = Date.now().toString();
+                          setB5Comments(prev => ({
+                            ...prev,
+                            'b5-completed': [
+                              ...(prev['b5-completed'] || []),
+                              {
+                                id: commentId,
+                                user: "Roxanne, Crewing Executive",
+                                text: newB5Comment['b5-completed']
+                              }
+                            ]
+                          }));
+                        }
+                        setNewB5Comment(prev => {
+                          const newState = { ...prev };
+                          delete newState['b5-completed'];
+                          return newState;
+                        });
+                      }}
+                      placeholder="Comment: Add your observations here..."
+                      className="text-blue-600 italic border-blue-200 text-[13px]"
+                      rows={2}
+                      autoFocus
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Upload button */}
+          <div className="flex justify-start">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="text-gray-600 border-gray-300 hover:bg-gray-50"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Upload
+            </Button>
+          </div>
+
+          {/* Submitted by section */}
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="flex justify-between items-center">
+              <div className="text-xs text-gray-500">
+                {formData.b5SubmittedBy ? (
+                  <>Submitted by: {formData.b5SubmittedBy}</>
+                ) : (
+                  <span className="text-gray-400">Not yet submitted</span>
+                )}
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => {
+                  const currentDate = new Date().toLocaleDateString();
+                  updateFormData('b5SubmittedBy', 'Roxanne, Crewing Executive');
+                  updateFormData('b5SubmittedDate', currentDate);
+                }}
+              >
+                Submit
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderB6Interviews = () => {
+    return (
+      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B6. Interview(s)</h3>
+          <div className="cursor-help" title="Guidance for interview process">
+            <Info className="h-4 w-4 text-gray-400" />
+          </div>
+        </div>
+        
+        <div className="space-y-6">
+          {/* B6.1 Interview completed */}
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                B6.1 Interview completed?
+              </Label>
+              <div className="flex items-center min-w-[300px]">
+                <div className="flex gap-6 w-[200px]">
+                  <div className="flex items-center space-x-2 w-[50px]">
+                    <RadioGroup 
+                      value={formData.b6InterviewCompleted as string} 
+                      onValueChange={(value) => updateFormData('b6InterviewCompleted', value)}
+                      className="flex"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="yes" id="b6-completed-yes" />
+                        <Label htmlFor="b6-completed-yes" className="text-sm cursor-pointer">Yes</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                  <div className="flex items-center space-x-2 w-[50px]">
+                    <RadioGroup 
+                      value={formData.b6InterviewCompleted as string} 
+                      onValueChange={(value) => updateFormData('b6InterviewCompleted', value)}
+                      className="flex"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="no" id="b6-completed-no" />
+                        <Label htmlFor="b6-completed-no" className="text-sm cursor-pointer">No</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                  <div className="flex items-center space-x-2 w-[50px]">
+                    <RadioGroup 
+                      value={formData.b6InterviewCompleted as string} 
+                      onValueChange={(value) => updateFormData('b6InterviewCompleted', value)}
+                      className="flex"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="na" id="b6-completed-na" />
+                        <Label htmlFor="b6-completed-na" className="text-sm cursor-pointer">NA</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 ml-4"
+                  onClick={() => setNewB6Comment(prev => ({
+                    ...prev,
+                    'b6-completed': ""
+                  }))}
+                >
+                  <MessageSquare className="h-4 w-4 text-gray-400" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Interview details when Yes is selected */}
+            {formData.b6InterviewCompleted === 'yes' && (
+              <div className="ml-4 mb-4 space-y-3">
+                {b6Interviews.map((interview, index) => (
+                  <div key={interview.id} className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div>
+                        <Input
+                          type="date"
+                          placeholder="Date"
+                          className="text-sm"
+                          value={interview.date}
+                          onChange={(e) => {
+                            setB6Interviews(prev => prev.map(int => 
+                              int.id === interview.id 
+                                ? { ...int, date: e.target.value }
+                                : int
+                            ));
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <Select
+                          value={interview.interviewer}
+                          onValueChange={(value) => {
+                            setB6Interviews(prev => prev.map(int => 
+                              int.id === interview.id 
+                                ? { ...int, interviewer: value }
+                                : int
+                            ));
+                          }}
+                        >
+                          <SelectTrigger className="text-sm">
+                            <SelectValue placeholder="Interviewer" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="capt-nick">Capt. Nick, Marine Superintendent</SelectItem>
+                            <SelectItem value="john-doe">John Doe, HR Manager</SelectItem>
+                            <SelectItem value="sarah-smith">Sarah Smith, Technical Manager</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Select
+                          value={interview.status}
+                          onValueChange={(value) => {
+                            setB6Interviews(prev => prev.map(int => 
+                              int.id === interview.id 
+                                ? { ...int, status: value }
+                                : int
+                            ));
+                          }}
+                        >
+                          <SelectTrigger className="text-sm">
+                            <SelectValue placeholder="Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="scheduled">Scheduled</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex gap-2">
+                        <Select
+                          value={interview.result}
+                          onValueChange={(value) => {
+                            setB6Interviews(prev => prev.map(int => 
+                              int.id === interview.id 
+                                ? { ...int, result: value }
+                                : int
+                            ));
+                          }}
+                        >
+                          <SelectTrigger className="text-sm flex-1">
+                            <SelectValue placeholder="Result" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pass">Pass</SelectItem>
+                            <SelectItem value="fail">Fail</SelectItem>
+                            <SelectItem value="pending">Pending</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {index === b6Interviews.length - 1 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-10 w-10 p-0 border-gray-300"
+                            onClick={() => {
+                              const newId = (b6Interviews.length + 1).toString();
+                              setB6Interviews(prev => [...prev, { 
+                                id: newId, 
+                                date: '', 
+                                interviewer: '',
+                                status: '',
+                                result: '',
+                                comments: ''
+                              }]);
+                            }}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {b6Interviews.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-10 w-10 p-0"
+                            onClick={() => {
+                              setB6Interviews(prev => prev.filter(int => int.id !== interview.id));
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Individual interview comment */}
+                    <div className="ml-4">
+                      <div className="text-blue-600 italic text-[13px] mb-2">
+                        {interview.interviewer ? interview.interviewer : 'Capt. Nick, Marine Superintendent'}:
+                      </div>
+                      <div className="text-blue-600 italic text-[13px] mb-2">
+                        Overall Candidate reflected a strong understanding of the Navigation & cargo operations.
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Comments for B6.1 */}
+            {(b6Comments['b6-completed']?.length > 0 || newB6Comment['b6-completed'] !== undefined) && (
+              <div className="ml-4 mb-4 space-y-2">
+                {b6Comments['b6-completed']?.map((comment) => (
+                  <div key={comment.id} className="flex justify-between items-start">
+                    <div className="flex-1 text-blue-600 italic text-[13px] p-1">
+                      <span className="text-blue-600 italic text-[13px]">{comment.user}: </span>
+                      {comment.text}
+                    </div>
+                    <div className="ml-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setB6Comments(prev => ({
+                            ...prev,
+                            'b6-completed': prev['b6-completed']?.filter(c => c.id !== comment.id) || []
+                          }));
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                
+                {newB6Comment['b6-completed'] !== undefined && (
+                  <div>
+                    <div className="text-sm font-medium text-gray-600 mb-2">Roxanne, Crewing Executive</div>
+                    <Textarea
+                      value={newB6Comment['b6-completed']}
+                      onChange={(e) => {
+                        setNewB6Comment(prev => ({
+                          ...prev,
+                          'b6-completed': e.target.value
+                        }));
+                      }}
+                      onBlur={() => {
+                        if (newB6Comment['b6-completed']?.trim()) {
+                          const commentId = Date.now().toString();
+                          setB6Comments(prev => ({
+                            ...prev,
+                            'b6-completed': [
+                              ...(prev['b6-completed'] || []),
+                              {
+                                id: commentId,
+                                user: "Roxanne, Crewing Executive",
+                                text: newB6Comment['b6-completed']
+                              }
+                            ]
+                          }));
+                        }
+                        setNewB6Comment(prev => {
+                          const newState = { ...prev };
+                          delete newState['b6-completed'];
+                          return newState;
+                        });
+                      }}
+                      placeholder="Comment: Add your observations here..."
+                      className="text-blue-600 italic border-blue-200 text-[13px]"
+                      rows={2}
+                      autoFocus
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Upload button */}
+          <div className="flex justify-start">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="text-gray-600 border-gray-300 hover:bg-gray-50"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Upload
+            </Button>
+          </div>
+
+          {/* Submitted by section */}
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="flex justify-between items-center">
+              <div className="text-xs text-gray-500">
+                {formData.b6SubmittedBy ? (
+                  <>Submitted by: {formData.b6SubmittedBy}</>
+                ) : (
+                  <span className="text-gray-400">Not yet submitted</span>
+                )}
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => {
+                  const currentDate = new Date().toLocaleDateString();
+                  updateFormData('b6SubmittedBy', 'Roxanne, Crewing Executive');
+                  updateFormData('b6SubmittedDate', currentDate);
+                }}
+              >
+                Submit
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderB7TrainingNeeds = () => {
+    return (
+      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B7. Training Needs Identified</h3>
+        </div>
+        
+        <div className="space-y-4">
+          {/* Action buttons */}
+          <div className="flex gap-2 mb-4">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="text-gray-600 border-gray-300 hover:bg-gray-50"
+            >
+              + ADD FROM DATABASE
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="text-gray-600 border-gray-300 hover:bg-gray-50"
+            >
+              + ADD
+            </Button>
+          </div>
+
+          {/* Training needs table */}
+          <div className="overflow-x-auto">
+            <div className="grid grid-cols-6 gap-4 mb-2 text-xs font-medium text-gray-500 bg-gray-50 p-2 rounded">
+              <div>Training/ Course</div>
+              <div>Identified by</div>
+              <div>Category</div>
+              <div>Due Date</div>
+              <div>Comments</div>
+              <div></div>
+            </div>
+            {b7TrainingNeeds.map((training) => (
+              <div key={training.id} className="grid grid-cols-6 gap-4 py-2 border-b border-gray-100">
+                <div className="text-sm">{training.training}</div>
+                <div className="text-sm">{training.identifiedBy}</div>
+                <div className="text-sm">{training.category}</div>
+                <div className="text-sm">{training.dueDate}</div>
+                <div className="text-sm">{training.comments}</div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={() => {
+                      setB7TrainingNeeds(prev => prev.filter(t => t.id !== training.id));
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Submitted by section */}
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="flex justify-between items-center">
+              <div className="text-xs text-gray-500">
+                {formData.b7SubmittedBy ? (
+                  <>Submitted by: {formData.b7SubmittedBy}</>
+                ) : (
+                  <span className="text-gray-400">Not yet submitted</span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                >
+                  Save
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  onClick={() => {
+                    const currentDate = new Date().toLocaleDateString();
+                    updateFormData('b7SubmittedBy', 'Roxanne, Crewing Executive');
+                    updateFormData('b7SubmittedDate', currentDate);
+                  }}
+                >
+                  Submit
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderB8ShortListing = () => {
+    return (
+      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B8. Short Listing</h3>
+        </div>
+        
+        <div className="space-y-6">
+          {/* B1.4 Shortlisted (For final approval) */}
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                B1.4 Shortlisted (For final approval)?
+              </Label>
+              <div className="flex items-center min-w-[300px]">
+                <div className="flex gap-6 w-[200px]">
+                  <div className="flex items-center space-x-2 w-[50px]">
+                    <RadioGroup 
+                      value={formData.b8Shortlisted as string} 
+                      onValueChange={(value) => updateFormData('b8Shortlisted', value)}
+                      className="flex"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="yes" id="b8-shortlisted-yes" />
+                        <Label htmlFor="b8-shortlisted-yes" className="text-sm cursor-pointer">Yes</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                  <div className="flex items-center space-x-2 w-[50px]">
+                    <RadioGroup 
+                      value={formData.b8Shortlisted as string} 
+                      onValueChange={(value) => updateFormData('b8Shortlisted', value)}
+                      className="flex"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="no" id="b8-shortlisted-no" />
+                        <Label htmlFor="b8-shortlisted-no" className="text-sm cursor-pointer">No</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 ml-4"
+                  onClick={() => setNewB8Comment(prev => ({
+                    ...prev,
+                    'b8-shortlisted': ""
+                  }))}
+                >
+                  <MessageSquare className="h-4 w-4 text-gray-400" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Comments for B8 */}
+            {(b8Comments['b8-shortlisted']?.length > 0 || newB8Comment['b8-shortlisted'] !== undefined) && (
+              <div className="ml-4 mb-4 space-y-2">
+                {b8Comments['b8-shortlisted']?.map((comment) => (
+                  <div key={comment.id} className="flex justify-between items-start">
+                    <div className="flex-1 text-blue-600 italic text-[13px] p-1">
+                      <span className="text-blue-600 italic text-[13px]">{comment.user}: </span>
+                      {comment.text}
+                    </div>
+                    <div className="ml-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setB8Comments(prev => ({
+                            ...prev,
+                            'b8-shortlisted': prev['b8-shortlisted']?.filter(c => c.id !== comment.id) || []
+                          }));
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                
+                {newB8Comment['b8-shortlisted'] !== undefined && (
+                  <div>
+                    <div className="text-sm font-medium text-gray-600 mb-2">Roxanne, Crewing Executive</div>
+                    <Textarea
+                      value={newB8Comment['b8-shortlisted']}
+                      onChange={(e) => {
+                        setNewB8Comment(prev => ({
+                          ...prev,
+                          'b8-shortlisted': e.target.value
+                        }));
+                      }}
+                      onBlur={() => {
+                        if (newB8Comment['b8-shortlisted']?.trim()) {
+                          const commentId = Date.now().toString();
+                          setB8Comments(prev => ({
+                            ...prev,
+                            'b8-shortlisted': [
+                              ...(prev['b8-shortlisted'] || []),
+                              {
+                                id: commentId,
+                                user: "Roxanne, Crewing Executive",
+                                text: newB8Comment['b8-shortlisted']
+                              }
+                            ]
+                          }));
+                        }
+                        setNewB8Comment(prev => {
+                          const newState = { ...prev };
+                          delete newState['b8-shortlisted'];
+                          return newState;
+                        });
+                      }}
+                      placeholder="Comment: Add your observations here..."
+                      className="text-blue-600 italic border-blue-200 text-[13px]"
+                      rows={2}
+                      autoFocus
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Upload button */}
+          <div className="flex justify-start">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="text-gray-600 border-gray-300 hover:bg-gray-50"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Upload
+            </Button>
+          </div>
+
+          {/* Submitted by section */}
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="flex justify-between items-center">
+              <div className="text-xs text-gray-500">
+                {formData.b8SubmittedBy ? (
+                  <>Submitted by: {formData.b8SubmittedBy}</>
+                ) : (
+                  <span className="text-gray-400">Not yet submitted</span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                >
+                  Save
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  onClick={() => {
+                    const currentDate = new Date().toLocaleDateString();
+                    updateFormData('b8SubmittedBy', 'Roxanne, Crewing Executive');
+                    updateFormData('b8SubmittedDate', currentDate);
+                  }}
+                >
+                  Submit
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderContent = () => {
     switch (activeSection) {
       case 'A1':
@@ -4122,6 +5090,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 {renderB2ReferenceChecks()}
                 {renderB3SecurityChecks()}
                 {renderB4Authentication()}
+                {renderB5CESLanguageTests()}
+                {renderB6Interviews()}
+                {renderB7TrainingNeeds()}
+                {renderB8ShortListing()}
               </div>
             </CardContent>
           </Card>
