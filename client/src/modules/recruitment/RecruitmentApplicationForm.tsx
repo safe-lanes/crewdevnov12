@@ -1555,6 +1555,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
+                    type="date"
                     value={edu.dateOfCompletion}
                     onChange={(e) => updateEducation(edu.id, 'dateOfCompletion', e.target.value)}
                     className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
@@ -1668,6 +1669,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
+                    type="date"
                     value={license.issued}
                     onChange={(e) => updateLicense(license.id, 'issued', e.target.value)}
                     className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
@@ -1675,6 +1677,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
+                    type="date"
                     value={license.expiry}
                     onChange={(e) => updateLicense(license.id, 'expiry', e.target.value)}
                     className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
@@ -1788,6 +1791,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
+                    type="date"
                     value={course.issued}
                     onChange={(e) => updateTrainingCourse(course.id, 'issued', e.target.value)}
                     className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
@@ -1795,6 +1799,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
+                    type="date"
                     value={course.expiry}
                     onChange={(e) => updateTrainingCourse(course.id, 'expiry', e.target.value)}
                     className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
