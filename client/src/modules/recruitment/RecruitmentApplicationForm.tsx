@@ -165,6 +165,8 @@ interface FormData {
   // Part B - Office Screening
   b1AgeMeetsCriteria: string;
   b1RankMeetsCriteria: string;
+  b1CertificatesValid: string;
+  b1Shortlisted: string;
   b1Comments: string;
   b1SubmittedBy: string;
   b1SubmittedDate: string;
@@ -189,6 +191,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   // State for uploaded photo
   const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+
+  // State for B1 comment visibility
+  const [showB1Comment, setShowB1Comment] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
     // Initialize with candidate data
@@ -309,6 +314,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     // Part B - Office Screening defaults
     b1AgeMeetsCriteria: '',
     b1RankMeetsCriteria: '',
+    b1CertificatesValid: '',
+    b1Shortlisted: '',
     b1Comments: '',
     b1SubmittedBy: '',
     b1SubmittedDate: ''
@@ -2469,83 +2476,150 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           </div>
         </div>
         
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Question 1: Age meets criteria */}
-          <div className="space-y-3">
-            <Label className="text-xs text-gray-500 tracking-wide">
+          <div className="flex justify-between items-center">
+            <Label className="text-xs text-gray-500 tracking-wide flex-1">
               B1.1 Age meets Company Criteria for the Rank applied for?
             </Label>
-            <RadioGroup 
-              value={formData.b1AgeMeetsCriteria} 
-              onValueChange={(value) => updateFormData('b1AgeMeetsCriteria', value)}
-              className="flex gap-6"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="yes" id="b1-age-yes" />
-                <Label htmlFor="b1-age-yes" className="text-sm cursor-pointer">Yes</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="no" id="b1-age-no" />
-                <Label htmlFor="b1-age-no" className="text-sm cursor-pointer">No</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="na" id="b1-age-na" />
-                <Label htmlFor="b1-age-na" className="text-sm cursor-pointer">NA</Label>
-              </div>
-            </RadioGroup>
+            <div className="flex gap-6 items-center">
+              <RadioGroup 
+                value={formData.b1AgeMeetsCriteria} 
+                onValueChange={(value) => updateFormData('b1AgeMeetsCriteria', value)}
+                className="flex gap-6"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="yes" id="b1-age-yes" />
+                  <Label htmlFor="b1-age-yes" className="text-sm cursor-pointer">Yes</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="no" id="b1-age-no" />
+                  <Label htmlFor="b1-age-no" className="text-sm cursor-pointer">No</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="na" id="b1-age-na" />
+                  <Label htmlFor="b1-age-na" className="text-sm cursor-pointer">NA</Label>
+                </div>
+              </RadioGroup>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => setShowB1Comment(!showB1Comment)}
+              >
+                <MessageSquare className="h-4 w-4 text-gray-400" />
+              </Button>
+            </div>
           </div>
 
-          {/* Question 2: Rank meets criteria */}
-          <div className="space-y-3">
-            <Label className="text-xs text-gray-500 tracking-wide">
-              B1.2 Seafarer meets Company criteria for the rank applied for?
+          {/* Question 2: Experience meets criteria */}
+          <div className="flex justify-between items-center">
+            <Label className="text-xs text-gray-500 tracking-wide flex-1">
+              B1.2 Experience meets Company Criteria for the Rank applied for?
             </Label>
-            <RadioGroup 
-              value={formData.b1RankMeetsCriteria} 
-              onValueChange={(value) => updateFormData('b1RankMeetsCriteria', value)}
-              className="flex gap-6"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="yes" id="b1-rank-yes" />
-                <Label htmlFor="b1-rank-yes" className="text-sm cursor-pointer">Yes</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="no" id="b1-rank-no" />
-                <Label htmlFor="b1-rank-no" className="text-sm cursor-pointer">No</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="na" id="b1-rank-na" />
-                <Label htmlFor="b1-rank-na" className="text-sm cursor-pointer">NA</Label>
-              </div>
-            </RadioGroup>
+            <div className="flex gap-6 items-center">
+              <RadioGroup 
+                value={formData.b1RankMeetsCriteria} 
+                onValueChange={(value) => updateFormData('b1RankMeetsCriteria', value)}
+                className="flex gap-6"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="yes" id="b1-rank-yes" />
+                  <Label htmlFor="b1-rank-yes" className="text-sm cursor-pointer">Yes</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="no" id="b1-rank-no" />
+                  <Label htmlFor="b1-rank-no" className="text-sm cursor-pointer">No</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="na" id="b1-rank-na" />
+                  <Label htmlFor="b1-rank-na" className="text-sm cursor-pointer">NA</Label>
+                </div>
+              </RadioGroup>
+            </div>
           </div>
 
-          {/* Comments section */}
-          <div className="space-y-3">
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <Textarea
-                  value={formData.b1Comments}
-                  onChange={(e) => updateFormData('b1Comments', e.target.value)}
-                  placeholder="Add comments..."
-                  className="text-[13px] min-h-[80px]"
-                />
+          {/* Show comments if enabled */}
+          {showB1Comment && (
+            <div className="mt-2 mb-4">
+              <div className="text-blue-600 italic text-[13px] space-y-2">
+                <div>Roxanne, Crewing Executive:</div>
+                <div>Rank Experience does not meet the requirements. 1 month short</div>
+                <div className="mt-2">Joseph Hall, Crew Manager:</div>
+                <div>Exception granted to this candidate as per discussion with Department Manager</div>
               </div>
-              <div className="ml-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0"
-                >
-                  <MessageSquare className="h-4 w-4 text-gray-400" />
-                </Button>
-              </div>
+            </div>
+          )}
+
+          {/* Question 3: Certificates & Documents */}
+          <div className="flex justify-between items-center">
+            <Label className="text-xs text-gray-500 tracking-wide flex-1">
+              B1.3 Certificates & Documents in order & valid as per Company Criteria?
+            </Label>
+            <div className="flex gap-6 items-center">
+              <RadioGroup 
+                value={formData.b1CertificatesValid} 
+                onValueChange={(value) => updateFormData('b1CertificatesValid', value)}
+                className="flex gap-6"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="yes" id="b1-cert-yes" />
+                  <Label htmlFor="b1-cert-yes" className="text-sm cursor-pointer">Yes</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="no" id="b1-cert-no" />
+                  <Label htmlFor="b1-cert-no" className="text-sm cursor-pointer">No</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="na" id="b1-cert-na" />
+                  <Label htmlFor="b1-cert-na" className="text-sm cursor-pointer">NA</Label>
+                </div>
+              </RadioGroup>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+              >
+                <MessageSquare className="h-4 w-4 text-gray-400" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Question 4: Shortlisted */}
+          <div className="flex justify-between items-center">
+            <Label className="text-xs text-gray-500 tracking-wide flex-1">
+              B1.4 Shortlisted (Initial Screening)?
+            </Label>
+            <div className="flex gap-6 items-center">
+              <RadioGroup 
+                value={formData.b1Shortlisted} 
+                onValueChange={(value) => updateFormData('b1Shortlisted', value)}
+                className="flex gap-6"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="yes" id="b1-shortlist-yes" />
+                  <Label htmlFor="b1-shortlist-yes" className="text-sm cursor-pointer">Yes</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="no" id="b1-shortlist-no" />
+                  <Label htmlFor="b1-shortlist-no" className="text-sm cursor-pointer">No</Label>
+                </div>
+              </RadioGroup>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+              >
+                <MessageSquare className="h-4 w-4 text-gray-400" />
+              </Button>
             </div>
           </div>
 
           {/* Upload button */}
-          <div className="flex justify-start">
+          <div className="flex justify-start mt-6">
             <Button
               type="button"
               variant="outline"
@@ -2562,7 +2636,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             <div className="flex justify-between items-center">
               <div className="text-xs text-gray-500">
                 {formData.b1SubmittedBy ? (
-                  <>Submitted by: {formData.b1SubmittedBy}, Crewing Executive</>
+                  <>Submitted by: {formData.b1SubmittedBy}</>
                 ) : (
                   <span className="text-gray-400">Not yet submitted</span>
                 )}
@@ -2573,7 +2647,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 className="bg-green-600 hover:bg-green-700 text-white"
                 onClick={() => {
                   const currentDate = new Date().toLocaleDateString();
-                  updateFormData('b1SubmittedBy', 'Rahmat, Crewing Executive'); // Sample user
+                  updateFormData('b1SubmittedBy', 'Roxanne, Crewing Executive');
                   updateFormData('b1SubmittedDate', currentDate);
                 }}
               >
@@ -2751,16 +2825,6 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               {/* B Sections */}
               <div className="space-y-6">
                 {renderB1InitialScreening()}
-              </div>
-              
-              {/* Action Buttons */}
-              <div className="flex justify-end gap-2 mt-6 pt-4">
-                <Button 
-                  className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8"
-                  onClick={onClose}
-                >
-                  Save & Continue
-                </Button>
               </div>
             </CardContent>
           </Card>
