@@ -685,6 +685,23 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     "Igbo", "Hausa", "Zulu", "Afrikaans", "Xhosa", "Sesotho", "Setswana", "Shona", "Ndebele", "Venda"
   ];
 
+  // Master data from #City Master# (placeholder until Crew Admin integration)
+  const cityMasterData = [
+    "Mumbai", "Delhi", "Kolkata", "Chennai", "Bangalore", "Hyderabad", "Pune", "Ahmedabad", "Surat", "Kanpur",
+    "Jaipur", "Lucknow", "Nagpur", "Patna", "Indore", "Thane", "Bhopal", "Visakhapatnam", "Vadodara", "Firozabad",
+    "Ludhiana", "Rajkot", "Agra", "Siliguri", "Nashik", "Faridabad", "Patiala", "Ghaziabad", "Kalyan", "Thrissur",
+    "Raipur", "Kota", "Bareilly", "Mysore", "Aligarh", "Jalandhar", "Tiruchirappalli", "Bhubaneswar", "Salem", "Warangal",
+    "Guntur", "Bhiwandi", "Saharanpur", "Gorakhpur", "Bikaner", "Amravati", "Noida", "Jamshedpur", "Bhilai", "Cuttack",
+    "Kochi", "Udaipur", "Bhavnagar", "Dehradun", "Asansol", "Ranchi", "Rajpur", "Howrah", "Jabalpur", "Gwalior",
+    "Vijayawada", "Jodhpur", "Madurai", "Raigarh", "Kurnool", "Malappuram", "Srinagar", "Aurangabad", "Dhanbad", "Amritsar",
+    "Navi Mumbai", "Allahabad", "Ranchi", "Haora", "Coimbatore", "Jabalpur", "Gwalior", "Vijayawada", "Jodhpur", "Madurai",
+    "Raigarh", "Kota", "Guwahati", "Chandigarh", "Solapur", "Hubli", "Tiruchirappalli", "Bareilly", "Moradabad", "Mysore",
+    "Gurgaon", "Aligarh", "Jalandhar", "Tiruchirappalli", "Bhubaneswar", "Salem", "Mira-Bhayandar", "Thiruvananthapuram",
+    "Bhiwandi", "Saharanpur", "Gorakhpur", "Guntur", "Bikaner", "Amravati", "Noida", "Jamshedpur", "Bhilai Nagar", "Warangal",
+    "Cuttack", "Firozabad", "Kochi", "Bhavnagar", "Dehradun", "Durgapur", "Asansol", "Rourkela", "Nanded", "Kolhapur",
+    "Ajmer", "Akola", "Gulbarga", "Jamnagar", "Ujjain", "Loni", "Siliguri", "Jhansi", "Ulhasnagar", "Jammu", "Sangli"
+  ];
+
   // Placeholder master data (until Crew Admin masters are created)
   const vesselTypeMasterData = [
     'Cargo', 'Tanker', 'Container', 'Bulk Carrier', 'Oil Tanker', 'Chemical Tanker',
@@ -1197,11 +1214,16 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           <div>
             <Label className="text-xs text-gray-500 tracking-wide">Country of Residence</Label>
             {isEditing ? (
-              <Input
-                value={formData.countryOfResidence}
-                onChange={(e) => updateFormData('countryOfResidence', e.target.value)}
-                className="mt-1"
-              />
+              <Select value={formData.countryOfResidence} onValueChange={(value) => updateFormData('countryOfResidence', value)}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select country of residence" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[200px]">
+                  {countryMasterData.map(country => (
+                    <SelectItem key={country} value={country}>{country}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             ) : (
               <div className="mt-1 text-sm text-gray-900">{formData.countryOfResidence}</div>
             )}
@@ -1263,11 +1285,16 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           <div className="col-span-2">
             <Label className="text-xs text-gray-500 tracking-wide">Residential Address Line 2( City, State, PIN )</Label>
             {isEditing ? (
-              <Input
-                value={formData.residentialAddressLine2}
-                onChange={(e) => updateFormData('residentialAddressLine2', e.target.value)}
-                className="mt-1"
-              />
+              <Select value={formData.residentialAddressLine2} onValueChange={(value) => updateFormData('residentialAddressLine2', value)}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select city, state, PIN" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[200px]">
+                  {cityMasterData.map(city => (
+                    <SelectItem key={city} value={city}>{city}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             ) : (
               <div className="mt-1 text-sm text-gray-900">{formData.residentialAddressLine2}</div>
             )}
