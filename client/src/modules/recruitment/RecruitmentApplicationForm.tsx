@@ -642,6 +642,40 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     "Tuvaluan", "Ugandan", "Ukrainian", "Uruguayan", "Uzbekistani", "Venezuelan", "Vietnamese", "Welsh", "Yemenite", "Zambian", "Zimbabwean"
   ];
 
+  // Master data from #Country Master# (placeholder until Crew Admin integration)
+  const countryMasterData = [
+    "Afghanistan", "Albania", "Algeria", "United States", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia",
+    "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin",
+    "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Brazil", "United Kingdom", "Brunei", "Bulgaria", "Burkina Faso", "Myanmar", "Burundi",
+    "Cambodia", "Cameroon", "Canada", "Cape Verde", "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros",
+    "Congo", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominican Republic", "Netherlands",
+    "East Timor", "Ecuador", "Egypt", "United Arab Emirates", "Equatorial Guinea", "Eritrea", "Estonia", "Ethiopia", "Fiji", "Philippines",
+    "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada", "Guatemala",
+    "Guinea-Bissau", "Guinea", "Guyana", "Haiti", "Bosnia and Herzegovina", "Honduras", "Hungary", "Kiribati", "Iceland", "India",
+    "Indonesia", "Iran", "Iraq", "Ireland", "Israel", "Italy", "Ivory Coast", "Jamaica", "Japan", "Jordan",
+    "Kazakhstan", "Kenya", "Saint Kitts and Nevis", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Liberia", "Libya",
+    "Liechtenstein", "Lithuania", "Luxembourg", "North Macedonia", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta",
+    "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Morocco", "Lesotho",
+    "Botswana", "Mozambique", "Namibia", "Nauru", "Nepal", "New Zealand", "Nicaragua", "Nigeria", "Niger", "North Korea",
+    "Northern Ireland", "Norway", "Oman", "Pakistan", "Palau", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Poland",
+    "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Lucia", "El Salvador", "Samoa", "San Marino", "Sao Tome and Principe",
+    "Saudi Arabia", "Scotland", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands",
+    "Somalia", "South Africa", "South Korea", "Spain", "Sri Lanka", "Sudan", "Suriname", "Eswatini", "Sweden", "Switzerland",
+    "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey",
+    "Tuvalu", "Uganda", "Ukraine", "Uruguay", "Uzbekistan", "Venezuela", "Vietnam", "Wales", "Yemen", "Zambia", "Zimbabwe"
+  ];
+
+  // Master data from #Language Master# (placeholder until Crew Admin integration)  
+  const languageMasterData = [
+    "English", "Mandarin Chinese", "Spanish", "Hindi", "Arabic", "Portuguese", "Bengali", "Russian", "Japanese", "French",
+    "German", "Korean", "Italian", "Vietnamese", "Turkish", "Polish", "Dutch", "Greek", "Czech", "Romanian",
+    "Hungarian", "Swedish", "Norwegian", "Danish", "Finnish", "Hebrew", "Thai", "Malay", "Indonesian", "Filipino",
+    "Urdu", "Persian", "Ukrainian", "Croatian", "Serbian", "Bulgarian", "Slovak", "Slovenian", "Lithuanian", "Latvian",
+    "Estonian", "Georgian", "Armenian", "Kazakh", "Uzbek", "Mongolian", "Nepali", "Sinhala", "Tamil", "Telugu",
+    "Marathi", "Gujarati", "Punjabi", "Malayalam", "Kannada", "Oriya", "Assamese", "Swahili", "Amharic", "Yoruba",
+    "Igbo", "Hausa", "Zulu", "Afrikaans", "Xhosa", "Sesotho", "Setswana", "Shona", "Ndebele", "Venda"
+  ];
+
   // Placeholder master data (until Crew Admin masters are created)
   const vesselTypeMasterData = [
     'Cargo', 'Tanker', 'Container', 'Bulk Carrier', 'Oil Tanker', 'Chemical Tanker',
@@ -686,6 +720,36 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const removePhoto = () => {
     setUploadedPhoto(null);
     setPhotoFile(null);
+  };
+
+  // Multi-select language handling
+  const handleLanguageSelection = (field: 'nativeLanguage' | 'foreignLanguages', selectedLanguage: string) => {
+    if (field === 'nativeLanguage') {
+      // Single selection for native language
+      updateFormData('nativeLanguage', selectedLanguage);
+    } else {
+      // Multi-selection for foreign languages
+      const currentLanguages = formData.foreignLanguages ? formData.foreignLanguages.split(', ') : [];
+      const isAlreadySelected = currentLanguages.includes(selectedLanguage);
+      
+      let updatedLanguages;
+      if (isAlreadySelected) {
+        updatedLanguages = currentLanguages.filter(lang => lang !== selectedLanguage);
+      } else {
+        updatedLanguages = [...currentLanguages, selectedLanguage];
+      }
+      
+      updateFormData('foreignLanguages', updatedLanguages.join(', '));
+    }
+  };
+
+  const isLanguageSelected = (field: 'nativeLanguage' | 'foreignLanguages', language: string): boolean => {
+    if (field === 'nativeLanguage') {
+      return formData.nativeLanguage === language;
+    } else {
+      const currentLanguages = formData.foreignLanguages ? formData.foreignLanguages.split(', ') : [];
+      return currentLanguages.includes(language);
+    }
   };
 
   const renderA11GeneralParticulars = () => {
@@ -940,11 +1004,16 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">Place of birth( Country )</Label>
               {isEditing ? (
-                <Input
-                  value={formData.placeOfBirthCountry}
-                  onChange={(e) => updateFormData('placeOfBirthCountry', e.target.value)}
-                  className="mt-1"
-                />
+                <Select value={formData.placeOfBirthCountry} onValueChange={(value) => updateFormData('placeOfBirthCountry', value)}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select country" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[200px]">
+                    {countryMasterData.map(country => (
+                      <SelectItem key={country} value={country}>{country}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.placeOfBirthCountry}</div>
               )}
@@ -987,11 +1056,16 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">Native Language</Label>
               {isEditing ? (
-                <Input
-                  value={formData.nativeLanguage}
-                  onChange={(e) => updateFormData('nativeLanguage', e.target.value)}
-                  className="mt-1"
-                />
+                <Select value={formData.nativeLanguage} onValueChange={(value) => updateFormData('nativeLanguage', value)}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select native language" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[200px]">
+                    {languageMasterData.map(language => (
+                      <SelectItem key={language} value={language}>{language}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.nativeLanguage}</div>
               )}
@@ -1000,11 +1074,31 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">Foreign Languages</Label>
               {isEditing ? (
-                <Input
-                  value={formData.foreignLanguages}
-                  onChange={(e) => updateFormData('foreignLanguages', e.target.value)}
-                  className="mt-1"
-                />
+                <div className="relative">
+                  <Select value="" onValueChange={(value) => handleLanguageSelection('foreignLanguages', value)}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder={formData.foreignLanguages || "Select foreign languages (multi-select)"} />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {languageMasterData.map(language => {
+                        const isSelected = isLanguageSelected('foreignLanguages', language);
+                        return (
+                          <SelectItem key={language} value={language} className={isSelected ? "bg-blue-50" : ""}>
+                            <div className="flex items-center gap-2">
+                              {isSelected && <span className="text-blue-600">✓</span>}
+                              {language}
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  {formData.foreignLanguages && (
+                    <div className="mt-2 text-xs text-gray-600">
+                      Selected: {formData.foreignLanguages}
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.foreignLanguages}</div>
               )}
