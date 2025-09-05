@@ -192,9 +192,23 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
 
-  // State for B1 individual comments
-  const [b1Comments, setB1Comments] = useState<{[key: string]: string}>({});
+  // State for B1 multiple comments per question
+  const [b1Comments, setB1Comments] = useState<{[key: string]: Array<{user: string, text: string, id: string}>}>({
+    'b1-rank': [
+      {
+        id: '1',
+        user: 'Roxanne, Crewing Executive',
+        text: 'Rank Experience does not meet the requirements. 1 month short'
+      },
+      {
+        id: '2', 
+        user: 'Joseph Hall, Crew Manager',
+        text: 'Exception granted to this candidate as per discussion with Department Manager'
+      }
+    ]
+  });
   const [editingB1Comment, setEditingB1Comment] = useState<string | null>(null);
+  const [newB1Comment, setNewB1Comment] = useState<{[key: string]: string}>({});
 
   const [formData, setFormData] = useState<FormData>({
     // Initialize with candidate data
@@ -2539,9 +2553,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                     variant="ghost"
                     size="sm"
                     className="h-8 w-8 p-0 ml-4"
-                    onClick={() => setB1Comments(prev => ({
+                    onClick={() => setNewB1Comment(prev => ({
                       ...prev,
-                      [question.id]: prev[question.id] || ""
+                      [question.id]: ""
                     }))}
                   >
                     <MessageSquare className="h-4 w-4 text-gray-400" />
@@ -2549,32 +2563,15 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 </div>
               </div>
 
-              {/* Individual comment for this question */}
-              {b1Comments[question.id] !== undefined && (
-                <div className="ml-4 mb-4">
-                  {editingB1Comment === question.id ? (
-                    <Textarea
-                      value={b1Comments[question.id]}
-                      onChange={(e) => {
-                        setB1Comments(prev => ({
-                          ...prev,
-                          [question.id]: e.target.value
-                        }));
-                      }}
-                      onBlur={() => setEditingB1Comment(null)}
-                      placeholder="Comment: Add your observations here..."
-                      className="text-blue-600 italic border-blue-200 text-[13px]"
-                      rows={2}
-                      autoFocus
-                    />
-                  ) : (
-                    <div className="flex justify-between items-start">
-                      <div 
-                        className="flex-1 text-blue-600 italic cursor-pointer hover:bg-gray-50 text-[13px] p-1"
-                        onClick={() => setEditingB1Comment(question.id)}
-                      >
-                        <span className="text-blue-600 italic text-[13px]">Roxanne, Crewing Executive: </span>
-                        {b1Comments[question.id] || "Click to add comment..."}
+              {/* Multiple comments for this question */}
+              {(b1Comments[question.id]?.length > 0 || newB1Comment[question.id] !== undefined) && (
+                <div className="ml-4 mb-4 space-y-2">
+                  {/* Existing comments */}
+                  {b1Comments[question.id]?.map((comment) => (
+                    <div key={comment.id} className="flex justify-between items-start">
+                      <div className="flex-1 text-blue-600 italic text-[13px] p-1">
+                        <span className="text-blue-600 italic text-[13px]">{comment.user}: </span>
+                        {comment.text}
                       </div>
                       <div className="ml-2">
                         <Button
@@ -2582,16 +2579,58 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                           variant="ghost"
                           size="sm"
                           onClick={() => {
-                            setB1Comments(prev => {
-                              const newComments = { ...prev };
-                              delete newComments[question.id];
-                              return newComments;
-                            });
+                            setB1Comments(prev => ({
+                              ...prev,
+                              [question.id]: prev[question.id]?.filter(c => c.id !== comment.id) || []
+                            }));
                           }}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
+                    </div>
+                  ))}
+                  
+                  {/* New comment input */}
+                  {newB1Comment[question.id] !== undefined && (
+                    <div>
+                      <div className="text-sm font-medium text-gray-600 mb-2">Roxanne, Crewing Executive</div>
+                      <Textarea
+                        value={newB1Comment[question.id]}
+                        onChange={(e) => {
+                          setNewB1Comment(prev => ({
+                            ...prev,
+                            [question.id]: e.target.value
+                          }));
+                        }}
+                        onBlur={() => {
+                          if (newB1Comment[question.id]?.trim()) {
+                            // Add the comment
+                            const commentId = Date.now().toString();
+                            setB1Comments(prev => ({
+                              ...prev,
+                              [question.id]: [
+                                ...(prev[question.id] || []),
+                                {
+                                  id: commentId,
+                                  user: "Roxanne, Crewing Executive",
+                                  text: newB1Comment[question.id]
+                                }
+                              ]
+                            }));
+                          }
+                          // Clear the new comment input
+                          setNewB1Comment(prev => {
+                            const newState = { ...prev };
+                            delete newState[question.id];
+                            return newState;
+                          });
+                        }}
+                        placeholder="Comment: Add your observations here..."
+                        className="text-blue-600 italic border-blue-200 text-[13px]"
+                        rows={2}
+                        autoFocus
+                      />
                     </div>
                   )}
                 </div>
