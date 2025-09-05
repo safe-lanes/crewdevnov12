@@ -2552,7 +2552,6 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               {/* Individual comment for this question */}
               {b1Comments[question.id] !== undefined && (
                 <div className="ml-4 mb-4">
-                  <div className="text-sm font-medium text-gray-600 mb-2">Roxanne, Crewing Executive</div>
                   {editingB1Comment === question.id ? (
                     <Textarea
                       value={b1Comments[question.id]}
@@ -2571,10 +2570,11 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   ) : (
                     <div className="flex justify-between items-start">
                       <div 
-                        className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px] border border-blue-200"
+                        className="flex-1 text-blue-600 italic cursor-pointer hover:bg-gray-50 text-[13px] p-1"
                         onClick={() => setEditingB1Comment(question.id)}
                       >
-                        {b1Comments[question.id] || "Comment: Add your observations here..."}
+                        <span className="text-blue-600 italic text-[13px]">Roxanne, Crewing Executive: </span>
+                        {b1Comments[question.id] || "Click to add comment..."}
                       </div>
                       <div className="ml-2">
                         <Button
