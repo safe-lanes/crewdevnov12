@@ -170,6 +170,14 @@ interface FormData {
   b1Comments: string;
   b1SubmittedBy: string;
   b1SubmittedDate: string;
+  
+  // B2 Reference Checks fields
+  b2ReferenceChecksCompleted: string;
+  b2CurrentEmployerFeedback: string;
+  b2PreviousEmployerFeedback: string;
+  b2OverallReferenceRating: string;
+  b2SubmittedBy: string;
+  b2SubmittedDate: string;
 }
 
 export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProps> = ({
@@ -209,6 +217,11 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   });
   const [editingB1Comment, setEditingB1Comment] = useState<string | null>(null);
   const [newB1Comment, setNewB1Comment] = useState<{[key: string]: string}>({});
+
+  // State for B2 multiple comments per question
+  const [b2Comments, setB2Comments] = useState<{[key: string]: Array<{user: string, text: string, id: string}>}>({});
+  const [editingB2Comment, setEditingB2Comment] = useState<string | null>(null);
+  const [newB2Comment, setNewB2Comment] = useState<{[key: string]: string}>({});
 
   const [formData, setFormData] = useState<FormData>({
     // Initialize with candidate data
@@ -333,7 +346,15 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     b1Shortlisted: '',
     b1Comments: '',
     b1SubmittedBy: '',
-    b1SubmittedDate: ''
+    b1SubmittedDate: '',
+    
+    // B2 Reference Checks defaults
+    b2ReferenceChecksCompleted: '',
+    b2CurrentEmployerFeedback: '',
+    b2PreviousEmployerFeedback: '',
+    b2OverallReferenceRating: '',
+    b2SubmittedBy: '',
+    b2SubmittedDate: ''
   });
 
   // Handle click outside to auto-save sections
@@ -2680,6 +2701,205 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     );
   };
 
+  const renderB2ReferenceChecks = () => {
+    const questions = [
+      { id: 'b2-completed', field: 'b2ReferenceChecksCompleted', label: 'B2.1 Reference checks completed with previous employers?', hasNA: true },
+      { id: 'b2-current', field: 'b2CurrentEmployerFeedback', label: 'B2.2 Current employer feedback satisfactory?', hasNA: true },
+      { id: 'b2-previous', field: 'b2PreviousEmployerFeedback', label: 'B2.3 Previous employer feedback satisfactory?', hasNA: true },
+      { id: 'b2-rating', field: 'b2OverallReferenceRating', label: 'B2.4 Overall reference rating acceptable?', hasNA: false },
+    ];
+
+    return (
+      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B2. Reference Checks with Previous Employer</h3>
+          <div className="cursor-help" title="Guidance for reference checks process">
+            <Info className="h-4 w-4 text-gray-400" />
+          </div>
+        </div>
+        
+        <div className="space-y-4">
+          {questions.map((question) => (
+            <React.Fragment key={question.id}>
+              <div className="flex justify-between items-center">
+                <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                  {question.label}
+                </Label>
+                <div className="flex items-center min-w-[300px]">
+                  {/* Fixed width container for alignment */}
+                  <div className="flex gap-6 w-[200px]">
+                    <div className="flex items-center space-x-2 w-[50px]">
+                      <RadioGroup 
+                        value={formData[question.field as keyof FormData] as string} 
+                        onValueChange={(value) => updateFormData(question.field as keyof FormData, value)}
+                        className="flex"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="yes" id={`${question.id}-yes`} />
+                          <Label htmlFor={`${question.id}-yes`} className="text-sm cursor-pointer">Yes</Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+                    <div className="flex items-center space-x-2 w-[50px]">
+                      <RadioGroup 
+                        value={formData[question.field as keyof FormData] as string} 
+                        onValueChange={(value) => updateFormData(question.field as keyof FormData, value)}
+                        className="flex"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="no" id={`${question.id}-no`} />
+                          <Label htmlFor={`${question.id}-no`} className="text-sm cursor-pointer">No</Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+                    {question.hasNA && (
+                      <div className="flex items-center space-x-2 w-[50px]">
+                        <RadioGroup 
+                          value={formData[question.field as keyof FormData] as string} 
+                          onValueChange={(value) => updateFormData(question.field as keyof FormData, value)}
+                          className="flex"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="na" id={`${question.id}-na`} />
+                            <Label htmlFor={`${question.id}-na`} className="text-sm cursor-pointer">NA</Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+                    )}
+                    {!question.hasNA && <div className="w-[50px]"></div>}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 ml-4"
+                    onClick={() => setNewB2Comment(prev => ({
+                      ...prev,
+                      [question.id]: ""
+                    }))}
+                  >
+                    <MessageSquare className="h-4 w-4 text-gray-400" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Multiple comments for this question */}
+              {(b2Comments[question.id]?.length > 0 || newB2Comment[question.id] !== undefined) && (
+                <div className="ml-4 mb-4 space-y-2">
+                  {/* Existing comments */}
+                  {b2Comments[question.id]?.map((comment) => (
+                    <div key={comment.id} className="flex justify-between items-start">
+                      <div className="flex-1 text-blue-600 italic text-[13px] p-1">
+                        <span className="text-blue-600 italic text-[13px]">{comment.user}: </span>
+                        {comment.text}
+                      </div>
+                      <div className="ml-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setB2Comments(prev => ({
+                              ...prev,
+                              [question.id]: prev[question.id]?.filter(c => c.id !== comment.id) || []
+                            }));
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* New comment input */}
+                  {newB2Comment[question.id] !== undefined && (
+                    <div>
+                      <div className="text-sm font-medium text-gray-600 mb-2">Roxanne, Crewing Executive</div>
+                      <Textarea
+                        value={newB2Comment[question.id]}
+                        onChange={(e) => {
+                          setNewB2Comment(prev => ({
+                            ...prev,
+                            [question.id]: e.target.value
+                          }));
+                        }}
+                        onBlur={() => {
+                          if (newB2Comment[question.id]?.trim()) {
+                            // Add the comment
+                            const commentId = Date.now().toString();
+                            setB2Comments(prev => ({
+                              ...prev,
+                              [question.id]: [
+                                ...(prev[question.id] || []),
+                                {
+                                  id: commentId,
+                                  user: "Roxanne, Crewing Executive",
+                                  text: newB2Comment[question.id]
+                                }
+                              ]
+                            }));
+                          }
+                          // Clear the new comment input
+                          setNewB2Comment(prev => {
+                            const newState = { ...prev };
+                            delete newState[question.id];
+                            return newState;
+                          });
+                        }}
+                        placeholder="Comment: Add your observations here..."
+                        className="text-blue-600 italic border-blue-200 text-[13px]"
+                        rows={2}
+                        autoFocus
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </React.Fragment>
+          ))}
+
+          {/* Upload button */}
+          <div className="flex justify-start mt-6">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="text-gray-600 border-gray-300 hover:bg-gray-50"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Upload
+            </Button>
+          </div>
+
+          {/* Submitted by section */}
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="flex justify-between items-center">
+              <div className="text-xs text-gray-500">
+                {formData.b2SubmittedBy ? (
+                  <>Submitted by: {formData.b2SubmittedBy}</>
+                ) : (
+                  <span className="text-gray-400">Not yet submitted</span>
+                )}
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => {
+                  const currentDate = new Date().toLocaleDateString();
+                  updateFormData('b2SubmittedBy', 'Roxanne, Crewing Executive');
+                  updateFormData('b2SubmittedDate', currentDate);
+                }}
+              >
+                Submit
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderContent = () => {
     switch (activeSection) {
       case 'A1':
@@ -2845,6 +3065,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               {/* B Sections */}
               <div className="space-y-6">
                 {renderB1InitialScreening()}
+                {renderB2ReferenceChecks()}
               </div>
             </CardContent>
           </Card>
