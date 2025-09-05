@@ -2094,6 +2094,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <Label className="text-xs text-gray-500 tracking-wide">Spouse Date of Birth</Label>
               {isEditing ? (
                 <Input
+                  type="date"
                   value={formData.spouseDateOfBirth}
                   onChange={(e) => updateFormData('spouseDateOfBirth', e.target.value)}
                   className="mt-1"
@@ -2176,6 +2177,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                           {isEditing ? (
                             <Input
+                              type="date"
                               value={child.dateOfBirth}
                               onChange={(e) => updateChild(index, 'dateOfBirth', e.target.value)}
                               className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
