@@ -15,7 +15,7 @@ export const forms = mysqlTable("forms", {
   rankGroup: text("rank_group").notNull(),
   versionNo: text("version_no").notNull(),
   versionDate: text("version_date").notNull(),
-  configuration: text("configuration", { length: 65535 }), // JSON string for form configuration
+  configuration: text("configuration"), // JSON string for form configuration
 });
 
 export const rankGroups = mysqlTable("rank_groups", {
@@ -51,7 +51,7 @@ export const appraisalResults = mysqlTable("appraisal_results", {
   formId: int("form_id").notNull().references(() => forms.id),
   appraisalType: text("appraisal_type").notNull(),
   appraisalDate: text("appraisal_date").notNull(),
-  appraisalData: text("appraisal_data", { length: 65535 }).notNull(), // JSON string
+  appraisalData: text("appraisal_data").notNull(), // JSON string
   competenceRating: text("competence_rating"),
   behavioralRating: text("behavioral_rating"),
   overallRating: text("overall_rating"),

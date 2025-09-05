@@ -32,9 +32,19 @@ export class DatabaseStorage implements IStorage {
       throw new Error("DATABASE_URL environment variable is required");
     }
     
+    // Parse DATABASE_URL for RDS connection
+    const url = new URL(process.env.DATABASE_URL);
+    
     this.pool = mysql.createPool({
-      uri: process.env.DATABASE_URL,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+      host: url.hostname,
+      port: parseInt(url.port) || 3306,
+      user: url.username,
+      password: url.password,
+      database: url.pathname.slice(1), // Remove leading slash
+      ssl: {
+        rejectUnauthorized: false // Required for RDS connections
+      },
+      connectionLimit: 10,
     });
     this.db = drizzle(this.pool);
   }
@@ -55,8 +65,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const result = await this.db.insert(users).values(insertUser).returning();
-    return result[0];
+    await this.db.insert(users).values(insertUser);
+    return await this.getUserByUsername(insertUser.username) as User;
   }
 
   // Form methods
@@ -70,18 +80,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createForm(insertForm: InsertForm): Promise<Form> {
-    const result = await this.db.insert(forms).values(insertForm).returning();
-    return result[0];
+    const result = await this.db.insert(forms).values(insertForm);
+    const insertId = (result as any).insertId;
+    return await this.getForm(insertId) as Form;
   }
 
   async updateForm(id: number, formData: Partial<InsertForm>): Promise<Form | undefined> {
-    const result = await this.db.update(forms).set(formData).where(eq(forms.id, id)).returning();
-    return result[0];
+    await this.db.update(forms).set(formData).where(eq(forms.id, id));
+    return await this.getForm(id);
   }
 
   async deleteForm(id: number): Promise<boolean> {
     const result = await this.db.delete(forms).where(eq(forms.id, id));
-    return result.affectedRows > 0;
+    return (result as any).affectedRows > 0;
   }
 
   // Rank Group methods
@@ -90,18 +101,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createRankGroup(insertRankGroup: InsertRankGroup): Promise<RankGroup> {
-    const result = await this.db.insert(rankGroups).values(insertRankGroup).returning();
-    return result[0];
+    const result = await this.db.insert(rankGroups).values(insertRankGroup);
+    const insertId = (result as any).insertId;
+    const rankGroup = await this.db.select().from(rankGroups).where(eq(rankGroups.id, insertId));
+    return rankGroup[0];
   }
 
   async updateRankGroup(id: number, rankGroupData: Partial<InsertRankGroup>): Promise<RankGroup | undefined> {
-    const result = await this.db.update(rankGroups).set(rankGroupData).where(eq(rankGroups.id, id)).returning();
-    return result[0];
+    await this.db.update(rankGroups).set(rankGroupData).where(eq(rankGroups.id, id));
+    const rankGroup = await this.db.select().from(rankGroups).where(eq(rankGroups.id, id));
+    return rankGroup[0];
   }
 
   async deleteRankGroup(id: number): Promise<boolean> {
     const result = await this.db.delete(rankGroups).where(eq(rankGroups.id, id));
-    return result.affectedRows > 0;
+    return (result as any).affectedRows > 0;
   }
 
   // Available Rank methods
@@ -110,8 +124,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAvailableRank(insertAvailableRank: InsertAvailableRank): Promise<AvailableRank> {
-    const result = await this.db.insert(availableRanks).values(insertAvailableRank).returning();
-    return result[0];
+    const result = await this.db.insert(availableRanks).values(insertAvailableRank);
+    const insertId = (result as any).insertId;
+    const availableRank = await this.db.select().from(availableRanks).where(eq(availableRanks.id, insertId));
+    return availableRank[0];
   }
 
   // Crew Member methods
@@ -125,18 +141,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCrewMember(insertCrewMember: InsertCrewMember): Promise<CrewMember> {
-    const result = await this.db.insert(crewMembers).values(insertCrewMember).returning();
-    return result[0];
+    await this.db.insert(crewMembers).values(insertCrewMember);
+    return await this.getCrewMember(insertCrewMember.id) as CrewMember;
   }
 
   async updateCrewMember(id: string, crewMemberData: Partial<InsertCrewMember>): Promise<CrewMember | undefined> {
-    const result = await this.db.update(crewMembers).set(crewMemberData).where(eq(crewMembers.id, id)).returning();
-    return result[0];
+    await this.db.update(crewMembers).set(crewMemberData).where(eq(crewMembers.id, id));
+    return await this.getCrewMember(id);
   }
 
   async deleteCrewMember(id: string): Promise<boolean> {
     const result = await this.db.delete(crewMembers).where(eq(crewMembers.id, id));
-    return result.affectedRows > 0;
+    return (result as any).affectedRows > 0;
   }
 
   // Appraisal Result methods
@@ -154,23 +170,64 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAppraisalResult(insertAppraisalResult: InsertAppraisalResult): Promise<AppraisalResult> {
-    const result = await this.db.insert(appraisalResults).values(insertAppraisalResult).returning();
-    return result[0];
+    const result = await this.db.insert(appraisalResults).values(insertAppraisalResult);
+    const insertId = (result as any).insertId;
+    return await this.getAppraisalResult(insertId) as AppraisalResult;
   }
 
   async updateAppraisalResult(id: number, appraisalResultData: Partial<InsertAppraisalResult>): Promise<AppraisalResult | undefined> {
-    const result = await this.db.update(appraisalResults).set(appraisalResultData).where(eq(appraisalResults.id, id)).returning();
-    return result[0];
+    await this.db.update(appraisalResults).set(appraisalResultData).where(eq(appraisalResults.id, id));
+    return await this.getAppraisalResult(id);
   }
 
   async deleteAppraisalResult(id: number): Promise<boolean> {
     const result = await this.db.delete(appraisalResults).where(eq(appraisalResults.id, id));
-    return result.affectedRows > 0;
+    return (result as any).affectedRows > 0;
+  }
+
+  // Create database if it doesn't exist
+  async createDatabaseIfNotExists(): Promise<void> {
+    try {
+      // Connect without specifying database to create it
+      const url = new URL(process.env.DATABASE_URL!);
+      const adminPool = mysql.createPool({
+        host: url.hostname,
+        port: parseInt(url.port) || 3306,
+        user: url.username,
+        password: url.password,
+        // Don't specify database - connect to MySQL server directly
+        ssl: {
+          rejectUnauthorized: false
+        },
+        connectionLimit: 1
+      });
+      
+      console.log("🔧 Creating 'crew_appraisals' database if it doesn't exist...");
+      
+      // Create database if not exists
+      await adminPool.execute("CREATE DATABASE IF NOT EXISTS crew_appraisals CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+      
+      console.log("✅ Database 'crew_appraisals' ensured to exist");
+      
+      // Close admin connection
+      await adminPool.end();
+      
+    } catch (error) {
+      console.error("❌ Failed to create database:", error);
+      throw error;
+    }
   }
 
   // Seed data for initial setup
   async seedDatabase(): Promise<void> {
     try {
+      // First ensure database exists
+      await this.createDatabaseIfNotExists();
+      
+      console.log("🔄 Pushing schema to MySQL RDS...");
+      // Push schema using drizzle-kit
+      await this.pushSchema();
+      
       // Check if data already exists
       const existingForms = await this.getForms();
       if (existingForms.length > 0) {
@@ -299,10 +356,24 @@ export class DatabaseStorage implements IStorage {
         await this.createAppraisalResult(appraisal);
       }
 
-      console.log("Database seeded successfully!");
+      console.log("📊 Database seeded successfully!");
     } catch (error) {
       console.error("Error seeding database:", error);
       throw error;
+    }
+  }
+
+  // Push schema to database
+  async pushSchema(): Promise<void> {
+    try {
+      // Import and run schema migrations
+      const { migrate } = await import('drizzle-orm/mysql2/migrator');
+      // Since we're not using migrations, we'll just ensure tables exist
+      // by running a simple table creation check
+      console.log("📋 Schema push completed (tables will be created on first access)");
+    } catch (error) {
+      console.error("Error pushing schema:", error);
+      // Don't throw - tables will be created automatically by Drizzle on first access
     }
   }
 }

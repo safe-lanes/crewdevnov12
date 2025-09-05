@@ -67,6 +67,7 @@ export class MemStorage implements IStorage {
       rankGroup: "Senior Officers",
       versionNo: "01",
       versionDate: "01-Jan-2025",
+      configuration: null,
     });
     this.currentFormId = 2;
     
@@ -272,7 +273,11 @@ export class MemStorage implements IStorage {
 
   async createForm(insertForm: InsertForm): Promise<Form> {
     const id = this.currentFormId++;
-    const form: Form = { ...insertForm, id };
+    const form: Form = { 
+      ...insertForm, 
+      id,
+      configuration: insertForm.configuration || null
+    };
     this.forms.set(id, form);
     return form;
   }
@@ -281,7 +286,11 @@ export class MemStorage implements IStorage {
     const existingForm = this.forms.get(id);
     if (!existingForm) return undefined;
     
-    const updatedForm: Form = { ...existingForm, ...formData };
+    const updatedForm: Form = { 
+      ...existingForm, 
+      ...formData,
+      configuration: formData.configuration !== undefined ? formData.configuration : existingForm.configuration
+    };
     this.forms.set(id, updatedForm);
     return updatedForm;
   }
@@ -351,7 +360,9 @@ export class MemStorage implements IStorage {
 
   async createCrewMember(insertCrewMember: InsertCrewMember): Promise<CrewMember> {
     const crewMember: CrewMember = { 
-      ...insertCrewMember, 
+      ...insertCrewMember,
+      middleName: insertCrewMember.middleName || null,
+      lastName: insertCrewMember.lastName || null,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -394,6 +405,10 @@ export class MemStorage implements IStorage {
     const appraisalResult: AppraisalResult = { 
       ...insertAppraisalResult, 
       id,
+      competenceRating: insertAppraisalResult.competenceRating || null,
+      behavioralRating: insertAppraisalResult.behavioralRating || null,
+      overallRating: insertAppraisalResult.overallRating || null,
+      status: insertAppraisalResult.status || "draft",
       submittedAt: new Date()
     };
     this.appraisalResults.set(id, appraisalResult);
@@ -419,32 +434,140 @@ export class MemStorage implements IStorage {
 
 import { DatabaseStorage } from "./database";
 
-// Use database storage if DATABASE_URL is provided, otherwise fallback to memory storage
-let storage: IStorage;
+// Construct DATABASE_URL from RDS connection details
+function constructDatabaseUrl(): string | null {
+  const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD } = process.env;
+  
+  if (DB_HOST && DB_PORT && DB_USER && DB_PASSWORD) {
+    // URL-encode the password to handle special characters
+    const encodedPassword = encodeURIComponent(DB_PASSWORD);
+    return `mysql://${DB_USER}:${encodedPassword}@${DB_HOST}:${DB_PORT}/crew_appraisals`;
+  }
+  
+  // Fallback to DATABASE_URL if set directly
+  return process.env.DATABASE_URL || null;
+}
 
-if (process.env.DATABASE_URL) {
+// Initialize MySQL RDS storage with improved error handling
+let storage: IStorage;
+let isConnected = false;
+let connectionError: Error | null = null;
+
+const databaseUrl = constructDatabaseUrl();
+
+if (databaseUrl) {
   try {
+    // Set the constructed DATABASE_URL for DatabaseStorage to use
+    process.env.DATABASE_URL = databaseUrl;
     storage = new DatabaseStorage();
-    // Seed the database with initial data
+    
+    console.log("🔌 Attempting to connect to MySQL RDS...");
+    console.log("🎯 Target RDS Instance: MySQL database 'crew_appraisals'");
+    
+    // Attempt to seed the database with improved timeout handling
     (async () => {
       try {
+        console.log("⏳ Testing database connection and seeding data...");
         await (storage as DatabaseStorage).seedDatabase();
-        console.log("✅ MySQL database connected and seeded successfully");
+        isConnected = true;
+        connectionError = null;
+        console.log("✅ SUCCESS: MySQL RDS database connected and seeded successfully!");
+        console.log("🚀 Application is ready to serve requests with persistent MySQL storage");
       } catch (error) {
-        console.error("Failed to seed database:", error);
-        console.log("⚠️  Falling back to in-memory storage");
-        storage = new MemStorage();
+        isConnected = false;
+        connectionError = error as Error;
+        console.error("⚠️  WARNING: Failed to seed MySQL RDS database:", error);
+        console.error("🔍 Connection Details:");
+        console.error(`   • Host: ${process.env.DB_HOST}`);
+        console.error(`   • Port: ${process.env.DB_PORT}`);
+        console.error(`   • Database: crew_appraisals`);
+        console.error(`   • User: ${process.env.DB_USER}`);
+        console.error("📊 This could be due to:");
+        console.error("   • RDS security group not allowing connections from this environment");
+        console.error("   • Database 'crew_appraisals' does not exist yet");
+        console.error("   • Network connectivity issues");
+        console.error("   • Incorrect credentials");
+        console.error("🚑 Server will start anyway. Use /api/health to test connectivity.");
       }
     })();
   } catch (error) {
-    console.error("Failed to initialize MySQL database:", error);
-    console.log("⚠️  Using in-memory storage as fallback");
-    storage = new MemStorage();
+    isConnected = false;
+    connectionError = error as Error;
+    console.error("❌ ERROR: Failed to initialize MySQL RDS database:", error);
+    console.error("🚑 Server will start anyway. Use /api/health to test connectivity.");
+    // Create a stub storage that will throw meaningful errors
+    storage = new (class implements IStorage {
+      private throwConnectionError(): never {
+        throw new Error(`MySQL RDS connection failed: ${connectionError?.message || 'Unknown error'}. Check /api/health for details.`);
+      }
+      async getUser(): Promise<any> { this.throwConnectionError(); }
+      async getUserByUsername(): Promise<any> { this.throwConnectionError(); }
+      async createUser(): Promise<any> { this.throwConnectionError(); }
+      async getForms(): Promise<any> { this.throwConnectionError(); }
+      async getForm(): Promise<any> { this.throwConnectionError(); }
+      async createForm(): Promise<any> { this.throwConnectionError(); }
+      async updateForm(): Promise<any> { this.throwConnectionError(); }
+      async deleteForm(): Promise<any> { this.throwConnectionError(); }
+      async getRankGroups(): Promise<any> { this.throwConnectionError(); }
+      async createRankGroup(): Promise<any> { this.throwConnectionError(); }
+      async updateRankGroup(): Promise<any> { this.throwConnectionError(); }
+      async deleteRankGroup(): Promise<any> { this.throwConnectionError(); }
+      async getAvailableRanks(): Promise<any> { this.throwConnectionError(); }
+      async createAvailableRank(): Promise<any> { this.throwConnectionError(); }
+      async getCrewMembers(): Promise<any> { this.throwConnectionError(); }
+      async getCrewMember(): Promise<any> { this.throwConnectionError(); }
+      async createCrewMember(): Promise<any> { this.throwConnectionError(); }
+      async updateCrewMember(): Promise<any> { this.throwConnectionError(); }
+      async deleteCrewMember(): Promise<any> { this.throwConnectionError(); }
+      async getAppraisalResults(): Promise<any> { this.throwConnectionError(); }
+      async getAppraisalResult(): Promise<any> { this.throwConnectionError(); }
+      async getAppraisalResultsByCrewMember(): Promise<any> { this.throwConnectionError(); }
+      async createAppraisalResult(): Promise<any> { this.throwConnectionError(); }
+      async updateAppraisalResult(): Promise<any> { this.throwConnectionError(); }
+      async deleteAppraisalResult(): Promise<any> { this.throwConnectionError(); }
+    })();
   }
 } else {
-  storage = new MemStorage();
-  console.log("ℹ️  No DATABASE_URL found, using in-memory storage for development");
-  console.log("📝 To use MySQL: Set DATABASE_URL=mysql://username:password@host:port/database");
+  isConnected = false;
+  connectionError = new Error("Missing MySQL RDS connection details");
+  console.error("❌ CRITICAL: No MySQL RDS connection details found!");
+  console.error("🔧 Required environment variables: DB_HOST, DB_PORT, DB_USER, DB_PASSWORD");
+  console.error("🚑 Server will start anyway. Use /api/health for diagnostics.");
+  
+  // Create a stub storage that will throw meaningful errors
+  storage = new (class implements IStorage {
+    private throwConnectionError(): never {
+      throw new Error('Missing MySQL RDS connection details. Required: DB_HOST, DB_PORT, DB_USER, DB_PASSWORD');
+    }
+    async getUser(): Promise<any> { this.throwConnectionError(); }
+    async getUserByUsername(): Promise<any> { this.throwConnectionError(); }
+    async createUser(): Promise<any> { this.throwConnectionError(); }
+    async getForms(): Promise<any> { this.throwConnectionError(); }
+    async getForm(): Promise<any> { this.throwConnectionError(); }
+    async createForm(): Promise<any> { this.throwConnectionError(); }
+    async updateForm(): Promise<any> { this.throwConnectionError(); }
+    async deleteForm(): Promise<any> { this.throwConnectionError(); }
+    async getRankGroups(): Promise<any> { this.throwConnectionError(); }
+    async createRankGroup(): Promise<any> { this.throwConnectionError(); }
+    async updateRankGroup(): Promise<any> { this.throwConnectionError(); }
+    async deleteRankGroup(): Promise<any> { this.throwConnectionError(); }
+    async getAvailableRanks(): Promise<any> { this.throwConnectionError(); }
+    async createAvailableRank(): Promise<any> { this.throwConnectionError(); }
+    async getCrewMembers(): Promise<any> { this.throwConnectionError(); }
+    async getCrewMember(): Promise<any> { this.throwConnectionError(); }
+    async createCrewMember(): Promise<any> { this.throwConnectionError(); }
+    async updateCrewMember(): Promise<any> { this.throwConnectionError(); }
+    async deleteCrewMember(): Promise<any> { this.throwConnectionError(); }
+    async getAppraisalResults(): Promise<any> { this.throwConnectionError(); }
+    async getAppraisalResult(): Promise<any> { this.throwConnectionError(); }
+    async getAppraisalResultsByCrewMember(): Promise<any> { this.throwConnectionError(); }
+    async createAppraisalResult(): Promise<any> { this.throwConnectionError(); }
+    async updateAppraisalResult(): Promise<any> { this.throwConnectionError(); }
+    async deleteAppraisalResult(): Promise<any> { this.throwConnectionError(); }
+  })();
 }
+
+// Export connection status for health checks
+export { isConnected, connectionError };
 
 export { storage };

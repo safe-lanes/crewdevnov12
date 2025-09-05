@@ -1,9 +1,72 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage, isConnected, connectionError } from "./storage";
 import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Health check endpoint for database connectivity
+  app.get("/api/health", async (req, res) => {
+    const healthStatus = {
+      server: "running",
+      database: isConnected ? "connected" : "disconnected",
+      rds_instance: "ls-d153072fe29fcd7dc7c484a33fd3130e29abae1b.cxock8yskd1i.ap-southeast-1.rds.amazonaws.com:3306",
+      database_name: "crew_appraisals",
+      connection_error: connectionError?.message || null,
+      timestamp: new Date().toISOString()
+    };
+
+    if (isConnected) {
+      try {
+        // Test with actual query
+        await storage.getForms();
+        res.status(200).json({ 
+          status: "healthy", 
+          ...healthStatus
+        });
+      } catch (error) {
+        res.status(500).json({ 
+          status: "unhealthy - query failed", 
+          ...healthStatus,
+          query_error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    } else {
+      res.status(500).json({ 
+        status: "unhealthy - no database connection", 
+        ...healthStatus,
+        troubleshooting: {
+          check_security_groups: "Ensure RDS security group allows connections from this environment",
+          check_database_exists: "Verify 'crew_appraisals' database exists on RDS instance",
+          check_credentials: "Verify DB_USER and DB_PASSWORD are correct",
+          check_network: "Ensure network connectivity to RDS endpoint"
+        }
+      });
+    }
+  });
+
+  // Database connectivity test endpoint
+  app.get("/api/db-test", async (req, res) => {
+    try {
+      const startTime = Date.now();
+      await storage.getForms();
+      const endTime = Date.now();
+      const responseTime = endTime - startTime;
+      
+      res.status(200).json({ 
+        message: "Database connection successful",
+        responseTime: `${responseTime}ms`,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Database test failed:", error);
+      res.status(500).json({ 
+        error: "Database connection failed",
+        details: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // Forms API routes
   app.get("/api/forms", async (req, res) => {
     try {
