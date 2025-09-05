@@ -286,6 +286,12 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const [b6Interviews, setB6Interviews] = useState<Array<{id: string, date: string, interviewer: string, status: string, result: string, comments: string}>>([
     { id: '1', date: '', interviewer: '', status: '', result: '', comments: '' }
   ]);
+  
+  // State for individual interview comments (editable)
+  const [b6InterviewComments, setB6InterviewComments] = useState<{[key: string]: string}>({
+    '1': 'Overall Candidate reflected a strong understanding of the Navigation & cargo operations.'
+  });
+  const [editingB6InterviewComment, setEditingB6InterviewComment] = useState<string | null>('1'); // Default to editing mode for first interview
 
   // State for B7 Training Needs
   const [b7TrainingNeeds, setB7TrainingNeeds] = useState<Array<{id: string, training: string, identifiedBy: string, category: string, dueDate: string, comments: string}>>([
@@ -4488,6 +4494,12 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                                 result: '',
                                 comments: ''
                               }]);
+                              // Initialize comment state for new interview and set it to editing mode
+                              setB6InterviewComments(prev => ({
+                                ...prev,
+                                [newId]: ''
+                              }));
+                              setEditingB6InterviewComment(newId);
                             }}
                           >
                             <Plus className="h-4 w-4" />
@@ -4501,6 +4513,16 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                             className="h-10 w-10 p-0"
                             onClick={() => {
                               setB6Interviews(prev => prev.filter(int => int.id !== interview.id));
+                              // Clean up comment state for deleted interview
+                              setB6InterviewComments(prev => {
+                                const newComments = { ...prev };
+                                delete newComments[interview.id];
+                                return newComments;
+                              });
+                              // Clear editing state if this interview was being edited
+                              if (editingB6InterviewComment === interview.id) {
+                                setEditingB6InterviewComment(null);
+                              }
                             }}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -4514,9 +4536,29 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                       <div className="text-blue-600 italic text-[13px] mb-2">
                         {interview.interviewer ? interview.interviewer : 'Capt. Nick, Marine Superintendent'}:
                       </div>
-                      <div className="text-blue-600 italic text-[13px] mb-2">
-                        Overall Candidate reflected a strong understanding of the Navigation & cargo operations.
-                      </div>
+                      {editingB6InterviewComment === interview.id ? (
+                        <Textarea
+                          value={b6InterviewComments[interview.id] || ''}
+                          onChange={(e) => {
+                            setB6InterviewComments(prev => ({
+                              ...prev,
+                              [interview.id]: e.target.value
+                            }));
+                          }}
+                          onBlur={() => setEditingB6InterviewComment(null)}
+                          placeholder="Comment: Add your observations here..."
+                          className="text-blue-600 italic border-blue-200 text-[13px] mb-2"
+                          rows={2}
+                          autoFocus
+                        />
+                      ) : (
+                        <div 
+                          className="text-blue-600 italic cursor-pointer rounded hover:bg-gray-50 text-[13px] mb-2 p-1"
+                          onClick={() => setEditingB6InterviewComment(interview.id)}
+                        >
+                          {b6InterviewComments[interview.id] || "Click to add comment..."}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
