@@ -290,6 +290,15 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
       
+      // Check if the click is on a dropdown portal or select content
+      const isDropdownClick = (target as Element)?.closest('[data-radix-select-content]') || 
+                             (target as Element)?.closest('[data-radix-select-trigger]') ||
+                             (target as Element)?.closest('[data-radix-popper-content-wrapper]');
+      
+      if (isDropdownClick) {
+        return; // Don't auto-save if clicking on dropdown elements
+      }
+      
       // Check if click is outside section A1.1
       if (editingSections['A1.1'] && sectionA11Ref.current && !sectionA11Ref.current.contains(target)) {
         setEditingSections(prev => ({ ...prev, 'A1.1': false }));
@@ -1075,18 +1084,45 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <Label className="text-xs text-gray-500 tracking-wide">Foreign Languages</Label>
               {isEditing ? (
                 <div className="relative">
-                  <Select value="" onValueChange={(value) => handleLanguageSelection('foreignLanguages', value)}>
+                  <Select 
+                    value="" 
+                    onValueChange={(value) => {
+                      handleLanguageSelection('foreignLanguages', value);
+                      // Prevent the select from closing by not setting a value
+                    }}
+                  >
                     <SelectTrigger className="mt-1">
-                      <SelectValue placeholder={formData.foreignLanguages || "Select foreign languages (multi-select)"} />
+                      <SelectValue>
+                        {formData.foreignLanguages ? (
+                          <div className="text-left">
+                            <span className="text-sm">{formData.foreignLanguages}</span>
+                            <div className="text-xs text-gray-500 mt-0.5">Click to add/remove languages</div>
+                          </div>
+                        ) : (
+                          <span className="text-gray-500">Select foreign languages (multi-select)</span>
+                        )}
+                      </SelectValue>
                     </SelectTrigger>
-                    <SelectContent className="max-h-[200px]">
+                    <SelectContent className="max-h-[200px]" onCloseAutoFocus={(e) => e.preventDefault()}>
                       {languageMasterData.map(language => {
                         const isSelected = isLanguageSelected('foreignLanguages', language);
                         return (
-                          <SelectItem key={language} value={language} className={isSelected ? "bg-blue-50" : ""}>
-                            <div className="flex items-center gap-2">
-                              {isSelected && <span className="text-blue-600">✓</span>}
-                              {language}
+                          <SelectItem 
+                            key={language} 
+                            value={language} 
+                            className={`cursor-pointer hover:bg-gray-50 ${isSelected ? "bg-blue-50" : ""}`}
+                            onSelect={(e) => {
+                              // Prevent the dropdown from closing
+                              e.preventDefault();
+                            }}
+                          >
+                            <div className="flex items-center gap-2 w-full">
+                              <span className={`w-4 h-4 border rounded flex items-center justify-center text-xs ${
+                                isSelected ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300'
+                              }`}>
+                                {isSelected && '✓'}
+                              </span>
+                              <span>{language}</span>
                             </div>
                           </SelectItem>
                         );
@@ -1094,8 +1130,19 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                     </SelectContent>
                   </Select>
                   {formData.foreignLanguages && (
-                    <div className="mt-2 text-xs text-gray-600">
-                      Selected: {formData.foreignLanguages}
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {formData.foreignLanguages.split(', ').map((lang, index) => (
+                        <span key={index} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                          {lang}
+                          <button
+                            type="button"
+                            onClick={() => handleLanguageSelection('foreignLanguages', lang)}
+                            className="hover:text-blue-600"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
                     </div>
                   )}
                 </div>
