@@ -5344,57 +5344,53 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const renderC1Approval = () => {
     return (
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex items-center gap-2">
-            <h3 className="text-base font-medium" style={{ color: '#16569e' }}>C.1 Approval</h3>
-            <div className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center">
-              <span className="text-xs text-gray-600">i</span>
-            </div>
+        <div className="flex items-center gap-2 mb-4">
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>C.1 Approval</h3>
+          <div className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center">
+            <span className="text-xs text-gray-600">i</span>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={addC1Approver}
-            className="text-gray-600 border-gray-300 hover:bg-gray-50"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Approver
-          </Button>
         </div>
         
-        <div className="space-y-4">
-          <div className="text-sm font-medium text-gray-700 mb-3">C1.1 Approved?</div>
-          
-          {/* Approvers table */}
-          <Table className="w-full">
-            <TableHeader>
-              <TableRow className="bg-gray-100">
-                <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Date</TableHead>
-                <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Approver</TableHead>
-                <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Status</TableHead>
-                <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Approval</TableHead>
-                <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-20">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {c1Approvers.map((approver) => (
-                <React.Fragment key={approver.id}>
-                  <TableRow className="border-b border-gray-200">
-                    <TableCell className="p-3">
+        <div className="space-y-6">
+          {/* C1.1 Approved? */}
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                C1.1 Approved?
+              </Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addC1Approver}
+                className="text-gray-600 border-gray-300 hover:bg-gray-50"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Approver
+              </Button>
+            </div>
+
+            {/* Approver entries */}
+            <div className="ml-4 mb-4 space-y-3">
+              {c1Approvers.map((approver, index) => (
+                <div key={approver.id} className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
                       <Input
                         type="date"
+                        placeholder="Date"
+                        className="text-sm"
                         value={approver.date}
                         onChange={(e) => updateC1Approver(approver.id, 'date', e.target.value)}
-                        className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
                       />
-                    </TableCell>
-                    <TableCell className="p-3">
+                    </div>
+                    <div>
                       <Select
                         value={approver.approver}
                         onValueChange={(value) => updateC1Approver(approver.id, 'approver', value)}
                       >
-                        <SelectTrigger className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto">
-                          <SelectValue placeholder="Select approver" />
+                        <SelectTrigger className="text-sm">
+                          <SelectValue placeholder="Approver" />
                         </SelectTrigger>
                         <SelectContent>
                           {approverMasterData.map((approverName) => (
@@ -5404,14 +5400,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                           ))}
                         </SelectContent>
                       </Select>
-                    </TableCell>
-                    <TableCell className="p-3">
+                    </div>
+                    <div>
                       <Select
                         value={approver.status}
                         onValueChange={(value) => updateC1Approver(approver.id, 'status', value)}
                       >
-                        <SelectTrigger className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto">
-                          <SelectValue placeholder="Select status" />
+                        <SelectTrigger className="text-sm">
+                          <SelectValue placeholder="Status" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="Pending">Pending</SelectItem>
@@ -5420,8 +5416,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                           <SelectItem value="Rejected">Rejected</SelectItem>
                         </SelectContent>
                       </Select>
-                    </TableCell>
-                    <TableCell className="p-3">
+                    </div>
+                    <div className="flex items-center gap-2">
                       <div className="flex gap-3">
                         <label className="flex items-center">
                           <input
@@ -5430,7 +5426,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                             value="Yes"
                             checked={approver.approval === 'Yes'}
                             onChange={(e) => updateC1Approver(approver.id, 'approval', e.target.value)}
-                            className="mr-2"
+                            className="mr-1"
                           />
                           <span className="text-[13px]">Yes</span>
                         </label>
@@ -5441,7 +5437,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                             value="Yes, Conditional"
                             checked={approver.approval === 'Yes, Conditional'}
                             onChange={(e) => updateC1Approver(approver.id, 'approval', e.target.value)}
-                            className="mr-2"
+                            className="mr-1"
                           />
                           <span className="text-[13px]">Yes, Conditional</span>
                         </label>
@@ -5452,40 +5448,36 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                             value="No"
                             checked={approver.approval === 'No'}
                             onChange={(e) => updateC1Approver(approver.id, 'approval', e.target.value)}
-                            className="mr-2"
+                            className="mr-1"
                           />
                           <span className="text-[13px]">No</span>
                         </label>
                       </div>
-                    </TableCell>
-                    <TableCell className="p-3">
-                      <div className="flex gap-1">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => removeC1Approver(approver.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                  {approver.approver === 'Capt. Nick, Marine Superintendent' && (
-                    <TableRow className="bg-blue-50">
-                      <TableCell colSpan={5} className="p-3">
-                        <div className="text-blue-600 italic text-[13px]">
-                          <strong>Capt. Nick, Marine Superintendent:</strong><br />
-                          Overall Candidate reflected a strong understanding of the Navigation & cargo operations.
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </React.Fragment>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-10 w-10 p-0"
+                        onClick={() => removeC1Approver(approver.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {/* Approver comment */}
+                  <div className="ml-4">
+                    <div className="text-blue-600 italic text-[13px] mb-2">
+                      {approver.approver}:
+                    </div>
+                    <div className="text-blue-600 italic text-[13px] mb-2">
+                      Overall Candidate reflected a strong understanding of the Navigation & cargo operations.
+                    </div>
+                  </div>
+                </div>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+          </div>
         </div>
       </div>
     );
