@@ -311,6 +311,18 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const [editingB8Comment, setEditingB8Comment] = useState<string | null>(null);
   const [newB8Comment, setNewB8Comment] = useState<{[key: string]: string}>({});
 
+  // State for Part C - Approval
+  const [c1Approvers, setC1Approvers] = useState<Array<{id: string, date: string, approver: string, status: string, approval: string, comments?: string}>>([
+    { id: '1', date: '', approver: '', status: '', approval: 'Yes', comments: '' }
+  ]);
+
+  const [c2VesselTypes, setC2VesselTypes] = useState<string[]>(['Product Tankers', 'Crude Oil Tankers', 'Chemical Tankers']);
+  const [c2FleetGroups, setC2FleetGroups] = useState<string[]>(['MR Class1 Tankers', 'Chemical JP 20', 'Chemical SS', 'Fleet B', 'Fleet C']);
+
+  const [c3RecruitmentStatus, setC3RecruitmentStatus] = useState<string>('Yes');
+  const [c3AssignedGroups, setC3AssignedGroups] = useState<string[]>(['Fleet B']);
+  const [c3SubmittedBy, setC3SubmittedBy] = useState<string>('Roxanne, Crewing Executive');
+
   const [formData, setFormData] = useState<FormData>({
     // Initialize with candidate data
     firstName: candidate.firstName || '',
@@ -839,6 +851,59 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     ));
   };
 
+  // Part C - Approval management functions
+  const addC1Approver = () => {
+    const newApprover = {
+      id: Date.now().toString(),
+      date: '',
+      approver: '',
+      status: '',
+      approval: 'Yes',
+      comments: ''
+    };
+    setC1Approvers(prev => [...prev, newApprover]);
+  };
+
+  const removeC1Approver = (id: string) => {
+    setC1Approvers(prev => prev.filter(approver => approver.id !== id));
+  };
+
+  const updateC1Approver = (id: string, field: string, value: string) => {
+    setC1Approvers(prev => prev.map(approver => 
+      approver.id === id ? { ...approver, [field]: value } : approver
+    ));
+  };
+
+  const addC2VesselType = (vesselType: string) => {
+    if (!c2VesselTypes.includes(vesselType)) {
+      setC2VesselTypes(prev => [...prev, vesselType]);
+    }
+  };
+
+  const removeC2VesselType = (vesselType: string) => {
+    setC2VesselTypes(prev => prev.filter(type => type !== vesselType));
+  };
+
+  const addC2FleetGroup = (fleetGroup: string) => {
+    if (!c2FleetGroups.includes(fleetGroup)) {
+      setC2FleetGroups(prev => [...prev, fleetGroup]);
+    }
+  };
+
+  const removeC2FleetGroup = (fleetGroup: string) => {
+    setC2FleetGroups(prev => prev.filter(group => group !== fleetGroup));
+  };
+
+  const addC3AssignedGroup = (group: string) => {
+    if (!c3AssignedGroups.includes(group)) {
+      setC3AssignedGroups(prev => [...prev, group]);
+    }
+  };
+
+  const removeC3AssignedGroup = (group: string) => {
+    setC3AssignedGroups(prev => prev.filter(g => g !== group));
+  };
+
   // Additional Information management functions
   const addAdditionalInfo = () => {
     const newInfo = {
@@ -954,6 +1019,31 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     'Chief Engineer', 'Second Engineer', 'Third Engineer', 'Navigator',
     'Bosun', 'Able Seaman', 'Ordinary Seaman', 'Deckhand', 'Radio Officer',
     'Electrical Officer', 'Cadet', 'Motorman', 'Oiler', 'Wiper', 'Cook'
+  ];
+
+  const fleetGroupMasterData = [
+    'MR Class1 Tankers', 'Chemical JP 20', 'Chemical SS', 'Fleet A', 'Fleet B', 'Fleet C',
+    'Product Tanker Fleet', 'Crude Oil Fleet', 'Gas Tanker Fleet', 'Container Fleet'
+  ];
+
+  const additionalGroupMasterData = [
+    'Special Operations', 'Port Operations', 'Offshore Operations', 'Emergency Response',
+    'Training Fleet', 'Research Vessels', 'Ice Class Vessels', 'High Risk Areas'
+  ];
+
+  const vesselMasterData = [
+    'MV Atlantic Star', 'MV Pacific Dawn', 'MV Northern Light', 'MV Southern Cross',
+    'MV Eastern Wind', 'MV Western Pride', 'MV Central Hope', 'MV Global Unity',
+    'MV Ocean Explorer', 'MV Sea Voyager', 'MV Marine Pioneer', 'MV Coastal Guardian'
+  ];
+
+  const approverMasterData = [
+    'Capt. Nick, Marine Superintendent',
+    'John Smith, Fleet Manager', 
+    'Sarah Johnson, Technical Manager',
+    'David Brown, Operations Manager',
+    'Lisa Wilson, Crew Manager',
+    'Michael Davis, Training Manager'
   ];
 
   // Photo upload handling
@@ -5250,6 +5340,356 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     );
   };
 
+  // Part C - Approval render functions
+  const renderC1Approval = () => {
+    return (
+      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-medium" style={{ color: '#16569e' }}>C.1 Approval</h3>
+            <div className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center">
+              <span className="text-xs text-gray-600">i</span>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={addC1Approver}
+            className="text-gray-600 border-gray-300 hover:bg-gray-50"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Approver
+          </Button>
+        </div>
+        
+        <div className="space-y-4">
+          <div className="text-sm font-medium text-gray-700 mb-3">C1.1 Approved?</div>
+          
+          {/* Approvers table */}
+          <Table className="w-full">
+            <TableHeader>
+              <TableRow className="bg-gray-100">
+                <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Date</TableHead>
+                <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Approver</TableHead>
+                <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Status</TableHead>
+                <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Approval</TableHead>
+                <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-20">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {c1Approvers.map((approver) => (
+                <React.Fragment key={approver.id}>
+                  <TableRow className="border-b border-gray-200">
+                    <TableCell className="p-3">
+                      <Input
+                        type="date"
+                        value={approver.date}
+                        onChange={(e) => updateC1Approver(approver.id, 'date', e.target.value)}
+                        className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                      />
+                    </TableCell>
+                    <TableCell className="p-3">
+                      <Select
+                        value={approver.approver}
+                        onValueChange={(value) => updateC1Approver(approver.id, 'approver', value)}
+                      >
+                        <SelectTrigger className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto">
+                          <SelectValue placeholder="Select approver" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {approverMasterData.map((approverName) => (
+                            <SelectItem key={approverName} value={approverName}>
+                              {approverName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell className="p-3">
+                      <Select
+                        value={approver.status}
+                        onValueChange={(value) => updateC1Approver(approver.id, 'status', value)}
+                      >
+                        <SelectTrigger className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Pending">Pending</SelectItem>
+                          <SelectItem value="Reviewed">Reviewed</SelectItem>
+                          <SelectItem value="Approved">Approved</SelectItem>
+                          <SelectItem value="Rejected">Rejected</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell className="p-3">
+                      <div className="flex gap-3">
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            name={`approval-${approver.id}`}
+                            value="Yes"
+                            checked={approver.approval === 'Yes'}
+                            onChange={(e) => updateC1Approver(approver.id, 'approval', e.target.value)}
+                            className="mr-2"
+                          />
+                          <span className="text-[13px]">Yes</span>
+                        </label>
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            name={`approval-${approver.id}`}
+                            value="Yes, Conditional"
+                            checked={approver.approval === 'Yes, Conditional'}
+                            onChange={(e) => updateC1Approver(approver.id, 'approval', e.target.value)}
+                            className="mr-2"
+                          />
+                          <span className="text-[13px]">Yes, Conditional</span>
+                        </label>
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            name={`approval-${approver.id}`}
+                            value="No"
+                            checked={approver.approval === 'No'}
+                            onChange={(e) => updateC1Approver(approver.id, 'approval', e.target.value)}
+                            className="mr-2"
+                          />
+                          <span className="text-[13px]">No</span>
+                        </label>
+                      </div>
+                    </TableCell>
+                    <TableCell className="p-3">
+                      <div className="flex gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => removeC1Approver(approver.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  {approver.approver === 'Capt. Nick, Marine Superintendent' && (
+                    <TableRow className="bg-blue-50">
+                      <TableCell colSpan={5} className="p-3">
+                        <div className="text-blue-600 italic text-[13px]">
+                          <strong>Capt. Nick, Marine Superintendent:</strong><br />
+                          Overall Candidate reflected a strong understanding of the Navigation & cargo operations.
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </React.Fragment>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+    );
+  };
+
+  const renderC2Suitable = () => {
+    return (
+      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>C2 Suitable for</h3>
+        </div>
+        
+        <div className="space-y-6">
+          {/* C2.1 Vessel types */}
+          <div>
+            <label className="text-xs text-gray-500 tracking-wide mb-2 block">C2.1 Vessel type(s):</label>
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                {c2VesselTypes.map((vesselType) => (
+                  <div key={vesselType} className="flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-md text-sm">
+                    <span>{vesselType}</span>
+                    <button
+                      onClick={() => removeC2VesselType(vesselType)}
+                      className="ml-2 hover:text-blue-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <Select
+                value=""
+                onValueChange={(value) => addC2VesselType(value)}
+              >
+                <SelectTrigger className="w-full max-w-md">
+                  <SelectValue placeholder="Add vessel type..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {vesselTypeMasterData.filter(type => !c2VesselTypes.includes(type)).map((vesselType) => (
+                    <SelectItem key={vesselType} value={vesselType}>
+                      {vesselType}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* C2.2 Vessel Class/Fleet */}
+          <div>
+            <label className="text-xs text-gray-500 tracking-wide mb-2 block">C2.2 Vessel Class/ Fleet:</label>
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                {c2FleetGroups.map((fleetGroup) => (
+                  <div key={fleetGroup} className="flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-md text-sm">
+                    <span>{fleetGroup}</span>
+                    <button
+                      onClick={() => removeC2FleetGroup(fleetGroup)}
+                      className="ml-2 hover:text-blue-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <Select
+                value=""
+                onValueChange={(value) => addC2FleetGroup(value)}
+              >
+                <SelectTrigger className="w-full max-w-md">
+                  <SelectValue placeholder="Add fleet group..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {[...fleetGroupMasterData, ...additionalGroupMasterData]
+                    .filter(group => !c2FleetGroups.includes(group))
+                    .map((fleetGroup) => (
+                      <SelectItem key={fleetGroup} value={fleetGroup}>
+                        {fleetGroup}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderC3Recruited = () => {
+    return (
+      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>C3 Recruited & Assigned to</h3>
+        </div>
+        
+        <div className="space-y-6">
+          {/* C3.1 Recruitment confirmed */}
+          <div>
+            <label className="text-xs text-gray-500 tracking-wide mb-3 block">C3.1 Recruitment confirmed:</label>
+            <div className="flex gap-6">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="recruitment-status"
+                  value="Yes"
+                  checked={c3RecruitmentStatus === 'Yes'}
+                  onChange={(e) => setC3RecruitmentStatus(e.target.value)}
+                  className="mr-2"
+                />
+                <span className="text-[13px]">Yes</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="recruitment-status"
+                  value="Waitlist"
+                  checked={c3RecruitmentStatus === 'Waitlist'}
+                  onChange={(e) => setC3RecruitmentStatus(e.target.value)}
+                  className="mr-2"
+                />
+                <span className="text-[13px]">Waitlist</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="recruitment-status"
+                  value="Rejected"
+                  checked={c3RecruitmentStatus === 'Rejected'}
+                  onChange={(e) => setC3RecruitmentStatus(e.target.value)}
+                  className="mr-2"
+                />
+                <span className="text-[13px]">Rejected</span>
+              </label>
+            </div>
+          </div>
+
+          {/* C3.2 Vessel, Vessel Class/Fleet */}
+          <div>
+            <label className="text-xs text-gray-500 tracking-wide mb-2 block">C3.2 Vessel, Vessel Class/ Fleet:</label>
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                {c3AssignedGroups.map((group) => (
+                  <div key={group} className="flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-md text-sm">
+                    <span>{group}</span>
+                    <button
+                      onClick={() => removeC3AssignedGroup(group)}
+                      className="ml-2 hover:text-blue-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <Select
+                value=""
+                onValueChange={(value) => addC3AssignedGroup(value)}
+              >
+                <SelectTrigger className="w-full max-w-md">
+                  <SelectValue placeholder="Add vessel/fleet..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {[...vesselMasterData, ...fleetGroupMasterData, ...additionalGroupMasterData]
+                    .filter(item => !c3AssignedGroups.includes(item))
+                    .map((item) => (
+                      <SelectItem key={item} value={item}>
+                        {item}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Submitted by section */}
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <div className="flex justify-between items-center">
+              <div className="text-xs text-gray-500">
+                Submitted by: {c3SubmittedBy}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                >
+                  Save
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Submit
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderContent = () => {
     switch (activeSection) {
       case 'A1':
@@ -5422,6 +5862,25 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 {renderB6Interviews()}
                 {renderB7TrainingNeeds()}
                 {renderB8ShortListing()}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      case 'C':
+        return (
+          <Card className="bg-white border border-gray-200 shadow-sm">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
+              <div className="pb-4 mb-6">
+                <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part C - Approval</h2>
+                <div style={{ color: '#16569e' }} className="text-sm">To be completed by the designated approver</div>
+                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+              </div>
+              
+              {/* C Sections */}
+              <div className="space-y-6">
+                {renderC1Approval()}
+                {renderC2Suitable()}
+                {renderC3Recruited()}
               </div>
             </CardContent>
           </Card>
