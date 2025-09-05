@@ -1257,7 +1257,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                         ) : (
                                           <div className="flex justify-between items-start">
                                             <div 
-                                              className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50"
+                                              className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px]"
                                               onClick={() => setEditingTrainingComment(training.id)}
                                             >
                                               {trainingComments[training.id] || "Click to add comment..."}
@@ -1398,7 +1398,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                         ) : (
                                           <div className="flex justify-between items-start">
                                             <div 
-                                              className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50"
+                                              className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px]"
                                               onClick={() => setEditingTargetComment(target.id)}
                                             >
                                               {targetComments[target.id] || "Click to add comment..."}
@@ -1538,7 +1538,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                       ) : (
                                         <div className="flex justify-between items-start">
                                           <div 
-                                            className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50"
+                                            className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px]"
                                             onClick={() => setEditingCompetenceComment(assessment.id)}
                                           >
                                             {competenceComments[assessment.id] || "Click to add comment..."}
@@ -1674,7 +1674,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                     ) : (
                                       <div className="flex justify-between items-start">
                                         <div 
-                                          className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50"
+                                          className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px]"
                                           onClick={() => setEditingBehaviouralComment(assessment.id)}
                                         >
                                           {behaviouralComments[assessment.id] || "Click to add comment..."}
@@ -1820,7 +1820,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                     ) : (
                                       <div className="flex justify-between items-start">
                                         <div 
-                                          className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50"
+                                          className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px]"
                                           onClick={() => setEditingTrainingNeedsComment(trainingNeed.id)}
                                         >
                                           {trainingNeedsComments[trainingNeed.id] || "Click to add comment..."}
@@ -1971,7 +1971,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                           ) : (
                                             <div className="flex justify-between items-start">
                                               <div 
-                                                className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50"
+                                                className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px]"
                                                 onClick={() => setEditingRecommendationComment(recommendation.id)}
                                               >
                                                 {recommendationComments[recommendation.id] || "Click to add comment..."}
@@ -2066,7 +2066,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                     className="border-2 border-dashed border-blue-200 p-3 rounded cursor-pointer hover:bg-blue-50"
                                     onClick={() => setEditingAppraiserComment(appraiser.id)}
                                   >
-                                    <p className="text-gray-500 text-sm">Click to add comment...</p>
+                                    <p className="text-gray-500 text-[13px]">Click to add comment...</p>
                                   </div>
                                 )}
                               </div>
@@ -2119,7 +2119,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                     className="border-2 border-dashed border-blue-200 p-3 rounded cursor-pointer hover:bg-blue-50"
                                     onClick={() => setEditingSeafarerComment(seafarer.id)}
                                   >
-                                    <p className="text-gray-500 text-sm">Click to add comment...</p>
+                                    <p className="text-gray-500 text-[13px]">Click to add comment...</p>
                                   </div>
                                 )}
                               </div>
