@@ -176,6 +176,12 @@ interface FormData {
   b2CurrentEmployerFeedback: string;
   b2SubmittedBy: string;
   b2SubmittedDate: string;
+  
+  // B3 Background Security Checks fields
+  b3SecurityChecksCompleted: string;
+  b3SecurityChecksResults: string;
+  b3SubmittedBy: string;
+  b3SubmittedDate: string;
 }
 
 export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProps> = ({
@@ -222,6 +228,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const [newB2Comment, setNewB2Comment] = useState<{[key: string]: string}>({});
   const [b2References, setB2References] = useState<Array<{id: string, date: string, nameDesignation: string, contactInfo: string}>>([
     { id: '1', date: '', nameDesignation: '', contactInfo: '' }
+  ]);
+
+  // State for B3 multiple comments per question  
+  const [b3Comments, setB3Comments] = useState<{[key: string]: Array<{user: string, text: string, id: string}>}>({});
+  const [editingB3Comment, setEditingB3Comment] = useState<string | null>(null);
+  const [newB3Comment, setNewB3Comment] = useState<{[key: string]: string}>({});
+  const [b3Authorities, setB3Authorities] = useState<Array<{id: string, date: string, authority: string}>>([
+    { id: '1', date: '', authority: '' }
   ]);
 
   const [formData, setFormData] = useState<FormData>({
@@ -353,7 +367,13 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     b2ReferenceChecksCompleted: '',
     b2CurrentEmployerFeedback: '',
     b2SubmittedBy: '',
-    b2SubmittedDate: ''
+    b2SubmittedDate: '',
+    
+    // B3 Background Security Checks defaults
+    b3SecurityChecksCompleted: '',
+    b3SecurityChecksResults: '',
+    b3SubmittedBy: '',
+    b3SubmittedDate: ''
   });
 
   // Handle click outside to auto-save sections
@@ -3110,6 +3130,400 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     );
   };
 
+  const renderB3SecurityChecks = () => {
+    return (
+      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B3. Background Security Checks</h3>
+          <div className="cursor-help" title="Guidance for background security checks process">
+            <Info className="h-4 w-4 text-gray-400" />
+          </div>
+        </div>
+        
+        <div className="space-y-6">
+          {/* B3.1 Background security checks completed */}
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                B3.1 Background security checks completed?
+              </Label>
+              <div className="flex items-center min-w-[300px]">
+                <div className="flex gap-6 w-[200px]">
+                  <div className="flex items-center space-x-2 w-[50px]">
+                    <RadioGroup 
+                      value={formData.b3SecurityChecksCompleted as string} 
+                      onValueChange={(value) => updateFormData('b3SecurityChecksCompleted', value)}
+                      className="flex"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="yes" id="b3-completed-yes" />
+                        <Label htmlFor="b3-completed-yes" className="text-sm cursor-pointer">Yes</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                  <div className="flex items-center space-x-2 w-[50px]">
+                    <RadioGroup 
+                      value={formData.b3SecurityChecksCompleted as string} 
+                      onValueChange={(value) => updateFormData('b3SecurityChecksCompleted', value)}
+                      className="flex"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="no" id="b3-completed-no" />
+                        <Label htmlFor="b3-completed-no" className="text-sm cursor-pointer">No</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                  <div className="flex items-center space-x-2 w-[50px]">
+                    <RadioGroup 
+                      value={formData.b3SecurityChecksCompleted as string} 
+                      onValueChange={(value) => updateFormData('b3SecurityChecksCompleted', value)}
+                      className="flex"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="na" id="b3-completed-na" />
+                        <Label htmlFor="b3-completed-na" className="text-sm cursor-pointer">NA</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 ml-4"
+                  onClick={() => setNewB3Comment(prev => ({
+                    ...prev,
+                    'b3-completed': ""
+                  }))}
+                >
+                  <MessageSquare className="h-4 w-4 text-gray-400" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Authority details when Yes is selected */}
+            {formData.b3SecurityChecksCompleted === 'yes' && (
+              <div className="ml-4 mb-4 space-y-3">
+                {b3Authorities.map((authority, index) => (
+                  <div key={authority.id} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Input
+                        type="date"
+                        placeholder="Date"
+                        className="text-sm"
+                        value={authority.date}
+                        onChange={(e) => {
+                          setB3Authorities(prev => prev.map(auth => 
+                            auth.id === authority.id 
+                              ? { ...auth, date: e.target.value }
+                              : auth
+                          ));
+                        }}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        type="text"
+                        placeholder="Authority Involved"
+                        className="text-sm flex-1"
+                        value={authority.authority}
+                        onChange={(e) => {
+                          setB3Authorities(prev => prev.map(auth => 
+                            auth.id === authority.id 
+                              ? { ...auth, authority: e.target.value }
+                              : auth
+                          ));
+                        }}
+                      />
+                      {index === b3Authorities.length - 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-10 w-10 p-0 border-gray-300"
+                          onClick={() => {
+                            const newId = (b3Authorities.length + 1).toString();
+                            setB3Authorities(prev => [...prev, { 
+                              id: newId, 
+                              date: '', 
+                              authority: '' 
+                            }]);
+                          }}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {b3Authorities.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-10 w-10 p-0"
+                          onClick={() => {
+                            setB3Authorities(prev => prev.filter(auth => auth.id !== authority.id));
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {b3Authorities.length === 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-10 w-10 p-0"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Comments for B3.1 */}
+            {(b3Comments['b3-completed']?.length > 0 || newB3Comment['b3-completed'] !== undefined) && (
+              <div className="ml-4 mb-4 space-y-2">
+                {b3Comments['b3-completed']?.map((comment) => (
+                  <div key={comment.id} className="flex justify-between items-start">
+                    <div className="flex-1 text-blue-600 italic text-[13px] p-1">
+                      <span className="text-blue-600 italic text-[13px]">{comment.user}: </span>
+                      {comment.text}
+                    </div>
+                    <div className="ml-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setB3Comments(prev => ({
+                            ...prev,
+                            'b3-completed': prev['b3-completed']?.filter(c => c.id !== comment.id) || []
+                          }));
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                
+                {newB3Comment['b3-completed'] !== undefined && (
+                  <div>
+                    <div className="text-sm font-medium text-gray-600 mb-2">Roxanne, Crewing Executive</div>
+                    <Textarea
+                      value={newB3Comment['b3-completed']}
+                      onChange={(e) => {
+                        setNewB3Comment(prev => ({
+                          ...prev,
+                          'b3-completed': e.target.value
+                        }));
+                      }}
+                      onBlur={() => {
+                        if (newB3Comment['b3-completed']?.trim()) {
+                          const commentId = Date.now().toString();
+                          setB3Comments(prev => ({
+                            ...prev,
+                            'b3-completed': [
+                              ...(prev['b3-completed'] || []),
+                              {
+                                id: commentId,
+                                user: "Roxanne, Crewing Executive",
+                                text: newB3Comment['b3-completed']
+                              }
+                            ]
+                          }));
+                        }
+                        setNewB3Comment(prev => {
+                          const newState = { ...prev };
+                          delete newState['b3-completed'];
+                          return newState;
+                        });
+                      }}
+                      placeholder="Comment: Add your observations here..."
+                      className="text-blue-600 italic border-blue-200 text-[13px]"
+                      rows={2}
+                      autoFocus
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* B3.2 Background Security checks results positive */}
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                B3.2 Background Security checks results positive? If yes, record brief overview of verification. If no state details.
+              </Label>
+              <div className="flex items-center min-w-[300px]">
+                <div className="flex gap-6 w-[200px]">
+                  <div className="flex items-center space-x-2 w-[50px]">
+                    <RadioGroup 
+                      value={formData.b3SecurityChecksResults as string} 
+                      onValueChange={(value) => updateFormData('b3SecurityChecksResults', value)}
+                      className="flex"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="yes" id="b3-results-yes" />
+                        <Label htmlFor="b3-results-yes" className="text-sm cursor-pointer">Yes</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                  <div className="flex items-center space-x-2 w-[50px]">
+                    <RadioGroup 
+                      value={formData.b3SecurityChecksResults as string} 
+                      onValueChange={(value) => updateFormData('b3SecurityChecksResults', value)}
+                      className="flex"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="no" id="b3-results-no" />
+                        <Label htmlFor="b3-results-no" className="text-sm cursor-pointer">No</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                  <div className="flex items-center space-x-2 w-[50px]">
+                    <RadioGroup 
+                      value={formData.b3SecurityChecksResults as string} 
+                      onValueChange={(value) => updateFormData('b3SecurityChecksResults', value)}
+                      className="flex"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="na" id="b3-results-na" />
+                        <Label htmlFor="b3-results-na" className="text-sm cursor-pointer">NA</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 ml-4"
+                  onClick={() => setNewB3Comment(prev => ({
+                    ...prev,
+                    'b3-results': ""
+                  }))}
+                >
+                  <MessageSquare className="h-4 w-4 text-gray-400" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Comments for B3.2 */}
+            {(b3Comments['b3-results']?.length > 0 || newB3Comment['b3-results'] !== undefined) && (
+              <div className="ml-4 mb-4 space-y-2">
+                {b3Comments['b3-results']?.map((comment) => (
+                  <div key={comment.id} className="flex justify-between items-start">
+                    <div className="flex-1 text-blue-600 italic text-[13px] p-1">
+                      <span className="text-blue-600 italic text-[13px]">{comment.user}: </span>
+                      {comment.text}
+                    </div>
+                    <div className="ml-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setB3Comments(prev => ({
+                            ...prev,
+                            'b3-results': prev['b3-results']?.filter(c => c.id !== comment.id) || []
+                          }));
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                
+                {newB3Comment['b3-results'] !== undefined && (
+                  <div>
+                    <div className="text-sm font-medium text-gray-600 mb-2">Roxanne, Crewing Executive</div>
+                    <Textarea
+                      value={newB3Comment['b3-results']}
+                      onChange={(e) => {
+                        setNewB3Comment(prev => ({
+                          ...prev,
+                          'b3-results': e.target.value
+                        }));
+                      }}
+                      onBlur={() => {
+                        if (newB3Comment['b3-results']?.trim()) {
+                          const commentId = Date.now().toString();
+                          setB3Comments(prev => ({
+                            ...prev,
+                            'b3-results': [
+                              ...(prev['b3-results'] || []),
+                              {
+                                id: commentId,
+                                user: "Roxanne, Crewing Executive",
+                                text: newB3Comment['b3-results']
+                              }
+                            ]
+                          }));
+                        }
+                        setNewB3Comment(prev => {
+                          const newState = { ...prev };
+                          delete newState['b3-results'];
+                          return newState;
+                        });
+                      }}
+                      placeholder="Comment: Add your observations here..."
+                      className="text-blue-600 italic border-blue-200 text-[13px]"
+                      rows={2}
+                      autoFocus
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Upload button */}
+          <div className="flex justify-start">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="text-gray-600 border-gray-300 hover:bg-gray-50"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Upload
+            </Button>
+          </div>
+
+          {/* Submitted by section */}
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="flex justify-between items-center">
+              <div className="text-xs text-gray-500">
+                {formData.b3SubmittedBy ? (
+                  <>Submitted by: {formData.b3SubmittedBy}</>
+                ) : (
+                  <span className="text-gray-400">Not yet submitted</span>
+                )}
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => {
+                  const currentDate = new Date().toLocaleDateString();
+                  updateFormData('b3SubmittedBy', 'Roxanne, Crewing Executive');
+                  updateFormData('b3SubmittedDate', currentDate);
+                }}
+              >
+                Submit
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderContent = () => {
     switch (activeSection) {
       case 'A1':
@@ -3276,6 +3690,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <div className="space-y-6">
                 {renderB1InitialScreening()}
                 {renderB2ReferenceChecks()}
+                {renderB3SecurityChecks()}
               </div>
             </CardContent>
           </Card>
