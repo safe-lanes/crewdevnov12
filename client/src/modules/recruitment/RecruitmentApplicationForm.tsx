@@ -220,6 +220,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const [b2Comments, setB2Comments] = useState<{[key: string]: Array<{user: string, text: string, id: string}>}>({});
   const [editingB2Comment, setEditingB2Comment] = useState<string | null>(null);
   const [newB2Comment, setNewB2Comment] = useState<{[key: string]: string}>({});
+  const [b2References, setB2References] = useState<Array<{id: string, date: string, nameDesignation: string, contactInfo: string}>>([
+    { id: '1', date: '', nameDesignation: '', contactInfo: '' }
+  ]);
 
   const [formData, setFormData] = useState<FormData>({
     // Initialize with candidate data
@@ -2771,45 +2774,97 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             {/* Reference details when Yes is selected */}
             {formData.b2ReferenceChecksCompleted === 'yes' && (
               <div className="ml-4 mb-4 space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <Input
-                      type="date"
-                      placeholder="Date"
-                      className="text-sm"
-                    />
+                {b2References.map((reference, index) => (
+                  <div key={reference.id} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Input
+                        type="date"
+                        placeholder="Date"
+                        className="text-sm"
+                        value={reference.date}
+                        onChange={(e) => {
+                          setB2References(prev => prev.map(ref => 
+                            ref.id === reference.id 
+                              ? { ...ref, date: e.target.value }
+                              : ref
+                          ));
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <Input
+                        type="text"
+                        placeholder="Name & Designation"
+                        className="text-sm"
+                        value={reference.nameDesignation}
+                        onChange={(e) => {
+                          setB2References(prev => prev.map(ref => 
+                            ref.id === reference.id 
+                              ? { ...ref, nameDesignation: e.target.value }
+                              : ref
+                          ));
+                        }}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        type="text"
+                        placeholder="Contact Info"
+                        className="text-sm flex-1"
+                        value={reference.contactInfo}
+                        onChange={(e) => {
+                          setB2References(prev => prev.map(ref => 
+                            ref.id === reference.id 
+                              ? { ...ref, contactInfo: e.target.value }
+                              : ref
+                          ));
+                        }}
+                      />
+                      {index === b2References.length - 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-10 w-10 p-0 border-gray-300"
+                          onClick={() => {
+                            const newId = (b2References.length + 1).toString();
+                            setB2References(prev => [...prev, { 
+                              id: newId, 
+                              date: '', 
+                              nameDesignation: '', 
+                              contactInfo: '' 
+                            }]);
+                          }}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {b2References.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-10 w-10 p-0"
+                          onClick={() => {
+                            setB2References(prev => prev.filter(ref => ref.id !== reference.id));
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {b2References.length === 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-10 w-10 p-0"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <Input
-                      type="text"
-                      placeholder="Name & Designation"
-                      className="text-sm"
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                      type="text"
-                      placeholder="Contact Info"
-                      className="text-sm flex-1"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-10 w-10 p-0 border-gray-300"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-10 w-10 p-0"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+                ))}
               </div>
             )}
 
