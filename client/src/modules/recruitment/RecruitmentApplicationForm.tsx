@@ -2707,9 +2707,31 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   {/* Existing comments */}
                   {b1Comments[question.id]?.map((comment) => (
                     <div key={comment.id} className="flex justify-between items-start">
-                      <div className="flex-1 text-blue-600 italic text-[13px] p-1">
-                        <span className="text-blue-600 italic text-[13px]">{comment.user}: </span>
-                        {comment.text}
+                      <div className="flex-1">
+                        <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
+                        {editingB1Comment === comment.id ? (
+                          <Textarea
+                            value={comment.text}
+                            onChange={(e) => {
+                              setB1Comments(prev => ({
+                                ...prev,
+                                [question.id]: prev[question.id]?.map(c => 
+                                  c.id === comment.id ? { ...c, text: e.target.value } : c
+                                ) || []
+                              }));
+                            }}
+                            onBlur={() => setEditingB1Comment(null)}
+                            autoFocus
+                            className="min-h-[80px] w-full"
+                          />
+                        ) : (
+                          <div 
+                            className="text-blue-600 italic text-[13px] p-1 cursor-pointer min-h-[20px] border border-transparent hover:border-gray-200 rounded"
+                            onClick={() => setEditingB1Comment(comment.id)}
+                          >
+                            {comment.text}
+                          </div>
+                        )}
                       </div>
                       <div className="ml-2">
                         <Button
@@ -2721,6 +2743,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                               ...prev,
                               [question.id]: prev[question.id]?.filter(c => c.id !== comment.id) || []
                             }));
+                            // Clear editing state if this comment was being edited
+                            if (editingB1Comment === comment.id) {
+                              setEditingB1Comment(null);
+                            }
                           }}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -2991,9 +3017,31 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <div className="ml-4 mb-4 space-y-2">
                 {b2Comments['b2-completed']?.map((comment) => (
                   <div key={comment.id} className="flex justify-between items-start">
-                    <div className="flex-1 text-blue-600 italic text-[13px] p-1">
-                      <span className="text-blue-600 italic text-[13px]">{comment.user}: </span>
-                      {comment.text}
+                    <div className="flex-1">
+                      <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
+                      {editingB2Comment === comment.id ? (
+                        <Textarea
+                          value={comment.text}
+                          onChange={(e) => {
+                            setB2Comments(prev => ({
+                              ...prev,
+                              'b2-completed': prev['b2-completed']?.map(c => 
+                                c.id === comment.id ? { ...c, text: e.target.value } : c
+                              ) || []
+                            }));
+                          }}
+                          onBlur={() => setEditingB2Comment(null)}
+                          autoFocus
+                          className="min-h-[80px] w-full"
+                        />
+                      ) : (
+                        <div 
+                          className="text-blue-600 italic text-[13px] p-1 cursor-pointer min-h-[20px] border border-transparent hover:border-gray-200 rounded"
+                          onClick={() => setEditingB2Comment(comment.id)}
+                        >
+                          {comment.text}
+                        </div>
+                      )}
                     </div>
                     <div className="ml-2">
                       <Button
@@ -3005,6 +3053,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                             ...prev,
                             'b2-completed': prev['b2-completed']?.filter(c => c.id !== comment.id) || []
                           }));
+                          // Clear editing state if this comment was being edited
+                          if (editingB2Comment === comment.id) {
+                            setEditingB2Comment(null);
+                          }
                         }}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -3121,9 +3173,31 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <div className="ml-4 mb-4 space-y-2">
                 {b2Comments['b2-results']?.map((comment) => (
                   <div key={comment.id} className="flex justify-between items-start">
-                    <div className="flex-1 text-blue-600 italic text-[13px] p-1">
-                      <span className="text-blue-600 italic text-[13px]">{comment.user}: </span>
-                      {comment.text}
+                    <div className="flex-1">
+                      <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
+                      {editingB2Comment === comment.id ? (
+                        <Textarea
+                          value={comment.text}
+                          onChange={(e) => {
+                            setB2Comments(prev => ({
+                              ...prev,
+                              'b2-results': prev['b2-results']?.map(c => 
+                                c.id === comment.id ? { ...c, text: e.target.value } : c
+                              ) || []
+                            }));
+                          }}
+                          onBlur={() => setEditingB2Comment(null)}
+                          autoFocus
+                          className="min-h-[80px] w-full"
+                        />
+                      ) : (
+                        <div 
+                          className="text-blue-600 italic text-[13px] p-1 cursor-pointer min-h-[20px] border border-transparent hover:border-gray-200 rounded"
+                          onClick={() => setEditingB2Comment(comment.id)}
+                        >
+                          {comment.text}
+                        </div>
+                      )}
                     </div>
                     <div className="ml-2">
                       <Button
@@ -3135,6 +3209,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                             ...prev,
                             'b2-results': prev['b2-results']?.filter(c => c.id !== comment.id) || []
                           }));
+                          // Clear editing state if this comment was being edited
+                          if (editingB2Comment === comment.id) {
+                            setEditingB2Comment(null);
+                          }
                         }}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -3385,9 +3463,31 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <div className="ml-4 mb-4 space-y-2">
                 {b3Comments['b3-completed']?.map((comment) => (
                   <div key={comment.id} className="flex justify-between items-start">
-                    <div className="flex-1 text-blue-600 italic text-[13px] p-1">
-                      <span className="text-blue-600 italic text-[13px]">{comment.user}: </span>
-                      {comment.text}
+                    <div className="flex-1">
+                      <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
+                      {editingB3Comment === comment.id ? (
+                        <Textarea
+                          value={comment.text}
+                          onChange={(e) => {
+                            setB3Comments(prev => ({
+                              ...prev,
+                              'b3-completed': prev['b3-completed']?.map(c => 
+                                c.id === comment.id ? { ...c, text: e.target.value } : c
+                              ) || []
+                            }));
+                          }}
+                          onBlur={() => setEditingB3Comment(null)}
+                          autoFocus
+                          className="min-h-[80px] w-full"
+                        />
+                      ) : (
+                        <div 
+                          className="text-blue-600 italic text-[13px] p-1 cursor-pointer min-h-[20px] border border-transparent hover:border-gray-200 rounded"
+                          onClick={() => setEditingB3Comment(comment.id)}
+                        >
+                          {comment.text}
+                        </div>
+                      )}
                     </div>
                     <div className="ml-2">
                       <Button
@@ -3399,6 +3499,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                             ...prev,
                             'b3-completed': prev['b3-completed']?.filter(c => c.id !== comment.id) || []
                           }));
+                          if (editingB3Comment === comment.id) {
+                            setEditingB3Comment(null);
+                          }
                         }}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -3515,9 +3618,31 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <div className="ml-4 mb-4 space-y-2">
                 {b3Comments['b3-results']?.map((comment) => (
                   <div key={comment.id} className="flex justify-between items-start">
-                    <div className="flex-1 text-blue-600 italic text-[13px] p-1">
-                      <span className="text-blue-600 italic text-[13px]">{comment.user}: </span>
-                      {comment.text}
+                    <div className="flex-1">
+                      <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
+                      {editingB3Comment === comment.id ? (
+                        <Textarea
+                          value={comment.text}
+                          onChange={(e) => {
+                            setB3Comments(prev => ({
+                              ...prev,
+                              'b3-results': prev['b3-results']?.map(c => 
+                                c.id === comment.id ? { ...c, text: e.target.value } : c
+                              ) || []
+                            }));
+                          }}
+                          onBlur={() => setEditingB3Comment(null)}
+                          autoFocus
+                          className="min-h-[80px] w-full"
+                        />
+                      ) : (
+                        <div 
+                          className="text-blue-600 italic text-[13px] p-1 cursor-pointer min-h-[20px] border border-transparent hover:border-gray-200 rounded"
+                          onClick={() => setEditingB3Comment(comment.id)}
+                        >
+                          {comment.text}
+                        </div>
+                      )}
                     </div>
                     <div className="ml-2">
                       <Button
@@ -3529,6 +3654,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                             ...prev,
                             'b3-results': prev['b3-results']?.filter(c => c.id !== comment.id) || []
                           }));
+                          if (editingB3Comment === comment.id) {
+                            setEditingB3Comment(null);
+                          }
                         }}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -3795,9 +3923,31 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <div className="ml-4 mb-4 space-y-2">
                 {b4Comments['b4-authenticated']?.map((comment) => (
                   <div key={comment.id} className="flex justify-between items-start">
-                    <div className="flex-1 text-blue-600 italic text-[13px] p-1">
-                      <span className="text-blue-600 italic text-[13px]">{comment.user}: </span>
-                      {comment.text}
+                    <div className="flex-1">
+                      <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
+                      {editingB4Comment === comment.id ? (
+                        <Textarea
+                          value={comment.text}
+                          onChange={(e) => {
+                            setB4Comments(prev => ({
+                              ...prev,
+                              'b4-authenticated': prev['b4-authenticated']?.map(c => 
+                                c.id === comment.id ? { ...c, text: e.target.value } : c
+                              ) || []
+                            }));
+                          }}
+                          onBlur={() => setEditingB4Comment(null)}
+                          autoFocus
+                          className="min-h-[80px] w-full"
+                        />
+                      ) : (
+                        <div 
+                          className="text-blue-600 italic text-[13px] p-1 cursor-pointer min-h-[20px] border border-transparent hover:border-gray-200 rounded"
+                          onClick={() => setEditingB4Comment(comment.id)}
+                        >
+                          {comment.text}
+                        </div>
+                      )}
                     </div>
                     <div className="ml-2">
                       <Button
@@ -3809,6 +3959,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                             ...prev,
                             'b4-authenticated': prev['b4-authenticated']?.filter(c => c.id !== comment.id) || []
                           }));
+                          if (editingB4Comment === comment.id) {
+                            setEditingB4Comment(null);
+                          }
                         }}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -3925,9 +4078,31 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <div className="ml-4 mb-4 space-y-2">
                 {b4Comments['b4-results']?.map((comment) => (
                   <div key={comment.id} className="flex justify-between items-start">
-                    <div className="flex-1 text-blue-600 italic text-[13px] p-1">
-                      <span className="text-blue-600 italic text-[13px]">{comment.user}: </span>
-                      {comment.text}
+                    <div className="flex-1">
+                      <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
+                      {editingB4Comment === comment.id ? (
+                        <Textarea
+                          value={comment.text}
+                          onChange={(e) => {
+                            setB4Comments(prev => ({
+                              ...prev,
+                              'b4-results': prev['b4-results']?.map(c => 
+                                c.id === comment.id ? { ...c, text: e.target.value } : c
+                              ) || []
+                            }));
+                          }}
+                          onBlur={() => setEditingB4Comment(null)}
+                          autoFocus
+                          className="min-h-[80px] w-full"
+                        />
+                      ) : (
+                        <div 
+                          className="text-blue-600 italic text-[13px] p-1 cursor-pointer min-h-[20px] border border-transparent hover:border-gray-200 rounded"
+                          onClick={() => setEditingB4Comment(comment.id)}
+                        >
+                          {comment.text}
+                        </div>
+                      )}
                     </div>
                     <div className="ml-2">
                       <Button
@@ -3939,6 +4114,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                             ...prev,
                             'b4-results': prev['b4-results']?.filter(c => c.id !== comment.id) || []
                           }));
+                          if (editingB4Comment === comment.id) {
+                            setEditingB4Comment(null);
+                          }
                         }}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -4224,9 +4402,31 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <div className="ml-4 mb-4 space-y-2">
                 {b5Comments['b5-completed']?.map((comment) => (
                   <div key={comment.id} className="flex justify-between items-start">
-                    <div className="flex-1 text-blue-600 italic text-[13px] p-1">
-                      <span className="text-blue-600 italic text-[13px]">{comment.user}: </span>
-                      {comment.text}
+                    <div className="flex-1">
+                      <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
+                      {editingB5Comment === comment.id ? (
+                        <Textarea
+                          value={comment.text}
+                          onChange={(e) => {
+                            setB5Comments(prev => ({
+                              ...prev,
+                              'b5-completed': prev['b5-completed']?.map(c => 
+                                c.id === comment.id ? { ...c, text: e.target.value } : c
+                              ) || []
+                            }));
+                          }}
+                          onBlur={() => setEditingB5Comment(null)}
+                          autoFocus
+                          className="min-h-[80px] w-full"
+                        />
+                      ) : (
+                        <div 
+                          className="text-blue-600 italic text-[13px] p-1 cursor-pointer min-h-[20px] border border-transparent hover:border-gray-200 rounded"
+                          onClick={() => setEditingB5Comment(comment.id)}
+                        >
+                          {comment.text}
+                        </div>
+                      )}
                     </div>
                     <div className="ml-2">
                       <Button
@@ -4238,6 +4438,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                             ...prev,
                             'b5-completed': prev['b5-completed']?.filter(c => c.id !== comment.id) || []
                           }));
+                          if (editingB5Comment === comment.id) {
+                            setEditingB5Comment(null);
+                          }
                         }}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -4854,9 +5057,31 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <div className="ml-4 mb-4 space-y-2">
                 {b8Comments['b8-shortlisted']?.map((comment) => (
                   <div key={comment.id} className="flex justify-between items-start">
-                    <div className="flex-1 text-blue-600 italic text-[13px] p-1">
-                      <span className="text-blue-600 italic text-[13px]">{comment.user}: </span>
-                      {comment.text}
+                    <div className="flex-1">
+                      <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
+                      {editingB8Comment === comment.id ? (
+                        <Textarea
+                          value={comment.text}
+                          onChange={(e) => {
+                            setB8Comments(prev => ({
+                              ...prev,
+                              'b8-shortlisted': prev['b8-shortlisted']?.map(c => 
+                                c.id === comment.id ? { ...c, text: e.target.value } : c
+                              ) || []
+                            }));
+                          }}
+                          onBlur={() => setEditingB8Comment(null)}
+                          autoFocus
+                          className="min-h-[80px] w-full"
+                        />
+                      ) : (
+                        <div 
+                          className="text-blue-600 italic text-[13px] p-1 cursor-pointer min-h-[20px] border border-transparent hover:border-gray-200 rounded"
+                          onClick={() => setEditingB8Comment(comment.id)}
+                        >
+                          {comment.text}
+                        </div>
+                      )}
                     </div>
                     <div className="ml-2">
                       <Button
@@ -4868,6 +5093,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                             ...prev,
                             'b8-shortlisted': prev['b8-shortlisted']?.filter(c => c.id !== comment.id) || []
                           }));
+                          if (editingB8Comment === comment.id) {
+                            setEditingB8Comment(null);
+                          }
                         }}
                       >
                         <Trash2 className="h-4 w-4" />
