@@ -153,6 +153,13 @@ interface FormData {
     to: string;
     periodMonths: string;
   }>;
+
+  // A5 Additional Information
+  additionalInfo: Array<{
+    id: string;
+    information: string;
+    response: string;
+  }>;
 }
 
 export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProps> = ({
@@ -282,6 +289,13 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       { id: '8', vesselName: 'MV Navigator', vesselType: 'Bulk Carrier', deadweight: '24000 DWT', engineTypePower: 'Wartsila / 18000 kW', ownerOperator: 'Seaspan Corporation', rank: 'Able Seaman', from: '2024-10-01', to: '2024-12-31', periodMonths: '3.0M' },
       { id: '9', vesselName: 'SS Endeavor', vesselType: 'Oil Tanker', deadweight: '32000 DWT', engineTypePower: 'Sulzer / 19000 kW', ownerOperator: 'Maritime Solutions Ltd.', rank: 'Chief Officer', from: '2025-01-01', to: '2025-03-31', periodMonths: '3.0M' },
       { id: '10', vesselName: 'MV Explorer', vesselType: 'Tanker', deadweight: '31000 DWT', engineTypePower: 'Wartsila / 17000 kW', ownerOperator: 'Blue Wave Ltd.', rank: 'Third Mate', from: '2025-04-01', to: '2025-06-30', periodMonths: '3.0M' }
+    ],
+
+    // A5 Default additional information (configured from Crew Admin)
+    additionalInfo: [
+      { id: 'A5.1', information: 'Cargoes Carried', response: '' },
+      { id: 'A5.2', information: 'Trading Pattern', response: '' },
+      { id: 'A5.3', information: 'Nationalities sailed with', response: '' }
     ]
   });
 
@@ -326,7 +340,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     { id: 'A2', title: 'Travel & ID Documents', number: 'A2' },
     { id: 'A3', title: 'Training & Certificates', number: 'A3' },
     { id: 'A4', title: 'Sea Service', number: 'A4' },
-    { id: 'A5', title: 'Medical', number: 'A5' },
+    { id: 'A5', title: 'Additional Information', number: 'A5' },
     { id: 'A6', title: 'References', number: 'A6' },
     { id: 'B', title: 'Company Processing', number: 'B' },
     { id: 'C', title: 'Approval', number: 'C' }
@@ -626,6 +640,35 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     } catch {
       return '';
     }
+  };
+
+  // Additional Information management functions
+  const addAdditionalInfo = () => {
+    const newInfo = {
+      id: `A5.${formData.additionalInfo.length + 1}`,
+      information: '',
+      response: ''
+    };
+    setFormData(prev => ({
+      ...prev,
+      additionalInfo: [...prev.additionalInfo, newInfo]
+    }));
+  };
+
+  const removeAdditionalInfo = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      additionalInfo: prev.additionalInfo.filter(info => info.id !== id)
+    }));
+  };
+
+  const updateAdditionalInfo = (id: string, field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      additionalInfo: prev.additionalInfo.map(info => 
+        info.id === id ? { ...info, [field]: value } : info
+      )
+    }));
   };
 
   // Comprehensive nationality list matching AppraisalForm standards
@@ -1975,6 +2018,79 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     );
   };
 
+  const renderA5AdditionalInfo = () => {
+    return (
+      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+        <div className="mb-4">
+          <h3 className="text-base font-medium mb-2" style={{ color: '#16569e' }}>Part A5 - Additional Information</h3>
+          <p className="text-sm" style={{ color: '#40E0D0' }}>Provide additional information as below</p>
+        </div>
+        
+        <Table className="w-full">
+          <TableHeader>
+            <TableRow className="bg-gray-100">
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Information</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Response</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {formData.additionalInfo.map((info) => (
+              <TableRow key={info.id} className="border-b border-gray-200">
+                <TableCell className="p-3">
+                  <Input
+                    value={info.information}
+                    onChange={(e) => updateAdditionalInfo(info.id, 'information', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    placeholder="Enter information requirement"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    value={info.response}
+                    onChange={(e) => updateAdditionalInfo(info.id, 'response', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    placeholder="Enter response"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                      <Paperclip className="h-3 w-3" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-red-400 hover:text-red-600"
+                      onClick={() => removeAdditionalInfo(info.id)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        
+        <div className="mt-4 flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={addAdditionalInfo}
+            className="text-gray-600 border-gray-300 hover:bg-gray-50"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            ADD
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   const renderA13FamilyNOK = () => {
     const isEditing = editingSections['A1.3'];
     
@@ -2439,6 +2555,33 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               {/* A4 Section */}
               <div className="space-y-6">
                 {renderA41SeaService()}
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-2 mt-6 pt-4">
+                <Button 
+                  className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8"
+                  onClick={onClose}
+                >
+                  Save & Continue
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      case 'A5':
+        return (
+          <Card className="bg-white border border-gray-200 shadow-sm">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
+              <div className="pb-4 mb-6">
+                <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A5 - Additional Information</h2>
+                <div style={{ color: '#40E0D0' }} className="text-sm">Provide additional information as below</div>
+                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+              </div>
+              
+              {/* A5 Section */}
+              <div className="space-y-6">
+                {renderA5AdditionalInfo()}
               </div>
               
               {/* Action Buttons */}
