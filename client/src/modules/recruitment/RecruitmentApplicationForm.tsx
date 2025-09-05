@@ -2585,10 +2585,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               {/* Action Buttons */}
               <div className="flex justify-end gap-2 mt-6 pt-4">
                 <Button 
-                  className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8"
+                  className="bg-green-600 hover:bg-green-700 text-white px-8"
                   onClick={onClose}
                 >
-                  Save & Continue
+                  Save & Submit
                 </Button>
               </div>
             </CardContent>
