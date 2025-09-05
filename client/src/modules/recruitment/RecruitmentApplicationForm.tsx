@@ -13,7 +13,8 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Edit, Plus, Save, Trash2, Upload, Paperclip, X, Camera } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { ArrowLeft, Edit, Plus, Save, Trash2, Upload, Paperclip, X, Camera, Info, MessageSquare } from 'lucide-react';
 
 interface RecruitmentCandidate {
   id: string;
@@ -160,6 +161,13 @@ interface FormData {
     information: string;
     response: string;
   }>;
+
+  // Part B - Office Screening
+  b1AgeMeetsCriteria: string;
+  b1RankMeetsCriteria: string;
+  b1Comments: string;
+  b1SubmittedBy: string;
+  b1SubmittedDate: string;
 }
 
 export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProps> = ({
@@ -296,7 +304,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       { id: 'A5.1', information: 'Cargoes Carried', response: '' },
       { id: 'A5.2', information: 'Trading Pattern', response: '' },
       { id: 'A5.3', information: 'Nationalities sailed with', response: '' }
-    ]
+    ],
+
+    // Part B - Office Screening defaults
+    b1AgeMeetsCriteria: '',
+    b1RankMeetsCriteria: '',
+    b1Comments: '',
+    b1SubmittedBy: '',
+    b1SubmittedDate: ''
   });
 
   // Handle click outside to auto-save sections
@@ -2442,6 +2457,135 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     );
   };
 
+  // Part B Render Functions
+
+  const renderB1InitialScreening = () => {
+    return (
+      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B1. Initial Screening</h3>
+          <div className="cursor-help" title="Guidance for initial screening process">
+            <Info className="h-4 w-4 text-gray-400" />
+          </div>
+        </div>
+        
+        <div className="space-y-6">
+          {/* Question 1: Age meets criteria */}
+          <div className="space-y-3">
+            <Label className="text-xs text-gray-500 tracking-wide">
+              B1.1 Age meets Company Criteria for the Rank applied for?
+            </Label>
+            <RadioGroup 
+              value={formData.b1AgeMeetsCriteria} 
+              onValueChange={(value) => updateFormData('b1AgeMeetsCriteria', value)}
+              className="flex gap-6"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="yes" id="b1-age-yes" />
+                <Label htmlFor="b1-age-yes" className="text-sm cursor-pointer">Yes</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="no" id="b1-age-no" />
+                <Label htmlFor="b1-age-no" className="text-sm cursor-pointer">No</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="na" id="b1-age-na" />
+                <Label htmlFor="b1-age-na" className="text-sm cursor-pointer">NA</Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          {/* Question 2: Rank meets criteria */}
+          <div className="space-y-3">
+            <Label className="text-xs text-gray-500 tracking-wide">
+              B1.2 Seafarer meets Company criteria for the rank applied for?
+            </Label>
+            <RadioGroup 
+              value={formData.b1RankMeetsCriteria} 
+              onValueChange={(value) => updateFormData('b1RankMeetsCriteria', value)}
+              className="flex gap-6"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="yes" id="b1-rank-yes" />
+                <Label htmlFor="b1-rank-yes" className="text-sm cursor-pointer">Yes</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="no" id="b1-rank-no" />
+                <Label htmlFor="b1-rank-no" className="text-sm cursor-pointer">No</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="na" id="b1-rank-na" />
+                <Label htmlFor="b1-rank-na" className="text-sm cursor-pointer">NA</Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          {/* Comments section */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-start">
+              <div className="flex-1">
+                <Textarea
+                  value={formData.b1Comments}
+                  onChange={(e) => updateFormData('b1Comments', e.target.value)}
+                  placeholder="Add comments..."
+                  className="text-[13px] min-h-[80px]"
+                />
+              </div>
+              <div className="ml-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                >
+                  <MessageSquare className="h-4 w-4 text-gray-400" />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Upload button */}
+          <div className="flex justify-start">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="text-gray-600 border-gray-300 hover:bg-gray-50"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Upload
+            </Button>
+          </div>
+
+          {/* Submitted by section */}
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="flex justify-between items-center">
+              <div className="text-xs text-gray-500">
+                {formData.b1SubmittedBy ? (
+                  <>Submitted by: {formData.b1SubmittedBy}, Crewing Executive</>
+                ) : (
+                  <span className="text-gray-400">Not yet submitted</span>
+                )}
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => {
+                  const currentDate = new Date().toLocaleDateString();
+                  updateFormData('b1SubmittedBy', 'Rahmat, Crewing Executive'); // Sample user
+                  updateFormData('b1SubmittedDate', currentDate);
+                }}
+              >
+                Submit
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderContent = () => {
     switch (activeSection) {
       case 'A1':
@@ -2589,6 +2733,33 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   onClick={onClose}
                 >
                   Save & Submit
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      case 'B':
+        return (
+          <Card className="bg-white border border-gray-200 shadow-sm">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
+              <div className="pb-4 mb-6">
+                <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part B - Office Screening</h2>
+                <div style={{ color: '#16569e' }} className="text-sm">For office use only - Crew executives processing</div>
+                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+              </div>
+              
+              {/* B Sections */}
+              <div className="space-y-6">
+                {renderB1InitialScreening()}
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-2 mt-6 pt-4">
+                <Button 
+                  className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8"
+                  onClick={onClose}
+                >
+                  Save & Continue
                 </Button>
               </div>
             </CardContent>
