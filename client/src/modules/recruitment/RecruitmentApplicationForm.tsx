@@ -192,8 +192,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
 
-  // State for B1 comment visibility
-  const [showB1Comment, setShowB1Comment] = useState(false);
+  // State for B1 individual comments
+  const [b1Comments, setB1Comments] = useState<{[key: string]: string}>({});
+  const [editingB1Comment, setEditingB1Comment] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<FormData>({
     // Initialize with candidate data
@@ -2467,6 +2468,13 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   // Part B Render Functions
 
   const renderB1InitialScreening = () => {
+    const questions = [
+      { id: 'b1-age', field: 'b1AgeMeetsCriteria', label: 'B1.1 Age meets Company Criteria for the Rank applied for?', hasNA: true },
+      { id: 'b1-rank', field: 'b1RankMeetsCriteria', label: 'B1.2 Experience meets Company Criteria for the Rank applied for?', hasNA: true },
+      { id: 'b1-cert', field: 'b1CertificatesValid', label: 'B1.3 Certificates & Documents in order & valid as per Company Criteria?', hasNA: true },
+      { id: 'b1-shortlist', field: 'b1Shortlisted', label: 'B1.4 Shortlisted (Initial Screening)?', hasNA: false },
+    ];
+
     return (
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex items-center gap-2 mb-4">
@@ -2477,146 +2485,119 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
         </div>
         
         <div className="space-y-4">
-          {/* Question 1: Age meets criteria */}
-          <div className="flex justify-between items-center">
-            <Label className="text-xs text-gray-500 tracking-wide flex-1">
-              B1.1 Age meets Company Criteria for the Rank applied for?
-            </Label>
-            <div className="flex gap-6 items-center">
-              <RadioGroup 
-                value={formData.b1AgeMeetsCriteria} 
-                onValueChange={(value) => updateFormData('b1AgeMeetsCriteria', value)}
-                className="flex gap-6"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="yes" id="b1-age-yes" />
-                  <Label htmlFor="b1-age-yes" className="text-sm cursor-pointer">Yes</Label>
+          {questions.map((question) => (
+            <React.Fragment key={question.id}>
+              <div className="flex justify-between items-center">
+                <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                  {question.label}
+                </Label>
+                <div className="flex items-center min-w-[300px]">
+                  {/* Fixed width container for alignment */}
+                  <div className="flex gap-6 w-[200px]">
+                    <div className="flex items-center space-x-2 w-[50px]">
+                      <RadioGroup 
+                        value={formData[question.field as keyof FormData] as string} 
+                        onValueChange={(value) => updateFormData(question.field as keyof FormData, value)}
+                        className="flex"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="yes" id={`${question.id}-yes`} />
+                          <Label htmlFor={`${question.id}-yes`} className="text-sm cursor-pointer">Yes</Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+                    <div className="flex items-center space-x-2 w-[50px]">
+                      <RadioGroup 
+                        value={formData[question.field as keyof FormData] as string} 
+                        onValueChange={(value) => updateFormData(question.field as keyof FormData, value)}
+                        className="flex"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="no" id={`${question.id}-no`} />
+                          <Label htmlFor={`${question.id}-no`} className="text-sm cursor-pointer">No</Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+                    {question.hasNA && (
+                      <div className="flex items-center space-x-2 w-[50px]">
+                        <RadioGroup 
+                          value={formData[question.field as keyof FormData] as string} 
+                          onValueChange={(value) => updateFormData(question.field as keyof FormData, value)}
+                          className="flex"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="na" id={`${question.id}-na`} />
+                            <Label htmlFor={`${question.id}-na`} className="text-sm cursor-pointer">NA</Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+                    )}
+                    {!question.hasNA && <div className="w-[50px]"></div>}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 ml-4"
+                    onClick={() => setB1Comments(prev => ({
+                      ...prev,
+                      [question.id]: prev[question.id] || ""
+                    }))}
+                  >
+                    <MessageSquare className="h-4 w-4 text-gray-400" />
+                  </Button>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="no" id="b1-age-no" />
-                  <Label htmlFor="b1-age-no" className="text-sm cursor-pointer">No</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="na" id="b1-age-na" />
-                  <Label htmlFor="b1-age-na" className="text-sm cursor-pointer">NA</Label>
-                </div>
-              </RadioGroup>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => setShowB1Comment(!showB1Comment)}
-              >
-                <MessageSquare className="h-4 w-4 text-gray-400" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Question 2: Experience meets criteria */}
-          <div className="flex justify-between items-center">
-            <Label className="text-xs text-gray-500 tracking-wide flex-1">
-              B1.2 Experience meets Company Criteria for the Rank applied for?
-            </Label>
-            <div className="flex gap-6 items-center">
-              <RadioGroup 
-                value={formData.b1RankMeetsCriteria} 
-                onValueChange={(value) => updateFormData('b1RankMeetsCriteria', value)}
-                className="flex gap-6"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="yes" id="b1-rank-yes" />
-                  <Label htmlFor="b1-rank-yes" className="text-sm cursor-pointer">Yes</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="no" id="b1-rank-no" />
-                  <Label htmlFor="b1-rank-no" className="text-sm cursor-pointer">No</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="na" id="b1-rank-na" />
-                  <Label htmlFor="b1-rank-na" className="text-sm cursor-pointer">NA</Label>
-                </div>
-              </RadioGroup>
-            </div>
-          </div>
-
-          {/* Show comments if enabled */}
-          {showB1Comment && (
-            <div className="mt-2 mb-4">
-              <div className="text-blue-600 italic text-[13px] space-y-2">
-                <div>Roxanne, Crewing Executive:</div>
-                <div>Rank Experience does not meet the requirements. 1 month short</div>
-                <div className="mt-2">Joseph Hall, Crew Manager:</div>
-                <div>Exception granted to this candidate as per discussion with Department Manager</div>
               </div>
-            </div>
-          )}
 
-          {/* Question 3: Certificates & Documents */}
-          <div className="flex justify-between items-center">
-            <Label className="text-xs text-gray-500 tracking-wide flex-1">
-              B1.3 Certificates & Documents in order & valid as per Company Criteria?
-            </Label>
-            <div className="flex gap-6 items-center">
-              <RadioGroup 
-                value={formData.b1CertificatesValid} 
-                onValueChange={(value) => updateFormData('b1CertificatesValid', value)}
-                className="flex gap-6"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="yes" id="b1-cert-yes" />
-                  <Label htmlFor="b1-cert-yes" className="text-sm cursor-pointer">Yes</Label>
+              {/* Individual comment for this question */}
+              {b1Comments[question.id] !== undefined && (
+                <div className="ml-4 mb-4">
+                  <div className="text-sm font-medium text-gray-600 mb-2">Roxanne, Crewing Executive</div>
+                  {editingB1Comment === question.id ? (
+                    <Textarea
+                      value={b1Comments[question.id]}
+                      onChange={(e) => {
+                        setB1Comments(prev => ({
+                          ...prev,
+                          [question.id]: e.target.value
+                        }));
+                      }}
+                      onBlur={() => setEditingB1Comment(null)}
+                      placeholder="Comment: Add your observations here..."
+                      className="text-blue-600 italic border-blue-200 text-[13px]"
+                      rows={2}
+                      autoFocus
+                    />
+                  ) : (
+                    <div className="flex justify-between items-start">
+                      <div 
+                        className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px] border border-blue-200"
+                        onClick={() => setEditingB1Comment(question.id)}
+                      >
+                        {b1Comments[question.id] || "Comment: Add your observations here..."}
+                      </div>
+                      <div className="ml-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setB1Comments(prev => {
+                              const newComments = { ...prev };
+                              delete newComments[question.id];
+                              return newComments;
+                            });
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="no" id="b1-cert-no" />
-                  <Label htmlFor="b1-cert-no" className="text-sm cursor-pointer">No</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="na" id="b1-cert-na" />
-                  <Label htmlFor="b1-cert-na" className="text-sm cursor-pointer">NA</Label>
-                </div>
-              </RadioGroup>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
-              >
-                <MessageSquare className="h-4 w-4 text-gray-400" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Question 4: Shortlisted */}
-          <div className="flex justify-between items-center">
-            <Label className="text-xs text-gray-500 tracking-wide flex-1">
-              B1.4 Shortlisted (Initial Screening)?
-            </Label>
-            <div className="flex gap-6 items-center">
-              <RadioGroup 
-                value={formData.b1Shortlisted} 
-                onValueChange={(value) => updateFormData('b1Shortlisted', value)}
-                className="flex gap-6"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="yes" id="b1-shortlist-yes" />
-                  <Label htmlFor="b1-shortlist-yes" className="text-sm cursor-pointer">Yes</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="no" id="b1-shortlist-no" />
-                  <Label htmlFor="b1-shortlist-no" className="text-sm cursor-pointer">No</Label>
-                </div>
-              </RadioGroup>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
-              >
-                <MessageSquare className="h-4 w-4 text-gray-400" />
-              </Button>
-            </div>
-          </div>
+              )}
+            </React.Fragment>
+          ))}
 
           {/* Upload button */}
           <div className="flex justify-start mt-6">
