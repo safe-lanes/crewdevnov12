@@ -2022,8 +2022,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     return (
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="mb-4">
-          <h3 className="text-base font-medium mb-2" style={{ color: '#16569e' }}>Part A5 - Additional Information</h3>
-          <p className="text-sm" style={{ color: '#40E0D0' }}>Provide additional information as below</p>
+          <h3 className="text-base font-medium mb-2" style={{ color: '#16569e' }}>A5.1 Details on Additional Information required</h3>
         </div>
         
         <Table className="w-full">
