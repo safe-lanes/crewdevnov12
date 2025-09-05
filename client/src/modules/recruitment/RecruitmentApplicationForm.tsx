@@ -5577,41 +5577,47 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
         <div className="space-y-6">
           {/* C3.1 Recruitment confirmed */}
           <div>
-            <label className="text-xs text-gray-500 tracking-wide mb-3 block">C3.1 Recruitment confirmed:</label>
-            <div className="flex gap-6">
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="recruitment-status"
-                  value="Yes"
-                  checked={c3RecruitmentStatus === 'Yes'}
-                  onChange={(e) => setC3RecruitmentStatus(e.target.value)}
-                  className="mr-2"
-                />
-                <span className="text-[13px]">Yes</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="recruitment-status"
-                  value="Waitlist"
-                  checked={c3RecruitmentStatus === 'Waitlist'}
-                  onChange={(e) => setC3RecruitmentStatus(e.target.value)}
-                  className="mr-2"
-                />
-                <span className="text-[13px]">Waitlist</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="recruitment-status"
-                  value="Rejected"
-                  checked={c3RecruitmentStatus === 'Rejected'}
-                  onChange={(e) => setC3RecruitmentStatus(e.target.value)}
-                  className="mr-2"
-                />
-                <span className="text-[13px]">Rejected</span>
-              </label>
+            <div className="flex justify-between items-center mb-4">
+              <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                C3.1 Recruitment confirmed:
+              </Label>
+              <div className="flex items-center min-w-[300px]">
+                <div className="flex gap-6">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="recruitment-status"
+                      value="Yes"
+                      checked={c3RecruitmentStatus === 'Yes'}
+                      onChange={(e) => setC3RecruitmentStatus(e.target.value)}
+                      className="mr-2"
+                    />
+                    <span className="text-[13px]">Yes</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="recruitment-status"
+                      value="Waitlist"
+                      checked={c3RecruitmentStatus === 'Waitlist'}
+                      onChange={(e) => setC3RecruitmentStatus(e.target.value)}
+                      className="mr-2"
+                    />
+                    <span className="text-[13px]">Waitlist</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="recruitment-status"
+                      value="Rejected"
+                      checked={c3RecruitmentStatus === 'Rejected'}
+                      onChange={(e) => setC3RecruitmentStatus(e.target.value)}
+                      className="mr-2"
+                    />
+                    <span className="text-[13px]">Rejected</span>
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
 
