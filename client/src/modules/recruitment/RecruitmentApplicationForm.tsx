@@ -293,6 +293,13 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   });
   const [editingB6InterviewComment, setEditingB6InterviewComment] = useState<string | null>('1'); // Default to editing mode for first interview
 
+  // Mapping for interviewer values to display names
+  const interviewerDisplayNames: {[key: string]: string} = {
+    'capt-nick': 'Capt. Nick, Marine Superintendent',
+    'john-doe': 'John Doe, HR Manager', 
+    'sarah-smith': 'Sarah Smith, Technical Manager'
+  };
+
   // State for B7 Training Needs
   const [b7TrainingNeeds, setB7TrainingNeeds] = useState<Array<{id: string, training: string, identifiedBy: string, category: string, dueDate: string, comments: string}>>([
     { id: '1', training: 'Training 1', identifiedBy: 'Authority 1', category: 'Mandatory', dueDate: '30 Jan 2022', comments: '' },
@@ -4534,7 +4541,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                     {/* Individual interview comment */}
                     <div className="ml-4">
                       <div className="text-blue-600 italic text-[13px] mb-2">
-                        {interview.interviewer ? interview.interviewer : 'Capt. Nick, Marine Superintendent'}:
+                        {interview.interviewer ? interviewerDisplayNames[interview.interviewer] || interview.interviewer : 'Capt. Nick, Marine Superintendent'}:
                       </div>
                       {editingB6InterviewComment === interview.id ? (
                         <Textarea
