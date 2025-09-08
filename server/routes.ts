@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError } from "./storage";
-import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema } from "@shared/schema";
+import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for database connectivity
@@ -340,6 +340,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete appraisal" });
+    }
+  });
+
+  // Recruitment Candidates API routes
+  app.get("/api/recruitment-candidates", async (req, res) => {
+    try {
+      const { status } = req.query;
+      let candidates;
+      
+      if (status && typeof status === 'string') {
+        candidates = await storage.getRecruitmentCandidatesByStatus(status);
+      } else {
+        candidates = await storage.getRecruitmentCandidates();
+      }
+      
+      res.json(candidates);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch recruitment candidates" });
+    }
+  });
+
+  app.get("/api/recruitment-candidates/:id", async (req, res) => {
+    try {
+      const id = req.params.id;
+      const candidate = await storage.getRecruitmentCandidate(id);
+      if (!candidate) {
+        return res.status(404).json({ error: "Recruitment candidate not found" });
+      }
+      res.json(candidate);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch recruitment candidate" });
+    }
+  });
+
+  app.post("/api/recruitment-candidates", async (req, res) => {
+    try {
+      const result = insertRecruitmentCandidateSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid recruitment candidate data", details: result.error.issues });
+      }
+      const candidate = await storage.createRecruitmentCandidate(result.data);
+      res.status(201).json(candidate);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create recruitment candidate" });
+    }
+  });
+
+  app.put("/api/recruitment-candidates/:id", async (req, res) => {
+    try {
+      const id = req.params.id;
+      const result = insertRecruitmentCandidateSchema.partial().safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid recruitment candidate data", details: result.error.issues });
+      }
+      const candidate = await storage.updateRecruitmentCandidate(id, result.data);
+      if (!candidate) {
+        return res.status(404).json({ error: "Recruitment candidate not found" });
+      }
+      res.json(candidate);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update recruitment candidate" });
+    }
+  });
+
+  app.delete("/api/recruitment-candidates/:id", async (req, res) => {
+    try {
+      const id = req.params.id;
+      const deleted = await storage.deleteRecruitmentCandidate(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Recruitment candidate not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete recruitment candidate" });
     }
   });
 

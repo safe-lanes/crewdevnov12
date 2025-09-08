@@ -458,6 +458,7 @@ export class MemStorage implements IStorage {
       ...insertCandidate,
       middleName: insertCandidate.middleName || null,
       applicationData: insertCandidate.applicationData || null,
+      status: insertCandidate.status || "Applied",
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -576,6 +577,12 @@ if (databaseUrl) {
       async createAppraisalResult(): Promise<any> { this.throwConnectionError(); }
       async updateAppraisalResult(): Promise<any> { this.throwConnectionError(); }
       async deleteAppraisalResult(): Promise<any> { this.throwConnectionError(); }
+      async getRecruitmentCandidates(): Promise<any> { this.throwConnectionError(); }
+      async getRecruitmentCandidate(): Promise<any> { this.throwConnectionError(); }
+      async getRecruitmentCandidatesByStatus(): Promise<any> { this.throwConnectionError(); }
+      async createRecruitmentCandidate(): Promise<any> { this.throwConnectionError(); }
+      async updateRecruitmentCandidate(): Promise<any> { this.throwConnectionError(); }
+      async deleteRecruitmentCandidate(): Promise<any> { this.throwConnectionError(); }
     })();
   }
 } else {
@@ -615,6 +622,12 @@ if (databaseUrl) {
     async createAppraisalResult(): Promise<any> { this.throwConnectionError(); }
     async updateAppraisalResult(): Promise<any> { this.throwConnectionError(); }
     async deleteAppraisalResult(): Promise<any> { this.throwConnectionError(); }
+    async getRecruitmentCandidates(): Promise<any> { this.throwConnectionError(); }
+    async getRecruitmentCandidate(): Promise<any> { this.throwConnectionError(); }
+    async getRecruitmentCandidatesByStatus(): Promise<any> { this.throwConnectionError(); }
+    async createRecruitmentCandidate(): Promise<any> { this.throwConnectionError(); }
+    async updateRecruitmentCandidate(): Promise<any> { this.throwConnectionError(); }
+    async deleteRecruitmentCandidate(): Promise<any> { this.throwConnectionError(); }
   })();
 }
 
