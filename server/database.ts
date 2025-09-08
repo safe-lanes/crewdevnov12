@@ -398,6 +398,144 @@ export class DatabaseStorage implements IStorage {
         await this.createAppraisalResult(appraisal);
       }
 
+      // Seed recruitment candidates data
+      const recruitmentData: InsertRecruitmentCandidate[] = [
+        {
+          id: "2025-03-14",
+          fileNo: "2025-05-14",
+          firstName: "James",
+          middleName: "Michael",
+          familyName: "Smith",
+          dob: "1985-06-15",
+          nationality: "British",
+          rankAppliedFor: "Captain",
+          presentRank: "First Officer",
+          vesselType: "Oil Tanker",
+          status: "Applied"
+        },
+        {
+          id: "2025-03-12",
+          fileNo: "2025-03-12",
+          firstName: "Anna",
+          middleName: "Marie",
+          familyName: "Johnson",
+          dob: "1990-11-22",
+          nationality: "British",
+          rankAppliedFor: "Chief Engineer",
+          presentRank: "Second Engineer",
+          vesselType: "LPG Tanker",
+          status: "Screening"
+        },
+        {
+          id: "2025-02-12",
+          fileNo: "2025-02-12",
+          firstName: "David",
+          middleName: "Lee",
+          familyName: "Brown",
+          dob: "1980-02-10",
+          nationality: "Indian",
+          rankAppliedFor: "Able Seaman",
+          presentRank: "Deck Cadet",
+          vesselType: "Container",
+          status: "For Approval"
+        },
+        {
+          id: "2024-12-15",
+          fileNo: "2024-12-15",
+          firstName: "Michael",
+          middleName: "Robert",
+          familyName: "Thompson",
+          dob: "1988-03-20",
+          nationality: "British",
+          rankAppliedFor: "Second Officer",
+          presentRank: "Third Officer",
+          vesselType: "Container",
+          status: "Recruited"
+        },
+        {
+          id: "2024-11-08",
+          fileNo: "2024-11-08",
+          firstName: "Sarah",
+          middleName: "Elizabeth",
+          familyName: "Wilson",
+          dob: "1987-09-12",
+          nationality: "Indian",
+          rankAppliedFor: "Third Engineer",
+          presentRank: "Fourth Engineer",
+          vesselType: "Bulk",
+          status: "Recruited"
+        },
+        {
+          id: "2024-10-22",
+          fileNo: "2024-10-22",
+          firstName: "Carlos",
+          middleName: "Antonio",
+          familyName: "Rodriguez",
+          dob: "1991-01-30",
+          nationality: "Philippines",
+          rankAppliedFor: "Bosun",
+          presentRank: "AB",
+          vesselType: "Oil Tanker",
+          status: "Recruited"
+        },
+        {
+          id: "2025-01-18",
+          fileNo: "2025-01-18",
+          firstName: "Lisa",
+          middleName: "Anne",
+          familyName: "Anderson",
+          dob: "1989-07-25",
+          nationality: "Romanian",
+          rankAppliedFor: "Cook",
+          presentRank: "Assistant Cook",
+          vesselType: "General Cargo",
+          status: "Waitlisted"
+        },
+        {
+          id: "2025-01-05",
+          fileNo: "2025-01-05",
+          firstName: "Ahmed",
+          middleName: "Hassan",
+          familyName: "Ali",
+          dob: "1986-11-14",
+          nationality: "Indian",
+          rankAppliedFor: "Chief Mate",
+          presentRank: "Second Mate",
+          vesselType: "Container",
+          status: "Waitlisted"
+        },
+        {
+          id: "2025-02-01",
+          fileNo: "2025-02-01",
+          firstName: "Peter",
+          middleName: "James",
+          familyName: "Clarke",
+          dob: "1983-05-17",
+          nationality: "British",
+          rankAppliedFor: "Captain",
+          presentRank: "Chief Officer",
+          vesselType: "LPG Tanker",
+          status: "Rejected"
+        },
+        {
+          id: "2025-01-30",
+          fileNo: "2025-01-30",
+          firstName: "Maria",
+          middleName: "Elena",
+          familyName: "Garcia",
+          dob: "1992-08-05",
+          nationality: "Philippines",
+          rankAppliedFor: "Ordinary Seaman",
+          presentRank: "Cadet",
+          vesselType: "Bulk",
+          status: "Rejected"
+        }
+      ];
+
+      for (const candidate of recruitmentData) {
+        await this.createRecruitmentCandidate(candidate);
+      }
+
       console.log("📊 Database seeded successfully!");
     } catch (error) {
       console.error("Error seeding database:", error);

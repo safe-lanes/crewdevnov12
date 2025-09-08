@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { FilterIcon, PlusIcon, PaperclipIcon, EditIcon, Trash2Icon } from 'lucide-react';
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import MainLayout from '../../components/main/MainLayout';
 import RecruitmentSideBar from './RecruitmentSideBar';
 import { RecruitmentApplicationForm } from './RecruitmentApplicationForm';
@@ -16,159 +17,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { apiRequest } from '@/lib/queryClient';
+import { type RecruitmentCandidate } from '@shared/schema';
 
-// Interface for recruitment candidate data
-interface RecruitmentCandidate {
-  id: string;
-  fileNo: string;
-  firstName: string;
-  middleName: string;
-  familyName: string;
-  dob: string;
-  nationality: string;
-  rankAppliedFor: string;
-  presentRank: string;
-  vesselType: string;
-  status: string;
-}
+// Status mapping for filtering
+const STATUS_MAPPING = {
+  "in-progress": ["Applied", "Screening", "For Approval"],
+  "recruited": ["Recruited"],
+  "waitlist": ["Waitlisted"],
+  "rejected": ["Rejected"]
+};
 
-// Sample recruitment candidate data with all statuses
-const sampleRecruitmentData: RecruitmentCandidate[] = [
-  // In Progress entries
-  {
-    id: "2025-03-14",
-    fileNo: "2025-05-14",
-    firstName: "James",
-    middleName: "Michael",
-    familyName: "Smith",
-    dob: "1985-06-15",
-    nationality: "British",
-    rankAppliedFor: "Captain",
-    presentRank: "First Officer",
-    vesselType: "Oil Tanker",
-    status: "Applied"
-  },
-  {
-    id: "2025-03-12",
-    fileNo: "2025-03-12",
-    firstName: "Anna",
-    middleName: "Marie",
-    familyName: "Johnson",
-    dob: "1990-11-22",
-    nationality: "British",
-    rankAppliedFor: "Chief Engineer",
-    presentRank: "Second Engineer",
-    vesselType: "LPG Tanker",
-    status: "Screening"
-  },
-  {
-    id: "2025-02-12",
-    fileNo: "2025-02-12",
-    firstName: "David",
-    middleName: "Lee",
-    familyName: "Brown",
-    dob: "1980-02-10",
-    nationality: "Indian",
-    rankAppliedFor: "Able Seaman",
-    presentRank: "Deck Cadet",
-    vesselType: "Container",
-    status: "For Approval"
-  },
-  // Recruited entries
-  {
-    id: "2024-12-15",
-    fileNo: "2024-12-15",
-    firstName: "Michael",
-    middleName: "Robert",
-    familyName: "Thompson",
-    dob: "1988-03-20",
-    nationality: "British",
-    rankAppliedFor: "Second Officer",
-    presentRank: "Third Officer",
-    vesselType: "Container",
-    status: "Recruited"
-  },
-  {
-    id: "2024-11-08",
-    fileNo: "2024-11-08",
-    firstName: "Sarah",
-    middleName: "Elizabeth",
-    familyName: "Wilson",
-    dob: "1987-09-12",
-    nationality: "Indian",
-    rankAppliedFor: "Third Engineer",
-    presentRank: "Fourth Engineer",
-    vesselType: "Bulk",
-    status: "Recruited"
-  },
-  {
-    id: "2024-10-22",
-    fileNo: "2024-10-22",
-    firstName: "Carlos",
-    middleName: "Antonio",
-    familyName: "Rodriguez",
-    dob: "1991-01-30",
-    nationality: "Philippines",
-    rankAppliedFor: "Bosun",
-    presentRank: "AB",
-    vesselType: "Oil Tanker",
-    status: "Recruited"
-  },
-  // Waitlisted entries
-  {
-    id: "2025-01-18",
-    fileNo: "2025-01-18",
-    firstName: "Lisa",
-    middleName: "Anne",
-    familyName: "Anderson",
-    dob: "1989-07-25",
-    nationality: "Romanian",
-    rankAppliedFor: "Cook",
-    presentRank: "Assistant Cook",
-    vesselType: "General Cargo",
-    status: "Waitlisted"
-  },
-  {
-    id: "2025-01-05",
-    fileNo: "2025-01-05",
-    firstName: "Ahmed",
-    middleName: "Hassan",
-    familyName: "Ali",
-    dob: "1986-11-14",
-    nationality: "Indian",
-    rankAppliedFor: "Chief Mate",
-    presentRank: "Second Mate",
-    vesselType: "Container",
-    status: "Waitlisted"
-  },
-  // Rejected entries
-  {
-    id: "2025-02-01",
-    fileNo: "2025-02-01",
-    firstName: "Peter",
-    middleName: "James",
-    familyName: "Clarke",
-    dob: "1983-05-17",
-    nationality: "British",
-    rankAppliedFor: "Captain",
-    presentRank: "Chief Officer",
-    vesselType: "LPG Tanker",
-    status: "Rejected"
-  },
-  {
-    id: "2025-01-20",
-    fileNo: "2025-01-20",
-    firstName: "Maria",
-    middleName: "Santos",
-    familyName: "Garcia",
-    dob: "1992-12-03",
-    nationality: "Philippines",
-    rankAppliedFor: "Second Engineer",
-    presentRank: "Third Engineer",
-    vesselType: "Bulk",
-    status: "Rejected"
-  }
-];
 
 export const RecruitmentModule = (): JSX.Element => {
   const [selectedRecruitmentPage, setSelectedRecruitmentPage] = useState("in-progress");
@@ -176,6 +35,28 @@ export const RecruitmentModule = (): JSX.Element => {
   const [showApplicationForm, setShowApplicationForm] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<RecruitmentCandidate | null>(null);
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
+  const queryClient = useQueryClient();
+
+  // Fetch recruitment candidates
+  const { data: allCandidates = [], isLoading, error } = useQuery({
+    queryKey: ['/api/recruitment-candidates'],
+    enabled: true
+  });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => {
+      return fetch(`/api/recruitment-candidates/${id}`, {
+        method: 'DELETE'
+      }).then(res => {
+        if (!res.ok) throw new Error('Failed to delete candidate');
+        return res.json();
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/recruitment-candidates'] });
+    }
+  });
 
   // Define allowed pages for the recruitment module
   const allowedPages = ["in-progress", "recruited", "waitlist", "rejected"];
@@ -365,36 +246,20 @@ export const RecruitmentModule = (): JSX.Element => {
 
   // Filter the recruitment data based on selected page and filters
   const filteredData = useMemo(() => {
-    // First filter by page status
-    let pageFilteredData = sampleRecruitmentData;
+    let filtered = allCandidates as RecruitmentCandidate[];
     
-    switch (selectedRecruitmentPage) {
-      case "in-progress":
-        pageFilteredData = sampleRecruitmentData.filter(candidate => 
-          ["Applied", "Screening", "For Approval"].includes(candidate.status)
-        );
-        break;
-      case "recruited":
-        pageFilteredData = sampleRecruitmentData.filter(candidate => 
-          candidate.status === "Recruited"
-        );
-        break;
-      case "waitlist":
-        pageFilteredData = sampleRecruitmentData.filter(candidate => 
-          candidate.status === "Waitlisted"
-        );
-        break;
-      case "rejected":
-        pageFilteredData = sampleRecruitmentData.filter(candidate => 
-          candidate.status === "Rejected"
-        );
-        break;
+    // Filter by status based on current page
+    const pageStatuses = STATUS_MAPPING[selectedRecruitmentPage as keyof typeof STATUS_MAPPING] || [];
+    if (pageStatuses.length > 0) {
+      filtered = filtered.filter(candidate => 
+        pageStatuses.includes(candidate.status)
+      );
     }
     
     // Then apply additional filters
-    return pageFilteredData.filter(candidate => {
+    return filtered.filter(candidate => {
       const matchesName = filters.searchName === "" || 
-        `${candidate.firstName} ${candidate.middleName} ${candidate.familyName}`
+        `${candidate.firstName} ${candidate.middleName || ''} ${candidate.familyName}`
           .toLowerCase().includes(filters.searchName.toLowerCase());
       const matchesRank = filters.rankAppliedFor === "" || candidate.rankAppliedFor === filters.rankAppliedFor;
       const matchesVesselType = filters.vesselType === "" || candidate.vesselType === filters.vesselType;
@@ -403,7 +268,7 @@ export const RecruitmentModule = (): JSX.Element => {
       
       return matchesName && matchesRank && matchesVesselType && matchesNationality && matchesStatus;
     });
-  }, [selectedRecruitmentPage, filters]);
+  }, [allCandidates, selectedRecruitmentPage, filters]);
 
   const getTitle = () => {
     switch (selectedRecruitmentPage) {
