@@ -78,7 +78,10 @@ export const RecruitmentModule = (): JSX.Element => {
 
     const handleEditClick = () => {
       console.log('Edit clicked for:', params.data.id);
-      setSelectedCandidate(params.data);
+      setSelectedCandidate({
+        ...params.data,
+        middleName: params.data.middleName || ''
+      });
       setShowApplicationForm(true);
     };
 
