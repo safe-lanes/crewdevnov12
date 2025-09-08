@@ -46,10 +46,20 @@ export const RecruitmentModule = (): JSX.Element => {
     status: ""
   });
 
-  // Fetch recruitment candidates
-  const { data: allCandidates = [], isLoading, error } = useQuery({
+  // Fetch recruitment candidates with custom query function
+  const { data: allCandidates = [], isLoading, error, refetch } = useQuery({
     queryKey: ['/api/recruitment-candidates'],
-    enabled: true
+    queryFn: async () => {
+      const response = await fetch('/api/recruitment-candidates');
+      if (!response.ok) {
+        throw new Error('Failed to fetch candidates');
+      }
+      return await response.json();
+    },
+    enabled: true,
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false
   });
 
   // Delete mutation
