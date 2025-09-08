@@ -1602,16 +1602,12 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           <div className="col-span-2">
             <Label className="text-xs text-gray-500 tracking-wide">Residential Address Line 2( City, State, PIN )</Label>
             {isEditing ? (
-              <Select value={formData.residentialAddressLine2} onValueChange={(value) => updateFormData('residentialAddressLine2', value)}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select city, state, PIN" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[200px]">
-                  {cityMasterData.map(city => (
-                    <SelectItem key={city} value={city}>{city}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Input
+                value={formData.residentialAddressLine2}
+                onChange={(e) => updateFormData('residentialAddressLine2', e.target.value)}
+                className="mt-1"
+                placeholder="Enter city, state, PIN"
+              />
             ) : (
               <div className="mt-1 text-sm text-gray-900">{formData.residentialAddressLine2}</div>
             )}
