@@ -37,11 +37,41 @@ export const RecruitmentModule = (): JSX.Element => {
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
   const queryClient = useQueryClient();
 
-  // Fetch recruitment candidates
+  // Filter state (moved up to fix order)
+  const [filters, setFilters] = useState({
+    searchName: "",
+    rankAppliedFor: "",
+    vesselType: "",
+    nationality: "",
+    status: ""
+  });
+
+  // Fetch recruitment candidates with custom query function
   const { data: allCandidates = [], isLoading, error } = useQuery({
     queryKey: ['/api/recruitment-candidates'],
+    queryFn: async () => {
+      console.log('🚀 Making direct fetch request to /api/recruitment-candidates...');
+      const response = await fetch('/api/recruitment-candidates');
+      console.log('🚀 Response status:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        console.error('🚀 Response not ok:', response.status, response.statusText);
+        throw new Error(`Failed to fetch: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('🚀 Response data:', data);
+      return data;
+    },
     enabled: true
   });
+
+  // Debug logging
+  console.log('🔍 Debug - All candidates:', allCandidates);
+  console.log('🔍 Debug - Selected page:', selectedRecruitmentPage);
+  console.log('🔍 Debug - Query loading:', isLoading);
+  console.log('🔍 Debug - Query error:', error);
+  console.log('🔍 Debug - Filters:', filters);
 
   // Delete mutation
   const deleteMutation = useMutation({
@@ -60,15 +90,6 @@ export const RecruitmentModule = (): JSX.Element => {
 
   // Define allowed pages for the recruitment module
   const allowedPages = ["in-progress", "recruited", "waitlist", "rejected"];
-
-  // Filter state
-  const [filters, setFilters] = useState({
-    searchName: "",
-    rankAppliedFor: "",
-    vesselType: "",
-    nationality: "",
-    status: ""
-  });
 
   // Actions cell renderer
   const ActionsCellRenderer = useCallback((params: ICellRendererParams) => {
@@ -253,10 +274,13 @@ export const RecruitmentModule = (): JSX.Element => {
     
     // Filter by status based on current page
     const pageStatuses = STATUS_MAPPING[selectedRecruitmentPage as keyof typeof STATUS_MAPPING] || [];
+    console.log('🔍 Debug - Page statuses for', selectedRecruitmentPage, ':', pageStatuses);
+    
     if (pageStatuses.length > 0) {
       filtered = filtered.filter(candidate => 
         pageStatuses.includes(candidate.status)
       );
+      console.log('🔍 Debug - After page filtering:', filtered);
     }
     
     // Then apply additional filters
