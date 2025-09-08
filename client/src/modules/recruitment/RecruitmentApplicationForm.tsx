@@ -231,12 +231,13 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
         });
       }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
         title: "Success",
         description: "Candidate saved successfully!",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/recruitment-candidates'] });
+      // Force immediate refetch of the data
+      await queryClient.refetchQueries({ queryKey: ['/api/recruitment-candidates'] });
       onClose();
     },
     onError: (error) => {
