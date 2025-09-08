@@ -31,19 +31,19 @@ export class DatabaseStorage implements IStorage {
   private pool: mysql.Pool;
 
   constructor() {
-    if (!process.env.DATABASE_URL) {
-      throw new Error("DATABASE_URL environment variable is required");
+    // Use direct environment variables approach that works
+    const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME } = process.env;
+    
+    if (!DB_HOST || !DB_USER || !DB_PASSWORD) {
+      throw new Error("DB_HOST, DB_USER, and DB_PASSWORD environment variables are required");
     }
     
-    // Parse DATABASE_URL for RDS connection
-    const url = new URL(process.env.DATABASE_URL);
-    
     this.pool = mysql.createPool({
-      host: url.hostname,
-      port: parseInt(url.port) || 3306,
-      user: url.username,
-      password: url.password,
-      database: url.pathname.slice(1), // Remove leading slash
+      host: DB_HOST,
+      port: parseInt(DB_PORT || '3306'),
+      user: DB_USER,
+      password: DB_PASSWORD,
+      database: DB_NAME || 'crew_database',
       ssl: {
         rejectUnauthorized: false // Required for RDS connections
       },
@@ -263,12 +263,9 @@ export class DatabaseStorage implements IStorage {
   // Seed data for initial setup
   async seedDatabase(): Promise<void> {
     try {
-      // First ensure database exists
-      await this.createDatabaseIfNotExists();
+      // Database and tables already exist, skip creation step
       
-      console.log("🔄 Pushing schema to MySQL RDS...");
-      // Push schema using drizzle-kit
-      await this.pushSchema();
+      console.log("🔄 Connecting to existing crew_database tables...");
       
       // Check if data already exists
       const existingForms = await this.getForms();
