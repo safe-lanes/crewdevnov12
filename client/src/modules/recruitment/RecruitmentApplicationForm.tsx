@@ -297,7 +297,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   // State for B1 multiple comments per question
-  const [b1Comments, setB1Comments] = useState<{[key: string]: Array<{user: string, text: string, id: string}>}>({
+  const [b1Comments, setB1Comments] = useState<{[key: string]: Array<{user: string, text: string, id: string}>}>(candidate ? {
     'b1-rank': [
       {
         id: '1',
@@ -310,7 +310,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
         text: 'Exception granted to this candidate as per discussion with Department Manager'
       }
     ]
-  });
+  } : {});
   const [editingB1Comment, setEditingB1Comment] = useState<string | null>(null);
   const [newB1Comment, setNewB1Comment] = useState<{[key: string]: string}>({});
 
@@ -355,10 +355,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   ]);
   
   // State for individual interview comments (editable)
-  const [b6InterviewComments, setB6InterviewComments] = useState<{[key: string]: string}>({
+  const [b6InterviewComments, setB6InterviewComments] = useState<{[key: string]: string}>(candidate ? {
     '1': 'Overall Candidate reflected a strong understanding of the Navigation & cargo operations.'
-  });
-  const [editingB6InterviewComment, setEditingB6InterviewComment] = useState<string | null>('1'); // Default to editing mode for first interview
+  } : {});
+  const [editingB6InterviewComment, setEditingB6InterviewComment] = useState<string | null>(candidate ? '1' : null);
 
   // Mapping for interviewer values to display names
   const interviewerDisplayNames: {[key: string]: string} = {
@@ -368,10 +368,12 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   };
 
   // State for B7 Training Needs
-  const [b7TrainingNeeds, setB7TrainingNeeds] = useState<Array<{id: string, training: string, identifiedBy: string, category: string, dueDate: string, comments: string}>>([
-    { id: '1', training: 'Basic Safety Training', identifiedBy: 'Port State Control', category: 'Mandatory', dueDate: '2024-01-30', comments: 'Required for STCW compliance' },
-    { id: '2', training: 'Advanced Fire Fighting', identifiedBy: 'Safety Officer', category: 'Recommended', dueDate: '2024-03-15', comments: 'Due for renewal' }
-  ]);
+  const [b7TrainingNeeds, setB7TrainingNeeds] = useState<Array<{id: string, training: string, identifiedBy: string, category: string, dueDate: string, comments: string}>>(
+    candidate ? [
+      { id: '1', training: 'Basic Safety Training', identifiedBy: 'Port State Control', category: 'Mandatory', dueDate: '2024-01-30', comments: 'Required for STCW compliance' },
+      { id: '2', training: 'Advanced Fire Fighting', identifiedBy: 'Safety Officer', category: 'Recommended', dueDate: '2024-03-15', comments: 'Due for renewal' }
+    ] : []
+  );
 
   // State for B8 multiple comments per question
   const [b8Comments, setB8Comments] = useState<{[key: string]: Array<{user: string, text: string, id: string}>}>({});
@@ -383,12 +385,12 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     { id: '1', date: '', approver: '', status: '', approval: 'Yes', comments: '' }
   ]);
 
-  const [c2VesselTypes, setC2VesselTypes] = useState<string[]>(['Product Tankers', 'Crude Oil Tankers', 'Chemical Tankers']);
-  const [c2FleetGroups, setC2FleetGroups] = useState<string[]>(['MR Class1 Tankers', 'Chemical JP 20', 'Chemical SS', 'Fleet B', 'Fleet C']);
+  const [c2VesselTypes, setC2VesselTypes] = useState<string[]>(candidate ? ['Product Tankers', 'Crude Oil Tankers', 'Chemical Tankers'] : []);
+  const [c2FleetGroups, setC2FleetGroups] = useState<string[]>(candidate ? ['MR Class1 Tankers', 'Chemical JP 20', 'Chemical SS', 'Fleet B', 'Fleet C'] : []);
 
-  const [c3RecruitmentStatus, setC3RecruitmentStatus] = useState<string>('Yes');
-  const [c3AssignedGroups, setC3AssignedGroups] = useState<string[]>(['Fleet B']);
-  const [c3SubmittedBy, setC3SubmittedBy] = useState<string>('Roxanne, Crewing Executive');
+  const [c3RecruitmentStatus, setC3RecruitmentStatus] = useState<string>(candidate ? 'Yes' : '');
+  const [c3AssignedGroups, setC3AssignedGroups] = useState<string[]>(candidate ? ['Fleet B'] : []);
+  const [c3SubmittedBy, setC3SubmittedBy] = useState<string>(candidate ? 'Roxanne, Crewing Executive' : '');
 
   const [formData, setFormData] = useState<FormData>({
     // Initialize with candidate data or empty for new candidates
