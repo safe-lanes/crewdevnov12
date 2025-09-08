@@ -7,6 +7,7 @@ import {
   availableRanks, 
   crewMembers, 
   appraisalResults,
+  recruitmentCandidates,
   type User,
   type InsertUser,
   type Form,
@@ -18,7 +19,9 @@ import {
   type CrewMember,
   type InsertCrewMember,
   type AppraisalResult,
-  type InsertAppraisalResult
+  type InsertAppraisalResult,
+  type RecruitmentCandidate,
+  type InsertRecruitmentCandidate
 } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { type IStorage } from "./storage";
@@ -182,6 +185,45 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAppraisalResult(id: number): Promise<boolean> {
     const result = await this.db.delete(appraisalResults).where(eq(appraisalResults.id, id));
+    return (result as any).affectedRows > 0;
+  }
+
+  // Recruitment Candidates Methods
+  async getRecruitmentCandidates(): Promise<RecruitmentCandidate[]> {
+    return await this.db.select().from(recruitmentCandidates);
+  }
+
+  async getRecruitmentCandidate(id: string): Promise<RecruitmentCandidate | undefined> {
+    const results = await this.db.select().from(recruitmentCandidates).where(eq(recruitmentCandidates.id, id));
+    return results[0];
+  }
+
+  async getRecruitmentCandidatesByStatus(status: string): Promise<RecruitmentCandidate[]> {
+    return await this.db.select().from(recruitmentCandidates).where(eq(recruitmentCandidates.status, status));
+  }
+
+  async createRecruitmentCandidate(insertCandidate: InsertRecruitmentCandidate): Promise<RecruitmentCandidate> {
+    await this.db.insert(recruitmentCandidates).values(insertCandidate);
+    // Since MySQL doesn't support RETURNING, fetch the created record
+    const results = await this.db.select().from(recruitmentCandidates).where(eq(recruitmentCandidates.id, insertCandidate.id));
+    return results[0];
+  }
+
+  async updateRecruitmentCandidate(id: string, candidateData: Partial<InsertRecruitmentCandidate>): Promise<RecruitmentCandidate | undefined> {
+    const result = await this.db.update(recruitmentCandidates)
+      .set({ ...candidateData, updatedAt: new Date() })
+      .where(eq(recruitmentCandidates.id, id));
+    
+    if ((result as any).affectedRows === 0) {
+      return undefined;
+    }
+    
+    const results = await this.db.select().from(recruitmentCandidates).where(eq(recruitmentCandidates.id, id));
+    return results[0];
+  }
+
+  async deleteRecruitmentCandidate(id: string): Promise<boolean> {
+    const result = await this.db.delete(recruitmentCandidates).where(eq(recruitmentCandidates.id, id));
     return (result as any).affectedRows > 0;
   }
 

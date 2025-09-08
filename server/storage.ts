@@ -48,6 +48,7 @@ export class MemStorage implements IStorage {
   private availableRanks: Map<number, AvailableRank>;
   private crewMembers: Map<string, CrewMember>;
   private appraisalResults: Map<number, AppraisalResult>;
+  private recruitmentCandidates: Map<string, RecruitmentCandidate>;
   private currentUserId: number;
   private currentFormId: number;
   private currentRankGroupId: number;
@@ -61,6 +62,7 @@ export class MemStorage implements IStorage {
     this.availableRanks = new Map();
     this.crewMembers = new Map();
     this.appraisalResults = new Map();
+    this.recruitmentCandidates = new Map();
     this.currentUserId = 1;
     this.currentFormId = 1;
     this.currentRankGroupId = 1;
@@ -436,6 +438,48 @@ export class MemStorage implements IStorage {
 
   async deleteAppraisalResult(id: number): Promise<boolean> {
     return this.appraisalResults.delete(id);
+  }
+
+  // Recruitment Candidates Methods
+  async getRecruitmentCandidates(): Promise<RecruitmentCandidate[]> {
+    return Array.from(this.recruitmentCandidates.values());
+  }
+
+  async getRecruitmentCandidate(id: string): Promise<RecruitmentCandidate | undefined> {
+    return this.recruitmentCandidates.get(id);
+  }
+
+  async getRecruitmentCandidatesByStatus(status: string): Promise<RecruitmentCandidate[]> {
+    return Array.from(this.recruitmentCandidates.values()).filter(candidate => candidate.status === status);
+  }
+
+  async createRecruitmentCandidate(insertCandidate: InsertRecruitmentCandidate): Promise<RecruitmentCandidate> {
+    const candidate: RecruitmentCandidate = { 
+      ...insertCandidate,
+      middleName: insertCandidate.middleName || null,
+      applicationData: insertCandidate.applicationData || null,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.recruitmentCandidates.set(candidate.id, candidate);
+    return candidate;
+  }
+
+  async updateRecruitmentCandidate(id: string, candidateData: Partial<InsertRecruitmentCandidate>): Promise<RecruitmentCandidate | undefined> {
+    const existingCandidate = this.recruitmentCandidates.get(id);
+    if (!existingCandidate) return undefined;
+    
+    const updatedCandidate: RecruitmentCandidate = { 
+      ...existingCandidate, 
+      ...candidateData,
+      updatedAt: new Date()
+    };
+    this.recruitmentCandidates.set(id, updatedCandidate);
+    return updatedCandidate;
+  }
+
+  async deleteRecruitmentCandidate(id: string): Promise<boolean> {
+    return this.recruitmentCandidates.delete(id);
   }
 }
 
