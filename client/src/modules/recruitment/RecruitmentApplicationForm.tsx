@@ -275,7 +275,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       rankAppliedFor: formData.rankAppliedFor,
       presentRank: formData.presentRank,
       vesselType: '', // Default or could be derived from form
-      status: 'Applied' // Default status for new candidates
+      status: 'Applied', // Default status for new candidates
+      applicationData: JSON.stringify(formData) // Save all form data as JSON
     };
 
     saveMutation.mutate(candidateData);
@@ -392,6 +393,15 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const [c3AssignedGroups, setC3AssignedGroups] = useState<string[]>(candidate ? ['Fleet B'] : []);
   const [c3SubmittedBy, setC3SubmittedBy] = useState<string>(candidate ? 'Roxanne, Crewing Executive' : '');
 
+  // Parse saved application data if editing existing candidate
+  const savedData = candidate?.applicationData ? (() => {
+    try {
+      return JSON.parse(candidate.applicationData);
+    } catch {
+      return {};
+    }
+  })() : {};
+
   const [formData, setFormData] = useState<FormData>({
     // Initialize with candidate data or empty for new candidates
     firstName: candidate?.firstName || '',
@@ -400,111 +410,111 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     nationality: candidate?.nationality || '',
     presentRank: candidate?.presentRank || '',
     dateOfBirth: candidate?.dob || '',
-    placeOfBirthCity: '',
-    placeOfBirthCountry: '',
-    ageInYears: '',
-    heightCm: '',
-    weightKg: '',
-    nativeLanguage: '',
-    foreignLanguages: '',
-    englishProficiency: '',
+    placeOfBirthCity: savedData.placeOfBirthCity || '',
+    placeOfBirthCountry: savedData.placeOfBirthCountry || '',
+    ageInYears: savedData.ageInYears || '',
+    heightCm: savedData.heightCm || '',
+    weightKg: savedData.weightKg || '',
+    nativeLanguage: savedData.nativeLanguage || '',
+    foreignLanguages: savedData.foreignLanguages || '',
+    englishProficiency: savedData.englishProficiency || '',
     rankAppliedFor: candidate?.rankAppliedFor || '',
-    manningAgent: '',
+    manningAgent: savedData.manningAgent || '',
     fileNo: candidate?.fileNo || '',
     
-    // A1.2 empty defaults for new candidates
-    countryOfResidence: '',
-    nearestAirport: '',
-    residentialAddressLine1: '',
-    residentialAddressLine2: '',
-    contactLandline: '',
-    mobile: '',
-    email: '',
+    // A1.2 Address & Contact Info - load from saved data
+    countryOfResidence: savedData.countryOfResidence || '',
+    nearestAirport: savedData.nearestAirport || '',
+    residentialAddressLine1: savedData.residentialAddressLine1 || '',
+    residentialAddressLine2: savedData.residentialAddressLine2 || '',
+    contactLandline: savedData.contactLandline || '',
+    mobile: savedData.mobile || '',
+    email: savedData.email || '',
     
-    // A1.3 empty defaults for new candidates
-    maritalStatus: '',
-    numberOfDependentChildren: '',
-    fatherName: '',
-    motherName: '',
-    spouseFirstName: '',
-    spouseMiddleName: '',
-    spouseFamilyName: '',
-    spouseDateOfBirth: '',
-    children: [],
-    nokFirstName: '',
-    nokMiddleName: '',
-    nokFamilyName: '',
-    nokTelephone: '',
-    nokEmail: '',
-    nokAddress: '',
-    nokRelationship: '',
+    // A1.3 Family and NOK - load from saved data  
+    maritalStatus: savedData.maritalStatus || '',
+    numberOfDependentChildren: savedData.numberOfDependentChildren || '',
+    fatherName: savedData.fatherName || '',
+    motherName: savedData.motherName || '',
+    spouseFirstName: savedData.spouseFirstName || '',
+    spouseMiddleName: savedData.spouseMiddleName || '',
+    spouseFamilyName: savedData.spouseFamilyName || '',
+    spouseDateOfBirth: savedData.spouseDateOfBirth || '',
+    children: savedData.children || [],
+    nokFirstName: savedData.nokFirstName || '',
+    nokMiddleName: savedData.nokMiddleName || '',
+    nokFamilyName: savedData.nokFamilyName || '',
+    nokTelephone: savedData.nokTelephone || '',
+    nokEmail: savedData.nokEmail || '',
+    nokAddress: savedData.nokAddress || '',
+    nokRelationship: savedData.nokRelationship || '',
     
-    // A2.1 Empty documents for new candidates
-    documents: [],
+    // A2.1 Documents - load from saved data
+    documents: savedData.documents || [],
     
-    // A2.2 Empty visas for new candidates
-    visas: [],
+    // A2.2 Visas - load from saved data
+    visas: savedData.visas || [],
     
-    // A3.1 Empty education for new candidates
-    education: [],
+    // A3.1 Education - load from saved data
+    education: savedData.education || [],
     
-    // A3.2 Empty licenses for new candidates
-    licenses: [],
+    // A3.2 Licenses - load from saved data
+    licenses: savedData.licenses || [],
     
-    // A3.3 Empty training courses for new candidates
-    trainingCourses: [],
+    // A3.3 Training courses - load from saved data
+    trainingCourses: savedData.trainingCourses || [],
     
-    // A4.1 Empty sea service records for new candidates
-    seaService: [],
+    // A4.1 Sea service - load from saved data
+    seaService: savedData.seaService || [],
 
-    // A5 Empty additional information for new candidates
-    additionalInfo: [],
+    // A5 Additional information - load from saved data
+    additionalInfo: savedData.additionalInfo || [],
 
-    // Part B - Office Screening defaults
-    b1AgeMeetsCriteria: '',
-    b1RankMeetsCriteria: '',
-    b1CertificatesValid: '',
-    b1Shortlisted: '',
-    b1Comments: '',
-    b1SubmittedBy: '',
-    b1SubmittedDate: '',
+    // Part B - Office Screening - load from saved data
+    b1AgeMeetsCriteria: savedData.b1AgeMeetsCriteria || '',
+    b1RankMeetsCriteria: savedData.b1RankMeetsCriteria || '',
+    b1CertificatesValid: savedData.b1CertificatesValid || '',
+    b1Shortlisted: savedData.b1Shortlisted || '',
+    b1Comments: savedData.b1Comments || '',
+    b1SubmittedBy: savedData.b1SubmittedBy || '',
+    b1SubmittedDate: savedData.b1SubmittedDate || '',
     
-    // B2 Reference Checks defaults
-    b2ReferenceChecksCompleted: '',
-    b2CurrentEmployerFeedback: '',
-    b2SubmittedBy: '',
-    b2SubmittedDate: '',
+    // B2 Reference Checks - load from saved data
+    b2ReferenceChecksCompleted: savedData.b2ReferenceChecksCompleted || '',
+    b2CurrentEmployerFeedback: savedData.b2CurrentEmployerFeedback || '',
+    b2SubmittedBy: savedData.b2SubmittedBy || '',
+    b2SubmittedDate: savedData.b2SubmittedDate || '',
     
-    // B3 Background Security Checks defaults
-    b3SecurityChecksCompleted: '',
-    b3SecurityChecksResults: '',
-    b3SubmittedBy: '',
-    b3SubmittedDate: '',
+    // B3 Background Security Checks - load from saved data
+    b3SecurityChecksCompleted: savedData.b3SecurityChecksCompleted || '',
+    b3SecurityChecksResults: savedData.b3SecurityChecksResults || '',
+    b3SubmittedBy: savedData.b3SubmittedBy || '',
+    b3SubmittedDate: savedData.b3SubmittedDate || '',
     
-    // B4 Authentication of Certificates & Documents defaults
-    b4CertificatesAuthenticated: '',
-    b4AuthenticationResults: '',
-    b4SubmittedBy: '',
-    b4SubmittedDate: '',
+    // B4 Authentication of Certificates & Documents - load from saved data
+    b4CertificatesAuthenticated: savedData.b4CertificatesAuthenticated || '',
+    b4AuthenticationResults: savedData.b4AuthenticationResults || '',
+    b4SubmittedBy: savedData.b4SubmittedBy || '',
+    b4SubmittedDate: savedData.b4SubmittedDate || '',
     
-    // B5 CES/Language Test Results defaults
-    b5CesTestsCompleted: '',
-    b5SubmittedBy: '',
-    b5SubmittedDate: '',
+    // B5 CES/Language Test Results - load from saved data
+    b5CesTestsCompleted: savedData.b5CesTestsCompleted || '',
+    b5SubmittedBy: savedData.b5SubmittedBy || '',
+    b5SubmittedDate: savedData.b5SubmittedDate || '',
     
-    // B6 Interviews defaults
-    b6InterviewCompleted: '',
-    b6SubmittedBy: '',
-    b6SubmittedDate: '',
+    // B6 Interviews - load from saved data
+    b6InterviewCompleted: savedData.b6InterviewCompleted || '',
+    b6SubmittedBy: savedData.b6SubmittedBy || '',
+    b6SubmittedDate: savedData.b6SubmittedDate || '',
     
-    // B7 Training Needs Identified defaults
-    b7SubmittedBy: '',
-    b7SubmittedDate: '',
+    // B7 Training Needs Identified - load from saved data
+    b7SubmittedBy: savedData.b7SubmittedBy || '',
+    b7SubmittedDate: savedData.b7SubmittedDate || '',
     
-    // B8 Short Listing defaults
-    b8Shortlisted: '',
-    b8SubmittedBy: '',
-    b8SubmittedDate: ''
+    // B8 Short Listing - load from saved data
+    b8Shortlisted: savedData.b8Shortlisted || '',
+    b8SubmittedBy: savedData.b8SubmittedBy || '',
+    b8SubmittedDate: savedData.b8SubmittedDate || ''
   });
 
   // Handle click outside to auto-save sections
