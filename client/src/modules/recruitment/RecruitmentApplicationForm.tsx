@@ -238,7 +238,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       });
       // Force immediate refetch of the data
       await queryClient.refetchQueries({ queryKey: ['/api/recruitment-candidates'] });
-      onClose();
+      
+      // Advance to next section or close if at the end
+      const nextSection = getNextSection(activeSection);
+      if (nextSection) {
+        setActiveSection(nextSection);
+      } else {
+        onClose(); // Close only if at the last section
+      }
     },
     onError: (error) => {
       console.error('Error saving candidate:', error);
@@ -562,6 +569,15 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     { id: 'B', title: 'Company Processing', number: 'B' },
     { id: 'C', title: 'Approval', number: 'C' }
   ];
+
+  // Function to get the next section for "Save & Continue"
+  const getNextSection = (currentSection: string) => {
+    const currentIndex = sections.findIndex(section => section.id === currentSection);
+    if (currentIndex >= 0 && currentIndex < sections.length - 1) {
+      return sections[currentIndex + 1].id;
+    }
+    return null; // Already at last section
+  };
 
   const toggleEditSection = (sectionId: 'A1.1' | 'A1.2' | 'A1.3') => {
     setEditingSections(prev => ({
