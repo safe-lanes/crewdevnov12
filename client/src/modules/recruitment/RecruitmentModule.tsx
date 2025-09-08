@@ -450,6 +450,10 @@ export const RecruitmentModule = (): JSX.Element => {
             </Button>
             <Button
               className="h-8 w-32 bg-[#28a745] hover:bg-[#218838] text-xs text-white"
+              onClick={() => {
+                setSelectedCandidate(null);
+                setShowApplicationForm(true);
+              }}
             >
               <PlusIcon className="h-3 w-3 mr-1" />
               New Crew
@@ -460,7 +464,7 @@ export const RecruitmentModule = (): JSX.Element => {
       </MainLayout>
 
       {/* Recruitment Application Form Popup */}
-      {showApplicationForm && selectedCandidate && (
+      {showApplicationForm && (
         <RecruitmentApplicationForm
           candidate={selectedCandidate}
           onClose={() => {

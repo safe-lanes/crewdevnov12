@@ -15,23 +15,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ArrowLeft, Edit, Plus, Save, Trash2, Upload, Paperclip, X, Camera, Info, MessageSquare } from 'lucide-react';
-
-interface RecruitmentCandidate {
-  id: string;
-  fileNo: string;
-  firstName: string;
-  middleName: string;
-  familyName: string;
-  dob: string;
-  nationality: string;
-  rankAppliedFor: string;
-  presentRank: string;
-  vesselType: string;
-  status: string;
-}
+import { type RecruitmentCandidate } from '@shared/schema';
 
 interface RecruitmentApplicationFormProps {
-  candidate: RecruitmentCandidate;
+  candidate: RecruitmentCandidate | null;
   onClose: () => void;
 }
 
@@ -325,12 +312,12 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
 
   const [formData, setFormData] = useState<FormData>({
     // Initialize with candidate data
-    firstName: candidate.firstName || '',
-    middleName: candidate.middleName || '',
-    familyName: candidate.familyName || '',
-    nationality: candidate.nationality || '',
-    presentRank: candidate.presentRank || '',
-    dateOfBirth: candidate.dob || '',
+    firstName: candidate?.firstName || '',
+    middleName: candidate?.middleName || '',
+    familyName: candidate?.familyName || '',
+    nationality: candidate?.nationality || '',
+    presentRank: candidate?.presentRank || '',
+    dateOfBirth: candidate?.dob || '',
     placeOfBirthCity: 'Delhi',
     placeOfBirthCountry: 'India',
     ageInYears: '44',
@@ -339,9 +326,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     nativeLanguage: 'Hindi',
     foreignLanguages: 'English, Spanish',
     englishProficiency: 'Good',
-    rankAppliedFor: candidate.rankAppliedFor || '',
+    rankAppliedFor: candidate?.rankAppliedFor || '',
     manningAgent: 'ABC Crew Services',
-    fileNo: candidate.fileNo || '',
+    fileNo: candidate?.fileNo || '',
     
     // A1.2 defaults
     countryOfResidence: 'India',
@@ -5903,7 +5890,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </Button>
             <h1 className="text-sm sm:text-lg lg:text-xl font-bold truncate">
               <span className="hidden sm:inline">Recruitment Application - </span>
-              {candidate.firstName} {candidate.familyName}
+              {candidate ? `${candidate.firstName} ${candidate.familyName}` : 'New Candidate'}
             </h1>
           </div>
           <div className="flex gap-1 sm:gap-2">
