@@ -1,5 +1,5 @@
 
-import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult } from "@shared/schema";
+import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate } from "@shared/schema";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -32,6 +32,13 @@ export interface IStorage {
   createAppraisalResult(appraisalResult: InsertAppraisalResult): Promise<AppraisalResult>;
   updateAppraisalResult(id: number, appraisalResult: Partial<InsertAppraisalResult>): Promise<AppraisalResult | undefined>;
   deleteAppraisalResult(id: number): Promise<boolean>;
+  // Recruitment Candidates
+  getRecruitmentCandidates(): Promise<RecruitmentCandidate[]>;
+  getRecruitmentCandidate(id: string): Promise<RecruitmentCandidate | undefined>;
+  getRecruitmentCandidatesByStatus(status: string): Promise<RecruitmentCandidate[]>;
+  createRecruitmentCandidate(candidate: InsertRecruitmentCandidate): Promise<RecruitmentCandidate>;
+  updateRecruitmentCandidate(id: string, candidate: Partial<InsertRecruitmentCandidate>): Promise<RecruitmentCandidate | undefined>;
+  deleteRecruitmentCandidate(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {

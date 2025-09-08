@@ -60,6 +60,23 @@ export const appraisalResults = mysqlTable("appraisal_results", {
   status: text("status").notNull().default("draft"), // draft, submitted, approved
 });
 
+export const recruitmentCandidates = mysqlTable("recruitment_candidates", {
+  id: text("id").primaryKey(),
+  fileNo: text("file_no").notNull().unique(),
+  firstName: text("first_name").notNull(),
+  middleName: text("middle_name"),
+  familyName: text("family_name").notNull(),
+  dob: text("dob").notNull(),
+  nationality: text("nationality").notNull(),
+  rankAppliedFor: text("rank_applied_for").notNull(),
+  presentRank: text("present_rank").notNull(),
+  vesselType: text("vessel_type").notNull(),
+  status: text("status").notNull().default("Applied"), // Applied, Screening, For Approval, Recruited, Waitlisted, Rejected
+  applicationData: text("application_data"), // JSON string for comprehensive form data
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -109,6 +126,21 @@ export const insertAppraisalResultSchema = createInsertSchema(appraisalResults).
   status: true,
 });
 
+export const insertRecruitmentCandidateSchema = createInsertSchema(recruitmentCandidates).pick({
+  id: true,
+  fileNo: true,
+  firstName: true,
+  middleName: true,
+  familyName: true,
+  dob: true,
+  nationality: true,
+  rankAppliedFor: true,
+  presentRank: true,
+  vesselType: true,
+  status: true,
+  applicationData: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertForm = z.infer<typeof insertFormSchema>;
@@ -121,3 +153,5 @@ export type InsertCrewMember = z.infer<typeof insertCrewMemberSchema>;
 export type CrewMember = typeof crewMembers.$inferSelect;
 export type InsertAppraisalResult = z.infer<typeof insertAppraisalResultSchema>;
 export type AppraisalResult = typeof appraisalResults.$inferSelect;
+export type InsertRecruitmentCandidate = z.infer<typeof insertRecruitmentCandidateSchema>;
+export type RecruitmentCandidate = typeof recruitmentCandidates.$inferSelect;
