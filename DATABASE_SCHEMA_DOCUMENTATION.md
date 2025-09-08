@@ -17,19 +17,19 @@ export default {
     port: parseInt(process.env.MYSQL_PORT || "3306"),
     user: process.env.MYSQL_USER || "crew_admin",
     password: process.env.MYSQL_PASSWORD || "password",
-    database: process.env.MYSQL_DATABASE || "crew_appraisals",
+    database: process.env.MYSQL_DATABASE || "crew_database",
   }
 }
 ```
 
 ### Environment Variables
 ```env
-DATABASE_URL="mysql://crew_admin:password@localhost:3306/crew_appraisals"
+DATABASE_URL="mysql://crew_admin:password@localhost:3306/crew_database"
 MYSQL_HOST="localhost"
 MYSQL_PORT="3306"
 MYSQL_USER="crew_admin"
 MYSQL_PASSWORD="secure_password"
-MYSQL_DATABASE="crew_appraisals"
+MYSQL_DATABASE="crew_database"
 ```
 
 ## Database Tables

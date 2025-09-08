@@ -7,7 +7,7 @@ async function setupMySQL() {
     console.log("\nPlease set your MySQL connection string in the environment:");
     console.log("DATABASE_URL=mysql://username:password@host:port/database_name");
     console.log("\nExample for local MySQL:");
-    console.log("DATABASE_URL=mysql://root:password@localhost:3306/element_crew_appraisals");
+    console.log("DATABASE_URL=mysql://root:password@localhost:3306/crew_database");
     console.log("\nExample for cloud MySQL:");
     console.log("DATABASE_URL=mysql://username:password@hostname.com:3306/database_name");
     process.exit(1);

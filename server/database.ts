@@ -244,12 +244,12 @@ export class DatabaseStorage implements IStorage {
         connectionLimit: 1
       });
       
-      console.log("🔧 Creating 'crew_appraisals' database if it doesn't exist...");
+      console.log("🔧 Creating 'crew_database' database if it doesn't exist...");
       
       // Create database if not exists
-      await adminPool.execute("CREATE DATABASE IF NOT EXISTS crew_appraisals CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+      await adminPool.execute("CREATE DATABASE IF NOT EXISTS crew_database CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
       
-      console.log("✅ Database 'crew_appraisals' ensured to exist");
+      console.log("✅ Database 'crew_database' ensured to exist");
       
       // Close admin connection
       await adminPool.end();

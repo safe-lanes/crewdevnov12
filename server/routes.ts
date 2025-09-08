@@ -10,7 +10,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       server: "running",
       database: isConnected ? "connected" : "disconnected",
       rds_instance: "ls-d153072fe29fcd7dc7c484a33fd3130e29abae1b.cxock8yskd1i.ap-southeast-1.rds.amazonaws.com:3306",
-      database_name: "crew_appraisals",
+      database_name: "crew_database",
       connection_error: connectionError?.message || null,
       timestamp: new Date().toISOString()
     };
@@ -36,7 +36,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...healthStatus,
         troubleshooting: {
           check_security_groups: "Ensure RDS security group allows connections from this environment",
-          check_database_exists: "Verify 'crew_appraisals' database exists on RDS instance",
+          check_database_exists: "Verify 'crew_database' database exists on RDS instance",
           check_credentials: "Verify DB_USER and DB_PASSWORD are correct",
           check_network: "Ensure network connectivity to RDS endpoint"
         }

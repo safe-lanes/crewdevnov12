@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-A comprehensive seafarer performance management system that leverages advanced form configuration, responsive design, and intuitive user experience for maritime professionals. The system has been refactored to use a module-first architecture for better maintainability and scalability.
+A comprehensive seafarer performance management system that leverages advanced form configuration, responsive design, and intuitive user experience for maritime professionals. The system uses MySQL database 'crew_database' for persistent storage and has been refactored to use a module-first architecture for better maintainability and scalability.
 
 ## Architecture
 

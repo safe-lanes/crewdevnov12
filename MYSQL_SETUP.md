@@ -9,11 +9,11 @@
 ### 1. Create MySQL Database
 ```sql
 -- Connect to MySQL as root or admin user
-CREATE DATABASE crew_appraisals CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE crew_database CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Create dedicated user (recommended)
 CREATE USER 'crew_admin'@'localhost' IDENTIFIED BY 'secure_password_here';
-GRANT ALL PRIVILEGES ON crew_appraisals.* TO 'crew_admin'@'localhost';
+GRANT ALL PRIVILEGES ON crew_database.* TO 'crew_admin'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
@@ -25,7 +25,7 @@ cp environment.example .env
 
 Edit `.env`:
 ```env
-DATABASE_URL="mysql://crew_admin:secure_password_here@localhost:3306/crew_appraisals"
+DATABASE_URL="mysql://crew_admin:secure_password_here@localhost:3306/crew_database"
 SESSION_SECRET="your-unique-session-secret"
 NODE_ENV="production"
 PORT="5000"

@@ -493,7 +493,7 @@ function constructDatabaseUrl(): string | null {
   if (DB_HOST && DB_PORT && DB_USER && DB_PASSWORD) {
     // URL-encode the password to handle special characters
     const encodedPassword = encodeURIComponent(DB_PASSWORD);
-    return `mysql://${DB_USER}:${encodedPassword}@${DB_HOST}:${DB_PORT}/crew_appraisals`;
+    return `mysql://${DB_USER}:${encodedPassword}@${DB_HOST}:${DB_PORT}/crew_database`;
   }
   
   // Fallback to DATABASE_URL if set directly
@@ -514,7 +514,7 @@ if (databaseUrl) {
     storage = new DatabaseStorage();
     
     console.log("🔌 Attempting to connect to MySQL RDS...");
-    console.log("🎯 Target RDS Instance: MySQL database 'crew_appraisals'");
+    console.log("🎯 Target RDS Instance: MySQL database 'crew_database'");
     
     // Attempt to seed the database with improved timeout handling
     (async () => {
@@ -532,11 +532,11 @@ if (databaseUrl) {
         console.error("🔍 Connection Details:");
         console.error(`   • Host: ${process.env.DB_HOST}`);
         console.error(`   • Port: ${process.env.DB_PORT}`);
-        console.error(`   • Database: crew_appraisals`);
+        console.error(`   • Database: crew_database`);
         console.error(`   • User: ${process.env.DB_USER}`);
         console.error("📊 This could be due to:");
         console.error("   • RDS security group not allowing connections from this environment");
-        console.error("   • Database 'crew_appraisals' does not exist yet");
+        console.error("   • Database 'crew_database' does not exist yet");
         console.error("   • Network connectivity issues");
         console.error("   • Incorrect credentials");
         console.error("🚑 Server will start anyway. Use /api/health to test connectivity.");
