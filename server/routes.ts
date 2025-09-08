@@ -387,7 +387,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/recruitment-candidates/:id", async (req, res) => {
+  app.patch("/api/recruitment-candidates/:id", async (req, res) => {
     try {
       const id = req.params.id;
       const result = insertRecruitmentCandidateSchema.partial().safeParse(req.body);
