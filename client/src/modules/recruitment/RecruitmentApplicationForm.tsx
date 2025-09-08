@@ -15,7 +15,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ArrowLeft, Edit, Plus, Save, Trash2, Upload, Paperclip, X, Camera, Info, MessageSquare } from 'lucide-react';
-import { type RecruitmentCandidate } from '@shared/schema';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { type RecruitmentCandidate, type InsertRecruitmentCandidate } from '@shared/schema';
 
 interface RecruitmentApplicationFormProps {
   candidate: RecruitmentCandidate | null;
@@ -201,6 +202,70 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   onClose
 }) => {
   const [activeSection, setActiveSection] = useState('A1');
+  const queryClient = useQueryClient();
+
+  // Create mutation for saving recruitment candidate
+  const saveMutation = useMutation({
+    mutationFn: (candidateData: InsertRecruitmentCandidate) => {
+      if (candidate?.id) {
+        // Update existing candidate
+        return fetch(`/api/recruitment-candidates/${candidate.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(candidateData)
+        }).then(res => {
+          if (!res.ok) throw new Error('Failed to update candidate');
+          return res.json();
+        });
+      } else {
+        // Create new candidate
+        return fetch('/api/recruitment-candidates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(candidateData)
+        }).then(res => {
+          if (!res.ok) throw new Error('Failed to create candidate');
+          return res.json();
+        });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/recruitment-candidates'] });
+      onClose();
+    },
+    onError: (error) => {
+      console.error('Error saving candidate:', error);
+      alert('Failed to save candidate. Please try again.');
+    }
+  });
+
+  // Handle save and continue
+  const handleSaveAndContinue = () => {
+    if (!formData.firstName || !formData.familyName) {
+      alert('Please fill in at least First Name and Family Name before saving.');
+      return;
+    }
+
+    // Generate file number for new candidates
+    const fileNo = candidate?.fileNo || `M${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`;
+    
+    const candidateData: InsertRecruitmentCandidate = {
+      id: candidate?.id || new Date().toISOString().split('T')[0] + '-' + Date.now(),
+      fileNo: fileNo,
+      firstName: formData.firstName,
+      middleName: formData.middleName || null,
+      familyName: formData.familyName,
+      dob: formData.dateOfBirth,
+      nationality: formData.nationality,
+      rankAppliedFor: formData.rankAppliedFor,
+      presentRank: formData.presentRank,
+      vesselType: '', // Default or could be derived from form
+      status: 'Applied' // Default status for new candidates
+    };
+
+    saveMutation.mutate(candidateData);
+  };
+
   const [editingSections, setEditingSections] = useState({
     'A1.1': false,
     'A1.2': false,
@@ -311,120 +376,72 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const [c3SubmittedBy, setC3SubmittedBy] = useState<string>('Roxanne, Crewing Executive');
 
   const [formData, setFormData] = useState<FormData>({
-    // Initialize with candidate data
+    // Initialize with candidate data or empty for new candidates
     firstName: candidate?.firstName || '',
     middleName: candidate?.middleName || '',
     familyName: candidate?.familyName || '',
     nationality: candidate?.nationality || '',
     presentRank: candidate?.presentRank || '',
     dateOfBirth: candidate?.dob || '',
-    placeOfBirthCity: 'Delhi',
-    placeOfBirthCountry: 'India',
-    ageInYears: '44',
-    heightCm: '175',
-    weightKg: '85',
-    nativeLanguage: 'Hindi',
-    foreignLanguages: 'English, Spanish',
-    englishProficiency: 'Good',
+    placeOfBirthCity: '',
+    placeOfBirthCountry: '',
+    ageInYears: '',
+    heightCm: '',
+    weightKg: '',
+    nativeLanguage: '',
+    foreignLanguages: '',
+    englishProficiency: '',
     rankAppliedFor: candidate?.rankAppliedFor || '',
-    manningAgent: 'ABC Crew Services',
+    manningAgent: '',
     fileNo: candidate?.fileNo || '',
     
-    // A1.2 defaults
-    countryOfResidence: 'India',
-    nearestAirport: 'Delhi',
-    residentialAddressLine1: 'House No XX, Building/ Street XX',
-    residentialAddressLine2: 'City XX, State XX',
-    contactLandline: '175 5656 8899',
-    mobile: '078 000 0000',
-    email: 'abc@gmail.com',
+    // A1.2 empty defaults for new candidates
+    countryOfResidence: '',
+    nearestAirport: '',
+    residentialAddressLine1: '',
+    residentialAddressLine2: '',
+    contactLandline: '',
+    mobile: '',
+    email: '',
     
-    // A1.3 defaults
-    maritalStatus: 'Married',
-    numberOfDependentChildren: '2',
-    fatherName: 'Brij Kohli',
-    motherName: 'Sunita Kohli',
-    spouseFirstName: 'Mira',
-    spouseMiddleName: 'Kumari',
-    spouseFamilyName: 'Kohli',
-    spouseDateOfBirth: '02 Feb 1978',
-    children: [
-      {
-        firstName: 'Sneh',
-        middleName: 'Singh',
-        familyName: 'Kohli',
-        dateOfBirth: '15 Feb 2005',
-        gender: 'Son'
-      },
-      {
-        firstName: 'Sita',
-        middleName: '',
-        familyName: 'Kohli',
-        dateOfBirth: '08 Mar 2007',
-        gender: 'Daughter'
-      }
-    ],
-    nokFirstName: 'Sunita',
+    // A1.3 empty defaults for new candidates
+    maritalStatus: '',
+    numberOfDependentChildren: '',
+    fatherName: '',
+    motherName: '',
+    spouseFirstName: '',
+    spouseMiddleName: '',
+    spouseFamilyName: '',
+    spouseDateOfBirth: '',
+    children: [],
+    nokFirstName: '',
     nokMiddleName: '',
-    nokFamilyName: 'Kohli',
-    nokTelephone: '+91 76543212',
-    nokEmail: 'sunita@gmail.com',
-    nokAddress: 'House No XX, Building/ Street XX, City, State',
-    nokRelationship: 'Wife',
+    nokFamilyName: '',
+    nokTelephone: '',
+    nokEmail: '',
+    nokAddress: '',
+    nokRelationship: '',
     
-    // A2.1 Default documents
-    documents: [
-      { id: '1', document: 'Passport', number: 'Z1398745', issued: '30 Jan 2022', expiry: '23 Mar 2032', issuingAuthority: 'MOFA Govt. of India' },
-      { id: '2', document: 'National Seaman\'s Book', number: 'Z1398745', issued: '30 Jan 2022', expiry: '23 Mar 2032', issuingAuthority: 'Shipping Office Govt. Of India' },
-      { id: '3', document: 'Yellow Fever Vaccination', number: 'Z1398745', issued: '30 Jan 2022', expiry: '23 Mar 2032', issuingAuthority: 'Liberian Maritime Authority' },
-      { id: '4', document: 'INDOS No.( Indian personnel only )', number: 'Z1398745', issued: '30 Jan 2022', expiry: '23 Mar 2032', issuingAuthority: 'DMA' }
-    ],
+    // A2.1 Empty documents for new candidates
+    documents: [],
     
-    // A2.2 Default visas
-    visas: [
-      { id: '1', issuingCountry: 'U.S.A', serialNo: 'UHR 2345678', issued: 'dd/mm/yyyy', expiry: 'dd/mm/yyyy', visaType: 'B1 B2' },
-      { id: '2', issuingCountry: 'Australia', serialNo: 'SMH 2345678', issued: 'dd/mm/yyyy', expiry: 'dd/mm/yyyy', visaType: 'ABC' },
-      { id: '3', issuingCountry: 'Schengen', serialNo: 'SCH 2345678', issued: 'dd/mm/yyyy', expiry: 'dd/mm/yyyy', visaType: 'Multi' }
-    ],
+    // A2.2 Empty visas for new candidates
+    visas: [],
     
-    // A3.1 Default education
-    education: [
-      { id: '1', dateOfCompletion: '30 Jan 2022', schoolCollegeUniversity: 'University of XX', subjectsField: 'Marine Engineering', qualifications: 'B.Tech' },
-      { id: '2', dateOfCompletion: '30 Jan 2018', schoolCollegeUniversity: 'XYZ High School', subjectsField: 'Science', qualifications: '12 th' }
-    ],
+    // A3.1 Empty education for new candidates
+    education: [],
     
-    // A3.2 Default licenses
-    licenses: [
-      { id: 'A 01', certificateDocument: 'Certificate of Competency', abbr: 'COC', requirement: 'STCW II & III', certificateNo: 'BAH 2345678', issuingAuthority: 'Authority 1', issued: '30 Jan 2022', expiry: '23 Mar 2032' },
-      { id: 'A 02', certificateDocument: 'DCE Oil', abbr: 'DCEO', requirement: 'STCW IV/2', certificateNo: 'BAH 2345678', issuingAuthority: 'Authority 2', issued: '30 Jan 2022', expiry: '23 Mar 2032' }
-    ],
+    // A3.2 Empty licenses for new candidates
+    licenses: [],
     
-    // A3.3 Default training courses
-    trainingCourses: [
-      { id: 'A 01', trainingCourse: 'Risk Assessment', abbr: 'COC', requirement: 'STCW II & III', certificateNo: 'BAH 2345678', issuingAuthority: 'Authority 1', issued: '30 Jan 2022', expiry: '23 Mar 2032' },
-      { id: 'A 02', trainingCourse: 'Safety Officer', abbr: 'DCEO', requirement: 'STCW IV/2', certificateNo: 'BAH 2345678', issuingAuthority: 'Authority 2', issued: '30 Jan 2022', expiry: '23 Mar 2032' }
-    ],
+    // A3.3 Empty training courses for new candidates
+    trainingCourses: [],
     
-    // A4.1 Default sea service records (with proper date format)
-    seaService: [
-      { id: '1', vesselName: 'SS Mariner', vesselType: 'Cargo', deadweight: '20000 DWT', engineTypePower: 'MAN B&W / 16000 kW', ownerOperator: 'Oceanic Shipping Co.', rank: 'Captain', from: '2023-01-01', to: '2023-03-31', periodMonths: '3.0M' },
-      { id: '2', vesselName: 'MV Neptune', vesselType: 'Tanker', deadweight: '30000 DWT', engineTypePower: 'Wartsila / 18000 kW', ownerOperator: 'Blue Wave Ltd.', rank: 'First Mate', from: '2023-04-01', to: '2023-06-30', periodMonths: '3.0M' },
-      { id: '3', vesselName: 'SS Voyager', vesselType: 'Container', deadweight: '25000 DWT', engineTypePower: 'Sulzer / 14000 kW', ownerOperator: 'Global Maritime Inc.', rank: 'Chief Engineer', from: '2023-07-01', to: '2023-09-30', periodMonths: '3.0M' },
-      { id: '4', vesselName: 'MV Explorer', vesselType: 'Bulk', deadweight: '28000 DWT', engineTypePower: 'MAN B&W / 15000 kW', ownerOperator: 'Seaspan Corporation', rank: 'Navigator', from: '2023-10-01', to: '2023-12-31', periodMonths: '3.0M' },
-      { id: '5', vesselName: 'SS Discovery', vesselType: 'Oil Tanker', deadweight: '35000 DWT', engineTypePower: 'Wartsila / 20000 kW', ownerOperator: 'Maritime Solutions Ltd.', rank: 'Second Mate', from: '2024-01-01', to: '2024-03-31', periodMonths: '3.0M' },
-      { id: '6', vesselName: 'MV Pioneer', vesselType: 'Cargo', deadweight: '22000 DWT', engineTypePower: 'Sulzer / 17000 kW', ownerOperator: 'Ocean Fleet Corp.', rank: 'Bosun', from: '2024-04-01', to: '2024-06-30', periodMonths: '3.0M' },
-      { id: '7', vesselName: 'SS Adventurer', vesselType: 'Container', deadweight: '27000 DWT', engineTypePower: 'MAN B&W / 16000 kW', ownerOperator: 'Global Maritime Inc.', rank: 'Deckhand', from: '2024-07-01', to: '2024-09-30', periodMonths: '3.0M' },
-      { id: '8', vesselName: 'MV Navigator', vesselType: 'Bulk Carrier', deadweight: '24000 DWT', engineTypePower: 'Wartsila / 18000 kW', ownerOperator: 'Seaspan Corporation', rank: 'Able Seaman', from: '2024-10-01', to: '2024-12-31', periodMonths: '3.0M' },
-      { id: '9', vesselName: 'SS Endeavor', vesselType: 'Oil Tanker', deadweight: '32000 DWT', engineTypePower: 'Sulzer / 19000 kW', ownerOperator: 'Maritime Solutions Ltd.', rank: 'Chief Officer', from: '2025-01-01', to: '2025-03-31', periodMonths: '3.0M' },
-      { id: '10', vesselName: 'MV Explorer', vesselType: 'Tanker', deadweight: '31000 DWT', engineTypePower: 'Wartsila / 17000 kW', ownerOperator: 'Blue Wave Ltd.', rank: 'Third Mate', from: '2025-04-01', to: '2025-06-30', periodMonths: '3.0M' }
-    ],
+    // A4.1 Empty sea service records for new candidates
+    seaService: [],
 
-    // A5 Default additional information (configured from Crew Admin)
-    additionalInfo: [
-      { id: 'A5.1', information: 'Cargoes Carried', response: '' },
-      { id: 'A5.2', information: 'Trading Pattern', response: '' },
-      { id: 'A5.3', information: 'Nationalities sailed with', response: '' }
-    ],
+    // A5 Empty additional information for new candidates
+    additionalInfo: [],
 
     // Part B - Office Screening defaults
     b1AgeMeetsCriteria: '',
@@ -5704,9 +5721,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <div className="flex justify-end gap-2 mt-6 pt-4">
                 <Button 
                   className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8"
-                  onClick={onClose}
+                  onClick={handleSaveAndContinue}
+                  disabled={saveMutation.isPending}
                 >
-                  Save & Continue
+                  {saveMutation.isPending ? 'Saving...' : 'Save & Continue'}
                 </Button>
               </div>
             </CardContent>
@@ -5732,9 +5750,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <div className="flex justify-end gap-2 mt-6 pt-4">
                 <Button 
                   className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8"
-                  onClick={onClose}
+                  onClick={handleSaveAndContinue}
+                  disabled={saveMutation.isPending}
                 >
-                  Save & Continue
+                  {saveMutation.isPending ? 'Saving...' : 'Save & Continue'}
                 </Button>
               </div>
             </CardContent>
@@ -5761,9 +5780,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <div className="flex justify-end gap-2 mt-6 pt-4">
                 <Button 
                   className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8"
-                  onClick={onClose}
+                  onClick={handleSaveAndContinue}
+                  disabled={saveMutation.isPending}
                 >
-                  Save & Continue
+                  {saveMutation.isPending ? 'Saving...' : 'Save & Continue'}
                 </Button>
               </div>
             </CardContent>
@@ -5788,9 +5808,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <div className="flex justify-end gap-2 mt-6 pt-4">
                 <Button 
                   className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8"
-                  onClick={onClose}
+                  onClick={handleSaveAndContinue}
+                  disabled={saveMutation.isPending}
                 >
-                  Save & Continue
+                  {saveMutation.isPending ? 'Saving...' : 'Save & Continue'}
                 </Button>
               </div>
             </CardContent>
