@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ArrowLeft, Edit, Plus, Save, Trash2, Upload, Paperclip, X, Camera, Info, MessageSquare } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
 import { type RecruitmentCandidate, type InsertRecruitmentCandidate } from '@shared/schema';
 
 interface RecruitmentApplicationFormProps {
@@ -203,6 +204,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
 }) => {
   const [activeSection, setActiveSection] = useState('A1');
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // Create mutation for saving recruitment candidate
   const saveMutation = useMutation({
@@ -230,19 +232,31 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       }
     },
     onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Candidate saved successfully!",
+      });
       queryClient.invalidateQueries({ queryKey: ['/api/recruitment-candidates'] });
       onClose();
     },
     onError: (error) => {
       console.error('Error saving candidate:', error);
-      alert('Failed to save candidate. Please try again.');
+      toast({
+        title: "Error",
+        description: "Failed to save candidate. Please check your database connection and try again.",
+        variant: "destructive",
+      });
     }
   });
 
   // Handle save and continue
   const handleSaveAndContinue = () => {
     if (!formData.firstName || !formData.familyName) {
-      alert('Please fill in at least First Name and Family Name before saving.');
+      toast({
+        title: "Validation Error",
+        description: "Please fill in at least First Name and Family Name before saving.",
+        variant: "destructive",
+      });
       return;
     }
 
