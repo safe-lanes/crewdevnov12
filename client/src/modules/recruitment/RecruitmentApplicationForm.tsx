@@ -2360,7 +2360,20 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             <TableRow className="bg-gray-100">
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Information</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Response</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">
+                <div className="flex justify-between items-center">
+                  <span>Actions</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={addAdditionalInfo}
+                    className="text-gray-600 border-gray-300 hover:bg-gray-50 h-7 px-3 text-xs"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    ADD
+                  </Button>
+                </div>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -2404,18 +2417,6 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             ))}
           </TableBody>
         </Table>
-        
-        <div className="mt-4 flex justify-end">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={addAdditionalInfo}
-            className="text-gray-600 border-gray-300 hover:bg-gray-50"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            ADD
-          </Button>
-        </div>
       </div>
     );
   };
