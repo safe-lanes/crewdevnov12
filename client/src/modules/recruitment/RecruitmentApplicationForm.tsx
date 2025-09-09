@@ -5890,9 +5890,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <div className="flex justify-end gap-2 mt-6 pt-4">
                 <Button 
                   className="bg-green-600 hover:bg-green-700 text-white px-8"
-                  onClick={onClose}
+                  onClick={handleSaveAndContinue}
+                  disabled={saveMutation.isPending}
                 >
-                  Save & Submit
+                  {saveMutation.isPending ? 'Saving...' : 'Save & Submit'}
                 </Button>
               </div>
             </CardContent>
