@@ -286,6 +286,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       applicationData: JSON.stringify(formData) // Save all form data as JSON
     };
 
+    console.log('🔥 Saving form data - additionalInfo:', formData.additionalInfo);
+    console.log('🔥 Complete form data:', formData);
+
     saveMutation.mutate(candidateData);
   };
 
@@ -958,10 +961,16 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       information: '',
       response: ''
     };
-    setFormData(prev => ({
-      ...prev,
-      additionalInfo: [...prev.additionalInfo, newInfo]
-    }));
+    console.log('🔥 Adding additional info:', newInfo);
+    console.log('🔥 Current additionalInfo:', formData.additionalInfo);
+    setFormData(prev => {
+      const newData = {
+        ...prev,
+        additionalInfo: [...prev.additionalInfo, newInfo]
+      };
+      console.log('🔥 New additionalInfo after add:', newData.additionalInfo);
+      return newData;
+    });
   };
 
   const removeAdditionalInfo = (id: string) => {
@@ -972,12 +981,17 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   };
 
   const updateAdditionalInfo = (id: string, field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      additionalInfo: prev.additionalInfo.map(info => 
+    console.log('🔥 Updating additional info:', { id, field, value });
+    setFormData(prev => {
+      const updatedAdditionalInfo = prev.additionalInfo.map(info => 
         info.id === id ? { ...info, [field]: value } : info
-      )
-    }));
+      );
+      console.log('🔥 Updated additionalInfo:', updatedAdditionalInfo);
+      return {
+        ...prev,
+        additionalInfo: updatedAdditionalInfo
+      };
+    });
   };
 
   // Comprehensive nationality list matching AppraisalForm standards
