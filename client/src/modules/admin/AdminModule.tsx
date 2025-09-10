@@ -416,7 +416,7 @@ export const AdminModule = (): JSX.Element => {
         
         {/* Center: Tab Switcher */}
         <div className="flex justify-center">
-          <div className="flex items-center bg-white rounded-full p-1 border border-gray-300 h-8">
+          <div className="flex items-center bg-transparent rounded-full p-1 border border-gray-300 h-8">
             {[
               { id: "rank-master", label: "Rank Master" },
               { id: "company", label: "Company" },
