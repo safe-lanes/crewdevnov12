@@ -424,16 +424,16 @@ export const AdminModule = (): JSX.Element => {
       width: 80,
       cellRenderer: (params: ICellRendererParams) => (
         <div className="flex items-center justify-center h-full gap-1">
-          {/* Show +Multi button on regular ranks and on role rows (to add more roles) */}
-          {isCompanyEditing && (
+          {/* Show +Multi button only on regular ranks (not role rows) */}
+          {!params.data.isRoleRow && isCompanyEditing && (
             <button
-              onClick={() => handleMultiple(params.data.originalRankId || params.data.id)}
+              onClick={() => handleMultiple(params.data.id)}
               className="h-8 px-4 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded font-medium min-w-[60px] shadow-sm"
             >
               +Multi
             </button>
           )}
-          {/* Show delete button for role rows */}
+          {/* Show delete button only for role rows */}
           {params.data.isRoleRow && isCompanyEditing && (
             <Button
               onClick={() => handleDeleteCompanyRank(params.data.id)}
