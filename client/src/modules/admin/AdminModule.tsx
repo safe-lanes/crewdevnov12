@@ -315,7 +315,7 @@ export const AdminModule = (): JSX.Element => {
               className="h-6 px-2 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300"
               variant="outline"
             >
-              + Multiple
+              +Multi
             </Button>
           )}
           {params.data.hasMultiple && (
