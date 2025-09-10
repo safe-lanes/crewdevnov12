@@ -125,7 +125,7 @@ export const AdminModule = (): JSX.Element => {
       width: 40,
       cellRenderer: () => '⋮⋮',
       cellClass: 'text-center cursor-move',
-      rowDrag: isRankMasterEditing,
+      rowDrag: true,
       sortable: false,
       filter: false,
       pinned: 'left',
