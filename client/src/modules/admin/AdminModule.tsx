@@ -221,7 +221,9 @@ export const AdminModule = (): JSX.Element => {
   const createCheckboxColumn = (headerName: string, field: keyof CompanyRankData): ColDef => ({
     headerName,
     field,
-    width: 60,
+    flex: 1,
+    minWidth: 80,
+    maxWidth: 120,
     cellRenderer: (params: ICellRendererParams) => (
       <div className="flex items-center justify-center h-full">
         <input
@@ -245,7 +247,9 @@ export const AdminModule = (): JSX.Element => {
     cellStyle: { textAlign: 'center' },
     sortable: false,
     filter: false,
-    resizable: false
+    resizable: true,
+    headerClass: 'ag-header-cell-text-wrap',
+    autoHeaderHeight: true
   });
 
   // Company column definitions
@@ -253,23 +257,25 @@ export const AdminModule = (): JSX.Element => {
     {
       headerName: "Rank",
       field: "rank",
-      flex: 1,
+      width: 120,
       editable: isCompanyEditing,
       singleClickEdit: true,
-      cellStyle: { backgroundColor: '#E3F2FD' },
       filter: 'agTextColumnFilter',
       sortable: true,
-      resizable: true
+      resizable: true,
+      headerClass: 'ag-header-cell-text-wrap',
+      autoHeaderHeight: true
     },
     {
       headerName: "Rank ID (Sail)",
       field: "rankId",
-      flex: 1,
+      width: 100,
       editable: false,
-      cellStyle: { backgroundColor: '#f5f5f5' },
       filter: 'agTextColumnFilter',
       sortable: true,
-      resizable: true
+      resizable: true,
+      headerClass: 'ag-header-cell-text-wrap',
+      autoHeaderHeight: true
     },
     createCheckboxColumn("Officer", "officer"),
     createCheckboxColumn("Rating", "rating"),
