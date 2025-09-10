@@ -59,6 +59,29 @@
   justify-content: center !important;
 }
 
+/* Limited header text wrapping - max 2 rows */
+.ag-theme-alpine .ag-header-cell-text-wrap-limited .ag-header-cell-text {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  text-align: center !important;
+  line-height: 1.2 !important;
+  padding: 4px 2px !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+  max-height: 2.4em !important;
+}
+
+.ag-theme-alpine .ag-header-cell-text-wrap-limited {
+  height: 48px !important;
+  max-height: 48px !important;
+  align-items: center !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+
 .ag-theme-alpine .ag-row {
   border-bottom: 1px solid #e5e7eb !important;
 }

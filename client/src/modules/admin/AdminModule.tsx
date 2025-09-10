@@ -248,8 +248,9 @@ export const AdminModule = (): JSX.Element => {
     sortable: false,
     filter: false,
     resizable: true,
-    headerClass: 'ag-header-cell-text-wrap',
-    autoHeaderHeight: true
+    headerClass: 'ag-header-cell-text-wrap-limited',
+    autoHeaderHeight: true,
+    suppressHeaderMenuButton: true
   });
 
   // Company column definitions
