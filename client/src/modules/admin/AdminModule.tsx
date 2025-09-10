@@ -309,7 +309,7 @@ export const AdminModule = (): JSX.Element => {
       width: 80,
       cellRenderer: (params: ICellRendererParams) => (
         <div className="flex items-center justify-center h-full gap-1">
-          {!params.data.hasMultiple && (
+          {!params.data.hasMultiple && isCompanyEditing && (
             <button
               onClick={() => handleMultiple(params.data.id)}
               className="h-8 px-4 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded font-medium min-w-[60px] shadow-sm"
