@@ -1,4 +1,4 @@
-import { File, UserPlus } from 'lucide-react';
+import { File, UserPlus, Users, AlignJustify, Grid3x3 } from 'lucide-react';
 import React from 'react'
 
 type SideBarComponentProps = {
@@ -17,6 +17,21 @@ const sideBarList: { name: string; icon: React.ReactNode; page: string }[] = [
         name: "Forms",
         icon: <File size={20} className='text-white' />,
         page: "forms"
+    },
+    {
+        name: "Rank Admin",
+        icon: <Users size={20} className='text-white' />,
+        page: "rank-admin"
+    },
+    {
+        name: "Masters",
+        icon: <AlignJustify size={20} className='text-white' />,
+        page: "masters"
+    },
+    {
+        name: "Training Matrix",
+        icon: <Grid3x3 size={20} className='text-white' />,
+        page: "training-matrix"
     }
 ]
 
@@ -27,6 +42,7 @@ export default function SideBarComponent({ selectedAdminPage, setSelectedAdminPa
                 {
                     sideBarList.filter(item => allowedPages.includes(item.page)).map(item => (
                         <div
+                            key={item.page}
                             className={`w-full h-[79px] flex flex-col items-center justify-center cursor-pointer ${selectedAdminPage === item.page ? "bg-[#52baf3]" : "bg-[#16569e] hover:bg-[#1e5fa8]"
                                 }`}
                             onClick={() => setSelectedAdminPage(item.page)}

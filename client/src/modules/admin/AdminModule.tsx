@@ -463,7 +463,7 @@ export const AdminModule = (): JSX.Element => {
 
   return (
     <>
-      <SideBarComponent selectedAdminPage={selectedAdminPage} setSelectedAdminPage={setSelectedAdminPage} allowedPages={["forms"]} />
+      <SideBarComponent selectedAdminPage={selectedAdminPage} setSelectedAdminPage={setSelectedAdminPage} allowedPages={["forms", "rank-admin", "masters", "training-matrix"]} />
       <MainLayout>
         {selectedAdminPage === "forms" && renderFormsTable()}
       </MainLayout>
