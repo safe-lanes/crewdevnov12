@@ -280,7 +280,28 @@ export const AdminModule = (): JSX.Element => {
   const renderRankAdminModule = () => (
     <div>
       <SectionTitleComponents title={"Rank Administration"}>
-        <div className="flex items-center gap-2 ml-[19px] mr-[19px]">
+        <div className="flex items-center gap-4 ml-[19px] mr-[19px]">
+          {/* Inline Tab Switcher */}
+          <div className="flex items-center bg-gray-100 rounded-full p-1 border border-gray-300">
+            {[
+              { id: "rank-master", label: "Rank Master" },
+              { id: "company", label: "Company" },
+              { id: "vessel", label: "Vessel" }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setSelectedRankAdminTab(tab.id)}
+                className={`px-4 py-1 text-sm font-medium rounded-full transition-all duration-200 ${
+                  selectedRankAdminTab === tab.id
+                    ? "bg-[#16569e] text-white shadow-sm"
+                    : "text-gray-600 hover:text-gray-800"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          
           <Button
             variant="outline"
             className="h-10 border-[#e1e8ed] text-[#16569e] flex items-center gap-2"
@@ -290,29 +311,8 @@ export const AdminModule = (): JSX.Element => {
         </div>
       </SectionTitleComponents>
 
-      {/* Tab Switcher */}
+      {/* Tab Content */}
       <div className="p-4 pl-0">
-        <div className="flex gap-1 mb-6">
-          {[
-            { id: "rank-master", label: "Rank Master" },
-            { id: "company", label: "Company" },
-            { id: "vessel", label: "Vessel" }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setSelectedRankAdminTab(tab.id)}
-              className={`px-6 py-2 text-sm font-medium rounded-lg transition-colors ${
-                selectedRankAdminTab === tab.id
-                  ? "bg-[#16569e] text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Tab Content */}
         <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
           <CardContent className="p-6 bg-white rounded-lg shadow-md">
             {selectedRankAdminTab === "rank-master" && (
