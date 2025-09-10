@@ -357,12 +357,13 @@ export const AdminModule = (): JSX.Element => {
                         <div key={rank.id} className="flex items-center space-x-2">
                           <Checkbox
                             id={`rank-${rank.id}`}
-                            checked={field.value.includes(rank.name)}
+                            checked={field.value?.includes(rank.name) || false}
                             onCheckedChange={(checked) => {
+                              const currentValue = field.value || [];
                               if (checked) {
-                                field.onChange([...field.value, rank.name]);
+                                field.onChange([...currentValue, rank.name]);
                               } else {
-                                field.onChange(field.value.filter((r) => r !== rank.name));
+                                field.onChange(currentValue.filter((r: string) => r !== rank.name));
                               }
                             }}
                           />
@@ -716,7 +717,7 @@ export const AdminModule = (): JSX.Element => {
         <FormEditorFactory
           formName={editingForm.name}
           form={editingForm}
-          rankGroupName={editingRankGroup}
+          rankGroupName={editingRankGroup || undefined}
           onClose={handleCloseEditor}
           onSave={handleFormSave}
         />
