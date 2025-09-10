@@ -123,8 +123,8 @@ export const AdminModule = (): JSX.Element => {
     {
       headerName: "",
       width: 40,
-      cellRenderer: () => `⋮⋮`,
-      cellStyle: { color: 'black', fontSize: '16px', fontWeight: 'bold' },
+      cellRenderer: () => `• •<br>• •<br>• •`,
+      cellStyle: { color: 'black', fontSize: '12px', textAlign: 'center', lineHeight: '1.2' },
       cellClass: 'text-center cursor-move',
       rowDrag: isRankMasterEditing,
       sortable: false,
