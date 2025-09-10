@@ -404,7 +404,7 @@ export const AdminModule = (): JSX.Element => {
               <button
                 key={tab.id}
                 onClick={() => setSelectedRankAdminTab(tab.id)}
-                className={`px-2 text-xs font-medium rounded-full transition-all duration-200 h-8 flex items-center ${
+                className={`px-4 text-xs font-medium rounded-full transition-all duration-200 h-8 flex items-center ${
                   selectedRankAdminTab === tab.id
                     ? "bg-[#16569e] text-white shadow-sm"
                     : "text-gray-600 hover:text-gray-800"
