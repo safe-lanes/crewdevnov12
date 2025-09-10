@@ -310,14 +310,12 @@ export const AdminModule = (): JSX.Element => {
       cellRenderer: (params: ICellRendererParams) => (
         <div className="flex items-center justify-center h-full gap-1">
           {!params.data.hasMultiple && (
-            <Button
+            <button
               onClick={() => handleMultiple(params.data.id)}
-              className="h-7 px-3 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded-md"
-              variant="outline"
-              size="sm"
+              className="h-8 px-4 text-xs bg-blue-500 hover:bg-blue-600 text-white border border-blue-500 rounded font-medium min-w-[60px]"
             >
               +Multi
-            </Button>
+            </button>
           )}
           {params.data.hasMultiple && (
             <Button
