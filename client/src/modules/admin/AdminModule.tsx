@@ -256,11 +256,21 @@ export const AdminModule = (): JSX.Element => {
   // Company column definitions
   const companyColumnDefs: ColDef[] = [
     {
+      headerName: "",
+      width: 40,
+      cellClass: 'text-center cursor-move',
+      rowDrag: isCompanyEditing,
+      sortable: false,
+      filter: false,
+      pinned: 'left',
+      menuTabs: [],
+    },
+    {
       headerName: "Rank",
       field: "rank",
       width: 120,
-      editable: isCompanyEditing,
-      singleClickEdit: true,
+      editable: false, // Rank column is not editable in edit mode
+      singleClickEdit: false,
       filter: 'agTextColumnFilter',
       sortable: true,
       resizable: true,
