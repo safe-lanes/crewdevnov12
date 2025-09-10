@@ -251,8 +251,14 @@ export const AdminModule = (): JSX.Element => {
     setCompanyRankData(prev => prev.filter(rank => rank.id !== rankId));
   };
 
-  // Check if any rows have roles to show Role column
-  const hasRoles = companyRankData.some(row => row.role || row.isRoleRow);
+  // Check if any parent rank has multiple roles (2 or more) to show Role column
+  const hasRoles = companyRankData.some(parentRow => {
+    if (parentRow.hasMultiple && !parentRow.isRoleRow) {
+      const roleCount = companyRankData.filter(row => row.parentId === parentRow.id).length;
+      return roleCount >= 2;
+    }
+    return false;
+  });
 
   // Helper function to create checkbox column
   const createCheckboxColumn = (headerName: string, field: keyof CompanyRankData): ColDef => ({
