@@ -248,7 +248,28 @@ export const AdminModule = (): JSX.Element => {
   };
 
   const handleDeleteCompanyRank = (rankId: string) => {
-    setCompanyRankData(prev => prev.filter(rank => rank.id !== rankId));
+    setCompanyRankData(prev => {
+      const rankToDelete = prev.find(rank => rank.id === rankId);
+      const filteredData = prev.filter(rank => rank.id !== rankId);
+      
+      // If deleting a role row, check if parent should no longer have multiple roles
+      if (rankToDelete?.isRoleRow && rankToDelete.parentId) {
+        const remainingRoles = filteredData.filter(row => row.parentId === rankToDelete.parentId);
+        
+        // If only 1 role remains, update parent to not have multiple roles
+        if (remainingRoles.length <= 1) {
+          const parentIndex = filteredData.findIndex(row => row.id === rankToDelete.parentId);
+          if (parentIndex !== -1) {
+            filteredData[parentIndex] = {
+              ...filteredData[parentIndex],
+              hasMultiple: false
+            };
+          }
+        }
+      }
+      
+      return filteredData;
+    });
   };
 
   // Check if any parent rank has multiple roles (2 or more) to show Role column
