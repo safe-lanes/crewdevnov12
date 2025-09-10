@@ -64,6 +64,29 @@ interface RankMasterData {
   label: string;
 }
 
+// Interface for Company Rank data
+interface CompanyRankData {
+  id: string;
+  rank: string;
+  rankId: string;
+  officer: boolean;
+  rating: boolean;
+  seniorOfficer: boolean;
+  deckOfficer: boolean;
+  engOfficer: boolean;
+  pettyOfficer: boolean;
+  deckRating: boolean;
+  engineRating: boolean;
+  generalRating: boolean;
+  cateringRating: boolean;
+  safetyOfficer: boolean;
+  sso: boolean;
+  medicalOfficer: boolean;
+  navigatingOfficer: boolean;
+  emtOfficer: boolean;
+  hasMultiple: boolean;
+}
+
 export const AdminModule = (): JSX.Element => {
   const [location] = useLocation();
   const [selectedAdminPage, setSelectedAdminPage] = useState("forms");
@@ -90,7 +113,39 @@ export const AdminModule = (): JSX.Element => {
   const [isRankMasterEditing, setIsRankMasterEditing] = useState(false);
   const [rankMasterGridApi, setRankMasterGridApi] = useState<GridApi | null>(null);
   
+  // Company state
+  const [companyRankData, setCompanyRankData] = useState<CompanyRankData[]>([]);
+  const [isCompanyEditing, setIsCompanyEditing] = useState(false);
+  const [companyGridApi, setCompanyGridApi] = useState<GridApi | null>(null);
+  
   const queryClient = useQueryClient();
+
+  // Initialize company rank data from rank master
+  React.useEffect(() => {
+    const applicableRanks = rankMasterData.filter(rank => rank.applicableToCompany);
+    const companyRanks: CompanyRankData[] = applicableRanks.map(rank => ({
+      id: rank.id,
+      rank: rank.label || rank.rank,
+      rankId: rank.rankId,
+      officer: rank.rank.toLowerCase().includes('officer') || rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('engineer'),
+      rating: !rank.rank.toLowerCase().includes('officer') && !rank.rank.toLowerCase().includes('master') && !rank.rank.toLowerCase().includes('engineer'),
+      seniorOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('chief'),
+      deckOfficer: rank.rank.toLowerCase().includes('officer') && !rank.rank.toLowerCase().includes('engineer'),
+      engOfficer: rank.rank.toLowerCase().includes('engineer'),
+      pettyOfficer: false,
+      deckRating: rank.rank.toLowerCase().includes('cadet') || rank.rank.toLowerCase().includes('deck'),
+      engineRating: false,
+      generalRating: false,
+      cateringRating: false,
+      safetyOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('chief'),
+      sso: rank.rank.toLowerCase().includes('master'),
+      medicalOfficer: false,
+      navigatingOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('officer'),
+      emtOfficer: false,
+      hasMultiple: false
+    }));
+    setCompanyRankData(companyRanks);
+  }, [rankMasterData]);
 
   // Rank Master handlers
   const handleRankMasterGridReady = (event: GridReadyEvent) => {
@@ -130,6 +185,138 @@ export const AdminModule = (): JSX.Element => {
     setIsRankMasterEditing(false);
     rankMasterGridApi?.stopEditing();
   };
+
+  // Company handlers
+  const handleCompanyGridReady = (event: GridReadyEvent) => {
+    setCompanyGridApi(event.api);
+  };
+
+  const handleEditCompany = () => {
+    setIsCompanyEditing(true);
+  };
+
+  const handleSaveCompany = () => {
+    setIsCompanyEditing(false);
+    companyGridApi?.stopEditing();
+  };
+
+  const handleMultiple = (rankId: string) => {
+    const rankToMultiply = companyRankData.find(rank => rank.id === rankId);
+    if (rankToMultiply) {
+      const newRank: CompanyRankData = {
+        ...rankToMultiply,
+        id: `${rankToMultiply.id}_${Date.now()}`,
+        rank: `${rankToMultiply.rank}_1`,
+        hasMultiple: true
+      };
+      setCompanyRankData(prev => [...prev, newRank]);
+    }
+  };
+
+  const handleDeleteCompanyRank = (rankId: string) => {
+    setCompanyRankData(prev => prev.filter(rank => rank.id !== rankId));
+  };
+
+  // Helper function to create checkbox column
+  const createCheckboxColumn = (headerName: string, field: keyof CompanyRankData): ColDef => ({
+    headerName,
+    field,
+    width: 60,
+    cellRenderer: (params: ICellRendererParams) => (
+      <div className="flex items-center justify-center h-full">
+        <input
+          type="checkbox"
+          checked={params.value || false}
+          disabled={!isCompanyEditing}
+          onChange={(e) => {
+            if (isCompanyEditing) {
+              const newData = [...companyRankData];
+              const rowIndex = newData.findIndex(row => row.id === params.data.id);
+              if (rowIndex !== -1) {
+                newData[rowIndex] = { ...newData[rowIndex], [field]: e.target.checked };
+                setCompanyRankData(newData);
+              }
+            }
+          }}
+          className="form-checkbox h-4 w-4 text-blue-600"
+        />
+      </div>
+    ),
+    cellStyle: { textAlign: 'center' },
+    sortable: false,
+    filter: false,
+    resizable: false
+  });
+
+  // Company column definitions
+  const companyColumnDefs: ColDef[] = [
+    {
+      headerName: "Rank",
+      field: "rank",
+      flex: 1,
+      editable: isCompanyEditing,
+      singleClickEdit: true,
+      cellStyle: { backgroundColor: '#E3F2FD' },
+      filter: 'agTextColumnFilter',
+      sortable: true,
+      resizable: true
+    },
+    {
+      headerName: "Rank ID (Sail)",
+      field: "rankId",
+      flex: 1,
+      editable: false,
+      cellStyle: { backgroundColor: '#f5f5f5' },
+      filter: 'agTextColumnFilter',
+      sortable: true,
+      resizable: true
+    },
+    createCheckboxColumn("Officer", "officer"),
+    createCheckboxColumn("Rating", "rating"),
+    createCheckboxColumn("Senior Officer", "seniorOfficer"),
+    createCheckboxColumn("Deck Officer", "deckOfficer"),
+    createCheckboxColumn("Eng Officer", "engOfficer"),
+    createCheckboxColumn("Petty Officer", "pettyOfficer"),
+    createCheckboxColumn("Deck Rating", "deckRating"),
+    createCheckboxColumn("Engine Rating", "engineRating"),
+    createCheckboxColumn("Gen Rating", "generalRating"),
+    createCheckboxColumn("Catering Rating", "cateringRating"),
+    createCheckboxColumn("Safety Officer", "safetyOfficer"),
+    createCheckboxColumn("SSO", "sso"),
+    createCheckboxColumn("Medical Officer", "medicalOfficer"),
+    createCheckboxColumn("Navigating Officer", "navigatingOfficer"),
+    createCheckboxColumn("EMT Officer", "emtOfficer"),
+    {
+      headerName: "",
+      width: 80,
+      cellRenderer: (params: ICellRendererParams) => (
+        <div className="flex items-center justify-center h-full gap-1">
+          {!params.data.hasMultiple && (
+            <Button
+              onClick={() => handleMultiple(params.data.id)}
+              className="h-6 px-2 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300"
+              variant="outline"
+            >
+              + Multiple
+            </Button>
+          )}
+          {params.data.hasMultiple && (
+            <Button
+              onClick={() => handleDeleteCompanyRank(params.data.id)}
+              className="h-6 w-6 p-0 bg-red-100 hover:bg-red-200 text-red-600"
+              variant="outline"
+            >
+              🗑
+            </Button>
+          )}
+        </div>
+      ),
+      sortable: false,
+      filter: false,
+      resizable: false,
+      pinned: 'right'
+    }
+  ];
 
   // Rank Master column definitions
   const rankMasterColumnDefs: ColDef[] = [
@@ -357,7 +544,7 @@ export const AdminModule = (): JSX.Element => {
                         <div key={rank.id} className="flex items-center space-x-2">
                           <Checkbox
                             id={`rank-${rank.id}`}
-                            checked={field.value?.includes(rank.name) || false}
+                            checked={(field.value as string[])?.includes(rank.name) || false}
                             onCheckedChange={(checked) => {
                               const currentValue = field.value || [];
                               if (checked) {
@@ -455,6 +642,16 @@ export const AdminModule = (): JSX.Element => {
               </Button>
             </div>
           )}
+          {selectedRankAdminTab === "company" && (
+            <div className="flex gap-2">
+              <Button
+                onClick={isCompanyEditing ? handleSaveCompany : handleEditCompany}
+                className="h-8 bg-[#52baf3] hover:bg-[#3da8e3] text-white text-xs"
+              >
+                {isCompanyEditing ? "Save" : "Edit Table"}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -504,9 +701,34 @@ export const AdminModule = (): JSX.Element => {
             )}
             
             {selectedRankAdminTab === "company" && (
-              <div className="text-center py-12">
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Company</h3>
-                <p className="text-gray-500">Content will be implemented here</p>
+              <div className="h-[600px]">
+                <AgGridTable
+                  rowData={companyRankData}
+                  columnDefs={companyColumnDefs}
+                  onGridReady={handleCompanyGridReady}
+                  autoHeight={true}
+                  maxHeight="500px"
+                  minHeight="200px"
+                  width="100%"
+                  enableExport={true}
+                  enableSideBar={true}
+                  enableStatusBar={false}
+                  enableRowGrouping={true}
+                  enablePivoting={true}
+                  enableAdvancedFilter={false}
+                  rowSelection={false}
+                  theme="alpine"
+                  gridOptions={{
+                    onCellValueChanged: (event) => {
+                      const newData = [...companyRankData];
+                      const rowIndex = newData.findIndex(row => row.id === event.data.id);
+                      if (rowIndex !== -1) {
+                        newData[rowIndex] = { ...newData[rowIndex], [event.colDef.field!]: event.newValue };
+                        setCompanyRankData(newData);
+                      }
+                    }
+                  }}
+                />
               </div>
             )}
             
