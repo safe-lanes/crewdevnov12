@@ -69,6 +69,9 @@ interface CompanyRankData {
   id: string;
   rank: string;
   rankId: string;
+  role?: string; // Role name like "3rd Off_1", "3rd Off_2"
+  parentId?: string; // ID of parent rank for role rows
+  isRoleRow?: boolean; // True for role rows, false/undefined for parent rows
   officer: boolean;
   rating: boolean;
   seniorOfficer: boolean;
