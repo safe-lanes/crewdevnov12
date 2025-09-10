@@ -539,7 +539,7 @@ export const AdminModule = (): JSX.Element => {
       {/* Table */}
       {!isLoading && !error && (
         <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
-          <CardContent className="p-4 bg-[#f7fafc]">
+          <CardContent className="p-4 pl-0 bg-[#f7fafc]">
             <Table className="bg-white rounded-lg shadow-md overflow-hidden">
               <TableHeader className="bg-[#52baf3]">
                 <TableRow>
