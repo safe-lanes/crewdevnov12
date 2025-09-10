@@ -220,6 +220,9 @@ export const AdminModule = (): JSX.Element => {
     setCompanyRankData(prev => prev.filter(rank => rank.id !== rankId));
   };
 
+  // Check if any rows have roles to show Role column
+  const hasRoles = companyRankData.some(row => row.role || row.isRoleRow);
+
   // Helper function to create checkbox column
   const createCheckboxColumn = (headerName: string, field: keyof CompanyRankData): ColDef => ({
     headerName,
@@ -280,6 +283,20 @@ export const AdminModule = (): JSX.Element => {
       headerClass: 'ag-header-cell-text-wrap',
       autoHeaderHeight: true
     },
+    ...(hasRoles ? [{
+      headerName: "Role",
+      field: "role",
+      width: 100,
+      editable: false,
+      filter: 'agTextColumnFilter',
+      sortable: true,
+      resizable: true,
+      headerClass: 'ag-header-cell-text-wrap',
+      autoHeaderHeight: true,
+      cellRenderer: (params: ICellRendererParams) => {
+        return params.data.role || '';
+      }
+    }] : []),
     {
       headerName: "Rank ID (Sail)",
       field: "rankId",
