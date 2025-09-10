@@ -737,6 +737,19 @@ export const AdminModule = (): JSX.Element => {
                   rowSelection={false}
                   theme="alpine"
                   gridOptions={{
+                    rowDragManaged: true,
+                    animateRows: true,
+                    onRowDragEnd: (event) => {
+                      const newData = [...companyRankData];
+                      const fromIndex = event.oldIndex;
+                      const toIndex = event.overIndex;
+                      
+                      if (fromIndex !== undefined && toIndex !== undefined && fromIndex !== toIndex) {
+                        const [movedItem] = newData.splice(fromIndex, 1);
+                        newData.splice(toIndex, 0, movedItem);
+                        setCompanyRankData(newData);
+                      }
+                    },
                     onCellValueChanged: (event) => {
                       const newData = [...companyRankData];
                       const rowIndex = newData.findIndex(row => row.id === event.data.id);
