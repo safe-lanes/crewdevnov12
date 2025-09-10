@@ -43,13 +43,17 @@ export default function SideBarComponent({ selectedAdminPage, setSelectedAdminPa
                     sideBarList.filter(item => allowedPages.includes(item.page)).map(item => (
                         <div
                             key={item.page}
-                            className={`w-full h-[79px] flex flex-col items-center justify-center cursor-pointer ${selectedAdminPage === item.page ? "bg-[#52baf3]" : "bg-[#16569e] hover:bg-[#1e5fa8]"
+                            className={`w-full h-[79px] flex flex-col items-center justify-center cursor-pointer px-1 ${selectedAdminPage === item.page ? "bg-[#52baf3]" : "bg-[#16569e] hover:bg-[#1e5fa8]"
                                 }`}
                             onClick={() => setSelectedAdminPage(item.page)}
                         >
-                            <div className="text-white text-[10px] font-normal font-['Roboto',Helvetica]">
-                                {item.icon}
-                                {item.name}
+                            <div className="text-white text-[10px] font-normal font-['Roboto',Helvetica] flex flex-col items-center justify-center text-center">
+                                <div className="mb-1">
+                                    {item.icon}
+                                </div>
+                                <div className="leading-tight break-words hyphens-auto max-w-full">
+                                    {item.name}
+                                </div>
                             </div>
                         </div>
 
