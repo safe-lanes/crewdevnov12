@@ -70,8 +70,9 @@ interface CompanyRankData {
   rank: string;
   rankId: string;
   role?: string; // Role name like "3rd Off_1", "3rd Off_2"
-  parentId?: string; // ID of parent rank for role rows
-  isRoleRow?: boolean; // True for role rows, false/undefined for parent rows
+  parentId?: string; // ID of parent rank for role rows (deprecated)
+  originalRankId?: string; // ID of original rank for role rows (replaces parentId)
+  isRoleRow?: boolean; // True for role rows, false/undefined for regular rows
   officer: boolean;
   rating: boolean;
   seniorOfficer: boolean;
@@ -274,17 +275,21 @@ export const AdminModule = (): JSX.Element => {
       const rankToDelete = prev.find(rank => rank.id === rankId);
       const filteredData = prev.filter(rank => rank.id !== rankId);
       
-      // If deleting a role row, check if parent should no longer have multiple roles
-      if (rankToDelete?.isRoleRow && rankToDelete.parentId) {
-        const remainingRoles = filteredData.filter(row => row.parentId === rankToDelete.parentId);
+      // If deleting a role row, check if only 1 role remains for this rank
+      if (rankToDelete?.isRoleRow && rankToDelete.originalRankId) {
+        const remainingRoles = filteredData.filter(row => row.originalRankId === rankToDelete.originalRankId);
         
-        // If only 1 role remains, update parent to not have multiple roles
-        if (remainingRoles.length <= 1) {
-          const parentIndex = filteredData.findIndex(row => row.id === rankToDelete.parentId);
-          if (parentIndex !== -1) {
-            filteredData[parentIndex] = {
-              ...filteredData[parentIndex],
-              hasMultiple: false
+        // If only 1 role remains, convert it back to a regular rank
+        if (remainingRoles.length === 1) {
+          const lastRoleIndex = filteredData.findIndex(row => row.id === remainingRoles[0].id);
+          if (lastRoleIndex !== -1) {
+            filteredData[lastRoleIndex] = {
+              ...filteredData[lastRoleIndex],
+              role: undefined,
+              originalRankId: undefined,
+              isRoleRow: false,
+              hasMultiple: false,
+              id: rankToDelete.originalRankId // Restore original ID
             };
           }
         }
@@ -294,10 +299,10 @@ export const AdminModule = (): JSX.Element => {
     });
   };
 
-  // Check if any parent rank has multiple roles (2 or more) to show Role column
-  const hasRoles = companyRankData.some(parentRow => {
-    if (parentRow.hasMultiple && !parentRow.isRoleRow) {
-      const roleCount = companyRankData.filter(row => row.parentId === parentRow.id).length;
+  // Check if any rank has multiple roles (2 or more) to show Role column
+  const hasRoles = companyRankData.some(row => {
+    if (row.isRoleRow && row.originalRankId) {
+      const roleCount = companyRankData.filter(r => r.originalRankId === row.originalRankId).length;
       return roleCount >= 2;
     }
     return false;
@@ -311,14 +316,7 @@ export const AdminModule = (): JSX.Element => {
     minWidth: 80,
     maxWidth: 120,
     cellRenderer: (params: ICellRendererParams) => {
-      // Hide checkboxes on parent rows that have multiple roles
-      // Show checkboxes on role rows and regular rows
-      const shouldShowCheckbox = !params.data.hasMultiple || params.data.isRoleRow;
-      
-      if (!shouldShowCheckbox) {
-        return <div className="flex items-center justify-center h-full"></div>;
-      }
-      
+      // Show checkboxes on all rows (regular rows and role rows)
       return (
         <div className="flex items-center justify-center h-full">
           <input
@@ -384,10 +382,10 @@ export const AdminModule = (): JSX.Element => {
       headerClass: 'ag-header-cell-text-wrap',
       autoHeaderHeight: true,
       cellRenderer: (params: ICellRendererParams) => {
-        // Only show role name if this parent has multiple roles (2 or more)
-        if (params.data.isRoleRow && params.data.parentId) {
-          const parentRoleCount = companyRankData.filter(row => row.parentId === params.data.parentId).length;
-          if (parentRoleCount >= 2) {
+        // Only show role name if this rank has multiple roles (2 or more)
+        if (params.data.isRoleRow && params.data.originalRankId) {
+          const roleCount = companyRankData.filter(row => row.originalRankId === params.data.originalRankId).length;
+          if (roleCount >= 2) {
             return params.data.role || '';
           }
         }
@@ -426,10 +424,10 @@ export const AdminModule = (): JSX.Element => {
       width: 80,
       cellRenderer: (params: ICellRendererParams) => (
         <div className="flex items-center justify-center h-full gap-1">
-          {/* Show +Multi button only on parent rows without multiple roles, and only in edit mode */}
-          {!params.data.hasMultiple && !params.data.isRoleRow && isCompanyEditing && (
+          {/* Show +Multi button on regular ranks and on role rows (to add more roles) */}
+          {isCompanyEditing && (
             <button
-              onClick={() => handleMultiple(params.data.id)}
+              onClick={() => handleMultiple(params.data.originalRankId || params.data.id)}
               className="h-8 px-4 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded font-medium min-w-[60px] shadow-sm"
             >
               +Multi
@@ -444,15 +442,6 @@ export const AdminModule = (): JSX.Element => {
             >
               🗑
             </Button>
-          )}
-          {/* Show +Multi button again on parent rows that have roles (to add more roles) */}
-          {params.data.hasMultiple && !params.data.isRoleRow && isCompanyEditing && (
-            <button
-              onClick={() => handleMultiple(params.data.id)}
-              className="h-8 px-4 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded font-medium min-w-[60px] shadow-sm"
-            >
-              +Multi
-            </button>
           )}
         </div>
       ),
