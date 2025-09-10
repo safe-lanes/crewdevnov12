@@ -411,24 +411,26 @@ export const AdminModule = (): JSX.Element => {
       <SectionTitleComponents title={"Rank Administration"}>
         <div className="flex items-center gap-4 ml-[19px] mr-[19px]">
           {/* Inline Tab Switcher */}
-          <div className="flex items-center bg-gray-100 rounded-full p-1 border border-gray-300">
-            {[
-              { id: "rank-master", label: "Rank Master" },
-              { id: "company", label: "Company" },
-              { id: "vessel", label: "Vessel" }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setSelectedRankAdminTab(tab.id)}
-                className={`px-4 text-xs font-medium rounded-full transition-all duration-200 h-8 flex items-center ${
-                  selectedRankAdminTab === tab.id
-                    ? "bg-[#16569e] text-white shadow-sm"
-                    : "text-gray-600 hover:text-gray-800"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+          <div className="flex justify-center">
+            <div className="flex items-center bg-gray-100 rounded-full p-1 border border-gray-300 h-8">
+              {[
+                { id: "rank-master", label: "Rank Master" },
+                { id: "company", label: "Company" },
+                { id: "vessel", label: "Vessel" }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setSelectedRankAdminTab(tab.id)}
+                  className={`px-4 text-xs font-medium rounded-full transition-all duration-200 h-6 flex items-center ${
+                    selectedRankAdminTab === tab.id
+                      ? "text-[#16569e] font-bold underline"
+                      : "text-gray-600 hover:text-gray-800"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
           
           {selectedRankAdminTab === "rank-master" && (
