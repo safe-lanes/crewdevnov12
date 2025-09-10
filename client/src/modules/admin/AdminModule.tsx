@@ -408,9 +408,9 @@ export const AdminModule = (): JSX.Element => {
 
   const renderRankAdminModule = () => (
     <div>
-      <div className="flex items-center justify-between w-full px-6 py-4 border-b border-gray-200">
+      <div className="flex items-center justify-between mb-4">
         {/* Title */}
-        <h1 className="text-lg font-semibold text-black">Rank Administration</h1>
+        <h1 className="text-2xl font-bold text-black">Rank Administration</h1>
         
         {/* Centered Tab Switcher */}
         <div className="flex items-center bg-gray-100 rounded-full p-1 border border-gray-300 h-8">
