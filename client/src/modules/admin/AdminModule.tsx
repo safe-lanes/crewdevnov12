@@ -126,10 +126,10 @@ export const AdminModule = (): JSX.Element => {
       cellRenderer: () => '⋮⋮',
       cellClass: 'text-center cursor-move',
       rowDrag: isRankMasterEditing,
-      suppressMenu: true,
       sortable: false,
       filter: false,
       pinned: 'left',
+      menuTabs: [],
     },
     {
       headerName: "Rank",
