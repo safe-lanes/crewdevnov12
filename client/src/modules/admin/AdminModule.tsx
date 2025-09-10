@@ -312,8 +312,9 @@ export const AdminModule = (): JSX.Element => {
           {!params.data.hasMultiple && (
             <Button
               onClick={() => handleMultiple(params.data.id)}
-              className="h-6 px-2 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300"
+              className="h-7 px-3 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded-md"
               variant="outline"
+              size="sm"
             >
               +Multi
             </Button>
