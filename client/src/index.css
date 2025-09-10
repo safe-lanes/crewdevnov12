@@ -74,8 +74,8 @@
 }
 
 .ag-theme-alpine .ag-header-cell-text-wrap-limited {
-  height: 48px !important;
-  max-height: 48px !important;
+  height: 56px !important;
+  max-height: 56px !important;
   align-items: center !important;
   display: flex !important;
   flex-direction: column !important;
