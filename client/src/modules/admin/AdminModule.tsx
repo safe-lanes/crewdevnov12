@@ -437,7 +437,7 @@ export const AdminModule = (): JSX.Element => {
       {/* Tab Content */}
       <div className="p-4 pl-0">
         <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
-          <CardContent className="p-6">
+          <CardContent className="p-4 pl-0">
             {selectedRankAdminTab === "rank-master" && (
               <div className="h-[600px]">
                 <AgGridTable
