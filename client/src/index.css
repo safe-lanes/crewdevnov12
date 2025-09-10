@@ -54,6 +54,23 @@
   border-right: none !important;
 }
 
+/* AG Grid drag handle styling - force black color */
+.ag-theme-alpine .ag-drag-handle {
+  color: black !important;
+}
+
+.ag-theme-alpine .ag-row-drag {
+  color: black !important;
+}
+
+.ag-theme-alpine .ag-icon-row-drag {
+  color: black !important;
+}
+
+.ag-theme-alpine .ag-cell .ag-icon-row-drag {
+  color: black !important;
+}
+
 /* Remove grid borders */
 .ag-theme-alpine .ag-root-wrapper {
   border: none !important;

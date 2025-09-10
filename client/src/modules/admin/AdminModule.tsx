@@ -123,15 +123,6 @@ export const AdminModule = (): JSX.Element => {
     {
       headerName: "",
       width: 40,
-      cellRenderer: () => '⋮⋮⋮',
-      cellStyle: { 
-        color: '#000000 !important', 
-        fontSize: '16px', 
-        textAlign: 'center',
-        fontWeight: 'bold',
-        backgroundColor: 'transparent !important',
-        border: 'none !important'
-      },
       cellClass: 'text-center cursor-move',
       rowDrag: isRankMasterEditing,
       sortable: false,
