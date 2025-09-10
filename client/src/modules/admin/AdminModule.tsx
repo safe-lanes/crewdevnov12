@@ -47,11 +47,22 @@ import { z } from "zod";
 import SideBarComponent from '../../components/Navbar/SideBarComponent';
 import MainLayout from "@/components/main/MainLayout";
 import SectionTitleComponents from "@/components/Section/SectionTitleComponents";
+import { AgGridTable } from "@/components/AgGrid/AgGridTable";
+import { ColDef, GridApi, GridReadyEvent, ICellEditorParams, ICellRendererParams } from "ag-grid-community";
 
 const rankGroupSchema = z.object({
   name: z.string().min(1, "Rank group name is required"),
   ranks: z.array(z.string()).min(1, "At least one rank must be selected"),
 });
+
+// Interface for Rank Master data
+interface RankMasterData {
+  id: string;
+  rank: string;
+  rankId: string;
+  applicableToCompany: boolean;
+  label: string;
+}
 
 export const AdminModule = (): JSX.Element => {
   const [location] = useLocation();
@@ -65,7 +76,109 @@ export const AdminModule = (): JSX.Element => {
   const [newFormName, setNewFormName] = useState("");
   const [createFormType, setCreateFormType] = useState<"template" | "blank">("template");
   const [selectedTemplate, setSelectedTemplate] = useState("");
+  
+  // Rank Master state
+  const [rankMasterData, setRankMasterData] = useState<RankMasterData[]>([
+    { id: "1", rank: "Master", rankId: "S1", applicableToCompany: true, label: "Master" },
+    { id: "2", rank: "Chief Officer", rankId: "S2", applicableToCompany: true, label: "Chief Off" },
+    { id: "3", rank: "Second Officer", rankId: "S3", applicableToCompany: true, label: "2nd Off" },
+    { id: "4", rank: "Third Officer", rankId: "S4", applicableToCompany: true, label: "3rd Off" },
+    { id: "5", rank: "Fourth Officer", rankId: "S5", applicableToCompany: false, label: "" },
+    { id: "6", rank: "Deck Cadet", rankId: "S6", applicableToCompany: true, label: "Deck Cadet" },
+    { id: "7", rank: "Chief Engineer", rankId: "S7", applicableToCompany: true, label: "Ch Eng" },
+  ]);
+  const [isRankMasterEditing, setIsRankMasterEditing] = useState(false);
+  const [rankMasterGridApi, setRankMasterGridApi] = useState<GridApi | null>(null);
+  
   const queryClient = useQueryClient();
+
+  // Rank Master handlers
+  const handleRankMasterGridReady = (event: GridReadyEvent) => {
+    setRankMasterGridApi(event.api);
+  };
+
+  const handleNewRank = () => {
+    const newRank: RankMasterData = {
+      id: Date.now().toString(),
+      rank: "",
+      rankId: "",
+      applicableToCompany: false,
+      label: ""
+    };
+    setRankMasterData(prev => [...prev, newRank]);
+    setIsRankMasterEditing(true);
+  };
+
+  const handleEditRank = () => {
+    setIsRankMasterEditing(true);
+  };
+
+  const handleSaveRank = () => {
+    setIsRankMasterEditing(false);
+    rankMasterGridApi?.stopEditing();
+  };
+
+  // Rank Master column definitions
+  const rankMasterColumnDefs: ColDef[] = [
+    {
+      headerName: "",
+      width: 40,
+      cellRenderer: () => '⋮⋮',
+      cellClass: 'text-center cursor-move',
+      rowDrag: isRankMasterEditing,
+      suppressMenu: true,
+      sortable: false,
+      filter: false,
+      pinned: 'left',
+    },
+    {
+      headerName: "Rank",
+      field: "rank",
+      flex: 1,
+      editable: isRankMasterEditing,
+      cellStyle: { backgroundColor: '#E3F2FD' },
+    },
+    {
+      headerName: "Rank ID (Sail)",
+      field: "rankId", 
+      flex: 1,
+      editable: isRankMasterEditing,
+      cellStyle: { backgroundColor: '#E3F2FD' },
+    },
+    {
+      headerName: "Applicable to Company",
+      field: "applicableToCompany",
+      flex: 1,
+      cellRenderer: (params: ICellRendererParams) => {
+        return (
+          <div className="flex items-center justify-center h-full">
+            <input
+              type="checkbox"
+              checked={params.value}
+              disabled={!isRankMasterEditing}
+              onChange={(e) => {
+                if (isRankMasterEditing) {
+                  const newData = [...rankMasterData];
+                  const rowIndex = newData.findIndex(row => row.id === params.data.id);
+                  if (rowIndex !== -1) {
+                    newData[rowIndex].applicableToCompany = e.target.checked;
+                    setRankMasterData(newData);
+                  }
+                }
+              }}
+              className="form-checkbox h-4 w-4 text-blue-600"
+            />
+          </div>
+        );
+      }
+    },
+    {
+      headerName: "Label",
+      field: "label",
+      flex: 1,
+      editable: isRankMasterEditing,
+    }
+  ];
 
   // Fetch forms data from API
   const { data: formsData = [], isLoading, error } = useQuery<Form[]>({
@@ -302,12 +415,22 @@ export const AdminModule = (): JSX.Element => {
             ))}
           </div>
           
-          <Button
-            variant="outline"
-            className="h-10 border-[#e1e8ed] text-[#16569e] flex items-center gap-2"
-          >
-            <span className="text-sm">Back</span>
-          </Button>
+          {selectedRankAdminTab === "rank-master" && (
+            <div className="flex gap-2">
+              <Button
+                onClick={isRankMasterEditing ? handleSaveRank : handleEditRank}
+                className="h-10 bg-[#52baf3] hover:bg-[#3da8e3] text-white"
+              >
+                {isRankMasterEditing ? "Save" : "Edit Rank"}
+              </Button>
+              <Button
+                onClick={handleNewRank}
+                className="h-10 bg-[#4ade80] hover:bg-[#22c55e] text-white"
+              >
+                + New Rank
+              </Button>
+            </div>
+          )}
         </div>
       </SectionTitleComponents>
 
@@ -316,9 +439,43 @@ export const AdminModule = (): JSX.Element => {
         <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
           <CardContent className="p-6 bg-white rounded-lg shadow-md">
             {selectedRankAdminTab === "rank-master" && (
-              <div className="text-center py-12">
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Rank Master</h3>
-                <p className="text-gray-500">Content will be implemented here</p>
+              <div className="h-[600px]">
+                <AgGridTable
+                  rowData={rankMasterData}
+                  columnDefs={rankMasterColumnDefs}
+                  onGridReady={handleRankMasterGridReady}
+                  enableExport={false}
+                  enableSideBar={false}
+                  enableStatusBar={false}
+                  enableRowGrouping={false}
+                  enablePivoting={false}
+                  rowSelection={false}
+                  animateRows={true}
+                  theme="alpine"
+                  gridOptions={{
+                    rowDragManaged: true,
+                    animateRows: true,
+                    onRowDragEnd: (event) => {
+                      const newData = [...rankMasterData];
+                      const fromIndex = event.overIndex;
+                      const toIndex = event.overIndex;
+                      
+                      if (fromIndex !== undefined && toIndex !== undefined && fromIndex !== toIndex) {
+                        const [movedItem] = newData.splice(fromIndex, 1);
+                        newData.splice(toIndex, 0, movedItem);
+                        setRankMasterData(newData);
+                      }
+                    },
+                    onCellValueChanged: (event) => {
+                      const newData = [...rankMasterData];
+                      const rowIndex = newData.findIndex(row => row.id === event.data.id);
+                      if (rowIndex !== -1) {
+                        newData[rowIndex] = { ...newData[rowIndex], [event.colDef.field!]: event.newValue };
+                        setRankMasterData(newData);
+                      }
+                    }
+                  }}
+                />
               </div>
             )}
             
