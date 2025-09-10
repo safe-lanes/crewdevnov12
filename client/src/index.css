@@ -41,6 +41,24 @@
   color: white !important;
 }
 
+/* Header text wrapping for classification parameters */
+.ag-theme-alpine .ag-header-cell-text-wrap .ag-header-cell-text {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  text-align: center !important;
+  line-height: 1.2 !important;
+  padding: 4px 2px !important;
+}
+
+.ag-theme-alpine .ag-header-cell-text-wrap {
+  height: auto !important;
+  min-height: 40px !important;
+  align-items: center !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+
 .ag-theme-alpine .ag-row {
   border-bottom: 1px solid #e5e7eb !important;
 }
