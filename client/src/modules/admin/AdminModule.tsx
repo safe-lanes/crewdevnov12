@@ -105,7 +105,20 @@ export const AdminModule = (): JSX.Element => {
       applicableToCompany: false,
       label: ""
     };
-    setRankMasterData(prev => [...prev, newRank]);
+    setRankMasterData(prev => {
+      const newData = [...prev, newRank];
+      // Start editing the first cell of the new row after the state updates
+      setTimeout(() => {
+        if (rankMasterGridApi) {
+          const rowIndex = newData.length - 1;
+          rankMasterGridApi.startEditingCell({
+            rowIndex: rowIndex,
+            colKey: 'rank'
+          });
+        }
+      }, 100);
+      return newData;
+    });
     setIsRankMasterEditing(true);
   };
 
