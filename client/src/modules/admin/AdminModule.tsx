@@ -275,7 +275,8 @@ export const AdminModule = (): JSX.Element => {
       sortable: true,
       resizable: true,
       headerClass: 'ag-header-cell-text-wrap',
-      autoHeaderHeight: true
+      autoHeaderHeight: true,
+      hide: true
     },
     createCheckboxColumn("Officer", "officer"),
     createCheckboxColumn("Rating", "rating"),
