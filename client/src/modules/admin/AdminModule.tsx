@@ -206,13 +206,44 @@ export const AdminModule = (): JSX.Element => {
   const handleMultiple = (rankId: string) => {
     const rankToMultiply = companyRankData.find(rank => rank.id === rankId);
     if (rankToMultiply) {
-      const newRank: CompanyRankData = {
-        ...rankToMultiply,
-        id: `${rankToMultiply.id}_${Date.now()}`,
-        rank: `${rankToMultiply.rank}_1`,
-        hasMultiple: true
-      };
-      setCompanyRankData(prev => [...prev, newRank]);
+      setCompanyRankData(prev => {
+        const currentData = [...prev];
+        const rankIndex = currentData.findIndex(rank => rank.id === rankId);
+        
+        if (rankIndex !== -1) {
+          // Mark parent row as having multiple roles
+          currentData[rankIndex] = {
+            ...currentData[rankIndex],
+            hasMultiple: true
+          };
+          
+          // Check how many role rows already exist for this parent
+          const existingRoles = currentData.filter(row => row.parentId === rankId);
+          const startIndex = existingRoles.length > 0 ? existingRoles.length + 1 : 1;
+          
+          // Create 2 new role rows (or 1 more if roles already exist)
+          const rolesToCreate = existingRoles.length === 0 ? 2 : 1;
+          const newRoles: CompanyRankData[] = [];
+          
+          for (let i = 0; i < rolesToCreate; i++) {
+            const roleNumber = startIndex + i;
+            const newRole: CompanyRankData = {
+              ...rankToMultiply,
+              id: `${rankToMultiply.id}_role_${roleNumber}_${Date.now()}`,
+              role: `${rankToMultiply.rank}_${roleNumber}`,
+              parentId: rankId,
+              isRoleRow: true,
+              hasMultiple: false // Role rows don't have the multiple functionality
+            };
+            newRoles.push(newRole);
+          }
+          
+          // Insert role rows right after the parent row
+          currentData.splice(rankIndex + 1, 0, ...newRoles);
+        }
+        
+        return currentData;
+      });
     }
   };
 
