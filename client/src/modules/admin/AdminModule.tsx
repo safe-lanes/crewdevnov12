@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { EditIcon, Plus, Eye, GripVertical } from "lucide-react";
+import { EditIcon, Plus, Eye, Grip } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -124,7 +124,7 @@ export const AdminModule = (): JSX.Element => {
       headerName: "",
       width: 40,
       cellRenderer: () => (
-        <GripVertical className="h-4 w-4 text-black" />
+        <Grip className="h-4 w-4 text-black" />
       ),
       cellClass: 'text-center cursor-move',
       rowDrag: isRankMasterEditing,
