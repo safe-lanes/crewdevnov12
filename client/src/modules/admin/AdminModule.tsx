@@ -292,8 +292,8 @@ export const AdminModule = (): JSX.Element => {
     createCheckboxColumn("Safety Officer", "safetyOfficer"),
     createCheckboxColumn("SSO", "sso"),
     createCheckboxColumn("Medical Officer", "medicalOfficer"),
-    createCheckboxColumn("Navigating Officer", "navigatingOfficer"),
-    createCheckboxColumn("EMT Officer", "emtOfficer"),
+    createCheckboxColumn("Nav. Officer", "navigatingOfficer"),
+    createCheckboxColumn("Envt. Officer", "emtOfficer"),
     {
       headerName: "",
       width: 80,
