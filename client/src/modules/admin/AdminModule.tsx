@@ -261,26 +261,36 @@ export const AdminModule = (): JSX.Element => {
     flex: 1,
     minWidth: 80,
     maxWidth: 120,
-    cellRenderer: (params: ICellRendererParams) => (
-      <div className="flex items-center justify-center h-full">
-        <input
-          type="checkbox"
-          checked={params.value || false}
-          disabled={!isCompanyEditing}
-          onChange={(e) => {
-            if (isCompanyEditing) {
-              const newData = [...companyRankData];
-              const rowIndex = newData.findIndex(row => row.id === params.data.id);
-              if (rowIndex !== -1) {
-                newData[rowIndex] = { ...newData[rowIndex], [field]: e.target.checked };
-                setCompanyRankData(newData);
+    cellRenderer: (params: ICellRendererParams) => {
+      // Hide checkboxes on parent rows that have multiple roles
+      // Show checkboxes on role rows and regular rows
+      const shouldShowCheckbox = !params.data.hasMultiple || params.data.isRoleRow;
+      
+      if (!shouldShowCheckbox) {
+        return <div className="flex items-center justify-center h-full"></div>;
+      }
+      
+      return (
+        <div className="flex items-center justify-center h-full">
+          <input
+            type="checkbox"
+            checked={params.value || false}
+            disabled={!isCompanyEditing}
+            onChange={(e) => {
+              if (isCompanyEditing) {
+                const newData = [...companyRankData];
+                const rowIndex = newData.findIndex(row => row.id === params.data.id);
+                if (rowIndex !== -1) {
+                  newData[rowIndex] = { ...newData[rowIndex], [field]: e.target.checked };
+                  setCompanyRankData(newData);
+                }
               }
-            }
-          }}
-          className="form-checkbox h-4 w-4 text-blue-600"
-        />
-      </div>
-    ),
+            }}
+            className="form-checkbox h-4 w-4 text-blue-600"
+          />
+        </div>
+      );
+    },
     cellStyle: { textAlign: 'center' },
     sortable: false,
     filter: false,
