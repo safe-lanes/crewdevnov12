@@ -341,7 +341,14 @@ export const AdminModule = (): JSX.Element => {
       headerClass: 'ag-header-cell-text-wrap',
       autoHeaderHeight: true,
       cellRenderer: (params: ICellRendererParams) => {
-        return params.data.role || '';
+        // Only show role name if this parent has multiple roles (2 or more)
+        if (params.data.isRoleRow && params.data.parentId) {
+          const parentRoleCount = companyRankData.filter(row => row.parentId === params.data.parentId).length;
+          if (parentRoleCount >= 2) {
+            return params.data.role || '';
+          }
+        }
+        return '';
       }
     }] : []),
     {
