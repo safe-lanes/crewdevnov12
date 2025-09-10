@@ -148,6 +148,7 @@ export const AdminModule = (): JSX.Element => {
       field: "rank",
       flex: 1,
       editable: isRankMasterEditing,
+      singleClickEdit: true,
       cellStyle: { backgroundColor: '#E3F2FD' },
     },
     {
@@ -155,6 +156,7 @@ export const AdminModule = (): JSX.Element => {
       field: "rankId", 
       flex: 1,
       editable: isRankMasterEditing,
+      singleClickEdit: true,
       cellStyle: { backgroundColor: '#E3F2FD' },
     },
     {
@@ -189,6 +191,7 @@ export const AdminModule = (): JSX.Element => {
       field: "label",
       flex: 1,
       editable: isRankMasterEditing,
+      singleClickEdit: true,
     }
   ];
 
