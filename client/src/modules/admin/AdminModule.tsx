@@ -741,10 +741,10 @@ export const AdminModule = (): JSX.Element => {
                     animateRows: true,
                     onRowDragEnd: (event) => {
                       const newData = [...companyRankData];
-                      const fromIndex = event.oldIndex;
+                      const fromIndex = event.node?.rowIndex;
                       const toIndex = event.overIndex;
                       
-                      if (fromIndex !== undefined && toIndex !== undefined && fromIndex !== toIndex) {
+                      if (fromIndex !== undefined && fromIndex !== null && toIndex !== undefined && toIndex !== null && fromIndex !== toIndex) {
                         const [movedItem] = newData.splice(fromIndex, 1);
                         newData.splice(toIndex, 0, movedItem);
                         setCompanyRankData(newData);
