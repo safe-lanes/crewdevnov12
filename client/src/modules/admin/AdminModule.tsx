@@ -123,9 +123,8 @@ export const AdminModule = (): JSX.Element => {
     {
       headerName: "",
       width: 40,
-      cellRenderer: () => (
-        <Grip className="h-4 w-4 text-black" />
-      ),
+      cellRenderer: () => `⋮⋮`,
+      cellStyle: { color: 'black', fontSize: '16px', fontWeight: 'bold' },
       cellClass: 'text-center cursor-move',
       rowDrag: isRankMasterEditing,
       sortable: false,
