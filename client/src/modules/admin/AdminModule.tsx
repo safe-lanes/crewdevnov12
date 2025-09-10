@@ -408,27 +408,11 @@ export const AdminModule = (): JSX.Element => {
 
   const renderRankAdminModule = () => (
     <div>
-      <SectionTitleComponents title={"Rank Administration"}>
-        {selectedRankAdminTab === "rank-master" && (
-          <div className="flex gap-2 ml-[19px] mr-[19px]">
-            <Button
-              onClick={isRankMasterEditing ? handleSaveRank : handleEditRank}
-              className="h-8 bg-[#52baf3] hover:bg-[#3da8e3] text-white text-xs"
-            >
-              {isRankMasterEditing ? "Save" : "Edit Rank"}
-            </Button>
-            <Button
-              onClick={handleNewRank}
-              className="h-8 bg-[#4ade80] hover:bg-[#22c55e] text-white text-xs"
-            >
-              + New Rank
-            </Button>
-          </div>
-        )}
-      </SectionTitleComponents>
-
-      {/* Centered Tab Switcher */}
-      <div className="flex justify-center w-full mt-4 mb-4">
+      <div className="flex items-center justify-between w-full px-6 py-4 border-b border-gray-200">
+        {/* Title */}
+        <h1 className="text-lg font-semibold text-black">Rank Administration</h1>
+        
+        {/* Centered Tab Switcher */}
         <div className="flex items-center bg-gray-100 rounded-full p-1 border border-gray-300 h-8">
           {[
             { id: "rank-master", label: "Rank Master" },
@@ -448,6 +432,24 @@ export const AdminModule = (): JSX.Element => {
             </button>
           ))}
         </div>
+
+        {/* Right Side Buttons */}
+        {selectedRankAdminTab === "rank-master" && (
+          <div className="flex gap-2">
+            <Button
+              onClick={isRankMasterEditing ? handleSaveRank : handleEditRank}
+              className="h-8 bg-[#52baf3] hover:bg-[#3da8e3] text-white text-xs"
+            >
+              {isRankMasterEditing ? "Save" : "Edit Rank"}
+            </Button>
+            <Button
+              onClick={handleNewRank}
+              className="h-8 bg-[#4ade80] hover:bg-[#22c55e] text-white text-xs"
+            >
+              + New Rank
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Tab Content */}
