@@ -419,13 +419,13 @@ export const AdminModule = (): JSX.Element => {
             <div className="flex gap-2">
               <Button
                 onClick={isRankMasterEditing ? handleSaveRank : handleEditRank}
-                className="h-10 bg-[#52baf3] hover:bg-[#3da8e3] text-white"
+                className="h-8 bg-[#52baf3] hover:bg-[#3da8e3] text-white text-xs"
               >
                 {isRankMasterEditing ? "Save" : "Edit Rank"}
               </Button>
               <Button
                 onClick={handleNewRank}
-                className="h-10 bg-[#4ade80] hover:bg-[#22c55e] text-white"
+                className="h-8 bg-[#4ade80] hover:bg-[#22c55e] text-white text-xs"
               >
                 + New Rank
               </Button>
@@ -505,16 +505,16 @@ export const AdminModule = (): JSX.Element => {
           <Button
             variant="outline"
             onClick={() => setShowCreateFormDialog(true)}
-            className="h-10 border-[#e1e8ed] text-[#16569e] flex items-center gap-2"
+            className="h-8 border-[#e1e8ed] text-[#16569e] flex items-center gap-2"
           >
             <Plus className="h-4 w-4" />
-            <span className="text-sm">Create Form</span>
+            <span className="text-xs">Create Form</span>
           </Button>
           <Button
             variant="outline"
-            className="h-10 border-[#e1e8ed] text-[#16569e] flex items-center gap-2"
+            className="h-8 border-[#e1e8ed] text-[#16569e] flex items-center gap-2"
           >
-            <span className="text-sm">Back</span>
+            <span className="text-xs">Back</span>
           </Button>
         </div>
       </SectionTitleComponents>
