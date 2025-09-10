@@ -409,48 +409,46 @@ export const AdminModule = (): JSX.Element => {
   const renderRankAdminModule = () => (
     <div>
       <SectionTitleComponents title={"Rank Administration"}>
-        <div className="flex items-center gap-4 ml-[19px] mr-[19px]">
-          {/* Inline Tab Switcher */}
-          <div className="flex justify-center">
-            <div className="flex items-center bg-gray-100 rounded-full p-1 border border-gray-300 h-8">
-              {[
-                { id: "rank-master", label: "Rank Master" },
-                { id: "company", label: "Company" },
-                { id: "vessel", label: "Vessel" }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setSelectedRankAdminTab(tab.id)}
-                  className={`px-4 text-xs font-medium rounded-full transition-all duration-200 h-6 flex items-center ${
-                    selectedRankAdminTab === tab.id
-                      ? "text-[#16569e] font-bold underline"
-                      : "text-gray-600 hover:text-gray-800"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+        {selectedRankAdminTab === "rank-master" && (
+          <div className="flex gap-2 ml-[19px] mr-[19px]">
+            <Button
+              onClick={isRankMasterEditing ? handleSaveRank : handleEditRank}
+              className="h-8 bg-[#52baf3] hover:bg-[#3da8e3] text-white text-xs"
+            >
+              {isRankMasterEditing ? "Save" : "Edit Rank"}
+            </Button>
+            <Button
+              onClick={handleNewRank}
+              className="h-8 bg-[#4ade80] hover:bg-[#22c55e] text-white text-xs"
+            >
+              + New Rank
+            </Button>
           </div>
-          
-          {selectedRankAdminTab === "rank-master" && (
-            <div className="flex gap-2">
-              <Button
-                onClick={isRankMasterEditing ? handleSaveRank : handleEditRank}
-                className="h-8 bg-[#52baf3] hover:bg-[#3da8e3] text-white text-xs"
-              >
-                {isRankMasterEditing ? "Save" : "Edit Rank"}
-              </Button>
-              <Button
-                onClick={handleNewRank}
-                className="h-8 bg-[#4ade80] hover:bg-[#22c55e] text-white text-xs"
-              >
-                + New Rank
-              </Button>
-            </div>
-          )}
-        </div>
+        )}
       </SectionTitleComponents>
+
+      {/* Centered Tab Switcher */}
+      <div className="flex justify-center w-full mt-4 mb-4">
+        <div className="flex items-center bg-gray-100 rounded-full p-1 border border-gray-300 h-8">
+          {[
+            { id: "rank-master", label: "Rank Master" },
+            { id: "company", label: "Company" },
+            { id: "vessel", label: "Vessel" }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setSelectedRankAdminTab(tab.id)}
+              className={`px-4 text-xs font-medium rounded-full transition-all duration-200 h-6 flex items-center ${
+                selectedRankAdminTab === tab.id
+                  ? "text-[#16569e] font-bold underline"
+                  : "text-gray-600 hover:text-gray-800"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Tab Content */}
       <div className="p-4 pl-0">
