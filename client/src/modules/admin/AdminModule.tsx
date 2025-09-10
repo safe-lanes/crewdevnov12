@@ -56,6 +56,7 @@ const rankGroupSchema = z.object({
 export const AdminModule = (): JSX.Element => {
   const [location] = useLocation();
   const [selectedAdminPage, setSelectedAdminPage] = useState("forms");
+  const [selectedRankAdminTab, setSelectedRankAdminTab] = useState("rank-master");
   const [editingForm, setEditingForm] = useState<Form | null>(null);
   const [editingRankGroup, setEditingRankGroup] = useState<string | null>(null);
   const [isAddRankGroupOpen, setIsAddRankGroupOpen] = useState(false);
@@ -276,6 +277,70 @@ export const AdminModule = (): JSX.Element => {
     return acc;
   }, {} as Record<string, typeof formsData>);
 
+  const renderRankAdminModule = () => (
+    <div>
+      <SectionTitleComponents title={"Rank Administration"}>
+        <div className="flex items-center gap-2 ml-[19px] mr-[19px]">
+          <Button
+            variant="outline"
+            className="h-10 border-[#e1e8ed] text-[#16569e] flex items-center gap-2"
+          >
+            <span className="text-sm">Back</span>
+          </Button>
+        </div>
+      </SectionTitleComponents>
+
+      {/* Tab Switcher */}
+      <div className="p-4 pl-0">
+        <div className="flex gap-1 mb-6">
+          {[
+            { id: "rank-master", label: "Rank Master" },
+            { id: "company", label: "Company" },
+            { id: "vessel", label: "Vessel" }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setSelectedRankAdminTab(tab.id)}
+              className={`px-6 py-2 text-sm font-medium rounded-lg transition-colors ${
+                selectedRankAdminTab === tab.id
+                  ? "bg-[#16569e] text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab Content */}
+        <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
+          <CardContent className="p-6 bg-white rounded-lg shadow-md">
+            {selectedRankAdminTab === "rank-master" && (
+              <div className="text-center py-12">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Rank Master</h3>
+                <p className="text-gray-500">Content will be implemented here</p>
+              </div>
+            )}
+            
+            {selectedRankAdminTab === "company" && (
+              <div className="text-center py-12">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Company</h3>
+                <p className="text-gray-500">Content will be implemented here</p>
+              </div>
+            )}
+            
+            {selectedRankAdminTab === "vessel" && (
+              <div className="text-center py-12">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Vessel</h3>
+                <p className="text-gray-500">Content will be implemented here</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+
   const renderFormsTable = () => (
     <div>
       <SectionTitleComponents title={"Forms Configuration"}>
@@ -466,6 +531,7 @@ export const AdminModule = (): JSX.Element => {
       <SideBarComponent selectedAdminPage={selectedAdminPage} setSelectedAdminPage={setSelectedAdminPage} allowedPages={["forms", "rank-admin", "masters", "training-matrix"]} />
       <MainLayout>
         {selectedAdminPage === "forms" && renderFormsTable()}
+        {selectedAdminPage === "rank-admin" && renderRankAdminModule()}
       </MainLayout>
 
       {/* Main content */}
