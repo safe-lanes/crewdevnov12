@@ -1388,8 +1388,7 @@ export const AdminModule = (): JSX.Element => {
                 <>
                   <Button
                     onClick={handleCancel}
-                    variant="outline"
-                    className="h-8 border-[#e1e8ed] text-red-600 text-xs"
+                    className="h-8 bg-[#ff6961] hover:bg-[#ff5449] text-[#fdfcfc] text-xs"
                   >
                     Cancel
                   </Button>
