@@ -762,8 +762,7 @@ export const AdminModule = (): JSX.Element => {
     headerName,
     field,
     flex: 1,
-    minWidth: 80,
-    maxWidth: 120,
+    minWidth: 100,
     cellRenderer: (params: ICellRendererParams) => {
       const isChecked = params.value || false;
       const shouldShowCheckbox = revisionMode || isChecked;
