@@ -331,12 +331,20 @@ export const AdminModule = (): JSX.Element => {
     minWidth: 80,
     maxWidth: 120,
     cellRenderer: (params: ICellRendererParams) => {
-      // Show checkboxes on all rows (regular rows and role rows)
+      // In non-edit mode: only show checked checkboxes, hide unchecked ones
+      // In edit mode: show all checkboxes (checked and unchecked)
+      const isChecked = params.value || false;
+      const shouldShowCheckbox = isCompanyEditing || isChecked;
+      
+      if (!shouldShowCheckbox) {
+        return <div className="flex items-center justify-center h-full"></div>;
+      }
+      
       return (
         <div className="flex items-center justify-center h-full">
           <input
             type="checkbox"
-            checked={params.value || false}
+            checked={isChecked}
             disabled={!isCompanyEditing}
             onChange={(e) => {
               if (isCompanyEditing) {
@@ -348,13 +356,7 @@ export const AdminModule = (): JSX.Element => {
                 }
               }
             }}
-            className={`form-checkbox h-4 w-4 ${
-              isCompanyEditing 
-                ? "text-blue-600" 
-                : params.value 
-                  ? "text-blue-800 opacity-90" 
-                  : "text-gray-400"
-            }`}
+            className="form-checkbox h-4 w-4 text-blue-600"
           />
         </div>
       );
