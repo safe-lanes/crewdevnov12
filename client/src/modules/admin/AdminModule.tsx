@@ -798,9 +798,13 @@ export const AdminModule = (): JSX.Element => {
           {selectedRankAdminTab === "rank-master" && (
             <div className="flex gap-2">
               <Button
-                variant="outline"
+                variant={isRankMasterEditing ? "default" : "outline"}
                 onClick={isRankMasterEditing ? handleSaveRank : handleEditRank}
-                className="h-8 border-[#e1e8ed] text-[#16569e] text-xs"
+                className={`h-8 text-xs ${
+                  isRankMasterEditing 
+                    ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
+                    : "border-[#e1e8ed] text-[#16569e]"
+                }`}
               >
                 {isRankMasterEditing ? "Save" : "Edit Rank"}
               </Button>
@@ -815,9 +819,13 @@ export const AdminModule = (): JSX.Element => {
           {selectedRankAdminTab === "company" && (
             <div className="flex gap-2">
               <Button
-                variant="outline"
+                variant={isCompanyEditing ? "default" : "outline"}
                 onClick={isCompanyEditing ? handleSaveCompany : handleEditCompany}
-                className="h-8 border-[#e1e8ed] text-[#16569e] text-xs"
+                className={`h-8 text-xs ${
+                  isCompanyEditing 
+                    ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
+                    : "border-[#e1e8ed] text-[#16569e]"
+                }`}
               >
                 {isCompanyEditing ? "Save" : "Edit Table"}
               </Button>
