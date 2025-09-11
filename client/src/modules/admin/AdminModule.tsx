@@ -815,7 +815,7 @@ export const AdminModule = (): JSX.Element => {
             <div className="flex gap-2">
               <Button
                 onClick={isCompanyEditing ? handleSaveCompany : handleEditCompany}
-                className="h-8 bg-[#52baf3] hover:bg-[#3da8e3] text-white text-xs"
+                className="h-8 bg-[#15569e] hover:bg-[#3da8e3] text-white text-xs"
               >
                 {isCompanyEditing ? "Save" : "Edit Table"}
               </Button>
