@@ -663,21 +663,80 @@ export const AdminModule = (): JSX.Element => {
   };
 
   const handleSaveDraft = () => {
-    // Save current state as draft
-    console.log("Saving draft...");
+    if (selectedVessels.length === 0) return;
+    
+    try {
+      // Stop any ongoing editing in the grid
+      vesselGridApi?.stopEditing();
+      
+      // Save draft for all selected vessels
+      const draftData = new Map();
+      selectedVessels.forEach(vesselId => {
+        const vesselData = vesselRankDataMap.get(vesselId);
+        if (vesselData) {
+          draftData.set(vesselId, [...vesselData]);
+        }
+      });
+      
+      // TODO: Persist draft data to backend/localStorage
+      console.log("Saving draft for vessels:", Array.from(draftData.keys()));
+      console.log("Draft data:", Object.fromEntries(draftData));
+      
+      // Show success feedback (could add toast here)
+      
+    } catch (error) {
+      console.error("Error saving draft:", error);
+      // TODO: Show error feedback
+    }
   };
 
   const handleCancel = () => {
+    // Stop any ongoing editing
+    vesselGridApi?.stopEditing();
+    
+    // Clear selected vessels and reset states
+    setSelectedVessels([]);
     setRevisionMode(false);
     setIsVesselEditing(false);
-    // Revert changes if needed
+    
+    // TODO: Revert any unsaved changes by reloading original data
+    // For now, we could reload from server or reset to original state
+    console.log("Cancelled vessel revision mode");
   };
 
   const handleSubmit = () => {
-    setRevisionMode(false);
-    setIsVesselEditing(false);
-    // Submit final changes
-    console.log("Submitting changes...");
+    if (selectedVessels.length === 0) return;
+    
+    try {
+      // Stop any ongoing editing
+      vesselGridApi?.stopEditing();
+      
+      // Prepare submission data for all selected vessels
+      const submissionData = new Map();
+      selectedVessels.forEach(vesselId => {
+        const vesselData = vesselRankDataMap.get(vesselId);
+        if (vesselData) {
+          // Filter out any invalid data and prepare for submission
+          const validData = vesselData.filter(row => row.rank && row.rank.trim() !== '');
+          submissionData.set(vesselId, validData);
+        }
+      });
+      
+      // TODO: Submit to backend API
+      console.log("Submitting changes for vessels:", Array.from(submissionData.keys()));
+      console.log("Submission data:", Object.fromEntries(submissionData));
+      
+      // Reset states after successful submission
+      setSelectedVessels([]);
+      setRevisionMode(false);
+      setIsVesselEditing(false);
+      
+      // TODO: Show success feedback and potentially refresh data
+      
+    } catch (error) {
+      console.error("Error submitting changes:", error);
+      // TODO: Show error feedback, keep revision mode active
+    }
   };
 
   // Check if any rank has multiple roles (2 or more) to show Role column
