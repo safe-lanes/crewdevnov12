@@ -1395,7 +1395,7 @@ export const AdminModule = (): JSX.Element => {
                   </Button>
                   <Button
                     onClick={handleSaveDraft}
-                    className="h-8 bg-[#f39c12] hover:bg-[#e67e22] text-white text-xs"
+                    className="h-8 bg-[#15569e] hover:bg-[#0f4078] text-white text-xs"
                   >
                     Save Draft
                   </Button>
