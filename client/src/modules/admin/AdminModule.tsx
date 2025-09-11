@@ -157,13 +157,84 @@ export const AdminModule = (): JSX.Element => {
   const [companyGridApi, setCompanyGridApi] = useState<GridApi | null>(null);
   
   // Vessel state
-  const [vesselRankData, setVesselRankData] = useState<VesselRankData[]>([]);
+  const [vesselRankDataMap, setVesselRankDataMap] = useState<Map<string, VesselRankData[]>>(new Map());
   const [isVesselEditing, setIsVesselEditing] = useState(false);
   const [vesselGridApi, setVesselGridApi] = useState<GridApi | null>(null);
-  const [selectedVessel, setSelectedVessel] = useState("");
+  const [selectedVessels, setSelectedVessels] = useState<string[]>([]);
   const [selectedRevision, setSelectedRevision] = useState("R1");
   const [flexDate, setFlexDate] = useState("");
   const [revisionMode, setRevisionMode] = useState(false);
+  
+  // Current vessel rank data (derived from selected vessels)
+  const vesselRankData = selectedVessels.length > 0 
+    ? vesselRankDataMap.get(selectedVessels[0]) || []
+    : [];
+
+  // Helper function to update vessel rank data for selected vessels with robust error handling
+  const updateVesselRankData = (updater: (current: VesselRankData[]) => VesselRankData[]) => {
+    if (!updater || typeof updater !== 'function') {
+      console.error('updateVesselRankData: Invalid updater function provided');
+      return;
+    }
+
+    if (!selectedVessels || selectedVessels.length === 0) {
+      console.warn('updateVesselRankData: No vessels selected for update');
+      return;
+    }
+
+    setVesselRankDataMap(prev => {
+      try {
+        const newMap = new Map(prev);
+        let hasUpdates = false;
+        
+        selectedVessels.forEach(vesselId => {
+          if (!vesselId) {
+            console.warn('updateVesselRankData: Invalid vessel ID encountered');
+            return;
+          }
+          
+          try {
+            const currentData = newMap.get(vesselId) || [];
+            const updatedData = updater(currentData);
+            
+            // Validate updated data structure
+            if (!Array.isArray(updatedData)) {
+              console.error(`updateVesselRankData: Updater returned non-array for vessel ${vesselId}`);
+              return;
+            }
+            
+            // Validate each rank in the updated data
+            const isValidRankData = updatedData.every(rank => {
+              return rank && 
+                typeof rank.id === 'string' && 
+                typeof rank.rank === 'string' &&
+                typeof rank.rankId === 'string' &&
+                Array.isArray(rank.actualManning) &&
+                typeof rank.actualManningFlag === 'boolean' &&
+                typeof rank.safeManning === 'boolean' &&
+                typeof rank.optimumManning === 'boolean' &&
+                typeof rank.highWorkloadManning === 'boolean';
+            });
+            
+            if (!isValidRankData) {
+              console.error(`updateVesselRankData: Invalid rank data structure for vessel ${vesselId}`);
+              return;
+            }
+            
+            newMap.set(vesselId, updatedData);
+            hasUpdates = true;
+          } catch (vesselError) {
+            console.error(`updateVesselRankData: Error updating vessel ${vesselId}:`, vesselError);
+          }
+        });
+        
+        return hasUpdates ? newMap : prev;
+      } catch (error) {
+        console.error('updateVesselRankData: Critical error during update:', error);
+        return prev; // Return original state to prevent data corruption
+      }
+    });
+  };
   
   // Sample seafarer data
   const [seafarerData] = useState<SeafarerData[]>([
@@ -217,30 +288,72 @@ export const AdminModule = (): JSX.Element => {
     setCompanyRankData(companyRanks);
   }, [rankMasterData]);
 
-  // Sync vessel rank data with company rank data changes
+  // Sync vessel rank data with company rank data changes for all vessels
   React.useEffect(() => {
-    const vesselRanks: VesselRankData[] = companyRankData.map(companyRank => ({
-      id: companyRank.id,
-      rank: companyRank.rank,
-      rankId: companyRank.rankId,
-      role: companyRank.role,
-      originalRankId: companyRank.originalRankId,
-      isRoleRow: companyRank.isRoleRow,
-      // Vessel-specific manning fields (initialize as false)
-      actualManning: [], // Initialize with empty actual manning
-      actualManningFlag: false, // Initialize checkbox as unchecked
-      safeManning: false,
-      optimumManning: false,
-      highWorkloadManning: false,
-      // Officer role overrides (default to Company tab values)
-      safetyOfficer: companyRank.safetyOfficer,
-      sso: companyRank.sso,
-      medicalOfficer: companyRank.medicalOfficer,
-      navigatingOfficer: companyRank.navigatingOfficer,
-      emtOfficer: companyRank.emtOfficer,
-      hasMultiple: companyRank.hasMultiple
-    }));
-    setVesselRankData(vesselRanks);
+    // Don't sync if companyRankData is empty (initial state)
+    if (companyRankData.length === 0) return;
+
+    setVesselRankDataMap(prev => {
+      const newMap = new Map();
+      
+      vesselOptions.forEach(vessel => {
+        const existingVesselData = prev.get(vessel.value) || [];
+        const preservedManningData = new Map<string, {
+          actualManning: string[];
+          actualManningFlag: boolean;
+          safeManning: boolean;
+          optimumManning: boolean;
+          highWorkloadManning: boolean;
+        }>();
+        
+        // Preserve existing vessel-specific manning data by rank/role ID
+        existingVesselData.forEach(existingRank => {
+          const key = existingRank.originalRankId || existingRank.id;
+          const roleKey = existingRank.role ? `${key}_${existingRank.role}` : key;
+          preservedManningData.set(roleKey, {
+            actualManning: [...existingRank.actualManning], // Deep copy array
+            actualManningFlag: existingRank.actualManningFlag,
+            safeManning: existingRank.safeManning,
+            optimumManning: existingRank.optimumManning,
+            highWorkloadManning: existingRank.highWorkloadManning
+          });
+        });
+        
+        // Create fresh vessel data structure based on current company structure
+        const vesselRanks: VesselRankData[] = companyRankData.map(companyRank => {
+          const key = companyRank.originalRankId || companyRank.id;
+          const roleKey = companyRank.role ? `${key}_${companyRank.role}` : key;
+          const preservedData = preservedManningData.get(roleKey);
+          
+          return {
+            id: companyRank.id,
+            rank: companyRank.rank,
+            rankId: companyRank.rankId,
+            role: companyRank.role,
+            originalRankId: companyRank.originalRankId,
+            isRoleRow: companyRank.isRoleRow,
+            // Restore preserved manning data or initialize as empty
+            actualManning: preservedData?.actualManning || [],
+            actualManningFlag: preservedData?.actualManningFlag || false,
+            safeManning: preservedData?.safeManning || false,
+            optimumManning: preservedData?.optimumManning || false,
+            highWorkloadManning: preservedData?.highWorkloadManning || false,
+            // Officer role overrides (default to Company tab values)
+            safetyOfficer: companyRank.safetyOfficer,
+            sso: companyRank.sso,
+            medicalOfficer: companyRank.medicalOfficer,
+            navigatingOfficer: companyRank.navigatingOfficer,
+            emtOfficer: companyRank.emtOfficer,
+            hasMultiple: companyRank.hasMultiple
+          };
+        });
+        
+        // Each vessel gets its own deep copy
+        newMap.set(vessel.value, vesselRanks);
+      });
+      
+      return newMap;
+    });
   }, [companyRankData]);
 
   // Rank Master handlers
@@ -412,9 +525,10 @@ export const AdminModule = (): JSX.Element => {
   };
 
   const handleVesselMultiple = (rankId: string) => {
-    // Similar to company multiple but for vessel data
+    // Find the rank to multiply from vessel data
     let rankToMultiply = vesselRankData.find(rank => rank.id === rankId);
     
+    // If not found directly, look for it by originalRankId (could be a role's parent)
     if (!rankToMultiply) {
       const existingRole = vesselRankData.find(row => row.originalRankId === rankId);
       if (existingRole) {
@@ -429,13 +543,25 @@ export const AdminModule = (): JSX.Element => {
       }
     }
     
-    if (rankToMultiply) {
-      setVesselRankData(prev => {
+    if (!rankToMultiply) {
+      console.warn(`No rank found for id: ${rankId}`);
+      return;
+    }
+    
+    updateVesselRankData(prev => {
+      try {
         const currentData = [...prev];
-        const rankIndex = currentData.findIndex(rank => rank.id === rankId);
         const existingRoles = currentData.filter(row => row.originalRankId === rankId);
         
         if (existingRoles.length === 0) {
+          // First time creating roles - find the parent rank to replace
+          const rankIndex = currentData.findIndex(rank => rank.id === rankId);
+          
+          if (rankIndex === -1) {
+            console.warn(`Parent rank with id ${rankId} not found in current data`);
+            return prev; // Return unchanged data
+          }
+          
           const role1: VesselRankData = {
             ...rankToMultiply,
             id: `${rankToMultiply.id}_role_1_${Date.now()}`,
@@ -454,8 +580,10 @@ export const AdminModule = (): JSX.Element => {
             hasMultiple: false
           };
           
+          // Safe splice: replace the parent rank with 2 role rows
           currentData.splice(rankIndex, 1, role1, role2);
         } else {
+          // Adding more roles - find highest role number and increment
           const roleNumbers = existingRoles
             .map(role => {
               const match = role.role?.match(/_(\d+)$/);
@@ -474,19 +602,30 @@ export const AdminModule = (): JSX.Element => {
             hasMultiple: false
           };
           
-          const lastRoleIndex = Math.max(...existingRoles.map(role => 
-            currentData.findIndex(row => row.id === role.id)
-          ));
-          currentData.splice(lastRoleIndex + 1, 0, newRole);
+          // Find the position to insert the new role (after the last existing role)
+          const roleIndexes = existingRoles
+            .map(role => currentData.findIndex(row => row.id === role.id))
+            .filter(idx => idx !== -1);
+          
+          if (roleIndexes.length === 0) {
+            console.warn(`No valid role indexes found for originalRankId: ${rankId}`);
+            return prev;
+          }
+          
+          const insertIndex = Math.max(...roleIndexes) + 1;
+          currentData.splice(insertIndex, 0, newRole);
         }
         
         return currentData;
-      });
-    }
+      } catch (error) {
+        console.error('Error in handleVesselMultiple:', error);
+        return prev; // Return unchanged data on error
+      }
+    });
   };
 
   const handleDeleteVesselRank = (rankId: string) => {
-    setVesselRankData(prev => {
+    updateVesselRankData(prev => {
       const rankToDelete = prev.find(rank => rank.id === rankId);
       const filteredData = prev.filter(rank => rank.id !== rankId);
       
@@ -576,12 +715,14 @@ export const AdminModule = (): JSX.Element => {
             disabled={!revisionMode}
             onChange={(e) => {
               if (revisionMode) {
-                const newData = [...vesselRankData];
-                const rowIndex = newData.findIndex(row => row.id === params.data.id);
-                if (rowIndex !== -1) {
-                  newData[rowIndex] = { ...newData[rowIndex], [field]: e.target.checked };
-                  setVesselRankData(newData);
-                }
+                updateVesselRankData(prevData => {
+                  const newData = [...prevData];
+                  const rowIndex = newData.findIndex(row => row.id === params.data.id);
+                  if (rowIndex !== -1) {
+                    newData[rowIndex] = { ...newData[rowIndex], [field]: e.target.checked };
+                  }
+                  return newData;
+                });
               }
             }}
             className="form-checkbox h-4 w-4 text-blue-600"
@@ -1337,9 +1478,22 @@ export const AdminModule = (): JSX.Element => {
                       <label className="block text-xs text-gray-500 tracking-wide mb-1">
                         Vessel / Vessel Group
                       </label>
-                      <Select value={selectedVessel} onValueChange={setSelectedVessel}>
+                      <Select 
+                        value={selectedVessels.length === 1 ? selectedVessels[0] : ""} 
+                        onValueChange={(value) => {
+                          if (value) {
+                            setSelectedVessels([value]);
+                          } else {
+                            setSelectedVessels([]);
+                          }
+                        }}
+                      >
                         <SelectTrigger className="h-8 text-xs" data-testid="vessel-select">
-                          <SelectValue placeholder="Select vessel or group" />
+                          <SelectValue placeholder={
+                            selectedVessels.length === 0 ? "Select vessel or group" :
+                            selectedVessels.length === 1 ? vesselOptions.find(v => v.value === selectedVessels[0])?.label :
+                            `${selectedVessels.length} vessels selected`
+                          } />
                         </SelectTrigger>
                         <SelectContent>
                           {vesselOptions.map((option) => (
@@ -1430,16 +1584,18 @@ export const AdminModule = (): JSX.Element => {
                         if (fromIndex !== undefined && fromIndex !== null && toIndex !== undefined && toIndex !== null && fromIndex !== toIndex) {
                           const [movedItem] = newData.splice(fromIndex, 1);
                           newData.splice(toIndex, 0, movedItem);
-                          setVesselRankData(newData);
+                          updateVesselRankData(() => newData);
                         }
                       },
                       onCellValueChanged: (event) => {
-                        const newData = [...vesselRankData];
-                        const rowIndex = newData.findIndex(row => row.id === event.data.id);
-                        if (rowIndex !== -1) {
-                          newData[rowIndex] = { ...newData[rowIndex], [event.colDef.field!]: event.newValue };
-                          setVesselRankData(newData);
-                        }
+                        updateVesselRankData(prevData => {
+                          const newData = [...prevData];
+                          const rowIndex = newData.findIndex(row => row.id === event.data.id);
+                          if (rowIndex !== -1) {
+                            newData[rowIndex] = { ...newData[rowIndex], [event.colDef.field!]: event.newValue };
+                          }
+                          return newData;
+                        });
                       }
                     }}
                   />
