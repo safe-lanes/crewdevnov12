@@ -91,6 +91,44 @@ interface CompanyRankData {
   hasMultiple: boolean;
 }
 
+// Interface for Vessel Rank data (mirrors Company structure but with additional fields)
+interface VesselRankData {
+  id: string;
+  rank: string;
+  rankId: string;
+  role?: string; // Role name like "3rd Off_1", "3rd Off_2"
+  originalRankId?: string; // ID of original rank for role rows
+  isRoleRow?: boolean; // True for role rows, false/undefined for regular rows
+  officer: boolean;
+  rating: boolean;
+  seniorOfficer: boolean;
+  deckOfficer: boolean;
+  engOfficer: boolean;
+  pettyOfficer: boolean;
+  deckRating: boolean;
+  engineRating: boolean;
+  generalRating: boolean;
+  cateringRating: boolean;
+  safetyOfficer: boolean;
+  sso: boolean;
+  medicalOfficer: boolean;
+  navigatingOfficer: boolean;
+  emtOfficer: boolean;
+  actualManning: string[]; // Array of selected seafarer IDs
+  hasMultiple: boolean;
+}
+
+// Interface for Seafarer data
+interface SeafarerData {
+  id: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  rank: string;
+  nationality: string;
+  status: 'Available' | 'Assigned' | 'On Leave';
+}
+
 export const AdminModule = (): JSX.Element => {
   const [location] = useLocation();
   const [selectedAdminPage, setSelectedAdminPage] = useState("forms");
@@ -122,6 +160,38 @@ export const AdminModule = (): JSX.Element => {
   const [isCompanyEditing, setIsCompanyEditing] = useState(false);
   const [companyGridApi, setCompanyGridApi] = useState<GridApi | null>(null);
   
+  // Vessel state
+  const [vesselRankData, setVesselRankData] = useState<VesselRankData[]>([]);
+  const [isVesselEditing, setIsVesselEditing] = useState(false);
+  const [vesselGridApi, setVesselGridApi] = useState<GridApi | null>(null);
+  const [selectedVessel, setSelectedVessel] = useState("");
+  const [selectedRevision, setSelectedRevision] = useState("R1");
+  const [flexDate, setFlexDate] = useState("");
+  const [revisionMode, setRevisionMode] = useState(false);
+  
+  // Sample seafarer data
+  const [seafarerData] = useState<SeafarerData[]>([
+    { id: "SF001", firstName: "John", lastName: "Smith", rank: "Master", nationality: "Philippines", status: "Available" },
+    { id: "SF002", firstName: "Maria", lastName: "Garcia", rank: "Chief Officer", nationality: "Philippines", status: "Available" },
+    { id: "SF003", firstName: "Ahmed", lastName: "Hassan", rank: "Chief Officer", nationality: "Egypt", status: "Available" },
+    { id: "SF004", firstName: "Carlos", lastName: "Rodriguez", rank: "2nd Officer", nationality: "Mexico", status: "Available" },
+    { id: "SF005", firstName: "Raj", lastName: "Patel", rank: "2nd Officer", nationality: "India", status: "Available" },
+    { id: "SF006", firstName: "Kim", lastName: "Lee", rank: "3rd Officer", nationality: "South Korea", status: "Available" },
+    { id: "SF007", firstName: "Michael", lastName: "Johnson", rank: "3rd Officer", nationality: "USA", status: "Available" },
+    { id: "SF008", firstName: "Ali", lastName: "Mohammad", rank: "3rd Officer", nationality: "Pakistan", status: "Available" },
+    { id: "SF009", firstName: "Jose", lastName: "Santos", rank: "Deck Cadet", nationality: "Philippines", status: "Available" },
+    { id: "SF010", firstName: "Robert", lastName: "Chen", rank: "Chief Engineer", nationality: "China", status: "Available" },
+  ]);
+  
+  // Sample vessel data
+  const vesselOptions = [
+    { value: "vessel1", label: "MV Ocean Star" },
+    { value: "vessel2", label: "MV Sea Eagle" },
+    { value: "vessel3", label: "MV Blue Horizon" },
+    { value: "group1", label: "Tanker Fleet" },
+    { value: "group2", label: "Container Fleet" },
+  ];
+  
   const queryClient = useQueryClient();
 
   // Initialize company rank data from rank master
@@ -150,6 +220,15 @@ export const AdminModule = (): JSX.Element => {
     }));
     setCompanyRankData(companyRanks);
   }, [rankMasterData]);
+
+  // Sync vessel rank data with company rank data changes
+  React.useEffect(() => {
+    const vesselRanks: VesselRankData[] = companyRankData.map(companyRank => ({
+      ...companyRank,
+      actualManning: [] // Initialize with empty actual manning
+    }));
+    setVesselRankData(vesselRanks);
+  }, [companyRankData]);
 
   // Rank Master handlers
   const handleRankMasterGridReady = (event: GridReadyEvent) => {
@@ -314,6 +393,135 @@ export const AdminModule = (): JSX.Element => {
     });
   };
 
+  // Vessel handlers
+  const handleVesselGridReady = (event: GridReadyEvent) => {
+    setVesselGridApi(event.api);
+  };
+
+  const handleVesselMultiple = (rankId: string) => {
+    // Similar to company multiple but for vessel data
+    let rankToMultiply = vesselRankData.find(rank => rank.id === rankId);
+    
+    if (!rankToMultiply) {
+      const existingRole = vesselRankData.find(row => row.originalRankId === rankId);
+      if (existingRole) {
+        rankToMultiply = {
+          ...existingRole,
+          id: rankId,
+          role: undefined,
+          originalRankId: undefined,
+          isRoleRow: false,
+          hasMultiple: false
+        };
+      }
+    }
+    
+    if (rankToMultiply) {
+      setVesselRankData(prev => {
+        const currentData = [...prev];
+        const rankIndex = currentData.findIndex(rank => rank.id === rankId);
+        const existingRoles = currentData.filter(row => row.originalRankId === rankId);
+        
+        if (existingRoles.length === 0) {
+          const role1: VesselRankData = {
+            ...rankToMultiply,
+            id: `${rankToMultiply.id}_role_1_${Date.now()}`,
+            role: `${rankToMultiply.rank}_1`,
+            originalRankId: rankId,
+            isRoleRow: true,
+            hasMultiple: false
+          };
+          
+          const role2: VesselRankData = {
+            ...rankToMultiply,
+            id: `${rankToMultiply.id}_role_2_${Date.now()}`,
+            role: `${rankToMultiply.rank}_2`,
+            originalRankId: rankId,
+            isRoleRow: true,
+            hasMultiple: false
+          };
+          
+          currentData.splice(rankIndex, 1, role1, role2);
+        } else {
+          const roleNumbers = existingRoles
+            .map(role => {
+              const match = role.role?.match(/_(\d+)$/);
+              return match ? parseInt(match[1], 10) : 0;
+            })
+            .filter(num => num > 0);
+          
+          const nextRoleNumber = Math.max(...roleNumbers, 0) + 1;
+          
+          const newRole: VesselRankData = {
+            ...rankToMultiply,
+            id: `${rankToMultiply.id}_role_${nextRoleNumber}_${Date.now()}`,
+            role: `${rankToMultiply.rank}_${nextRoleNumber}`,
+            originalRankId: rankId,
+            isRoleRow: true,
+            hasMultiple: false
+          };
+          
+          const lastRoleIndex = Math.max(...existingRoles.map(role => 
+            currentData.findIndex(row => row.id === role.id)
+          ));
+          currentData.splice(lastRoleIndex + 1, 0, newRole);
+        }
+        
+        return currentData;
+      });
+    }
+  };
+
+  const handleDeleteVesselRank = (rankId: string) => {
+    setVesselRankData(prev => {
+      const rankToDelete = prev.find(rank => rank.id === rankId);
+      const filteredData = prev.filter(rank => rank.id !== rankId);
+      
+      if (rankToDelete?.isRoleRow && rankToDelete.originalRankId) {
+        const remainingRoles = filteredData.filter(row => row.originalRankId === rankToDelete.originalRankId);
+        
+        if (remainingRoles.length === 1) {
+          const lastRoleIndex = filteredData.findIndex(row => row.id === remainingRoles[0].id);
+          if (lastRoleIndex !== -1) {
+            filteredData[lastRoleIndex] = {
+              ...filteredData[lastRoleIndex],
+              role: undefined,
+              originalRankId: undefined,
+              isRoleRow: false,
+              hasMultiple: false,
+              id: rankToDelete.originalRankId
+            };
+          }
+        }
+      }
+      
+      return filteredData;
+    });
+  };
+
+  const handleRevision = () => {
+    setRevisionMode(true);
+    setIsVesselEditing(true);
+  };
+
+  const handleSaveDraft = () => {
+    // Save current state as draft
+    console.log("Saving draft...");
+  };
+
+  const handleCancel = () => {
+    setRevisionMode(false);
+    setIsVesselEditing(false);
+    // Revert changes if needed
+  };
+
+  const handleSubmit = () => {
+    setRevisionMode(false);
+    setIsVesselEditing(false);
+    // Submit final changes
+    console.log("Submitting changes...");
+  };
+
   // Check if any rank has multiple roles (2 or more) to show Role column
   const hasRoles = companyRankData.some(row => {
     if (row.isRoleRow && row.originalRankId) {
@@ -321,6 +529,60 @@ export const AdminModule = (): JSX.Element => {
       return roleCount >= 2;
     }
     return false;
+  });
+
+  // Check if vessel data has roles
+  const vesselHasRoles = vesselRankData.some(row => {
+    if (row.isRoleRow && row.originalRankId) {
+      const roleCount = vesselRankData.filter(r => r.originalRankId === row.originalRankId).length;
+      return roleCount >= 2;
+    }
+    return false;
+  });
+
+  // Helper function to create checkbox column for vessel
+  const createVesselCheckboxColumn = (headerName: string, field: keyof VesselRankData): ColDef => ({
+    headerName,
+    field,
+    flex: 1,
+    minWidth: 80,
+    maxWidth: 120,
+    cellRenderer: (params: ICellRendererParams) => {
+      const isChecked = params.value || false;
+      const shouldShowCheckbox = revisionMode || isChecked;
+      
+      if (!shouldShowCheckbox) {
+        return <div className="flex items-center justify-center h-full"></div>;
+      }
+      
+      return (
+        <div className="flex items-center justify-center h-full">
+          <input
+            type="checkbox"
+            checked={isChecked}
+            disabled={!revisionMode}
+            onChange={(e) => {
+              if (revisionMode) {
+                const newData = [...vesselRankData];
+                const rowIndex = newData.findIndex(row => row.id === params.data.id);
+                if (rowIndex !== -1) {
+                  newData[rowIndex] = { ...newData[rowIndex], [field]: e.target.checked };
+                  setVesselRankData(newData);
+                }
+              }
+            }}
+            className="form-checkbox h-4 w-4 text-blue-600"
+          />
+        </div>
+      );
+    },
+    cellStyle: { textAlign: 'center' },
+    sortable: false,
+    filter: false,
+    resizable: true,
+    headerClass: 'ag-header-cell-text-wrap-limited',
+    autoHeaderHeight: true,
+    suppressHeaderMenuButton: true
   });
 
   // Helper function to create checkbox column
@@ -548,6 +810,155 @@ export const AdminModule = (): JSX.Element => {
       flex: 1,
       editable: isRankMasterEditing,
       singleClickEdit: true,
+    }
+  ];
+
+  // Vessel column definitions
+  const vesselColumnDefs: ColDef[] = [
+    {
+      headerName: "",
+      width: 40,
+      cellClass: 'text-center cursor-move',
+      rowDrag: revisionMode,
+      sortable: false,
+      filter: false,
+      pinned: 'left',
+      menuTabs: [],
+    },
+    {
+      headerName: "Rank",
+      field: "rank",
+      width: 120,
+      editable: false,
+      singleClickEdit: false,
+      filter: 'agTextColumnFilter',
+      sortable: true,
+      resizable: true,
+      headerClass: 'ag-header-cell-text-wrap',
+      autoHeaderHeight: true
+    },
+    ...(vesselHasRoles ? [{
+      headerName: "Role",
+      field: "role",
+      width: 100,
+      editable: false,
+      filter: 'agTextColumnFilter',
+      sortable: true,
+      resizable: true,
+      headerClass: 'ag-header-cell-text-wrap',
+      autoHeaderHeight: true,
+      cellRenderer: (params: ICellRendererParams) => {
+        if (params.data.isRoleRow && params.data.originalRankId) {
+          const roleCount = vesselRankData.filter(row => row.originalRankId === params.data.originalRankId).length;
+          if (roleCount >= 2) {
+            return params.data.role || '';
+          }
+        }
+        return '';
+      }
+    }] : []),
+    createVesselCheckboxColumn("Officer", "officer"),
+    createVesselCheckboxColumn("Rating", "rating"),
+    createVesselCheckboxColumn("Senior Officer", "seniorOfficer"),
+    createVesselCheckboxColumn("Deck Officer", "deckOfficer"),
+    createVesselCheckboxColumn("Eng Officer", "engOfficer"),
+    createVesselCheckboxColumn("Petty Officer", "pettyOfficer"),
+    createVesselCheckboxColumn("Deck Rating", "deckRating"),
+    createVesselCheckboxColumn("Engine Rating", "engineRating"),
+    createVesselCheckboxColumn("Gen Rating", "generalRating"),
+    createVesselCheckboxColumn("Catering Rating", "cateringRating"),
+    createVesselCheckboxColumn("Safety Officer", "safetyOfficer"),
+    createVesselCheckboxColumn("SSO", "sso"),
+    createVesselCheckboxColumn("Medical Officer", "medicalOfficer"),
+    createVesselCheckboxColumn("Nav. Officer", "navigatingOfficer"),
+    createVesselCheckboxColumn("Envt. Officer", "emtOfficer"),
+    {
+      headerName: "Actual Manning",
+      field: "actualManning",
+      width: 150,
+      cellRenderer: (params: ICellRendererParams) => {
+        const rankSeafarers = seafarerData.filter(seafarer => 
+          seafarer.rank === params.data.rank || 
+          (params.data.rank.includes('Officer') && seafarer.rank.includes('Officer')) ||
+          (params.data.rank.includes('Engineer') && seafarer.rank.includes('Engineer'))
+        );
+        
+        const selectedSeafarers = params.data.actualManning || [];
+        const selectedNames = selectedSeafarers.map((id: string) => {
+          const seafarer = seafarerData.find(s => s.id === id);
+          return seafarer ? `${seafarer.firstName} ${seafarer.lastName}` : '';
+        }).filter((name: string) => name);
+        
+        return (
+          <div className="w-full h-full flex items-center">
+            <Select
+              value={selectedSeafarers.length > 0 ? 'selected' : ''}
+              onValueChange={(value) => {
+                if (revisionMode && value !== 'selected') {
+                  const newData = [...vesselRankData];
+                  const rowIndex = newData.findIndex(row => row.id === params.data.id);
+                  if (rowIndex !== -1) {
+                    const currentManning = newData[rowIndex].actualManning || [];
+                    if (value && !currentManning.includes(value)) {
+                      newData[rowIndex].actualManning = [...currentManning, value];
+                      setVesselRankData(newData);
+                    }
+                  }
+                }
+              }}
+              disabled={!revisionMode}
+            >
+              <SelectTrigger className="w-full h-8 text-xs">
+                <SelectValue placeholder={selectedNames.length > 0 ? selectedNames.join(', ') : 'Select seafarers'} />
+              </SelectTrigger>
+              <SelectContent>
+                {rankSeafarers.map((seafarer) => (
+                  <SelectItem key={seafarer.id} value={seafarer.id}>
+                    {seafarer.firstName} {seafarer.lastName} ({seafarer.nationality})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        );
+      },
+      sortable: false,
+      filter: false,
+      resizable: true
+    },
+    {
+      headerName: "",
+      width: 80,
+      cellRenderer: (params: ICellRendererParams) => {
+        const isFirstRole = params.data.isRoleRow && params.data.role?.endsWith('_1');
+        const isOtherRole = params.data.isRoleRow && !params.data.role?.endsWith('_1');
+        
+        return (
+          <div className="flex items-center justify-center h-full gap-1">
+            {(!params.data.isRoleRow || isFirstRole) && revisionMode && (
+              <button
+                onClick={() => handleVesselMultiple(params.data.originalRankId || params.data.id)}
+                className="h-8 px-4 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded font-medium min-w-[60px] shadow-sm"
+              >
+                +Multi
+              </button>
+            )}
+            {isOtherRole && revisionMode && (
+              <Button
+                onClick={() => handleDeleteVesselRank(params.data.id)}
+                className="h-6 w-6 p-0 bg-red-100 hover:bg-red-200 text-red-600"
+                variant="outline"
+              >
+                🗑
+              </Button>
+            )}
+          </div>
+        );
+      },
+      sortable: false,
+      filter: false,
+      resizable: false,
+      pinned: 'right'
     }
   ];
 
@@ -831,6 +1242,40 @@ export const AdminModule = (): JSX.Element => {
               </Button>
             </div>
           )}
+          {selectedRankAdminTab === "vessel" && (
+            <div className="flex gap-2">
+              {!revisionMode ? (
+                <Button
+                  onClick={handleRevision}
+                  className="h-8 bg-[#5dc86f] hover:bg-[#22c55e] text-white text-xs"
+                >
+                  + Revision
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    onClick={handleCancel}
+                    variant="outline"
+                    className="h-8 border-[#e1e8ed] text-red-600 text-xs"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleSaveDraft}
+                    className="h-8 bg-[#f39c12] hover:bg-[#e67e22] text-white text-xs"
+                  >
+                    Save Draft
+                  </Button>
+                  <Button
+                    onClick={handleSubmit}
+                    className="h-8 bg-[#16569e] hover:bg-[#0f4078] text-white text-xs"
+                  >
+                    Submit
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -925,9 +1370,138 @@ export const AdminModule = (): JSX.Element => {
             )}
             
             {selectedRankAdminTab === "vessel" && (
-              <div className="text-center py-12">
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Vessel</h3>
-                <p className="text-gray-500">Content will be implemented here</p>
+              <div>
+                {/* Vessel Filters */}
+                <div className="mb-4 p-4 pl-0 bg-white rounded-lg border border-gray-200">
+                  <div className="grid grid-cols-4 gap-4 items-end">
+                    {/* Vessel/Vessel Group */}
+                    <div>
+                      <label className="block text-xs text-gray-500 tracking-wide mb-1">
+                        Vessel / Vessel Group
+                      </label>
+                      <Select value={selectedVessel} onValueChange={setSelectedVessel}>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Select vessel or group" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {vesselOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Revision No */}
+                    <div>
+                      <label className="block text-xs text-gray-500 tracking-wide mb-1">
+                        Revision No.
+                      </label>
+                      <Select value={selectedRevision} onValueChange={setSelectedRevision}>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="R0">R0</SelectItem>
+                          <SelectItem value="R1">R1</SelectItem>
+                          <SelectItem value="R2">R2</SelectItem>
+                          <SelectItem value="R3">R3</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Flex Date */}
+                    <div>
+                      <label className="block text-xs text-gray-500 tracking-wide mb-1">
+                        Flex Date
+                      </label>
+                      <Input
+                        type="date"
+                        value={flexDate}
+                        onChange={(e) => setFlexDate(e.target.value)}
+                        className="h-8 text-xs"
+                        disabled={!revisionMode}
+                      />
+                    </div>
+
+                    {/* Revision Status */}
+                    <div className="flex items-center space-x-2">
+                      <div className="text-xs text-gray-500">
+                        {revisionMode ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                            Revision Mode
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            View Only
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Vessel Table */}
+                <div className="h-[500px]">
+                  <AgGridTable
+                    rowData={vesselRankData}
+                    columnDefs={vesselColumnDefs}
+                    onGridReady={handleVesselGridReady}
+                    autoHeight={true}
+                    maxHeight="450px"
+                    minHeight="200px"
+                    width="100%"
+                    enableExport={true}
+                    enableSideBar={true}
+                    enableStatusBar={false}
+                    enableRowGrouping={true}
+                    enablePivoting={true}
+                    enableAdvancedFilter={false}
+                    rowSelection={false}
+                    theme="alpine"
+                    gridOptions={{
+                      rowDragManaged: true,
+                      animateRows: true,
+                      onRowDragEnd: (event) => {
+                        const newData = [...vesselRankData];
+                        const fromIndex = event.node?.rowIndex;
+                        const toIndex = event.overIndex;
+                        
+                        if (fromIndex !== undefined && fromIndex !== null && toIndex !== undefined && toIndex !== null && fromIndex !== toIndex) {
+                          const [movedItem] = newData.splice(fromIndex, 1);
+                          newData.splice(toIndex, 0, movedItem);
+                          setVesselRankData(newData);
+                        }
+                      },
+                      onCellValueChanged: (event) => {
+                        const newData = [...vesselRankData];
+                        const rowIndex = newData.findIndex(row => row.id === event.data.id);
+                        if (rowIndex !== -1) {
+                          newData[rowIndex] = { ...newData[rowIndex], [event.colDef.field!]: event.newValue };
+                          setVesselRankData(newData);
+                        }
+                      }
+                    }}
+                  />
+                </div>
+
+                {/* Revision History Sidebar */}
+                {revisionMode && (
+                  <div className="fixed right-4 top-1/2 transform -translate-y-1/2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+                    <h4 className="text-sm font-medium text-gray-900 mb-2">Revision History</h4>
+                    <div className="space-y-2 text-xs">
+                      <div className="flex justify-between">
+                        <span>R1</span>
+                        <span className="text-gray-500">Active</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>R0</span>
+                        <span className="text-gray-500">Initial</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
