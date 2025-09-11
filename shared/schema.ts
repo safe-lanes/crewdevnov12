@@ -77,6 +77,66 @@ export const recruitmentCandidates = mysqlTable("recruitment_candidates", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const vessels = mysqlTable("vessels", {
+  id: int("id").primaryKey().autoincrement(),
+  name: text("name").notNull(),
+  vesselGroup: text("vessel_group"),
+  vesselType: text("vessel_type").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const seafarers = mysqlTable("seafarers", {
+  id: int("id").primaryKey().autoincrement(),
+  firstName: text("first_name").notNull(),
+  middleName: text("middle_name"),
+  lastName: text("last_name").notNull(),
+  rank: text("rank").notNull(),
+  nationality: text("nationality").notNull(),
+  status: text("status").notNull().default("Available"), // Available, Assigned, On Leave
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const revisions = mysqlTable("revisions", {
+  id: int("id").primaryKey().autoincrement(),
+  vesselId: int("vessel_id").notNull().references(() => vessels.id),
+  revisionNo: text("revision_no").notNull(),
+  flexDate: text("flex_date"),
+  status: text("status").notNull().default("draft"), // draft, submitted
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const vesselRanks = mysqlTable("vessel_ranks", {
+  id: int("id").primaryKey().autoincrement(),
+  vesselId: int("vessel_id").notNull().references(() => vessels.id),
+  revisionId: int("revision_id").notNull().references(() => revisions.id),
+  rank: text("rank").notNull(),
+  rankId: text("rank_id").notNull(),
+  role: text("role"), // Role name like "3rd Off_1", "3rd Off_2"
+  originalRankId: text("original_rank_id"), // ID of original rank for role rows
+  isRoleRow: boolean("is_role_row").default(false),
+  officer: boolean("officer").default(false),
+  rating: boolean("rating").default(false),
+  seniorOfficer: boolean("senior_officer").default(false),
+  deckOfficer: boolean("deck_officer").default(false),
+  engOfficer: boolean("eng_officer").default(false),
+  pettyOfficer: boolean("petty_officer").default(false),
+  deckRating: boolean("deck_rating").default(false),
+  engineRating: boolean("engine_rating").default(false),
+  generalRating: boolean("general_rating").default(false),
+  cateringRating: boolean("catering_rating").default(false),
+  safetyOfficer: boolean("safety_officer").default(false),
+  sso: boolean("sso").default(false),
+  medicalOfficer: boolean("medical_officer").default(false),
+  navigatingOfficer: boolean("navigating_officer").default(false),
+  emtOfficer: boolean("emt_officer").default(false),
+  actualManning: text("actual_manning"), // JSON string for selected seafarers
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -141,6 +201,54 @@ export const insertRecruitmentCandidateSchema = createInsertSchema(recruitmentCa
   applicationData: true,
 });
 
+export const insertVesselSchema = createInsertSchema(vessels).pick({
+  name: true,
+  vesselGroup: true,
+  vesselType: true,
+});
+
+export const insertSeafarerSchema = createInsertSchema(seafarers).pick({
+  firstName: true,
+  middleName: true,
+  lastName: true,
+  rank: true,
+  nationality: true,
+  status: true,
+});
+
+export const insertRevisionSchema = createInsertSchema(revisions).pick({
+  vesselId: true,
+  revisionNo: true,
+  flexDate: true,
+  status: true,
+});
+
+export const insertVesselRankSchema = createInsertSchema(vesselRanks).pick({
+  vesselId: true,
+  revisionId: true,
+  rank: true,
+  rankId: true,
+  role: true,
+  originalRankId: true,
+  isRoleRow: true,
+  officer: true,
+  rating: true,
+  seniorOfficer: true,
+  deckOfficer: true,
+  engOfficer: true,
+  pettyOfficer: true,
+  deckRating: true,
+  engineRating: true,
+  generalRating: true,
+  cateringRating: true,
+  safetyOfficer: true,
+  sso: true,
+  medicalOfficer: true,
+  navigatingOfficer: true,
+  emtOfficer: true,
+  actualManning: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertForm = z.infer<typeof insertFormSchema>;
@@ -155,3 +263,11 @@ export type InsertAppraisalResult = z.infer<typeof insertAppraisalResultSchema>;
 export type AppraisalResult = typeof appraisalResults.$inferSelect;
 export type InsertRecruitmentCandidate = z.infer<typeof insertRecruitmentCandidateSchema>;
 export type RecruitmentCandidate = typeof recruitmentCandidates.$inferSelect;
+export type InsertVessel = z.infer<typeof insertVesselSchema>;
+export type Vessel = typeof vessels.$inferSelect;
+export type InsertSeafarer = z.infer<typeof insertSeafarerSchema>;
+export type Seafarer = typeof seafarers.$inferSelect;
+export type InsertRevision = z.infer<typeof insertRevisionSchema>;
+export type Revision = typeof revisions.$inferSelect;
+export type InsertVesselRank = z.infer<typeof insertVesselRankSchema>;
+export type VesselRank = typeof vesselRanks.$inferSelect;
