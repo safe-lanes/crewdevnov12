@@ -479,6 +479,7 @@ export const AdminModule = (): JSX.Element => {
     setCompanyGridApi(event.api);
   };
 
+
   const handleEditCompany = () => {
     setIsCompanyEditing(true);
   };
@@ -927,52 +928,86 @@ export const AdminModule = (): JSX.Element => {
     suppressHeaderMenuButton: true
   });
 
-  // Company column definitions
-  const companyColumnDefs: ColDef[] = [
-    {
-      headerName: "",
-      width: 40,
-      cellClass: 'text-center cursor-move',
-      rowDrag: isCompanyEditing,
-      sortable: false,
-      filter: false,
-      pinned: 'left',
-      menuTabs: [],
-    },
-    {
-      headerName: "Rank",
-      field: "rank",
-      width: 120,
-      editable: false, // Rank column is not editable in edit mode
-      singleClickEdit: false,
-      filter: 'agTextColumnFilter',
-      sortable: true,
-      resizable: true,
-      headerClass: 'ag-header-cell-text-wrap',
-      autoHeaderHeight: true
-    },
-    ...(hasRoles ? [{
-      headerName: "Role",
-      field: "role",
-      width: 100,
-      editable: false,
-      filter: 'agTextColumnFilter',
-      sortable: true,
-      resizable: true,
-      headerClass: 'ag-header-cell-text-wrap',
-      autoHeaderHeight: true,
-      cellRenderer: (params: ICellRendererParams) => {
-        // Only show role name if this rank has multiple roles (2 or more)
-        if (params.data.isRoleRow && params.data.originalRankId) {
-          const roleCount = companyRankData.filter(row => row.originalRankId === params.data.originalRankId).length;
-          if (roleCount >= 2) {
-            return params.data.role || '';
-          }
-        }
-        return '';
+  // Single source of truth for checkbox columns with tier hierarchy
+  const checkboxDescriptors = [
+    { field: "officer", labelByBp: { mobile: "Off", tablet: "Officer", desktop: "Officer" }, tier: "essential" },
+    { field: "rating", labelByBp: { mobile: "Rating", tablet: "Rating", desktop: "Rating" }, tier: "essential" },
+    { field: "seniorOfficer", labelByBp: { mobile: "Sr Off", tablet: "Senior Officer", desktop: "Senior Officer" }, tier: "essential" },
+    { field: "deckOfficer", labelByBp: { mobile: "Deck", tablet: "Deck Officer", desktop: "Deck Officer" }, tier: "standard" },
+    { field: "engOfficer", labelByBp: { mobile: "Eng", tablet: "Eng Officer", desktop: "Eng Officer" }, tier: "standard" },
+    { field: "pettyOfficer", labelByBp: { mobile: "Petty", tablet: "Petty Officer", desktop: "Petty Officer" }, tier: "optional" },
+    { field: "deckRating", labelByBp: { mobile: "D.Rtg", tablet: "Deck Rating", desktop: "Deck Rating" }, tier: "optional" },
+    { field: "engineRating", labelByBp: { mobile: "E.Rtg", tablet: "Engine Rating", desktop: "Engine Rating" }, tier: "optional" },
+    { field: "generalRating", labelByBp: { mobile: "G.Rtg", tablet: "Gen Rating", desktop: "Gen Rating" }, tier: "optional" },
+    { field: "cateringRating", labelByBp: { mobile: "C.Rtg", tablet: "Catering Rating", desktop: "Catering Rating" }, tier: "optional" },
+    { field: "safetyOfficer", labelByBp: { mobile: "Safety", tablet: "Safety Officer", desktop: "Safety Officer" }, tier: "optional" },
+    { field: "sso", labelByBp: { mobile: "SSO", tablet: "SSO", desktop: "SSO" }, tier: "optional" },
+    { field: "medicalOfficer", labelByBp: { mobile: "Med", tablet: "Medical Officer", desktop: "Medical Officer" }, tier: "optional" },
+    { field: "navigatingOfficer", labelByBp: { mobile: "Nav", tablet: "Nav. Officer", desktop: "Nav. Officer" }, tier: "optional" },
+    { field: "emtOfficer", labelByBp: { mobile: "Envt", tablet: "Envt. Officer", desktop: "Envt. Officer" }, tier: "optional" }
+  ];
+
+  // Build responsive Company columns with exact count enforcement
+  const buildCompanyCols = (breakpoint: string, hasRoles: boolean, isEditing: boolean): ColDef[] => {
+    const allowedCounts = { mobile: 5, tablet: 7, laptop: 12, desktop: 15 };
+    const targetCount = allowedCounts[breakpoint as keyof typeof allowedCounts] || 15;
+    
+    const baseColumns: ColDef[] = [
+      // Drag handle (always visible)
+      {
+        headerName: "",
+        width: breakpoint === 'mobile' ? 30 : 40,
+        cellClass: 'text-center cursor-move',
+        rowDrag: isEditing,
+        sortable: false,
+        filter: false,
+        pinned: 'left',
+        menuTabs: [],
+      },
+      // Rank column (always visible)
+      {
+        headerName: "Rank",
+        field: "rank",
+        width: breakpoint === 'mobile' ? 100 : 120,
+        editable: false,
+        singleClickEdit: false,
+        filter: 'agTextColumnFilter',
+        sortable: true,
+        resizable: true,
+        headerClass: 'ag-header-cell-text-wrap',
+        autoHeaderHeight: true
       }
-    }] : []),
-    {
+    ];
+
+    let visibleBaseCount = 2; // drag + rank
+
+    // Add Role column if needed (not on mobile)
+    if (hasRoles && breakpoint !== 'mobile') {
+      baseColumns.push({
+        headerName: "Role",
+        field: "role",
+        width: 100,
+        editable: false,
+        filter: 'agTextColumnFilter',
+        sortable: true,
+        resizable: true,
+        headerClass: 'ag-header-cell-text-wrap',
+        autoHeaderHeight: true,
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.data.isRoleRow && params.data.originalRankId) {
+            const roleCount = companyRankData.filter(row => row.originalRankId === params.data.originalRankId).length;
+            if (roleCount >= 2) {
+              return params.data.role || '';
+            }
+          }
+          return '';
+        }
+      });
+      visibleBaseCount += 1;
+    }
+
+    // Add hidden Rank ID column (doesn't count toward limit)
+    baseColumns.push({
       headerName: "Rank ID (Sail)",
       field: "rankId",
       width: 100,
@@ -983,45 +1018,61 @@ export const AdminModule = (): JSX.Element => {
       headerClass: 'ag-header-cell-text-wrap',
       autoHeaderHeight: true,
       hide: true
-    },
-    createCheckboxColumn("Officer", "officer"),
-    createCheckboxColumn("Rating", "rating"),
-    createCheckboxColumn("Senior Officer", "seniorOfficer"),
-    createCheckboxColumn("Deck Officer", "deckOfficer"),
-    createCheckboxColumn("Eng Officer", "engOfficer"),
-    createCheckboxColumn("Petty Officer", "pettyOfficer"),
-    createCheckboxColumn("Deck Rating", "deckRating"),
-    createCheckboxColumn("Engine Rating", "engineRating"),
-    createCheckboxColumn("Gen Rating", "generalRating"),
-    createCheckboxColumn("Catering Rating", "cateringRating"),
-    createCheckboxColumn("Safety Officer", "safetyOfficer"),
-    createCheckboxColumn("SSO", "sso"),
-    createCheckboxColumn("Medical Officer", "medicalOfficer"),
-    createCheckboxColumn("Nav. Officer", "navigatingOfficer"),
-    createCheckboxColumn("Envt. Officer", "emtOfficer"),
-    {
+    });
+
+    // Calculate available slots for checkbox columns (reserve 1 for actions)
+    const availableSlots = targetCount - visibleBaseCount - 1;
+    
+    // Select checkbox columns by tier order until slots are filled
+    let selectedCheckboxes: typeof checkboxDescriptors = [];
+    let remainingSlots = availableSlots;
+    
+    // Add essential columns first
+    const essentialCols = checkboxDescriptors.filter(col => col.tier === "essential");
+    selectedCheckboxes = [...selectedCheckboxes, ...essentialCols.slice(0, remainingSlots)];
+    remainingSlots -= essentialCols.length;
+    
+    // Add standard columns if slots remain
+    if (remainingSlots > 0) {
+      const standardCols = checkboxDescriptors.filter(col => col.tier === "standard");
+      selectedCheckboxes = [...selectedCheckboxes, ...standardCols.slice(0, remainingSlots)];
+      remainingSlots -= standardCols.length;
+    }
+    
+    // Add optional columns if slots remain
+    if (remainingSlots > 0) {
+      const optionalCols = checkboxDescriptors.filter(col => col.tier === "optional");
+      selectedCheckboxes = [...selectedCheckboxes, ...optionalCols.slice(0, remainingSlots)];
+    }
+
+    // Create checkbox columns with responsive labels
+    selectedCheckboxes.forEach(descriptor => {
+      const headerName = descriptor.labelByBp[breakpoint as keyof typeof descriptor.labelByBp] || descriptor.labelByBp.desktop;
+      baseColumns.push(createCheckboxColumn(headerName, descriptor.field));
+    });
+
+    // Add actions column with mobile optimization
+    baseColumns.push({
       headerName: "",
-      width: 80,
+      width: breakpoint === 'mobile' ? 50 : 80,
       cellRenderer: (params: ICellRendererParams) => {
         const isFirstRole = params.data.isRoleRow && params.data.role?.endsWith('_1');
         const isOtherRole = params.data.isRoleRow && !params.data.role?.endsWith('_1');
         
         return (
           <div className="flex items-center justify-center h-full gap-1">
-            {/* Show +Multi button on regular ranks and first role row (_1) */}
-            {(!params.data.isRoleRow || isFirstRole) && isCompanyEditing && (
+            {(!params.data.isRoleRow || isFirstRole) && isEditing && (
               <button
                 onClick={() => handleMultiple(params.data.originalRankId || params.data.id)}
-                className="h-8 px-4 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded font-medium min-w-[60px] shadow-sm"
+                className={`${breakpoint === 'mobile' ? 'h-6 px-1 text-xs' : 'h-8 px-4 text-xs'} bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded font-medium ${breakpoint === 'mobile' ? 'min-w-[30px]' : 'min-w-[60px]'} shadow-sm`}
               >
-                +Multi
+                {breakpoint === 'mobile' ? '⊕' : '+Multi'}
               </button>
             )}
-            {/* Show delete button only for other role rows (not _1) */}
-            {isOtherRole && isCompanyEditing && (
+            {isOtherRole && isEditing && (
               <Button
                 onClick={() => handleDeleteCompanyRank(params.data.id)}
-                className="h-6 w-6 p-0 bg-red-100 hover:bg-red-200 text-red-600"
+                className={`${breakpoint === 'mobile' ? 'h-4 w-4' : 'h-6 w-6'} p-0 bg-red-100 hover:bg-red-200 text-red-600`}
                 variant="outline"
               >
                 🗑
@@ -1034,8 +1085,12 @@ export const AdminModule = (): JSX.Element => {
       filter: false,
       resizable: false,
       pinned: 'right'
-    }
-  ];
+    });
+
+    return baseColumns;
+  };
+
+  const companyColumnDefs = useMemo(() => buildCompanyCols(currentBreakpoint, hasRoles, isCompanyEditing), [currentBreakpoint, hasRoles, isCompanyEditing]);
 
   // Responsive column definitions for Rank Master
   const getRankMasterColumnDefs = (): ColDef[] => {
@@ -1123,62 +1178,120 @@ export const AdminModule = (): JSX.Element => {
   const rankMasterColumnDefs = getRankMasterColumnDefs();
 
   // Vessel column definitions - exact structure as per user specification
-  const vesselColumnDefs: ColDef[] = [
-    {
-      headerName: "",
-      width: 40,
-      cellClass: 'text-center cursor-move',
-      rowDrag: revisionMode,
-      sortable: false,
-      filter: false,
-      pinned: 'left',
-      menuTabs: [],
-    },
-    {
-      headerName: "Rank",
-      field: "rank",
-      width: 120,
-      editable: false,
-      singleClickEdit: false,
-      filter: 'agTextColumnFilter',
-      sortable: true,
-      resizable: true,
-      headerClass: 'ag-header-cell-text-wrap',
-      autoHeaderHeight: true
-    },
-    ...(vesselHasRoles ? [{
-      headerName: "Role",
-      field: "role",
-      width: 100,
-      editable: false,
-      filter: 'agTextColumnFilter',
-      sortable: true,
-      resizable: true,
-      headerClass: 'ag-header-cell-text-wrap',
-      autoHeaderHeight: true,
-      cellRenderer: (params: ICellRendererParams) => {
-        if (params.data.isRoleRow && params.data.originalRankId) {
-          const roleCount = vesselRankData.filter(row => row.originalRankId === params.data.originalRankId).length;
-          if (roleCount >= 2) {
-            return params.data.role || '';
-          }
-        }
-        return '';
-      }
-    }] : []),
-    {
-      ...createVesselCheckboxColumn("Actual Manning", "actualManningFlag"),
-      cellStyle: { textAlign: 'center', borderRight: '2px solid #16569e' } // Right border as requested
-    },
-    createVesselCheckboxColumn("Safe Manning", "safeManning"),
-    createVesselCheckboxColumn("Optimum Manning", "optimumManning"),
-    createVesselCheckboxColumn("High Workload Manning", "highWorkloadManning"),
-    createVesselCheckboxColumn("Safety Officer", "safetyOfficer"),
-    createVesselCheckboxColumn("SSO", "sso"),
-    createVesselCheckboxColumn("Medical Officer", "medicalOfficer"),
-    createVesselCheckboxColumn("Nav. Officer", "navigatingOfficer"),
-    createVesselCheckboxColumn("Envt. Officer", "emtOfficer")
+  // Vessel checkbox column descriptors with responsive labels and priority
+  const vesselCheckboxDescriptors = [
+    { field: "actualManningFlag", labelByBp: { mobile: "Actual", tablet: "Actual Manning", desktop: "Actual Manning" }, tier: "essential", hasSpecialStyle: true },
+    { field: "safeManning", labelByBp: { mobile: "Safe", tablet: "Safe Manning", desktop: "Safe Manning" }, tier: "essential" },
+    { field: "optimumManning", labelByBp: { mobile: "Optimum", tablet: "Optimum Manning", desktop: "Optimum Manning" }, tier: "standard" },
+    { field: "highWorkloadManning", labelByBp: { mobile: "High", tablet: "High Workload", desktop: "High Workload Manning" }, tier: "standard" },
+    { field: "safetyOfficer", labelByBp: { mobile: "Safety", tablet: "Safety Officer", desktop: "Safety Officer" }, tier: "optional" },
+    { field: "sso", labelByBp: { mobile: "SSO", tablet: "SSO", desktop: "SSO" }, tier: "optional" },
+    { field: "medicalOfficer", labelByBp: { mobile: "Medical", tablet: "Medical Officer", desktop: "Medical Officer" }, tier: "optional" },
+    { field: "navigatingOfficer", labelByBp: { mobile: "Nav", tablet: "Nav. Officer", desktop: "Nav. Officer" }, tier: "optional" },
+    { field: "emtOfficer", labelByBp: { mobile: "Envt", tablet: "Envt. Officer", desktop: "Envt. Officer" }, tier: "optional" }
   ];
+
+  // Build responsive Vessel columns with count enforcement
+  const buildVesselCols = (breakpoint: string, hasRoles: boolean, isRevision: boolean): ColDef[] => {
+    const allowedCounts = { mobile: 6, tablet: 8, laptop: 10, desktop: 12 };
+    const targetCount = allowedCounts[breakpoint as keyof typeof allowedCounts] || 12;
+    
+    const baseColumns: ColDef[] = [
+      // Drag handle (always visible)
+      {
+        headerName: "",
+        width: breakpoint === 'mobile' ? 30 : 40,
+        cellClass: 'text-center cursor-move',
+        rowDrag: isRevision,
+        sortable: false,
+        filter: false,
+        pinned: 'left',
+        menuTabs: [],
+      },
+      // Rank column (always visible) 
+      {
+        headerName: "Rank",
+        field: "rank",
+        width: breakpoint === 'mobile' ? 100 : 120,
+        editable: false,
+        singleClickEdit: false,
+        filter: 'agTextColumnFilter',
+        sortable: true,
+        resizable: true,
+        headerClass: 'ag-header-cell-text-wrap',
+        autoHeaderHeight: true
+      }
+    ];
+
+    let visibleBaseCount = 2; // drag + rank
+
+    // Add Role column if needed (not on mobile)
+    if (hasRoles && breakpoint !== 'mobile') {
+      baseColumns.push({
+        headerName: "Role",
+        field: "role",
+        width: 100,
+        editable: false,
+        filter: 'agTextColumnFilter',
+        sortable: true,
+        resizable: true,
+        headerClass: 'ag-header-cell-text-wrap',
+        autoHeaderHeight: true,
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.data.isRoleRow && params.data.originalRankId) {
+            const roleCount = vesselRankData.filter(row => row.originalRankId === params.data.originalRankId).length;
+            if (roleCount >= 2) {
+              return params.data.role || '';
+            }
+          }
+          return '';
+        }
+      });
+      visibleBaseCount += 1;
+    }
+
+    // Calculate available slots for checkbox columns
+    const availableSlots = targetCount - visibleBaseCount;
+    
+    // Select checkbox columns by tier order until slots are filled
+    let selectedCheckboxes: typeof vesselCheckboxDescriptors = [];
+    let remainingSlots = availableSlots;
+    
+    // Add essential columns first
+    const essentialCols = vesselCheckboxDescriptors.filter(col => col.tier === "essential");
+    selectedCheckboxes = [...selectedCheckboxes, ...essentialCols.slice(0, remainingSlots)];
+    remainingSlots -= essentialCols.length;
+    
+    // Add standard columns if slots remain
+    if (remainingSlots > 0) {
+      const standardCols = vesselCheckboxDescriptors.filter(col => col.tier === "standard");
+      selectedCheckboxes = [...selectedCheckboxes, ...standardCols.slice(0, remainingSlots)];
+      remainingSlots -= standardCols.length;
+    }
+    
+    // Add optional columns if slots remain
+    if (remainingSlots > 0) {
+      const optionalCols = vesselCheckboxDescriptors.filter(col => col.tier === "optional");
+      selectedCheckboxes = [...selectedCheckboxes, ...optionalCols.slice(0, remainingSlots)];
+    }
+
+    // Create checkbox columns with responsive labels
+    selectedCheckboxes.forEach(descriptor => {
+      const headerName = descriptor.labelByBp[breakpoint as keyof typeof descriptor.labelByBp] || descriptor.labelByBp.desktop;
+      const column = createVesselCheckboxColumn(headerName, descriptor.field as keyof VesselRankData);
+      
+      // Add special styling for Actual Manning column
+      if (descriptor.hasSpecialStyle) {
+        column.cellStyle = { textAlign: 'center', borderRight: '2px solid #16569e' };
+      }
+      
+      baseColumns.push(column);
+    });
+
+    return baseColumns;
+  };
+
+  const vesselColumnDefs = useMemo(() => buildVesselCols(currentBreakpoint, vesselHasRoles, revisionMode), [currentBreakpoint, vesselHasRoles, revisionMode]);
 
   // Fetch forms data from API
   const { data: formsData = [], isLoading, error } = useQuery<Form[]>({
@@ -1709,14 +1822,14 @@ export const AdminModule = (): JSX.Element => {
             {selectedRankAdminTab === "vessel" && (
               <div className="-mt-8">
                 {/* Vessel Filters */}
-                <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-[#f7fafc] rounded-lg">
-                  <div className="flex gap-4 flex-wrap">
+                <div className={`flex ${currentBreakpoint === 'mobile' ? 'flex-col space-y-3' : 'flex-wrap gap-4'} mb-4 p-4 pl-0 bg-[#f7fafc] rounded-lg`}>
+                  <div className={`flex ${currentBreakpoint === 'mobile' ? 'flex-col space-y-3' : 'gap-4 flex-wrap'}`}>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
                           role="combobox"
-                          className="h-8 w-48 justify-between text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] bg-transparent hover:bg-transparent"
+                          className={`h-8 ${currentBreakpoint === 'mobile' ? 'w-full' : 'w-48'} justify-between text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] bg-transparent hover:bg-transparent`}
                           data-testid="vessel-select"
                         >
                           {selectedVessels.length === 0 
@@ -1728,7 +1841,7 @@ export const AdminModule = (): JSX.Element => {
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-[200px] p-0">
+                      <PopoverContent className={`${currentBreakpoint === 'mobile' ? 'w-[280px]' : 'w-[200px]'} p-0`}>
                         <Command>
                           <CommandInput placeholder="Search vessels..." className="h-9" />
                           <CommandEmpty>No vessel found.</CommandEmpty>
@@ -1792,10 +1905,10 @@ export const AdminModule = (): JSX.Element => {
 
                 {/* Selected Vessels Revision Indicator */}
                 {revisionMode && selectedVessels.length > 0 && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4" data-testid="selected-vessels-indicator">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <div className="text-sm font-medium text-blue-800">
+                  <div className={`bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 ${currentBreakpoint === 'mobile' ? 'text-sm' : ''}`} data-testid="selected-vessels-indicator">
+                    <div className={`flex ${currentBreakpoint === 'mobile' ? 'flex-col space-y-2' : 'items-center justify-between'}`}>
+                      <div className={`flex ${currentBreakpoint === 'mobile' ? 'flex-col space-y-1' : 'items-center space-x-2'}`}>
+                        <div className={`${currentBreakpoint === 'mobile' ? 'text-xs' : 'text-sm'} font-medium text-blue-800`}>
                           Revision Mode - Editing {selectedVessels.length} vessel{selectedVessels.length > 1 ? 's' : ''}:
                         </div>
                         <div className="flex space-x-1">
@@ -1817,7 +1930,7 @@ export const AdminModule = (): JSX.Element => {
                 )}
 
                 {/* Vessel Table */}
-                <div className="h-[500px]">
+                <div className={`${currentBreakpoint === 'mobile' ? 'h-[400px]' : currentBreakpoint === 'tablet' ? 'h-[450px]' : 'h-[500px]'}`}>
                   <AgGridTable
                     rowData={vesselRankData}
                     columnDefs={vesselColumnDefs}
