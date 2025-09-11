@@ -101,6 +101,7 @@ interface VesselRankData {
   isRoleRow?: boolean; // True for role rows, false/undefined for regular rows
   // Vessel-specific manning fields
   actualManning: string[]; // Array of selected seafarer IDs
+  actualManningFlag: boolean; // Checkbox indicator for actual manning
   safeManning: boolean; // Required as per vessel's Minimum Safe Manning Certificate
   optimumManning: boolean; // Company assessment beyond minimum safe manning
   highWorkloadManning: boolean; // Additional manning for special operations
@@ -227,6 +228,7 @@ export const AdminModule = (): JSX.Element => {
       isRoleRow: companyRank.isRoleRow,
       // Vessel-specific manning fields (initialize as false)
       actualManning: [], // Initialize with empty actual manning
+      actualManningFlag: false, // Initialize checkbox as unchecked
       safeManning: false,
       optimumManning: false,
       highWorkloadManning: false,
@@ -869,8 +871,8 @@ export const AdminModule = (): JSX.Element => {
       }
     }] : []),
     {
-      ...createVesselCheckboxColumn("Actual Manning", "actualManning"),
-      cellStyle: { borderRight: '2px solid #16569e' } // Right border as requested
+      ...createVesselCheckboxColumn("Actual Manning", "actualManningFlag"),
+      cellStyle: { textAlign: 'center', borderRight: '2px solid #16569e' } // Right border as requested
     },
     createVesselCheckboxColumn("Safe Manning", "safeManning"),
     createVesselCheckboxColumn("Optimum Manning", "optimumManning"),
