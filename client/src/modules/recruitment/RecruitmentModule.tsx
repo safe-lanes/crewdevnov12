@@ -459,7 +459,7 @@ export const RecruitmentModule = (): JSX.Element => {
               Filters
             </Button>
             <Button
-              className="h-8 w-32 bg-[#28a745] hover:bg-[#218838] text-xs text-white"
+              className="h-8 w-32 bg-[#5dc86f] hover:bg-[#218838] text-xs text-white"
               onClick={() => {
                 setSelectedCandidate(null);
                 setShowApplicationForm(true);
