@@ -91,7 +91,7 @@ interface CompanyRankData {
   hasMultiple: boolean;
 }
 
-// Interface for Vessel Rank data (mirrors Company structure but with additional fields)
+// Interface for Vessel Rank data (vessel-specific fields and overrides)
 interface VesselRankData {
   id: string;
   rank: string;
@@ -99,22 +99,17 @@ interface VesselRankData {
   role?: string; // Role name like "3rd Off_1", "3rd Off_2"
   originalRankId?: string; // ID of original rank for role rows
   isRoleRow?: boolean; // True for role rows, false/undefined for regular rows
-  officer: boolean;
-  rating: boolean;
-  seniorOfficer: boolean;
-  deckOfficer: boolean;
-  engOfficer: boolean;
-  pettyOfficer: boolean;
-  deckRating: boolean;
-  engineRating: boolean;
-  generalRating: boolean;
-  cateringRating: boolean;
+  // Vessel-specific manning fields
+  actualManning: string[]; // Array of selected seafarer IDs
+  safeManning: boolean; // Required as per vessel's Minimum Safe Manning Certificate
+  optimumManning: boolean; // Company assessment beyond minimum safe manning
+  highWorkloadManning: boolean; // Additional manning for special operations
+  // Officer role overrides (default to Company tab but vessel can override)
   safetyOfficer: boolean;
   sso: boolean;
   medicalOfficer: boolean;
   navigatingOfficer: boolean;
   emtOfficer: boolean;
-  actualManning: string[]; // Array of selected seafarer IDs
   hasMultiple: boolean;
 }
 
@@ -224,8 +219,24 @@ export const AdminModule = (): JSX.Element => {
   // Sync vessel rank data with company rank data changes
   React.useEffect(() => {
     const vesselRanks: VesselRankData[] = companyRankData.map(companyRank => ({
-      ...companyRank,
-      actualManning: [] // Initialize with empty actual manning
+      id: companyRank.id,
+      rank: companyRank.rank,
+      rankId: companyRank.rankId,
+      role: companyRank.role,
+      originalRankId: companyRank.originalRankId,
+      isRoleRow: companyRank.isRoleRow,
+      // Vessel-specific manning fields (initialize as false)
+      actualManning: [], // Initialize with empty actual manning
+      safeManning: false,
+      optimumManning: false,
+      highWorkloadManning: false,
+      // Officer role overrides (default to Company tab values)
+      safetyOfficer: companyRank.safetyOfficer,
+      sso: companyRank.sso,
+      medicalOfficer: companyRank.medicalOfficer,
+      navigatingOfficer: companyRank.navigatingOfficer,
+      emtOfficer: companyRank.emtOfficer,
+      hasMultiple: companyRank.hasMultiple
     }));
     setVesselRankData(vesselRanks);
   }, [companyRankData]);
@@ -813,7 +824,7 @@ export const AdminModule = (): JSX.Element => {
     }
   ];
 
-  // Vessel column definitions
+  // Vessel column definitions - exact structure as per user specification
   const vesselColumnDefs: ColDef[] = [
     {
       headerName: "",
@@ -857,25 +868,11 @@ export const AdminModule = (): JSX.Element => {
         return '';
       }
     }] : []),
-    createVesselCheckboxColumn("Officer", "officer"),
-    createVesselCheckboxColumn("Rating", "rating"),
-    createVesselCheckboxColumn("Senior Officer", "seniorOfficer"),
-    createVesselCheckboxColumn("Deck Officer", "deckOfficer"),
-    createVesselCheckboxColumn("Eng Officer", "engOfficer"),
-    createVesselCheckboxColumn("Petty Officer", "pettyOfficer"),
-    createVesselCheckboxColumn("Deck Rating", "deckRating"),
-    createVesselCheckboxColumn("Engine Rating", "engineRating"),
-    createVesselCheckboxColumn("Gen Rating", "generalRating"),
-    createVesselCheckboxColumn("Catering Rating", "cateringRating"),
-    createVesselCheckboxColumn("Safety Officer", "safetyOfficer"),
-    createVesselCheckboxColumn("SSO", "sso"),
-    createVesselCheckboxColumn("Medical Officer", "medicalOfficer"),
-    createVesselCheckboxColumn("Nav. Officer", "navigatingOfficer"),
-    createVesselCheckboxColumn("Envt. Officer", "emtOfficer"),
     {
       headerName: "Actual Manning",
       field: "actualManning",
       width: 150,
+      cellStyle: { borderRight: '2px solid #16569e' }, // Right border as requested
       cellRenderer: (params: ICellRendererParams) => {
         const rankSeafarers = seafarerData.filter(seafarer => 
           seafarer.rank === params.data.rank || 
@@ -908,7 +905,7 @@ export const AdminModule = (): JSX.Element => {
               }}
               disabled={!revisionMode}
             >
-              <SelectTrigger className="w-full h-8 text-xs">
+              <SelectTrigger className="w-full h-8 text-xs" data-testid="actual-manning-select">
                 <SelectValue placeholder={selectedNames.length > 0 ? selectedNames.join(', ') : 'Select seafarers'} />
               </SelectTrigger>
               <SelectContent>
@@ -926,6 +923,14 @@ export const AdminModule = (): JSX.Element => {
       filter: false,
       resizable: true
     },
+    createVesselCheckboxColumn("Safe Manning", "safeManning"),
+    createVesselCheckboxColumn("Optimum Manning", "optimumManning"),
+    createVesselCheckboxColumn("High Workload Manning", "highWorkloadManning"),
+    createVesselCheckboxColumn("Safety Officer", "safetyOfficer"),
+    createVesselCheckboxColumn("SSO", "sso"),
+    createVesselCheckboxColumn("Medical Officer", "medicalOfficer"),
+    createVesselCheckboxColumn("Nav. Officer", "navigatingOfficer"),
+    createVesselCheckboxColumn("Envt. Officer", "emtOfficer"),
     {
       headerName: "",
       width: 80,
@@ -939,6 +944,7 @@ export const AdminModule = (): JSX.Element => {
               <button
                 onClick={() => handleVesselMultiple(params.data.originalRankId || params.data.id)}
                 className="h-8 px-4 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded font-medium min-w-[60px] shadow-sm"
+                data-testid="vessel-multi-button"
               >
                 +Multi
               </button>
@@ -948,6 +954,7 @@ export const AdminModule = (): JSX.Element => {
                 onClick={() => handleDeleteVesselRank(params.data.id)}
                 className="h-6 w-6 p-0 bg-red-100 hover:bg-red-200 text-red-600"
                 variant="outline"
+                data-testid="vessel-delete-button"
               >
                 🗑
               </Button>
@@ -1380,7 +1387,7 @@ export const AdminModule = (): JSX.Element => {
                         Vessel / Vessel Group
                       </label>
                       <Select value={selectedVessel} onValueChange={setSelectedVessel}>
-                        <SelectTrigger className="h-8 text-xs">
+                        <SelectTrigger className="h-8 text-xs" data-testid="vessel-select">
                           <SelectValue placeholder="Select vessel or group" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1399,7 +1406,7 @@ export const AdminModule = (): JSX.Element => {
                         Revision No.
                       </label>
                       <Select value={selectedRevision} onValueChange={setSelectedRevision}>
-                        <SelectTrigger className="h-8 text-xs">
+                        <SelectTrigger className="h-8 text-xs" data-testid="revision-select">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1422,6 +1429,7 @@ export const AdminModule = (): JSX.Element => {
                         onChange={(e) => setFlexDate(e.target.value)}
                         className="h-8 text-xs"
                         disabled={!revisionMode}
+                        data-testid="flex-date-input"
                       />
                     </div>
 
