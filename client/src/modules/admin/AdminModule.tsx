@@ -348,7 +348,13 @@ export const AdminModule = (): JSX.Element => {
                 }
               }
             }}
-            className="form-checkbox h-4 w-4 text-blue-600"
+            className={`form-checkbox h-4 w-4 ${
+              isCompanyEditing 
+                ? "text-blue-600" 
+                : params.value 
+                  ? "text-blue-800 opacity-90" 
+                  : "text-gray-400"
+            }`}
           />
         </div>
       );
