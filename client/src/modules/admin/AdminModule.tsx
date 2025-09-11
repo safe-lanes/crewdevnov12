@@ -513,11 +513,20 @@ export const AdminModule = (): JSX.Element => {
       field: "applicableToCompany",
       flex: 1,
       cellRenderer: (params: ICellRendererParams) => {
+        // In non-edit mode: only show checked checkboxes, hide unchecked ones
+        // In edit mode: show all checkboxes (checked and unchecked)
+        const isChecked = params.value || false;
+        const shouldShowCheckbox = isRankMasterEditing || isChecked;
+        
+        if (!shouldShowCheckbox) {
+          return <div className="flex items-center justify-center h-full"></div>;
+        }
+        
         return (
           <div className="flex items-center justify-center h-full">
             <input
               type="checkbox"
-              checked={params.value}
+              checked={isChecked}
               disabled={!isRankMasterEditing}
               onChange={(e) => {
                 if (isRankMasterEditing) {
