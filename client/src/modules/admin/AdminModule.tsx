@@ -1379,113 +1379,227 @@ export const AdminModule = (): JSX.Element => {
 
   const renderRankAdminModule = () => (
     <div>
-      <div className="grid grid-cols-3 items-center mb-4">
-        {/* Left: Title */}
-        <div>
-          <h1 className="text-2xl font-bold text-black">Rank Administration</h1>
+      {/* Responsive Header Layout */}
+      <div className={`mb-4 ${currentBreakpoint === 'mobile' ? 'space-y-3' : currentBreakpoint === 'tablet' ? 'space-y-3' : 'grid grid-cols-3 items-center'}`}>
+        {/* Title */}
+        <div className={`${currentBreakpoint === 'mobile' || currentBreakpoint === 'tablet' ? 'text-center' : ''}`}>
+          <h1 className={`font-bold text-black ${currentBreakpoint === 'mobile' ? 'text-xl' : currentBreakpoint === 'tablet' ? 'text-xl' : 'text-2xl'}`}>
+            Rank Administration
+          </h1>
         </div>
         
-        {/* Center: Tab Switcher */}
-        <div className="flex justify-center">
-          <div className="flex items-center bg-transparent rounded-full p-1 border border-gray-300 h-8">
-            {[
-              { id: "rank-master", label: "Rank Master" },
-              { id: "company", label: "Company" },
-              { id: "vessel", label: "Vessel" }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setSelectedRankAdminTab(tab.id)}
-                className={`px-4 text-xs rounded-full transition-all duration-200 h-6 flex items-center ${
-                  selectedRankAdminTab === tab.id
-                    ? "text-[#16569e] font-bold underline"
-                    : "text-gray-600 hover:text-gray-800 font-medium"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Right: Buttons */}
-        <div className="flex justify-end">
-          {selectedRankAdminTab === "rank-master" && (
-            <div className="flex gap-2">
-              <Button
-                variant={isRankMasterEditing ? "default" : "outline"}
-                onClick={isRankMasterEditing ? handleSaveRank : handleEditRank}
-                className={`h-8 text-xs ${
-                  isRankMasterEditing 
-                    ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
-                    : "border-[#e1e8ed] text-[#16569e]"
-                }`}
-              >
-                {isRankMasterEditing ? "Save" : "Edit Rank"}
-              </Button>
-              <Button
-                onClick={handleNewRank}
-                className="h-8 bg-[#5dc86f] hover:bg-[#22c55e] text-white text-xs"
-              >
-                + New Rank
-              </Button>
-            </div>
-          )}
-          {selectedRankAdminTab === "company" && (
-            <div className="flex gap-2">
-              <Button
-                variant={isCompanyEditing ? "default" : "outline"}
-                onClick={isCompanyEditing ? handleSaveCompany : handleEditCompany}
-                className={`h-8 text-xs ${
-                  isCompanyEditing 
-                    ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
-                    : "border-[#e1e8ed] text-[#16569e]"
-                }`}
-              >
-                {isCompanyEditing ? "Save" : "Edit Table"}
-              </Button>
-            </div>
-          )}
-          {selectedRankAdminTab === "vessel" && (
-            <div className="flex gap-2">
-              {!revisionMode ? (
-                <Button
-                  onClick={handleRevision}
-                  disabled={selectedVessels.length === 0}
-                  className={`h-8 text-xs ${
-                    selectedVessels.length === 0 
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                      : 'bg-[#5dc86f] hover:bg-[#22c55e] text-white'
+        {/* Desktop/Laptop Tab Switcher */}
+        {(currentBreakpoint === 'desktop' || currentBreakpoint === 'laptop') && (
+          <div className="flex justify-center">
+            <div className="flex items-center bg-transparent rounded-full p-1 border border-gray-300 h-8">
+              {[
+                { id: "rank-master", label: "Rank Master" },
+                { id: "company", label: "Company" },
+                { id: "vessel", label: "Vessel" }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setSelectedRankAdminTab(tab.id)}
+                  className={`px-4 text-xs rounded-full transition-all duration-200 h-6 flex items-center ${
+                    selectedRankAdminTab === tab.id
+                      ? "text-[#16569e] font-bold underline"
+                      : "text-gray-600 hover:text-gray-800 font-medium"
                   }`}
-                  data-testid="revision-button"
                 >
-                  + Revision
-                </Button>
-              ) : (
-                <>
-                  <Button
-                    onClick={handleCancel}
-                    className="h-8 bg-[#ff6961] hover:bg-[#ff5449] text-[#fdfcfc] text-xs"
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Tablet/Mobile Tab Switcher and Action Buttons Row */}
+        {(currentBreakpoint === 'tablet' || currentBreakpoint === 'mobile') && (
+          <div className={`${currentBreakpoint === 'mobile' ? 'space-y-2' : 'flex items-center justify-between'}`}>
+            {/* Tab Switcher */}
+            <div className={`flex ${currentBreakpoint === 'mobile' ? 'justify-center' : 'justify-start'}`}>
+              <div className="flex items-center bg-transparent rounded-full p-1 border border-gray-300 h-8">
+                {[
+                  { id: "rank-master", label: currentBreakpoint === 'mobile' ? "R.Master" : "Rank Master" },
+                  { id: "company", label: "Company" },
+                  { id: "vessel", label: "Vessel" }
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setSelectedRankAdminTab(tab.id)}
+                    className={`${currentBreakpoint === 'mobile' ? 'px-2' : 'px-3'} text-xs rounded-full transition-all duration-200 h-6 flex items-center ${
+                      selectedRankAdminTab === tab.id
+                        ? "text-[#16569e] font-bold underline"
+                        : "text-gray-600 hover:text-gray-800 font-medium"
+                    }`}
                   >
-                    Cancel
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            {/* Action Buttons for Tablet/Mobile */}
+            <div className={`flex ${currentBreakpoint === 'mobile' ? 'justify-center' : 'justify-end'}`}>
+              {selectedRankAdminTab === "rank-master" && (
+                <div className={`flex ${responsive.stackButtons ? 'flex-col space-y-1' : 'gap-2'}`}>
+                  <Button
+                    variant={isRankMasterEditing ? "default" : "outline"}
+                    onClick={isRankMasterEditing ? handleSaveRank : handleEditRank}
+                    className={`h-8 text-xs ${
+                      isRankMasterEditing 
+                        ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
+                        : "border-[#e1e8ed] text-[#16569e]"
+                    }`}
+                  >
+                    {isRankMasterEditing ? "Save" : "Edit Rank"}
                   </Button>
                   <Button
-                    onClick={handleSaveDraft}
-                    className="h-8 bg-[#15569e] hover:bg-[#0f4078] text-white text-xs"
+                    onClick={handleNewRank}
+                    className="h-8 bg-[#5dc86f] hover:bg-[#22c55e] text-white text-xs"
                   >
-                    Save Draft
+                    + New Rank
                   </Button>
+                </div>
+              )}
+              {selectedRankAdminTab === "company" && (
+                <div className="flex gap-2">
                   <Button
-                    onClick={handleSubmit}
-                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 shadow px-4 py-2 h-8 hover:bg-[#0f4078] text-white text-xs bg-[#00AF7B]"
+                    variant={isCompanyEditing ? "default" : "outline"}
+                    onClick={isCompanyEditing ? handleSaveCompany : handleEditCompany}
+                    className={`h-8 text-xs ${
+                      isCompanyEditing 
+                        ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
+                        : "border-[#e1e8ed] text-[#16569e]"
+                    }`}
                   >
-                    Submit
+                    {isCompanyEditing ? "Save" : "Edit Table"}
                   </Button>
-                </>
+                </div>
+              )}
+              {selectedRankAdminTab === "vessel" && (
+                <div className={`flex ${responsive.stackButtons ? 'flex-col space-y-1' : 'gap-2'}`}>
+                  {!revisionMode ? (
+                    <Button
+                      onClick={handleRevision}
+                      disabled={selectedVessels.length === 0}
+                      className={`h-8 text-xs ${
+                        selectedVessels.length === 0 
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                          : 'bg-[#5dc86f] hover:bg-[#22c55e] text-white'
+                      }`}
+                      data-testid="revision-button"
+                    >
+                      + Revision
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        onClick={handleCancel}
+                        className="h-8 bg-[#ff6961] hover:bg-[#ff5449] text-[#fdfcfc] text-xs"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={handleSaveDraft}
+                        className="h-8 bg-[#15569e] hover:bg-[#0f4078] text-white text-xs"
+                      >
+                        Save Draft
+                      </Button>
+                      <Button
+                        onClick={handleSubmit}
+                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 shadow px-4 py-2 h-8 hover:bg-[#0f4078] text-white text-xs bg-[#00AF7B]"
+                      >
+                        Submit
+                      </Button>
+                    </>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
+        
+        {/* Desktop/Laptop Action Buttons */}
+        {(currentBreakpoint === 'desktop' || currentBreakpoint === 'laptop') && (
+          <div className="flex justify-end">
+            {selectedRankAdminTab === "rank-master" && (
+              <div className="flex gap-2">
+                <Button
+                  variant={isRankMasterEditing ? "default" : "outline"}
+                  onClick={isRankMasterEditing ? handleSaveRank : handleEditRank}
+                  className={`h-8 text-xs ${
+                    isRankMasterEditing 
+                      ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
+                      : "border-[#e1e8ed] text-[#16569e]"
+                  }`}
+                >
+                  {isRankMasterEditing ? "Save" : "Edit Rank"}
+                </Button>
+                <Button
+                  onClick={handleNewRank}
+                  className="h-8 bg-[#5dc86f] hover:bg-[#22c55e] text-white text-xs"
+                >
+                  + New Rank
+                </Button>
+              </div>
+            )}
+            {selectedRankAdminTab === "company" && (
+              <div className="flex gap-2">
+                <Button
+                  variant={isCompanyEditing ? "default" : "outline"}
+                  onClick={isCompanyEditing ? handleSaveCompany : handleEditCompany}
+                  className={`h-8 text-xs ${
+                    isCompanyEditing 
+                      ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
+                      : "border-[#e1e8ed] text-[#16569e]"
+                  }`}
+                >
+                  {isCompanyEditing ? "Save" : "Edit Table"}
+                </Button>
+              </div>
+            )}
+            {selectedRankAdminTab === "vessel" && (
+              <div className="flex gap-2">
+                {!revisionMode ? (
+                  <Button
+                    onClick={handleRevision}
+                    disabled={selectedVessels.length === 0}
+                    className={`h-8 text-xs ${
+                      selectedVessels.length === 0 
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                        : 'bg-[#5dc86f] hover:bg-[#22c55e] text-white'
+                    }`}
+                    data-testid="revision-button"
+                  >
+                    + Revision
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      onClick={handleCancel}
+                      className="h-8 bg-[#ff6961] hover:bg-[#ff5449] text-[#fdfcfc] text-xs"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleSaveDraft}
+                      className="h-8 bg-[#15569e] hover:bg-[#0f4078] text-white text-xs"
+                    >
+                      Save Draft
+                    </Button>
+                    <Button
+                      onClick={handleSubmit}
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 shadow px-4 py-2 h-8 hover:bg-[#0f4078] text-white text-xs bg-[#00AF7B]"
+                    >
+                      Submit
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Tab Content */}
