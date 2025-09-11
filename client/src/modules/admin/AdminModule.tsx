@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { EditIcon, Plus, Eye, Grip } from "lucide-react";
+import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -37,6 +37,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Form, RankGroup, AvailableRank } from "@shared/schema";
 import { FormEditorFactory } from "@/components/FormEditorFactory";
 import { formTemplates, createFormEditor } from "@/utils/formEditorGenerator";
@@ -652,6 +654,10 @@ export const AdminModule = (): JSX.Element => {
   };
 
   const handleRevision = () => {
+    if (selectedVessels.length === 0) {
+      console.warn('Cannot start revision mode: No vessels selected');
+      return;
+    }
     setRevisionMode(true);
     setIsVesselEditing(true);
   };
@@ -1346,7 +1352,13 @@ export const AdminModule = (): JSX.Element => {
               {!revisionMode ? (
                 <Button
                   onClick={handleRevision}
-                  className="h-8 bg-[#5dc86f] hover:bg-[#22c55e] text-white text-xs"
+                  disabled={selectedVessels.length === 0}
+                  className={`h-8 text-xs ${
+                    selectedVessels.length === 0 
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                      : 'bg-[#5dc86f] hover:bg-[#22c55e] text-white'
+                  }`}
+                  data-testid="revision-button"
                 >
                   + Revision
                 </Button>
@@ -1478,31 +1490,60 @@ export const AdminModule = (): JSX.Element => {
                       <label className="block text-xs text-gray-500 tracking-wide mb-1">
                         Vessel / Vessel Group
                       </label>
-                      <Select 
-                        value={selectedVessels.length === 1 ? selectedVessels[0] : ""} 
-                        onValueChange={(value) => {
-                          if (value) {
-                            setSelectedVessels([value]);
-                          } else {
-                            setSelectedVessels([]);
-                          }
-                        }}
-                      >
-                        <SelectTrigger className="h-8 text-xs" data-testid="vessel-select">
-                          <SelectValue placeholder={
-                            selectedVessels.length === 0 ? "Select vessel or group" :
-                            selectedVessels.length === 1 ? vesselOptions.find(v => v.value === selectedVessels[0])?.label :
-                            `${selectedVessels.length} vessels selected`
-                          } />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {vesselOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className="w-full h-8 justify-between text-xs font-normal"
+                            data-testid="vessel-select"
+                          >
+                            {selectedVessels.length === 0 
+                              ? "Select vessel or group" 
+                              : selectedVessels.length === 1 
+                                ? vesselOptions.find(v => v.value === selectedVessels[0])?.label
+                                : `${selectedVessels.length} vessels selected`
+                            }
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[200px] p-0">
+                          <Command>
+                            <CommandInput placeholder="Search vessels..." className="h-9" />
+                            <CommandEmpty>No vessel found.</CommandEmpty>
+                            <CommandGroup>
+                              {vesselOptions.map((vessel) => (
+                                <CommandItem
+                                  key={vessel.value}
+                                  value={vessel.value}
+                                  onSelect={() => {
+                                    const isSelected = selectedVessels.includes(vessel.value);
+                                    if (isSelected) {
+                                      setSelectedVessels(selectedVessels.filter(v => v !== vessel.value));
+                                    } else {
+                                      setSelectedVessels([...selectedVessels, vessel.value]);
+                                    }
+                                  }}
+                                  className="text-xs"
+                                >
+                                  <div className="flex items-center space-x-2">
+                                    <Checkbox 
+                                      checked={selectedVessels.includes(vessel.value)}
+                                      className="h-4 w-4"
+                                    />
+                                    <span>{vessel.label}</span>
+                                  </div>
+                                  <Check
+                                    className={`ml-auto h-4 w-4 ${
+                                      selectedVessels.includes(vessel.value) ? "opacity-100" : "opacity-0"
+                                    }`}
+                                  />
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     </div>
 
                     {/* Revision No */}
@@ -1552,8 +1593,45 @@ export const AdminModule = (): JSX.Element => {
                         )}
                       </div>
                     </div>
+
+                    {/* Selected Vessels Indicator */}
+                    {selectedVessels.length > 0 && (
+                      <div className="text-xs text-gray-600">
+                        <span className="font-medium">Selected:</span>{" "}
+                        {selectedVessels.length === 1 
+                          ? vesselOptions.find(v => v.value === selectedVessels[0])?.label
+                          : `${selectedVessels.length} vessels`
+                        }
+                      </div>
+                    )}
                   </div>
                 </div>
+
+                {/* Selected Vessels Revision Indicator */}
+                {revisionMode && selectedVessels.length > 0 && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4" data-testid="selected-vessels-indicator">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="text-sm font-medium text-blue-800">
+                          Revision Mode - Editing {selectedVessels.length} vessel{selectedVessels.length > 1 ? 's' : ''}:
+                        </div>
+                        <div className="flex space-x-1">
+                          {selectedVessels.map((vesselId) => (
+                            <span
+                              key={vesselId}
+                              className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800"
+                            >
+                              {vesselOptions.find(v => v.value === vesselId)?.label || vesselId}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="text-xs text-blue-600">
+                        Changes apply to all selected vessels
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Vessel Table */}
                 <div className="h-[500px]">
