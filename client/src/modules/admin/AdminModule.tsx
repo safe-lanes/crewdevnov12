@@ -498,7 +498,6 @@ export const AdminModule = (): JSX.Element => {
       flex: 1,
       editable: isRankMasterEditing,
       singleClickEdit: true,
-      cellStyle: { backgroundColor: '#E3F2FD' },
     },
     {
       headerName: "Rank ID (Sail)",
@@ -506,7 +505,6 @@ export const AdminModule = (): JSX.Element => {
       flex: 1,
       editable: isRankMasterEditing,
       singleClickEdit: true,
-      cellStyle: { backgroundColor: '#E3F2FD' },
     },
     {
       headerName: "Applicable to Company",
