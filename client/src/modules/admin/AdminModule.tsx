@@ -1504,7 +1504,7 @@ export const AdminModule = (): JSX.Element => {
             )}
             
             {selectedRankAdminTab === "vessel" && (
-              <div className="-mt-2">
+              <div className="-mt-8">
                 {/* Vessel Filters */}
                 <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-[#f7fafc] rounded-lg">
                   <div className="flex gap-4 flex-wrap">
