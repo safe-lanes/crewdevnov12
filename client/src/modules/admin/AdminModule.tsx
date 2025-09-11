@@ -869,59 +869,8 @@ export const AdminModule = (): JSX.Element => {
       }
     }] : []),
     {
-      headerName: "Actual Manning",
-      field: "actualManning",
-      width: 150,
-      cellStyle: { borderRight: '2px solid #16569e' }, // Right border as requested
-      cellRenderer: (params: ICellRendererParams) => {
-        const rankSeafarers = seafarerData.filter(seafarer => 
-          seafarer.rank === params.data.rank || 
-          (params.data.rank.includes('Officer') && seafarer.rank.includes('Officer')) ||
-          (params.data.rank.includes('Engineer') && seafarer.rank.includes('Engineer'))
-        );
-        
-        const selectedSeafarers = params.data.actualManning || [];
-        const selectedNames = selectedSeafarers.map((id: string) => {
-          const seafarer = seafarerData.find(s => s.id === id);
-          return seafarer ? `${seafarer.firstName} ${seafarer.lastName}` : '';
-        }).filter((name: string) => name);
-        
-        return (
-          <div className="w-full h-full flex items-center">
-            <Select
-              value={selectedSeafarers.length > 0 ? 'selected' : ''}
-              onValueChange={(value) => {
-                if (revisionMode && value !== 'selected') {
-                  const newData = [...vesselRankData];
-                  const rowIndex = newData.findIndex(row => row.id === params.data.id);
-                  if (rowIndex !== -1) {
-                    const currentManning = newData[rowIndex].actualManning || [];
-                    if (value && !currentManning.includes(value)) {
-                      newData[rowIndex].actualManning = [...currentManning, value];
-                      setVesselRankData(newData);
-                    }
-                  }
-                }
-              }}
-              disabled={!revisionMode}
-            >
-              <SelectTrigger className="w-full h-8 text-xs" data-testid="actual-manning-select">
-                <SelectValue placeholder={selectedNames.length > 0 ? selectedNames.join(', ') : 'Select seafarers'} />
-              </SelectTrigger>
-              <SelectContent>
-                {rankSeafarers.map((seafarer) => (
-                  <SelectItem key={seafarer.id} value={seafarer.id}>
-                    {seafarer.firstName} {seafarer.lastName} ({seafarer.nationality})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        );
-      },
-      sortable: false,
-      filter: false,
-      resizable: true
+      ...createVesselCheckboxColumn("Actual Manning", "actualManning"),
+      cellStyle: { borderRight: '2px solid #16569e' } // Right border as requested
     },
     createVesselCheckboxColumn("Safe Manning", "safeManning"),
     createVesselCheckboxColumn("Optimum Manning", "optimumManning"),
