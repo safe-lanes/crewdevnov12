@@ -205,64 +205,79 @@ export const AdminModule = (): JSX.Element => {
   };
 
   const handleMultiple = (rankId: string) => {
-    const rankToMultiply = companyRankData.find(rank => rank.id === rankId);
+    // Find the rank to multiply - could be original rank or need to get from existing role
+    let rankToMultiply = companyRankData.find(rank => rank.id === rankId);
+    
+    // If not found, this might be an originalRankId, so get data from existing role
+    if (!rankToMultiply) {
+      const existingRole = companyRankData.find(row => row.originalRankId === rankId);
+      if (existingRole) {
+        rankToMultiply = {
+          ...existingRole,
+          id: rankId,
+          role: undefined,
+          originalRankId: undefined,
+          isRoleRow: false,
+          hasMultiple: false
+        };
+      }
+    }
+    
     if (rankToMultiply) {
       setCompanyRankData(prev => {
         const currentData = [...prev];
         const rankIndex = currentData.findIndex(rank => rank.id === rankId);
         
-        if (rankIndex !== -1) {
-          // Check if this rank already has role rows
-          const existingRoles = currentData.filter(row => row.parentId === rankId || (row.originalRankId === rankId));
+        // Check if this rank already has role rows
+        const existingRoles = currentData.filter(row => row.originalRankId === rankId);
+        
+        if (existingRoles.length === 0) {
+          // First time creating roles - replace the parent row with 2 role rows
+          const role1: CompanyRankData = {
+            ...rankToMultiply,
+            id: `${rankToMultiply.id}_role_1_${Date.now()}`,
+            role: `${rankToMultiply.rank}_1`,
+            originalRankId: rankId,
+            isRoleRow: true,
+            hasMultiple: false
+          };
           
-          if (existingRoles.length === 0) {
-            // First time creating roles - replace the parent row with 2 role rows
-            const role1: CompanyRankData = {
-              ...rankToMultiply,
-              id: `${rankToMultiply.id}_role_1_${Date.now()}`,
-              role: `${rankToMultiply.rank}_1`,
-              originalRankId: rankId, // Keep reference to original rank
-              isRoleRow: true,
-              hasMultiple: false
-            };
-            
-            const role2: CompanyRankData = {
-              ...rankToMultiply,
-              id: `${rankToMultiply.id}_role_2_${Date.now()}`,
-              role: `${rankToMultiply.rank}_2`,
-              originalRankId: rankId, // Keep reference to original rank
-              isRoleRow: true,
-              hasMultiple: false
-            };
-            
-            // Replace the parent row with the 2 role rows
-            currentData.splice(rankIndex, 1, role1, role2);
-          } else {
-            // Adding more roles - find the highest role number and add 1 more
-            const roleNumbers = existingRoles
-              .map(role => {
-                const match = role.role?.match(/_(\d+)$/);
-                return match ? parseInt(match[1], 10) : 0;
-              })
-              .filter(num => num > 0);
-            
-            const nextRoleNumber = Math.max(...roleNumbers, 0) + 1;
-            
-            const newRole: CompanyRankData = {
-              ...rankToMultiply,
-              id: `${rankToMultiply.id}_role_${nextRoleNumber}_${Date.now()}`,
-              role: `${rankToMultiply.rank}_${nextRoleNumber}`,
-              originalRankId: rankId,
-              isRoleRow: true,
-              hasMultiple: false
-            };
-            
-            // Add the new role after the last existing role for this rank
-            const lastRoleIndex = Math.max(...existingRoles.map(role => 
-              currentData.findIndex(row => row.id === role.id)
-            ));
-            currentData.splice(lastRoleIndex + 1, 0, newRole);
-          }
+          const role2: CompanyRankData = {
+            ...rankToMultiply,
+            id: `${rankToMultiply.id}_role_2_${Date.now()}`,
+            role: `${rankToMultiply.rank}_2`,
+            originalRankId: rankId,
+            isRoleRow: true,
+            hasMultiple: false
+          };
+          
+          // Replace the parent row with the 2 role rows
+          currentData.splice(rankIndex, 1, role1, role2);
+        } else {
+          // Adding more roles - find the highest role number and add 1 more
+          const roleNumbers = existingRoles
+            .map(role => {
+              const match = role.role?.match(/_(\d+)$/);
+              return match ? parseInt(match[1], 10) : 0;
+            })
+            .filter(num => num > 0);
+          
+          const nextRoleNumber = Math.max(...roleNumbers, 0) + 1;
+          
+          const newRole: CompanyRankData = {
+            ...rankToMultiply,
+            id: `${rankToMultiply.id}_role_${nextRoleNumber}_${Date.now()}`,
+            role: `${rankToMultiply.rank}_${nextRoleNumber}`,
+            originalRankId: rankId,
+            isRoleRow: true,
+            hasMultiple: false
+          };
+          
+          // Add the new role after the last existing role for this rank
+          const lastRoleIndex = Math.max(...existingRoles.map(role => 
+            currentData.findIndex(row => row.id === role.id)
+          ));
+          currentData.splice(lastRoleIndex + 1, 0, newRole);
         }
         
         return currentData;
