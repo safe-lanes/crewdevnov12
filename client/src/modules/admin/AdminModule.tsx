@@ -1679,22 +1679,6 @@ export const AdminModule = (): JSX.Element => {
                   />
                 </div>
 
-                {/* Revision History Sidebar */}
-                {revisionMode && (
-                  <div className="fixed right-4 top-1/2 transform -translate-y-1/2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-                    <h4 className="text-sm font-medium text-gray-900 mb-2">Revision History</h4>
-                    <div className="space-y-2 text-xs">
-                      <div className="flex justify-between">
-                        <span>R1</span>
-                        <span className="text-gray-500">Active</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>R0</span>
-                        <span className="text-gray-500">Initial</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </CardContent>
