@@ -422,29 +422,34 @@ export const AdminModule = (): JSX.Element => {
     {
       headerName: "",
       width: 80,
-      cellRenderer: (params: ICellRendererParams) => (
-        <div className="flex items-center justify-center h-full gap-1">
-          {/* Show +Multi button only on regular ranks (not role rows) */}
-          {!params.data.isRoleRow && isCompanyEditing && (
-            <button
-              onClick={() => handleMultiple(params.data.id)}
-              className="h-8 px-4 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded font-medium min-w-[60px] shadow-sm"
-            >
-              +Multi
-            </button>
-          )}
-          {/* Show delete button only for role rows */}
-          {params.data.isRoleRow && isCompanyEditing && (
-            <Button
-              onClick={() => handleDeleteCompanyRank(params.data.id)}
-              className="h-6 w-6 p-0 bg-red-100 hover:bg-red-200 text-red-600"
-              variant="outline"
-            >
-              🗑
-            </Button>
-          )}
-        </div>
-      ),
+      cellRenderer: (params: ICellRendererParams) => {
+        const isFirstRole = params.data.isRoleRow && params.data.role?.endsWith('_1');
+        const isOtherRole = params.data.isRoleRow && !params.data.role?.endsWith('_1');
+        
+        return (
+          <div className="flex items-center justify-center h-full gap-1">
+            {/* Show +Multi button on regular ranks and first role row (_1) */}
+            {(!params.data.isRoleRow || isFirstRole) && isCompanyEditing && (
+              <button
+                onClick={() => handleMultiple(params.data.originalRankId || params.data.id)}
+                className="h-8 px-4 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded font-medium min-w-[60px] shadow-sm"
+              >
+                +Multi
+              </button>
+            )}
+            {/* Show delete button only for other role rows (not _1) */}
+            {isOtherRole && isCompanyEditing && (
+              <Button
+                onClick={() => handleDeleteCompanyRank(params.data.id)}
+                className="h-6 w-6 p-0 bg-red-100 hover:bg-red-200 text-red-600"
+                variant="outline"
+              >
+                🗑
+              </Button>
+            )}
+          </div>
+        );
+      },
       sortable: false,
       filter: false,
       resizable: false,
