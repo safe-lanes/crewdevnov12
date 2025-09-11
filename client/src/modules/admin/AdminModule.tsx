@@ -1087,43 +1087,7 @@ export const AdminModule = (): JSX.Element => {
     createVesselCheckboxColumn("SSO", "sso"),
     createVesselCheckboxColumn("Medical Officer", "medicalOfficer"),
     createVesselCheckboxColumn("Nav. Officer", "navigatingOfficer"),
-    createVesselCheckboxColumn("Envt. Officer", "emtOfficer"),
-    {
-      headerName: "",
-      width: 80,
-      cellRenderer: (params: ICellRendererParams) => {
-        const isFirstRole = params.data.isRoleRow && params.data.role?.endsWith('_1');
-        const isOtherRole = params.data.isRoleRow && !params.data.role?.endsWith('_1');
-        
-        return (
-          <div className="flex items-center justify-center h-full gap-1">
-            {(!params.data.isRoleRow || isFirstRole) && revisionMode && (
-              <button
-                onClick={() => handleVesselMultiple(params.data.originalRankId || params.data.id)}
-                className="h-8 px-4 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded font-medium min-w-[60px] shadow-sm"
-                data-testid="vessel-multi-button"
-              >
-                +Multi
-              </button>
-            )}
-            {isOtherRole && revisionMode && (
-              <Button
-                onClick={() => handleDeleteVesselRank(params.data.id)}
-                className="h-6 w-6 p-0 bg-red-100 hover:bg-red-200 text-red-600"
-                variant="outline"
-                data-testid="vessel-delete-button"
-              >
-                🗑
-              </Button>
-            )}
-          </div>
-        );
-      },
-      sortable: false,
-      filter: false,
-      resizable: false,
-      pinned: 'right'
-    }
+    createVesselCheckboxColumn("Envt. Officer", "emtOfficer")
   ];
 
   // Fetch forms data from API
