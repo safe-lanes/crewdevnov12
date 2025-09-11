@@ -1037,76 +1037,90 @@ export const AdminModule = (): JSX.Element => {
     }
   ];
 
-  // Rank Master column definitions
-  const rankMasterColumnDefs: ColDef[] = [
-    {
-      headerName: "",
-      width: 40,
-      cellClass: 'text-center cursor-move',
-      rowDrag: isRankMasterEditing,
-      sortable: false,
-      filter: false,
-      pinned: 'left',
-      menuTabs: [],
-    },
-    {
-      headerName: "Rank",
-      field: "rank",
-      flex: 1,
-      editable: isRankMasterEditing,
-      singleClickEdit: true,
-    },
-    {
-      headerName: "Rank ID (Sail)",
-      field: "rankId", 
-      flex: 1,
-      editable: isRankMasterEditing,
-      singleClickEdit: true,
-    },
-    {
-      headerName: "Applicable to Company",
-      field: "applicableToCompany",
-      flex: 1,
-      cellRenderer: (params: ICellRendererParams) => {
-        // In non-edit mode: only show checked checkboxes, hide unchecked ones
-        // In edit mode: show all checkboxes (checked and unchecked)
-        const isChecked = params.value || false;
-        const shouldShowCheckbox = isRankMasterEditing || isChecked;
-        
-        if (!shouldShowCheckbox) {
-          return <div className="flex items-center justify-center h-full"></div>;
-        }
-        
-        return (
-          <div className="flex items-center justify-center h-full">
-            <input
-              type="checkbox"
-              checked={isChecked}
-              disabled={!isRankMasterEditing}
-              onChange={(e) => {
-                if (isRankMasterEditing) {
-                  const newData = [...rankMasterData];
-                  const rowIndex = newData.findIndex(row => row.id === params.data.id);
-                  if (rowIndex !== -1) {
-                    newData[rowIndex].applicableToCompany = e.target.checked;
-                    setRankMasterData(newData);
+  // Responsive column definitions for Rank Master
+  const getRankMasterColumnDefs = (): ColDef[] => {
+    const baseColumns: ColDef[] = [
+      {
+        headerName: "",
+        width: currentBreakpoint === 'mobile' ? 30 : 40,
+        cellClass: 'text-center cursor-move',
+        rowDrag: isRankMasterEditing,
+        sortable: false,
+        filter: false,
+        pinned: 'left',
+        menuTabs: [],
+      },
+      {
+        headerName: "Rank",
+        field: "rank",
+        flex: currentBreakpoint === 'mobile' ? 2 : 1,
+        minWidth: 120,
+        editable: isRankMasterEditing,
+        singleClickEdit: true,
+      },
+      {
+        headerName: currentBreakpoint === 'mobile' ? "ID" : "Rank ID (Sail)",
+        field: "rankId", 
+        flex: currentBreakpoint === 'mobile' ? 1 : 1,
+        minWidth: currentBreakpoint === 'mobile' ? 80 : 120,
+        editable: isRankMasterEditing,
+        singleClickEdit: true,
+      },
+      {
+        headerName: currentBreakpoint === 'mobile' ? "Company" : "Applicable to Company",
+        field: "applicableToCompany",
+        flex: currentBreakpoint === 'mobile' ? 1 : 1,
+        minWidth: currentBreakpoint === 'mobile' ? 80 : 120,
+        cellRenderer: (params: ICellRendererParams) => {
+          // In non-edit mode: only show checked checkboxes, hide unchecked ones
+          // In edit mode: show all checkboxes (checked and unchecked)
+          const isChecked = params.value || false;
+          const shouldShowCheckbox = isRankMasterEditing || isChecked;
+          
+          if (!shouldShowCheckbox) {
+            return <div className="flex items-center justify-center h-full"></div>;
+          }
+          
+          return (
+            <div className="flex items-center justify-center h-full">
+              <input
+                type="checkbox"
+                checked={isChecked}
+                disabled={!isRankMasterEditing}
+                onChange={(e) => {
+                  if (isRankMasterEditing) {
+                    const newData = [...rankMasterData];
+                    const rowIndex = newData.findIndex(row => row.id === params.data.id);
+                    if (rowIndex !== -1) {
+                      newData[rowIndex].applicableToCompany = e.target.checked;
+                      setRankMasterData(newData);
+                    }
                   }
-                }
-              }}
-              className="form-checkbox h-4 w-4 text-blue-600"
-            />
-          </div>
-        );
+                }}
+                className="form-checkbox h-4 w-4 text-blue-600"
+              />
+            </div>
+          );
+        }
       }
-    },
-    {
-      headerName: "Label",
-      field: "label",
-      flex: 1,
-      editable: isRankMasterEditing,
-      singleClickEdit: true,
+    ];
+
+    // Add Label column only for larger screens, hide on mobile to save space
+    if (currentBreakpoint !== 'mobile') {
+      baseColumns.push({
+        headerName: "Label",
+        field: "label",
+        flex: 1,
+        minWidth: 120,
+        editable: isRankMasterEditing,
+        singleClickEdit: true,
+      });
     }
-  ];
+
+    return baseColumns;
+  };
+
+  const rankMasterColumnDefs = getRankMasterColumnDefs();
 
   // Vessel column definitions - exact structure as per user specification
   const vesselColumnDefs: ColDef[] = [
@@ -1607,7 +1621,7 @@ export const AdminModule = (): JSX.Element => {
         <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
           <CardContent className="pt-4 pb-4 pl-0">
             {selectedRankAdminTab === "rank-master" && (
-              <div className="h-[600px]">
+              <div className={`${currentBreakpoint === 'mobile' ? 'h-[400px]' : currentBreakpoint === 'tablet' ? 'h-[500px]' : 'h-[600px]'}`}>
                 <AgGridTable
                   rowData={rankMasterData}
                   columnDefs={rankMasterColumnDefs}
@@ -1648,7 +1662,7 @@ export const AdminModule = (): JSX.Element => {
             )}
             
             {selectedRankAdminTab === "company" && (
-              <div className="h-[600px]">
+              <div className={`${currentBreakpoint === 'mobile' ? 'h-[400px]' : currentBreakpoint === 'tablet' ? 'h-[500px]' : 'h-[600px]'}`}>
                 <AgGridTable
                   rowData={companyRankData}
                   columnDefs={companyColumnDefs}
