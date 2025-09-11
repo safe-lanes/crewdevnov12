@@ -805,7 +805,7 @@ export const AdminModule = (): JSX.Element => {
               </Button>
               <Button
                 onClick={handleNewRank}
-                className="h-8 bg-[#4ade80] hover:bg-[#22c55e] text-white text-xs"
+                className="h-8 bg-[#5dc86f] hover:bg-[#22c55e] text-white text-xs"
               >
                 + New Rank
               </Button>
