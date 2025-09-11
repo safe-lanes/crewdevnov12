@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -166,6 +166,83 @@ export const AdminModule = (): JSX.Element => {
   const [selectedRevision, setSelectedRevision] = useState("R1");
   const [flexDate, setFlexDate] = useState("");
   const [revisionMode, setRevisionMode] = useState(false);
+  
+  // Responsive breakpoint detection
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+  
+  // Breakpoint thresholds
+  const breakpoints = {
+    mobile: 768,
+    tablet: 1024,
+    laptop: 1200
+  };
+  
+  // Current breakpoint detection
+  const currentBreakpoint = useMemo(() => {
+    if (windowWidth >= breakpoints.laptop) return 'desktop';
+    if (windowWidth >= breakpoints.tablet) return 'laptop';  
+    if (windowWidth >= breakpoints.mobile) return 'tablet';
+    return 'mobile';
+  }, [windowWidth]);
+  
+  // Window resize handler
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  // Responsive configuration
+  const responsiveConfig = useMemo(() => ({
+    mobile: {
+      gridHeight: '300px',
+      maxGridHeight: '300px',
+      showSidebar: false,
+      showExport: false,
+      compactMode: true,
+      stackButtons: true,
+      headerColumns: 1,
+      maxVisibleColumns: 3
+    },
+    tablet: {
+      gridHeight: '400px', 
+      maxGridHeight: '400px',
+      showSidebar: false,
+      showExport: false,
+      compactMode: true,
+      stackButtons: false,
+      headerColumns: 2,
+      maxVisibleColumns: 6
+    },
+    laptop: {
+      gridHeight: '500px',
+      maxGridHeight: '500px',
+      showSidebar: true,
+      showExport: true,
+      compactMode: false,
+      stackButtons: false,
+      headerColumns: 3,
+      maxVisibleColumns: 8
+    },
+    desktop: {
+      gridHeight: '600px',
+      maxGridHeight: '600px', 
+      showSidebar: true,
+      showExport: true,
+      compactMode: false,
+      stackButtons: false,
+      headerColumns: 3,
+      maxVisibleColumns: 12
+    }
+  }), []);
+  
+  // Current responsive settings
+  const responsive = responsiveConfig[currentBreakpoint];
   
   // Current vessel rank data (derived from selected vessels)
   const vesselRankData = selectedVessels.length > 0 
