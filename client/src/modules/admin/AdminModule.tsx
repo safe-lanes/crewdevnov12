@@ -1513,7 +1513,7 @@ export const AdminModule = (): JSX.Element => {
                         <Button
                           variant="outline"
                           role="combobox"
-                          className="h-8 w-48 justify-between text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
+                          className="h-8 w-48 justify-between text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] bg-transparent hover:bg-transparent"
                           data-testid="vessel-select"
                         >
                           {selectedVessels.length === 0 
@@ -1580,7 +1580,7 @@ export const AdminModule = (): JSX.Element => {
                       placeholder="dd/mm/yyyy"
                       value={flexDate}
                       onChange={(e) => setFlexDate(e.target.value)}
-                      className="h-8 w-32 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
+                      className="h-8 w-36 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] pr-8"
                       disabled={!revisionMode}
                       data-testid="flex-date-input"
                     />
