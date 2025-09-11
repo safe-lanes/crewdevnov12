@@ -1401,7 +1401,7 @@ export const AdminModule = (): JSX.Element => {
                   </Button>
                   <Button
                     onClick={handleSubmit}
-                    className="h-8 bg-[#16569e] hover:bg-[#0f4078] text-white text-xs"
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 shadow px-4 py-2 h-8 hover:bg-[#0f4078] text-white text-xs bg-[#00AF7B]"
                   >
                     Submit
                   </Button>
