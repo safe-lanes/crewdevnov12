@@ -2001,6 +2001,102 @@ export const AdminModule = (): JSX.Element => {
     </div>
   );
 
+  const renderDataMastersModule = () => (
+    <div>
+      {/* Responsive Header Layout */}
+      <div className={`mb-4 ${currentBreakpoint === 'mobile' ? 'space-y-3' : currentBreakpoint === 'tablet' ? 'space-y-3' : 'grid grid-cols-3 items-center'}`}>
+        {/* Title */}
+        <div className={`${currentBreakpoint === 'mobile' || currentBreakpoint === 'tablet' ? 'text-center' : ''}`}>
+          <h1 className={`font-bold text-black ${currentBreakpoint === 'mobile' ? 'text-xl' : currentBreakpoint === 'tablet' ? 'text-xl' : 'text-2xl'}`}>
+            Data Masters
+          </h1>
+        </div>
+        
+        {/* Tablet/Mobile Action Buttons */}
+        {(currentBreakpoint === 'tablet' || currentBreakpoint === 'mobile') && (
+          <div className={`flex ${currentBreakpoint === 'mobile' ? 'justify-center' : 'justify-center'}`}>
+            <div className={`flex ${responsive.stackButtons ? 'flex-col space-y-1' : 'gap-2'}`}>
+              <Button
+                variant={isMasterEditing ? "default" : "outline"}
+                onClick={isMasterEditing ? handleSaveMaster : handleEditMaster}
+                className={`h-8 text-xs ${
+                  isMasterEditing 
+                    ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
+                    : "border-[#e1e8ed] text-[#16569e]"
+                }`}
+                data-testid="button-edit-master"
+              >
+                {isMasterEditing ? "Save" : "Edit Master"}
+              </Button>
+              <Button
+                onClick={handleNewEntry}
+                className="h-8 bg-[#5dc86f] hover:bg-[#22c55e] text-white text-xs"
+                data-testid="button-new-entry"
+              >
+                + New Entry
+              </Button>
+            </div>
+          </div>
+        )}
+        
+        {/* Desktop/Laptop Action Buttons */}
+        {(currentBreakpoint === 'desktop' || currentBreakpoint === 'laptop') && (
+          <div className="flex justify-end">
+            <div className="flex gap-2">
+              <Button
+                variant={isMasterEditing ? "default" : "outline"}
+                onClick={isMasterEditing ? handleSaveMaster : handleEditMaster}
+                className={`h-8 text-xs ${
+                  isMasterEditing 
+                    ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
+                    : "border-[#e1e8ed] text-[#16569e]"
+                }`}
+                data-testid="button-edit-master"
+              >
+                {isMasterEditing ? "Save" : "Edit Master"}
+              </Button>
+              <Button
+                onClick={handleNewEntry}
+                className="h-8 bg-[#5dc86f] hover:bg-[#22c55e] text-white text-xs"
+                data-testid="button-new-entry"
+              >
+                + New Entry
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Content Area */}
+      <div className="pt-4 pb-4 pl-0">
+        <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
+          <CardContent className="pt-4 pb-4 pl-0">
+            {/* Filters Bar */}
+            <div className={`flex ${currentBreakpoint === 'mobile' ? 'flex-col space-y-3' : 'flex-wrap gap-4'} mb-4 p-4 pl-0 bg-[#f7fafc] rounded-lg`}>
+              <div className={`flex ${currentBreakpoint === 'mobile' ? 'flex-col space-y-3' : 'gap-4 flex-wrap'}`}>
+                <Input
+                  placeholder="Search in selected Data Master"
+                  value={searchDataMaster}
+                  onChange={(e) => setSearchDataMaster(e.target.value)}
+                  className="h-8 w-80 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] bg-transparent"
+                  data-testid="input-search-data-master"
+                />
+              </div>
+            </div>
+
+            {/* Placeholder Content Area */}
+            <div className={`${currentBreakpoint === 'mobile' ? 'h-[400px]' : currentBreakpoint === 'tablet' ? 'h-[500px]' : 'h-[600px]'} flex items-center justify-center bg-white rounded-lg border border-gray-200`}>
+              <div className="text-center text-gray-500">
+                <h3 className="text-lg font-medium mb-2">Data Masters</h3>
+                <p className="text-sm">Master data management interface will be implemented here.</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+
   const renderFormsTable = () => (
     <div>
       <SectionTitleComponents title={"Forms Configuration"}>
