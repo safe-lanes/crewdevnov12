@@ -188,7 +188,7 @@ export const AdminModule = (): JSX.Element => {
   ]);
   
   // Sample data for each master
-  const [masterData] = useState<{[key: string]: Array<{id: string, field1: string, field2: string, field3: string}>}>({
+  const [masterData, setMasterData] = useState<{[key: string]: Array<{id: string, field1: string, field2: string, field3: string}>}>({
     "001": [
       { id: "1", field1: "Indian", field2: "IN", field3: "India" },
       { id: "2", field1: "American", field2: "US", field3: "United States" },
@@ -562,9 +562,38 @@ export const AdminModule = (): JSX.Element => {
     setIsMasterEditing(false);
   };
 
+  const updateMasterField = (itemId: string, field: 'field1' | 'field2' | 'field3', value: string) => {
+    setMasterData(prevData => ({
+      ...prevData,
+      [selectedMaster]: prevData[selectedMaster]?.map(item => 
+        item.id === itemId ? { ...item, [field]: value } : item
+      ) || []
+    }));
+  };
+
+  const deleteMasterEntry = (itemId: string) => {
+    setMasterData(prevData => ({
+      ...prevData,
+      [selectedMaster]: prevData[selectedMaster]?.filter(item => item.id !== itemId) || []
+    }));
+  };
+
   const handleNewEntry = () => {
-    console.log('New Entry clicked');
-    // Placeholder for adding new master entry
+    const newId = Date.now().toString(); // Generate unique ID
+    const newEntry = {
+      id: newId,
+      field1: '',
+      field2: '',
+      field3: ''
+    };
+    
+    setMasterData(prevData => ({
+      ...prevData,
+      [selectedMaster]: [...(prevData[selectedMaster] || []), newEntry]
+    }));
+    
+    // Automatically enter edit mode when adding new entry
+    setIsMasterEditing(true);
   };
 
   // Company handlers
@@ -2213,7 +2242,7 @@ export const AdminModule = (): JSX.Element => {
                         {isMasterEditing ? (
                           <Input
                             value={item.field1}
-                            onChange={() => {}} // TODO: Implement edit functionality
+                            onChange={(e) => updateMasterField(item.id, 'field1', e.target.value)}
                             className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
                             data-testid={`input-field1-${item.id}`}
                           />
@@ -2225,7 +2254,7 @@ export const AdminModule = (): JSX.Element => {
                         {isMasterEditing ? (
                           <Input
                             value={item.field2}
-                            onChange={() => {}} // TODO: Implement edit functionality
+                            onChange={(e) => updateMasterField(item.id, 'field2', e.target.value)}
                             className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
                             data-testid={`input-field2-${item.id}`}
                           />
@@ -2237,7 +2266,7 @@ export const AdminModule = (): JSX.Element => {
                         {isMasterEditing ? (
                           <Input
                             value={item.field3}
-                            onChange={() => {}} // TODO: Implement edit functionality
+                            onChange={(e) => updateMasterField(item.id, 'field3', e.target.value)}
                             className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
                             data-testid={`input-field3-${item.id}`}
                           />
@@ -2248,7 +2277,7 @@ export const AdminModule = (): JSX.Element => {
                       <div className="p-3 flex justify-center">
                         <button
                           className="text-gray-500 hover:text-red-500 transition-colors"
-                          onClick={() => {}} // TODO: Implement delete functionality
+                          onClick={() => deleteMasterEntry(item.id)}
                           data-testid={`delete-button-${item.id}`}
                         >
                           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
