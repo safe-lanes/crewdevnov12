@@ -2076,8 +2076,8 @@ export const AdminModule = (): JSX.Element => {
         )}
       </div>
 
-      {/* Content Area */}
-      <div className="pb-4 pl-0">
+      {/* Content Area - Uses -mt-8 to match Rank Admin vessel tab spacing */}
+      <div className="pb-4 pl-0 -mt-8">
         <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
           <CardContent className="pt-4 pb-4 pl-0">
             {/* Filters Bar */}
