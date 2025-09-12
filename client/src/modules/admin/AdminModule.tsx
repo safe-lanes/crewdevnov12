@@ -947,7 +947,11 @@ export const AdminModule = (): JSX.Element => {
   });
 
   // Single source of truth for checkbox columns with tier hierarchy
-  const checkboxDescriptors = [
+  const checkboxDescriptors: Array<{
+    field: keyof CompanyRankData;
+    labelByBp: { mobile: string; tablet: string; desktop: string };
+    tier: "essential" | "standard" | "optional";
+  }> = [
     { field: "officer", labelByBp: { mobile: "Off", tablet: "Officer", desktop: "Officer" }, tier: "essential" },
     { field: "rating", labelByBp: { mobile: "Rating", tablet: "Rating", desktop: "Rating" }, tier: "essential" },
     { field: "seniorOfficer", labelByBp: { mobile: "Sr Off", tablet: "Senior Officer", desktop: "Senior Officer" }, tier: "essential" },
