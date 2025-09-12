@@ -2288,6 +2288,7 @@ export const AdminModule = (): JSX.Element => {
       <MainLayout>
         {selectedAdminPage === "forms" && renderFormsTable()}
         {selectedAdminPage === "rank-admin" && renderRankAdminModule()}
+        {selectedAdminPage === "masters" && renderDataMastersModule()}
       </MainLayout>
 
       {/* Main content */}
