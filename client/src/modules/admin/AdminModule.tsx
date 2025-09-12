@@ -167,6 +167,10 @@ export const AdminModule = (): JSX.Element => {
   const [flexDate, setFlexDate] = useState("");
   const [revisionMode, setRevisionMode] = useState(false);
   
+  // Data Masters state
+  const [isMasterEditing, setIsMasterEditing] = useState(false);
+  const [searchDataMaster, setSearchDataMaster] = useState("");
+  
   // Responsive breakpoint detection
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
   
@@ -472,6 +476,20 @@ export const AdminModule = (): JSX.Element => {
   const handleSaveRank = () => {
     setIsRankMasterEditing(false);
     rankMasterGridApi?.stopEditing();
+  };
+
+  // Data Masters handlers
+  const handleEditMaster = () => {
+    setIsMasterEditing(true);
+  };
+
+  const handleSaveMaster = () => {
+    setIsMasterEditing(false);
+  };
+
+  const handleNewEntry = () => {
+    console.log('New Entry clicked');
+    // Placeholder for adding new master entry
   };
 
   // Company handlers
