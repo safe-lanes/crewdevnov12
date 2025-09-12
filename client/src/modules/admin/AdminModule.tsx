@@ -2016,6 +2016,38 @@ export const AdminModule = (): JSX.Element => {
           </h1>
         </div>
         
+        {/* Desktop/Laptop - Middle Grid Cell (Empty) */}
+        {(currentBreakpoint === 'desktop' || currentBreakpoint === 'laptop') && (
+          <div></div>
+        )}
+        
+        {/* Desktop/Laptop - Right Grid Cell (Action Buttons) */}
+        {(currentBreakpoint === 'desktop' || currentBreakpoint === 'laptop') && (
+          <div className="flex justify-end">
+            <div className="flex gap-2">
+              <Button
+                variant={isMasterEditing ? "default" : "outline"}
+                onClick={isMasterEditing ? handleSaveMaster : handleEditMaster}
+                className={`h-8 text-xs ${
+                  isMasterEditing 
+                    ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
+                    : "border-[#e1e8ed] text-[#16569e]"
+                }`}
+                data-testid="button-edit-master"
+              >
+                {isMasterEditing ? "Save" : "Edit Master"}
+              </Button>
+              <Button
+                onClick={handleNewEntry}
+                className="h-8 bg-[#5dc86f] hover:bg-[#22c55e] text-white text-xs"
+                data-testid="button-new-entry"
+              >
+                + New Entry
+              </Button>
+            </div>
+          </div>
+        )}
+        
         {/* Tablet/Mobile Action Buttons */}
         {(currentBreakpoint === 'tablet' || currentBreakpoint === 'mobile') && (
           <div className={`flex ${currentBreakpoint === 'mobile' ? 'justify-center' : 'justify-center'}`}>
@@ -2042,37 +2074,10 @@ export const AdminModule = (): JSX.Element => {
             </div>
           </div>
         )}
-        
-        {/* Desktop/Laptop Action Buttons */}
-        {(currentBreakpoint === 'desktop' || currentBreakpoint === 'laptop') && (
-          <div className="flex justify-end">
-            <div className="flex gap-2">
-              <Button
-                variant={isMasterEditing ? "default" : "outline"}
-                onClick={isMasterEditing ? handleSaveMaster : handleEditMaster}
-                className={`h-8 text-xs ${
-                  isMasterEditing 
-                    ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
-                    : "border-[#e1e8ed] text-[#16569e]"
-                }`}
-                data-testid="button-edit-master"
-              >
-                {isMasterEditing ? "Save" : "Edit Master"}
-              </Button>
-              <Button
-                onClick={handleNewEntry}
-                className="h-8 bg-[#5dc86f] hover:bg-[#22c55e] text-white text-xs"
-                data-testid="button-new-entry"
-              >
-                + New Entry
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Content Area */}
-      <div className="pt-4 pb-4 pl-0">
+      <div className="pb-4 pl-0">
         <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
           <CardContent className="pt-4 pb-4 pl-0">
             {/* Filters Bar */}
