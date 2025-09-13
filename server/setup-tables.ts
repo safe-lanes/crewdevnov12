@@ -46,7 +46,13 @@ async function setupTables() {
       { id: '008', name: 'Contract Type', description: 'Types of contracts' },
       { id: '009', name: 'Medical Status', description: 'Medical examination status' },
       { id: '010', name: 'Document Type', description: 'Document types' },
-      { id: '011', name: 'Equipment', description: 'Ship equipment and machinery' }
+      { id: '011', name: 'Equipment', description: 'Ship equipment and machinery' },
+      { id: '012', name: 'Designation', description: 'Job designations and positions' },
+      { id: '013', name: 'Users', description: 'System users and roles' },
+      { id: '014', name: 'Vessels', description: 'Vessel names and registrations' },
+      { id: '015', name: 'Fleet Groups', description: 'Fleet groupings and categories' },
+      { id: '016', name: 'Additional Groups', description: 'Additional grouping categories' },
+      { id: '017', name: 'Vessel Owners', description: 'Vessel ownership information' }
     ];
 
     for (const master of masterCategories) {

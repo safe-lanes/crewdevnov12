@@ -351,12 +351,15 @@ export class DatabaseStorage implements IStorage {
       
       console.log("🔄 Connecting to existing crew_database tables...");
       
-      // Check if data already exists
-      const existingForms = await this.getForms();
-      if (existingForms.length > 0) {
+      // Check if data masters are already complete (17 categories)
+      const existingMasters = await this.getDataMasters();
+      if (existingMasters.length >= 17) {
         console.log("Database already seeded, skipping...");
         return;
       }
+      
+      // If we have some but not all masters, only seed the missing ones
+      console.log(`Found ${existingMasters.length} existing master categories, ensuring all 17 are present...`);
 
       // Seed available ranks
       const rankData: InsertAvailableRank[] = [
@@ -378,21 +381,81 @@ export class DatabaseStorage implements IStorage {
         await this.createAvailableRank(rank);
       }
 
-      // Seed forms
-      const form = await this.createForm({
-        name: "Crew Appraisal Form",
-        rankGroup: "Senior Officers",
-        versionNo: "01",
-        versionDate: "01-Jan-2025",
-        configuration: null,
-      });
+      // Seed data masters categories (all 17 categories including new ones)
+      const masterCategories: InsertDataMaster[] = [
+        { id: "001", name: "Nationality", description: "Crew member nationalities" },
+        { id: "002", name: "Country", description: "Countries and regions" },
+        { id: "003", name: "Language", description: "Languages spoken" },
+        { id: "004", name: "Vessel Type", description: "Types of vessels" },
+        { id: "005", name: "Port", description: "Ports and terminals" },
+        { id: "006", name: "Qualification", description: "Qualifications and certifications" },
+        { id: "007", name: "Course", description: "Training courses" },
+        { id: "008", name: "Contract Type", description: "Types of contracts" },
+        { id: "009", name: "Medical Status", description: "Medical examination status" },
+        { id: "010", name: "Document Type", description: "Document types" },
+        { id: "011", name: "Equipment", description: "Ship equipment and machinery" },
+        { id: "012", name: "Designation", description: "Job titles and positions" },
+        { id: "013", name: "Users", description: "System users and administrators" },
+        { id: "014", name: "Vessels", description: "Fleet vessel information" },
+        { id: "015", name: "Fleet Groups", description: "Vessel fleet groupings" },
+        { id: "016", name: "Additional Groups", description: "Additional organizational groups" },
+        { id: "017", name: "Vessel Owners", description: "Company and ownership information" }
+      ];
 
-      // Seed rank groups
-      await this.createRankGroup({
-        formId: form.id,
-        name: "Senior Officers",
-        ranks: JSON.stringify(["Master", "Chief Officer", "Chief Engineer"]),
-      });
+      // Only create missing master categories
+      const existingIds = new Set(existingMasters.map(m => m.id));
+      for (const master of masterCategories) {
+        if (!existingIds.has(master.id)) {
+          console.log(`Creating missing master category: ${master.id} - ${master.name}`);
+          await this.createDataMaster(master);
+        }
+      }
+
+      // Seed sample data for some master categories
+      const sampleMasterEntries: InsertMasterDataEntry[] = [
+        // Nationality entries
+        { masterId: "001", name: "Filipino", description: "Philippines" },
+        { masterId: "001", name: "Indian", description: "India" },
+        { masterId: "001", name: "Ukrainian", description: "Ukraine" },
+        { masterId: "001", name: "Canadian", description: "Canada" },
+        
+        // Designation entries
+        { masterId: "012", name: "Master", description: "Ship Captain" },
+        { masterId: "012", name: "Chief Engineer", description: "Chief Engineering Officer" },
+        { masterId: "012", name: "Chief Officer", description: "First Officer" },
+        
+        // Vessel Type entries  
+        { masterId: "004", name: "Oil Tanker", description: "Petroleum transport vessel" },
+        { masterId: "004", name: "Container Ship", description: "Containerized cargo vessel" },
+        { masterId: "004", name: "Bulk Carrier", description: "Dry bulk cargo vessel" }
+      ];
+
+      for (const entry of sampleMasterEntries) {
+        await this.createMasterDataEntry(entry);
+      }
+
+      // Seed forms (with error handling to prevent blocking data masters)
+      try {
+        const form = await this.createForm({
+          name: "Crew Appraisal Form",
+          rankGroup: JSON.stringify("Senior Officers"), // Fix: JSON format for database
+          versionNo: "01",
+          versionDate: "01-Jan-2025",
+          configuration: null,
+        });
+
+        if (form && form.id) {
+          // Seed rank groups
+          await this.createRankGroup({
+            formId: form.id,
+            name: "Senior Officers",
+            ranks: JSON.stringify(["Master", "Chief Officer", "Chief Engineer"]),
+          });
+        }
+      } catch (error) {
+        console.warn("Warning: Could not seed forms/rank groups:", error);
+        // Continue with other seeding - don't let form seeding block data masters
+      }
 
       // Seed crew members
       const crewMemberData: InsertCrewMember[] = [
