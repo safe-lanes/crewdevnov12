@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError } from "./storage";
-import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema } from "@shared/schema";
+import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertDataMasterSchema, insertMasterDataEntrySchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for database connectivity
@@ -414,6 +414,176 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete recruitment candidate" });
+    }
+  });
+
+  // Data Masters API routes
+  app.get("/api/masters", async (req, res) => {
+    try {
+      const masters = await storage.getDataMasters();
+      res.json(masters);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch masters" });
+    }
+  });
+
+  app.get("/api/masters/:id", async (req, res) => {
+    try {
+      const id = req.params.id;
+      const master = await storage.getDataMaster(id);
+      if (!master) {
+        return res.status(404).json({ error: "Master not found" });
+      }
+      res.json(master);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch master" });
+    }
+  });
+
+  app.post("/api/masters", async (req, res) => {
+    try {
+      const result = insertDataMasterSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid master data", details: result.error.issues });
+      }
+      const master = await storage.createDataMaster(result.data);
+      res.status(201).json(master);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create master" });
+    }
+  });
+
+  app.put("/api/masters/:id", async (req, res) => {
+    try {
+      const id = req.params.id;
+      const result = insertDataMasterSchema.partial().safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid master data", details: result.error.issues });
+      }
+      const master = await storage.updateDataMaster(id, result.data);
+      if (!master) {
+        return res.status(404).json({ error: "Master not found" });
+      }
+      res.json(master);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update master" });
+    }
+  });
+
+  app.delete("/api/masters/:id", async (req, res) => {
+    try {
+      const id = req.params.id;
+      const deleted = await storage.deleteDataMaster(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Master not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete master" });
+    }
+  });
+
+  // Master Data Entries API routes
+  app.get("/api/masters/:id/data", async (req, res) => {
+    try {
+      const masterId = req.params.id;
+      const entries = await storage.getMasterDataEntries(masterId);
+      res.json(entries);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch master data entries" });
+    }
+  });
+
+  app.get("/api/master-data/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const entry = await storage.getMasterDataEntry(id);
+      if (!entry) {
+        return res.status(404).json({ error: "Master data entry not found" });
+      }
+      res.json(entry);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch master data entry" });
+    }
+  });
+
+  app.post("/api/masters/:id/data", async (req, res) => {
+    try {
+      const masterId = req.params.id;
+      console.log(`🔍 [DEBUG CREATE] Storage type: ${storage.constructor.name}, Master ID: ${masterId}, Payload:`, req.body);
+      
+      const result = insertMasterDataEntrySchema.safeParse({
+        ...req.body,
+        masterId
+      });
+      if (!result.success) {
+        console.log(`❌ [DEBUG CREATE] Validation failed:`, result.error.issues);
+        return res.status(400).json({ error: "Invalid master data entry", details: result.error.issues });
+      }
+      
+      console.log(`📤 [DEBUG CREATE] Calling storage.createMasterDataEntry with:`, result.data);
+      const entry = await storage.createMasterDataEntry(result.data);
+      console.log(`✅ [DEBUG CREATE] Created entry:`, entry);
+      
+      // Verify persistence by immediately fetching the entry
+      if (entry && entry.id) {
+        try {
+          const fetchedEntry = await storage.getMasterDataEntry(entry.id);
+          console.log(`🔎 [DEBUG CREATE] Immediate fetch result:`, fetchedEntry);
+        } catch (fetchError) {
+          console.log(`❌ [DEBUG CREATE] Immediate fetch failed:`, fetchError);
+        }
+      }
+      
+      res.status(201).json(entry);
+    } catch (error) {
+      console.log(`💥 [DEBUG CREATE] Exception:`, error);
+      res.status(500).json({ error: "Failed to create master data entry" });
+    }
+  });
+
+  app.put("/api/master-data/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const result = insertMasterDataEntrySchema.partial().safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid master data entry", details: result.error.issues });
+      }
+      const entry = await storage.updateMasterDataEntry(id, result.data);
+      if (!entry) {
+        return res.status(404).json({ error: "Master data entry not found" });
+      }
+      res.json(entry);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update master data entry" });
+    }
+  });
+
+  app.delete("/api/master-data/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      console.log(`🔍 [DEBUG DELETE] Storage type: ${storage.constructor.name}, Entry ID: ${id}`);
+      
+      // First check if entry exists
+      try {
+        const existingEntry = await storage.getMasterDataEntry(id);
+        console.log(`🔎 [DEBUG DELETE] Pre-delete fetch result:`, existingEntry);
+      } catch (fetchError) {
+        console.log(`❌ [DEBUG DELETE] Pre-delete fetch failed:`, fetchError);
+      }
+      
+      console.log(`📤 [DEBUG DELETE] Calling storage.deleteMasterDataEntry with ID: ${id}`);
+      const deleted = await storage.deleteMasterDataEntry(id);
+      console.log(`✅ [DEBUG DELETE] Delete result: ${deleted}`);
+      
+      if (!deleted) {
+        console.log(`❌ [DEBUG DELETE] Entry not found in storage for ID: ${id}`);
+        return res.status(404).json({ error: "Master data entry not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.log(`💥 [DEBUG DELETE] Exception:`, error);
+      res.status(500).json({ error: "Failed to delete master data entry" });
     }
   });
 

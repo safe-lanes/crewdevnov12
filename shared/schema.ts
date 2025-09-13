@@ -137,6 +137,24 @@ export const vesselRanks = mysqlTable("vessel_ranks", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const dataMasters = mysqlTable("data_masters", {
+  id: text("id").primaryKey(), // "001", "002", "003", etc.
+  name: text("name").notNull(), // "Nationality Master", "Country Master"
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const masterDataEntries = mysqlTable("master_data_entries", {
+  id: int("id").primaryKey().autoincrement(),
+  masterId: text("master_id").notNull().references(() => dataMasters.id),
+  entryId: text("entry_id").notNull(),
+  name: text("name").notNull(), 
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -249,6 +267,19 @@ export const insertVesselRankSchema = createInsertSchema(vesselRanks).pick({
   actualManning: true,
 });
 
+export const insertDataMasterSchema = createInsertSchema(dataMasters).pick({
+  id: true,
+  name: true,
+  description: true,
+});
+
+export const insertMasterDataEntrySchema = createInsertSchema(masterDataEntries).pick({
+  masterId: true,
+  entryId: true,
+  name: true,
+  description: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertForm = z.infer<typeof insertFormSchema>;
@@ -271,3 +302,7 @@ export type InsertRevision = z.infer<typeof insertRevisionSchema>;
 export type Revision = typeof revisions.$inferSelect;
 export type InsertVesselRank = z.infer<typeof insertVesselRankSchema>;
 export type VesselRank = typeof vesselRanks.$inferSelect;
+export type InsertDataMaster = z.infer<typeof insertDataMasterSchema>;
+export type DataMaster = typeof dataMasters.$inferSelect;
+export type InsertMasterDataEntry = z.infer<typeof insertMasterDataEntrySchema>;
+export type MasterDataEntry = typeof masterDataEntries.$inferSelect;

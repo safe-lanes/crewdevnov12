@@ -1,5 +1,5 @@
 
-import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate } from "@shared/schema";
+import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry } from "@shared/schema";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -39,6 +39,18 @@ export interface IStorage {
   createRecruitmentCandidate(candidate: InsertRecruitmentCandidate): Promise<RecruitmentCandidate>;
   updateRecruitmentCandidate(id: string, candidate: Partial<InsertRecruitmentCandidate>): Promise<RecruitmentCandidate | undefined>;
   deleteRecruitmentCandidate(id: string): Promise<boolean>;
+  // Data Masters
+  getDataMasters(): Promise<DataMaster[]>;
+  getDataMaster(id: string): Promise<DataMaster | undefined>;
+  createDataMaster(master: InsertDataMaster): Promise<DataMaster>;
+  updateDataMaster(id: string, master: Partial<InsertDataMaster>): Promise<DataMaster | undefined>;
+  deleteDataMaster(id: string): Promise<boolean>;
+  // Master Data Entries
+  getMasterDataEntries(masterId: string): Promise<MasterDataEntry[]>;
+  getMasterDataEntry(id: number): Promise<MasterDataEntry | undefined>;
+  createMasterDataEntry(entry: InsertMasterDataEntry): Promise<MasterDataEntry>;
+  updateMasterDataEntry(id: number, entry: Partial<InsertMasterDataEntry>): Promise<MasterDataEntry | undefined>;
+  deleteMasterDataEntry(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -583,6 +595,18 @@ if (databaseUrl) {
       async createRecruitmentCandidate(): Promise<any> { this.throwConnectionError(); }
       async updateRecruitmentCandidate(): Promise<any> { this.throwConnectionError(); }
       async deleteRecruitmentCandidate(): Promise<any> { this.throwConnectionError(); }
+      // Data Masters - MISSING METHODS CAUSING 404 ERRORS
+      async getDataMasters(): Promise<any> { this.throwConnectionError(); }
+      async getDataMaster(): Promise<any> { this.throwConnectionError(); }
+      async createDataMaster(): Promise<any> { this.throwConnectionError(); }
+      async updateDataMaster(): Promise<any> { this.throwConnectionError(); }
+      async deleteDataMaster(): Promise<any> { this.throwConnectionError(); }
+      // Master Data Entries - MISSING METHODS CAUSING 404 ERRORS  
+      async getMasterDataEntries(): Promise<any> { this.throwConnectionError(); }
+      async getMasterDataEntry(): Promise<any> { this.throwConnectionError(); }
+      async createMasterDataEntry(): Promise<any> { this.throwConnectionError(); }
+      async updateMasterDataEntry(): Promise<any> { this.throwConnectionError(); }
+      async deleteMasterDataEntry(): Promise<any> { this.throwConnectionError(); }
     })();
   }
 } else {
@@ -628,6 +652,18 @@ if (databaseUrl) {
     async createRecruitmentCandidate(): Promise<any> { this.throwConnectionError(); }
     async updateRecruitmentCandidate(): Promise<any> { this.throwConnectionError(); }
     async deleteRecruitmentCandidate(): Promise<any> { this.throwConnectionError(); }
+    // Data Masters - MISSING METHODS CAUSING 404 ERRORS
+    async getDataMasters(): Promise<any> { this.throwConnectionError(); }
+    async getDataMaster(): Promise<any> { this.throwConnectionError(); }
+    async createDataMaster(): Promise<any> { this.throwConnectionError(); }
+    async updateDataMaster(): Promise<any> { this.throwConnectionError(); }
+    async deleteDataMaster(): Promise<any> { this.throwConnectionError(); }
+    // Master Data Entries - MISSING METHODS CAUSING 404 ERRORS  
+    async getMasterDataEntries(): Promise<any> { this.throwConnectionError(); }
+    async getMasterDataEntry(): Promise<any> { this.throwConnectionError(); }
+    async createMasterDataEntry(): Promise<any> { this.throwConnectionError(); }
+    async updateMasterDataEntry(): Promise<any> { this.throwConnectionError(); }
+    async deleteMasterDataEntry(): Promise<any> { this.throwConnectionError(); }
   })();
 }
 

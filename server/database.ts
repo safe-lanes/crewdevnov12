@@ -8,6 +8,8 @@ import {
   crewMembers, 
   appraisalResults,
   recruitmentCandidates,
+  dataMasters,
+  masterDataEntries,
   type User,
   type InsertUser,
   type Form,
@@ -21,7 +23,11 @@ import {
   type AppraisalResult,
   type InsertAppraisalResult,
   type RecruitmentCandidate,
-  type InsertRecruitmentCandidate
+  type InsertRecruitmentCandidate,
+  type DataMaster,
+  type InsertDataMaster,
+  type MasterDataEntry,
+  type InsertMasterDataEntry
 } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { type IStorage } from "./storage";
@@ -225,6 +231,84 @@ export class DatabaseStorage implements IStorage {
   async deleteRecruitmentCandidate(id: string): Promise<boolean> {
     const result = await this.db.delete(recruitmentCandidates).where(eq(recruitmentCandidates.id, id));
     return (result as any).affectedRows > 0;
+  }
+
+  // Data Masters Methods
+  async getDataMasters(): Promise<DataMaster[]> {
+    return await this.db.select().from(dataMasters);
+  }
+
+  async getDataMaster(id: string): Promise<DataMaster | undefined> {
+    const results = await this.db.select().from(dataMasters).where(eq(dataMasters.id, id));
+    return results[0];
+  }
+
+  async createDataMaster(insertMaster: InsertDataMaster): Promise<DataMaster> {
+    await this.db.insert(dataMasters).values(insertMaster);
+    // Fetch the created record
+    const results = await this.db.select().from(dataMasters).where(eq(dataMasters.id, insertMaster.id));
+    return results[0];
+  }
+
+  async updateDataMaster(id: string, masterData: Partial<InsertDataMaster>): Promise<DataMaster | undefined> {
+    const result = await this.db.update(dataMasters)
+      .set({ ...masterData, updatedAt: new Date() })
+      .where(eq(dataMasters.id, id));
+    
+    if ((result as any).affectedRows === 0) {
+      return undefined;
+    }
+    
+    const results = await this.db.select().from(dataMasters).where(eq(dataMasters.id, id));
+    return results[0];
+  }
+
+  async deleteDataMaster(id: string): Promise<boolean> {
+    const result = await this.db.delete(dataMasters).where(eq(dataMasters.id, id));
+    return (result as any).affectedRows > 0;
+  }
+
+  // Master Data Entries Methods
+  async getMasterDataEntries(masterId: string): Promise<MasterDataEntry[]> {
+    return await this.db.select().from(masterDataEntries).where(eq(masterDataEntries.masterId, masterId));
+  }
+
+  async getMasterDataEntry(id: number): Promise<MasterDataEntry | undefined> {
+    const results = await this.db.select().from(masterDataEntries).where(eq(masterDataEntries.id, id));
+    return results[0];
+  }
+
+  async createMasterDataEntry(insertEntry: InsertMasterDataEntry): Promise<MasterDataEntry> {
+    const result = await this.db.insert(masterDataEntries).values(insertEntry);
+    const insertId = (result as any).insertId;
+    // Fetch the created record
+    const results = await this.db.select().from(masterDataEntries).where(eq(masterDataEntries.id, insertId));
+    return results[0];
+  }
+
+  async updateMasterDataEntry(id: number, entryData: Partial<InsertMasterDataEntry>): Promise<MasterDataEntry | undefined> {
+    const result = await this.db.update(masterDataEntries)
+      .set({ ...entryData, updatedAt: new Date() })
+      .where(eq(masterDataEntries.id, id));
+    
+    if ((result as any).affectedRows === 0) {
+      return undefined;
+    }
+    
+    const results = await this.db.select().from(masterDataEntries).where(eq(masterDataEntries.id, id));
+    return results[0];
+  }
+
+  async deleteMasterDataEntry(id: number): Promise<boolean> {
+    // Check if entry exists first (robust approach vs unreliable affectedRows)
+    const existing = await this.getMasterDataEntry(id);
+    if (!existing) return false;
+    
+    // Execute delete
+    await this.db.delete(masterDataEntries).where(eq(masterDataEntries.id, id));
+    
+    // Return true since entry existed (delete should succeed)
+    return true;
   }
 
   // Create database if it doesn't exist

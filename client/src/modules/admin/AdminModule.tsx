@@ -43,6 +43,16 @@ import { Form, RankGroup, AvailableRank } from "@shared/schema";
 import { FormEditorFactory } from "@/components/FormEditorFactory";
 import { formTemplates, createFormEditor } from "@/utils/formEditorGenerator";
 import { apiRequest } from "@/lib/queryClient";
+import { 
+  useDataMasters, 
+  useMasterDataEntries,
+  useCreateDataMaster,
+  useUpdateDataMaster,
+  useDeleteDataMaster,
+  useCreateMasterDataEntry,
+  useUpdateMasterDataEntry,
+  useDeleteMasterDataEntry 
+} from "@/hooks/useDataMasters";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -172,79 +182,19 @@ export const AdminModule = (): JSX.Element => {
   const [searchDataMaster, setSearchDataMaster] = useState("");
   const [selectedMaster, setSelectedMaster] = useState<string>("001");
   
-  // Masters list data
-  const [mastersList] = useState([
-    { id: "001", name: "001 Nationality Master" },
-    { id: "002", name: "002 Country Master" },
-    { id: "003", name: "003 Language Master" },
-    { id: "004", name: "004 Vessel Type Master" },
-    { id: "005", name: "005 Office Department Master" },
-    { id: "006", name: "006 Designation Master" },
-    { id: "007", name: "007 User Master" },
-    { id: "008", name: "008 Vessel Master" },
-    { id: "009", name: "009 Fleet Group Master" },
-    { id: "010", name: "010 Additional Group Master" },
-    { id: "011", name: "011 Vessel Owner Master" },
-  ]);
+  // Data Masters API hooks
+  const { data: mastersList = [], isLoading: mastersLoading, error: mastersError } = useDataMasters();
+  const { data: masterData = [], isLoading: masterDataLoading, error: masterDataError } = useMasterDataEntries(selectedMaster);
   
-  // Sample data for each master
-  const [masterData, setMasterData] = useState<{[key: string]: Array<{id: string, field1: string, field2: string, field3: string}>}>({
-    "001": [
-      { id: "1", field1: "Indian", field2: "IN", field3: "India" },
-      { id: "2", field1: "American", field2: "US", field3: "United States" },
-      { id: "3", field1: "British", field2: "GB", field3: "United Kingdom" },
-    ],
-    "002": [
-      { id: "1", field1: "India", field2: "IN", field3: "Asia" },
-      { id: "2", field1: "United States", field2: "US", field3: "North America" },
-      { id: "3", field1: "United Kingdom", field2: "GB", field3: "Europe" },
-    ],
-    "003": [
-      { id: "1", field1: "English", field2: "EN", field3: "Primary" },
-      { id: "2", field1: "Spanish", field2: "ES", field3: "Secondary" },
-      { id: "3", field1: "French", field2: "FR", field3: "Secondary" },
-    ],
-    "004": [
-      { id: "1", field1: "Container", field2: "CNT", field3: "Commercial" },
-      { id: "2", field1: "Tanker", field2: "TNK", field3: "Liquid Cargo" },
-      { id: "3", field1: "Bulk Carrier", field2: "BLK", field3: "Dry Cargo" },
-    ],
-    "005": [
-      { id: "1", field1: "Operations", field2: "OPS", field3: "Marine" },
-      { id: "2", field1: "Technical", field2: "TEC", field3: "Engineering" },
-      { id: "3", field1: "HR", field2: "HRM", field3: "Human Resources" },
-    ],
-    "006": [
-      { id: "1", field1: "Master", field2: "MST", field3: "Senior" },
-      { id: "2", field1: "Chief Officer", field2: "CO", field3: "Officer" },
-      { id: "3", field1: "Chief Engineer", field2: "CE", field3: "Engineer" },
-    ],
-    "007": [
-      { id: "1", field1: "Admin User", field2: "ADM", field3: "Administrator" },
-      { id: "2", field1: "Manager", field2: "MGR", field3: "Management" },
-      { id: "3", field1: "Operator", field2: "OPR", field3: "Operations" },
-    ],
-    "008": [
-      { id: "1", field1: "MV Ocean Star", field2: "OCN001", field3: "Container" },
-      { id: "2", field1: "MV Sea Dragon", field2: "SEA002", field3: "Tanker" },
-      { id: "3", field1: "MV Wave Rider", field2: "WAV003", field3: "Bulk" },
-    ],
-    "009": [
-      { id: "1", field1: "Pacific Fleet", field2: "PAC", field3: "Regional" },
-      { id: "2", field1: "Atlantic Fleet", field2: "ATL", field3: "Regional" },
-      { id: "3", field1: "Global Fleet", field2: "GLB", field3: "Worldwide" },
-    ],
-    "010": [
-      { id: "1", field1: "Special Ops", field2: "SPO", field3: "Operations" },
-      { id: "2", field1: "Research", field2: "RSH", field3: "Development" },
-      { id: "3", field1: "Training", field2: "TRN", field3: "Education" },
-    ],
-    "011": [
-      { id: "1", field1: "Maritime Corp", field2: "MAR", field3: "Corporation" },
-      { id: "2", field1: "Ocean Lines", field2: "OCL", field3: "Shipping" },
-      { id: "3", field1: "Sea Transport", field2: "STR", field3: "Logistics" },
-    ],
-  });
+  // Mutations for Data Masters
+  const createMasterMutation = useCreateDataMaster();
+  const updateMasterMutation = useUpdateDataMaster(selectedMaster);
+  const deleteMasterMutation = useDeleteDataMaster();
+  
+  // Mutations for Master Data Entries
+  const createEntryMutation = useCreateMasterDataEntry(selectedMaster);
+  const updateEntryMutation = useUpdateMasterDataEntry();
+  const deleteEntryMutation = useDeleteMasterDataEntry(selectedMaster);
   
   // Responsive breakpoint detection
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
@@ -562,35 +512,25 @@ export const AdminModule = (): JSX.Element => {
     setIsMasterEditing(false);
   };
 
-  const updateMasterField = (itemId: string, field: 'field1' | 'field2' | 'field3', value: string) => {
-    setMasterData(prevData => ({
-      ...prevData,
-      [selectedMaster]: prevData[selectedMaster]?.map(item => 
-        item.id === itemId ? { ...item, [field]: value } : item
-      ) || []
-    }));
+  const updateMasterField = (itemId: number, field: 'entryId' | 'name' | 'description', value: string) => {
+    updateEntryMutation.mutate({ 
+      id: itemId, 
+      data: { [field]: value }, 
+      masterId: selectedMaster 
+    });
   };
 
-  const deleteMasterEntry = (itemId: string) => {
-    setMasterData(prevData => ({
-      ...prevData,
-      [selectedMaster]: prevData[selectedMaster]?.filter(item => item.id !== itemId) || []
-    }));
+  const deleteMasterEntry = (itemId: number) => {
+    deleteEntryMutation.mutate(itemId);
   };
 
   const handleNewEntry = () => {
-    const newId = Date.now().toString(); // Generate unique ID
-    const newEntry = {
-      id: newId,
-      field1: '',
-      field2: '',
-      field3: ''
-    };
-    
-    setMasterData(prevData => ({
-      ...prevData,
-      [selectedMaster]: [...(prevData[selectedMaster] || []), newEntry]
-    }));
+    const newEntryId = Date.now().toString(); // Generate unique entry ID
+    createEntryMutation.mutate({
+      entryId: newEntryId,
+      name: '',
+      description: ''
+    });
     
     // Automatically enter edit mode when adding new entry
     setIsMasterEditing(true);
@@ -2205,23 +2145,29 @@ export const AdminModule = (): JSX.Element => {
                   Data Master Name
                 </div>
                 <div className={`${currentBreakpoint === 'mobile' ? 'max-h-64' : 'h-[500px]'} overflow-y-auto`}>
-                  {mastersList.map((master) => (
-                    <div
-                      key={master.id}
-                      onClick={() => setSelectedMaster(master.id)}
-                      className={`p-3 text-xs cursor-pointer border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-                        selectedMaster === master.id 
-                          ? 'bg-blue-50 border-l-4 border-l-blue-500 text-blue-700 font-medium' 
-                          : 'text-gray-700'
-                      }`}
-                      data-testid={`master-item-${master.id}`}
-                    >
-                      {master.name}
-                    </div>
-                  ))}
+                  {mastersLoading ? (
+                    <div className="p-3 text-xs text-gray-500">Loading masters...</div>
+                  ) : mastersError ? (
+                    <div className="p-3 text-xs text-red-500">Error loading masters</div>
+                  ) : (
+                    (mastersList as any[]).map((master: any) => (
+                      <div
+                        key={master.id}
+                        onClick={() => setSelectedMaster(master.id)}
+                        className={`p-3 text-xs cursor-pointer border-b border-gray-100 hover:bg-gray-50 transition-colors ${
+                          selectedMaster === master.id 
+                            ? 'bg-blue-50 border-l-4 border-l-blue-500 text-blue-700 font-medium' 
+                            : 'text-gray-700'
+                        }`}
+                        data-testid={`master-item-${master.id}`}
+                      >
+                        {master.name}
+                      </div>
+                    ))
+                  )}
                 </div>
                 <div className="p-3 text-xs text-gray-500 bg-gray-50 border-t">
-                  {mastersList.length} to {mastersList.length} of {mastersList.length}
+                  {(mastersList as any[]).length} to {(mastersList as any[]).length} of {(mastersList as any[]).length}
                 </div>
               </div>
 
@@ -2229,67 +2175,82 @@ export const AdminModule = (): JSX.Element => {
               <div className={`${currentBreakpoint === 'mobile' ? 'w-full' : 'flex-1'}`}>
                 <div className="bg-[#52baf3] text-white text-xs font-medium p-0">
                   <div className="grid grid-cols-4 gap-0">
-                    <div className="p-3 border-r border-blue-400">Title 1</div>
-                    <div className="p-3 border-r border-blue-400">Title 2</div>
-                    <div className="p-3 border-r border-blue-400">Title 3</div>
+                    <div className="p-3 border-r border-blue-400">Entry ID</div>
+                    <div className="p-3 border-r border-blue-400">Name</div>
+                    <div className="p-3 border-r border-blue-400">Description</div>
                     <div className="p-3 text-center">Actions</div>
                   </div>
                 </div>
                 <div className={`${currentBreakpoint === 'mobile' ? 'max-h-64' : 'h-[500px]'} overflow-y-auto`}>
-                  {masterData[selectedMaster]?.map((item) => (
-                    <div key={item.id} className="grid grid-cols-4 gap-0 border-b border-gray-100 hover:bg-gray-50">
-                      <div className="p-3 border-r border-gray-200">
-                        {isMasterEditing ? (
-                          <Input
-                            value={item.field1}
-                            onChange={(e) => updateMasterField(item.id, 'field1', e.target.value)}
-                            className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                            data-testid={`input-field1-${item.id}`}
-                          />
-                        ) : (
-                          <span className="text-xs text-gray-700">{item.field1}</span>
-                        )}
-                      </div>
-                      <div className="p-3 border-r border-gray-200">
-                        {isMasterEditing ? (
-                          <Input
-                            value={item.field2}
-                            onChange={(e) => updateMasterField(item.id, 'field2', e.target.value)}
-                            className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                            data-testid={`input-field2-${item.id}`}
-                          />
-                        ) : (
-                          <span className="text-xs text-gray-700">{item.field2}</span>
-                        )}
-                      </div>
-                      <div className="p-3 border-r border-gray-200">
-                        {isMasterEditing ? (
-                          <Input
-                            value={item.field3}
-                            onChange={(e) => updateMasterField(item.id, 'field3', e.target.value)}
-                            className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                            data-testid={`input-field3-${item.id}`}
-                          />
-                        ) : (
-                          <span className="text-xs text-gray-700">{item.field3}</span>
-                        )}
-                      </div>
-                      <div className="p-3 flex justify-center">
-                        <button
-                          className="text-gray-500 hover:text-red-500 transition-colors"
-                          onClick={() => deleteMasterEntry(item.id)}
-                          data-testid={`delete-button-${item.id}`}
-                        >
-                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                  {masterDataLoading ? (
+                    <div className="p-3 text-xs text-gray-500">Loading master data...</div>
+                  ) : masterDataError ? (
+                    <div className="p-3 text-xs text-red-500">Error loading master data</div>
+                  ) : (
+                    (masterData as any[]).map((item: any) => {
+                      const isNewEntry = !item.name && !item.description; // Identify newly created empty entries
+                      return (
+                        <div key={item.id} className={`grid grid-cols-4 gap-0 border-b border-gray-100 hover:bg-gray-50 ${
+                          isNewEntry && isMasterEditing ? 'bg-blue-50 border-blue-200' : ''
+                        }`}>
+                          <div className="p-3 border-r border-gray-200">
+                            {isMasterEditing ? (
+                              <Input
+                                value={item.entryId || ''}
+                                onChange={(e) => updateMasterField(item.id, 'entryId', e.target.value)}
+                                className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                placeholder={isNewEntry ? "Enter ID..." : ""}
+                                data-testid={`input-entryId-${item.id}`}
+                              />
+                            ) : (
+                              <span className="text-xs text-gray-700">{item.entryId}</span>
+                            )}
+                          </div>
+                          <div className="p-3 border-r border-gray-200">
+                            {isMasterEditing ? (
+                              <Input
+                                value={item.name || ''}
+                                onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
+                                className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                placeholder={isNewEntry ? "Enter name..." : ""}
+                                data-testid={`input-name-${item.id}`}
+                                autoFocus={isNewEntry} // Focus on newly created entries
+                              />
+                            ) : (
+                              <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No name</em>}</span>
+                            )}
+                          </div>
+                          <div className="p-3 border-r border-gray-200">
+                            {isMasterEditing ? (
+                              <Input
+                                value={item.description || ''}
+                                onChange={(e) => updateMasterField(item.id, 'description', e.target.value)}
+                                className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                placeholder={isNewEntry ? "Enter description..." : ""}
+                                data-testid={`input-description-${item.id}`}
+                              />
+                            ) : (
+                              <span className="text-xs text-gray-700">{item.description || <em className="text-gray-400">No description</em>}</span>
+                            )}
+                          </div>
+                          <div className="p-3 flex justify-center">
+                            <button
+                              className="text-gray-500 hover:text-red-500 transition-colors"
+                              onClick={() => deleteMasterEntry(item.id)}
+                              data-testid={`delete-button-${item.id}`}
+                            >
+                              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
                 <div className="p-3 text-xs text-gray-500 bg-gray-50 border-t">
-                  Page {masterData[selectedMaster]?.length ? '1' : '0'} of {masterData[selectedMaster]?.length ? '1' : '0'}
+                  Page {(masterData as any[]).length ? '1' : '0'} of {(masterData as any[]).length ? '1' : '0'}
                 </div>
               </div>
             </div>
