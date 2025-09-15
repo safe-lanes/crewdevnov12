@@ -193,7 +193,12 @@ export class DatabaseStorage implements IStorage {
         { name: 'email', ddl: 'ADD COLUMN email TEXT NULL' },
         { name: 'phone', ddl: 'ADD COLUMN phone TEXT NULL' },
         { name: 'company', ddl: 'ADD COLUMN company TEXT NULL' },
-        { name: 'nameOfContactPerson', ddl: 'ADD COLUMN nameOfContactPerson TEXT NULL' }
+        { name: 'nameOfContactPerson', ddl: 'ADD COLUMN nameOfContactPerson TEXT NULL' },
+        // Additional columns for Designation Master structure (ID 012)
+        { name: 'duid', ddl: 'ADD COLUMN duid TEXT NULL' },
+        { name: 'shortCode', ddl: 'ADD COLUMN shortCode TEXT NULL' },
+        { name: 'type', ddl: 'ADD COLUMN type TEXT NULL' },
+        { name: 'department', ddl: 'ADD COLUMN department TEXT NULL' }
       ];
       
       // Add missing columns

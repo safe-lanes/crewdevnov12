@@ -184,6 +184,11 @@ export const masterDataEntries = mysqlTable("master_data_entries", {
   phone: text("phone"),
   company: text("company"),
   nameOfContactPerson: text("nameOfContactPerson"),
+  // Designation Master (ID 012) fields
+  duid: text("duid"),
+  shortCode: text("shortCode"),
+  type: text("type"),
+  department: text("department"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -341,6 +346,10 @@ export const insertMasterDataEntrySchema = createInsertSchema(masterDataEntries)
   phone: true,
   company: true,
   nameOfContactPerson: true,
+  duid: true,
+  shortCode: true,
+  type: true,
+  department: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
