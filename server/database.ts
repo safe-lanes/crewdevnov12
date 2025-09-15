@@ -102,9 +102,125 @@ export class DatabaseStorage implements IStorage {
       }
       
       console.log("✅ master_data_entries schema is up to date");
+      
+      // After schema update, ensure nationality data is properly seeded with enhanced structure
+      await this.ensureNationalityDataSeeded();
+      
+      // Fix specific nationality data inconsistencies
+      await this.fixNationalityDataInconsistencies();
     } catch (error) {
       console.error("❌ Failed to update master_data_entries schema:", error);
       // Don't throw - allow app to start even if schema update fails
+    }
+  }
+
+  // Ensure nationality master data is properly seeded with enhanced structure
+  private async ensureNationalityDataSeeded(): Promise<void> {
+    try {
+      console.log("🌍 Checking nationality master data...");
+      
+      // Check if we have any nationality entries with the new enhanced structure (NAT001-NAT020)
+      const [existingNationalityEntries]: any = await this.pool.execute(
+        "SELECT COUNT(*) as count FROM master_data_entries WHERE master_id = '001' AND entry_id LIKE 'NAT%'"
+      );
+      
+      const enhancedEntriesCount = existingNationalityEntries[0].count;
+      console.log(`📊 Found ${enhancedEntriesCount} enhanced nationality entries with NAT format`);
+      
+      // If we don't have the full set of enhanced nationality data, or need to update existing data, seed it
+      // Force re-seed to apply corrected nationality data (Myanmar->Burmese, Bangladesh->Bangladeshi)
+      if (enhancedEntriesCount !== 20) {
+        console.log("🗂️ Seeding enhanced nationality master data...");
+        
+        // Clear existing nationality entries to avoid conflicts and ensure fresh accurate data
+        await this.pool.execute("DELETE FROM master_data_entries WHERE master_id = '001'");
+        
+        // Major Maritime Nations with enhanced structure (NAT001-NAT020)
+        const nationalityData = [
+          { entryId: "NAT001", name: "Filipino", description: "Philippines", countryName: "Filipino", country: "Philippines" },
+          { entryId: "NAT002", name: "Indian", description: "India", countryName: "Indian", country: "India" },
+          { entryId: "NAT003", name: "Chinese", description: "China", countryName: "Chinese", country: "China" },
+          { entryId: "NAT004", name: "Ukrainian", description: "Ukraine", countryName: "Ukrainian", country: "Ukraine" },
+          { entryId: "NAT005", name: "Russian", description: "Russia", countryName: "Russian", country: "Russia" },
+          { entryId: "NAT006", name: "Indonesian", description: "Indonesia", countryName: "Indonesian", country: "Indonesia" },
+          { entryId: "NAT007", name: "Turkish", description: "Turkey", countryName: "Turkish", country: "Turkey" },
+          { entryId: "NAT008", name: "Polish", description: "Poland", countryName: "Polish", country: "Poland" },
+          { entryId: "NAT009", name: "Romanian", description: "Romania", countryName: "Romanian", country: "Romania" },
+          { entryId: "NAT010", name: "Bulgarian", description: "Bulgaria", countryName: "Bulgarian", country: "Bulgaria" },
+          { entryId: "NAT011", name: "Greek", description: "Greece", countryName: "Greek", country: "Greece" },
+          { entryId: "NAT012", name: "Croatian", description: "Croatia", countryName: "Croatian", country: "Croatia" },
+          { entryId: "NAT013", name: "Burmese", description: "Myanmar", countryName: "Burmese", country: "Myanmar" },
+          { entryId: "NAT014", name: "Vietnamese", description: "Vietnam", countryName: "Vietnamese", country: "Vietnam" },
+          { entryId: "NAT015", name: "Bangladeshi", description: "Bangladesh", countryName: "Bangladeshi", country: "Bangladesh" },
+          { entryId: "NAT016", name: "Pakistani", description: "Pakistan", countryName: "Pakistani", country: "Pakistan" },
+          { entryId: "NAT017", name: "Sri Lankan", description: "Sri Lanka", countryName: "Sri Lankan", country: "Sri Lanka" },
+          { entryId: "NAT018", name: "Georgian", description: "Georgia", countryName: "Georgian", country: "Georgia" },
+          { entryId: "NAT019", name: "Latvian", description: "Latvia", countryName: "Latvian", country: "Latvia" },
+          { entryId: "NAT020", name: "Estonian", description: "Estonia", countryName: "Estonian", country: "Estonia" }
+        ];
+        
+        // Insert each nationality entry with enhanced structure
+        for (const nationality of nationalityData) {
+          await this.pool.execute(
+            `INSERT INTO master_data_entries 
+             (master_id, entry_id, name, description, countryName, country, isActive, isDeleted, created_at, updated_at) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+            ['001', nationality.entryId, nationality.name, nationality.description, nationality.countryName, nationality.country, 1, 0]
+          );
+        }
+        
+        console.log("✅ Enhanced nationality master data seeded successfully with NAT001-NAT020 format");
+      } else {
+        console.log("✅ Enhanced nationality master data already exists");
+      }
+    } catch (error) {
+      console.error("❌ Failed to seed nationality master data:", error);
+      // Don't throw - allow app to continue
+    }
+  }
+
+  // Fix specific nationality data inconsistencies identified by architect review
+  private async fixNationalityDataInconsistencies(): Promise<void> {
+    try {
+      console.log("🔧 Checking for nationality data inconsistencies...");
+      
+      // Check for problematic entries that need correction
+      const [problematicEntries]: any = await this.pool.execute(
+        "SELECT entry_id, countryName FROM master_data_entries WHERE master_id = '001' AND (entry_id = 'NAT013' OR entry_id = 'NAT015')"
+      );
+      
+      let updatesNeeded = false;
+      for (const entry of problematicEntries) {
+        if (entry.entry_id === 'NAT013' && entry.countryName === 'Myanmar') {
+          updatesNeeded = true;
+          break;
+        }
+        if (entry.entry_id === 'NAT015' && entry.countryName === 'Bangladesh') {
+          updatesNeeded = true;
+          break;
+        }
+      }
+      
+      if (updatesNeeded) {
+        console.log("🛠️ Fixing nationality data inconsistencies...");
+        
+        // Fix NAT013: Myanmar -> Burmese
+        await this.pool.execute(
+          "UPDATE master_data_entries SET name = 'Burmese', countryName = 'Burmese' WHERE master_id = '001' AND entry_id = 'NAT013'"
+        );
+        
+        // Fix NAT015: Bangladesh -> Bangladeshi  
+        await this.pool.execute(
+          "UPDATE master_data_entries SET name = 'Bangladeshi', countryName = 'Bangladeshi' WHERE master_id = '001' AND entry_id = 'NAT015'"
+        );
+        
+        console.log("✅ Nationality data inconsistencies fixed (NAT013: Myanmar->Burmese, NAT015: Bangladesh->Bangladeshi)");
+      } else {
+        console.log("✅ Nationality data is already consistent");
+      }
+    } catch (error) {
+      console.error("❌ Failed to fix nationality data inconsistencies:", error);
+      // Don't throw - allow app to continue
     }
   }
 
@@ -459,11 +575,27 @@ export class DatabaseStorage implements IStorage {
 
       // Seed sample data for some master categories
       const sampleMasterEntries: InsertMasterDataEntry[] = [
-        // Nationality entries
-        { masterId: "001", name: "Filipino", description: "Philippines" },
-        { masterId: "001", name: "Indian", description: "India" },
-        { masterId: "001", name: "Ukrainian", description: "Ukraine" },
-        { masterId: "001", name: "Canadian", description: "Canada" },
+        // Major Maritime Nations with enhanced structure (NAT001-NAT020)
+        { masterId: "001", entryId: "NAT001", name: "Filipino", description: "Philippines", countryName: "Filipino", country: "Philippines" },
+        { masterId: "001", entryId: "NAT002", name: "Indian", description: "India", countryName: "Indian", country: "India" },
+        { masterId: "001", entryId: "NAT003", name: "Chinese", description: "China", countryName: "Chinese", country: "China" },
+        { masterId: "001", entryId: "NAT004", name: "Ukrainian", description: "Ukraine", countryName: "Ukrainian", country: "Ukraine" },
+        { masterId: "001", entryId: "NAT005", name: "Russian", description: "Russia", countryName: "Russian", country: "Russia" },
+        { masterId: "001", entryId: "NAT006", name: "Indonesian", description: "Indonesia", countryName: "Indonesian", country: "Indonesia" },
+        { masterId: "001", entryId: "NAT007", name: "Turkish", description: "Turkey", countryName: "Turkish", country: "Turkey" },
+        { masterId: "001", entryId: "NAT008", name: "Polish", description: "Poland", countryName: "Polish", country: "Poland" },
+        { masterId: "001", entryId: "NAT009", name: "Romanian", description: "Romania", countryName: "Romanian", country: "Romania" },
+        { masterId: "001", entryId: "NAT010", name: "Bulgarian", description: "Bulgaria", countryName: "Bulgarian", country: "Bulgaria" },
+        { masterId: "001", entryId: "NAT011", name: "Greek", description: "Greece", countryName: "Greek", country: "Greece" },
+        { masterId: "001", entryId: "NAT012", name: "Croatian", description: "Croatia", countryName: "Croatian", country: "Croatia" },
+        { masterId: "001", entryId: "NAT013", name: "Myanmar", description: "Myanmar", countryName: "Myanmar", country: "Myanmar" },
+        { masterId: "001", entryId: "NAT014", name: "Vietnamese", description: "Vietnam", countryName: "Vietnamese", country: "Vietnam" },
+        { masterId: "001", entryId: "NAT015", name: "Bangladesh", description: "Bangladesh", countryName: "Bangladesh", country: "Bangladesh" },
+        { masterId: "001", entryId: "NAT016", name: "Pakistani", description: "Pakistan", countryName: "Pakistani", country: "Pakistan" },
+        { masterId: "001", entryId: "NAT017", name: "Sri Lankan", description: "Sri Lanka", countryName: "Sri Lankan", country: "Sri Lanka" },
+        { masterId: "001", entryId: "NAT018", name: "Georgian", description: "Georgia", countryName: "Georgian", country: "Georgia" },
+        { masterId: "001", entryId: "NAT019", name: "Latvian", description: "Latvia", countryName: "Latvian", country: "Latvia" },
+        { masterId: "001", entryId: "NAT020", name: "Estonian", description: "Estonia", countryName: "Estonian", country: "Estonia" },
         
         // Designation entries
         { masterId: "012", name: "Master", description: "Ship Captain" },
