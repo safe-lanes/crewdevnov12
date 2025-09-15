@@ -9,6 +9,7 @@ import {
   validateVesselMasterEntry,
   getVesselMasterInfo,
   isAdditionalGroupsMaster,
+  isVesselOwnersMaster,
   needsSpecialHandling,
   applyMasterSpecificFiltering,
   applyMasterSpecificMapping,

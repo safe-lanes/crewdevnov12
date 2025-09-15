@@ -1,5 +1,5 @@
 // Server-side field filtering and transformation for special masters
-// Handles Vessel Master (ID 014) and Additional Groups Master (ID 016)
+// Handles Vessel Master (ID 014), Additional Groups Master (ID 016), and Vessel Owners Master (ID 017)
 // Prevents sending unknown columns to database and handles data transformations
 
 import { InsertMasterDataEntry } from "@shared/schema";
@@ -314,13 +314,111 @@ export function validateAdditionalGroupsEntry(data: any): { isValid: boolean; er
   return { isValid: true };
 }
 
+// ======================= VESSEL OWNERS MASTER (ID 017) FUNCTIONS =======================
+
+/**
+ * Checks if a master ID is for vessel owners master
+ */
+export function isVesselOwnersMaster(masterId: string): boolean {
+  console.log(`🏢 [OWNERS CHECK] Checking if masterId "${masterId}" is vessel owners master`);
+  const isOwners = masterId === "017";
+  console.log(`🏢 [OWNERS CHECK] Result: ${isOwners}`);
+  return isOwners;
+}
+
+/**
+ * Filters and transforms vessel owners master data for database storage
+ * Reuses the same vesselIds transformation logic as Additional Groups Master
+ */
+export function filterVesselOwnersData(data: any, masterId: string): Partial<InsertMasterDataEntry> {
+  if (!isVesselOwnersMaster(masterId)) {
+    return data; // No filtering needed for non-vessel-owners masters
+  }
+
+  console.log(`🏢 [OWNERS FILTER] Filtering vessel owners data for masterId: ${masterId}`);
+  console.log(`🏢 [OWNERS FILTER] Original data:`, data);
+
+  // Apply vesselIds transformation first (reusing Additional Groups logic)
+  const transformedData = transformVesselIds(data, 'toDatabase');
+  console.log(`🏢 [OWNERS FILTER] After vesselIds transformation:`, transformedData);
+
+  // Handle field naming consistency - accept both "VesselIDs" and "vesselIds"
+  const normalizedData = {
+    ...transformedData,
+    // Ensure vesselIds is the canonical field name
+    vesselIds: transformedData.vesselIds || transformedData.VesselIDs,
+    // Remove alternative casing to avoid duplication
+    VesselIDs: undefined
+  };
+
+  console.log(`🏢 [OWNERS FILTER] After field normalization:`, normalizedData);
+  return normalizedData;
+}
+
+/**
+ * Maps database entry back to vessel owners display format for API responses
+ * Reuses the same vesselIds transformation logic as Additional Groups Master
+ */
+export function mapDatabaseToOwnersDisplay(dbEntry: any): any {
+  if (!dbEntry) return dbEntry;
+
+  console.log(`🏢 [OWNERS MAP] Mapping database entry to display format:`, dbEntry);
+  
+  // Apply vesselIds transformation from database (reusing Additional Groups logic)
+  const transformedEntry = transformVesselIds(dbEntry, 'fromDatabase');
+  console.log(`🏢 [OWNERS MAP] After vesselIds transformation:`, transformedEntry);
+
+  return transformedEntry;
+}
+
+/**
+ * Validates vessel owners entry has required fields
+ */
+export function validateVesselOwnersEntry(data: any): { isValid: boolean; error?: string } {
+  // Basic validation - name is required
+  if (!data.name) {
+    return {
+      isValid: false,
+      error: "Vessel Owners entry must have 'name' field populated"
+    };
+  }
+
+  // Validate vesselIds if present (reusing Additional Groups validation logic)
+  if (data.vesselIds) {
+    // If it's a string, try to parse it to validate JSON format
+    if (typeof data.vesselIds === 'string') {
+      try {
+        const parsed = JSON.parse(data.vesselIds);
+        if (!Array.isArray(parsed)) {
+          return {
+            isValid: false,
+            error: "vesselIds must be a JSON array string or an array"
+          };
+        }
+      } catch (error) {
+        return {
+          isValid: false,
+          error: "vesselIds must be valid JSON array string"
+        };
+      }
+    } else if (!Array.isArray(data.vesselIds)) {
+      return {
+        isValid: false,
+        error: "vesselIds must be an array or JSON array string"
+      };
+    }
+  }
+
+  return { isValid: true };
+}
+
 // ======================= UNIFIED HELPER FUNCTIONS =======================
 
 /**
  * Determines if a master needs special transformation handling
  */
 export function needsSpecialHandling(masterId: string): boolean {
-  return isVesselMaster(masterId) || isAdditionalGroupsMaster(masterId);
+  return isVesselMaster(masterId) || isAdditionalGroupsMaster(masterId) || isVesselOwnersMaster(masterId);
 }
 
 /**
@@ -331,6 +429,8 @@ export function applyMasterSpecificFiltering(data: any, masterId: string): any {
     return filterVesselMasterData(data, masterId);
   } else if (isAdditionalGroupsMaster(masterId)) {
     return filterAdditionalGroupsData(data, masterId);
+  } else if (isVesselOwnersMaster(masterId)) {
+    return filterVesselOwnersData(data, masterId);
   }
   return data;
 }
@@ -343,6 +443,8 @@ export function applyMasterSpecificMapping(dbEntry: any, masterId: string): any 
     return mapDatabaseToVesselDisplay(dbEntry);
   } else if (isAdditionalGroupsMaster(masterId)) {
     return mapDatabaseToGroupsDisplay(dbEntry);
+  } else if (isVesselOwnersMaster(masterId)) {
+    return mapDatabaseToOwnersDisplay(dbEntry);
   }
   return dbEntry;
 }
@@ -355,6 +457,8 @@ export function validateMasterSpecificEntry(data: any, masterId: string): { isVa
     return validateVesselMasterEntry(data);
   } else if (isAdditionalGroupsMaster(masterId)) {
     return validateAdditionalGroupsEntry(data);
+  } else if (isVesselOwnersMaster(masterId)) {
+    return validateVesselOwnersEntry(data);
   }
   return { isValid: true };
 }
