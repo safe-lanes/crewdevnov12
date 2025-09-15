@@ -62,6 +62,14 @@ import MainLayout from "@/components/main/MainLayout";
 import SectionTitleComponents from "@/components/Section/SectionTitleComponents";
 import { AgGridTable } from "@/components/AgGrid/AgGridTable";
 import { ColDef, GridApi, GridReadyEvent, ICellEditorParams, ICellRendererParams } from "ag-grid-community";
+import { 
+  mapVesselDataToSafeFields, 
+  mapSafeFieldsToVesselData, 
+  isVesselMaster,
+  getVesselMasterErrorMessage,
+  filterToSafeFields,
+  type VesselMasterEntry
+} from "@/utils/vesselMasterMapping";
 
 const rankGroupSchema = z.object({
   name: z.string().min(1, "Rank group name is required"),
@@ -515,6 +523,13 @@ export const AdminModule = (): JSX.Element => {
   const handleSaveMaster = () => {
     console.log('💾 [SAVE] Starting batch save operation for all master data entries');
     
+    // Check if this is vessel master for special handling
+    const isVesselMasterSave = isVesselMaster(selectedMaster);
+    
+    if (isVesselMasterSave) {
+      console.log('🚢 [SAVE] Vessel Master detected - using safe field mapping');
+    }
+    
     // Get all input elements and checkboxes in the master data table
     const inputs = document.querySelectorAll('[data-testid^="input-"][data-testid*="-"]:not([data-testid*="entryId"])');
     const checkboxes = document.querySelectorAll('[data-testid^="checkbox-"]');
@@ -561,10 +576,40 @@ export const AdminModule = (): JSX.Element => {
       console.log(`💾 [SAVE] Saving changes for ${changesToSave.size} entries`);
       
       changesToSave.forEach((changes, entryId) => {
-        console.log(`💾 [SAVE] Updating entry ${entryId}:`, changes);
+        let processedChanges = changes;
+        
+        // Apply safe field mapping for vessel master
+        if (isVesselMasterSave) {
+          console.log(`🚢 [SAVE] Applying vessel master safe field mapping for entry ${entryId}`);
+          
+          // Ensure name field is populated if vessel field exists
+          if (changes.vessel && !changes.name) {
+            changes.name = changes.vessel;
+            console.log(`🚢 [SAVE] Mapping vessel "${changes.vessel}" to name field`);
+          }
+          
+          // Map imoNumber to description temporarily
+          if (changes.imoNumber && !changes.description) {
+            changes.description = changes.imoNumber;
+            console.log(`🚢 [SAVE] Mapping imoNumber "${changes.imoNumber}" to description field`);
+          }
+          
+          // Filter to only include safe fields for database
+          processedChanges = filterToSafeFields(changes);
+          
+          console.log(`🚢 [SAVE] Original changes:`, changes);
+          console.log(`🚢 [SAVE] Filtered safe changes:`, processedChanges);
+          
+          // Validate that name field is populated
+          if (!processedChanges.name && changes.vessel) {
+            processedChanges.name = changes.vessel;
+          }
+        }
+        
+        console.log(`💾 [SAVE] Updating entry ${entryId}:`, processedChanges);
         updateEntryMutation.mutate({ 
           id: entryId, 
-          data: changes, 
+          data: processedChanges, 
           masterId: selectedMaster 
         }, {
           onSuccess: (data) => {
@@ -572,18 +617,28 @@ export const AdminModule = (): JSX.Element => {
           },
           onError: (error) => {
             console.error(`❌ [SAVE] Failed to save entry ${entryId}:`, error);
+            
+            // Show specific error message for vessel master
+            const errorMessage = isVesselMasterSave 
+              ? `${getVesselMasterErrorMessage()} Error: ${error.message}`
+              : `Failed to save entry ${entryId}: ${error.message}`;
+              
             toast({
               title: "Error",
-              description: `Failed to save entry ${entryId}: ${error.message}`,
+              description: errorMessage,
               variant: "destructive",
             });
           }
         });
       });
       
+      const successMessage = isVesselMasterSave 
+        ? `Saving vessel data for ${changesToSave.size} entries (safe mode)`
+        : `Saving changes for ${changesToSave.size} entries`;
+        
       toast({
         title: "Success",
-        description: `Saving changes for ${changesToSave.size} entries`,
+        description: successMessage,
       });
     } else {
       console.log('💾 [SAVE] No changes to save');
@@ -592,7 +647,7 @@ export const AdminModule = (): JSX.Element => {
     setIsMasterEditing(false);
   };
 
-  const updateMasterField = (itemId: number, field: 'entryId' | 'name' | 'description' | 'countryName' | 'country' | 'countryCode' | 'vesselType' | 'vtuid' | 'tanker' | 'oilTanker' | 'gasTanker' | 'chemicalTanker' | 'bulk', value: string | boolean) => {
+  const updateMasterField = (itemId: number, field: 'entryId' | 'name' | 'description' | 'countryName' | 'country' | 'countryCode' | 'vesselType' | 'vtuid' | 'tanker' | 'oilTanker' | 'gasTanker' | 'chemicalTanker' | 'bulk' | 'vessel' | 'imoNumber', value: string | boolean) => {
     updateEntryMutation.mutate({ 
       id: itemId, 
       data: { [field]: value }, 
@@ -654,6 +709,22 @@ export const AdminModule = (): JSX.Element => {
           isActive: true,
           isDeleted: false
         };
+      } else if (selectedMaster === "014") {
+        // Vessel master - create entry with safe field mapping
+        console.log('🚢 [NEW ENTRY] Creating new vessel master entry with safe field mapping');
+        const vesselData: Partial<VesselMasterEntry> = {
+          entryId: newEntryId,
+          vessel: '', // Vessel name - will map to 'name' field
+          imoNumber: '', // IMO number - will map to 'description' field
+          isActive: true,
+          isDeleted: false
+        };
+        
+        // Apply safe field mapping before creating entry
+        const safeData = mapVesselDataToSafeFields(vesselData, selectedMaster);
+        console.log('🚢 [NEW ENTRY] Safe vessel data:', safeData);
+        
+        return safeData;
       } else {
         // Other masters - create entry with standard fields
         return {
@@ -2345,6 +2416,11 @@ export const AdminModule = (): JSX.Element => {
                         <div className="p-3 border-r border-blue-400">Vessel Type</div>
                         <div className="p-3 border-r border-blue-400">Classification</div>
                       </>
+                    ) : selectedMaster === "014" ? (
+                      <>
+                        <div className="p-3 border-r border-blue-400">Vessel</div>
+                        <div className="p-3 border-r border-blue-400">IMO Number</div>
+                      </>
                     ) : (
                       <>
                         <div className="p-3 border-r border-blue-400">Name</div>
@@ -2370,6 +2446,8 @@ export const AdminModule = (): JSX.Element => {
                         ? !item.name && !item.description     // For language master
                         : selectedMaster === "004"
                         ? !item.vesselType && !item.vtuid     // For vessel type master
+                        : selectedMaster === "014"
+                        ? !item.vessel && !item.imoNumber    // For vessel master
                         : !item.name && !item.description;   // For other masters
                       
                       return (
@@ -2447,6 +2525,20 @@ export const AdminModule = (): JSX.Element => {
                                 />
                               ) : (
                                 <span className="text-xs text-gray-700">{item.vesselType || <em className="text-gray-400">No vessel type</em>}</span>
+                              )
+                            ) : selectedMaster === "014" ? (
+                              // Vessel master - show vessel field
+                              isMasterEditing ? (
+                                <Input
+                                  value={item.vessel || ''}
+                                  onChange={(e) => updateMasterField(item.id, 'vessel', e.target.value)}
+                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                  placeholder={isNewEntry ? "Enter vessel name..." : ""}
+                                  data-testid={`input-vessel-${item.id}`}
+                                  autoFocus={isNewEntry}
+                                />
+                              ) : (
+                                <span className="text-xs text-gray-700">{item.vessel || <em className="text-gray-400">No vessel</em>}</span>
                               )
                             ) : (
                               // Other masters - show name field
@@ -2563,6 +2655,19 @@ export const AdminModule = (): JSX.Element => {
                                     return classifications.length > 0 ? classifications.join(', ') : <em className="text-gray-400">No classification</em>;
                                   })()}
                                 </span>
+                              )
+                            ) : selectedMaster === "014" ? (
+                              // Vessel master - show imoNumber field
+                              isMasterEditing ? (
+                                <Input
+                                  value={item.imoNumber || ''}
+                                  onChange={(e) => updateMasterField(item.id, 'imoNumber', e.target.value)}
+                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                  placeholder={isNewEntry ? "Enter IMO number..." : ""}
+                                  data-testid={`input-imoNumber-${item.id}`}
+                                />
+                              ) : (
+                                <span className="text-xs text-gray-700">{item.imoNumber || <em className="text-gray-400">No IMO number</em>}</span>
                               )
                             ) : (
                               // Other masters - show description field

@@ -2,6 +2,13 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError } from "./storage";
 import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertDataMasterSchema, insertMasterDataEntrySchema } from "@shared/schema";
+import { 
+  isVesselMaster,
+  filterVesselMasterData,
+  mapDatabaseToVesselDisplay,
+  validateVesselMasterEntry,
+  getVesselMasterInfo 
+} from "./vesselMasterSafety";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for database connectivity
@@ -512,10 +519,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const masterId = req.params.id;
       console.log(`🔍 [DEBUG CREATE] Storage type: ${storage.constructor.name}, Master ID: ${masterId}, Payload:`, req.body);
       
-      const result = insertMasterDataEntrySchema.safeParse({
-        ...req.body,
-        masterId
-      });
+      // Apply vessel master safe field filtering BEFORE validation
+      let requestData = { ...req.body, masterId };
+      if (isVesselMaster(masterId)) {
+        console.log(`🚢 [CREATE] Vessel Master detected - applying safe field filtering BEFORE validation`);
+        
+        // Apply field mapping and filtering first
+        requestData = filterVesselMasterData(requestData, masterId);
+        console.log(`🚢 [CREATE] Filtered request data for validation:`, requestData);
+        
+        // Validate vessel master entry after mapping
+        const validation = validateVesselMasterEntry(requestData);
+        if (!validation.isValid) {
+          return res.status(400).json({ 
+            error: "Invalid vessel master data", 
+            details: validation.error 
+          });
+        }
+      }
+      
+      const result = insertMasterDataEntrySchema.safeParse(requestData);
       if (!result.success) {
         console.log(`❌ [DEBUG CREATE] Validation failed:`, result.error.issues);
         return res.status(400).json({ error: "Invalid master data entry", details: result.error.issues });
@@ -524,6 +547,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📤 [DEBUG CREATE] Calling storage.createMasterDataEntry with:`, result.data);
       const entry = await storage.createMasterDataEntry(result.data);
       console.log(`✅ [DEBUG CREATE] Created entry:`, entry);
+      
+      // Apply vessel master response mapping if needed
+      let responseEntry = entry;
+      if (isVesselMaster(masterId) && entry) {
+        responseEntry = mapDatabaseToVesselDisplay(entry);
+        console.log(`🚢 [CREATE] Mapped response:`, responseEntry);
+      }
       
       // Verify persistence by immediately fetching the entry
       if (entry && entry.id) {
@@ -535,7 +565,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      res.status(201).json(entry);
+      res.status(201).json(responseEntry);
     } catch (error) {
       console.log(`💥 [DEBUG CREATE] Exception:`, error);
       res.status(500).json({ error: "Failed to create master data entry" });
@@ -545,16 +575,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/master-data/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const result = insertMasterDataEntrySchema.partial().safeParse(req.body);
+      
+      // Get existing entry to check master ID for vessel master handling
+      const existingEntry = await storage.getMasterDataEntry(id);
+      if (!existingEntry) {
+        return res.status(404).json({ error: "Master data entry not found" });
+      }
+      
+      // Apply vessel master safe field filtering BEFORE validation if needed
+      let requestData = req.body;
+      if (isVesselMaster(existingEntry.masterId)) {
+        console.log(`🚢 [UPDATE] Vessel Master detected for entry ${id} - applying safe field filtering BEFORE validation`);
+        
+        // Apply field mapping and filtering first
+        requestData = filterVesselMasterData(req.body, existingEntry.masterId);
+        console.log(`🚢 [UPDATE] Original update data:`, req.body);
+        console.log(`🚢 [UPDATE] Filtered update data for validation:`, requestData);
+        
+        // Validate vessel master entry after mapping
+        if (req.body.vessel || req.body.name) {
+          const validation = validateVesselMasterEntry(requestData);
+          if (!validation.isValid) {
+            return res.status(400).json({ 
+              error: "Invalid vessel master data", 
+              details: validation.error 
+            });
+          }
+        }
+      }
+      
+      const result = insertMasterDataEntrySchema.partial().safeParse(requestData);
       if (!result.success) {
         return res.status(400).json({ error: "Invalid master data entry", details: result.error.issues });
       }
+      
       const entry = await storage.updateMasterDataEntry(id, result.data);
       if (!entry) {
         return res.status(404).json({ error: "Master data entry not found" });
       }
-      res.json(entry);
+      
+      // Apply vessel master response mapping if needed
+      let responseEntry = entry;
+      if (isVesselMaster(existingEntry.masterId)) {
+        responseEntry = mapDatabaseToVesselDisplay(entry);
+        console.log(`🚢 [UPDATE] Mapped response:`, responseEntry);
+      }
+      
+      res.json(responseEntry);
     } catch (error) {
+      console.error(`💥 [UPDATE] Exception:`, error);
       res.status(500).json({ error: "Failed to update master data entry" });
     }
   });
