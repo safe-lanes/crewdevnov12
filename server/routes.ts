@@ -7,7 +7,12 @@ import {
   filterVesselMasterData,
   mapDatabaseToVesselDisplay,
   validateVesselMasterEntry,
-  getVesselMasterInfo 
+  getVesselMasterInfo,
+  isAdditionalGroupsMaster,
+  needsSpecialHandling,
+  applyMasterSpecificFiltering,
+  applyMasterSpecificMapping,
+  validateMasterSpecificEntry
 } from "./vesselMasterSafety";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -495,7 +500,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const masterId = req.params.id;
       const entries = await storage.getMasterDataEntries(masterId);
-      res.json(entries);
+      
+      // Apply master-specific response mapping if needed
+      let responseEntries = entries;
+      if (needsSpecialHandling(masterId) && entries) {
+        responseEntries = entries.map((entry: any) => applyMasterSpecificMapping(entry, masterId));
+        console.log(`🔧 [GET_LIST] Applied transformations for master ${masterId}, entries count: ${responseEntries.length}`);
+      }
+      
+      res.json(responseEntries);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch master data entries" });
     }
@@ -508,7 +521,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!entry) {
         return res.status(404).json({ error: "Master data entry not found" });
       }
-      res.json(entry);
+      
+      // Apply master-specific response mapping if needed
+      let responseEntry = entry;
+      const masterId = (entry as any).master_id || (entry as any).masterId;
+      if (needsSpecialHandling(masterId)) {
+        responseEntry = applyMasterSpecificMapping(entry, masterId);
+        console.log(`🔧 [GET_SINGLE] Applied transformations for master ${masterId}:`, responseEntry);
+      }
+      
+      res.json(responseEntry);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch master data entry" });
     }
@@ -519,20 +541,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const masterId = req.params.id;
       console.log(`🔍 [DEBUG CREATE] Storage type: ${storage.constructor.name}, Master ID: ${masterId}, Payload:`, req.body);
       
-      // Apply vessel master safe field filtering BEFORE validation
+      // Apply master-specific filtering and transformation BEFORE validation
       let requestData = { ...req.body, masterId };
-      if (isVesselMaster(masterId)) {
-        console.log(`🚢 [CREATE] Vessel Master detected - applying safe field filtering BEFORE validation`);
+      if (needsSpecialHandling(masterId)) {
+        console.log(`🔧 [CREATE] Special master detected (${masterId}) - applying transformations BEFORE validation`);
         
-        // Apply field mapping and filtering first
-        requestData = filterVesselMasterData(requestData, masterId);
-        console.log(`🚢 [CREATE] Filtered request data for validation:`, requestData);
+        // Apply appropriate filtering/transformation based on master type
+        requestData = applyMasterSpecificFiltering(requestData, masterId);
+        console.log(`🔧 [CREATE] Filtered request data for validation:`, requestData);
         
-        // Validate vessel master entry after mapping
-        const validation = validateVesselMasterEntry(requestData);
+        // Validate entry after transformation
+        const validation = validateMasterSpecificEntry(requestData, masterId);
         if (!validation.isValid) {
           return res.status(400).json({ 
-            error: "Invalid vessel master data", 
+            error: `Invalid ${masterId} master data`, 
             details: validation.error 
           });
         }
@@ -548,11 +570,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const entry = await storage.createMasterDataEntry(result.data);
       console.log(`✅ [DEBUG CREATE] Created entry:`, entry);
       
-      // Apply vessel master response mapping if needed
+      // Apply master-specific response mapping if needed
       let responseEntry = entry;
-      if (isVesselMaster(masterId) && entry) {
-        responseEntry = mapDatabaseToVesselDisplay(entry);
-        console.log(`🚢 [CREATE] Mapped response:`, responseEntry);
+      if (needsSpecialHandling(masterId) && entry) {
+        responseEntry = applyMasterSpecificMapping(entry, masterId);
+        console.log(`🔧 [CREATE] Mapped response for master ${masterId}:`, responseEntry);
       }
       
       // Verify persistence by immediately fetching the entry
@@ -576,28 +598,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       
-      // Get existing entry to check master ID for vessel master handling
+      // Get existing entry to check master ID for special handling
       const existingEntry = await storage.getMasterDataEntry(id);
       if (!existingEntry) {
         return res.status(404).json({ error: "Master data entry not found" });
       }
       
-      // Apply vessel master safe field filtering BEFORE validation if needed
+      const masterId = (existingEntry as any).master_id;
+      
+      // Apply master-specific filtering and transformation BEFORE validation if needed
       let requestData = req.body;
-      if (isVesselMaster((existingEntry as any).master_id)) {
-        console.log(`🚢 [UPDATE] Vessel Master detected for entry ${id} - applying safe field filtering BEFORE validation`);
+      if (needsSpecialHandling(masterId)) {
+        console.log(`🔧 [UPDATE] Special master detected (${masterId}) for entry ${id} - applying transformations BEFORE validation`);
         
-        // Apply field mapping and filtering first
-        requestData = filterVesselMasterData(req.body, (existingEntry as any).master_id);
-        console.log(`🚢 [UPDATE] Original update data:`, req.body);
-        console.log(`🚢 [UPDATE] Filtered update data for validation:`, requestData);
+        // Apply appropriate filtering/transformation based on master type
+        requestData = applyMasterSpecificFiltering(req.body, masterId);
+        console.log(`🔧 [UPDATE] Original update data:`, req.body);
+        console.log(`🔧 [UPDATE] Filtered update data for validation:`, requestData);
         
-        // Validate vessel master entry after mapping
-        if (req.body.vessel || req.body.name) {
-          const validation = validateVesselMasterEntry(requestData);
+        // Validate entry after transformation
+        if (req.body.vessel || req.body.name || req.body.vesselIds || req.body.VesselIDs) {
+          const validation = validateMasterSpecificEntry(requestData, masterId);
           if (!validation.isValid) {
             return res.status(400).json({ 
-              error: "Invalid vessel master data", 
+              error: `Invalid ${masterId} master data`, 
               details: validation.error 
             });
           }
@@ -614,11 +638,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Master data entry not found" });
       }
       
-      // Apply vessel master response mapping if needed
+      // Apply master-specific response mapping if needed
       let responseEntry = entry;
-      if (isVesselMaster(existingEntry.masterId)) {
-        responseEntry = mapDatabaseToVesselDisplay(entry);
-        console.log(`🚢 [UPDATE] Mapped response:`, responseEntry);
+      if (needsSpecialHandling(masterId)) {
+        responseEntry = applyMasterSpecificMapping(entry, masterId);
+        console.log(`🔧 [UPDATE] Mapped response for master ${masterId}:`, responseEntry);
       }
       
       res.json(responseEntry);
