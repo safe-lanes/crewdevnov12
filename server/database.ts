@@ -182,7 +182,11 @@ export class DatabaseStorage implements IStorage {
         { name: 'bulk', ddl: 'ADD COLUMN bulk TINYINT(1) NOT NULL DEFAULT 0' },
         // Additional columns for Fleet Groups master structure (ID 015)
         { name: 'fuid', ddl: 'ADD COLUMN fuid TEXT NULL' },
-        { name: 'managerId', ddl: 'ADD COLUMN managerId TEXT NULL' }
+        { name: 'managerId', ddl: 'ADD COLUMN managerId TEXT NULL' },
+        // Additional columns for Additional Groups master structure (ID 016)
+        { name: 'aguid', ddl: 'ADD COLUMN aguid TEXT NULL' },
+        { name: 'userId', ddl: 'ADD COLUMN userId TEXT NULL' },
+        { name: 'vesselIds', ddl: 'ADD COLUMN vesselIds TEXT NULL' }
       ];
       
       // Add missing columns
