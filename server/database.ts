@@ -186,7 +186,14 @@ export class DatabaseStorage implements IStorage {
         // Additional columns for Additional Groups master structure (ID 016)
         { name: 'aguid', ddl: 'ADD COLUMN aguid TEXT NULL' },
         { name: 'userId', ddl: 'ADD COLUMN userId TEXT NULL' },
-        { name: 'vesselIds', ddl: 'ADD COLUMN vesselIds TEXT NULL' }
+        { name: 'vesselIds', ddl: 'ADD COLUMN vesselIds TEXT NULL' },
+        // Additional columns for Vessel Owners master structure (ID 017)
+        { name: 'vouid', ddl: 'ADD COLUMN vouid TEXT NULL' },
+        { name: 'address', ddl: 'ADD COLUMN address TEXT NULL' },
+        { name: 'email', ddl: 'ADD COLUMN email TEXT NULL' },
+        { name: 'phone', ddl: 'ADD COLUMN phone TEXT NULL' },
+        { name: 'company', ddl: 'ADD COLUMN company TEXT NULL' },
+        { name: 'nameOfContactPerson', ddl: 'ADD COLUMN nameOfContactPerson TEXT NULL' }
       ];
       
       // Add missing columns

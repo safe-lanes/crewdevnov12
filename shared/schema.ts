@@ -177,6 +177,13 @@ export const masterDataEntries = mysqlTable("master_data_entries", {
   aguid: text("aguid"),
   userId: text("userId"),
   vesselIds: text("vesselIds"), // JSON string for vessel IDs array
+  // Vessel Owners Master (ID 017) fields
+  vouid: text("vouid"),
+  address: text("address"),
+  email: text("email"),
+  phone: text("phone"),
+  company: text("company"),
+  nameOfContactPerson: text("nameOfContactPerson"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -328,6 +335,12 @@ export const insertMasterDataEntrySchema = createInsertSchema(masterDataEntries)
   aguid: true,
   userId: true,
   vesselIds: true,
+  vouid: true,
+  address: true,
+  email: true,
+  phone: true,
+  company: true,
+  nameOfContactPerson: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
