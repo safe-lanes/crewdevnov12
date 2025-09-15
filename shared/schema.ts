@@ -165,27 +165,6 @@ export const masterDataEntries = mysqlTable("master_data_entries", {
   gasTanker: boolean("gasTanker").default(false),
   chemicalTanker: boolean("chemicalTanker").default(false),
   bulk: boolean("bulk").default(false),
-  // Vessel Master (ID 014) specific fields
-  vuid: text("vuid"), // Vessel Unique ID
-  vessel: text("vessel"), // Vessel name (may use existing 'name' field as well)
-  lengthOverall: text("lengthOverall"), // Overall length
-  extremeBreadth: text("extremeBreadth"), // Extreme breadth
-  netRegisterTonnage: text("netRegisterTonnage"), // Net register tonnage
-  grossTonnage: text("grossTonnage"), // Gross tonnage
-  deadWeightSummer: text("deadWeightSummer"), // Dead weight summer
-  draftSummer: text("draftSummer"), // Draft summer
-  masterEmail: text("masterEmail"), // Master email
-  secondaryEmail: text("secondaryEmail"), // Secondary email
-  deliveryDate: text("deliveryDate"), // Delivery date
-  portId: text("portId"), // Port ID
-  fleetId: text("fleetId"), // Fleet ID
-  vesselTypeId: text("vesselTypeId"), // Vessel Type ID reference
-  vesselOwnerId: text("vesselOwnerId"), // Vessel Owner ID
-  file: text("file"), // File reference
-  imoNumber: text("imoNumber"), // IMO Number
-  yearBuilt: text("yearBuilt"), // Year built
-  hullType: text("hullType"), // Hull type
-  vesselImage: text("vesselImage"), // Vessel image path
   isActive: boolean("isActive").default(true),
   isDeleted: boolean("isDeleted").default(false),
   createdBy: text("createdBy"),
@@ -332,27 +311,6 @@ export const insertMasterDataEntrySchema = createInsertSchema(masterDataEntries)
   gasTanker: true,
   chemicalTanker: true,
   bulk: true,
-  // Vessel Master (ID 014) specific fields
-  vuid: true,
-  vessel: true,
-  lengthOverall: true,
-  extremeBreadth: true,
-  netRegisterTonnage: true,
-  grossTonnage: true,
-  deadWeightSummer: true,
-  draftSummer: true,
-  masterEmail: true,
-  secondaryEmail: true,
-  deliveryDate: true,
-  portId: true,
-  fleetId: true,
-  vesselTypeId: true,
-  vesselOwnerId: true,
-  file: true,
-  imoNumber: true,
-  yearBuilt: true,
-  hullType: true,
-  vesselImage: true,
   isActive: true,
   isDeleted: true,
   createdBy: true,

@@ -35,6 +35,7 @@ import { type IStorage } from "./storage";
 export class DatabaseStorage implements IStorage {
   private db: ReturnType<typeof drizzle>;
   private pool: mysql.Pool;
+  private columnCache: Map<string, Set<string>> = new Map(); // Cache existing column names per table
 
   constructor() {
     // Use direct environment variables approach that works
@@ -65,6 +66,81 @@ export class DatabaseStorage implements IStorage {
 
   async close() {
     await this.pool.end();
+  }
+
+  // Column Allow-List Filter Methods
+  private async getExistingColumns(tableName: string): Promise<Set<string>> {
+    if (this.columnCache.has(tableName)) {
+      return this.columnCache.get(tableName)!;
+    }
+
+    try {
+      const [rows]: any = await this.pool.execute(
+        "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?",
+        [process.env.DB_NAME || 'crew_database', tableName]
+      );
+      
+      const columns = new Set(rows.map((row: any) => row.COLUMN_NAME));
+      this.columnCache.set(tableName, columns);
+      console.log(`📋 Cached columns for ${tableName}:`, Array.from(columns));
+      return columns;
+    } catch (error) {
+      console.error(`❌ Failed to get columns for ${tableName}:`, error);
+      // Return empty set to prevent errors - will be filtered out
+      return new Set();
+    }
+  }
+
+  private async filterPayloadByExistingColumns<T extends Record<string, any>>(
+    payload: T, 
+    tableName: string
+  ): Promise<Record<string, any>> {
+    const existingColumns = await this.getExistingColumns(tableName);
+    const filtered: Record<string, any> = {};
+    const filteredOutKeys: string[] = [];
+
+    // Field mapping for camelCase to snake_case
+    const fieldMapping: Record<string, string> = {
+      masterId: 'master_id',
+      entryId: 'entry_id',
+      createdAt: 'created_at',
+      updatedAt: 'updated_at'
+    };
+
+    for (const [key, value] of Object.entries(payload)) {
+      // Map to database column name
+      const dbColumnName = fieldMapping[key] || key;
+      
+      console.log(`🔧 [FIELD MAP] ${key} -> ${dbColumnName}, exists: ${existingColumns.has(dbColumnName)}`);
+      
+      if (existingColumns.has(dbColumnName)) {
+        filtered[dbColumnName] = value;
+      } else {
+        filteredOutKeys.push(key);
+      }
+    }
+
+    if (filteredOutKeys.length > 0) {
+      console.log(`🔧 Filtered out non-existent columns for ${tableName}:`, filteredOutKeys);
+    }
+    
+    console.log(`✅ Final filtered payload for ${tableName}:`, filtered);
+    return filtered;
+  }
+
+  // Name Field Fallback for Master 014 (Vessel Master)
+  private ensureNameFieldForVesselMaster(insertEntry: InsertMasterDataEntry): InsertMasterDataEntry {
+    if (insertEntry.masterId === '014' && !insertEntry.name) {
+      // Derive name from vessel fields or fallback to entryId
+      const derivedName = (insertEntry as any).vessel || 
+                         (insertEntry as any).imoNumber || 
+                         insertEntry.entryId || 
+                         'Unnamed Vessel';
+      
+      console.log(`🚢 Master 014: Deriving name field from vessel data. Result: "${derivedName}"`);
+      return { ...insertEntry, name: derivedName };
+    }
+    return insertEntry;
   }
 
   // Self-migration to ensure master_data_entries has enhanced nationality schema
@@ -667,52 +743,100 @@ export class DatabaseStorage implements IStorage {
 
   // Master Data Entries Methods
   async getMasterDataEntries(masterId: string): Promise<MasterDataEntry[]> {
-    return await this.db.select().from(masterDataEntries).where(eq(masterDataEntries.masterId, masterId));
+    // Use raw SQL to avoid Drizzle schema column issues
+    const existingColumns = await this.getExistingColumns('master_data_entries');
+    const selectColumns = Array.from(existingColumns).join(', ');
+    const selectSql = `SELECT ${selectColumns} FROM master_data_entries WHERE master_id = ?`;
+    
+    const [results]: any = await this.pool.execute(selectSql, [masterId]);
+    return results;
   }
 
   async getMasterDataEntry(id: number): Promise<MasterDataEntry | undefined> {
-    const results = await this.db.select().from(masterDataEntries).where(eq(masterDataEntries.id, id));
+    // Use raw SQL to avoid Drizzle schema column issues
+    const existingColumns = await this.getExistingColumns('master_data_entries');
+    const selectColumns = Array.from(existingColumns).join(', ');
+    const selectSql = `SELECT ${selectColumns} FROM master_data_entries WHERE id = ?`;
+    
+    const [results]: any = await this.pool.execute(selectSql, [id]);
     return results[0];
   }
 
   async createMasterDataEntry(insertEntry: InsertMasterDataEntry): Promise<MasterDataEntry> {
-    console.log('🔧 [DB] Creating master data entry:', insertEntry);
+    console.log('🔧 [DB] Creating master data entry (NEW IMPLEMENTATION):', insertEntry);
     
-    const result = await this.db.insert(masterDataEntries).values(insertEntry);
+    // Step 1: Apply name field fallback for Master 014 (Vessel Master)
+    const entryWithName = this.ensureNameFieldForVesselMaster(insertEntry);
+    console.log('🚢 [DB] After name fallback:', entryWithName);
+    
+    // Step 2: Filter payload to only include existing columns
+    const filteredEntry = await this.filterPayloadByExistingColumns(entryWithName, 'master_data_entries');
+    console.log('🔧 [DB] Filtered entry for database insert:', filteredEntry);
+    
+    // Step 3: Use raw SQL to bypass Drizzle schema enforcement
+    const columns = Object.keys(filteredEntry).join(', ');
+    const placeholders = Object.keys(filteredEntry).map(() => '?').join(', ');
+    const values = Object.values(filteredEntry);
+    
+    const insertSql = `INSERT INTO master_data_entries (${columns}, created_at, updated_at) VALUES (${placeholders}, NOW(), NOW())`;
+    console.log('🔧 [DB] Raw SQL:', insertSql);
+    console.log('🔧 [DB] Values:', values);
+    
+    const [result]: any = await this.pool.execute(insertSql, values);
     console.log('📤 [DB] Insert result:', result);
     
-    // MySQL with Drizzle - insertId might be in different locations
-    const insertId = (result as any).insertId || (result as any)[0]?.insertId || (result as any).lastInsertRowid;
+    // Extract insertId from raw MySQL result
+    const insertId = result.insertId;
     console.log('🔍 [DB] Extracted insertId:', insertId);
     
     if (!insertId) {
       console.error('❌ [DB] No insertId found in result, trying alternative approach');
-      // Fallback: find the most recent entry for this master
-      const results = await this.db.select().from(masterDataEntries)
-        .where(eq(masterDataEntries.masterId, insertEntry.masterId))
-        .orderBy(desc(masterDataEntries.id))
-        .limit(1);
-      console.log('🔄 [DB] Fallback query result:', results);
-      return results[0];
+      // Fallback: find the most recent entry for this master using raw SQL
+      const existingColumns = await this.getExistingColumns('master_data_entries');
+      const selectColumns = Array.from(existingColumns).join(', ');
+      const fallbackSql = `SELECT ${selectColumns} FROM master_data_entries WHERE master_id = ? ORDER BY id DESC LIMIT 1`;
+      
+      const [fallbackResults]: any = await this.pool.execute(fallbackSql, [entryWithName.masterId]);
+      console.log('🔄 [DB] Fallback query result:', fallbackResults[0]);
+      return fallbackResults[0];
     }
     
-    // Fetch the created record using insertId
-    const results = await this.db.select().from(masterDataEntries).where(eq(masterDataEntries.id, insertId));
-    console.log('✅ [DB] Fetched created entry:', results[0]);
-    return results[0];
+    // Fetch the created record using raw SQL with existing columns only
+    const existingColumns = await this.getExistingColumns('master_data_entries');
+    const selectColumns = Array.from(existingColumns).join(', ');
+    const selectSql = `SELECT ${selectColumns} FROM master_data_entries WHERE id = ?`;
+    
+    console.log('🔧 [DB] Select SQL:', selectSql);
+    const [selectResults]: any = await this.pool.execute(selectSql, [insertId]);
+    console.log('✅ [DB] Fetched created entry:', selectResults[0]);
+    return selectResults[0];
   }
 
   async updateMasterDataEntry(id: number, entryData: Partial<InsertMasterDataEntry>): Promise<MasterDataEntry | undefined> {
-    const result = await this.db.update(masterDataEntries)
-      .set({ ...entryData, updatedAt: new Date() })
-      .where(eq(masterDataEntries.id, id));
+    // Filter payload to only include existing columns
+    const filteredEntry = await this.filterPayloadByExistingColumns(entryData, 'master_data_entries');
     
-    if ((result as any).affectedRows === 0) {
+    // Add updated_at timestamp
+    filteredEntry.updated_at = new Date();
+    
+    // Use raw SQL for UPDATE
+    const columns = Object.keys(filteredEntry).map(col => `${col} = ?`).join(', ');
+    const values = Object.values(filteredEntry);
+    const updateSql = `UPDATE master_data_entries SET ${columns} WHERE id = ?`;
+    
+    const [result]: any = await this.pool.execute(updateSql, [...values, id]);
+    
+    if (result.affectedRows === 0) {
       return undefined;
     }
     
-    const results = await this.db.select().from(masterDataEntries).where(eq(masterDataEntries.id, id));
-    return results[0];
+    // Use raw SQL for SELECT
+    const existingColumns = await this.getExistingColumns('master_data_entries');
+    const selectColumns = Array.from(existingColumns).join(', ');
+    const selectSql = `SELECT ${selectColumns} FROM master_data_entries WHERE id = ?`;
+    
+    const [selectResults]: any = await this.pool.execute(selectSql, [id]);
+    return selectResults[0];
   }
 
   async deleteMasterDataEntry(id: number): Promise<boolean> {
@@ -720,8 +844,9 @@ export class DatabaseStorage implements IStorage {
     const existing = await this.getMasterDataEntry(id);
     if (!existing) return false;
     
-    // Execute delete
-    await this.db.delete(masterDataEntries).where(eq(masterDataEntries.id, id));
+    // Execute delete using raw SQL
+    const deleteSql = `DELETE FROM master_data_entries WHERE id = ?`;
+    await this.pool.execute(deleteSql, [id]);
     
     // Return true since entry existed (delete should succeed)
     return true;
