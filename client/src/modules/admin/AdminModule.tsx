@@ -512,7 +512,7 @@ export const AdminModule = (): JSX.Element => {
     setIsMasterEditing(false);
   };
 
-  const updateMasterField = (itemId: number, field: 'entryId' | 'name' | 'description' | 'countryName' | 'country', value: string) => {
+  const updateMasterField = (itemId: number, field: 'entryId' | 'name' | 'description' | 'countryName' | 'country' | 'countryCode', value: string) => {
     updateEntryMutation.mutate({ 
       id: itemId, 
       data: { [field]: value }, 
@@ -535,6 +535,16 @@ export const AdminModule = (): JSX.Element => {
         description: '', // Still required for compatibility
         countryName: '',
         country: '',
+        isActive: true,
+        isDeleted: false
+      });
+    } else if (selectedMaster === "002") {
+      // Country master - create entry with country-specific fields
+      createEntryMutation.mutate({
+        entryId: newEntryId,
+        name: '', // Country name
+        description: '', // Still required for compatibility
+        countryCode: '', // Country UN/LOCODE
         isActive: true,
         isDeleted: false
       });
@@ -2196,6 +2206,11 @@ export const AdminModule = (): JSX.Element => {
                         <div className="p-3 border-r border-blue-400">Nationality</div>
                         <div className="p-3 border-r border-blue-400">Country</div>
                       </>
+                    ) : selectedMaster === "002" ? (
+                      <>
+                        <div className="p-3 border-r border-blue-400">Country</div>
+                        <div className="p-3 border-r border-blue-400">Country UN/LOCODE</div>
+                      </>
                     ) : (
                       <>
                         <div className="p-3 border-r border-blue-400">Name</div>
@@ -2215,6 +2230,8 @@ export const AdminModule = (): JSX.Element => {
                       // Different logic for identifying new entries based on master type
                       const isNewEntry = selectedMaster === "001" 
                         ? !item.countryName && !item.country  // For nationality master
+                        : selectedMaster === "002"
+                        ? !item.name && !item.countryCode     // For country master
                         : !item.name && !item.description;   // For other masters
                       
                       return (
@@ -2251,6 +2268,20 @@ export const AdminModule = (): JSX.Element => {
                               ) : (
                                 <span className="text-xs text-gray-700">{item.countryName || <em className="text-gray-400">No nationality</em>}</span>
                               )
+                            ) : selectedMaster === "002" ? (
+                              // Country master - show name field (country name)
+                              isMasterEditing ? (
+                                <Input
+                                  value={item.name || ''}
+                                  onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
+                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                  placeholder={isNewEntry ? "Enter country..." : ""}
+                                  data-testid={`input-name-${item.id}`}
+                                  autoFocus={isNewEntry}
+                                />
+                              ) : (
+                                <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No country</em>}</span>
+                              )
                             ) : (
                               // Other masters - show name field
                               isMasterEditing ? (
@@ -2282,6 +2313,19 @@ export const AdminModule = (): JSX.Element => {
                                 />
                               ) : (
                                 <span className="text-xs text-gray-700">{item.country || <em className="text-gray-400">No country</em>}</span>
+                              )
+                            ) : selectedMaster === "002" ? (
+                              // Country master - show countryCode field (Country UN/LOCODE)
+                              isMasterEditing ? (
+                                <Input
+                                  value={item.countryCode || ''}
+                                  onChange={(e) => updateMasterField(item.id, 'countryCode', e.target.value)}
+                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                  placeholder={isNewEntry ? "Enter country code..." : ""}
+                                  data-testid={`input-countryCode-${item.id}`}
+                                />
+                              ) : (
+                                <span className="text-xs text-gray-700">{item.countryCode || <em className="text-gray-400">No country code</em>}</span>
                               )
                             ) : (
                               // Other masters - show description field

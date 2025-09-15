@@ -81,7 +81,7 @@ export class DatabaseStorage implements IStorage {
       const existingColumns = new Set(rows.map((row: any) => row.COLUMN_NAME));
       console.log("📋 Existing columns:", Array.from(existingColumns));
       
-      // Define new columns to add
+      // Define new columns to add (for both nationality and country enhanced structures)
       const newColumns = [
         { name: 'nuid', ddl: 'ADD COLUMN nuid TEXT NULL' },
         { name: 'countryName', ddl: 'ADD COLUMN countryName TEXT NULL' },
@@ -90,7 +90,12 @@ export class DatabaseStorage implements IStorage {
         { name: 'isDeleted', ddl: 'ADD COLUMN isDeleted TINYINT(1) NOT NULL DEFAULT 0' },
         { name: 'createdBy', ddl: 'ADD COLUMN createdBy TEXT NULL' },
         { name: 'domain', ddl: 'ADD COLUMN domain TEXT NULL' },
-        { name: 'orderBy', ddl: 'ADD COLUMN orderBy INT NULL' }
+        { name: 'orderBy', ddl: 'ADD COLUMN orderBy INT NULL' },
+        // Additional columns for enhanced Country master structure
+        { name: 'cid', ddl: 'ADD COLUMN cid TEXT NULL' },
+        { name: 'countryCode', ddl: 'ADD COLUMN countryCode TEXT NULL' },
+        { name: 'nationality', ddl: 'ADD COLUMN nationality TEXT NULL' },
+        { name: 'countryRefId', ddl: 'ADD COLUMN countryRefId TEXT NULL' }
       ];
       
       // Add missing columns
@@ -108,6 +113,9 @@ export class DatabaseStorage implements IStorage {
       
       // Fix specific nationality data inconsistencies
       await this.fixNationalityDataInconsistencies();
+      
+      // Ensure enhanced country data is properly seeded
+      await this.ensureCountryDataSeeded();
     } catch (error) {
       console.error("❌ Failed to update master_data_entries schema:", error);
       // Don't throw - allow app to start even if schema update fails
@@ -220,6 +228,100 @@ export class DatabaseStorage implements IStorage {
       }
     } catch (error) {
       console.error("❌ Failed to fix nationality data inconsistencies:", error);
+      // Don't throw - allow app to continue
+    }
+  }
+
+  // Ensure country master data is properly seeded with enhanced structure
+  private async ensureCountryDataSeeded(): Promise<void> {
+    try {
+      console.log("🌎 Checking country master data...");
+      
+      // Check if we have any country entries with enhanced structure
+      const [existingCountryEntries]: any = await this.pool.execute(
+        "SELECT COUNT(*) as count FROM master_data_entries WHERE master_id = '002' AND entry_id RLIKE '^[0-9]+$'"
+      );
+      
+      const enhancedCountriesCount = existingCountryEntries[0].count;
+      console.log(`📊 Found ${enhancedCountriesCount} enhanced country entries with numeric entry IDs`);
+      
+      // If we don't have the enhanced country data structure, seed it
+      if (enhancedCountriesCount < 50) {
+        console.log("🗂️ Seeding enhanced country master data...");
+        
+        // Clear existing country entries to ensure clean enhanced structure
+        await this.pool.execute("DELETE FROM master_data_entries WHERE master_id = '002'");
+        
+        // Country data with enhanced structure (as per attached specification)
+        const countryData = [
+          { entryId: "001", name: "Afghanistan", description: "Afghanistan", countryName: "Afghanistan", countryCode: "AF", nationality: "Afghan", cid: "AF001", countryRefId: "AFG" },
+          { entryId: "002", name: "Algeria", description: "Algeria", countryName: "Algeria", countryCode: "DZ", nationality: "Algerian", cid: "DZ002", countryRefId: "DZA" },
+          { entryId: "003", name: "Albania", description: "Albania", countryName: "Albania", countryCode: "AL", nationality: "Albanian", cid: "AL003", countryRefId: "ALB" },
+          { entryId: "004", name: "United Kingdom", description: "United Kingdom", countryName: "United Kingdom", countryCode: "GB", nationality: "British", cid: "GB004", countryRefId: "GBR" },
+          { entryId: "005", name: "United States", description: "United States", countryName: "United States", countryCode: "US", nationality: "American", cid: "US005", countryRefId: "USA" },
+          { entryId: "006", name: "Canada", description: "Canada", countryName: "Canada", countryCode: "CA", nationality: "Canadian", cid: "CA006", countryRefId: "CAN" },
+          { entryId: "007", name: "Australia", description: "Australia", countryName: "Australia", countryCode: "AU", nationality: "Australian", cid: "AU007", countryRefId: "AUS" },
+          { entryId: "008", name: "Germany", description: "Germany", countryName: "Germany", countryCode: "DE", nationality: "German", cid: "DE008", countryRefId: "DEU" },
+          { entryId: "009", name: "France", description: "France", countryName: "France", countryCode: "FR", nationality: "French", cid: "FR009", countryRefId: "FRA" },
+          { entryId: "010", name: "Italy", description: "Italy", countryName: "Italy", countryCode: "IT", nationality: "Italian", cid: "IT010", countryRefId: "ITA" },
+          { entryId: "011", name: "Spain", description: "Spain", countryName: "Spain", countryCode: "ES", nationality: "Spanish", cid: "ES011", countryRefId: "ESP" },
+          { entryId: "012", name: "Netherlands", description: "Netherlands", countryName: "Netherlands", countryCode: "NL", nationality: "Dutch", cid: "NL012", countryRefId: "NLD" },
+          { entryId: "013", name: "Norway", description: "Norway", countryName: "Norway", countryCode: "NO", nationality: "Norwegian", cid: "NO013", countryRefId: "NOR" },
+          { entryId: "014", name: "Sweden", description: "Sweden", countryName: "Sweden", countryCode: "SE", nationality: "Swedish", cid: "SE014", countryRefId: "SWE" },
+          { entryId: "015", name: "Denmark", description: "Denmark", countryName: "Denmark", countryCode: "DK", nationality: "Danish", cid: "DK015", countryRefId: "DNK" },
+          { entryId: "016", name: "Japan", description: "Japan", countryName: "Japan", countryCode: "JP", nationality: "Japanese", cid: "JP016", countryRefId: "JPN" },
+          { entryId: "017", name: "South Korea", description: "South Korea", countryName: "South Korea", countryCode: "KR", nationality: "Korean", cid: "KR017", countryRefId: "KOR" },
+          { entryId: "018", name: "China", description: "China", countryName: "China", countryCode: "CN", nationality: "Chinese", cid: "CN018", countryRefId: "CHN" },
+          { entryId: "019", name: "India", description: "India", countryName: "India", countryCode: "IN", nationality: "Indian", cid: "IN019", countryRefId: "IND" },
+          { entryId: "020", name: "Singapore", description: "Singapore", countryName: "Singapore", countryCode: "SG", nationality: "Singaporean", cid: "SG020", countryRefId: "SGP" },
+          { entryId: "021", name: "Brazil", description: "Brazil", countryName: "Brazil", countryCode: "BR", nationality: "Brazilian", cid: "BR021", countryRefId: "BRA" },
+          { entryId: "022", name: "Argentina", description: "Argentina", countryName: "Argentina", countryCode: "AR", nationality: "Argentine", cid: "AR022", countryRefId: "ARG" },
+          { entryId: "023", name: "Mexico", description: "Mexico", countryName: "Mexico", countryCode: "MX", nationality: "Mexican", cid: "MX023", countryRefId: "MEX" },
+          { entryId: "024", name: "Panama", description: "Panama", countryName: "Panama", countryCode: "PA", nationality: "Panamanian", cid: "PA024", countryRefId: "PAN" },
+          { entryId: "025", name: "Philippines", description: "Philippines", countryName: "Philippines", countryCode: "PH", nationality: "Filipino", cid: "PH025", countryRefId: "PHL" },
+          { entryId: "026", name: "Indonesia", description: "Indonesia", countryName: "Indonesia", countryCode: "ID", nationality: "Indonesian", cid: "ID026", countryRefId: "IDN" },
+          { entryId: "027", name: "Malaysia", description: "Malaysia", countryName: "Malaysia", countryCode: "MY", nationality: "Malaysian", cid: "MY027", countryRefId: "MYS" },
+          { entryId: "028", name: "Thailand", description: "Thailand", countryName: "Thailand", countryCode: "TH", nationality: "Thai", cid: "TH028", countryRefId: "THA" },
+          { entryId: "029", name: "Vietnam", description: "Vietnam", countryName: "Vietnam", countryCode: "VN", nationality: "Vietnamese", cid: "VN029", countryRefId: "VNM" },
+          { entryId: "030", name: "Turkey", description: "Turkey", countryName: "Turkey", countryCode: "TR", nationality: "Turkish", cid: "TR030", countryRefId: "TUR" },
+          { entryId: "031", name: "Greece", description: "Greece", countryName: "Greece", countryCode: "GR", nationality: "Greek", cid: "GR031", countryRefId: "GRC" },
+          { entryId: "032", name: "Cyprus", description: "Cyprus", countryName: "Cyprus", countryCode: "CY", nationality: "Cypriot", cid: "CY032", countryRefId: "CYP" },
+          { entryId: "033", name: "Malta", description: "Malta", countryName: "Malta", countryCode: "MT", nationality: "Maltese", cid: "MT033", countryRefId: "MLT" },
+          { entryId: "034", name: "Liberia", description: "Liberia", countryName: "Liberia", countryCode: "LR", nationality: "Liberian", cid: "LR034", countryRefId: "LBR" },
+          { entryId: "035", name: "Marshall Islands", description: "Marshall Islands", countryName: "Marshall Islands", countryCode: "MH", nationality: "Marshallese", cid: "MH035", countryRefId: "MHL" },
+          { entryId: "036", name: "Bahamas", description: "Bahamas", countryName: "Bahamas", countryCode: "BS", nationality: "Bahamian", cid: "BS036", countryRefId: "BHS" },
+          { entryId: "037", name: "Barbados", description: "Barbados", countryName: "Barbados", countryCode: "BB", nationality: "Barbadian", cid: "BB037", countryRefId: "BRB" },
+          { entryId: "038", name: "Antigua and Barbuda", description: "Antigua and Barbuda", countryName: "Antigua and Barbuda", countryCode: "AG", nationality: "Antiguan", cid: "AG038", countryRefId: "ATG" },
+          { entryId: "039", name: "Saint Vincent", description: "Saint Vincent and the Grenadines", countryName: "Saint Vincent and the Grenadines", countryCode: "VC", nationality: "Vincentian", cid: "VC039", countryRefId: "VCT" },
+          { entryId: "040", name: "Saint Kitts and Nevis", description: "Saint Kitts and Nevis", countryName: "Saint Kitts and Nevis", countryCode: "KN", nationality: "Kittitian", cid: "KN040", countryRefId: "KNA" },
+          { entryId: "041", name: "Russia", description: "Russia", countryName: "Russia", countryCode: "RU", nationality: "Russian", cid: "RU041", countryRefId: "RUS" },
+          { entryId: "042", name: "Ukraine", description: "Ukraine", countryName: "Ukraine", countryCode: "UA", nationality: "Ukrainian", cid: "UA042", countryRefId: "UKR" },
+          { entryId: "043", name: "Poland", description: "Poland", countryName: "Poland", countryCode: "PL", nationality: "Polish", cid: "PL043", countryRefId: "POL" },
+          { entryId: "044", name: "Romania", description: "Romania", countryName: "Romania", countryCode: "RO", nationality: "Romanian", cid: "RO044", countryRefId: "ROU" },
+          { entryId: "045", name: "Bulgaria", description: "Bulgaria", countryName: "Bulgaria", countryCode: "BG", nationality: "Bulgarian", cid: "BG045", countryRefId: "BGR" },
+          { entryId: "046", name: "Croatia", description: "Croatia", countryName: "Croatia", countryCode: "HR", nationality: "Croatian", cid: "HR046", countryRefId: "HRV" },
+          { entryId: "047", name: "Estonia", description: "Estonia", countryName: "Estonia", countryCode: "EE", nationality: "Estonian", cid: "EE047", countryRefId: "EST" },
+          { entryId: "048", name: "Latvia", description: "Latvia", countryName: "Latvia", countryCode: "LV", nationality: "Latvian", cid: "LV048", countryRefId: "LVA" },
+          { entryId: "049", name: "Lithuania", description: "Lithuania", countryName: "Lithuania", countryCode: "LT", nationality: "Lithuanian", cid: "LT049", countryRefId: "LTU" },
+          { entryId: "050", name: "Finland", description: "Finland", countryName: "Finland", countryCode: "FI", nationality: "Finnish", cid: "FI050", countryRefId: "FIN" }
+        ];
+        
+        // Insert each country entry with enhanced structure
+        for (const country of countryData) {
+          await this.pool.execute(
+            `INSERT INTO master_data_entries 
+             (master_id, entry_id, name, description, countryName, countryCode, nationality, cid, countryRefId, isActive, isDeleted, created_at, updated_at) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+            ['002', country.entryId, country.name, country.description, country.countryName, country.countryCode, country.nationality, country.cid, country.countryRefId, 1, 0]
+          );
+        }
+        
+        console.log("✅ Enhanced country master data seeded successfully with 001-050 format");
+      } else {
+        console.log("✅ Enhanced country master data already exists");
+      }
+    } catch (error) {
+      console.error("❌ Failed to seed country master data:", error);
       // Don't throw - allow app to continue
     }
   }
