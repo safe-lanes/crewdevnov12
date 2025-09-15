@@ -216,7 +216,18 @@ export class DatabaseStorage implements IStorage {
         { name: 'designationId', ddl: 'ADD COLUMN designationId TEXT NULL' },
         { name: 'profilePic', ddl: 'ADD COLUMN profilePic TEXT NULL' },
         { name: 'userType', ddl: 'ADD COLUMN userType TEXT NULL' },
-        { name: 'departmentId', ddl: 'ADD COLUMN departmentId TEXT NULL' }
+        { name: 'departmentId', ddl: 'ADD COLUMN departmentId TEXT NULL' },
+        // Additional columns for Port Master structure (ID 018)
+        { name: 'puid', ddl: 'ADD COLUMN puid TEXT NULL' },
+        { name: 'portCode', ddl: 'ADD COLUMN portCode TEXT NULL' },
+        { name: 'portName', ddl: 'ADD COLUMN portName TEXT NULL' },
+        { name: 'latitude', ddl: 'ADD COLUMN latitude DECIMAL(10,8) NULL' },
+        { name: 'longitude', ddl: 'ADD COLUMN longitude DECIMAL(11,8) NULL' },
+        { name: 'countryId', ddl: 'ADD COLUMN countryId TEXT NULL' },
+        { name: 'region', ddl: 'ADD COLUMN region TEXT NULL' },
+        { name: 'timeZone', ddl: 'ADD COLUMN timeZone TEXT NULL' },
+        { name: 'harborType', ddl: 'ADD COLUMN harborType TEXT NULL' },
+        { name: 'facilities', ddl: 'ADD COLUMN facilities TEXT NULL' }
       ];
       
       // Add missing columns
@@ -243,6 +254,9 @@ export class DatabaseStorage implements IStorage {
       
       // Ensure enhanced language data is properly seeded  
       await this.ensureLanguageDataSeeded();
+      
+      // Ensure enhanced port data is properly seeded
+      await this.ensurePortDataSeeded();
     } catch (error) {
       console.error("❌ Failed to update master_data_entries schema:", error);
       // Don't throw - allow app to start even if schema update fails
@@ -568,6 +582,70 @@ export class DatabaseStorage implements IStorage {
       }
     } catch (error) {
       console.error("❌ Failed to seed language master data:", error);
+      // Don't throw - allow app to continue
+    }
+  }
+
+  // Ensure port master data is properly seeded with enhanced structure  
+  private async ensurePortDataSeeded(): Promise<void> {
+    try {
+      console.log("🏰 Checking port master data...");
+      
+      // Check if we have any port entries with enhanced structure (PORT001-PORT020)
+      const [existingPortEntries]: any = await this.pool.execute(
+        "SELECT COUNT(*) as count FROM master_data_entries WHERE master_id = '018' AND entry_id RLIKE '^PORT[0-9]+$'"
+      );
+      
+      const enhancedPortsCount = existingPortEntries[0].count;
+      console.log(`📊 Found ${enhancedPortsCount} enhanced port entries with PORT format`);
+      
+      // If we don't have the enhanced port data structure, seed it
+      if (enhancedPortsCount < 20) {
+        console.log("🗂️ Seeding enhanced port master data...");
+        
+        // Clear existing port entries to ensure clean enhanced structure
+        await this.pool.execute("DELETE FROM master_data_entries WHERE master_id = '018'");
+        
+        // Major international maritime ports with enhanced structure
+        const portData = [
+          { entryId: "PORT001", name: "Singapore", description: "Port of Singapore", portCode: "SGSIN", portName: "Singapore", latitude: 1.2966, longitude: 103.8764, countryId: "020", region: "Southeast Asia", timeZone: "GMT+8", harborType: "Container Hub", facilities: "Container,Bulk,Tanker,Passenger" },
+          { entryId: "PORT002", name: "Shanghai", description: "Port of Shanghai", portCode: "CNSHA", portName: "Shanghai", latitude: 31.2304, longitude: 121.4737, countryId: "018", region: "East Asia", timeZone: "GMT+8", harborType: "Container Hub", facilities: "Container,Bulk,General Cargo" },
+          { entryId: "PORT003", name: "Rotterdam", description: "Port of Rotterdam", portCode: "NLRTM", portName: "Rotterdam", latitude: 51.9225, longitude: 4.4792, countryId: "012", region: "Europe", timeZone: "GMT+1", harborType: "Container Hub", facilities: "Container,Bulk,Tanker,Chemicals" },
+          { entryId: "PORT004", name: "Antwerp", description: "Port of Antwerp", portCode: "BEANR", portName: "Antwerp", latitude: 51.2194, longitude: 4.4025, countryId: "004", region: "Europe", timeZone: "GMT+1", harborType: "Container Port", facilities: "Container,General Cargo,Chemicals" },
+          { entryId: "PORT005", name: "Hamburg", description: "Port of Hamburg", portCode: "DEHAM", portName: "Hamburg", latitude: 53.5511, longitude: 9.9937, countryId: "008", region: "Europe", timeZone: "GMT+1", harborType: "Container Port", facilities: "Container,General Cargo,Bulk" },
+          { entryId: "PORT006", name: "Los Angeles", description: "Port of Los Angeles", portCode: "USLAX", portName: "Los Angeles", latitude: 33.7447, longitude: -118.2567, countryId: "005", region: "North America", timeZone: "GMT-8", harborType: "Container Hub", facilities: "Container,Bulk,General Cargo" },
+          { entryId: "PORT007", name: "Hong Kong", description: "Port of Hong Kong", portCode: "HKHKG", portName: "Hong Kong", latitude: 22.3193, longitude: 114.1694, countryId: "018", region: "East Asia", timeZone: "GMT+8", harborType: "Container Hub", facilities: "Container,General Cargo,Transshipment" },
+          { entryId: "PORT008", name: "Dubai", description: "Port of Dubai", portCode: "AEDXB", portName: "Dubai", latitude: 25.2697, longitude: 55.3094, countryId: "004", region: "Middle East", timeZone: "GMT+4", harborType: "Container Hub", facilities: "Container,General Cargo,Transshipment" },
+          { entryId: "PORT009", name: "New York", description: "Port of New York", portCode: "USNYC", portName: "New York", latitude: 40.6892, longitude: -74.0445, countryId: "005", region: "North America", timeZone: "GMT-5", harborType: "Container Port", facilities: "Container,General Cargo,Bulk" },
+          { entryId: "PORT010", name: "Busan", description: "Port of Busan", portCode: "KRPUS", portName: "Busan", latitude: 35.1796, longitude: 129.0756, countryId: "017", region: "East Asia", timeZone: "GMT+9", harborType: "Container Hub", facilities: "Container,Bulk,Transshipment" },
+          { entryId: "PORT011", name: "Le Havre", description: "Port of Le Havre", portCode: "FRLEH", portName: "Le Havre", latitude: 49.4944, longitude: 0.1079, countryId: "009", region: "Europe", timeZone: "GMT+1", harborType: "Container Port", facilities: "Container,General Cargo,Tanker" },
+          { entryId: "PORT012", name: "Felixstowe", description: "Port of Felixstowe", portCode: "GBFXT", portName: "Felixstowe", latitude: 51.9607, longitude: 1.3511, countryId: "004", region: "Europe", timeZone: "GMT", harborType: "Container Port", facilities: "Container,General Cargo" },
+          { entryId: "PORT013", name: "Mumbai", description: "Port of Mumbai", portCode: "INMUN", portName: "Mumbai", latitude: 18.9220, longitude: 72.8347, countryId: "019", region: "South Asia", timeZone: "GMT+5:30", harborType: "Container Port", facilities: "Container,Bulk,General Cargo" },
+          { entryId: "PORT014", name: "Yokohama", description: "Port of Yokohama", portCode: "JPYOK", portName: "Yokohama", latitude: 35.4437, longitude: 139.6380, countryId: "016", region: "East Asia", timeZone: "GMT+9", harborType: "Container Port", facilities: "Container,General Cargo,Passenger" },
+          { entryId: "PORT015", name: "Long Beach", description: "Port of Long Beach", portCode: "USLGB", portName: "Long Beach", latitude: 33.7701, longitude: -118.2437, countryId: "005", region: "North America", timeZone: "GMT-8", harborType: "Container Port", facilities: "Container,Bulk,General Cargo" },
+          { entryId: "PORT016", name: "Valencia", description: "Port of Valencia", portCode: "ESVLC", portName: "Valencia", latitude: 39.4699, longitude: -0.3763, countryId: "011", region: "Europe", timeZone: "GMT+1", harborType: "Container Port", facilities: "Container,General Cargo,Passenger" },
+          { entryId: "PORT017", name: "Piraeus", description: "Port of Piraeus", portCode: "GRPIR", portName: "Piraeus", latitude: 37.9755, longitude: 23.7348, countryId: "031", region: "Europe", timeZone: "GMT+2", harborType: "Container Port", facilities: "Container,General Cargo,Passenger" },
+          { entryId: "PORT018", name: "Marseille", description: "Port of Marseille", portCode: "FRMRS", portName: "Marseille", latitude: 43.2965, longitude: 5.3698, countryId: "009", region: "Europe", timeZone: "GMT+1", harborType: "Container Port", facilities: "Container,General Cargo,Passenger" },
+          { entryId: "PORT019", name: "Barcelona", description: "Port of Barcelona", portCode: "ESBCN", portName: "Barcelona", latitude: 41.3851, longitude: 2.1734, countryId: "011", region: "Europe", timeZone: "GMT+1", harborType: "Container Port", facilities: "Container,General Cargo,Passenger" },
+          { entryId: "PORT020", name: "Genoa", description: "Port of Genoa", portCode: "ITGOA", portName: "Genoa", latitude: 44.4056, longitude: 8.9463, countryId: "010", region: "Europe", timeZone: "GMT+1", harborType: "Container Port", facilities: "Container,General Cargo,Passenger" }
+        ];
+        
+        // Insert each port entry with enhanced structure
+        for (const port of portData) {
+          await this.pool.execute(
+            `INSERT INTO master_data_entries 
+             (master_id, entry_id, name, description, portCode, portName, latitude, longitude, countryId, region, timeZone, harborType, facilities, isActive, isDeleted, created_at, updated_at) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+            ['018', port.entryId, port.name, port.description, port.portCode, port.portName, port.latitude, port.longitude, port.countryId, port.region, port.timeZone, port.harborType, port.facilities, 1, 0]
+          );
+        }
+        
+        console.log("✅ Enhanced port master data seeded successfully with PORT001-PORT020 format");
+      } else {
+        console.log("✅ Enhanced port master data already exists");
+      }
+    } catch (error) {
+      console.error("❌ Failed to seed port master data:", error);
       // Don't throw - allow app to continue
     }
   }
@@ -929,15 +1007,15 @@ export class DatabaseStorage implements IStorage {
       
       console.log("🔄 Connecting to existing crew_database tables...");
       
-      // Check if data masters are already complete (17 categories)
+      // Check if data masters are already complete (18 categories)
       const existingMasters = await this.getDataMasters();
-      if (existingMasters.length >= 17) {
+      if (existingMasters.length >= 18) {
         console.log("Database already seeded, skipping...");
         return;
       }
       
       // If we have some but not all masters, only seed the missing ones
-      console.log(`Found ${existingMasters.length} existing master categories, ensuring all 17 are present...`);
+      console.log(`Found ${existingMasters.length} existing master categories, ensuring all 18 are present...`);
 
       // Seed available ranks
       const rankData: InsertAvailableRank[] = [
@@ -959,7 +1037,7 @@ export class DatabaseStorage implements IStorage {
         await this.createAvailableRank(rank);
       }
 
-      // Seed data masters categories (all 17 categories including new ones)
+      // Seed data masters categories (all 18 categories including new ones)
       const masterCategories: InsertDataMaster[] = [
         { id: "001", name: "Nationality", description: "Crew member nationalities" },
         { id: "002", name: "Country", description: "Countries and regions" },
@@ -977,7 +1055,8 @@ export class DatabaseStorage implements IStorage {
         { id: "014", name: "Vessels", description: "Fleet vessel information" },
         { id: "015", name: "Fleet Groups", description: "Vessel fleet groupings" },
         { id: "016", name: "Additional Groups", description: "Manage additional vessel groupings and assignments" },
-        { id: "017", name: "Vessel Owners", description: "Manage vessel ownership details, contact information and vessel assignments" }
+        { id: "017", name: "Vessel Owners", description: "Manage vessel ownership details, contact information and vessel assignments" },
+        { id: "018", name: "Port", description: "International ports and terminals for vessel operations" }
       ];
 
       // Only create missing master categories
