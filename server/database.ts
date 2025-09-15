@@ -29,7 +29,7 @@ import {
   type MasterDataEntry,
   type InsertMasterDataEntry
 } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { type IStorage } from "./storage";
 
 export class DatabaseStorage implements IStorage {
@@ -676,10 +676,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createMasterDataEntry(insertEntry: InsertMasterDataEntry): Promise<MasterDataEntry> {
+    console.log('🔧 [DB] Creating master data entry:', insertEntry);
+    
     const result = await this.db.insert(masterDataEntries).values(insertEntry);
-    const insertId = (result as any).insertId;
-    // Fetch the created record
+    console.log('📤 [DB] Insert result:', result);
+    
+    // MySQL with Drizzle - insertId might be in different locations
+    const insertId = (result as any).insertId || (result as any)[0]?.insertId || (result as any).lastInsertRowid;
+    console.log('🔍 [DB] Extracted insertId:', insertId);
+    
+    if (!insertId) {
+      console.error('❌ [DB] No insertId found in result, trying alternative approach');
+      // Fallback: find the most recent entry for this master
+      const results = await this.db.select().from(masterDataEntries)
+        .where(eq(masterDataEntries.masterId, insertEntry.masterId))
+        .orderBy(desc(masterDataEntries.id))
+        .limit(1);
+      console.log('🔄 [DB] Fallback query result:', results);
+      return results[0];
+    }
+    
+    // Fetch the created record using insertId
     const results = await this.db.select().from(masterDataEntries).where(eq(masterDataEntries.id, insertId));
+    console.log('✅ [DB] Fetched created entry:', results[0]);
     return results[0];
   }
 

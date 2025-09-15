@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import {
   Table,
   TableBody,
@@ -191,6 +192,9 @@ export const AdminModule = (): JSX.Element => {
   const updateMasterMutation = useUpdateDataMaster(selectedMaster);
   const deleteMasterMutation = useDeleteDataMaster();
   
+  // Toast for notifications
+  const { toast } = useToast();
+
   // Mutations for Master Data Entries
   const createEntryMutation = useCreateMasterDataEntry(selectedMaster);
   const updateEntryMutation = useUpdateMasterDataEntry();
@@ -509,6 +513,82 @@ export const AdminModule = (): JSX.Element => {
   };
 
   const handleSaveMaster = () => {
+    console.log('💾 [SAVE] Starting batch save operation for all master data entries');
+    
+    // Get all input elements and checkboxes in the master data table
+    const inputs = document.querySelectorAll('[data-testid^="input-"][data-testid*="-"]:not([data-testid*="entryId"])');
+    const checkboxes = document.querySelectorAll('[data-testid^="checkbox-"]');
+    
+    console.log(`💾 [SAVE] Found ${inputs.length} inputs and ${checkboxes.length} checkboxes to save`);
+    
+    // Collect all changes by entry ID
+    const changesToSave = new Map<number, any>();
+    
+    // Process text inputs
+    inputs.forEach((input: any) => {
+      if (input.value && input.value.trim()) {
+        const testId = input.getAttribute('data-testid');
+        const match = testId.match(/^input-(.+)-(\d+)$/);
+        if (match) {
+          const [, fieldName, entryId] = match;
+          const id = parseInt(entryId);
+          if (!changesToSave.has(id)) {
+            changesToSave.set(id, {});
+          }
+          changesToSave.get(id)[fieldName] = input.value.trim();
+          console.log(`💾 [SAVE] Entry ${id}: ${fieldName} = "${input.value.trim()}"`);
+        }
+      }
+    });
+    
+    // Process checkboxes
+    checkboxes.forEach((checkbox: any) => {
+      const testId = checkbox.getAttribute('data-testid');
+      const match = testId.match(/^checkbox-(.+)-(\d+)$/);
+      if (match) {
+        const [, fieldName, entryId] = match;
+        const id = parseInt(entryId);
+        if (!changesToSave.has(id)) {
+          changesToSave.set(id, {});
+        }
+        changesToSave.get(id)[fieldName] = checkbox.checked;
+        console.log(`💾 [SAVE] Entry ${id}: ${fieldName} = ${checkbox.checked}`);
+      }
+    });
+    
+    // Save all collected changes
+    if (changesToSave.size > 0) {
+      console.log(`💾 [SAVE] Saving changes for ${changesToSave.size} entries`);
+      
+      changesToSave.forEach((changes, entryId) => {
+        console.log(`💾 [SAVE] Updating entry ${entryId}:`, changes);
+        updateEntryMutation.mutate({ 
+          id: entryId, 
+          data: changes, 
+          masterId: selectedMaster 
+        }, {
+          onSuccess: (data) => {
+            console.log(`✅ [SAVE] Successfully saved entry ${entryId}:`, data);
+          },
+          onError: (error) => {
+            console.error(`❌ [SAVE] Failed to save entry ${entryId}:`, error);
+            toast({
+              title: "Error",
+              description: `Failed to save entry ${entryId}: ${error.message}`,
+              variant: "destructive",
+            });
+          }
+        });
+      });
+      
+      toast({
+        title: "Success",
+        description: `Saving changes for ${changesToSave.size} entries`,
+      });
+    } else {
+      console.log('💾 [SAVE] No changes to save');
+    }
+    
     setIsMasterEditing(false);
   };
 
@@ -527,63 +607,82 @@ export const AdminModule = (): JSX.Element => {
   const handleNewEntry = () => {
     const newEntryId = Date.now().toString(); // Generate unique entry ID
     
-    if (selectedMaster === "001") {
-      // Nationality master - create entry with nationality-specific fields
-      createEntryMutation.mutate({
-        entryId: newEntryId,
-        name: '', // Still required for compatibility
-        description: '', // Still required for compatibility
-        countryName: '',
-        country: '',
-        isActive: true,
-        isDeleted: false
-      });
-    } else if (selectedMaster === "002") {
-      // Country master - create entry with country-specific fields
-      createEntryMutation.mutate({
-        entryId: newEntryId,
-        name: '', // Country name
-        description: '', // Still required for compatibility
-        countryCode: '', // Country UN/LOCODE
-        isActive: true,
-        isDeleted: false
-      });
-    } else if (selectedMaster === "003") {
-      // Language master - create entry with language-specific fields
-      createEntryMutation.mutate({
-        entryId: newEntryId,
-        name: '', // Language name (e.g., "English")
-        description: '', // ISO language code (e.g., "EN")
-        isActive: true,
-        isDeleted: false
-      });
-    } else if (selectedMaster === "004") {
-      // Vessel type master - create entry with vessel type-specific fields
-      createEntryMutation.mutate({
-        entryId: newEntryId,
-        name: '', // Still required for compatibility
-        description: '', // Still required for compatibility
-        vesselType: '', // Vessel type name
-        vtuid: '', // Vessel type unique identifier
-        tanker: false,
-        oilTanker: false,
-        gasTanker: false,
-        chemicalTanker: false,
-        bulk: false,
-        isActive: true,
-        isDeleted: false
-      });
-    } else {
-      // Other masters - create entry with standard fields
-      createEntryMutation.mutate({
-        entryId: newEntryId,
-        name: '',
-        description: ''
-      });
-    }
-    
-    // Automatically enter edit mode when adding new entry
-    setIsMasterEditing(true);
+    const newEntryData = (() => {
+      if (selectedMaster === "001") {
+        // Nationality master - create entry with nationality-specific fields
+        return {
+          entryId: newEntryId,
+          name: '', // Still required for compatibility
+          description: '', // Still required for compatibility
+          countryName: '',
+          country: '',
+          isActive: true,
+          isDeleted: false
+        };
+      } else if (selectedMaster === "002") {
+        // Country master - create entry with country-specific fields
+        return {
+          entryId: newEntryId,
+          name: '', // Country name
+          description: '', // Still required for compatibility
+          countryCode: '', // Country UN/LOCODE
+          isActive: true,
+          isDeleted: false
+        };
+      } else if (selectedMaster === "003") {
+        // Language master - create entry with language-specific fields
+        return {
+          entryId: newEntryId,
+          name: '', // Language name (e.g., "English")
+          description: '', // ISO language code (e.g., "EN")
+          isActive: true,
+          isDeleted: false
+        };
+      } else if (selectedMaster === "004") {
+        // Vessel type master - create entry with vessel type-specific fields
+        return {
+          entryId: newEntryId,
+          name: '', // Still required for compatibility
+          description: '', // Still required for compatibility
+          vesselType: '', // Vessel type name
+          vtuid: '', // Vessel type unique identifier
+          tanker: false,
+          oilTanker: false,
+          gasTanker: false,
+          chemicalTanker: false,
+          bulk: false,
+          isActive: true,
+          isDeleted: false
+        };
+      } else {
+        // Other masters - create entry with standard fields
+        return {
+          entryId: newEntryId,
+          name: '',
+          description: ''
+        };
+      }
+    })();
+
+    createEntryMutation.mutate(newEntryData, {
+      onSuccess: (data) => {
+        console.log('✅ [UI] New entry created successfully:', data);
+        toast({
+          title: "Success",
+          description: "New entry created successfully",
+        });
+        // Automatically enter edit mode when adding new entry
+        setIsMasterEditing(true);
+      },
+      onError: (error) => {
+        console.error('❌ [UI] Failed to create new entry:', error);
+        toast({
+          title: "Error",
+          description: `Failed to create new entry: ${error.message}`,
+          variant: "destructive",
+        });
+      }
+    });
   };
 
   // Company handlers
