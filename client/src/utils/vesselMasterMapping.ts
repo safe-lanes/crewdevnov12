@@ -62,6 +62,7 @@ export interface VesselMasterEntry {
   entryId: string;
   vessel: string;        // Vessel name
   imoNumber?: string;    // IMO Number
+  vesselType?: string;   // Vessel type
   yearBuilt?: string;    // Year built
   hullType?: string;     // Hull type
   vesselImage?: string;  // Vessel image path
@@ -110,6 +111,11 @@ export function mapVesselDataToSafeFields(
     safeData.description = vesselData.imoNumber;
   }
 
+  // Include vessel type (safe field that exists in database)
+  if (vesselData.vesselType) {
+    safeData.vesselType = vesselData.vesselType;
+  }
+
   // Include other safe fields if present
   if (vesselData.isActive !== undefined) {
     safeData.isActive = vesselData.isActive;
@@ -137,6 +143,7 @@ export function mapSafeFieldsToVesselData(dbEntry: any): VesselMasterEntry {
     entryId: dbEntry.entryId || '',
     vessel: dbEntry.name || '',           // Map name back to vessel
     imoNumber: dbEntry.description || '', // Map description back to imoNumber
+    vesselType: dbEntry.vesselType || '', // Map vessel type back to vesselType
     isActive: dbEntry.isActive ?? true,
     isDeleted: dbEntry.isDeleted ?? false,
     createdBy: dbEntry.createdBy || '',

@@ -195,6 +195,9 @@ export const AdminModule = (): JSX.Element => {
   const { data: mastersList = [], isLoading: mastersLoading, error: mastersError } = useDataMasters();
   const { data: masterData = [], isLoading: masterDataLoading, error: masterDataError } = useMasterDataEntries(selectedMaster);
   
+  // Vessel Type Master Data (for vessel master dropdown)
+  const { data: vesselTypeData = [], isLoading: vesselTypeLoading } = useMasterDataEntries('004');
+  
   // Mutations for Data Masters
   const createMasterMutation = useCreateDataMaster();
   const updateMasterMutation = useUpdateDataMaster(selectedMaster);
@@ -2394,7 +2397,7 @@ export const AdminModule = (): JSX.Element => {
               {/* Right Table - Selected Master Data */}
               <div className={`${currentBreakpoint === 'mobile' ? 'w-full' : 'flex-1'}`}>
                 <div className="bg-[#52baf3] text-white text-xs font-medium p-0">
-                  <div className="grid grid-cols-4 gap-0">
+                  <div className={`grid ${selectedMaster === "014" ? 'grid-cols-5' : 'grid-cols-4'} gap-0`}>
                     <div className="p-3 border-r border-blue-400">Entry ID</div>
                     {selectedMaster === "001" ? (
                       <>
@@ -2420,6 +2423,7 @@ export const AdminModule = (): JSX.Element => {
                       <>
                         <div className="p-3 border-r border-blue-400">Vessel</div>
                         <div className="p-3 border-r border-blue-400">IMO Number</div>
+                        <div className="p-3 border-r border-blue-400">Vessel Type</div>
                       </>
                     ) : (
                       <>
@@ -2447,11 +2451,11 @@ export const AdminModule = (): JSX.Element => {
                         : selectedMaster === "004"
                         ? !item.vesselType && !item.vtuid     // For vessel type master
                         : selectedMaster === "014"
-                        ? !item.vessel && !item.imoNumber    // For vessel master
+                        ? !item.vessel && !item.imoNumber && !item.vesselType    // For vessel master
                         : !item.name && !item.description;   // For other masters
                       
                       return (
-                        <div key={item.id} className={`grid grid-cols-4 gap-0 border-b border-gray-100 hover:bg-gray-50 ${
+                        <div key={item.id} className={`grid ${selectedMaster === "014" ? 'grid-cols-5' : 'grid-cols-4'} gap-0 border-b border-gray-100 hover:bg-gray-50 ${
                           isNewEntry && isMasterEditing ? 'bg-blue-50 border-blue-200' : ''
                         }`}>
                           <div className="p-3 border-r border-gray-200">
@@ -2684,6 +2688,42 @@ export const AdminModule = (): JSX.Element => {
                               )
                             )}
                           </div>
+                          
+                          {/* Third column - conditional based on master type (vessel type for vessel master) */}
+                          {selectedMaster === "014" && (
+                            <div className="p-3 border-r border-gray-200">
+                              {isMasterEditing ? (
+                                <Select 
+                                  value={item.vesselType || ''} 
+                                  onValueChange={(value) => updateMasterField(item.id, 'vesselType', value)}
+                                >
+                                  <SelectTrigger className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300">
+                                    <SelectValue placeholder={isNewEntry ? "Select vessel type..." : "Select type"} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {vesselTypeLoading ? (
+                                      <SelectItem value="" disabled>Loading vessel types...</SelectItem>
+                                    ) : (
+                                      (vesselTypeData as any[]).map((vesselType: any) => (
+                                        <SelectItem 
+                                          key={vesselType.id} 
+                                          value={vesselType.vesselType || vesselType.name}
+                                          data-testid={`select-vesselType-option-${vesselType.id}`}
+                                        >
+                                          {vesselType.vesselType || vesselType.name}
+                                        </SelectItem>
+                                      ))
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <span className="text-xs text-gray-700">
+                                  {item.vesselType || <em className="text-gray-400">No vessel type</em>}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          
                           <div className="p-3 flex justify-center">
                             <button
                               className="text-gray-500 hover:text-red-500 transition-colors"
