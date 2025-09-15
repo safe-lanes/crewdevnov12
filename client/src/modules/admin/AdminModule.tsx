@@ -193,7 +193,15 @@ export const AdminModule = (): JSX.Element => {
   
   // Data Masters API hooks
   const { data: mastersList = [], isLoading: mastersLoading, error: mastersError } = useDataMasters();
-  const { data: masterData = [], isLoading: masterDataLoading, error: masterDataError } = useMasterDataEntries(selectedMaster);
+  const { data: rawMasterData = [], isLoading: masterDataLoading, error: masterDataError } = useMasterDataEntries(selectedMaster);
+  
+  // Apply vessel master field mapping if needed
+  const masterData = useMemo(() => {
+    if (isVesselMaster(selectedMaster)) {
+      return rawMasterData.map(item => mapSafeFieldsToVesselData(item));
+    }
+    return rawMasterData;
+  }, [rawMasterData, selectedMaster]);
   
   // Vessel Type Master Data (for vessel master dropdown)
   const { data: vesselTypeData = [], isLoading: vesselTypeLoading } = useMasterDataEntries('004');

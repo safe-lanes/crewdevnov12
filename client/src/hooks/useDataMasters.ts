@@ -114,7 +114,7 @@ export function useUpdateMasterDataEntry() {
   
   return useMutation({
     mutationFn: async ({ id, data, masterId }: { id: number; data: Partial<InsertMasterDataEntry>; masterId: string }) => {
-      const response = await apiRequest('PUT', `/api/master-data/${id}`, data);
+      const response = await apiRequest('PUT', `/api/master-data/${id}`, { ...data, masterId });
       return await response.json();
     },
     onSuccess: (_, variables) => {
