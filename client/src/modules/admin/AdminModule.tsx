@@ -70,6 +70,14 @@ import {
   filterToSafeFields,
   type VesselMasterEntry
 } from "@/utils/vesselMasterMapping";
+import {
+  mapPortDataToSafeFields,
+  mapSafeFieldsToPortData,
+  isPortMaster,
+  getPortMasterErrorMessage,
+  filterToPortSafeFields,
+  type PortMasterEntry
+} from "@/utils/portMasterMapping";
 
 const rankGroupSchema = z.object({
   name: z.string().min(1, "Rank group name is required"),
@@ -147,7 +155,7 @@ interface SeafarerData {
 }
 
 export const AdminModule = (): JSX.Element => {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const [selectedAdminPage, setSelectedAdminPage] = useState("forms");
   const [selectedRankAdminTab, setSelectedRankAdminTab] = useState("rank-master");
   const [editingForm, setEditingForm] = useState<Form | null>(null);
@@ -193,12 +201,47 @@ export const AdminModule = (): JSX.Element => {
   
   // Data Masters API hooks
   const { data: mastersList = [], isLoading: mastersLoading, error: mastersError } = useDataMasters();
+  
+  // Debug logging for masters list
+  useEffect(() => {
+    console.log('🔍 [MASTERS DEBUG] mastersList:', mastersList);
+    console.log('🔍 [MASTERS DEBUG] mastersList length:', mastersList.length);
+    console.log('🔍 [MASTERS DEBUG] selectedMaster:', selectedMaster);
+    console.log('🔍 [MASTERS DEBUG] mastersLoading:', mastersLoading);
+    console.log('🔍 [MASTERS DEBUG] mastersError:', mastersError);
+    
+    // Check if Port Master (018) is in the list
+    const portMaster = (mastersList as any[]).find((m: any) => m.id === '018');
+    console.log('🔍 [MASTERS DEBUG] Port Master (018) found:', portMaster);
+  }, [mastersList, selectedMaster, mastersLoading, mastersError]);
+  
+  // Function to force refresh masters data
+  const refreshMastersData = () => {
+    if (import.meta.env.DEV) {
+      console.log('🔄 [REFRESH] Clearing masters cache and refetching...');
+    }
+    queryClient.invalidateQueries({ queryKey: ['/api/masters'] });
+  };
+  
+  // Function to navigate directly to Port Master
+  const navigateToPortMaster = () => {
+    if (import.meta.env.DEV) {
+      console.log('🚢 [NAVIGATION] Navigating to Port Master (018)...');
+    }
+    setSelectedAdminPage('masters');
+    setSelectedMaster('018');
+    // Use wouter's navigate for proper routing
+    navigate('/admin/masters/018');
+  };
   const { data: rawMasterData = [], isLoading: masterDataLoading, error: masterDataError } = useMasterDataEntries(selectedMaster);
   
-  // Apply vessel master field mapping if needed
+  // Apply vessel/port master field mapping if needed
   const masterData = useMemo(() => {
     if (isVesselMaster(selectedMaster)) {
       return rawMasterData.map((item: any) => mapSafeFieldsToVesselData(item));
+    }
+    if (isPortMaster(selectedMaster)) {
+      return rawMasterData.map((item: any) => mapSafeFieldsToPortData(item));
     }
     return rawMasterData;
   }, [rawMasterData, selectedMaster]);
@@ -574,13 +617,21 @@ export const AdminModule = (): JSX.Element => {
   };
 
   const handleSaveMaster = () => {
-    console.log('💾 [SAVE] Starting batch save operation for all master data entries');
+    if (import.meta.env.DEV) {
+      console.log('💾 [SAVE] Starting batch save operation for all master data entries');
+    }
     
-    // Check if this is vessel master for special handling
+    // Check if this is vessel or port master for special handling
     const isVesselMasterSave = isVesselMaster(selectedMaster);
+    const isPortMasterSave = isPortMaster(selectedMaster);
     
-    if (isVesselMasterSave) {
-      console.log('🚢 [SAVE] Vessel Master detected - using safe field mapping');
+    if (import.meta.env.DEV) {
+      if (isVesselMasterSave) {
+        console.log('🚢 [SAVE] Vessel Master detected - using safe field mapping');
+      }
+      if (isPortMasterSave) {
+        console.log('🚢 [SAVE] Port Master detected - using safe field mapping');
+      }
     }
     
     // Get all input elements and checkboxes in the master data table
@@ -633,29 +684,74 @@ export const AdminModule = (): JSX.Element => {
         
         // Apply safe field mapping for vessel master
         if (isVesselMasterSave) {
-          console.log(`🚢 [SAVE] Applying vessel master safe field mapping for entry ${entryId}`);
+          if (import.meta.env.DEV) {
+            console.log(`🚢 [SAVE] Applying vessel master safe field mapping for entry ${entryId}`);
+          }
           
           // Ensure name field is populated if vessel field exists
           if (changes.vessel && !changes.name) {
             changes.name = changes.vessel;
-            console.log(`🚢 [SAVE] Mapping vessel "${changes.vessel}" to name field`);
+            if (import.meta.env.DEV) {
+              console.log(`🚢 [SAVE] Mapping vessel "${changes.vessel}" to name field`);
+            }
           }
           
           // Map imoNumber to description temporarily
           if (changes.imoNumber && !changes.description) {
             changes.description = changes.imoNumber;
-            console.log(`🚢 [SAVE] Mapping imoNumber "${changes.imoNumber}" to description field`);
+            if (import.meta.env.DEV) {
+              console.log(`🚢 [SAVE] Mapping imoNumber "${changes.imoNumber}" to description field`);
+            }
           }
           
           // Filter to only include safe fields for database
           processedChanges = filterToSafeFields(changes);
           
-          console.log(`🚢 [SAVE] Original changes:`, changes);
-          console.log(`🚢 [SAVE] Filtered safe changes:`, processedChanges);
+          if (import.meta.env.DEV) {
+            console.log(`🚢 [SAVE] Original changes:`, changes);
+            console.log(`🚢 [SAVE] Filtered safe changes:`, processedChanges);
+          }
           
           // Validate that name field is populated
           if (!processedChanges.name && changes.vessel) {
             processedChanges.name = changes.vessel;
+          }
+        }
+        
+        // Apply safe field mapping for port master
+        if (isPortMasterSave) {
+          if (import.meta.env.DEV) {
+            console.log(`🚢 [SAVE] Applying port master safe field mapping for entry ${entryId}`);
+          }
+          
+          // Ensure name field is populated if portName field exists
+          if (changes.portName && !changes.name) {
+            changes.name = changes.portName;
+            if (import.meta.env.DEV) {
+              console.log(`🚢 [SAVE] Mapping portName "${changes.portName}" to name field`);
+            }
+          }
+          
+          // Map coordinates to description temporarily
+          if ((changes.latitude || changes.longitude) && !changes.description) {
+            const coords = { lat: changes.latitude || '', lng: changes.longitude || '' };
+            changes.description = JSON.stringify(coords);
+            if (import.meta.env.DEV) {
+              console.log(`🚢 [SAVE] Mapping coordinates to description field`);
+            }
+          }
+          
+          // Filter to only include safe fields for database
+          processedChanges = filterToPortSafeFields(changes);
+          
+          if (import.meta.env.DEV) {
+            console.log(`🚢 [SAVE] Original port changes:`, changes);
+            console.log(`🚢 [SAVE] Filtered safe port changes:`, processedChanges);
+          }
+          
+          // Validate that name field is populated
+          if (!processedChanges.name && changes.portName) {
+            processedChanges.name = changes.portName;
           }
         }
         
@@ -671,9 +767,11 @@ export const AdminModule = (): JSX.Element => {
           onError: (error) => {
             console.error(`❌ [SAVE] Failed to save entry ${entryId}:`, error);
             
-            // Show specific error message for vessel master
+            // Show specific error message for vessel/port master
             const errorMessage = isVesselMasterSave 
               ? `${getVesselMasterErrorMessage()} Error: ${error.message}`
+              : isPortMasterSave
+              ? `${getPortMasterErrorMessage()} Error: ${error.message}`
               : `Failed to save entry ${entryId}: ${error.message}`;
               
             toast({
@@ -687,6 +785,8 @@ export const AdminModule = (): JSX.Element => {
       
       const successMessage = isVesselMasterSave 
         ? `Saving vessel data for ${changesToSave.size} entries (safe mode)`
+        : isPortMasterSave
+        ? `Saving port data for ${changesToSave.size} entries (safe mode)`
         : `Saving changes for ${changesToSave.size} entries`;
         
       toast({
@@ -2402,6 +2502,37 @@ export const AdminModule = (): JSX.Element => {
       <div className="pb-4 pl-0 -mt-8">
         <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
           <CardContent className="pt-4 pb-4 pl-0">
+            {/* Diagnostics Bar - Debug Information */}
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="text-xs font-medium text-yellow-800 mb-2">🔍 Masters Debug Info:</div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-yellow-700">
+                <div><strong>Selected:</strong> {selectedMaster}</div>
+                <div><strong>Total Masters:</strong> {(mastersList as any[]).length}</div>
+                <div><strong>Loading:</strong> {mastersLoading ? 'Yes' : 'No'}</div>
+                <div><strong>Error:</strong> {mastersError ? 'Yes' : 'No'}</div>
+              </div>
+              <div className="mt-2 flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={refreshMastersData}
+                  className="h-6 text-xs px-2 bg-white"
+                  data-testid="button-refresh-masters"
+                >
+                  🔄 Refresh Masters
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={navigateToPortMaster}
+                  className="h-6 text-xs px-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                  data-testid="button-navigate-port-master"
+                >
+                  🚢 Go to Port Master (018)
+                </Button>
+              </div>
+            </div>
+            
             {/* Filters Bar */}
             <div className={`flex ${currentBreakpoint === 'mobile' ? 'flex-col space-y-3' : 'flex-wrap gap-4'} mb-4 p-4 pl-0 bg-[#f7fafc] rounded-lg`}>
               <div className={`flex ${currentBreakpoint === 'mobile' ? 'flex-col space-y-3' : 'gap-4 flex-wrap'}`}>
@@ -2431,15 +2562,31 @@ export const AdminModule = (): JSX.Element => {
                     (mastersList as any[]).map((master: any) => (
                       <div
                         key={master.id}
-                        onClick={() => setSelectedMaster(master.id)}
+                        onClick={() => {
+                          if (import.meta.env.DEV) {
+                            console.log(`🔍 [CLICK] Selected master: ${master.id} - ${master.name}`);
+                          }
+                          setSelectedMaster(master.id);
+                          setSelectedAdminPage('masters');
+                          // Use wouter's navigate for proper routing
+                          navigate(`/admin/masters/${master.id}`);
+                        }}
                         className={`p-3 text-xs cursor-pointer border-b border-gray-100 hover:bg-gray-50 transition-colors ${
                           selectedMaster === master.id 
                             ? 'bg-blue-50 border-l-4 border-l-blue-500 text-blue-700 font-medium' 
                             : 'text-gray-700'
+                        } ${
+                          master.id === '018' ? 'ring-2 ring-orange-200 bg-orange-50' : '' // Highlight Port Master
                         }`}
                         data-testid={`master-item-${master.id}`}
                       >
-                        {master.name}
+                        <div className="flex justify-between items-center">
+                          <span>{master.name}</span>
+                          <span className="text-[10px] text-gray-400">ID: {master.id}</span>
+                        </div>
+                        {master.id === '018' && (
+                          <div className="text-[10px] text-orange-600 mt-1">🚢 Port Master</div>
+                        )}
                       </div>
                     ))
                   )}
@@ -2480,6 +2627,11 @@ export const AdminModule = (): JSX.Element => {
                         <div className="p-3 border-r border-blue-400">IMO Number</div>
                         <div className="p-3 border-r border-blue-400">Vessel Type</div>
                       </>
+                    ) : selectedMaster === "018" ? (
+                      <>
+                        <div className="p-3 border-r border-blue-400">Port Name</div>
+                        <div className="p-3 border-r border-blue-400">Port Code / UN/LOCODE</div>
+                      </>
                     ) : (
                       <>
                         <div className="p-3 border-r border-blue-400">Name</div>
@@ -2507,6 +2659,8 @@ export const AdminModule = (): JSX.Element => {
                         ? !item.vesselType && !item.vtuid     // For vessel type master
                         : selectedMaster === "014"
                         ? !item.vessel && !item.imoNumber && !item.vesselType    // For vessel master
+                        : selectedMaster === "018"
+                        ? !item.name && !item.description     // For port master (port name and port code)
                         : !item.name && !item.description;   // For other masters
                       
                       return (
@@ -2598,6 +2752,20 @@ export const AdminModule = (): JSX.Element => {
                                 />
                               ) : (
                                 <span className="text-xs text-gray-700">{item.vessel || <em className="text-gray-400">No vessel</em>}</span>
+                              )
+                            ) : selectedMaster === "018" ? (
+                              // Port master - show name field (port name)
+                              isMasterEditing ? (
+                                <Input
+                                  value={item.name || ''}
+                                  onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
+                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                  placeholder={isNewEntry ? "Enter port name..." : ""}
+                                  data-testid={`input-name-${item.id}`}
+                                  autoFocus={isNewEntry}
+                                />
+                              ) : (
+                                <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No port name</em>}</span>
                               )
                             ) : (
                               // Other masters - show name field
@@ -2727,6 +2895,19 @@ export const AdminModule = (): JSX.Element => {
                                 />
                               ) : (
                                 <span className="text-xs text-gray-700">{item.imoNumber || <em className="text-gray-400">No IMO number</em>}</span>
+                              )
+                            ) : selectedMaster === "018" ? (
+                              // Port master - show description field (port code/UN LOCODE)
+                              isMasterEditing ? (
+                                <Input
+                                  value={item.description || ''}
+                                  onChange={(e) => updateMasterField(item.id, 'description', e.target.value)}
+                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                  placeholder={isNewEntry ? "Enter port code..." : ""}
+                                  data-testid={`input-description-${item.id}`}
+                                />
+                              ) : (
+                                <span className="text-xs text-gray-700">{item.description || <em className="text-gray-400">No port code</em>}</span>
                               )
                             ) : (
                               // Other masters - show description field
