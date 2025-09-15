@@ -949,7 +949,7 @@ export class DatabaseStorage implements IStorage {
         { id: "009", name: "Medical Status", description: "Medical examination status" },
         { id: "010", name: "Document Type", description: "Document types" },
         { id: "011", name: "Equipment", description: "Ship equipment and machinery" },
-        { id: "012", name: "Designation", description: "Job titles and positions" },
+        { id: "012", name: "Designation", description: "Manage office personnel designations and organizational roles" },
         { id: "013", name: "Users", description: "System users and administrators" },
         { id: "014", name: "Vessels", description: "Fleet vessel information" },
         { id: "015", name: "Fleet Groups", description: "Vessel fleet groupings" },
