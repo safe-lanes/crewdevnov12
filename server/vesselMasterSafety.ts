@@ -328,7 +328,7 @@ export function isVesselOwnersMaster(masterId: string): boolean {
 
 /**
  * Filters and transforms vessel owners master data for database storage
- * Reuses the same vesselIds transformation logic as Additional Groups Master
+ * Handles vouid→entryId normalization and vesselIds transformation
  */
 export function filterVesselOwnersData(data: any, masterId: string): Partial<InsertMasterDataEntry> {
   if (!isVesselOwnersMaster(masterId)) {
@@ -338,8 +338,15 @@ export function filterVesselOwnersData(data: any, masterId: string): Partial<Ins
   console.log(`🏢 [OWNERS FILTER] Filtering vessel owners data for masterId: ${masterId}`);
   console.log(`🏢 [OWNERS FILTER] Original data:`, data);
 
-  // Apply vesselIds transformation first (reusing Additional Groups logic)
-  const transformedData = transformVesselIds(data, 'toDatabase');
+  // Apply vouid→entryId normalization first
+  let preprocessedData = { ...data };
+  if (data.vouid && !data.entryId) {
+    preprocessedData.entryId = data.vouid;
+    console.log(`🏢 [OWNERS FILTER] Normalized vouid "${data.vouid}" to entryId field`);
+  }
+
+  // Apply vesselIds transformation (reusing Additional Groups logic)
+  const transformedData = transformVesselIds(preprocessedData, 'toDatabase');
   console.log(`🏢 [OWNERS FILTER] After vesselIds transformation:`, transformedData);
 
   // Handle field naming consistency - accept both "VesselIDs" and "vesselIds"
