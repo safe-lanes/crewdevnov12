@@ -20,7 +20,8 @@ function App() {
             <Switch>
               <Route path="/" component={ElementCrewAppraisals} />
               <Route path="/recruitment" component={RecruitmentModule} />
-              <Route path="/admin/:rest*" component={AdminModule} />
+              <Route path="/admin/*" component={AdminModule} />
+              <Route path="/admin" component={AdminModule} />
               <Route component={NotFound} />
             </Switch>
           </div>
