@@ -56,10 +56,56 @@ export class DatabaseStorage implements IStorage {
       connectionLimit: 10,
     });
     this.db = drizzle(this.pool);
+    
+    // Ensure enhanced master data entries schema exists on startup (async, non-blocking)
+    this.ensureMasterDataEntriesSchema().catch(err => 
+      console.error("Schema migration failed:", err)
+    );
   }
 
   async close() {
     await this.pool.end();
+  }
+
+  // Self-migration to ensure master_data_entries has enhanced nationality schema
+  private async ensureMasterDataEntriesSchema(): Promise<void> {
+    try {
+      console.log("🔧 Checking master_data_entries schema...");
+      
+      // Check which columns exist
+      const [rows]: any = await this.pool.execute(
+        "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'master_data_entries'",
+        [process.env.DB_NAME || 'crew_database']
+      );
+      
+      const existingColumns = new Set(rows.map((row: any) => row.COLUMN_NAME));
+      console.log("📋 Existing columns:", Array.from(existingColumns));
+      
+      // Define new columns to add
+      const newColumns = [
+        { name: 'nuid', ddl: 'ADD COLUMN nuid TEXT NULL' },
+        { name: 'countryName', ddl: 'ADD COLUMN countryName TEXT NULL' },
+        { name: 'country', ddl: 'ADD COLUMN country TEXT NULL' },
+        { name: 'isActive', ddl: 'ADD COLUMN isActive TINYINT(1) NOT NULL DEFAULT 1' },
+        { name: 'isDeleted', ddl: 'ADD COLUMN isDeleted TINYINT(1) NOT NULL DEFAULT 0' },
+        { name: 'createdBy', ddl: 'ADD COLUMN createdBy TEXT NULL' },
+        { name: 'domain', ddl: 'ADD COLUMN domain TEXT NULL' },
+        { name: 'orderBy', ddl: 'ADD COLUMN orderBy INT NULL' }
+      ];
+      
+      // Add missing columns
+      for (const column of newColumns) {
+        if (!existingColumns.has(column.name)) {
+          console.log(`➕ Adding column: ${column.name}`);
+          await this.pool.execute(`ALTER TABLE master_data_entries ${column.ddl}`);
+        }
+      }
+      
+      console.log("✅ master_data_entries schema is up to date");
+    } catch (error) {
+      console.error("❌ Failed to update master_data_entries schema:", error);
+      // Don't throw - allow app to start even if schema update fails
+    }
   }
 
   // User methods

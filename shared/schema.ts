@@ -149,8 +149,16 @@ export const masterDataEntries = mysqlTable("master_data_entries", {
   id: int("id").primaryKey().autoincrement(),
   masterId: text("master_id").notNull().references(() => dataMasters.id),
   entryId: text("entry_id").notNull(),
+  nuid: text("nuid"),
   name: text("name").notNull(), 
   description: text("description"),
+  countryName: text("countryName"),
+  country: text("country"),
+  isActive: boolean("isActive").default(true),
+  isDeleted: boolean("isDeleted").default(false),
+  createdBy: text("createdBy"),
+  domain: text("domain"),
+  orderBy: int("orderBy"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -276,8 +284,16 @@ export const insertDataMasterSchema = createInsertSchema(dataMasters).pick({
 export const insertMasterDataEntrySchema = createInsertSchema(masterDataEntries).pick({
   masterId: true,
   entryId: true,
+  nuid: true,
   name: true,
   description: true,
+  countryName: true,
+  country: true,
+  isActive: true,
+  isDeleted: true,
+  createdBy: true,
+  domain: true,
+  orderBy: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

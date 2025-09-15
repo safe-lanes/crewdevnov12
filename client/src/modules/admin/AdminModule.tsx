@@ -512,7 +512,7 @@ export const AdminModule = (): JSX.Element => {
     setIsMasterEditing(false);
   };
 
-  const updateMasterField = (itemId: number, field: 'entryId' | 'name' | 'description', value: string) => {
+  const updateMasterField = (itemId: number, field: 'entryId' | 'name' | 'description' | 'countryName' | 'country', value: string) => {
     updateEntryMutation.mutate({ 
       id: itemId, 
       data: { [field]: value }, 
@@ -526,11 +526,26 @@ export const AdminModule = (): JSX.Element => {
 
   const handleNewEntry = () => {
     const newEntryId = Date.now().toString(); // Generate unique entry ID
-    createEntryMutation.mutate({
-      entryId: newEntryId,
-      name: '',
-      description: ''
-    });
+    
+    if (selectedMaster === "001") {
+      // Nationality master - create entry with nationality-specific fields
+      createEntryMutation.mutate({
+        entryId: newEntryId,
+        name: '', // Still required for compatibility
+        description: '', // Still required for compatibility
+        countryName: '',
+        country: '',
+        isActive: true,
+        isDeleted: false
+      });
+    } else {
+      // Other masters - create entry with standard fields
+      createEntryMutation.mutate({
+        entryId: newEntryId,
+        name: '',
+        description: ''
+      });
+    }
     
     // Automatically enter edit mode when adding new entry
     setIsMasterEditing(true);
@@ -2176,8 +2191,17 @@ export const AdminModule = (): JSX.Element => {
                 <div className="bg-[#52baf3] text-white text-xs font-medium p-0">
                   <div className="grid grid-cols-4 gap-0">
                     <div className="p-3 border-r border-blue-400">Entry ID</div>
-                    <div className="p-3 border-r border-blue-400">Name</div>
-                    <div className="p-3 border-r border-blue-400">Description</div>
+                    {selectedMaster === "001" ? (
+                      <>
+                        <div className="p-3 border-r border-blue-400">Nationality</div>
+                        <div className="p-3 border-r border-blue-400">Country</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="p-3 border-r border-blue-400">Name</div>
+                        <div className="p-3 border-r border-blue-400">Description</div>
+                      </>
+                    )}
                     <div className="p-3 text-center">Actions</div>
                   </div>
                 </div>
@@ -2188,7 +2212,11 @@ export const AdminModule = (): JSX.Element => {
                     <div className="p-3 text-xs text-red-500">Error loading master data</div>
                   ) : (
                     (masterData as any[]).map((item: any) => {
-                      const isNewEntry = !item.name && !item.description; // Identify newly created empty entries
+                      // Different logic for identifying new entries based on master type
+                      const isNewEntry = selectedMaster === "001" 
+                        ? !item.countryName && !item.country  // For nationality master
+                        : !item.name && !item.description;   // For other masters
+                      
                       return (
                         <div key={item.id} className={`grid grid-cols-4 gap-0 border-b border-gray-100 hover:bg-gray-50 ${
                           isNewEntry && isMasterEditing ? 'bg-blue-50 border-blue-200' : ''
@@ -2206,31 +2234,68 @@ export const AdminModule = (): JSX.Element => {
                               <span className="text-xs text-gray-700">{item.entryId}</span>
                             )}
                           </div>
+                          
+                          {/* Second column - conditional based on master type */}
                           <div className="p-3 border-r border-gray-200">
-                            {isMasterEditing ? (
-                              <Input
-                                value={item.name || ''}
-                                onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
-                                className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                placeholder={isNewEntry ? "Enter name..." : ""}
-                                data-testid={`input-name-${item.id}`}
-                                autoFocus={isNewEntry} // Focus on newly created entries
-                              />
+                            {selectedMaster === "001" ? (
+                              // Nationality master - show countryName field
+                              isMasterEditing ? (
+                                <Input
+                                  value={item.countryName || ''}
+                                  onChange={(e) => updateMasterField(item.id, 'countryName', e.target.value)}
+                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                  placeholder={isNewEntry ? "Enter nationality..." : ""}
+                                  data-testid={`input-countryName-${item.id}`}
+                                  autoFocus={isNewEntry}
+                                />
+                              ) : (
+                                <span className="text-xs text-gray-700">{item.countryName || <em className="text-gray-400">No nationality</em>}</span>
+                              )
                             ) : (
-                              <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No name</em>}</span>
+                              // Other masters - show name field
+                              isMasterEditing ? (
+                                <Input
+                                  value={item.name || ''}
+                                  onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
+                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                  placeholder={isNewEntry ? "Enter name..." : ""}
+                                  data-testid={`input-name-${item.id}`}
+                                  autoFocus={isNewEntry}
+                                />
+                              ) : (
+                                <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No name</em>}</span>
+                              )
                             )}
                           </div>
+                          
+                          {/* Third column - conditional based on master type */}
                           <div className="p-3 border-r border-gray-200">
-                            {isMasterEditing ? (
-                              <Input
-                                value={item.description || ''}
-                                onChange={(e) => updateMasterField(item.id, 'description', e.target.value)}
-                                className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                placeholder={isNewEntry ? "Enter description..." : ""}
-                                data-testid={`input-description-${item.id}`}
-                              />
+                            {selectedMaster === "001" ? (
+                              // Nationality master - show country field
+                              isMasterEditing ? (
+                                <Input
+                                  value={item.country || ''}
+                                  onChange={(e) => updateMasterField(item.id, 'country', e.target.value)}
+                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                  placeholder={isNewEntry ? "Enter country..." : ""}
+                                  data-testid={`input-country-${item.id}`}
+                                />
+                              ) : (
+                                <span className="text-xs text-gray-700">{item.country || <em className="text-gray-400">No country</em>}</span>
+                              )
                             ) : (
-                              <span className="text-xs text-gray-700">{item.description || <em className="text-gray-400">No description</em>}</span>
+                              // Other masters - show description field
+                              isMasterEditing ? (
+                                <Input
+                                  value={item.description || ''}
+                                  onChange={(e) => updateMasterField(item.id, 'description', e.target.value)}
+                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                  placeholder={isNewEntry ? "Enter description..." : ""}
+                                  data-testid={`input-description-${item.id}`}
+                                />
+                              ) : (
+                                <span className="text-xs text-gray-700">{item.description || <em className="text-gray-400">No description</em>}</span>
+                              )
                             )}
                           </div>
                           <div className="p-3 flex justify-center">
