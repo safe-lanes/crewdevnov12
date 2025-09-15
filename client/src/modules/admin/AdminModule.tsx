@@ -512,7 +512,7 @@ export const AdminModule = (): JSX.Element => {
     setIsMasterEditing(false);
   };
 
-  const updateMasterField = (itemId: number, field: 'entryId' | 'name' | 'description' | 'countryName' | 'country' | 'countryCode' | 'vesselType' | 'vtuid', value: string) => {
+  const updateMasterField = (itemId: number, field: 'entryId' | 'name' | 'description' | 'countryName' | 'country' | 'countryCode' | 'vesselType' | 'vtuid' | 'tanker' | 'oilTanker' | 'gasTanker' | 'chemicalTanker' | 'bulk', value: string | boolean) => {
     updateEntryMutation.mutate({ 
       id: itemId, 
       data: { [field]: value }, 
@@ -2410,13 +2410,48 @@ export const AdminModule = (): JSX.Element => {
                             ) : selectedMaster === "004" ? (
                               // Vessel type master - show classification based on boolean flags
                               isMasterEditing ? (
-                                <Input
-                                  value={item.vtuid || ''}
-                                  onChange={(e) => updateMasterField(item.id, 'vtuid', e.target.value)}
-                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                  placeholder={isNewEntry ? "Enter VTUID..." : ""}
-                                  data-testid={`input-vtuid-${item.id}`}
-                                />
+                                <div className="grid grid-cols-3 gap-1 text-xs">
+                                  <label className="flex items-center space-x-1">
+                                    <Checkbox
+                                      checked={item.tanker || false}
+                                      onCheckedChange={(checked) => updateMasterField(item.id, 'tanker', checked)}
+                                      data-testid={`checkbox-tanker-${item.id}`}
+                                    />
+                                    <span>Tanker</span>
+                                  </label>
+                                  <label className="flex items-center space-x-1">
+                                    <Checkbox
+                                      checked={item.oilTanker || false}
+                                      onCheckedChange={(checked) => updateMasterField(item.id, 'oilTanker', checked)}
+                                      data-testid={`checkbox-oilTanker-${item.id}`}
+                                    />
+                                    <span>Oil Tanker</span>
+                                  </label>
+                                  <label className="flex items-center space-x-1">
+                                    <Checkbox
+                                      checked={item.gasTanker || false}
+                                      onCheckedChange={(checked) => updateMasterField(item.id, 'gasTanker', checked)}
+                                      data-testid={`checkbox-gasTanker-${item.id}`}
+                                    />
+                                    <span>Gas Tanker</span>
+                                  </label>
+                                  <label className="flex items-center space-x-1">
+                                    <Checkbox
+                                      checked={item.chemicalTanker || false}
+                                      onCheckedChange={(checked) => updateMasterField(item.id, 'chemicalTanker', checked)}
+                                      data-testid={`checkbox-chemicalTanker-${item.id}`}
+                                    />
+                                    <span>Chemical Tanker</span>
+                                  </label>
+                                  <label className="flex items-center space-x-1">
+                                    <Checkbox
+                                      checked={item.bulk || false}
+                                      onCheckedChange={(checked) => updateMasterField(item.id, 'bulk', checked)}
+                                      data-testid={`checkbox-bulk-${item.id}`}
+                                    />
+                                    <span>Dry</span>
+                                  </label>
+                                </div>
                               ) : (
                                 <span className="text-xs text-gray-700">
                                   {(() => {
