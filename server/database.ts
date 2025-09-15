@@ -127,6 +127,9 @@ export class DatabaseStorage implements IStorage {
       
       // Ensure enhanced vessel type data is properly seeded
       await this.ensureVesselTypeDataSeeded();
+      
+      // Ensure enhanced language data is properly seeded  
+      await this.ensureLanguageDataSeeded();
     } catch (error) {
       console.error("❌ Failed to update master_data_entries schema:", error);
       // Don't throw - allow app to start even if schema update fails
@@ -387,6 +390,71 @@ export class DatabaseStorage implements IStorage {
       }
     } catch (error) {
       console.error("❌ Failed to seed vessel type master data:", error);
+      // Don't throw - allow app to continue
+    }
+  }
+
+  // Ensure language master data is properly seeded with simple structure
+  private async ensureLanguageDataSeeded(): Promise<void> {
+    try {
+      console.log("🌐 Checking language master data...");
+      
+      // Check if we have any language entries with enhanced structure
+      const [existingLanguageEntries]: any = await this.pool.execute(
+        "SELECT COUNT(*) as count FROM master_data_entries WHERE master_id = '003' AND entry_id RLIKE '^LNG[0-9]+$'"
+      );
+      
+      const enhancedLanguagesCount = existingLanguageEntries[0].count;
+      console.log(`📊 Found ${enhancedLanguagesCount} enhanced language entries with LNG format`);
+      
+      // If we don't have the enhanced language data structure, clean and seed it
+      if (enhancedLanguagesCount < 20) {
+        console.log("🗂️ Cleaning and seeding enhanced language master data...");
+        
+        // Clear ALL existing entries in master_id '003' to remove vessel type pollution
+        await this.pool.execute("DELETE FROM master_data_entries WHERE master_id = '003'");
+        console.log("🧹 Removed vessel type pollution from Language master (003)");
+        
+        // Common maritime languages with ISO codes
+        const languageData = [
+          { entryId: "LNG001", name: "English", description: "EN" },
+          { entryId: "LNG002", name: "Spanish", description: "ES" },
+          { entryId: "LNG003", name: "Chinese", description: "ZH" },
+          { entryId: "LNG004", name: "Filipino", description: "TL" },
+          { entryId: "LNG005", name: "Russian", description: "RU" },
+          { entryId: "LNG006", name: "Indonesian", description: "ID" },
+          { entryId: "LNG007", name: "Hindi", description: "HI" },
+          { entryId: "LNG008", name: "Arabic", description: "AR" },
+          { entryId: "LNG009", name: "Portuguese", description: "PT" },
+          { entryId: "LNG010", name: "French", description: "FR" },
+          { entryId: "LNG011", name: "Japanese", description: "JA" },
+          { entryId: "LNG012", name: "Korean", description: "KO" },
+          { entryId: "LNG013", name: "Vietnamese", description: "VI" },
+          { entryId: "LNG014", name: "Turkish", description: "TR" },
+          { entryId: "LNG015", name: "Greek", description: "EL" },
+          { entryId: "LNG016", name: "Ukrainian", description: "UK" },
+          { entryId: "LNG017", name: "Polish", description: "PL" },
+          { entryId: "LNG018", name: "Romanian", description: "RO" },
+          { entryId: "LNG019", name: "Thai", description: "TH" },
+          { entryId: "LNG020", name: "Malay", description: "MS" }
+        ];
+        
+        // Insert each language entry with simple structure (name = language, description = ISO code)
+        for (const language of languageData) {
+          await this.pool.execute(
+            `INSERT INTO master_data_entries 
+             (master_id, entry_id, name, description, isActive, isDeleted, created_at, updated_at) 
+             VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+            ['003', language.entryId, language.name, language.description, 1, 0]
+          );
+        }
+        
+        console.log("✅ Enhanced language master data seeded successfully with LNG001-LNG020 format");
+      } else {
+        console.log("✅ Enhanced language master data already exists");
+      }
+    } catch (error) {
+      console.error("❌ Failed to seed language master data:", error);
       // Don't throw - allow app to continue
     }
   }

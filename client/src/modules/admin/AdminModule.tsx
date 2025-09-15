@@ -548,6 +548,15 @@ export const AdminModule = (): JSX.Element => {
         isActive: true,
         isDeleted: false
       });
+    } else if (selectedMaster === "003") {
+      // Language master - create entry with language-specific fields
+      createEntryMutation.mutate({
+        entryId: newEntryId,
+        name: '', // Language name (e.g., "English")
+        description: '', // ISO language code (e.g., "EN")
+        isActive: true,
+        isDeleted: false
+      });
     } else if (selectedMaster === "004") {
       // Vessel type master - create entry with vessel type-specific fields
       createEntryMutation.mutate({
@@ -2227,6 +2236,11 @@ export const AdminModule = (): JSX.Element => {
                         <div className="p-3 border-r border-blue-400">Country</div>
                         <div className="p-3 border-r border-blue-400">Country UN/LOCODE</div>
                       </>
+                    ) : selectedMaster === "003" ? (
+                      <>
+                        <div className="p-3 border-r border-blue-400">Language</div>
+                        <div className="p-3 border-r border-blue-400">Language Code</div>
+                      </>
                     ) : selectedMaster === "004" ? (
                       <>
                         <div className="p-3 border-r border-blue-400">Vessel Type</div>
@@ -2253,6 +2267,8 @@ export const AdminModule = (): JSX.Element => {
                         ? !item.countryName && !item.country  // For nationality master
                         : selectedMaster === "002"
                         ? !item.name && !item.countryCode     // For country master
+                        : selectedMaster === "003"
+                        ? !item.name && !item.description     // For language master
                         : selectedMaster === "004"
                         ? !item.vesselType && !item.vtuid     // For vessel type master
                         : !item.name && !item.description;   // For other masters
@@ -2304,6 +2320,20 @@ export const AdminModule = (): JSX.Element => {
                                 />
                               ) : (
                                 <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No country</em>}</span>
+                              )
+                            ) : selectedMaster === "003" ? (
+                              // Language master - show name field (language name)
+                              isMasterEditing ? (
+                                <Input
+                                  value={item.name || ''}
+                                  onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
+                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                  placeholder={isNewEntry ? "Enter language..." : ""}
+                                  data-testid={`input-name-${item.id}`}
+                                  autoFocus={isNewEntry}
+                                />
+                              ) : (
+                                <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No language</em>}</span>
                               )
                             ) : selectedMaster === "004" ? (
                               // Vessel type master - show vesselType field
@@ -2363,6 +2393,19 @@ export const AdminModule = (): JSX.Element => {
                                 />
                               ) : (
                                 <span className="text-xs text-gray-700">{item.countryCode || <em className="text-gray-400">No country code</em>}</span>
+                              )
+                            ) : selectedMaster === "003" ? (
+                              // Language master - show description field (ISO language code)
+                              isMasterEditing ? (
+                                <Input
+                                  value={item.description || ''}
+                                  onChange={(e) => updateMasterField(item.id, 'description', e.target.value)}
+                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                  placeholder={isNewEntry ? "Enter ISO code..." : ""}
+                                  data-testid={`input-description-${item.id}`}
+                                />
+                              ) : (
+                                <span className="text-xs text-gray-700">{item.description || <em className="text-gray-400">No language code</em>}</span>
                               )
                             ) : selectedMaster === "004" ? (
                               // Vessel type master - show classification based on boolean flags
