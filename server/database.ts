@@ -255,11 +255,56 @@ export class DatabaseStorage implements IStorage {
       // Ensure enhanced language data is properly seeded  
       await this.ensureLanguageDataSeeded();
       
+      // Migrate any existing Port master data from ID '005' to ID '018' (consolidation)
+      await this.migratePortMasterFromId005ToId018();
+      
       // Ensure enhanced port data is properly seeded
       await this.ensurePortDataSeeded();
     } catch (error) {
       console.error("❌ Failed to update master_data_entries schema:", error);
       // Don't throw - allow app to start even if schema update fails
+    }
+  }
+
+  // Migrate Port master data from ID '005' to ID '018' (consolidation fix)
+  private async migratePortMasterFromId005ToId018(): Promise<void> {
+    try {
+      console.log("🚢 Checking for Port master data migration from ID '005' to ID '018'...");
+      
+      // Check if there are any existing entries with master_id='005'
+      const [existingId005Entries]: any = await this.pool.execute(
+        "SELECT COUNT(*) as count FROM master_data_entries WHERE master_id = '005'"
+      );
+      
+      const id005Count = existingId005Entries[0].count;
+      console.log(`📊 Found ${id005Count} entries with old Port master ID '005'`);
+      
+      if (id005Count > 0) {
+        console.log("🔄 Migrating Port master entries from ID '005' to ID '018'...");
+        
+        // Update all entries from master_id='005' to master_id='018'
+        await this.pool.execute(
+          "UPDATE master_data_entries SET master_id = '018' WHERE master_id = '005'"
+        );
+        
+        console.log(`✅ Successfully migrated ${id005Count} Port master entries from ID '005' to ID '018'`);
+      } else {
+        console.log("✅ No Port master entries found with old ID '005' - migration not needed");
+      }
+      
+      // Also ensure the data_masters table doesn't have the duplicate entry with ID '005'
+      const [existingMaster005]: any = await this.pool.execute(
+        "SELECT COUNT(*) as count FROM data_masters WHERE id = '005'"
+      );
+      
+      if (existingMaster005[0].count > 0) {
+        console.log("🗑️ Removing duplicate Port master with ID '005' from data_masters table...");
+        await this.pool.execute("DELETE FROM data_masters WHERE id = '005'");
+        console.log("✅ Duplicate Port master with ID '005' removed from data_masters table");
+      }
+    } catch (error) {
+      console.error("❌ Failed to migrate Port master data from ID '005' to ID '018':", error);
+      // Don't throw - allow app to continue even if migration fails
     }
   }
 
@@ -1043,7 +1088,6 @@ export class DatabaseStorage implements IStorage {
         { id: "002", name: "Country", description: "Countries and regions" },
         { id: "003", name: "Language", description: "Languages spoken" },
         { id: "004", name: "Vessel Type", description: "Types of vessels" },
-        { id: "005", name: "Port", description: "Ports and terminals" },
         { id: "006", name: "Qualification", description: "Qualifications and certifications" },
         { id: "007", name: "Course", description: "Training courses" },
         { id: "008", name: "Contract Type", description: "Types of contracts" },
