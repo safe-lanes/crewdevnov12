@@ -2414,7 +2414,7 @@ export const AdminModule = (): JSX.Element => {
                                   <label className="flex items-center space-x-1">
                                     <Checkbox
                                       checked={item.tanker || false}
-                                      onCheckedChange={(checked) => updateMasterField(item.id, 'tanker', checked)}
+                                      onCheckedChange={(checked) => updateMasterField(item.id, 'tanker', Boolean(checked))}
                                       data-testid={`checkbox-tanker-${item.id}`}
                                     />
                                     <span>Tanker</span>
@@ -2422,7 +2422,7 @@ export const AdminModule = (): JSX.Element => {
                                   <label className="flex items-center space-x-1">
                                     <Checkbox
                                       checked={item.oilTanker || false}
-                                      onCheckedChange={(checked) => updateMasterField(item.id, 'oilTanker', checked)}
+                                      onCheckedChange={(checked) => updateMasterField(item.id, 'oilTanker', Boolean(checked))}
                                       data-testid={`checkbox-oilTanker-${item.id}`}
                                     />
                                     <span>Oil Tanker</span>
@@ -2430,7 +2430,7 @@ export const AdminModule = (): JSX.Element => {
                                   <label className="flex items-center space-x-1">
                                     <Checkbox
                                       checked={item.gasTanker || false}
-                                      onCheckedChange={(checked) => updateMasterField(item.id, 'gasTanker', checked)}
+                                      onCheckedChange={(checked) => updateMasterField(item.id, 'gasTanker', Boolean(checked))}
                                       data-testid={`checkbox-gasTanker-${item.id}`}
                                     />
                                     <span>Gas Tanker</span>
@@ -2438,7 +2438,7 @@ export const AdminModule = (): JSX.Element => {
                                   <label className="flex items-center space-x-1">
                                     <Checkbox
                                       checked={item.chemicalTanker || false}
-                                      onCheckedChange={(checked) => updateMasterField(item.id, 'chemicalTanker', checked)}
+                                      onCheckedChange={(checked) => updateMasterField(item.id, 'chemicalTanker', Boolean(checked))}
                                       data-testid={`checkbox-chemicalTanker-${item.id}`}
                                     />
                                     <span>Chemical Tanker</span>
@@ -2446,7 +2446,7 @@ export const AdminModule = (): JSX.Element => {
                                   <label className="flex items-center space-x-1">
                                     <Checkbox
                                       checked={item.bulk || false}
-                                      onCheckedChange={(checked) => updateMasterField(item.id, 'bulk', checked)}
+                                      onCheckedChange={(checked) => updateMasterField(item.id, 'bulk', Boolean(checked))}
                                       data-testid={`checkbox-bulk-${item.id}`}
                                     />
                                     <span>Dry</span>
