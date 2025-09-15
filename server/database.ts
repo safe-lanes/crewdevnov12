@@ -179,7 +179,10 @@ export class DatabaseStorage implements IStorage {
         { name: 'oilTanker', ddl: 'ADD COLUMN oilTanker TINYINT(1) NOT NULL DEFAULT 0' },
         { name: 'gasTanker', ddl: 'ADD COLUMN gasTanker TINYINT(1) NOT NULL DEFAULT 0' },
         { name: 'chemicalTanker', ddl: 'ADD COLUMN chemicalTanker TINYINT(1) NOT NULL DEFAULT 0' },
-        { name: 'bulk', ddl: 'ADD COLUMN bulk TINYINT(1) NOT NULL DEFAULT 0' }
+        { name: 'bulk', ddl: 'ADD COLUMN bulk TINYINT(1) NOT NULL DEFAULT 0' },
+        // Additional columns for Fleet Groups master structure (ID 015)
+        { name: 'fuid', ddl: 'ADD COLUMN fuid TEXT NULL' },
+        { name: 'managerId', ddl: 'ADD COLUMN managerId TEXT NULL' }
       ];
       
       // Add missing columns
@@ -977,14 +980,20 @@ export class DatabaseStorage implements IStorage {
         { masterId: "001", entryId: "NAT020", name: "Estonian", description: "Estonia", countryName: "Estonian", country: "Estonia" },
         
         // Designation entries
-        { masterId: "012", name: "Master", description: "Ship Captain" },
-        { masterId: "012", name: "Chief Engineer", description: "Chief Engineering Officer" },
-        { masterId: "012", name: "Chief Officer", description: "First Officer" },
+        { masterId: "012", entryId: "DES001", name: "Master", description: "Ship Captain" },
+        { masterId: "012", entryId: "DES002", name: "Chief Engineer", description: "Chief Engineering Officer" },
+        { masterId: "012", entryId: "DES003", name: "Chief Officer", description: "First Officer" },
         
         // Vessel Type entries  
-        { masterId: "004", name: "Oil Tanker", description: "Petroleum transport vessel" },
-        { masterId: "004", name: "Container Ship", description: "Containerized cargo vessel" },
-        { masterId: "004", name: "Bulk Carrier", description: "Dry bulk cargo vessel" }
+        { masterId: "004", entryId: "VT001", name: "Oil Tanker", description: "Petroleum transport vessel" },
+        { masterId: "004", entryId: "VT002", name: "Container Ship", description: "Containerized cargo vessel" },
+        { masterId: "004", entryId: "VT003", name: "Bulk Carrier", description: "Dry bulk cargo vessel" },
+        
+        // Fleet Groups entries (ID 015)
+        { masterId: "015", entryId: "001", name: "Fleet Group 1", description: "Primary fleet group" },
+        { masterId: "015", entryId: "002", name: "Fleet Group 2", description: "Secondary fleet group" },
+        { masterId: "015", entryId: "003", name: "Fleet Group 3", description: "Tertiary fleet group" },
+        { masterId: "015", entryId: "004", name: "Fleet Group 4", description: "Quaternary fleet group" }
       ];
 
       for (const entry of sampleMasterEntries) {
@@ -992,6 +1001,7 @@ export class DatabaseStorage implements IStorage {
       }
 
       // Seed forms (with error handling to prevent blocking data masters)
+      let formId: number | null = null;
       try {
         const form = await this.createForm({
           name: "Crew Appraisal Form",
@@ -1002,6 +1012,7 @@ export class DatabaseStorage implements IStorage {
         });
 
         if (form && form.id) {
+          formId = form.id;
           // Seed rank groups
           await this.createRankGroup({
             formId: form.id,
@@ -1055,49 +1066,52 @@ export class DatabaseStorage implements IStorage {
         await this.createCrewMember(crewMember);
       }
 
-      // Seed appraisal results
-      const appraisalData: InsertAppraisalResult[] = [
-        {
-          crewMemberId: "2025-05-14",
-          formId: form.id,
-          appraisalType: "End of Contract",
-          appraisalDate: "06-Jun-2025",
-          appraisalData: "{}",
-          competenceRating: "4.9",
-          behavioralRating: "4.5",
-          overallRating: "4.7",
-          submittedBy: "admin",
-          status: "submitted",
-        },
-        {
-          crewMemberId: "2025-03-12",
-          formId: form.id,
-          appraisalType: "Mid Term",
-          appraisalDate: "07-May-2025",
-          appraisalData: "{}",
-          competenceRating: "3.5",
-          behavioralRating: "4.5",
-          overallRating: "4.0",
-          submittedBy: "admin",
-          status: "submitted",
-        },
-        {
-          crewMemberId: "2025-02-12",
-          formId: form.id,
-          appraisalType: "Special",
-          appraisalDate: "06-Jun-2025",
-          appraisalData: "{}",
-          competenceRating: "2.5",
-          behavioralRating: "3.5",
-          overallRating: "3.0",
-          submittedBy: "admin",
-          status: "submitted",
-        },
-      ];
+      // Seed appraisal results (only if form was created successfully)
+      if (formId) {
+        const appraisalData: InsertAppraisalResult[] = [
+          {
+            crewMemberId: "2025-05-14",
+            formId: formId,
+            appraisalType: "End of Contract",
+            appraisalDate: "06-Jun-2025",
+            appraisalData: "{}",
+            competenceRating: "4.9",
+            behavioralRating: "4.5",
+            overallRating: "4.7",
+            submittedBy: "admin",
+            status: "submitted",
+          },
+          {
+            crewMemberId: "2025-03-12",
+            formId: formId,
+            appraisalType: "Mid Term",
+            appraisalDate: "07-May-2025",
+            appraisalData: "{}",
+            competenceRating: "3.5",
+            behavioralRating: "4.5",
+            overallRating: "4.0",
+            submittedBy: "admin",
+            status: "submitted",
+          },
+          {
+            crewMemberId: "2025-02-12",
+            formId: formId,
+            appraisalType: "Special",
+            appraisalDate: "06-Jun-2025",
+            appraisalData: "{}",
+            competenceRating: "2.5",
+            behavioralRating: "3.5",
+            overallRating: "3.0",
+            submittedBy: "admin",
+            status: "submitted",
+          },
+        ];
 
-      for (const appraisal of appraisalData) {
-        await this.createAppraisalResult(appraisal);
+        for (const appraisal of appraisalData) {
+          await this.createAppraisalResult(appraisal);
+        }
       }
+
 
       // Seed recruitment candidates data
       const recruitmentData: InsertRecruitmentCandidate[] = [

@@ -170,6 +170,9 @@ export const masterDataEntries = mysqlTable("master_data_entries", {
   createdBy: text("createdBy"),
   domain: text("domain"),
   orderBy: int("orderBy"),
+  // Fleet Groups specific fields (masterId 015)
+  fuid: text("fuid"),
+  managerId: text("managerId"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -316,6 +319,8 @@ export const insertMasterDataEntrySchema = createInsertSchema(masterDataEntries)
   createdBy: true,
   domain: true,
   orderBy: true,
+  fuid: true,
+  managerId: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
