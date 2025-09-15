@@ -584,11 +584,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Apply vessel master safe field filtering BEFORE validation if needed
       let requestData = req.body;
-      if (isVesselMaster(existingEntry.master_id)) {
+      if (isVesselMaster((existingEntry as any).master_id)) {
         console.log(`🚢 [UPDATE] Vessel Master detected for entry ${id} - applying safe field filtering BEFORE validation`);
         
         // Apply field mapping and filtering first
-        requestData = filterVesselMasterData(req.body, existingEntry.master_id);
+        requestData = filterVesselMasterData(req.body, (existingEntry as any).master_id);
         console.log(`🚢 [UPDATE] Original update data:`, req.body);
         console.log(`🚢 [UPDATE] Filtered update data for validation:`, requestData);
         

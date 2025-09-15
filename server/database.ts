@@ -942,7 +942,7 @@ export class DatabaseStorage implements IStorage {
         { id: "013", name: "Users", description: "System users and administrators" },
         { id: "014", name: "Vessels", description: "Fleet vessel information" },
         { id: "015", name: "Fleet Groups", description: "Vessel fleet groupings" },
-        { id: "016", name: "Additional Groups", description: "Additional organizational groups" },
+        { id: "016", name: "Additional Groups", description: "Manage additional vessel groupings and assignments" },
         { id: "017", name: "Vessel Owners", description: "Company and ownership information" }
       ];
 
