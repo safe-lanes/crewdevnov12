@@ -40,7 +40,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
-import { Form, RankGroup, AvailableRank } from "@shared/schema";
+import { Form, RankGroup, AvailableRank, InsertMasterDataEntry } from "@shared/schema";
 import { FormEditorFactory } from "@/components/FormEditorFactory";
 import { formTemplates, createFormEditor } from "@/utils/formEditorGenerator";
 import { apiRequest } from "@/lib/queryClient";
@@ -198,7 +198,7 @@ export const AdminModule = (): JSX.Element => {
   // Apply vessel master field mapping if needed
   const masterData = useMemo(() => {
     if (isVesselMaster(selectedMaster)) {
-      return rawMasterData.map(item => mapSafeFieldsToVesselData(item));
+      return rawMasterData.map((item: any) => mapSafeFieldsToVesselData(item));
     }
     return rawMasterData;
   }, [rawMasterData, selectedMaster]);
@@ -715,7 +715,7 @@ export const AdminModule = (): JSX.Element => {
   const handleNewEntry = () => {
     const newEntryId = Date.now().toString(); // Generate unique entry ID
     
-    const newEntryData = (() => {
+    const newEntryData: Omit<InsertMasterDataEntry, 'masterId'> = (() => {
       if (selectedMaster === "001") {
         // Nationality master - create entry with nationality-specific fields
         return {
@@ -767,7 +767,7 @@ export const AdminModule = (): JSX.Element => {
         console.log('🚢 [NEW ENTRY] Creating new vessel master entry with safe field mapping');
         const vesselData: Partial<VesselMasterEntry> = {
           entryId: newEntryId,
-          vessel: '', // Vessel name - will map to 'name' field
+          vessel: 'New Vessel', // Vessel name - will map to 'name' field
           imoNumber: '', // IMO number - will map to 'description' field
           isActive: true,
           isDeleted: false
@@ -777,7 +777,12 @@ export const AdminModule = (): JSX.Element => {
         const safeData = mapVesselDataToSafeFields(vesselData, selectedMaster);
         console.log('🚢 [NEW ENTRY] Safe vessel data:', safeData);
         
-        return safeData;
+        // Ensure name field is set (required for vessel master)
+        if (!safeData.name) {
+          safeData.name = 'New Vessel';
+        }
+        
+        return safeData as Omit<InsertMasterDataEntry, 'masterId'>;
       } else {
         // Other masters - create entry with standard fields
         return {
