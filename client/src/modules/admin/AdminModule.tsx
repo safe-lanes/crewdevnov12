@@ -248,6 +248,48 @@ export const AdminModule = (): JSX.Element => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // URL parsing and routing handler
+  useEffect(() => {
+    console.log('🔗 [ROUTING] Location changed:', location);
+    
+    // Parse the URL path to extract admin page and parameters
+    const path = location.replace(/^\//, ''); // Remove leading slash
+    const pathParts = path.split('/');
+    
+    console.log('🔗 [ROUTING] Path parts:', pathParts);
+    
+    if (pathParts[0] === 'admin') {
+      if (pathParts.length === 1) {
+        // /admin - show default page (forms)
+        console.log('🔗 [ROUTING] Default admin page - showing forms');
+        setSelectedAdminPage('forms');
+      } else if (pathParts[1] === 'masters' && pathParts[2]) {
+        // /admin/masters/018 - show masters page with specific master
+        const masterId = pathParts[2];
+        console.log('🔗 [ROUTING] Masters page with master ID:', masterId);
+        setSelectedAdminPage('masters');
+        setSelectedMaster(masterId);
+      } else if (pathParts[1] === 'masters') {
+        // /admin/masters - show masters page with default master
+        console.log('🔗 [ROUTING] Masters page with default master');
+        setSelectedAdminPage('masters');
+        setSelectedMaster('001'); // Default to first master
+      } else if (pathParts[1] === 'forms') {
+        // /admin/forms - show forms page
+        console.log('🔗 [ROUTING] Forms page');
+        setSelectedAdminPage('forms');
+      } else if (pathParts[1] === 'rank-admin') {
+        // /admin/rank-admin - show rank admin page
+        console.log('🔗 [ROUTING] Rank admin page');
+        setSelectedAdminPage('rank-admin');
+      } else {
+        // Unknown admin path - default to forms
+        console.log('🔗 [ROUTING] Unknown admin path, defaulting to forms');
+        setSelectedAdminPage('forms');
+      }
+    }
+  }, [location]);
   
   // Responsive configuration
   const responsiveConfig = useMemo(() => ({
