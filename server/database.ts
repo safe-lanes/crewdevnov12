@@ -81,7 +81,7 @@ export class DatabaseStorage implements IStorage {
       const existingColumns = new Set(rows.map((row: any) => row.COLUMN_NAME));
       console.log("📋 Existing columns:", Array.from(existingColumns));
       
-      // Define new columns to add (for both nationality and country enhanced structures)
+      // Define new columns to add (for nationality, country, and vessel type enhanced structures)
       const newColumns = [
         { name: 'nuid', ddl: 'ADD COLUMN nuid TEXT NULL' },
         { name: 'countryName', ddl: 'ADD COLUMN countryName TEXT NULL' },
@@ -95,7 +95,15 @@ export class DatabaseStorage implements IStorage {
         { name: 'cid', ddl: 'ADD COLUMN cid TEXT NULL' },
         { name: 'countryCode', ddl: 'ADD COLUMN countryCode TEXT NULL' },
         { name: 'nationality', ddl: 'ADD COLUMN nationality TEXT NULL' },
-        { name: 'countryRefId', ddl: 'ADD COLUMN countryRefId TEXT NULL' }
+        { name: 'countryRefId', ddl: 'ADD COLUMN countryRefId TEXT NULL' },
+        // Additional columns for enhanced Vessel Type master structure
+        { name: 'vtuid', ddl: 'ADD COLUMN vtuid TEXT NULL' },
+        { name: 'vesselType', ddl: 'ADD COLUMN vesselType TEXT NULL' },
+        { name: 'tanker', ddl: 'ADD COLUMN tanker TINYINT(1) NOT NULL DEFAULT 0' },
+        { name: 'oilTanker', ddl: 'ADD COLUMN oilTanker TINYINT(1) NOT NULL DEFAULT 0' },
+        { name: 'gasTanker', ddl: 'ADD COLUMN gasTanker TINYINT(1) NOT NULL DEFAULT 0' },
+        { name: 'chemicalTanker', ddl: 'ADD COLUMN chemicalTanker TINYINT(1) NOT NULL DEFAULT 0' },
+        { name: 'bulk', ddl: 'ADD COLUMN bulk TINYINT(1) NOT NULL DEFAULT 0' }
       ];
       
       // Add missing columns
@@ -116,6 +124,9 @@ export class DatabaseStorage implements IStorage {
       
       // Ensure enhanced country data is properly seeded
       await this.ensureCountryDataSeeded();
+      
+      // Ensure enhanced vessel type data is properly seeded
+      await this.ensureVesselTypeDataSeeded();
     } catch (error) {
       console.error("❌ Failed to update master_data_entries schema:", error);
       // Don't throw - allow app to start even if schema update fails
@@ -322,6 +333,60 @@ export class DatabaseStorage implements IStorage {
       }
     } catch (error) {
       console.error("❌ Failed to seed country master data:", error);
+      // Don't throw - allow app to continue
+    }
+  }
+
+  // Ensure vessel type master data is properly seeded with enhanced structure
+  private async ensureVesselTypeDataSeeded(): Promise<void> {
+    try {
+      console.log("🚢 Checking vessel type master data...");
+      
+      // Check if we have any vessel type entries with enhanced structure
+      const [existingVesselTypeEntries]: any = await this.pool.execute(
+        "SELECT COUNT(*) as count FROM master_data_entries WHERE master_id = '004' AND entry_id RLIKE '^VT[0-9]+$'"
+      );
+      
+      const enhancedVesselTypesCount = existingVesselTypeEntries[0].count;
+      console.log(`📊 Found ${enhancedVesselTypesCount} enhanced vessel type entries with VT format`);
+      
+      // If we don't have the enhanced vessel type data structure, seed it
+      if (enhancedVesselTypesCount < 10) {
+        console.log("🗂️ Seeding enhanced vessel type master data...");
+        
+        // Clear existing vessel type entries to ensure clean enhanced structure
+        await this.pool.execute("DELETE FROM master_data_entries WHERE master_id = '004'");
+        
+        // Vessel type data with enhanced structure based on maritime industry standards
+        const vesselTypeData = [
+          { entryId: "VT001", name: "Oil Tanker", description: "Oil Tanker", vtuid: "OT001", vesselType: "Oil Tanker", tanker: 1, oilTanker: 1, gasTanker: 0, chemicalTanker: 0, bulk: 0 },
+          { entryId: "VT002", name: "Chemical Tanker", description: "Chemical Tanker", vtuid: "CT002", vesselType: "Chemical Tanker", tanker: 1, oilTanker: 0, gasTanker: 0, chemicalTanker: 1, bulk: 0 },
+          { entryId: "VT003", name: "LPG Tanker", description: "LPG Tanker", vtuid: "LPG003", vesselType: "LPG Tanker", tanker: 1, oilTanker: 0, gasTanker: 1, chemicalTanker: 0, bulk: 0 },
+          { entryId: "VT004", name: "LNG Tanker", description: "LNG Tanker", vtuid: "LNG004", vesselType: "LNG Tanker", tanker: 1, oilTanker: 0, gasTanker: 1, chemicalTanker: 0, bulk: 0 },
+          { entryId: "VT005", name: "Bulk Carrier", description: "Bulk Carrier", vtuid: "BC005", vesselType: "Bulk Carrier", tanker: 0, oilTanker: 0, gasTanker: 0, chemicalTanker: 0, bulk: 1 },
+          { entryId: "VT006", name: "Container Ship", description: "Container Ship", vtuid: "CS006", vesselType: "Container Ship", tanker: 0, oilTanker: 0, gasTanker: 0, chemicalTanker: 0, bulk: 0 },
+          { entryId: "VT007", name: "General Cargo", description: "General Cargo", vtuid: "GC007", vesselType: "General Cargo", tanker: 0, oilTanker: 0, gasTanker: 0, chemicalTanker: 0, bulk: 0 },
+          { entryId: "VT008", name: "Product Tanker", description: "Product Tanker", vtuid: "PT008", vesselType: "Product Tanker", tanker: 1, oilTanker: 1, gasTanker: 0, chemicalTanker: 0, bulk: 0 },
+          { entryId: "VT009", name: "Crude Oil Tanker", description: "Crude Oil Tanker", vtuid: "COT009", vesselType: "Crude Oil Tanker", tanker: 1, oilTanker: 1, gasTanker: 0, chemicalTanker: 0, bulk: 0 },
+          { entryId: "VT010", name: "Dry Bulk Carrier", description: "Dry Bulk Carrier", vtuid: "DBC010", vesselType: "Dry Bulk Carrier", tanker: 0, oilTanker: 0, gasTanker: 0, chemicalTanker: 0, bulk: 1 }
+        ];
+        
+        // Insert each vessel type entry with enhanced structure
+        for (const vesselType of vesselTypeData) {
+          await this.pool.execute(
+            `INSERT INTO master_data_entries 
+             (master_id, entry_id, name, description, vtuid, vesselType, tanker, oilTanker, gasTanker, chemicalTanker, bulk, isActive, isDeleted, created_at, updated_at) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+            ['004', vesselType.entryId, vesselType.name, vesselType.description, vesselType.vtuid, vesselType.vesselType, vesselType.tanker, vesselType.oilTanker, vesselType.gasTanker, vesselType.chemicalTanker, vesselType.bulk, 1, 0]
+          );
+        }
+        
+        console.log("✅ Enhanced vessel type master data seeded successfully with VT001-VT010 format");
+      } else {
+        console.log("✅ Enhanced vessel type master data already exists");
+      }
+    } catch (error) {
+      console.error("❌ Failed to seed vessel type master data:", error);
       // Don't throw - allow app to continue
     }
   }

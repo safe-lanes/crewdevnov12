@@ -512,7 +512,7 @@ export const AdminModule = (): JSX.Element => {
     setIsMasterEditing(false);
   };
 
-  const updateMasterField = (itemId: number, field: 'entryId' | 'name' | 'description' | 'countryName' | 'country' | 'countryCode', value: string) => {
+  const updateMasterField = (itemId: number, field: 'entryId' | 'name' | 'description' | 'countryName' | 'country' | 'countryCode' | 'vesselType' | 'vtuid', value: string) => {
     updateEntryMutation.mutate({ 
       id: itemId, 
       data: { [field]: value }, 
@@ -545,6 +545,22 @@ export const AdminModule = (): JSX.Element => {
         name: '', // Country name
         description: '', // Still required for compatibility
         countryCode: '', // Country UN/LOCODE
+        isActive: true,
+        isDeleted: false
+      });
+    } else if (selectedMaster === "004") {
+      // Vessel type master - create entry with vessel type-specific fields
+      createEntryMutation.mutate({
+        entryId: newEntryId,
+        name: '', // Still required for compatibility
+        description: '', // Still required for compatibility
+        vesselType: '', // Vessel type name
+        vtuid: '', // Vessel type unique identifier
+        tanker: false,
+        oilTanker: false,
+        gasTanker: false,
+        chemicalTanker: false,
+        bulk: false,
         isActive: true,
         isDeleted: false
       });
@@ -2211,6 +2227,11 @@ export const AdminModule = (): JSX.Element => {
                         <div className="p-3 border-r border-blue-400">Country</div>
                         <div className="p-3 border-r border-blue-400">Country UN/LOCODE</div>
                       </>
+                    ) : selectedMaster === "004" ? (
+                      <>
+                        <div className="p-3 border-r border-blue-400">Vessel Type</div>
+                        <div className="p-3 border-r border-blue-400">Classification</div>
+                      </>
                     ) : (
                       <>
                         <div className="p-3 border-r border-blue-400">Name</div>
@@ -2232,6 +2253,8 @@ export const AdminModule = (): JSX.Element => {
                         ? !item.countryName && !item.country  // For nationality master
                         : selectedMaster === "002"
                         ? !item.name && !item.countryCode     // For country master
+                        : selectedMaster === "004"
+                        ? !item.vesselType && !item.vtuid     // For vessel type master
                         : !item.name && !item.description;   // For other masters
                       
                       return (
@@ -2282,6 +2305,20 @@ export const AdminModule = (): JSX.Element => {
                               ) : (
                                 <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No country</em>}</span>
                               )
+                            ) : selectedMaster === "004" ? (
+                              // Vessel type master - show vesselType field
+                              isMasterEditing ? (
+                                <Input
+                                  value={item.vesselType || ''}
+                                  onChange={(e) => updateMasterField(item.id, 'vesselType', e.target.value)}
+                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                  placeholder={isNewEntry ? "Enter vessel type..." : ""}
+                                  data-testid={`input-vesselType-${item.id}`}
+                                  autoFocus={isNewEntry}
+                                />
+                              ) : (
+                                <span className="text-xs text-gray-700">{item.vesselType || <em className="text-gray-400">No vessel type</em>}</span>
+                              )
                             ) : (
                               // Other masters - show name field
                               isMasterEditing ? (
@@ -2326,6 +2363,29 @@ export const AdminModule = (): JSX.Element => {
                                 />
                               ) : (
                                 <span className="text-xs text-gray-700">{item.countryCode || <em className="text-gray-400">No country code</em>}</span>
+                              )
+                            ) : selectedMaster === "004" ? (
+                              // Vessel type master - show classification based on boolean flags
+                              isMasterEditing ? (
+                                <Input
+                                  value={item.vtuid || ''}
+                                  onChange={(e) => updateMasterField(item.id, 'vtuid', e.target.value)}
+                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                  placeholder={isNewEntry ? "Enter VTUID..." : ""}
+                                  data-testid={`input-vtuid-${item.id}`}
+                                />
+                              ) : (
+                                <span className="text-xs text-gray-700">
+                                  {(() => {
+                                    const classifications = [];
+                                    if (item.tanker) classifications.push('Tanker');
+                                    if (item.oilTanker) classifications.push('Oil');
+                                    if (item.gasTanker) classifications.push('Gas');
+                                    if (item.chemicalTanker) classifications.push('Chemical');
+                                    if (item.bulk) classifications.push('Bulk');
+                                    return classifications.length > 0 ? classifications.join(', ') : <em className="text-gray-400">No classification</em>;
+                                  })()}
+                                </span>
                               )
                             ) : (
                               // Other masters - show description field
