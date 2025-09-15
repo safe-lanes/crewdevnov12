@@ -947,7 +947,7 @@ export class DatabaseStorage implements IStorage {
         { id: "014", name: "Vessels", description: "Fleet vessel information" },
         { id: "015", name: "Fleet Groups", description: "Vessel fleet groupings" },
         { id: "016", name: "Additional Groups", description: "Manage additional vessel groupings and assignments" },
-        { id: "017", name: "Vessel Owners", description: "Company and ownership information" }
+        { id: "017", name: "Vessel Owners", description: "Manage vessel ownership details, contact information and vessel assignments" }
       ];
 
       // Only create missing master categories
@@ -997,7 +997,14 @@ export class DatabaseStorage implements IStorage {
         { masterId: "015", entryId: "001", name: "Fleet Group 1", description: "Primary fleet group" },
         { masterId: "015", entryId: "002", name: "Fleet Group 2", description: "Secondary fleet group" },
         { masterId: "015", entryId: "003", name: "Fleet Group 3", description: "Tertiary fleet group" },
-        { masterId: "015", entryId: "004", name: "Fleet Group 4", description: "Quaternary fleet group" }
+        { masterId: "015", entryId: "004", name: "Fleet Group 4", description: "Quaternary fleet group" },
+        
+        // Vessel Owners entries (ID 017)
+        { masterId: "017", entryId: "VO001", name: "Maersk Line", description: "Danish shipping and logistics company" },
+        { masterId: "017", entryId: "VO002", name: "MSC Mediterranean Shipping Company", description: "Swiss-Italian cargo shipping company" },
+        { masterId: "017", entryId: "VO003", name: "CMA CGM Group", description: "French container transportation and shipping company" },
+        { masterId: "017", entryId: "VO004", name: "COSCO Shipping Lines", description: "Chinese state-owned shipping and logistics company" },
+        { masterId: "017", entryId: "VO005", name: "Hapag-Lloyd", description: "German international shipping and container transportation company" }
       ];
 
       for (const entry of sampleMasterEntries) {
