@@ -198,7 +198,23 @@ export class DatabaseStorage implements IStorage {
         { name: 'duid', ddl: 'ADD COLUMN duid TEXT NULL' },
         { name: 'shortCode', ddl: 'ADD COLUMN shortCode TEXT NULL' },
         { name: 'type', ddl: 'ADD COLUMN type TEXT NULL' },
-        { name: 'department', ddl: 'ADD COLUMN department TEXT NULL' }
+        { name: 'department', ddl: 'ADD COLUMN department TEXT NULL' },
+        // Additional columns for User Master structure (ID 013)
+        { name: 'uuid', ddl: 'ADD COLUMN uuid TEXT NULL' },
+        { name: 'lastname', ddl: 'ADD COLUMN lastname TEXT NULL' },
+        { name: 'firstname', ddl: 'ADD COLUMN firstname TEXT NULL' },
+        { name: 'addressLine1', ddl: 'ADD COLUMN addressLine1 TEXT NULL' },
+        { name: 'addressLine2', ddl: 'ADD COLUMN addressLine2 TEXT NULL' },
+        { name: 'addressLine3', ddl: 'ADD COLUMN addressLine3 TEXT NULL' },
+        { name: 'city', ddl: 'ADD COLUMN city TEXT NULL' },
+        { name: 'state', ddl: 'ADD COLUMN state TEXT NULL' },
+        { name: 'zipcode', ddl: 'ADD COLUMN zipcode TEXT NULL' },
+        { name: 'loginId', ddl: 'ADD COLUMN loginId TEXT NULL' },
+        { name: 'roleId', ddl: 'ADD COLUMN roleId TEXT NULL' },
+        { name: 'designationId', ddl: 'ADD COLUMN designationId TEXT NULL' },
+        { name: 'profilePic', ddl: 'ADD COLUMN profilePic TEXT NULL' },
+        { name: 'userType', ddl: 'ADD COLUMN userType TEXT NULL' },
+        { name: 'departmentId', ddl: 'ADD COLUMN departmentId TEXT NULL' }
       ];
       
       // Add missing columns
