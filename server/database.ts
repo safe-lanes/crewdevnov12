@@ -80,14 +80,15 @@ export class DatabaseStorage implements IStorage {
         [process.env.DB_NAME || 'crew_database', tableName]
       );
       
-      const columns = new Set(rows.map((row: any) => row.COLUMN_NAME));
+      const columnNames: string[] = rows.map((row: any) => row.COLUMN_NAME as string);
+      const columns = new Set<string>(columnNames);
       this.columnCache.set(tableName, columns);
       console.log(`📋 Cached columns for ${tableName}:`, Array.from(columns));
       return columns;
     } catch (error) {
       console.error(`❌ Failed to get columns for ${tableName}:`, error);
       // Return empty set to prevent errors - will be filtered out
-      return new Set();
+      return new Set<string>();
     }
   }
 
@@ -154,7 +155,8 @@ export class DatabaseStorage implements IStorage {
         [process.env.DB_NAME || 'crew_database']
       );
       
-      const existingColumns = new Set(rows.map((row: any) => row.COLUMN_NAME));
+      const columnNames: string[] = rows.map((row: any) => row.COLUMN_NAME as string);
+      const existingColumns = new Set<string>(columnNames);
       console.log("📋 Existing columns:", Array.from(existingColumns));
       
       // Define new columns to add (for nationality, country, and vessel type enhanced structures)
