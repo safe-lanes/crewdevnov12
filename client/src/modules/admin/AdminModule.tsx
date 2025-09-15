@@ -2702,17 +2702,22 @@ export const AdminModule = (): JSX.Element => {
                                   </SelectTrigger>
                                   <SelectContent>
                                     {vesselTypeLoading ? (
-                                      <SelectItem value="" disabled>Loading vessel types...</SelectItem>
+                                      <SelectItem value="loading" disabled>Loading vessel types...</SelectItem>
                                     ) : (
-                                      (vesselTypeData as any[]).map((vesselType: any) => (
-                                        <SelectItem 
-                                          key={vesselType.id} 
-                                          value={vesselType.vesselType || vesselType.name}
-                                          data-testid={`select-vesselType-option-${vesselType.id}`}
-                                        >
-                                          {vesselType.vesselType || vesselType.name}
-                                        </SelectItem>
-                                      ))
+                                      (vesselTypeData as any[])
+                                        .filter((vesselType: any) => {
+                                          const value = vesselType.vesselType || vesselType.name || '';
+                                          return value.trim().length > 0;
+                                        })
+                                        .map((vesselType: any) => (
+                                          <SelectItem 
+                                            key={vesselType.id} 
+                                            value={vesselType.vesselType || vesselType.name || `fallback-${vesselType.id}`}
+                                            data-testid={`select-vesselType-option-${vesselType.id}`}
+                                          >
+                                            {vesselType.vesselType || vesselType.name || `Vessel Type ${vesselType.id}`}
+                                          </SelectItem>
+                                        ))
                                     )}
                                   </SelectContent>
                                 </Select>
