@@ -166,12 +166,12 @@ export function mapSafeFieldsToPortData(dbEntry: any): PortMasterEntry {
 
   return {
     id: dbEntry.id,
-    entryId: dbEntry.entryId || '',
-    portName: dbEntry.name || '',           // Map name back to portName
-    puid: dbEntry.nuid || '',               // Map nuid back to puid
-    latitude: latitude,                     // Extract from description JSON
-    longitude: longitude,                   // Extract from description JSON
-    portcode: dbEntry.cid || '',           // Map cid back to portcode
+    entryId: dbEntry.entry_id || dbEntry.entryId || '',      // Handle snake_case from DB
+    portName: dbEntry.name || '',                            // Map name back to portName
+    puid: dbEntry.nuid || '',                                // Map nuid back to puid
+    latitude: latitude,                                      // Extract from description JSON
+    longitude: longitude,                                    // Extract from description JSON
+    portcode: dbEntry.cid || '',                            // Map cid back to portcode
     country: dbEntry.country || '',
     countryName: dbEntry.countryName || '',
     countryCode: dbEntry.countryCode || '',
