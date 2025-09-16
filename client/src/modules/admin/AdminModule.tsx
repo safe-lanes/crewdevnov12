@@ -2690,7 +2690,7 @@ const AdminModuleInner = (): JSX.Element => {
                               // Other masters - show name field
                               isMasterInEditMode ? (
                                 <Input
-                                  value={item.name || ''}
+                                  value={getEffectiveValue(item.id, 'name', item.name)}
                                   onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
                                   className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
                                   placeholder={isNewEntry ? "Enter name..." : ""}
@@ -2709,7 +2709,7 @@ const AdminModuleInner = (): JSX.Element => {
                               // Nationality master - show country field
                               isMasterInEditMode ? (
                                 <Input
-                                  value={item.country || ''}
+                                  value={getEffectiveValue(item.id, 'country', item.country)}
                                   onChange={(e) => updateMasterField(item.id, 'country', e.target.value)}
                                   className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
                                   placeholder={isNewEntry ? "Enter country..." : ""}
@@ -2722,7 +2722,7 @@ const AdminModuleInner = (): JSX.Element => {
                               // Country master - show countryCode field (Country UN/LOCODE)
                               isMasterInEditMode ? (
                                 <Input
-                                  value={item.countryCode || ''}
+                                  value={getEffectiveValue(item.id, 'countryCode', item.countryCode)}
                                   onChange={(e) => updateMasterField(item.id, 'countryCode', e.target.value)}
                                   className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
                                   placeholder={isNewEntry ? "Enter country code..." : ""}
@@ -2735,7 +2735,7 @@ const AdminModuleInner = (): JSX.Element => {
                               // Language master - show description field (ISO language code)
                               isMasterInEditMode ? (
                                 <Input
-                                  value={item.description || ''}
+                                  value={getEffectiveValue(item.id, 'description', item.description)}
                                   onChange={(e) => updateMasterField(item.id, 'description', e.target.value)}
                                   className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
                                   placeholder={isNewEntry ? "Enter ISO code..." : ""}
@@ -2819,7 +2819,7 @@ const AdminModuleInner = (): JSX.Element => {
                               // Port master - show portcode field (port code/UN LOCODE) but save to 'cid' (safe field)
                               isMasterInEditMode ? (
                                 <Input
-                                  value={item.portcode || ''}
+                                  value={getEffectiveValue(item.id, 'cid', item.portcode)}
                                   onChange={(e) => updateMasterField(item.id, 'cid', e.target.value)}
                                   className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
                                   placeholder={isNewEntry ? "Enter port code..." : ""}
@@ -2832,7 +2832,7 @@ const AdminModuleInner = (): JSX.Element => {
                               // Other masters - show description field
                               isMasterInEditMode ? (
                                 <Input
-                                  value={item.description || ''}
+                                  value={getEffectiveValue(item.id, 'description', item.description)}
                                   onChange={(e) => updateMasterField(item.id, 'description', e.target.value)}
                                   className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
                                   placeholder={isNewEntry ? "Enter description..." : ""}
