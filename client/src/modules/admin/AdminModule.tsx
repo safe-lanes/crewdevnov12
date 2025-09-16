@@ -2561,6 +2561,17 @@ const AdminModuleInner = (): JSX.Element => {
                         <div className="p-3 border-r border-blue-400">Port Name</div>
                         <div className="p-3 border-r border-blue-400">Port Code / UN/LOCODE</div>
                       </>
+                    ) : selectedMaster === "012" ? (
+                      <>
+                        <div className="p-3 border-r border-blue-400">Designation</div>
+                        <div className="p-3 border-r border-blue-400">Department</div>
+                      </>
+                    ) : selectedMaster === "013" ? (
+                      <>
+                        <div className="p-3 border-r border-blue-400">First Name</div>
+                        <div className="p-3 border-r border-blue-400">Last Name</div>
+                        <div className="p-3 border-r border-blue-400">Designation</div>
+                      </>
                     ) : (
                       <>
                         <div className="p-3 border-r border-blue-400">Name</div>
