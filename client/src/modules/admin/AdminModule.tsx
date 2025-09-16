@@ -155,7 +155,8 @@ interface SeafarerData {
   status: 'Available' | 'Assigned' | 'On Leave';
 }
 
-export const AdminModule = (): JSX.Element => {
+// Inner AdminModule component (uses EditSessionContext)
+const AdminModuleInner = (): JSX.Element => {
   const [location, navigate] = useLocation();
   const [selectedAdminPage, setSelectedAdminPage] = useState("forms");
   const [selectedRankAdminTab, setSelectedRankAdminTab] = useState("rank-master");
@@ -262,96 +263,6 @@ export const AdminModule = (): JSX.Element => {
   const createEntryMutation = useCreateMasterDataEntry(selectedMaster);
   const updateEntryMutation = useUpdateMasterDataEntry();
   const deleteEntryMutation = useDeleteMasterDataEntry(selectedMaster);
-  
-  // Edit Session Handlers
-  const handleEditSessionSave = async (masterId: string, changes: Map<string | number, Record<string, any>>) => {
-    if (import.meta.env.DEV) {
-      console.log(`💾 [EDIT_SESSION] Saving ${changes.size} changes for master ${masterId}`);
-    }
-
-    // Check if this is vessel or port master for special handling
-    const isVesselMasterSave = isVesselMaster(masterId);
-    const isPortMasterSave = isPortMaster(masterId);
-
-    const promises: Promise<any>[] = [];
-    
-    changes.forEach((entryChanges, entryId) => {
-      let processedChanges = entryChanges;
-      
-      // Apply safe field mapping for vessel master
-      if (isVesselMasterSave) {
-        // Ensure name field is populated if vessel field exists
-        if (entryChanges.vessel && !entryChanges.name) {
-          entryChanges.name = entryChanges.vessel;
-        }
-        
-        // Map imoNumber to description temporarily
-        if (entryChanges.imoNumber && !entryChanges.description) {
-          entryChanges.description = entryChanges.imoNumber;
-        }
-        
-        // Filter to only include safe fields for database
-        processedChanges = filterToSafeFields(entryChanges);
-        
-        // Validate that name field is populated
-        if (!processedChanges.name && entryChanges.vessel) {
-          processedChanges.name = entryChanges.vessel;
-        }
-      }
-      
-      // Apply safe field mapping for port master
-      if (isPortMasterSave) {
-        // Ensure name field is populated if portName field exists
-        if (entryChanges.portName && !entryChanges.name) {
-          entryChanges.name = entryChanges.portName;
-        }
-        
-        // Map coordinates to description temporarily
-        if ((entryChanges.latitude || entryChanges.longitude) && !entryChanges.description) {
-          const coords = { lat: entryChanges.latitude || '', lng: entryChanges.longitude || '' };
-          entryChanges.description = JSON.stringify(coords);
-        }
-        
-        // Filter to only include safe fields for database
-        processedChanges = filterToPortSafeFields(entryChanges);
-        
-        // Validate that name field is populated
-        if (!processedChanges.name && entryChanges.portName) {
-          processedChanges.name = entryChanges.portName;
-        }
-      }
-      
-      // Create save promise
-      const promise = updateEntryMutation.mutateAsync({ 
-        id: entryId as number, 
-        data: processedChanges, 
-        masterId 
-      });
-      
-      promises.push(promise);
-    });
-
-    // Wait for all saves to complete
-    await Promise.all(promises);
-
-    const successMessage = isVesselMasterSave 
-      ? `Saved vessel data for ${changes.size} entries (safe mode)`
-      : isPortMasterSave
-      ? `Saved port data for ${changes.size} entries (safe mode)`
-      : `Saved changes for ${changes.size} entries`;
-      
-    toast({
-      title: "Success",
-      description: successMessage,
-    });
-  };
-
-  const handleEditSessionNavigate = (target: string) => {
-    if (import.meta.env.DEV) {
-      console.log(`🔗 [EDIT_SESSION] Navigating to: ${target}`);
-    }
-    navigate(target);
-  };
   
   // Responsive breakpoint detection
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
@@ -702,9 +613,38 @@ export const AdminModule = (): JSX.Element => {
     rankMasterGridApi?.stopEditing();
   };
 
-  // Data Masters handlers
+  // EditSession integration - use hook directly at top level
+  const {
+    isEditing,
+    isEditingMaster,
+    startEdit,
+    stopEdit,
+    commitSave,
+    discardChanges,
+    markDirty,
+    saving
+  } = useEditSession();
+
+  // Check if this master is currently being edited (replacing isMasterEditing)
+  const isMasterInEditMode = isEditingMaster(selectedMaster);
+
+  // Edit handlers with baseline capture
   const handleEditMaster = () => {
-    setIsMasterEditing(true);
+    if (import.meta.env.DEV) {
+      console.log(`🔧 [EDIT_SESSION] Starting edit for master ${selectedMaster} with baseline data`);
+      console.log('📊 [BASELINE] Capturing masterData:', masterData);
+    }
+    
+    // Capture baseline data when entering edit mode
+    startEdit(selectedMaster, masterData);
+  };
+
+  const handleCancelEditMaster = () => {
+    if (import.meta.env.DEV) {
+      console.log(`❌ [EDIT_SESSION] Discarding changes for master ${selectedMaster}`);
+    }
+    discardChanges();
+    stopEdit();
   };
 
   const handleSaveMaster = () => {
@@ -3224,10 +3164,7 @@ export const AdminModule = (): JSX.Element => {
   );
 
   return (
-    <EditSessionProvider
-      onSave={handleEditSessionSave}
-      onNavigate={handleEditSessionNavigate}
-    >
+    <>
       <SideBarComponent selectedAdminPage={selectedAdminPage} setSelectedAdminPage={setSelectedAdminPage} allowedPages={["forms", "rank-admin", "masters", "training-matrix"]} />
       <MainLayout>
         {selectedAdminPage === "forms" && renderFormsTable()}
@@ -3335,6 +3272,112 @@ export const AdminModule = (): JSX.Element => {
           </div>
         </DialogContent>
       </Dialog>
+    </>
+  );
+};
+
+// Wrapper component with EditSessionProvider
+export const AdminModule = (): JSX.Element => {
+  const [, navigate] = useLocation();
+  const { toast } = useToast();
+  const updateEntryMutation = useUpdateMasterDataEntry();
+
+  // Define handlers here that will be passed to the provider
+  const handleEditSessionSave = async (masterId: string, changes: Map<string | number, Record<string, any>>) => {
+    if (import.meta.env.DEV) {
+      console.log(`💾 [EDIT_SESSION] Saving ${changes.size} changes for master ${masterId}`);
+    }
+
+    // Check if this is vessel or port master for special handling
+    const isVesselMasterSave = isVesselMaster(masterId);
+    const isPortMasterSave = isPortMaster(masterId);
+
+    const promises: Promise<any>[] = [];
+    
+    changes.forEach((entryChanges, entryId) => {
+      let processedChanges = entryChanges;
+      
+      // Apply safe field mapping for vessel master
+      if (isVesselMasterSave) {
+        // Ensure name field is populated if vessel field exists
+        if (entryChanges.vessel && !entryChanges.name) {
+          entryChanges.name = entryChanges.vessel;
+        }
+        
+        // Map imoNumber to description temporarily
+        if (entryChanges.imoNumber && !entryChanges.description) {
+          entryChanges.description = entryChanges.imoNumber;
+        }
+        
+        // Filter to only include safe fields for database
+        processedChanges = filterToSafeFields(entryChanges);
+        
+        // Validate that name field is populated
+        if (!processedChanges.name && entryChanges.vessel) {
+          processedChanges.name = entryChanges.vessel;
+        }
+      }
+      
+      // Apply safe field mapping for port master
+      if (isPortMasterSave) {
+        // Ensure name field is populated if portName field exists
+        if (entryChanges.portName && !entryChanges.name) {
+          entryChanges.name = entryChanges.portName;
+        }
+        
+        // Map coordinates to description temporarily
+        if ((entryChanges.latitude || entryChanges.longitude) && !entryChanges.description) {
+          const coords = { lat: entryChanges.latitude || '', lng: entryChanges.longitude || '' };
+          entryChanges.description = JSON.stringify(coords);
+        }
+        
+        // Filter to only include safe fields for database
+        processedChanges = filterToPortSafeFields(entryChanges);
+        
+        // Validate that name field is populated
+        if (!processedChanges.name && entryChanges.portName) {
+          processedChanges.name = entryChanges.portName;
+        }
+      }
+      
+      // Create save promise
+      const promise = updateEntryMutation.mutateAsync({ 
+        id: entryId as number, 
+        data: processedChanges, 
+        masterId 
+      });
+      
+      promises.push(promise);
+    });
+
+    // Wait for all saves to complete
+    await Promise.all(promises);
+
+    const successMessage = isVesselMasterSave 
+      ? `Saved vessel data for ${changes.size} entries (safe mode)`
+      : isPortMasterSave
+      ? `Saved port data for ${changes.size} entries (safe mode)`
+      : `Saved changes for ${changes.size} entries`;
+      
+    toast({
+      title: "Success",
+      description: successMessage,
+    });
+  };
+
+  const handleEditSessionNavigate = (target: string) => {
+    if (import.meta.env.DEV) {
+      console.log(`🔗 [EDIT_SESSION] Navigating to: ${target}`);
+    }
+    navigate(target);
+  };
+
+  return (
+    <EditSessionProvider
+      onSave={handleEditSessionSave}
+      onNavigate={handleEditSessionNavigate}
+    >
+      <AdminModuleInner />
     </EditSessionProvider>
   );
 };
