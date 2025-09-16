@@ -16,6 +16,39 @@ import {
   validateMasterSpecificEntry
 } from "./vesselMasterSafety";
 
+/**
+ * Basic field transformation from snake_case (database) to camelCase (frontend)
+ * for all master data entries
+ */
+function applyBasicFieldTransformation(entry: any): any {
+  if (!entry) return entry;
+  
+  const transformed = { ...entry };
+  
+  // Convert snake_case database fields to camelCase frontend fields
+  if (entry.entry_id !== undefined) {
+    transformed.entryId = entry.entry_id;
+    delete transformed.entry_id;
+  }
+  
+  if (entry.master_id !== undefined) {
+    transformed.masterId = entry.master_id;
+    delete transformed.master_id;
+  }
+  
+  if (entry.created_at !== undefined) {
+    transformed.createdAt = entry.created_at;
+    delete transformed.created_at;
+  }
+  
+  if (entry.updated_at !== undefined) {
+    transformed.updatedAt = entry.updated_at;
+    delete transformed.updated_at;
+  }
+  
+  return transformed;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for database connectivity
   app.get("/api/health", async (req, res) => {
@@ -507,6 +540,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (needsSpecialHandling(masterId) && entries) {
         responseEntries = entries.map((entry: any) => applyMasterSpecificMapping(entry, masterId));
         console.log(`🔧 [GET_LIST] Applied transformations for master ${masterId}, entries count: ${responseEntries.length}`);
+      } else if (entries) {
+        // Apply basic field transformation for regular masters (snake_case to camelCase)
+        responseEntries = entries.map((entry: any) => applyBasicFieldTransformation(entry));
+        console.log(`🔧 [GET_LIST] Applied basic field transformation for master ${masterId}, entries count: ${responseEntries.length}`);
       }
       
       res.json(responseEntries);
@@ -529,6 +566,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (needsSpecialHandling(masterId)) {
         responseEntry = applyMasterSpecificMapping(entry, masterId);
         console.log(`🔧 [GET_SINGLE] Applied transformations for master ${masterId}:`, responseEntry);
+      } else {
+        // Apply basic field transformation for regular masters (snake_case to camelCase)
+        responseEntry = applyBasicFieldTransformation(entry);
+        console.log(`🔧 [GET_SINGLE] Applied basic field transformation for master ${masterId}`);
       }
       
       res.json(responseEntry);
