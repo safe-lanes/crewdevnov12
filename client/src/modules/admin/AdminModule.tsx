@@ -714,18 +714,11 @@ const AdminModuleInner = (): JSX.Element => {
       console.log(`🎯 [INPUT_HANDLER] Current edit state - isEditing: ${isEditing}, activemaster: ${isEditingMaster(selectedMaster)}`);
     }
     
-    // Mark the field as dirty for edit session tracking
+    // Only track the change locally - no immediate API calls
     markDirty(itemId, field, value);
     
-    // Actually update the data via mutation
-    updateEntryMutation.mutate({ 
-      id: itemId, 
-      data: { [field]: value }, 
-      masterId: selectedMaster 
-    });
-    
     if (import.meta.env.DEV) {
-      console.log(`✅ [INPUT_HANDLER] Called markDirty and updateEntryMutation for ${itemId}.${field}`);
+      console.log(`✅ [INPUT_HANDLER] Called markDirty for ${itemId}.${field} - changes tracked locally`);
     }
   };
 
