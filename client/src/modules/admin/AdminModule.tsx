@@ -2502,36 +2502,6 @@ export const AdminModule = (): JSX.Element => {
       <div className="pb-4 pl-0 -mt-8">
         <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
           <CardContent className="pt-4 pb-4 pl-0">
-            {/* Diagnostics Bar - Debug Information */}
-            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <div className="text-xs font-medium text-yellow-800 mb-2">🔍 Masters Debug Info:</div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-yellow-700">
-                <div><strong>Selected:</strong> {selectedMaster}</div>
-                <div><strong>Total Masters:</strong> {(mastersList as any[]).length}</div>
-                <div><strong>Loading:</strong> {mastersLoading ? 'Yes' : 'No'}</div>
-                <div><strong>Error:</strong> {mastersError ? 'Yes' : 'No'}</div>
-              </div>
-              <div className="mt-2 flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={refreshMastersData}
-                  className="h-6 text-xs px-2 bg-white"
-                  data-testid="button-refresh-masters"
-                >
-                  🔄 Refresh Masters
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={navigateToPortMaster}
-                  className="h-6 text-xs px-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
-                  data-testid="button-navigate-port-master"
-                >
-                  🚢 Go to Port Master (018)
-                </Button>
-              </div>
-            </div>
             
             {/* Filters Bar */}
             <div className={`flex ${currentBreakpoint === 'mobile' ? 'flex-col space-y-3' : 'flex-wrap gap-4'} mb-4 p-4 pl-0 bg-[#f7fafc] rounded-lg`}>
