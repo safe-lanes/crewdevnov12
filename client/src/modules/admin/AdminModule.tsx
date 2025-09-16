@@ -2545,8 +2545,6 @@ export const AdminModule = (): JSX.Element => {
                           selectedMaster === master.id 
                             ? 'bg-blue-50 border-l-4 border-l-blue-500 text-blue-700 font-medium' 
                             : 'text-gray-700'
-                        } ${
-                          master.id === '018' ? 'ring-2 ring-orange-200 bg-orange-50' : '' // Highlight Port Master
                         }`}
                         data-testid={`master-item-${master.id}`}
                       >
@@ -2554,9 +2552,6 @@ export const AdminModule = (): JSX.Element => {
                           <span>{master.name}</span>
                           <span className="text-[10px] text-gray-400">ID: {master.id}</span>
                         </div>
-                        {master.id === '018' && (
-                          <div className="text-[10px] text-orange-600 mt-1">🚢 Port Master</div>
-                        )}
                       </div>
                     ))
                   )}
