@@ -817,21 +817,45 @@ const AdminModuleInner = (): JSX.Element => {
         
         // Wait for query to refetch with new entry, then auto-start edit mode
         // This ensures fresh baseline data when entering edit mode
-        setTimeout(() => {
-          if (import.meta.env.DEV) {
-            console.log('🔄 [AUTO_EDIT] Waiting for fresh data before auto-starting edit mode...');
-          }
-          // Trigger a manual refetch to ensure data is fresh
-          queryClient.invalidateQueries({ queryKey: ['/api/masters', selectedMaster, 'entries'] });
-          
-          // Wait an additional moment for the refetch to complete
-          setTimeout(() => {
+        (async () => {
+          try {
             if (import.meta.env.DEV) {
-              console.log('🎯 [AUTO_EDIT] Auto-starting edit mode with fresh baseline data');
+              console.log('🔄 [AUTO_EDIT] Waiting for fresh data before auto-starting edit mode...');
             }
+            
+            // Refetch the query and get fresh data
+            await queryClient.refetchQueries({ 
+              queryKey: ['/api/masters', selectedMaster, 'entries'],
+              exact: true
+            });
+            
+            // Get fresh data directly from the query cache
+            const freshRawData = (queryClient.getQueryData(['/api/masters', selectedMaster, 'entries']) as any[]) || [];
+            
+            // Apply field mapping if needed (same logic as masterData useMemo)
+            const freshMasterData = (() => {
+              if (isVesselMaster(selectedMaster)) {
+                return freshRawData.map((item: any) => mapSafeFieldsToVesselData(item));
+              }
+              if (isPortMaster(selectedMaster)) {
+                return freshRawData.map((item: any) => mapSafeFieldsToPortData(item));
+              }
+              return freshRawData;
+            })();
+            
+            if (import.meta.env.DEV) {
+              console.log('🎯 [AUTO_EDIT] Fresh data loaded - auto-starting edit mode with proper baseline');
+              console.log('📊 [AUTO_EDIT] Fresh master data entries:', freshMasterData.length);
+            }
+            
+            // Start edit with fresh data directly (not using handleEditMaster)
+            startEdit(selectedMaster, freshMasterData);
+          } catch (error) {
+            console.error('❌ [AUTO_EDIT] Failed to refetch data for auto-edit:', error);
+            // Fallback: still try to enter edit mode even if refetch failed
             handleEditMaster();
-          }, 200);
-        }, 100);
+          }
+        })();
       },
       onError: (error) => {
         console.error('❌ [UI] Failed to create new entry:', error);
