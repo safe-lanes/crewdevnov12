@@ -80,49 +80,49 @@ export function filterVesselMasterData(data: any, masterId: string): Partial<Ins
   console.log(`🚢 [SERVER FILTER] Filtering vessel master data for masterId: ${masterId}`);
   console.log(`🚢 [SERVER FILTER] Original data:`, data);
 
-  // Create minimal safe object with only guaranteed-to-exist fields
-  const safeData: any = {
-    masterId: masterId,
-    entryId: data.entryId || '',
-    name: '', // Required field
-    description: '', // Safe field
-    isActive: true,
-    isDeleted: false
-  };
+  // Create safe object with only fields that are being updated (partial updates)
+  const safeData: any = {};
+  
+  // Always include masterId for identification
+  if (masterId) {
+    safeData.masterId = masterId;
+  }
 
-  // Apply vessel-specific field mappings to safe fields only
-  if (data.vessel) {
+  // Apply vessel-specific field mappings ONLY for fields that are provided
+  if (data.vessel !== undefined) {
     safeData.name = data.vessel;
     console.log(`🚢 [SERVER FILTER] Mapping vessel "${data.vessel}" to name field`);
-  } else if (data.name) {
+  } else if (data.name !== undefined) {
     safeData.name = data.name;
   }
 
-  if (data.imoNumber) {
+  if (data.imoNumber !== undefined) {
     safeData.description = data.imoNumber;
     console.log(`🚢 [SERVER FILTER] Mapping imoNumber "${data.imoNumber}" to description field`);
-  } else if (data.description) {
+  } else if (data.description !== undefined) {
     safeData.description = data.description;
   }
-
-  // Ensure required name field is populated
-  if (!safeData.name && safeData.entryId) {
-    safeData.name = `Vessel ${safeData.entryId}`;
-    console.log(`🚢 [SERVER FILTER] Auto-generating name: "${safeData.name}"`);
+  
+  // Include vesselType if provided (safe field)
+  if (data.vesselType !== undefined) {
+    safeData.vesselType = data.vesselType;
   }
 
-  // Only include explicitly safe fields to avoid unknown column errors
-  const filteredSafeData = {
-    masterId: safeData.masterId,
-    entryId: safeData.entryId, 
-    name: safeData.name,
-    description: safeData.description,
-    isActive: safeData.isActive,
-    isDeleted: safeData.isDeleted
-  };
+  // Include other safe fields only if they are provided
+  if (data.entryId !== undefined) {
+    safeData.entryId = data.entryId;
+  }
+  
+  if (data.isActive !== undefined) {
+    safeData.isActive = data.isActive;
+  }
+  
+  if (data.isDeleted !== undefined) {
+    safeData.isDeleted = data.isDeleted;
+  }
 
-  console.log(`🚢 [SERVER FILTER] Filtered safe data:`, filteredSafeData);
-  return filteredSafeData;
+  console.log(`🚢 [SERVER FILTER] Filtered safe data (partial update):`, safeData);
+  return safeData;
 }
 
 /**
