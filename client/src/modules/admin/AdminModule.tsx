@@ -800,7 +800,7 @@ export const AdminModule = (): JSX.Element => {
     setIsMasterEditing(false);
   };
 
-  const updateMasterField = (itemId: number, field: 'entryId' | 'name' | 'description' | 'countryName' | 'country' | 'countryCode' | 'vesselType' | 'vtuid' | 'tanker' | 'oilTanker' | 'gasTanker' | 'chemicalTanker' | 'bulk' | 'vessel' | 'imoNumber', value: string | boolean) => {
+  const updateMasterField = (itemId: number, field: 'entryId' | 'name' | 'description' | 'countryName' | 'country' | 'countryCode' | 'vesselType' | 'vtuid' | 'tanker' | 'oilTanker' | 'gasTanker' | 'chemicalTanker' | 'bulk' | 'vessel' | 'imoNumber' | 'cid', value: string | boolean) => {
     updateEntryMutation.mutate({ 
       id: itemId, 
       data: { [field]: value }, 
@@ -2897,11 +2897,11 @@ export const AdminModule = (): JSX.Element => {
                                 <span className="text-xs text-gray-700">{item.imoNumber || <em className="text-gray-400">No IMO number</em>}</span>
                               )
                             ) : selectedMaster === "018" ? (
-                              // Port master - show portcode field (port code/UN LOCODE) but save to 'description' (safe field)
+                              // Port master - show portcode field (port code/UN LOCODE) but save to 'cid' (safe field)
                               isMasterEditing ? (
                                 <Input
                                   value={item.portcode || ''}
-                                  onChange={(e) => updateMasterField(item.id, 'description', e.target.value)}
+                                  onChange={(e) => updateMasterField(item.id, 'cid', e.target.value)}
                                   className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
                                   placeholder={isNewEntry ? "Enter port code..." : ""}
                                   data-testid={`input-portcode-${item.id}`}
