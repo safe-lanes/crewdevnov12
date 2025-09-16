@@ -2531,7 +2531,7 @@ const AdminModuleInner = (): JSX.Element => {
               {/* Right Table - Selected Master Data */}
               <div className={`${currentBreakpoint === 'mobile' ? 'w-full' : 'flex-1'}`}>
                 <div className="bg-[#52baf3] text-white text-xs font-medium p-0">
-                  <div className={`grid ${selectedMaster === "014" ? 'grid-cols-5' : 'grid-cols-4'} gap-0`}>
+                  <div className={`grid ${(selectedMaster === "014" || selectedMaster === "013") ? 'grid-cols-5' : 'grid-cols-4'} gap-0`}>
                     <div className="p-3 border-r border-blue-400">Entry ID</div>
                     {selectedMaster === "001" ? (
                       <>
@@ -2607,7 +2607,7 @@ const AdminModuleInner = (): JSX.Element => {
                         : !item.name && !item.description;   // For other masters
                       
                       return (
-                        <div key={item.id} className={`grid ${selectedMaster === "014" ? 'grid-cols-5' : 'grid-cols-4'} gap-0 border-b border-gray-100 hover:bg-gray-50 ${
+                        <div key={item.id} className={`grid ${(selectedMaster === "014" || selectedMaster === "013") ? 'grid-cols-5' : 'grid-cols-4'} gap-0 border-b border-gray-100 hover:bg-gray-50 ${
                           isNewEntry && isMasterInEditMode ? 'bg-blue-50 border-blue-200' : ''
                         }`}>
                           <div className="p-3 border-r border-gray-200">
