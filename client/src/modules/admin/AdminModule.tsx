@@ -800,7 +800,7 @@ export const AdminModule = (): JSX.Element => {
     setIsMasterEditing(false);
   };
 
-  const updateMasterField = (itemId: number, field: 'entryId' | 'name' | 'description' | 'countryName' | 'country' | 'countryCode' | 'vesselType' | 'vtuid' | 'tanker' | 'oilTanker' | 'gasTanker' | 'chemicalTanker' | 'bulk' | 'vessel' | 'imoNumber' | 'cid', value: string | boolean) => {
+  const updateMasterField = (itemId: number, field: 'name' | 'description' | 'countryName' | 'country' | 'countryCode' | 'vesselType' | 'vtuid' | 'tanker' | 'oilTanker' | 'gasTanker' | 'chemicalTanker' | 'bulk' | 'vessel' | 'imoNumber' | 'cid', value: string | boolean) => {
     updateEntryMutation.mutate({ 
       id: itemId, 
       data: { [field]: value }, 
@@ -2633,17 +2633,7 @@ export const AdminModule = (): JSX.Element => {
                           isNewEntry && isMasterEditing ? 'bg-blue-50 border-blue-200' : ''
                         }`}>
                           <div className="p-3 border-r border-gray-200">
-                            {isMasterEditing ? (
-                              <Input
-                                value={item.entryId || ''}
-                                onChange={(e) => updateMasterField(item.id, 'entryId', e.target.value)}
-                                className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                placeholder={isNewEntry ? "Enter ID..." : ""}
-                                data-testid={`input-entryId-${item.id}`}
-                              />
-                            ) : (
-                              <span className="text-xs text-gray-700">{item.entryId}</span>
-                            )}
+                            <span className="text-xs text-gray-700">{item.entryId}</span>
                           </div>
                           
                           {/* Second column - conditional based on master type */}
