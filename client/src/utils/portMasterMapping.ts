@@ -149,46 +149,31 @@ export function mapPortDataToSafeFields(
  * @returns Port data in UI format
  */
 export function mapSafeFieldsToPortData(dbEntry: any): PortMasterEntry {
-  // Parse coordinates from description field
-  let latitude = '';
-  let longitude = '';
-  
-  if (dbEntry.description) {
-    try {
-      const coords = JSON.parse(dbEntry.description);
-      latitude = coords.lat || '';
-      longitude = coords.lng || '';
-    } catch {
-      // If not valid JSON, treat as regular description
-      // Could be legacy data
-    }
-  }
-
   return {
     id: dbEntry.id,
-    entryId: dbEntry.entry_id || dbEntry.entryId || '',      // Handle snake_case from DB
-    portName: dbEntry.name || '',                            // Map name back to portName
-    puid: dbEntry.nuid || '',                                // Map nuid back to puid
-    latitude: latitude,                                      // Extract from description JSON
-    longitude: longitude,                                    // Extract from description JSON
-    portcode: dbEntry.cid || '',                            // Map cid back to portcode
+    entryId: dbEntry.entry_id || dbEntry.entryId || '',           // Handle snake_case from DB
+    portName: dbEntry.portName || dbEntry.name || '',             // Use actual portName field from DB
+    puid: dbEntry.nuid || '',                                     // Map nuid back to puid
+    latitude: dbEntry.latitude?.toString() || '',                // Direct latitude from DB
+    longitude: dbEntry.longitude?.toString() || '',              // Direct longitude from DB
+    portcode: dbEntry.portCode || dbEntry.cid || '',             // Use actual portCode field from DB
     country: dbEntry.country || '',
     countryName: dbEntry.countryName || '',
     countryCode: dbEntry.countryCode || '',
     isActive: dbEntry.isActive ?? true,
     isDeleted: dbEntry.isDeleted ?? false,
     createdBy: dbEntry.createdBy || '',
-    // Set empty defaults for unsupported fields to avoid UI errors
-    timezone: '',
-    region: '',
-    subRegion: '',
-    continentCode: '',
-    portType: '',
-    facilities: '',
-    maxVesselSize: '',
-    harborMaster: '',
-    contactInfo: '',
-    operatingHours: ''
+    // Use actual database fields where available
+    timezone: dbEntry.timeZone || '',                            // Use timeZone from DB
+    region: dbEntry.region || '',                               // Use region from DB
+    subRegion: '',                                              // Not in current DB schema
+    continentCode: '',                                          // Not in current DB schema
+    portType: dbEntry.harborType || '',                         // Use harborType as portType
+    facilities: dbEntry.facilities || '',                       // Use facilities from DB
+    maxVesselSize: '',                                          // Not in current DB schema
+    harborMaster: '',                                           // Not in current DB schema
+    contactInfo: '',                                            // Not in current DB schema
+    operatingHours: ''                                          // Not in current DB schema
   };
 }
 
