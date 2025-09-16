@@ -2611,7 +2611,7 @@ const AdminModuleInner = (): JSX.Element => {
                           isNewEntry && isMasterInEditMode ? 'bg-blue-50 border-blue-200' : ''
                         }`}>
                           <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">{item.entryId}</span>
+                            <span className="text-xs text-gray-700">{item.entryId || item.entry_id || <em className="text-gray-400">No entry ID</em>}</span>
                           </div>
                           
                           {/* Second column - conditional based on master type */}
