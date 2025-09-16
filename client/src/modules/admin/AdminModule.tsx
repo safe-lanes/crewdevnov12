@@ -2697,6 +2697,34 @@ const AdminModuleInner = (): JSX.Element => {
                               ) : (
                                 <span className="text-xs text-gray-700">{item.portName || <em className="text-gray-400">No port name</em>}</span>
                               )
+                            ) : selectedMaster === "012" ? (
+                              // Designation master - show name field (designation name)
+                              isMasterInEditMode ? (
+                                <Input
+                                  value={getEffectiveValue(item.id, 'name', item.name)}
+                                  onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
+                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                  placeholder={isNewEntry ? "Enter designation..." : ""}
+                                  data-testid={`input-name-${item.id}`}
+                                  autoFocus={isNewEntry}
+                                />
+                              ) : (
+                                <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No designation</em>}</span>
+                              )
+                            ) : selectedMaster === "013" ? (
+                              // Users master - show firstname field
+                              isMasterInEditMode ? (
+                                <Input
+                                  value={getEffectiveValue(item.id, 'firstname', item.firstname)}
+                                  onChange={(e) => updateMasterField(item.id, 'firstname', e.target.value)}
+                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                  placeholder={isNewEntry ? "Enter first name..." : ""}
+                                  data-testid={`input-firstname-${item.id}`}
+                                  autoFocus={isNewEntry}
+                                />
+                              ) : (
+                                <span className="text-xs text-gray-700">{item.firstname || <em className="text-gray-400">No first name</em>}</span>
+                              )
                             ) : (
                               // Other masters - show name field
                               isMasterInEditMode ? (
