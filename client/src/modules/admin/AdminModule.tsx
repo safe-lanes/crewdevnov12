@@ -629,6 +629,16 @@ const AdminModuleInner = (): JSX.Element => {
   // Check if this master is currently being edited (replacing isMasterInEditMode)
   const isMasterInEditMode = isEditingMaster(selectedMaster);
 
+  // Helper function to get current effective value for input display
+  // Returns pending change value if exists, otherwise original value
+  const getEffectiveValue = (itemId: number, fieldName: string, originalValue: any): string => {
+    const entryChanges = pendingChanges.get(itemId);
+    if (entryChanges && entryChanges.hasOwnProperty(fieldName)) {
+      return entryChanges[fieldName] || '';
+    }
+    return originalValue || '';
+  };
+
   // Edit handlers with baseline capture
   const handleEditMaster = () => {
     if (import.meta.env.DEV) {
@@ -2596,7 +2606,7 @@ const AdminModuleInner = (): JSX.Element => {
                               // Nationality master - show countryName field
                               isMasterInEditMode ? (
                                 <Input
-                                  value={item.countryName || ''}
+                                  value={getEffectiveValue(item.id, 'countryName', item.countryName)}
                                   onChange={(e) => updateMasterField(item.id, 'countryName', e.target.value)}
                                   className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
                                   placeholder={isNewEntry ? "Enter nationality..." : ""}
@@ -2610,7 +2620,7 @@ const AdminModuleInner = (): JSX.Element => {
                               // Country master - show name field (country name)
                               isMasterInEditMode ? (
                                 <Input
-                                  value={item.name || ''}
+                                  value={getEffectiveValue(item.id, 'name', item.name)}
                                   onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
                                   className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
                                   placeholder={isNewEntry ? "Enter country..." : ""}
@@ -2624,7 +2634,7 @@ const AdminModuleInner = (): JSX.Element => {
                               // Language master - show name field (language name)
                               isMasterInEditMode ? (
                                 <Input
-                                  value={item.name || ''}
+                                  value={getEffectiveValue(item.id, 'name', item.name)}
                                   onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
                                   className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
                                   placeholder={isNewEntry ? "Enter language..." : ""}
@@ -2638,7 +2648,7 @@ const AdminModuleInner = (): JSX.Element => {
                               // Vessel type master - show vesselType field
                               isMasterInEditMode ? (
                                 <Input
-                                  value={item.vesselType || ''}
+                                  value={getEffectiveValue(item.id, 'vesselType', item.vesselType)}
                                   onChange={(e) => updateMasterField(item.id, 'vesselType', e.target.value)}
                                   className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
                                   placeholder={isNewEntry ? "Enter vessel type..." : ""}
@@ -2652,7 +2662,7 @@ const AdminModuleInner = (): JSX.Element => {
                               // Vessel master - show vessel field
                               isMasterInEditMode ? (
                                 <Input
-                                  value={item.vessel || ''}
+                                  value={getEffectiveValue(item.id, 'vessel', item.vessel)}
                                   onChange={(e) => updateMasterField(item.id, 'vessel', e.target.value)}
                                   className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
                                   placeholder={isNewEntry ? "Enter vessel name..." : ""}
@@ -2666,7 +2676,7 @@ const AdminModuleInner = (): JSX.Element => {
                               // Port master - show portName field (port name) but save to 'name' (safe field)
                               isMasterInEditMode ? (
                                 <Input
-                                  value={item.portName || ''}
+                                  value={getEffectiveValue(item.id, 'name', item.portName)}
                                   onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
                                   className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
                                   placeholder={isNewEntry ? "Enter port name..." : ""}
@@ -2796,7 +2806,7 @@ const AdminModuleInner = (): JSX.Element => {
                               // Vessel master - show imoNumber field
                               isMasterInEditMode ? (
                                 <Input
-                                  value={item.imoNumber || ''}
+                                  value={getEffectiveValue(item.id, 'imoNumber', item.imoNumber)}
                                   onChange={(e) => updateMasterField(item.id, 'imoNumber', e.target.value)}
                                   className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
                                   placeholder={isNewEntry ? "Enter IMO number..." : ""}
