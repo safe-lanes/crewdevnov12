@@ -149,27 +149,49 @@ export function mapPortDataToSafeFields(
  * @returns Port data in UI format
  */
 export function mapSafeFieldsToPortData(dbEntry: any): PortMasterEntry {
+  // Extract coordinates from description JSON (where they're actually stored due to safe field mapping)
+  let latitude = '';
+  let longitude = '';
+  
+  if (typeof dbEntry.description === 'string') {
+    try {
+      const coords = JSON.parse(dbEntry.description);
+      latitude = coords.lat || '';
+      longitude = coords.lng || '';
+    } catch {
+      // Not valid JSON, treat as regular description
+    }
+  }
+  
+  // Fallback to direct fields if coordinates weren't in JSON
+  if (!latitude && dbEntry.latitude != null) {
+    latitude = String(dbEntry.latitude);
+  }
+  if (!longitude && dbEntry.longitude != null) {
+    longitude = String(dbEntry.longitude);
+  }
+
   return {
     id: dbEntry.id,
-    entryId: dbEntry.entry_id || dbEntry.entryId || '',           // Handle snake_case from DB
-    portName: dbEntry.portName || dbEntry.name || '',             // Use actual portName field from DB
-    puid: dbEntry.nuid || '',                                     // Map nuid back to puid
-    latitude: dbEntry.latitude?.toString() || '',                // Direct latitude from DB
-    longitude: dbEntry.longitude?.toString() || '',              // Direct longitude from DB
-    portcode: dbEntry.portCode || dbEntry.cid || '',             // Use actual portCode field from DB
-    country: dbEntry.country || '',
-    countryName: dbEntry.countryName || '',
-    countryCode: dbEntry.countryCode || '',
-    isActive: dbEntry.isActive ?? true,
-    isDeleted: dbEntry.isDeleted ?? false,
-    createdBy: dbEntry.createdBy || '',
-    // Use actual database fields where available
-    timezone: dbEntry.timeZone || '',                            // Use timeZone from DB
-    region: dbEntry.region || '',                               // Use region from DB
+    entryId: dbEntry.entryId ?? dbEntry.entry_id ?? '',           // Handle snake_case from DB
+    portName: dbEntry.name ?? dbEntry.portName ?? '',             // Port name is stored in 'name' field due to safe mapping
+    puid: dbEntry.nuid ?? dbEntry.puid ?? '',                     // Map nuid back to puid with fallback
+    latitude: latitude,                                           // From description JSON or direct field
+    longitude: longitude,                                         // From description JSON or direct field  
+    portcode: dbEntry.cid ?? dbEntry.portCode ?? dbEntry.port_code ?? '', // Check safe field first
+    country: dbEntry.country ?? '',
+    countryName: dbEntry.countryName ?? dbEntry.country_name ?? '',
+    countryCode: dbEntry.countryCode ?? dbEntry.country_code ?? '',
+    isActive: dbEntry.isActive ?? dbEntry.is_active ?? true,
+    isDeleted: dbEntry.isDeleted ?? dbEntry.is_deleted ?? false,
+    createdBy: dbEntry.createdBy ?? dbEntry.created_by ?? '',
+    // Additional fields with snake_case fallbacks
+    timezone: dbEntry.timeZone ?? dbEntry.time_zone ?? '',
+    region: dbEntry.region ?? '',                               
     subRegion: '',                                              // Not in current DB schema
     continentCode: '',                                          // Not in current DB schema
-    portType: dbEntry.harborType || '',                         // Use harborType as portType
-    facilities: dbEntry.facilities || '',                       // Use facilities from DB
+    portType: dbEntry.harborType ?? dbEntry.harbor_type ?? '',  // Use harborType as portType
+    facilities: dbEntry.facilities ?? '',                       
     maxVesselSize: '',                                          // Not in current DB schema
     harborMaster: '',                                           // Not in current DB schema
     contactInfo: '',                                            // Not in current DB schema
