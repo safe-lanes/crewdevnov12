@@ -131,14 +131,38 @@ export function filterVesselMasterData(data: any, masterId: string): Partial<Ins
 export function mapDatabaseToVesselDisplay(dbEntry: any): any {
   if (!dbEntry) return dbEntry;
 
+  // First apply basic field transformation (snake_case to camelCase)
+  const basicTransformed = { ...dbEntry };
+  
+  // Convert snake_case database fields to camelCase frontend fields
+  if (dbEntry.entry_id !== undefined) {
+    basicTransformed.entryId = dbEntry.entry_id;
+    delete basicTransformed.entry_id;
+  }
+  
+  if (dbEntry.master_id !== undefined) {
+    basicTransformed.masterId = dbEntry.master_id;
+    delete basicTransformed.master_id;
+  }
+  
+  if (dbEntry.created_at !== undefined) {
+    basicTransformed.createdAt = dbEntry.created_at;
+    delete basicTransformed.created_at;
+  }
+  
+  if (dbEntry.updated_at !== undefined) {
+    basicTransformed.updatedAt = dbEntry.updated_at;
+    delete basicTransformed.updated_at;
+  }
+
   return {
-    ...dbEntry,
+    ...basicTransformed,
     // Map safe fields back to vessel fields for frontend consumption
-    vessel: dbEntry.name || '',
-    imoNumber: dbEntry.description || '',
+    vessel: basicTransformed.name || '',
+    imoNumber: basicTransformed.description || '',
     // Include other safe fields as-is
-    name: dbEntry.name || '',
-    description: dbEntry.description || ''
+    name: basicTransformed.name || '',
+    description: basicTransformed.description || ''
   };
 }
 
@@ -266,8 +290,32 @@ export function mapDatabaseToGroupsDisplay(dbEntry: any): any {
 
   console.log(`🎯 [GROUPS MAP] Mapping database entry to display format:`, dbEntry);
   
+  // First apply basic field transformation (snake_case to camelCase)
+  const basicTransformed = { ...dbEntry };
+  
+  // Convert snake_case database fields to camelCase frontend fields
+  if (dbEntry.entry_id !== undefined) {
+    basicTransformed.entryId = dbEntry.entry_id;
+    delete basicTransformed.entry_id;
+  }
+  
+  if (dbEntry.master_id !== undefined) {
+    basicTransformed.masterId = dbEntry.master_id;
+    delete basicTransformed.master_id;
+  }
+  
+  if (dbEntry.created_at !== undefined) {
+    basicTransformed.createdAt = dbEntry.created_at;
+    delete basicTransformed.created_at;
+  }
+  
+  if (dbEntry.updated_at !== undefined) {
+    basicTransformed.updatedAt = dbEntry.updated_at;
+    delete basicTransformed.updated_at;
+  }
+  
   // Apply vesselIds transformation from database
-  const transformedEntry = transformVesselIds(dbEntry, 'fromDatabase');
+  const transformedEntry = transformVesselIds(basicTransformed, 'fromDatabase');
   console.log(`🎯 [GROUPS MAP] After vesselIds transformation:`, transformedEntry);
 
   return transformedEntry;
@@ -371,8 +419,32 @@ export function mapDatabaseToOwnersDisplay(dbEntry: any): any {
 
   console.log(`🏢 [OWNERS MAP] Mapping database entry to display format:`, dbEntry);
   
+  // First apply basic field transformation (snake_case to camelCase)
+  const basicTransformed = { ...dbEntry };
+  
+  // Convert snake_case database fields to camelCase frontend fields
+  if (dbEntry.entry_id !== undefined) {
+    basicTransformed.entryId = dbEntry.entry_id;
+    delete basicTransformed.entry_id;
+  }
+  
+  if (dbEntry.master_id !== undefined) {
+    basicTransformed.masterId = dbEntry.master_id;
+    delete basicTransformed.master_id;
+  }
+  
+  if (dbEntry.created_at !== undefined) {
+    basicTransformed.createdAt = dbEntry.created_at;
+    delete basicTransformed.created_at;
+  }
+  
+  if (dbEntry.updated_at !== undefined) {
+    basicTransformed.updatedAt = dbEntry.updated_at;
+    delete basicTransformed.updated_at;
+  }
+  
   // Apply vesselIds transformation from database (reusing Additional Groups logic)
-  const transformedEntry = transformVesselIds(dbEntry, 'fromDatabase');
+  const transformedEntry = transformVesselIds(basicTransformed, 'fromDatabase');
   console.log(`🏢 [OWNERS MAP] After vesselIds transformation:`, transformedEntry);
 
   return transformedEntry;
