@@ -832,6 +832,9 @@ const AdminModuleInner = (): JSX.Element => {
   };
 
   const updateMasterField = (itemId: number, field: 'name' | 'description' | 'countryName' | 'country' | 'countryCode' | 'vesselType' | 'vtuid' | 'tanker' | 'oilTanker' | 'gasTanker' | 'chemicalTanker' | 'bulk' | 'vessel' | 'imoNumber' | 'cid', value: string | boolean) => {
+    // Mark the field as dirty for edit session tracking
+    markDirty(itemId, field, value);
+    
     updateEntryMutation.mutate({ 
       id: itemId, 
       data: { [field]: value }, 
