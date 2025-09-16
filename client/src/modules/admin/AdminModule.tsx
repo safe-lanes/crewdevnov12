@@ -2660,7 +2660,7 @@ export const AdminModule = (): JSX.Element => {
                         : selectedMaster === "014"
                         ? !item.vessel && !item.imoNumber && !item.vesselType    // For vessel master
                         : selectedMaster === "018"
-                        ? !item.name && !item.description     // For port master (port name and port code)
+                        ? !item.portName && !item.portcode     // For port master (port name and port code)
                         : !item.name && !item.description;   // For other masters
                       
                       return (
@@ -2754,18 +2754,18 @@ export const AdminModule = (): JSX.Element => {
                                 <span className="text-xs text-gray-700">{item.vessel || <em className="text-gray-400">No vessel</em>}</span>
                               )
                             ) : selectedMaster === "018" ? (
-                              // Port master - show name field (port name)
+                              // Port master - show portName field (port name) but save to 'name' (safe field)
                               isMasterEditing ? (
                                 <Input
-                                  value={item.name || ''}
+                                  value={item.portName || ''}
                                   onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
                                   className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
                                   placeholder={isNewEntry ? "Enter port name..." : ""}
-                                  data-testid={`input-name-${item.id}`}
+                                  data-testid={`input-portName-${item.id}`}
                                   autoFocus={isNewEntry}
                                 />
                               ) : (
-                                <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No port name</em>}</span>
+                                <span className="text-xs text-gray-700">{item.portName || <em className="text-gray-400">No port name</em>}</span>
                               )
                             ) : (
                               // Other masters - show name field
@@ -2897,17 +2897,17 @@ export const AdminModule = (): JSX.Element => {
                                 <span className="text-xs text-gray-700">{item.imoNumber || <em className="text-gray-400">No IMO number</em>}</span>
                               )
                             ) : selectedMaster === "018" ? (
-                              // Port master - show description field (port code/UN LOCODE)
+                              // Port master - show portcode field (port code/UN LOCODE) but save to 'description' (safe field)
                               isMasterEditing ? (
                                 <Input
-                                  value={item.description || ''}
+                                  value={item.portcode || ''}
                                   onChange={(e) => updateMasterField(item.id, 'description', e.target.value)}
                                   className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
                                   placeholder={isNewEntry ? "Enter port code..." : ""}
-                                  data-testid={`input-description-${item.id}`}
+                                  data-testid={`input-portcode-${item.id}`}
                                 />
                               ) : (
-                                <span className="text-xs text-gray-700">{item.description || <em className="text-gray-400">No port code</em>}</span>
+                                <span className="text-xs text-gray-700">{item.portcode || <em className="text-gray-400">No port code</em>}</span>
                               )
                             ) : (
                               // Other masters - show description field
