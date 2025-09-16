@@ -2750,7 +2750,7 @@ const AdminModuleInner = (): JSX.Element => {
                                 <div className="grid grid-cols-3 gap-1 text-xs">
                                   <label className="flex items-center space-x-1">
                                     <Checkbox
-                                      checked={item.tanker || false}
+                                      checked={Boolean(getEffectiveValue(item.id, 'tanker', item.tanker))}
                                       onCheckedChange={(checked) => updateMasterField(item.id, 'tanker', Boolean(checked))}
                                       data-testid={`checkbox-tanker-${item.id}`}
                                     />
@@ -2758,7 +2758,7 @@ const AdminModuleInner = (): JSX.Element => {
                                   </label>
                                   <label className="flex items-center space-x-1">
                                     <Checkbox
-                                      checked={item.oilTanker || false}
+                                      checked={Boolean(getEffectiveValue(item.id, 'oilTanker', item.oilTanker))}
                                       onCheckedChange={(checked) => updateMasterField(item.id, 'oilTanker', Boolean(checked))}
                                       data-testid={`checkbox-oilTanker-${item.id}`}
                                     />
@@ -2766,7 +2766,7 @@ const AdminModuleInner = (): JSX.Element => {
                                   </label>
                                   <label className="flex items-center space-x-1">
                                     <Checkbox
-                                      checked={item.gasTanker || false}
+                                      checked={Boolean(getEffectiveValue(item.id, 'gasTanker', item.gasTanker))}
                                       onCheckedChange={(checked) => updateMasterField(item.id, 'gasTanker', Boolean(checked))}
                                       data-testid={`checkbox-gasTanker-${item.id}`}
                                     />
@@ -2774,7 +2774,7 @@ const AdminModuleInner = (): JSX.Element => {
                                   </label>
                                   <label className="flex items-center space-x-1">
                                     <Checkbox
-                                      checked={item.chemicalTanker || false}
+                                      checked={Boolean(getEffectiveValue(item.id, 'chemicalTanker', item.chemicalTanker))}
                                       onCheckedChange={(checked) => updateMasterField(item.id, 'chemicalTanker', Boolean(checked))}
                                       data-testid={`checkbox-chemicalTanker-${item.id}`}
                                     />
@@ -2782,7 +2782,7 @@ const AdminModuleInner = (): JSX.Element => {
                                   </label>
                                   <label className="flex items-center space-x-1">
                                     <Checkbox
-                                      checked={item.bulk || false}
+                                      checked={Boolean(getEffectiveValue(item.id, 'bulk', item.bulk))}
                                       onCheckedChange={(checked) => updateMasterField(item.id, 'bulk', Boolean(checked))}
                                       data-testid={`checkbox-bulk-${item.id}`}
                                     />

@@ -217,19 +217,22 @@ export function transformVesselIds(data: any, direction: 'toDatabase' | 'fromDat
     
     if (Array.isArray(vesselIdsArray)) {
       console.log(`🎯 [VESSEL_IDS] Converting array to JSON string:`, vesselIdsArray);
-      return {
+      const result = {
         ...data,
-        vesselIds: JSON.stringify(vesselIdsArray),
-        // Remove the alternative casing to avoid duplication
-        VesselIDs: undefined
+        vesselIds: JSON.stringify(vesselIdsArray)
       };
+      // Remove the alternative casing to avoid duplication
+      delete result.VesselIDs;
+      return result;
     } else if (typeof vesselIdsArray === 'string') {
       console.log(`🎯 [VESSEL_IDS] VesselIds already string, keeping as-is:`, vesselIdsArray);
-      return {
+      const result = {
         ...data,
-        vesselIds: vesselIdsArray,
-        VesselIDs: undefined
+        vesselIds: vesselIdsArray
       };
+      // Remove the alternative casing to avoid duplication
+      delete result.VesselIDs;
+      return result;
     }
   } else if (direction === 'fromDatabase') {
     // Convert JSON string back to array for API response
@@ -273,10 +276,10 @@ export function filterAdditionalGroupsData(data: any, masterId: string): Partial
   const normalizedData = {
     ...transformedData,
     // Ensure vesselIds is the canonical field name
-    vesselIds: transformedData.vesselIds || transformedData.VesselIDs,
-    // Remove alternative casing to avoid duplication
-    VesselIDs: undefined
+    vesselIds: transformedData.vesselIds || transformedData.VesselIDs
   };
+  // Remove alternative casing to avoid duplication
+  delete normalizedData.VesselIDs;
 
   console.log(`🎯 [GROUPS FILTER] After field normalization:`, normalizedData);
   return normalizedData;
