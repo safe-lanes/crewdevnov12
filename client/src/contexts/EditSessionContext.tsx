@@ -81,6 +81,7 @@ export function EditSessionProvider({
   const startEdit = useCallback((masterId: string, baselineData: Record<string, any>[]) => {
     if (import.meta.env.DEV) {
       console.log(`🎯 [EDIT_SESSION] Starting edit session for master ${masterId}`);
+      console.log(`📊 [BASELINE] Raw baseline data (${baselineData.length} entries):`, baselineData);
     }
     
     // Convert baseline array to Map keyed by entry ID
@@ -89,8 +90,19 @@ export function EditSessionProvider({
       const id = entry.id || entry.entryId;
       if (id) {
         baselineMap.set(id, { ...entry }); // Deep copy each entry
+        if (import.meta.env.DEV) {
+          console.log(`📊 [BASELINE] Stored entry ${id}:`, { ...entry });
+        }
+      } else {
+        if (import.meta.env.DEV) {
+          console.warn(`⚠️ [BASELINE] Entry missing ID:`, entry);
+        }
       }
     });
+    
+    if (import.meta.env.DEV) {
+      console.log(`📊 [BASELINE] Final baseline map (${baselineMap.size} entries):`, Array.from(baselineMap.entries()));
+    }
     
     setState(prev => ({
       ...prev,
@@ -107,23 +119,38 @@ export function EditSessionProvider({
   const stopEdit = useCallback(() => {
     if (import.meta.env.DEV) {
       console.log('🛑 [EDIT_SESSION] Stopping edit session');
+      console.log('🛑 [EDIT_SESSION] Previous state - isDirty:', state.isDirty, 'pendingChanges:', state.pendingChanges.size);
     }
     
     setState(initialState);
-  }, []);
+    
+    if (import.meta.env.DEV) {
+      console.log('🛑 [EDIT_SESSION] Edit session stopped - state reset to initial');
+    }
+  }, [state.isDirty, state.pendingChanges]);
 
   const markDirty = useCallback((entryId: string | number, fieldName: string, value: any) => {
+    if (import.meta.env.DEV) {
+      console.log(`🎯 [DIRTY_TRACKING] markDirty called: ${entryId}.${fieldName} = ${JSON.stringify(value)}`);
+    }
+    
     setState(prev => {
       // Guardrails: only allow changes when in edit mode
       if (!prev.isEditing) {
         if (import.meta.env.DEV) {
           console.warn(`⚠️ [EDIT_SESSION] Ignoring change when not in edit mode: ${entryId}.${fieldName}`);
+          console.warn(`⚠️ [EDIT_SESSION] Current edit state - isEditing: ${prev.isEditing}, activeMasterId: ${prev.activeMasterId}`);
         }
         return prev;
       }
 
       const newPendingChanges = new Map(prev.pendingChanges);
       const baselineEntry = prev.baseline.get(entryId);
+      
+      if (import.meta.env.DEV) {
+        console.log(`🎯 [DIRTY_TRACKING] Baseline for entry ${entryId}:`, baselineEntry);
+        console.log(`🎯 [DIRTY_TRACKING] All baseline entries:`, Array.from(prev.baseline.entries()));
+      }
       
       // Get existing changes for this entry or create new
       const entryChanges = newPendingChanges.get(entryId) || {};
@@ -152,9 +179,10 @@ export function EditSessionProvider({
       const isDirty = newPendingChanges.size > 0;
       
       if (import.meta.env.DEV) {
-        console.log(`💫 [EDIT_SESSION] Field changed - Entry ${entryId}.${fieldName} = ${value} (baseline: ${baselineValue})`);
+        console.log(`💫 [EDIT_SESSION] Field changed - Entry ${entryId}.${fieldName} = ${JSON.stringify(value)} (baseline: ${JSON.stringify(baselineValue)})`);
         console.log(`💫 [EDIT_SESSION] ${isRevertedToBaseline ? 'Reverted to baseline' : 'Changed from baseline'}`);
         console.log(`💫 [EDIT_SESSION] Dirty state: ${isDirty}, pending changes: ${newPendingChanges.size} entries`);
+        console.log(`💫 [EDIT_SESSION] All pending changes:`, Array.from(newPendingChanges.entries()));
       }
       
       return {
@@ -220,7 +248,7 @@ export function EditSessionProvider({
   const commitSave = useCallback(async () => {
     if (!state.activeMasterId || state.pendingChanges.size === 0) {
       if (import.meta.env.DEV) {
-        console.log('💾 [EDIT_SESSION] No changes to save');
+        console.log('💾 [EDIT_SESSION] No changes to save - activeMasterId:', state.activeMasterId, 'pendingChanges size:', state.pendingChanges.size);
       }
       return;
     }
@@ -230,22 +258,40 @@ export function EditSessionProvider({
     try {
       if (import.meta.env.DEV) {
         console.log(`💾 [EDIT_SESSION] Committing ${state.pendingChanges.size} changes for master ${state.activeMasterId}`);
+        console.log(`💾 [EDIT_SESSION] Changes to commit:`, Array.from(state.pendingChanges.entries()));
       }
 
       // Call the provided save handler
       if (onSave) {
         await onSave(state.activeMasterId, state.pendingChanges);
+      } else {
+        if (import.meta.env.DEV) {
+          console.warn('⚠️ [EDIT_SESSION] No onSave handler provided');
+        }
       }
 
       // Update baseline with saved changes and reset dirty state
       setState(prev => {
         const newBaseline = new Map(prev.baseline);
         
+        if (import.meta.env.DEV) {
+          console.log(`💾 [EDIT_SESSION] Updating baseline with ${prev.pendingChanges.size} changes`);
+        }
+        
         // Apply pending changes to baseline
         prev.pendingChanges.forEach((entryChanges, entryId) => {
           const baselineEntry = newBaseline.get(entryId) || {};
-          newBaseline.set(entryId, { ...baselineEntry, ...entryChanges });
+          const updatedEntry = { ...baselineEntry, ...entryChanges };
+          newBaseline.set(entryId, updatedEntry);
+          
+          if (import.meta.env.DEV) {
+            console.log(`💾 [EDIT_SESSION] Updated baseline for entry ${entryId}:`, updatedEntry);
+          }
         });
+
+        if (import.meta.env.DEV) {
+          console.log(`💾 [EDIT_SESSION] New baseline after save:`, Array.from(newBaseline.entries()));
+        }
 
         return {
           ...prev,
@@ -257,7 +303,7 @@ export function EditSessionProvider({
       });
       
       if (import.meta.env.DEV) {
-        console.log('✅ [EDIT_SESSION] Save completed successfully');
+        console.log('✅ [EDIT_SESSION] Save completed successfully - baseline updated and dirty state reset');
       }
 
     } catch (error) {

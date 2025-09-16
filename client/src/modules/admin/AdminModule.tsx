@@ -197,7 +197,6 @@ const AdminModuleInner = (): JSX.Element => {
   const [revisionMode, setRevisionMode] = useState(false);
   
   // Data Masters state
-  const [isMasterEditing, setIsMasterEditing] = useState(false);
   const [searchDataMaster, setSearchDataMaster] = useState("");
   const [selectedMaster, setSelectedMaster] = useState<string>("001");
   
@@ -622,10 +621,12 @@ const AdminModuleInner = (): JSX.Element => {
     commitSave,
     discardChanges,
     markDirty,
-    saving
+    saving,
+    isDirty,
+    pendingChanges
   } = useEditSession();
 
-  // Check if this master is currently being edited (replacing isMasterEditing)
+  // Check if this master is currently being edited (replacing isMasterInEditMode)
   const isMasterInEditMode = isEditingMaster(selectedMaster);
 
   // Edit handlers with baseline capture
@@ -633,10 +634,16 @@ const AdminModuleInner = (): JSX.Element => {
     if (import.meta.env.DEV) {
       console.log(`🔧 [EDIT_SESSION] Starting edit for master ${selectedMaster} with baseline data`);
       console.log('📊 [BASELINE] Capturing masterData:', masterData);
+      console.log('📊 [BASELINE] masterData length:', masterData.length);
+      console.log('📊 [BASELINE] Current edit state before starting:', { isEditing, activeMasterId: isEditingMaster(selectedMaster) });
     }
     
     // Capture baseline data when entering edit mode
     startEdit(selectedMaster, masterData);
+    
+    if (import.meta.env.DEV) {
+      console.log('🔧 [EDIT_SESSION] startEdit() called - edit mode should now be active');
+    }
   };
 
   const handleCancelEditMaster = () => {
@@ -647,199 +654,79 @@ const AdminModuleInner = (): JSX.Element => {
     stopEdit();
   };
 
-  const handleSaveMaster = () => {
+  const handleSaveMaster = async () => {
     if (import.meta.env.DEV) {
-      console.log('💾 [SAVE] Starting batch save operation for all master data entries');
-    }
-    
-    // Check if this is vessel or port master for special handling
-    const isVesselMasterSave = isVesselMaster(selectedMaster);
-    const isPortMasterSave = isPortMaster(selectedMaster);
-    
-    if (import.meta.env.DEV) {
-      if (isVesselMasterSave) {
-        console.log('🚢 [SAVE] Vessel Master detected - using safe field mapping');
-      }
-      if (isPortMasterSave) {
-        console.log('🚢 [SAVE] Port Master detected - using safe field mapping');
-      }
-    }
-    
-    // Get all input elements and checkboxes in the master data table
-    const inputs = document.querySelectorAll('[data-testid^="input-"][data-testid*="-"]:not([data-testid*="entryId"])');
-    const checkboxes = document.querySelectorAll('[data-testid^="checkbox-"]');
-    
-    console.log(`💾 [SAVE] Found ${inputs.length} inputs and ${checkboxes.length} checkboxes to save`);
-    
-    // Collect all changes by entry ID
-    const changesToSave = new Map<number, any>();
-    
-    // Process text inputs
-    inputs.forEach((input: any) => {
-      if (input.value && input.value.trim()) {
-        const testId = input.getAttribute('data-testid');
-        const match = testId.match(/^input-(.+)-(\d+)$/);
-        if (match) {
-          const [, fieldName, entryId] = match;
-          const id = parseInt(entryId);
-          if (!changesToSave.has(id)) {
-            changesToSave.set(id, {});
-          }
-          changesToSave.get(id)[fieldName] = input.value.trim();
-          console.log(`💾 [SAVE] Entry ${id}: ${fieldName} = "${input.value.trim()}"`);
-        }
-      }
-    });
-    
-    // Process checkboxes
-    checkboxes.forEach((checkbox: any) => {
-      const testId = checkbox.getAttribute('data-testid');
-      const match = testId.match(/^checkbox-(.+)-(\d+)$/);
-      if (match) {
-        const [, fieldName, entryId] = match;
-        const id = parseInt(entryId);
-        if (!changesToSave.has(id)) {
-          changesToSave.set(id, {});
-        }
-        changesToSave.get(id)[fieldName] = checkbox.checked;
-        console.log(`💾 [SAVE] Entry ${id}: ${fieldName} = ${checkbox.checked}`);
-      }
-    });
-    
-    // Save all collected changes
-    if (changesToSave.size > 0) {
-      console.log(`💾 [SAVE] Saving changes for ${changesToSave.size} entries`);
-      
-      changesToSave.forEach((changes, entryId) => {
-        let processedChanges = changes;
-        
-        // Apply safe field mapping for vessel master
-        if (isVesselMasterSave) {
-          if (import.meta.env.DEV) {
-            console.log(`🚢 [SAVE] Applying vessel master safe field mapping for entry ${entryId}`);
-          }
-          
-          // Ensure name field is populated if vessel field exists
-          if (changes.vessel && !changes.name) {
-            changes.name = changes.vessel;
-            if (import.meta.env.DEV) {
-              console.log(`🚢 [SAVE] Mapping vessel "${changes.vessel}" to name field`);
-            }
-          }
-          
-          // Map imoNumber to description temporarily
-          if (changes.imoNumber && !changes.description) {
-            changes.description = changes.imoNumber;
-            if (import.meta.env.DEV) {
-              console.log(`🚢 [SAVE] Mapping imoNumber "${changes.imoNumber}" to description field`);
-            }
-          }
-          
-          // Filter to only include safe fields for database
-          processedChanges = filterToSafeFields(changes);
-          
-          if (import.meta.env.DEV) {
-            console.log(`🚢 [SAVE] Original changes:`, changes);
-            console.log(`🚢 [SAVE] Filtered safe changes:`, processedChanges);
-          }
-          
-          // Validate that name field is populated
-          if (!processedChanges.name && changes.vessel) {
-            processedChanges.name = changes.vessel;
-          }
-        }
-        
-        // Apply safe field mapping for port master
-        if (isPortMasterSave) {
-          if (import.meta.env.DEV) {
-            console.log(`🚢 [SAVE] Applying port master safe field mapping for entry ${entryId}`);
-          }
-          
-          // Ensure name field is populated if portName field exists
-          if (changes.portName && !changes.name) {
-            changes.name = changes.portName;
-            if (import.meta.env.DEV) {
-              console.log(`🚢 [SAVE] Mapping portName "${changes.portName}" to name field`);
-            }
-          }
-          
-          // Map coordinates to description temporarily
-          if ((changes.latitude || changes.longitude) && !changes.description) {
-            const coords = { lat: changes.latitude || '', lng: changes.longitude || '' };
-            changes.description = JSON.stringify(coords);
-            if (import.meta.env.DEV) {
-              console.log(`🚢 [SAVE] Mapping coordinates to description field`);
-            }
-          }
-          
-          // Filter to only include safe fields for database
-          processedChanges = filterToPortSafeFields(changes);
-          
-          if (import.meta.env.DEV) {
-            console.log(`🚢 [SAVE] Original port changes:`, changes);
-            console.log(`🚢 [SAVE] Filtered safe port changes:`, processedChanges);
-          }
-          
-          // Validate that name field is populated
-          if (!processedChanges.name && changes.portName) {
-            processedChanges.name = changes.portName;
-          }
-        }
-        
-        console.log(`💾 [SAVE] Updating entry ${entryId}:`, processedChanges);
-        updateEntryMutation.mutate({ 
-          id: entryId, 
-          data: processedChanges, 
-          masterId: selectedMaster 
-        }, {
-          onSuccess: (data) => {
-            console.log(`✅ [SAVE] Successfully saved entry ${entryId}:`, data);
-          },
-          onError: (error) => {
-            console.error(`❌ [SAVE] Failed to save entry ${entryId}:`, error);
-            
-            // Show specific error message for vessel/port master
-            const errorMessage = isVesselMasterSave 
-              ? `${getVesselMasterErrorMessage()} Error: ${error.message}`
-              : isPortMasterSave
-              ? `${getPortMasterErrorMessage()} Error: ${error.message}`
-              : `Failed to save entry ${entryId}: ${error.message}`;
-              
-            toast({
-              title: "Error",
-              description: errorMessage,
-              variant: "destructive",
-            });
-          }
-        });
+      console.log('💾 [SAVE] Starting EditSession commit save operation');
+      console.log('💾 [SAVE] Current edit state:', { 
+        isEditing, 
+        isDirty, 
+        saving, 
+        activeMaster: isEditingMaster(selectedMaster),
+        pendingChangesCount: pendingChanges.size
       });
+    }
+    
+    try {
+      // Use EditSession's commitSave which will:
+      // 1. Call handleEditSessionSave with pending changes
+      // 2. Update baseline with saved changes  
+      // 3. Reset dirty state
+      // 4. Keep edit mode active until successful
+      await commitSave();
       
+      // After successful save, show toast
+      const isVesselMasterSave = isVesselMaster(selectedMaster);
+      const isPortMasterSave = isPortMaster(selectedMaster);
       const successMessage = isVesselMasterSave 
-        ? `Saving vessel data for ${changesToSave.size} entries (safe mode)`
+        ? `Vessel data saved successfully (safe mode)`
         : isPortMasterSave
-        ? `Saving port data for ${changesToSave.size} entries (safe mode)`
-        : `Saving changes for ${changesToSave.size} entries`;
+        ? `Port data saved successfully (safe mode)`
+        : `Changes saved successfully`;
         
       toast({
         title: "Success",
         description: successMessage,
       });
-    } else {
-      console.log('💾 [SAVE] No changes to save');
+      
+      // Stop edit mode after successful save
+      stopEdit();
+      
+      if (import.meta.env.DEV) {
+        console.log('✅ [SAVE] EditSession commit save completed successfully');
+      }
+      
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('❌ [SAVE] EditSession commit save failed:', error);
+      }
+      
+      toast({
+        title: "Error",
+        description: `Failed to save changes: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      });
     }
-    
-    setIsMasterEditing(false);
   };
 
   const updateMasterField = (itemId: number, field: 'name' | 'description' | 'countryName' | 'country' | 'countryCode' | 'vesselType' | 'vtuid' | 'tanker' | 'oilTanker' | 'gasTanker' | 'chemicalTanker' | 'bulk' | 'vessel' | 'imoNumber' | 'cid', value: string | boolean) => {
+    if (import.meta.env.DEV) {
+      console.log(`🎯 [INPUT_HANDLER] updateMasterField called - Entry ${itemId}, Field: ${field}, Value: ${JSON.stringify(value)}`);
+      console.log(`🎯 [INPUT_HANDLER] Current edit state - isEditing: ${isEditing}, activemaster: ${isEditingMaster(selectedMaster)}`);
+    }
+    
     // Mark the field as dirty for edit session tracking
     markDirty(itemId, field, value);
     
+    // Actually update the data via mutation
     updateEntryMutation.mutate({ 
       id: itemId, 
       data: { [field]: value }, 
       masterId: selectedMaster 
     });
+    
+    if (import.meta.env.DEV) {
+      console.log(`✅ [INPUT_HANDLER] Called markDirty and updateEntryMutation for ${itemId}.${field}`);
+    }
   };
 
   const deleteMasterEntry = (itemId: number) => {
@@ -934,8 +821,24 @@ const AdminModuleInner = (): JSX.Element => {
           title: "Success",
           description: "New entry created successfully",
         });
-        // Automatically enter edit mode when adding new entry
-        setIsMasterEditing(true);
+        
+        // Wait for query to refetch with new entry, then auto-start edit mode
+        // This ensures fresh baseline data when entering edit mode
+        setTimeout(() => {
+          if (import.meta.env.DEV) {
+            console.log('🔄 [AUTO_EDIT] Waiting for fresh data before auto-starting edit mode...');
+          }
+          // Trigger a manual refetch to ensure data is fresh
+          queryClient.invalidateQueries({ queryKey: ['/api/masters', selectedMaster, 'entries'] });
+          
+          // Wait an additional moment for the refetch to complete
+          setTimeout(() => {
+            if (import.meta.env.DEV) {
+              console.log('🎯 [AUTO_EDIT] Auto-starting edit mode with fresh baseline data');
+            }
+            handleEditMaster();
+          }, 200);
+        }, 100);
       },
       onError: (error) => {
         console.error('❌ [UI] Failed to create new entry:', error);
@@ -2482,16 +2385,16 @@ const AdminModuleInner = (): JSX.Element => {
           <div className="flex justify-end">
             <div className="flex gap-2">
               <Button
-                variant={isMasterEditing ? "default" : "outline"}
-                onClick={isMasterEditing ? handleSaveMaster : handleEditMaster}
+                variant={isMasterInEditMode ? "default" : "outline"}
+                onClick={isMasterInEditMode ? handleSaveMaster : handleEditMaster}
                 className={`h-8 text-xs ${
-                  isMasterEditing 
+                  isMasterInEditMode 
                     ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
                     : "border-[#e1e8ed] text-[#16569e]"
                 }`}
                 data-testid="button-edit-master"
               >
-                {isMasterEditing ? "Save" : "Edit Master"}
+                {isMasterInEditMode ? "Save" : "Edit Master"}
               </Button>
               <Button
                 onClick={handleNewEntry}
@@ -2509,16 +2412,16 @@ const AdminModuleInner = (): JSX.Element => {
           <div className={`flex ${currentBreakpoint === 'mobile' ? 'justify-center' : 'justify-center'}`}>
             <div className={`flex ${responsive.stackButtons ? 'flex-col space-y-1' : 'gap-2'}`}>
               <Button
-                variant={isMasterEditing ? "default" : "outline"}
-                onClick={isMasterEditing ? handleSaveMaster : handleEditMaster}
+                variant={isMasterInEditMode ? "default" : "outline"}
+                onClick={isMasterInEditMode ? handleSaveMaster : handleEditMaster}
                 className={`h-8 text-xs ${
-                  isMasterEditing 
+                  isMasterInEditMode 
                     ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
                     : "border-[#e1e8ed] text-[#16569e]"
                 }`}
                 data-testid="button-edit-master"
               >
-                {isMasterEditing ? "Save" : "Edit Master"}
+                {isMasterInEditMode ? "Save" : "Edit Master"}
               </Button>
               <Button
                 onClick={handleNewEntry}
@@ -2664,7 +2567,7 @@ const AdminModuleInner = (): JSX.Element => {
                       
                       return (
                         <div key={item.id} className={`grid ${selectedMaster === "014" ? 'grid-cols-5' : 'grid-cols-4'} gap-0 border-b border-gray-100 hover:bg-gray-50 ${
-                          isNewEntry && isMasterEditing ? 'bg-blue-50 border-blue-200' : ''
+                          isNewEntry && isMasterInEditMode ? 'bg-blue-50 border-blue-200' : ''
                         }`}>
                           <div className="p-3 border-r border-gray-200">
                             <span className="text-xs text-gray-700">{item.entryId}</span>
@@ -2674,7 +2577,7 @@ const AdminModuleInner = (): JSX.Element => {
                           <div className="p-3 border-r border-gray-200">
                             {selectedMaster === "001" ? (
                               // Nationality master - show countryName field
-                              isMasterEditing ? (
+                              isMasterInEditMode ? (
                                 <Input
                                   value={item.countryName || ''}
                                   onChange={(e) => updateMasterField(item.id, 'countryName', e.target.value)}
@@ -2688,7 +2591,7 @@ const AdminModuleInner = (): JSX.Element => {
                               )
                             ) : selectedMaster === "002" ? (
                               // Country master - show name field (country name)
-                              isMasterEditing ? (
+                              isMasterInEditMode ? (
                                 <Input
                                   value={item.name || ''}
                                   onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
@@ -2702,7 +2605,7 @@ const AdminModuleInner = (): JSX.Element => {
                               )
                             ) : selectedMaster === "003" ? (
                               // Language master - show name field (language name)
-                              isMasterEditing ? (
+                              isMasterInEditMode ? (
                                 <Input
                                   value={item.name || ''}
                                   onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
@@ -2716,7 +2619,7 @@ const AdminModuleInner = (): JSX.Element => {
                               )
                             ) : selectedMaster === "004" ? (
                               // Vessel type master - show vesselType field
-                              isMasterEditing ? (
+                              isMasterInEditMode ? (
                                 <Input
                                   value={item.vesselType || ''}
                                   onChange={(e) => updateMasterField(item.id, 'vesselType', e.target.value)}
@@ -2730,7 +2633,7 @@ const AdminModuleInner = (): JSX.Element => {
                               )
                             ) : selectedMaster === "014" ? (
                               // Vessel master - show vessel field
-                              isMasterEditing ? (
+                              isMasterInEditMode ? (
                                 <Input
                                   value={item.vessel || ''}
                                   onChange={(e) => updateMasterField(item.id, 'vessel', e.target.value)}
@@ -2744,7 +2647,7 @@ const AdminModuleInner = (): JSX.Element => {
                               )
                             ) : selectedMaster === "018" ? (
                               // Port master - show portName field (port name) but save to 'name' (safe field)
-                              isMasterEditing ? (
+                              isMasterInEditMode ? (
                                 <Input
                                   value={item.portName || ''}
                                   onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
@@ -2758,7 +2661,7 @@ const AdminModuleInner = (): JSX.Element => {
                               )
                             ) : (
                               // Other masters - show name field
-                              isMasterEditing ? (
+                              isMasterInEditMode ? (
                                 <Input
                                   value={item.name || ''}
                                   onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
@@ -2777,7 +2680,7 @@ const AdminModuleInner = (): JSX.Element => {
                           <div className="p-3 border-r border-gray-200">
                             {selectedMaster === "001" ? (
                               // Nationality master - show country field
-                              isMasterEditing ? (
+                              isMasterInEditMode ? (
                                 <Input
                                   value={item.country || ''}
                                   onChange={(e) => updateMasterField(item.id, 'country', e.target.value)}
@@ -2790,7 +2693,7 @@ const AdminModuleInner = (): JSX.Element => {
                               )
                             ) : selectedMaster === "002" ? (
                               // Country master - show countryCode field (Country UN/LOCODE)
-                              isMasterEditing ? (
+                              isMasterInEditMode ? (
                                 <Input
                                   value={item.countryCode || ''}
                                   onChange={(e) => updateMasterField(item.id, 'countryCode', e.target.value)}
@@ -2803,7 +2706,7 @@ const AdminModuleInner = (): JSX.Element => {
                               )
                             ) : selectedMaster === "003" ? (
                               // Language master - show description field (ISO language code)
-                              isMasterEditing ? (
+                              isMasterInEditMode ? (
                                 <Input
                                   value={item.description || ''}
                                   onChange={(e) => updateMasterField(item.id, 'description', e.target.value)}
@@ -2816,7 +2719,7 @@ const AdminModuleInner = (): JSX.Element => {
                               )
                             ) : selectedMaster === "004" ? (
                               // Vessel type master - show classification based on boolean flags
-                              isMasterEditing ? (
+                              isMasterInEditMode ? (
                                 <div className="grid grid-cols-3 gap-1 text-xs">
                                   <label className="flex items-center space-x-1">
                                     <Checkbox
@@ -2874,7 +2777,7 @@ const AdminModuleInner = (): JSX.Element => {
                               )
                             ) : selectedMaster === "014" ? (
                               // Vessel master - show imoNumber field
-                              isMasterEditing ? (
+                              isMasterInEditMode ? (
                                 <Input
                                   value={item.imoNumber || ''}
                                   onChange={(e) => updateMasterField(item.id, 'imoNumber', e.target.value)}
@@ -2887,7 +2790,7 @@ const AdminModuleInner = (): JSX.Element => {
                               )
                             ) : selectedMaster === "018" ? (
                               // Port master - show portcode field (port code/UN LOCODE) but save to 'cid' (safe field)
-                              isMasterEditing ? (
+                              isMasterInEditMode ? (
                                 <Input
                                   value={item.portcode || ''}
                                   onChange={(e) => updateMasterField(item.id, 'cid', e.target.value)}
@@ -2900,7 +2803,7 @@ const AdminModuleInner = (): JSX.Element => {
                               )
                             ) : (
                               // Other masters - show description field
-                              isMasterEditing ? (
+                              isMasterInEditMode ? (
                                 <Input
                                   value={item.description || ''}
                                   onChange={(e) => updateMasterField(item.id, 'description', e.target.value)}
@@ -2917,7 +2820,7 @@ const AdminModuleInner = (): JSX.Element => {
                           {/* Third column - conditional based on master type (vessel type for vessel master) */}
                           {selectedMaster === "014" && (
                             <div className="p-3 border-r border-gray-200">
-                              {isMasterEditing ? (
+                              {isMasterInEditMode ? (
                                 <Select 
                                   value={item.vesselType || ''} 
                                   onValueChange={(value) => updateMasterField(item.id, 'vesselType', value)}
