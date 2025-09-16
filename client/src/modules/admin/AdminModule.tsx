@@ -2849,7 +2849,7 @@ const AdminModuleInner = (): JSX.Element => {
                             <div className="p-3 border-r border-gray-200">
                               {isMasterInEditMode ? (
                                 <Select 
-                                  value={item.vesselType || ''} 
+                                  value={getEffectiveValue(item.id, 'vesselType', item.vesselType)} 
                                   onValueChange={(value) => updateMasterField(item.id, 'vesselType', value)}
                                 >
                                   <SelectTrigger className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300">
