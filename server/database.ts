@@ -512,10 +512,11 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // Ensure vessel type master data is properly seeded with enhanced structure
+  // Vessel type seeding DISABLED - Users manage their own vessel types
   private async ensureVesselTypeDataSeeded(): Promise<void> {
     try {
-      console.log("🚢 Checking vessel type master data...");
+      console.log("🚢 Vessel type automatic seeding is disabled - users manage their own entries");
+      return; // Skip automatic seeding completely
       
       // Check if we have any vessel type entries with enhanced structure
       const [existingVesselTypeEntries]: any = await this.pool.execute(
@@ -526,7 +527,7 @@ export class DatabaseStorage implements IStorage {
       console.log(`📊 Found ${enhancedVesselTypesCount} enhanced vessel type entries with VT format`);
       
       // If we don't have the enhanced vessel type data structure, seed it
-      if (enhancedVesselTypesCount < 10) {
+      if (false) { // DISABLED - no automatic seeding
         console.log("🗂️ Seeding enhanced vessel type master data with duplicate checking...");
         
         // Vessel type data with enhanced structure based on maritime industry standards
