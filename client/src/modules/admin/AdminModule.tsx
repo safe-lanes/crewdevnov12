@@ -2403,6 +2403,8 @@ const AdminModuleInner = (): JSX.Element => {
                   rowData={rankMasterData}
                   columnDefs={rankMasterColumnDefs}
                   onGridReady={handleRankMasterGridReady}
+                  autoHeight={true}
+                  maxHeight="500px"
                   enableExport={false}
                   enableSideBar={false}
                   enableStatusBar={false}
