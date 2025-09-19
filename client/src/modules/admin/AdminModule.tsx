@@ -1844,6 +1844,26 @@ const AdminModuleInner = (): JSX.Element => {
     },
   });
 
+  const cleanupDuplicatesMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", "/api/forms/cleanup-duplicates");
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/forms"] });
+      toast({
+        title: "Cleanup Completed",
+        description: `${data.message}. Kept form ID: ${data.kept}, Deleted: ${data.deletedCount} duplicates`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to cleanup duplicates",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleDeleteForm = (form: Form) => {
     if (window.confirm(`Are you sure you want to delete the form "${form.name}"?`)) {
       deleteFormMutation.mutate(form.id);
@@ -3189,6 +3209,17 @@ const AdminModuleInner = (): JSX.Element => {
           >
             <Plus className="h-4 w-4" />
             <span className="text-xs">Create Form</span>
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => cleanupDuplicatesMutation.mutate()}
+            disabled={cleanupDuplicatesMutation.isPending}
+            className="h-8 border-[#e1e8ed] text-[#16569e] flex items-center gap-2"
+          >
+            <Trash2 className="h-4 w-4" />
+            <span className="text-xs">
+              {cleanupDuplicatesMutation.isPending ? "Cleaning..." : "Cleanup Duplicates"}
+            </span>
           </Button>
           <Button
             variant="outline"

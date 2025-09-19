@@ -1198,22 +1198,32 @@ export class DatabaseStorage implements IStorage {
       // Seed forms (with error handling to prevent blocking data masters)
       let formId: number | null = null;
       try {
-        const form = await this.createForm({
-          name: "Crew Appraisal Form",
-          rankGroup: JSON.stringify("Senior Officers"), // Fix: JSON format for database
-          versionNo: "01",
-          versionDate: "01-Jan-2025",
-          configuration: null,
-        });
-
-        if (form && form.id) {
-          formId = form.id;
-          // Seed rank groups
-          await this.createRankGroup({
-            formId: form.id,
-            name: "Senior Officers",
-            ranks: JSON.stringify(["Master", "Chief Officer", "Chief Engineer"]),
+        // Check if "Crew Appraisal Form" already exists
+        const existingForms = await this.getForms();
+        const existingForm = existingForms.find(f => f.name === "Crew Appraisal Form");
+        
+        if (!existingForm) {
+          console.log("🆕 Creating new form: Crew Appraisal Form");
+          const form = await this.createForm({
+            name: "Crew Appraisal Form",
+            rankGroup: JSON.stringify("Senior Officers"), // Fix: JSON format for database
+            versionNo: "01",
+            versionDate: "01-Jan-2025",
+            configuration: null,
           });
+
+          if (form && form.id) {
+            formId = form.id;
+            // Seed rank groups
+            await this.createRankGroup({
+              formId: form.id,
+              name: "Senior Officers",
+              ranks: JSON.stringify(["Master", "Chief Officer", "Chief Engineer"]),
+            });
+          }
+        } else {
+          console.log("✅ Form already exists: Crew Appraisal Form");
+          formId = existingForm.id;
         }
       } catch (error) {
         console.warn("Warning: Could not seed forms/rank groups:", error);

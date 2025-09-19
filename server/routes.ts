@@ -179,6 +179,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Cleanup duplicate forms (admin endpoint)
+  app.post("/api/forms/cleanup-duplicates", async (req, res) => {
+    try {
+      const forms = await storage.getForms();
+      const duplicateForms = forms.filter(f => f.name === "Crew Appraisal Form");
+      
+      if (duplicateForms.length <= 1) {
+        return res.json({ 
+          message: "No duplicates found", 
+          totalForms: duplicateForms.length 
+        });
+      }
+
+      // Keep the first form (lowest ID), delete the rest
+      const formToKeep = duplicateForms.reduce((prev, curr) => 
+        prev.id < curr.id ? prev : curr
+      );
+      const formsToDelete = duplicateForms.filter(f => f.id !== formToKeep.id);
+      
+      let deletedCount = 0;
+      for (const form of formsToDelete) {
+        const success = await storage.deleteForm(form.id);
+        if (success) {
+          deletedCount++;
+          console.log(`🗑️ Deleted duplicate form ID: ${form.id}`);
+        }
+      }
+
+      res.json({ 
+        message: "Cleanup completed", 
+        kept: formToKeep.id,
+        deletedCount,
+        totalOriginal: duplicateForms.length 
+      });
+    } catch (error) {
+      console.error("Error cleaning up duplicate forms:", error);
+      res.status(500).json({ error: "Failed to cleanup duplicate forms" });
+    }
+  });
+
   // Rank Groups API routes
   app.get("/api/rank-groups/:formId", async (req, res) => {
     try {
