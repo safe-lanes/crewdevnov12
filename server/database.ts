@@ -950,7 +950,7 @@ export class DatabaseStorage implements IStorage {
     // Step 3: Use raw SQL to bypass Drizzle schema enforcement
     const columns = Object.keys(filteredEntry).join(', ');
     const placeholders = Object.keys(filteredEntry).map(() => '?').join(', ');
-    const values = Object.values(filteredEntry);
+    const values = Object.values(filteredEntry).map(value => value === undefined ? null : value);
     
     const insertSql = `INSERT INTO master_data_entries (${columns}, created_at, updated_at) VALUES (${placeholders}, NOW(), NOW())`;
     console.log('🔧 [DB] Raw SQL:', insertSql);
