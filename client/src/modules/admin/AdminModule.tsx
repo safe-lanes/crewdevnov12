@@ -200,6 +200,9 @@ const AdminModuleInner = (): JSX.Element => {
   const [searchDataMaster, setSearchDataMaster] = useState("");
   const [selectedMaster, setSelectedMaster] = useState<string>("001");
   
+  // CSS Constants for consistent grid layouts
+  const USERS_MASTER_GRID_CLASSES = "grid grid-cols-5 gap-0";
+  
   // Data Masters API hooks
   const { data: mastersList = [], isLoading: mastersLoading, error: mastersError } = useDataMasters();
   
@@ -2531,7 +2534,7 @@ const AdminModuleInner = (): JSX.Element => {
               {/* Right Table - Selected Master Data */}
               <div className={`${currentBreakpoint === 'mobile' ? 'w-full' : 'flex-1'}`}>
                 <div className="bg-[#52baf3] text-white text-xs font-medium p-0">
-                  <div className={`grid ${(selectedMaster === "014" || selectedMaster === "013") ? 'grid-cols-5' : 'grid-cols-4'} gap-0 ${selectedMaster === "013" ? 'users-master-header-grid' : ''}`}>
+                  <div className={`${selectedMaster === "013" ? USERS_MASTER_GRID_CLASSES : `grid ${selectedMaster === "014" ? 'grid-cols-5' : 'grid-cols-4'} gap-0`} ${selectedMaster === "013" ? 'users-master-header-grid' : ''}`}>
                     <div className="p-3 border-r border-blue-400">Entry ID</div>
                     {selectedMaster === "001" ? (
                       <>
@@ -2609,7 +2612,7 @@ const AdminModuleInner = (): JSX.Element => {
                       // Special handling for Users Master (013) - Always render exactly 5 columns
                       if (selectedMaster === "013") {
                         return (
-                          <div key={item.id} className={`grid grid-cols-5 gap-0 border-b border-gray-100 hover:bg-gray-50 ${
+                          <div key={item.id} className={`${USERS_MASTER_GRID_CLASSES} border-b border-gray-100 hover:bg-gray-50 ${
                             isNewEntry && isMasterInEditMode ? 'bg-blue-50 border-blue-200' : ''
                           } users-master-grid-row`}>
                             {/* Column 1: Entry ID (always rendered) */}
