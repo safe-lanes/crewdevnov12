@@ -1155,10 +1155,10 @@ export class DatabaseStorage implements IStorage {
         // { masterId: "012", entryId: "DES002", name: "Chief Engineer", description: "Chief Engineering Officer" },
         // { masterId: "012", entryId: "DES003", name: "Chief Officer", description: "First Officer" },
         
-        // Vessel Type entries  
-        { masterId: "004", entryId: "VT001", name: "Oil Tanker", description: "Petroleum transport vessel" },
-        { masterId: "004", entryId: "VT002", name: "Container Ship", description: "Containerized cargo vessel" },
-        { masterId: "004", entryId: "VT003", name: "Bulk Carrier", description: "Dry bulk cargo vessel" },
+        // Vessel Type entries - DISABLED: Users manage their own vessel types
+        // { masterId: "004", entryId: "VT001", name: "Oil Tanker", description: "Petroleum transport vessel" },
+        // { masterId: "004", entryId: "VT002", name: "Container Ship", description: "Containerized cargo vessel" },
+        // { masterId: "004", entryId: "VT003", name: "Bulk Carrier", description: "Dry bulk cargo vessel" },
         
         // Fleet Groups entries (ID 015)
         { masterId: "015", entryId: "001", name: "Fleet Group 1", description: "Primary fleet group" },
