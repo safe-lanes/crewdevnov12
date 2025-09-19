@@ -1087,20 +1087,11 @@ export class DatabaseStorage implements IStorage {
       // If we have some but not all masters, only seed the missing ones
       console.log(`Found ${existingMasters.length} existing master categories, ensuring all 18 are present...`);
 
-      // Seed available ranks
+      // Seed minimal essential ranks only (user manages their own data)
       const rankData: InsertAvailableRank[] = [
         { name: "Master", category: "Senior Officers" },
         { name: "Chief Officer", category: "Senior Officers" },
-        { name: "Chief Engineer", category: "Senior Officers" },
         { name: "2nd Officer", category: "Junior Officers" },
-        { name: "3rd Officer", category: "Junior Officers" },
-        { name: "2nd Engineer", category: "Junior Officers" },
-        { name: "3rd Engineer", category: "Junior Officers" },
-        { name: "Bosun", category: "Ratings" },
-        { name: "AB", category: "Ratings" },
-        { name: "OS", category: "Ratings" },
-        { name: "Oiler", category: "Ratings" },
-        { name: "Wiper", category: "Ratings" },
       ];
 
       for (const rank of rankData) {

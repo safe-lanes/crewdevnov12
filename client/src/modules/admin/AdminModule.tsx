@@ -2403,6 +2403,7 @@ const AdminModuleInner = (): JSX.Element => {
                   rowData={rankMasterData}
                   columnDefs={rankMasterColumnDefs}
                   onGridReady={handleRankMasterGridReady}
+                  maxHeight="500px"
                   enableExport={false}
                   enableSideBar={false}
                   enableStatusBar={false}
@@ -2450,7 +2451,6 @@ const AdminModuleInner = (): JSX.Element => {
                   rowData={companyRankData}
                   columnDefs={companyColumnDefs}
                   onGridReady={handleCompanyGridReady}
-                  autoHeight={true}
                   maxHeight="500px"
                   minHeight="200px"
                   width="100%"

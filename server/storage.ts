@@ -94,20 +94,11 @@ export class MemStorage implements IStorage {
     });
     this.currentFormId = 2;
     
-    // Initialize with sample available ranks
+    // Initialize with minimal essential ranks only (user manages their own data)
     this.availableRanks.set(1, { id: 1, name: "Master", category: "Senior Officers" });
     this.availableRanks.set(2, { id: 2, name: "Chief Officer", category: "Senior Officers" });
-    this.availableRanks.set(3, { id: 3, name: "Chief Engineer", category: "Senior Officers" });
-    this.availableRanks.set(4, { id: 4, name: "2nd Officer", category: "Junior Officers" });
-    this.availableRanks.set(5, { id: 5, name: "3rd Officer", category: "Junior Officers" });
-    this.availableRanks.set(6, { id: 6, name: "2nd Engineer", category: "Junior Officers" });
-    this.availableRanks.set(7, { id: 7, name: "3rd Engineer", category: "Junior Officers" });
-    this.availableRanks.set(8, { id: 8, name: "Bosun", category: "Ratings" });
-    this.availableRanks.set(9, { id: 9, name: "AB", category: "Ratings" });
-    this.availableRanks.set(10, { id: 10, name: "OS", category: "Ratings" });
-    this.availableRanks.set(11, { id: 11, name: "Oiler", category: "Ratings" });
-    this.availableRanks.set(12, { id: 12, name: "Wiper", category: "Ratings" });
-    this.currentAvailableRankId = 13;
+    this.availableRanks.set(3, { id: 3, name: "2nd Officer", category: "Junior Officers" });
+    this.currentAvailableRankId = 4;
     
     // Initialize with sample rank groups - showing only 1 for configuration
     // Note: Using JSON string for ranks array compatibility with MySQL
@@ -115,7 +106,7 @@ export class MemStorage implements IStorage {
       id: 1,
       formId: 1,
       name: "Senior Officers",
-      ranks: JSON.stringify(["Master", "Chief Officer", "Chief Engineer"])
+      ranks: JSON.stringify(["Master", "Chief Officer", "2nd Officer"])
     });
     this.currentRankGroupId = 2;
 
