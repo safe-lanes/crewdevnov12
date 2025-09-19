@@ -467,11 +467,12 @@ export function mapDatabaseToOwnersDisplay(dbEntry: any): any {
  * Validates vessel owners entry has required fields
  */
 export function validateVesselOwnersEntry(data: any): { isValid: boolean; error?: string } {
-  // Basic validation - name is required
-  if (!data.name) {
+  // Allow empty names for initial entry creation (consistent with other masters)
+  // Only validate name format if provided and not empty
+  if (data.name && typeof data.name !== 'string') {
     return {
       isValid: false,
-      error: "Vessel Owners entry must have 'name' field populated"
+      error: "Vessel Owners name must be a string"
     };
   }
 
