@@ -3070,19 +3070,6 @@ const AdminModuleInner = (): JSX.Element => {
                               ) : (
                                 <span className="text-xs text-gray-700">{item.portcode || <em className="text-gray-400">No port code</em>}</span>
                               )
-                            ) : selectedMaster === "012" ? (
-                              // Designation master - show department field
-                              isMasterInEditMode ? (
-                                <Input
-                                  value={getEffectiveValue(item.id, 'department', item.department)}
-                                  onChange={(e) => updateMasterField(item.id, 'department', e.target.value)}
-                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                  placeholder={isNewEntry ? "Enter department..." : ""}
-                                  data-testid={`input-department-${item.id}`}
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-700">{item.department || <em className="text-gray-400">No department</em>}</span>
-                              )
                             ) : (
                               // Other masters - show description field
                               isMasterInEditMode ? (
