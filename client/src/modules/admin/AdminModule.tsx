@@ -2606,10 +2606,110 @@ const AdminModuleInner = (): JSX.Element => {
                         ? !item.portName && !item.portcode     // For port master (port name and port code)
                         : !item.name && !item.description;   // For other masters
                       
+                      // Special handling for Users Master (013) - Always render exactly 5 columns
+                      if (selectedMaster === "013") {
+                        return (
+                          <div key={item.id} className={`grid grid-cols-5 gap-0 border-b border-gray-100 hover:bg-gray-50 ${
+                            isNewEntry && isMasterInEditMode ? 'bg-blue-50 border-blue-200' : ''
+                          } users-master-grid-row`}>
+                            {/* Column 1: Entry ID (always rendered) */}
+                            <div className="p-3 border-r border-gray-200">
+                              <span className="text-xs text-gray-700">{item.entryId || item.entry_id || <em className="text-gray-400">No entry ID</em>}</span>
+                            </div>
+                            
+                            {/* Column 2: First Name (firstname field) */}
+                            <div className="p-3 border-r border-gray-200">
+                              {isMasterInEditMode ? (
+                                <Input
+                                  value={getEffectiveValue(item.id, 'firstname', item.firstname)}
+                                  onChange={(e) => updateMasterField(item.id, 'firstname', e.target.value)}
+                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                  placeholder={isNewEntry ? "Enter first name..." : ""}
+                                  data-testid={`input-firstname-${item.id}`}
+                                  autoFocus={isNewEntry}
+                                />
+                              ) : (
+                                <span className="text-xs text-gray-700">{item.firstname || <em className="text-gray-400">No first name</em>}</span>
+                              )}
+                            </div>
+                            
+                            {/* Column 3: Last Name (lastname field) */}
+                            <div className="p-3 border-r border-gray-200">
+                              {isMasterInEditMode ? (
+                                <Input
+                                  value={getEffectiveValue(item.id, 'lastname', item.lastname)}
+                                  onChange={(e) => updateMasterField(item.id, 'lastname', e.target.value)}
+                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                  placeholder={isNewEntry ? "Enter last name..." : ""}
+                                  data-testid={`input-lastname-${item.id}`}
+                                />
+                              ) : (
+                                <span className="text-xs text-gray-700">{item.lastname || <em className="text-gray-400">No last name</em>}</span>
+                              )}
+                            </div>
+                            
+                            {/* Column 4: Designation (designation dropdown) */}
+                            <div className="p-3 border-r border-gray-200">
+                              {isMasterInEditMode ? (
+                                <Select 
+                                  value={getEffectiveValue(item.id, 'designationId', item.designationId)} 
+                                  onValueChange={(value) => updateMasterField(item.id, 'designationId', value)}
+                                >
+                                  <SelectTrigger className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300">
+                                    <SelectValue placeholder={isNewEntry ? "Select designation..." : "Select designation"} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {designationLoading ? (
+                                      <SelectItem value="loading" disabled>Loading designations...</SelectItem>
+                                    ) : (
+                                      (designationData as any[])
+                                        .filter((designation: any) => {
+                                          const value = designation.name || '';
+                                          return value.trim().length > 0;
+                                        })
+                                        .map((designation: any) => (
+                                          <SelectItem 
+                                            key={designation.id} 
+                                            value={designation.entryId || designation.id}
+                                            data-testid={`select-designation-option-${designation.id}`}
+                                          >
+                                            {designation.name || `Designation ${designation.id}`}
+                                          </SelectItem>
+                                        ))
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <span className="text-xs text-gray-700">
+                                  {(() => {
+                                    const designation = (designationData as any[])?.find((d: any) => d.entryId === item.designationId || d.id === item.designationId);
+                                    return designation?.name || <em className="text-gray-400">No designation</em>;
+                                  })()}
+                                </span>
+                              )}
+                            </div>
+                            
+                            {/* Column 5: Actions (delete button) */}
+                            <div className="p-3 flex justify-center">
+                              <button
+                                className="text-gray-500 hover:text-red-500 transition-colors"
+                                onClick={() => deleteMasterEntry(item.id)}
+                                data-testid={`delete-button-${item.id}`}
+                              >
+                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // Original logic for all other master types
                       return (
-                        <div key={item.id} className={`grid ${(selectedMaster === "014" || selectedMaster === "013") ? 'grid-cols-5' : 'grid-cols-4'} gap-0 border-b border-gray-100 hover:bg-gray-50 ${
+                        <div key={item.id} className={`grid ${selectedMaster === "014" ? 'grid-cols-5' : 'grid-cols-4'} gap-0 border-b border-gray-100 hover:bg-gray-50 ${
                           isNewEntry && isMasterInEditMode ? 'bg-blue-50 border-blue-200' : ''
-                        } ${selectedMaster === "013" ? 'users-master-grid-row' : ''}`}>
+                        }`}>
                           <div className="p-3 border-r border-gray-200">
                             <span className="text-xs text-gray-700">{item.entryId || item.entry_id || <em className="text-gray-400">No entry ID</em>}</span>
                           </div>
@@ -2713,20 +2813,6 @@ const AdminModuleInner = (): JSX.Element => {
                                 />
                               ) : (
                                 <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No designation</em>}</span>
-                              )
-                            ) : selectedMaster === "013" ? (
-                              // Users master - show firstname field
-                              isMasterInEditMode ? (
-                                <Input
-                                  value={getEffectiveValue(item.id, 'firstname', item.firstname)}
-                                  onChange={(e) => updateMasterField(item.id, 'firstname', e.target.value)}
-                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                  placeholder={isNewEntry ? "Enter first name..." : ""}
-                                  data-testid={`input-firstname-${item.id}`}
-                                  autoFocus={isNewEntry}
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-700">{item.firstname || <em className="text-gray-400">No first name</em>}</span>
                               )
                             ) : (
                               // Other masters - show name field
@@ -2886,102 +2972,37 @@ const AdminModuleInner = (): JSX.Element => {
                             )}
                           </div>
                           
-                          {/* Third column - conditional based on master type */}
-                          {(selectedMaster === "014" || selectedMaster === "013") && (
+                          {/* Fourth column - only for Vessel Master (014) */}
+                          {selectedMaster === "014" && (
                             <div className="p-3 border-r border-gray-200">
-                              {selectedMaster === "014" ? (
-                                // Vessel master - show vessel type dropdown
-                                isMasterInEditMode ? (
-                                  <Select 
-                                    value={getEffectiveValue(item.id, 'vesselType', item.vesselType)} 
-                                    onValueChange={(value) => updateMasterField(item.id, 'vesselType', value)}
-                                  >
-                                    <SelectTrigger className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300">
-                                      <SelectValue placeholder={isNewEntry ? "Select vessel type..." : "Select type"} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {vesselTypeLoading ? (
-                                        <SelectItem value="loading" disabled>Loading vessel types...</SelectItem>
-                                      ) : (
-                                        (vesselTypeData as any[])
-                                          .filter((vesselType: any) => {
-                                            const value = vesselType.vesselType || vesselType.name || '';
-                                            return value.trim().length > 0;
-                                          })
-                                          .map((vesselType: any) => (
-                                            <SelectItem 
-                                              key={vesselType.id} 
-                                              value={vesselType.vesselType || vesselType.name || `fallback-${vesselType.id}`}
-                                              data-testid={`select-vesselType-option-${vesselType.id}`}
-                                            >
-                                              {vesselType.vesselType || vesselType.name || `Vessel Type ${vesselType.id}`}
-                                            </SelectItem>
-                                          ))
-                                      )}
-                                    </SelectContent>
-                                  </Select>
-                                ) : (
-                                  <span className="text-xs text-gray-700">
-                                    {item.vesselType || <em className="text-gray-400">No vessel type</em>}
-                                  </span>
-                                )
-                              ) : selectedMaster === "013" ? (
-                                // Users master - show lastname field
-                                isMasterInEditMode ? (
-                                  <Input
-                                    value={getEffectiveValue(item.id, 'lastname', item.lastname)}
-                                    onChange={(e) => updateMasterField(item.id, 'lastname', e.target.value)}
-                                    className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                    placeholder={isNewEntry ? "Enter last name..." : ""}
-                                    data-testid={`input-lastname-${item.id}`}
-                                  />
-                                ) : (
-                                  <span className="text-xs text-gray-700">{item.lastname || <em className="text-gray-400">No last name</em>}</span>
-                                )
-                              ) : null}
-                            </div>
-                          )}
-                          
-                          {/* Fourth column - designation dropdown for Users Master */}
-                          {selectedMaster === "013" && (
-                            <div className="p-3 border-r border-gray-200">
-                              {isMasterInEditMode ? (
-                                <Select 
-                                  value={getEffectiveValue(item.id, 'designationId', item.designationId)} 
-                                  onValueChange={(value) => updateMasterField(item.id, 'designationId', value)}
-                                >
-                                  <SelectTrigger className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300">
-                                    <SelectValue placeholder={isNewEntry ? "Select designation..." : "Select designation"} />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {designationLoading ? (
-                                      <SelectItem value="loading" disabled>Loading designations...</SelectItem>
-                                    ) : (
-                                      (designationData as any[])
-                                        .filter((designation: any) => {
-                                          const value = designation.name || '';
-                                          return value.trim().length > 0;
-                                        })
-                                        .map((designation: any) => (
-                                          <SelectItem 
-                                            key={designation.id} 
-                                            value={designation.entryId || designation.id}
-                                            data-testid={`select-designation-option-${designation.id}`}
-                                          >
-                                            {designation.name || `Designation ${designation.id}`}
-                                          </SelectItem>
-                                        ))
-                                    )}
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <span className="text-xs text-gray-700">
-                                  {(() => {
-                                    const designation = (designationData as any[])?.find((d: any) => d.entryId === item.designationId || d.id === item.designationId);
-                                    return designation?.name || <em className="text-gray-400">No designation</em>;
-                                  })()}
-                                </span>
-                              )}
+                              <Select 
+                                value={getEffectiveValue(item.id, 'vesselType', item.vesselType)} 
+                                onValueChange={(value) => updateMasterField(item.id, 'vesselType', value)}
+                              >
+                                <SelectTrigger className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300">
+                                  <SelectValue placeholder={isNewEntry ? "Select vessel type..." : "Select type"} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {vesselTypeLoading ? (
+                                    <SelectItem value="loading" disabled>Loading vessel types...</SelectItem>
+                                  ) : (
+                                    (vesselTypeData as any[])
+                                      .filter((vesselType: any) => {
+                                        const value = vesselType.vesselType || vesselType.name || '';
+                                        return value.trim().length > 0;
+                                      })
+                                      .map((vesselType: any) => (
+                                        <SelectItem 
+                                          key={vesselType.id} 
+                                          value={vesselType.vesselType || vesselType.name || `fallback-${vesselType.id}`}
+                                          data-testid={`select-vesselType-option-${vesselType.id}`}
+                                        >
+                                          {vesselType.vesselType || vesselType.name || `Vessel Type ${vesselType.id}`}
+                                        </SelectItem>
+                                      ))
+                                  )}
+                                </SelectContent>
+                              </Select>
                             </div>
                           )}
                           
