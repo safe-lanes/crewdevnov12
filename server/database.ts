@@ -995,7 +995,7 @@ export class DatabaseStorage implements IStorage {
     
     // Use raw SQL for UPDATE
     const columns = Object.keys(filteredEntry).map(col => `${col} = ?`).join(', ');
-    const values = Object.values(filteredEntry);
+    const values = Object.values(filteredEntry).map(value => value === undefined ? null : value);
     const updateSql = `UPDATE master_data_entries SET ${columns} WHERE id = ?`;
     
     const [result]: any = await this.pool.execute(updateSql, [...values, id]);
