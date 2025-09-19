@@ -55,6 +55,7 @@ import {
   useUpdateMasterDataEntry,
   useDeleteMasterDataEntry 
 } from "@/hooks/useDataMasters";
+import { useRankMasterData, useCompanyRanks, type RankMasterData } from "@/hooks/useCompanyRanks";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -92,14 +93,7 @@ const rankGroupSchema = z.object({
   ranks: z.array(z.string()).min(1, "At least one rank must be selected"),
 });
 
-// Interface for Rank Master data
-interface RankMasterData {
-  id: string;
-  rank: string;
-  rankId: string;
-  applicableToCompany: boolean;
-  label: string;
-}
+// Note: RankMasterData interface moved to shared hook useCompanyRanks.ts
 
 // Interface for Company Rank data
 interface CompanyRankData {
@@ -176,16 +170,18 @@ const AdminModuleInner = (): JSX.Element => {
   const [createFormType, setCreateFormType] = useState<"template" | "blank">("template");
   const [selectedTemplate, setSelectedTemplate] = useState("");
   
-  // Rank Master state
-  const [rankMasterData, setRankMasterData] = useState<RankMasterData[]>([
-    { id: "1", rank: "Master", rankId: "S1", applicableToCompany: true, label: "Master" },
-    { id: "2", rank: "Chief Officer", rankId: "S2", applicableToCompany: true, label: "Chief Off" },
-    { id: "3", rank: "Second Officer", rankId: "S3", applicableToCompany: true, label: "2nd Off" },
-    { id: "4", rank: "Third Officer", rankId: "S4", applicableToCompany: true, label: "3rd Off" },
-    { id: "5", rank: "Fourth Officer", rankId: "S5", applicableToCompany: false, label: "" },
-    { id: "6", rank: "Deck Cadet", rankId: "S6", applicableToCompany: true, label: "Deck Cadet" },
-    { id: "7", rank: "Chief Engineer", rankId: "S7", applicableToCompany: true, label: "Ch Eng" },
-  ]);
+  // Rank Master data from shared hook (for initialization)
+  const { data: sharedRankMasterData, isLoading: rankMasterLoading, error: rankMasterError } = useRankMasterData();
+  
+  // Local state for editing (initialized from shared data)
+  const [rankMasterData, setRankMasterData] = useState<RankMasterData[]>([]);
+  
+  // Sync local state with shared data on first load
+  useEffect(() => {
+    if (sharedRankMasterData && rankMasterData.length === 0) {
+      setRankMasterData(sharedRankMasterData);
+    }
+  }, [sharedRankMasterData, rankMasterData.length]);
   const [isRankMasterEditing, setIsRankMasterEditing] = useState(false);
   const [rankMasterGridApi, setRankMasterGridApi] = useState<GridApi | null>(null);
   
@@ -213,13 +209,14 @@ const AdminModuleInner = (): JSX.Element => {
   // Dialog handler functions
   const handleSaveChanges = async () => {
     try {
-      const result = await resolvePendingNavigation('save');
+      // Store pendingTarget before resolving navigation
+      const currentPendingTarget = pendingTarget;
+      await resolvePendingNavigation('save');
       setShowUnsavedChangesDialog(false);
       
       // Handle rank admin tab switching after save
-      const pendingTarget = result?.pendingTarget;
-      if (pendingTarget && pendingTarget.startsWith('rank-admin-tab-')) {
-        const tabId = pendingTarget.replace('rank-admin-tab-', '');
+      if (currentPendingTarget && currentPendingTarget.startsWith('rank-admin-tab-')) {
+        const tabId = currentPendingTarget.replace('rank-admin-tab-', '');
         setSelectedRankAdminTab(tabId);
       }
     } catch (error) {
@@ -232,13 +229,14 @@ const AdminModuleInner = (): JSX.Element => {
   
   const handleDiscardChanges = async () => {
     try {
-      const result = await resolvePendingNavigation('discard');
+      // Store pendingTarget before resolving navigation
+      const currentPendingTarget = pendingTarget;
+      await resolvePendingNavigation('discard');
       setShowUnsavedChangesDialog(false);
       
       // Handle rank admin tab switching after discard
-      const pendingTarget = result?.pendingTarget;
-      if (pendingTarget && pendingTarget.startsWith('rank-admin-tab-')) {
-        const tabId = pendingTarget.replace('rank-admin-tab-', '');
+      if (currentPendingTarget && currentPendingTarget.startsWith('rank-admin-tab-')) {
+        const tabId = currentPendingTarget.replace('rank-admin-tab-', '');
         setSelectedRankAdminTab(tabId);
       }
     } catch (error) {
@@ -696,6 +694,7 @@ const AdminModuleInner = (): JSX.Element => {
     saving,
     isDirty,
     pendingChanges,
+    pendingTarget,
     setPendingTarget,
     resolvePendingNavigation,
     hasUnsavedChanges

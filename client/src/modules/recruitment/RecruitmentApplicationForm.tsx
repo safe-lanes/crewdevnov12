@@ -18,6 +18,7 @@ import { ArrowLeft, Edit, Plus, Save, Trash2, Upload, Paperclip, X, Camera, Info
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { type RecruitmentCandidate, type InsertRecruitmentCandidate } from '@shared/schema';
+import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 
 interface RecruitmentApplicationFormProps {
   candidate: RecruitmentCandidate | null;
@@ -205,6 +206,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const [activeSection, setActiveSection] = useState('A1');
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  // Get company ranks from shared hook
+  const { data: companyRanks, isLoading: ranksLoading, rankNames } = useCompanyRanks();
 
   // Create mutation for saving recruitment candidate
   const saveMutation = useMutation({
@@ -1075,12 +1079,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     'Tug', 'Dredger', 'Research Vessel', 'Naval Vessel'
   ];
 
-  const rankMasterData = [
-    'Captain', 'Chief Officer', 'First Mate', 'Second Mate', 'Third Mate',
-    'Chief Engineer', 'Second Engineer', 'Third Engineer', 'Navigator',
-    'Bosun', 'Able Seaman', 'Ordinary Seaman', 'Deckhand', 'Radio Officer',
-    'Electrical Officer', 'Cadet', 'Motorman', 'Oiler', 'Wiper', 'Cook'
-  ];
+  // Rank data now comes from shared hook useCompanyRanks
 
   const fleetGroupMasterData = [
     'MR Class1 Tankers', 'Chemical JP 20', 'Chemical SS', 'Fleet A', 'Fleet B', 'Fleet C',
@@ -1261,9 +1260,13 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                       <SelectValue placeholder="Select rank" />
                     </SelectTrigger>
                     <SelectContent className="max-h-[200px]">
-                      {rankMasterData.map(rank => (
-                        <SelectItem key={rank} value={rank}>{rank}</SelectItem>
-                      ))}
+                      {ranksLoading ? (
+                        <SelectItem value="" disabled>Loading ranks...</SelectItem>
+                      ) : (
+                        rankNames.map(rank => (
+                          <SelectItem key={rank} value={rank}>{rank}</SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 ) : (
@@ -1366,9 +1369,13 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                     <SelectValue placeholder="Select rank" />
                   </SelectTrigger>
                   <SelectContent className="max-h-[200px]">
-                    {rankMasterData.map(rank => (
-                      <SelectItem key={rank} value={rank}>{rank}</SelectItem>
-                    ))}
+                    {ranksLoading ? (
+                      <SelectItem value="" disabled>Loading ranks...</SelectItem>
+                    ) : (
+                      rankNames.map(rank => (
+                        <SelectItem key={rank} value={rank}>{rank}</SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               ) : (
@@ -2307,11 +2314,15 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                       <SelectValue placeholder="Select rank" />
                     </SelectTrigger>
                     <SelectContent>
-                      {rankMasterData.map((rank) => (
-                        <SelectItem key={rank} value={rank}>
-                          {rank}
-                        </SelectItem>
-                      ))}
+                      {ranksLoading ? (
+                        <SelectItem value="" disabled>Loading ranks...</SelectItem>
+                      ) : (
+                        rankNames.map((rank) => (
+                          <SelectItem key={rank} value={rank}>
+                            {rank}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </TableCell>
