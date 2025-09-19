@@ -55,7 +55,7 @@ import {
   useUpdateMasterDataEntry,
   useDeleteMasterDataEntry 
 } from "@/hooks/useDataMasters";
-import { useRankMasterData, useCompanyRanks, type RankMasterData } from "@/hooks/useCompanyRanks";
+import { useRankMasterData, useCompanyRanks, useCreateRank, useUpdateRank, useDeleteRank, type RankMasterData } from "@/hooks/useCompanyRanks";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -173,15 +173,27 @@ const AdminModuleInner = (): JSX.Element => {
   // Rank Master data from shared hook (for initialization)
   const { data: sharedRankMasterData, isLoading: rankMasterLoading, error: rankMasterError } = useRankMasterData();
   
+  // Mutation hooks for rank management
+  const createRankMutation = useCreateRank();
+  const updateRankMutation = useUpdateRank();
+  const deleteRankMutation = useDeleteRank();
+  
   // Local state for editing (initialized from shared data)
   const [rankMasterData, setRankMasterData] = useState<RankMasterData[]>([]);
+  const [changedRanks, setChangedRanks] = useState<Set<string>>(new Set());
+  const [newRanks, setNewRanks] = useState<Set<string>>(new Set());
+  const [deletedRanks, setDeletedRanks] = useState<Set<string>>(new Set());
   
   // Sync local state with shared data on first load
   useEffect(() => {
-    if (sharedRankMasterData && rankMasterData.length === 0) {
+    if (sharedRankMasterData) {
       setRankMasterData(sharedRankMasterData);
+      // Clear change tracking when data refreshes
+      setChangedRanks(new Set());
+      setNewRanks(new Set());
+      setDeletedRanks(new Set());
     }
-  }, [sharedRankMasterData, rankMasterData.length]);
+  }, [sharedRankMasterData]);
   const [isRankMasterEditing, setIsRankMasterEditing] = useState(false);
   const [rankMasterGridApi, setRankMasterGridApi] = useState<GridApi | null>(null);
   
@@ -650,7 +662,7 @@ const AdminModuleInner = (): JSX.Element => {
 
   const handleNewRank = () => {
     const newRank: RankMasterData = {
-      id: Date.now().toString(),
+      id: `new_${Date.now()}`, // Prefix with 'new_' to identify new ranks
       rank: "",
       rankId: "",
       applicableToCompany: false,
@@ -670,6 +682,8 @@ const AdminModuleInner = (): JSX.Element => {
       }, 100);
       return newData;
     });
+    // Track this as a new rank
+    setNewRanks(prev => new Set([...Array.from(prev), newRank.id]));
     setIsRankMasterEditing(true);
   };
 
@@ -677,9 +691,81 @@ const AdminModuleInner = (): JSX.Element => {
     setIsRankMasterEditing(true);
   };
 
-  const handleSaveRank = () => {
-    setIsRankMasterEditing(false);
-    rankMasterGridApi?.stopEditing();
+  const handleDeleteRank = (rankId: string) => {
+    setRankMasterData(prev => prev.filter(rank => rank.id !== rankId));
+    setDeletedRanks(prev => new Set([...Array.from(prev), rankId]));
+    // Also remove from other tracking sets if present
+    setChangedRanks(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(rankId);
+      return newSet;
+    });
+    setNewRanks(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(rankId);
+      return newSet;
+    });
+  };
+
+  const handleSaveRank = async () => {
+    try {
+      rankMasterGridApi?.stopEditing();
+      
+      // Process deletions first
+      for (const deletedId of Array.from(deletedRanks)) {
+        if (!deletedId.startsWith('new_')) { // Don't try to delete new ranks that haven't been saved yet
+          await deleteRankMutation.mutateAsync(parseInt(deletedId));
+        }
+      }
+      
+      // Process new ranks
+      for (const newId of Array.from(newRanks)) {
+        const rankData = rankMasterData.find(r => r.id === newId);
+        if (rankData && rankData.rank.trim()) { // Only save if rank name is provided
+          const categoryFromApplicability = rankData.applicableToCompany ? 'Senior Officers' : 'Ratings';
+          await createRankMutation.mutateAsync({
+            name: rankData.rank,
+            category: categoryFromApplicability
+          });
+        }
+      }
+      
+      // Process updates to existing ranks
+      for (const changedId of Array.from(changedRanks)) {
+        if (!changedId.startsWith('new_') && !deletedRanks.has(changedId)) {
+          const rankData = rankMasterData.find(r => r.id === changedId);
+          if (rankData) {
+            const categoryFromApplicability = rankData.applicableToCompany ? 'Senior Officers' : 'Ratings';
+            await updateRankMutation.mutateAsync({
+              id: parseInt(changedId),
+              data: {
+                name: rankData.rank,
+                category: categoryFromApplicability
+              }
+            });
+          }
+        }
+      }
+      
+      // Clear change tracking
+      setChangedRanks(new Set());
+      setNewRanks(new Set());
+      setDeletedRanks(new Set());
+      setIsRankMasterEditing(false);
+      
+      toast({
+        title: "Success",
+        description: "Rank changes saved successfully",
+      });
+      
+    } catch (error) {
+      console.error('Error saving ranks:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save rank changes",
+        variant: "destructive",
+      });
+    }
   };
 
   // EditSession integration - use hook directly at top level
@@ -2345,6 +2431,12 @@ const AdminModuleInner = (): JSX.Element => {
                       if (rowIndex !== -1) {
                         newData[rowIndex] = { ...newData[rowIndex], [event.colDef.field!]: event.newValue };
                         setRankMasterData(newData);
+                        
+                        // Track changes for persistence
+                        const rowId = event.data.id;
+                        if (!rowId.startsWith('new_')) {
+                          setChangedRanks(prev => new Set([...Array.from(prev), rowId]));
+                        }
                       }
                     }
                   }}

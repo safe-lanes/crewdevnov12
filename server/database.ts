@@ -786,6 +786,17 @@ export class DatabaseStorage implements IStorage {
     return availableRank[0];
   }
 
+  async updateAvailableRank(id: number, rankData: Partial<InsertAvailableRank>): Promise<AvailableRank | undefined> {
+    await this.db.update(availableRanks).set(rankData).where(eq(availableRanks.id, id));
+    const availableRank = await this.db.select().from(availableRanks).where(eq(availableRanks.id, id));
+    return availableRank[0];
+  }
+
+  async deleteAvailableRank(id: number): Promise<boolean> {
+    const result = await this.db.delete(availableRanks).where(eq(availableRanks.id, id));
+    return (result as any).affectedRows > 0;
+  }
+
   // Crew Member methods
   async getCrewMembers(): Promise<CrewMember[]> {
     return await this.db.select().from(crewMembers);

@@ -19,6 +19,8 @@ export interface IStorage {
   deleteRankGroup(id: number): Promise<boolean>;
   getAvailableRanks(): Promise<AvailableRank[]>;
   createAvailableRank(rank: InsertAvailableRank): Promise<AvailableRank>;
+  updateAvailableRank(id: number, rank: Partial<InsertAvailableRank>): Promise<AvailableRank | undefined>;
+  deleteAvailableRank(id: number): Promise<boolean>;
   // Crew Members
   getCrewMembers(): Promise<CrewMember[]>;
   getCrewMember(id: string): Promise<CrewMember | undefined>;
@@ -370,6 +372,22 @@ export class MemStorage implements IStorage {
     return availableRank;
   }
 
+  async updateAvailableRank(id: number, rankData: Partial<InsertAvailableRank>): Promise<AvailableRank | undefined> {
+    const existingRank = this.availableRanks.get(id);
+    if (!existingRank) return undefined;
+    
+    const updatedRank: AvailableRank = { 
+      ...existingRank, 
+      ...rankData
+    };
+    this.availableRanks.set(id, updatedRank);
+    return updatedRank;
+  }
+
+  async deleteAvailableRank(id: number): Promise<boolean> {
+    return this.availableRanks.delete(id);
+  }
+
   // Crew Members Methods
   async getCrewMembers(): Promise<CrewMember[]> {
     return Array.from(this.crewMembers.values());
@@ -494,6 +512,58 @@ export class MemStorage implements IStorage {
   async deleteRecruitmentCandidate(id: string): Promise<boolean> {
     return this.recruitmentCandidates.delete(id);
   }
+
+  // Data Masters Methods (stub implementations for MemStorage)
+  async getDataMasters(): Promise<DataMaster[]> {
+    // MemStorage doesn't have data masters - return empty array
+    return [];
+  }
+
+  async getDataMaster(id: string): Promise<DataMaster | undefined> {
+    // MemStorage doesn't have data masters - return undefined
+    return undefined;
+  }
+
+  async createDataMaster(master: InsertDataMaster): Promise<DataMaster> {
+    // MemStorage doesn't support data masters - throw error
+    throw new Error("MemStorage doesn't support data masters. Use DatabaseStorage instead.");
+  }
+
+  async updateDataMaster(id: string, master: Partial<InsertDataMaster>): Promise<DataMaster | undefined> {
+    // MemStorage doesn't support data masters - throw error
+    throw new Error("MemStorage doesn't support data masters. Use DatabaseStorage instead.");
+  }
+
+  async deleteDataMaster(id: string): Promise<boolean> {
+    // MemStorage doesn't support data masters - throw error
+    throw new Error("MemStorage doesn't support data masters. Use DatabaseStorage instead.");
+  }
+
+  // Master Data Entries Methods (stub implementations for MemStorage)
+  async getMasterDataEntries(masterId: string): Promise<MasterDataEntry[]> {
+    // MemStorage doesn't have master data entries - return empty array
+    return [];
+  }
+
+  async getMasterDataEntry(id: number): Promise<MasterDataEntry | undefined> {
+    // MemStorage doesn't have master data entries - return undefined
+    return undefined;
+  }
+
+  async createMasterDataEntry(entry: InsertMasterDataEntry): Promise<MasterDataEntry> {
+    // MemStorage doesn't support master data entries - throw error
+    throw new Error("MemStorage doesn't support master data entries. Use DatabaseStorage instead.");
+  }
+
+  async updateMasterDataEntry(id: number, entry: Partial<InsertMasterDataEntry>): Promise<MasterDataEntry | undefined> {
+    // MemStorage doesn't support master data entries - throw error
+    throw new Error("MemStorage doesn't support master data entries. Use DatabaseStorage instead.");
+  }
+
+  async deleteMasterDataEntry(id: number): Promise<boolean> {
+    // MemStorage doesn't support master data entries - throw error
+    throw new Error("MemStorage doesn't support master data entries. Use DatabaseStorage instead.");
+  }
 }
 
 import { DatabaseStorage } from "./database";
@@ -578,6 +648,8 @@ if (databaseUrl) {
       async deleteRankGroup(): Promise<any> { this.throwConnectionError(); }
       async getAvailableRanks(): Promise<any> { this.throwConnectionError(); }
       async createAvailableRank(): Promise<any> { this.throwConnectionError(); }
+      async updateAvailableRank(): Promise<any> { this.throwConnectionError(); }
+      async deleteAvailableRank(): Promise<any> { this.throwConnectionError(); }
       async getCrewMembers(): Promise<any> { this.throwConnectionError(); }
       async getCrewMember(): Promise<any> { this.throwConnectionError(); }
       async createCrewMember(): Promise<any> { this.throwConnectionError(); }
@@ -635,6 +707,8 @@ if (databaseUrl) {
     async deleteRankGroup(): Promise<any> { this.throwConnectionError(); }
     async getAvailableRanks(): Promise<any> { this.throwConnectionError(); }
     async createAvailableRank(): Promise<any> { this.throwConnectionError(); }
+    async updateAvailableRank(): Promise<any> { this.throwConnectionError(); }
+    async deleteAvailableRank(): Promise<any> { this.throwConnectionError(); }
     async getCrewMembers(): Promise<any> { this.throwConnectionError(); }
     async getCrewMember(): Promise<any> { this.throwConnectionError(); }
     async createCrewMember(): Promise<any> { this.throwConnectionError(); }

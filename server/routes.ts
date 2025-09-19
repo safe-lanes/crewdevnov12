@@ -290,6 +290,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/available-ranks/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = insertAvailableRankSchema.partial().parse(req.body);
+      const rank = await storage.updateAvailableRank(id, validatedData);
+      if (!rank) {
+        return res.status(404).json({ error: "Rank not found" });
+      }
+      res.json(rank);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid rank data" });
+    }
+  });
+
+  app.delete("/api/available-ranks/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteAvailableRank(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Rank not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete rank" });
+    }
+  });
+
   // Crew Members API routes
   app.get("/api/crew-members", async (req, res) => {
     try {
