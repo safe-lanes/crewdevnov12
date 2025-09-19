@@ -190,10 +190,10 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
 
   // Row selection configuration
   const rowSelectionConfig = useMemo(() => {
-    if (rowSelection === false) return undefined;
+    if (rowSelection === false) return false;
 
     return {
-      mode: rowSelection === 'single' ? 'singleRow' as const : 'multiRow' as const,
+      mode: rowSelection === 'single' ? 'singleRow' : 'multiRow',
       enableClickSelection: true
     };
   }, [rowSelection]);

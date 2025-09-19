@@ -2403,7 +2403,6 @@ const AdminModuleInner = (): JSX.Element => {
                   rowData={rankMasterData}
                   columnDefs={rankMasterColumnDefs}
                   onGridReady={handleRankMasterGridReady}
-                  width="100%"
                   enableExport={false}
                   enableSideBar={false}
                   enableStatusBar={false}
@@ -2451,14 +2450,17 @@ const AdminModuleInner = (): JSX.Element => {
                   rowData={companyRankData}
                   columnDefs={companyColumnDefs}
                   onGridReady={handleCompanyGridReady}
+                  autoHeight={true}
+                  maxHeight="500px"
+                  minHeight="200px"
                   width="100%"
-                  enableExport={false}
-                  enableSideBar={false}
+                  enableExport={true}
+                  enableSideBar={true}
                   enableStatusBar={false}
-                  enableRowGrouping={false}
-                  enablePivoting={false}
+                  enableRowGrouping={true}
+                  enablePivoting={true}
+                  enableAdvancedFilter={false}
                   rowSelection={false}
-                  animateRows={true}
                   theme="alpine"
                   gridOptions={{
                     rowDragManaged: true,
