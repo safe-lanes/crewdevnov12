@@ -71,6 +71,12 @@ import {
   filterToSafeFields,
   type VesselMasterEntry
 } from "@/utils/vesselMasterMapping";
+// Vessel option interface for dropdown
+interface VesselOption {
+  value: string;
+  label: string;
+}
+
 import {
   mapPortDataToSafeFields,
   mapSafeFieldsToPortData,
@@ -524,13 +530,20 @@ const AdminModuleInner = (): JSX.Element => {
   ]);
   
   // Dynamic vessel data from Vessels Master (ID 014)
-  const vesselOptions = useMemo(() => {
-    return vesselMasterData.map((vessel: any) => {
+  const vesselOptions = useMemo((): VesselOption[] => {
+    return vesselMasterData.map((vessel: any): VesselOption => {
       // Apply vessel field mapping if the data needs transformation
       const mappedVessel = mapSafeFieldsToVesselData(vessel);
+      
+      // Ensure we have a consistent value field for selection
+      const vesselValue = vessel.id || vessel.entry_id || vessel.vuid || `vessel_${vessel.name || mappedVessel.vessel || 'unknown'}`;
+      
+      // Ensure we have a consistent label field for display
+      const vesselLabel = mappedVessel.vessel || vessel.name || vessel.label || `Vessel ${vesselValue}`;
+      
       return {
-        value: vessel.id || vessel.value || vessel.vuid || `vessel_${vessel.name}`,
-        label: mappedVessel.vessel || vessel.name || vessel.label || 'Unnamed Vessel'
+        value: String(vesselValue), // Ensure it's always a string
+        label: String(vesselLabel)  // Ensure it's always a string
       };
     });
   }, [vesselMasterData]);
@@ -572,7 +585,7 @@ const AdminModuleInner = (): JSX.Element => {
     setVesselRankDataMap(prev => {
       const newMap = new Map();
       
-      vesselOptions.forEach(vessel => {
+      vesselOptions.forEach((vessel: VesselOption) => {
         const existingVesselData = prev.get(vessel.value) || [];
         const preservedManningData = new Map<string, {
           actualManning: string[];
@@ -2401,7 +2414,7 @@ const AdminModuleInner = (): JSX.Element => {
                           {selectedVessels.length === 0 
                             ? "Vessel / Vessel Group" 
                             : selectedVessels.length === 1 
-                              ? vesselOptions.find(v => v.value === selectedVessels[0])?.label
+                              ? vesselOptions.find((v: VesselOption) => v.value === selectedVessels[0])?.label
                               : `${selectedVessels.length} vessels selected`
                           }
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -2412,7 +2425,7 @@ const AdminModuleInner = (): JSX.Element => {
                           <CommandInput placeholder="Search vessels..." className="h-9" />
                           <CommandEmpty>No vessel found.</CommandEmpty>
                           <CommandGroup>
-                            {vesselOptions.map((vessel) => (
+                            {vesselOptions.map((vessel: VesselOption) => (
                               <CommandItem
                                 key={vessel.value}
                                 value={vessel.value}
@@ -2483,7 +2496,7 @@ const AdminModuleInner = (): JSX.Element => {
                               key={vesselId}
                               className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800"
                             >
-                              {vesselOptions.find(v => v.value === vesselId)?.label || vesselId}
+                              {vesselOptions.find((v: VesselOption) => v.value === vesselId)?.label || vesselId}
                             </span>
                           ))}
                         </div>
