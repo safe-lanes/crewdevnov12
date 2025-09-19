@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown } from "lucide-react";
+import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UnsavedChangesDialog } from "@/components/dialogs/UnsavedChangesDialog";
 import {
@@ -1823,6 +1823,32 @@ const AdminModuleInner = (): JSX.Element => {
       setSelectedTemplate("");
     },
   });
+
+  const deleteFormMutation = useMutation({
+    mutationFn: async (formId: number) => {
+      return await apiRequest("DELETE", `/api/forms/${formId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/forms"] });
+      toast({
+        title: "Success",
+        description: "Form deleted successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to delete form",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteForm = (form: Form) => {
+    if (window.confirm(`Are you sure you want to delete the form "${form.name}"?`)) {
+      deleteFormMutation.mutate(form.id);
+    }
+  };
 
   const handleEditClick = (form: Form) => {
     setEditingForm(form);
