@@ -272,15 +272,20 @@ export function filterAdditionalGroupsData(data: any, masterId: string): Partial
   const transformedData = transformVesselIds(data, 'toDatabase');
   console.log(`🎯 [GROUPS FILTER] After vesselIds transformation:`, transformedData);
 
-  // Handle field naming consistency - accept both "VesselIDs" and "vesselIds"
+  // Handle field naming consistency - accept both "VesselIDs" and "vesselIds"  
   const normalizedData = { ...transformedData };
   
-  // Only include vesselIds in the result if it was provided in the input
-  const hasVesselIds = ('vesselIds' in data) || ('VesselIDs' in data);
-  if (hasVesselIds) {
-    // Ensure vesselIds is the canonical field name, convert undefined to null for database
+  // Only include vesselIds in the result if it was actually provided in the original input data
+  const originalHasVesselIds = ('vesselIds' in data) || ('VesselIDs' in data);
+  const transformedHasVesselIds = ('vesselIds' in transformedData) || ('VesselIDs' in transformedData);
+  
+  if (originalHasVesselIds || transformedHasVesselIds) {
+    // If vesselIds was provided, ensure it's the canonical field name and handle undefined->null conversion
     const vesselIdsValue = transformedData.vesselIds || transformedData.VesselIDs;
     normalizedData.vesselIds = vesselIdsValue !== undefined ? vesselIdsValue : null;
+  } else {
+    // If vesselIds was not provided, completely remove it from the result to avoid undefined values
+    delete normalizedData.vesselIds;
   }
   
   // Remove alternative casing to avoid duplication
