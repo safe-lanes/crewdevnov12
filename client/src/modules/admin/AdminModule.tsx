@@ -2531,7 +2531,7 @@ const AdminModuleInner = (): JSX.Element => {
               {/* Right Table - Selected Master Data */}
               <div className={`${currentBreakpoint === 'mobile' ? 'w-full' : 'flex-1'}`}>
                 <div className="bg-[#52baf3] text-white text-xs font-medium p-0">
-                  <div className={`grid ${(selectedMaster === "014" || selectedMaster === "013") ? 'grid-cols-5' : 'grid-cols-4'} gap-0`}>
+                  <div className={`grid ${(selectedMaster === "014" || selectedMaster === "013") ? 'grid-cols-5' : 'grid-cols-4'} gap-0 ${selectedMaster === "013" ? 'users-master-header-grid' : ''}`}>
                     <div className="p-3 border-r border-blue-400">Entry ID</div>
                     {selectedMaster === "001" ? (
                       <>
@@ -2584,7 +2584,7 @@ const AdminModuleInner = (): JSX.Element => {
                     <div className="p-3 text-center">Actions</div>
                   </div>
                 </div>
-                <div className={`${currentBreakpoint === 'mobile' ? 'max-h-64' : 'h-[500px]'} overflow-y-auto`}>
+                <div className={`${currentBreakpoint === 'mobile' ? 'max-h-64' : 'h-[500px]'} overflow-y-auto ${selectedMaster === "013" ? 'users-master-grid-container' : ''}`}>
                   {masterDataLoading ? (
                     <div className="p-3 text-xs text-gray-500">Loading master data...</div>
                   ) : masterDataError ? (
@@ -2609,7 +2609,7 @@ const AdminModuleInner = (): JSX.Element => {
                       return (
                         <div key={item.id} className={`grid ${(selectedMaster === "014" || selectedMaster === "013") ? 'grid-cols-5' : 'grid-cols-4'} gap-0 border-b border-gray-100 hover:bg-gray-50 ${
                           isNewEntry && isMasterInEditMode ? 'bg-blue-50 border-blue-200' : ''
-                        }`}>
+                        } ${selectedMaster === "013" ? 'users-master-grid-row' : ''}`}>
                           <div className="p-3 border-r border-gray-200">
                             <span className="text-xs text-gray-700">{item.entryId || item.entry_id || <em className="text-gray-400">No entry ID</em>}</span>
                           </div>

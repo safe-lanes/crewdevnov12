@@ -169,6 +169,17 @@
   .all-\[unset\] {
     all: unset;
   }
+  
+  /* Users Master grid layout fix - ensures 5-column layout works correctly */
+  .users-master-grid-container .users-master-grid-row {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  }
+  
+  .users-master-header-grid {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  }
 }
 
 @tailwind base;
