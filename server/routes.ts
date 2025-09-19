@@ -650,7 +650,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Apply master-specific filtering and transformation BEFORE validation if needed
       let requestData = req.body;
-      if (needsSpecialHandling(masterId)) {
+      
+      // Check if this is a description-only update (simple text entry)
+      const isDescriptionOnlyUpdate = req.body.description !== undefined && 
+        Object.keys(req.body).filter(key => key !== 'masterId' && key !== 'description').length === 0;
+      
+      if (needsSpecialHandling(masterId) && !isDescriptionOnlyUpdate) {
         console.log(`🔧 [UPDATE] Special master detected (${masterId}) for entry ${id} - applying transformations BEFORE validation`);
         
         // Apply appropriate filtering/transformation based on master type
@@ -668,6 +673,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
         }
+      } else if (isDescriptionOnlyUpdate) {
+        console.log(`📝 [UPDATE] Description-only update detected for entry ${id} - bypassing special transformations`);
       }
       
       const result = insertMasterDataEntrySchema.partial().safeParse(requestData);
