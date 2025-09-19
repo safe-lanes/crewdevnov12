@@ -3299,6 +3299,15 @@ const AdminModuleInner = (): JSX.Element => {
                           >
                             <EditIcon className="h-[18px] w-[18px] text-gray-500" />
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => handleDeleteForm(forms[0])}
+                            data-testid="button-delete-form"
+                          >
+                            <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -3341,6 +3350,15 @@ const AdminModuleInner = (): JSX.Element => {
                               onClick={() => handleEditClick(form)}
                             >
                               <EditIcon className="h-[18px] w-[18px] text-gray-500" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => handleDeleteForm(form)}
+                              data-testid="button-delete-form"
+                            >
+                              <Trash2 className="h-[18px] w-[18px] text-gray-500" />
                             </Button>
                           </div>
                         </TableCell>
