@@ -1150,10 +1150,10 @@ export class DatabaseStorage implements IStorage {
         { masterId: "001", entryId: "NAT019", name: "Latvian", description: "Latvia", countryName: "Latvian", country: "Latvia" },
         { masterId: "001", entryId: "NAT020", name: "Estonian", description: "Estonia", countryName: "Estonian", country: "Estonia" },
         
-        // Designation entries
-        { masterId: "012", entryId: "DES001", name: "Master", description: "Ship Captain" },
-        { masterId: "012", entryId: "DES002", name: "Chief Engineer", description: "Chief Engineering Officer" },
-        { masterId: "012", entryId: "DES003", name: "Chief Officer", description: "First Officer" },
+        // Designation entries - DISABLED: Users manage their own designations
+        // { masterId: "012", entryId: "DES001", name: "Master", description: "Ship Captain" },
+        // { masterId: "012", entryId: "DES002", name: "Chief Engineer", description: "Chief Engineering Officer" },
+        // { masterId: "012", entryId: "DES003", name: "Chief Officer", description: "First Officer" },
         
         // Vessel Type entries  
         { masterId: "004", entryId: "VT001", name: "Oil Tanker", description: "Petroleum transport vessel" },
