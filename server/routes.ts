@@ -55,8 +55,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const healthStatus = {
       server: "running",
       database: isConnected ? "connected" : "disconnected",
-      rds_instance: "ls-d153072fe29fcd7dc7c484a33fd3130e29abae1b.cxock8yskd1i.ap-southeast-1.rds.amazonaws.com:3306",
-      database_name: "crew_database",
+      // Gate sensitive information behind development environment check
+      ...(process.env.NODE_ENV === 'development' && {
+        rds_instance: "ls-d153072fe29fcd7dc7c484a33fd3130e29abae1b.cxock8yskd1i.ap-southeast-1.rds.amazonaws.com:3306",
+        database_name: "crew_database"
+      }),
       connection_error: connectionError?.message || null,
       timestamp: new Date().toISOString()
     };

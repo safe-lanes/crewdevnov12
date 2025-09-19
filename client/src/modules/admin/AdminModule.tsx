@@ -1826,45 +1826,60 @@ const AdminModuleInner = (): JSX.Element => {
 
   const deleteFormMutation = useMutation({
     mutationFn: async (formId: number) => {
+      if (import.meta.env.DEV) {
+        console.log('🗑️ [DELETE DEBUG] Making DELETE request for form ID:', formId);
+      }
       return await apiRequest("DELETE", `/api/forms/${formId}`);
     },
     onSuccess: () => {
+      // Invalidate cache on success
       queryClient.invalidateQueries({ queryKey: ["/api/forms"] });
       toast({
         title: "Success",
         description: "Form deleted successfully",
       });
+      if (import.meta.env.DEV) {
+        console.log('✅ [DELETE DEBUG] Form deleted successfully');
+      }
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      // Also invalidate cache on error to refresh state
+      queryClient.invalidateQueries({ queryKey: ["/api/forms"] });
+      
+      // Extract specific error message from server response
+      let errorMessage = "Failed to delete form";
+      if (error?.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to delete form",
+        description: errorMessage,
         variant: "destructive",
       });
+      
+      if (import.meta.env.DEV) {
+        console.error('❌ [DELETE DEBUG] Form deletion failed:', error);
+        console.error('❌ [DELETE DEBUG] Error details:', {
+          status: error?.response?.status,
+          data: error?.response?.data,
+          message: error?.message
+        });
+      }
     },
   });
 
-  const cleanupDuplicatesMutation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest("POST", "/api/forms/cleanup-duplicates");
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/forms"] });
-      toast({
-        title: "Cleanup Completed",
-        description: `${data.message}. Kept form ID: ${data.kept}, Deleted: ${data.deletedCount} duplicates`,
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to cleanup duplicates",
-        variant: "destructive",
-      });
-    },
-  });
 
   const handleDeleteForm = (form: Form) => {
+    // Debug logging for ID mismatch prevention
+    if (import.meta.env.DEV) {
+      console.log('🗑️ [DELETE DEBUG] Attempting to delete form:', form);
+      console.log('🗑️ [DELETE DEBUG] Form ID:', form.id);
+      console.log('🗑️ [DELETE DEBUG] Form name:', form.name);
+    }
+    
     if (window.confirm(`Are you sure you want to delete the form "${form.name}"?`)) {
       deleteFormMutation.mutate(form.id);
     }
@@ -2025,14 +2040,11 @@ const AdminModuleInner = (): JSX.Element => {
     );
   };
 
-  // Group forms by name for hierarchical display
-  const groupedForms = formsData.reduce((acc, form) => {
-    if (!acc[form.name]) {
-      acc[form.name] = [];
-    }
-    acc[form.name].push(form);
-    return acc;
-  }, {} as Record<string, typeof formsData>);
+  // Debug log the forms data to understand duplication issue
+  if (import.meta.env.DEV) {
+    console.log('📋 [FORMS DEBUG] Raw forms data from backend:', formsData);
+    console.log('📋 [FORMS DEBUG] Forms count:', formsData.length);
+  }
 
   const renderRankAdminModule = () => (
     <div>
@@ -3212,17 +3224,6 @@ const AdminModuleInner = (): JSX.Element => {
           </Button>
           <Button
             variant="outline"
-            onClick={() => cleanupDuplicatesMutation.mutate()}
-            disabled={cleanupDuplicatesMutation.isPending}
-            className="h-8 border-[#e1e8ed] text-[#16569e] flex items-center gap-2"
-          >
-            <Trash2 className="h-4 w-4" />
-            <span className="text-xs">
-              {cleanupDuplicatesMutation.isPending ? "Cleaning..." : "Cleanup Duplicates"}
-            </span>
-          </Button>
-          <Button
-            variant="outline"
             className="h-8 border-[#e1e8ed] text-[#16569e] flex items-center gap-2"
           >
             <span className="text-xs">Back</span>
@@ -3272,130 +3273,70 @@ const AdminModuleInner = (): JSX.Element => {
                 </TableRow>
               </TableHeader>
               <TableBody className="bg-white">
-                {Object.entries(groupedForms).map(([formName, forms]) => (
-                  <React.Fragment key={formName}>
-                    {/* First level - Form name with rowspan */}
-                    <TableRow className="border-b border-gray-200 bg-white hover:bg-gray-50">
-                      <TableCell
-                        className="text-[#4f5863] text-[13px] font-semibold py-3 border-r border-gray-200 bg-[#ffffff]"
-                        rowSpan={forms.length}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span>{formName}</span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 ml-2"
-                            onClick={() => handleAddRankGroup(formName)}
-                          >
-                            <Plus className="h-4 w-4 text-gray-500" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                      {/* Second level - First rank group */}
-                      <TableCell className="text-[#4f5863] text-[13px] font-normal pl-6">
-                        <div className="flex items-center justify-between">
-                          <span>{forms[0].rankGroup}</span>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 w-6 p-0 ml-2"
-                                >
-                                  <Eye className="h-4 w-4 text-gray-500" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Ranks: {getRankGroupRanks(forms[0].rankGroup)}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-[#4f5863] text-[13px] font-normal">
-                        {forms[0].versionNo}
-                      </TableCell>
-                      <TableCell className="text-[#4f5863] text-[13px] font-normal">
-                        {forms[0].versionDate}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2 justify-center">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={() => handleEditClick(forms[0])}
-                          >
-                            <EditIcon className="h-[18px] w-[18px] text-gray-500" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={() => handleDeleteForm(forms[0])}
-                            data-testid="button-delete-form"
-                          >
-                            <Trash2 className="h-[18px] w-[18px] text-gray-500" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                    {/* Remaining rank groups for this form */}
-                    {forms.slice(1).map((form) => (
-                      <TableRow key={form.id} className="border-b border-gray-200 bg-white hover:bg-gray-50">
-                        <TableCell className="text-[#4f5863] text-[13px] font-normal pl-6">
-                          <div className="flex items-center justify-between">
-                            <span>{form.rankGroup}</span>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 w-6 p-0 ml-2"
-                                  >
-                                    <Eye className="h-4 w-4 text-gray-500" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Ranks: {getRankGroupRanks(form.rankGroup)}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-[#4f5863] text-[13px] font-normal">
-                          {form.versionNo}
-                        </TableCell>
-                        <TableCell className="text-[#4f5863] text-[13px] font-normal">
-                          {form.versionDate}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2 justify-center">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => handleEditClick(form)}
-                            >
-                              <EditIcon className="h-[18px] w-[18px] text-gray-500" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => handleDeleteForm(form)}
-                              data-testid="button-delete-form"
-                            >
-                              <Trash2 className="h-[18px] w-[18px] text-gray-500" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </React.Fragment>
+                {formsData.map((form) => (
+                  <TableRow key={form.id} className="border-b border-gray-200 bg-white hover:bg-gray-50">
+                    <TableCell className="text-[#4f5863] text-[13px] font-semibold py-3 border-r border-gray-200 bg-[#ffffff]">
+                      <div className="flex items-center justify-between">
+                        <span>{form.name}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 ml-2"
+                          onClick={() => handleAddRankGroup(form.name)}
+                        >
+                          <Plus className="h-4 w-4 text-gray-500" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-[#4f5863] text-[13px] font-normal pl-6">
+                      <div className="flex items-center justify-between">
+                        <span>{form.rankGroup}</span>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 ml-2"
+                              >
+                                <Eye className="h-4 w-4 text-gray-500" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Ranks: {getRankGroupRanks(form.rankGroup)}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-[#4f5863] text-[13px] font-normal">
+                      {form.versionNo}
+                    </TableCell>
+                    <TableCell className="text-[#4f5863] text-[13px] font-normal">
+                      {form.versionDate}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2 justify-center">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => handleEditClick(form)}
+                        >
+                          <EditIcon className="h-[18px] w-[18px] text-gray-500" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => handleDeleteForm(form)}
+                          data-testid={`button-delete-form-${form.id}`}
+                        >
+                          <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 ))}
               </TableBody>
             </Table>
