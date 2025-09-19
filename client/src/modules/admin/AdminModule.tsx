@@ -207,8 +207,15 @@ const AdminModuleInner = (): JSX.Element => {
   // Dialog handler functions
   const handleSaveChanges = async () => {
     try {
-      await resolvePendingNavigation('save');
+      const result = await resolvePendingNavigation('save');
       setShowUnsavedChangesDialog(false);
+      
+      // Handle rank admin tab switching after save
+      const pendingTarget = result?.pendingTarget;
+      if (pendingTarget && pendingTarget.startsWith('rank-admin-tab-')) {
+        const tabId = pendingTarget.replace('rank-admin-tab-', '');
+        setSelectedRankAdminTab(tabId);
+      }
     } catch (error) {
       if (import.meta.env.DEV) {
         console.error('❌ [UNSAVED_CHANGES] Failed to save changes:', error);
@@ -219,8 +226,15 @@ const AdminModuleInner = (): JSX.Element => {
   
   const handleDiscardChanges = async () => {
     try {
-      await resolvePendingNavigation('discard');
+      const result = await resolvePendingNavigation('discard');
       setShowUnsavedChangesDialog(false);
+      
+      // Handle rank admin tab switching after discard
+      const pendingTarget = result?.pendingTarget;
+      if (pendingTarget && pendingTarget.startsWith('rank-admin-tab-')) {
+        const tabId = pendingTarget.replace('rank-admin-tab-', '');
+        setSelectedRankAdminTab(tabId);
+      }
     } catch (error) {
       if (import.meta.env.DEV) {
         console.error('❌ [UNSAVED_CHANGES] Failed to discard changes:', error);
@@ -1996,7 +2010,16 @@ const AdminModuleInner = (): JSX.Element => {
               ].map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setSelectedRankAdminTab(tab.id)}
+                  onClick={() => {
+                    // Check for unsaved changes before switching tabs
+                    if (hasUnsavedChanges()) {
+                      // For tab switching, we'll store the tab change action
+                      setPendingTarget(`rank-admin-tab-${tab.id}`);
+                      setShowUnsavedChangesDialog(true);
+                      return;
+                    }
+                    setSelectedRankAdminTab(tab.id);
+                  }}
                   className={`px-4 text-xs rounded-full transition-all duration-200 h-6 flex items-center ${
                     selectedRankAdminTab === tab.id
                       ? "text-[#16569e] font-bold underline"
@@ -2023,7 +2046,16 @@ const AdminModuleInner = (): JSX.Element => {
                 ].map((tab) => (
                   <button
                     key={tab.id}
-                    onClick={() => setSelectedRankAdminTab(tab.id)}
+                    onClick={() => {
+                      // Check for unsaved changes before switching tabs
+                      if (hasUnsavedChanges()) {
+                        // For tab switching, we'll store the tab change action
+                        setPendingTarget(`rank-admin-tab-${tab.id}`);
+                        setShowUnsavedChangesDialog(true);
+                        return;
+                      }
+                      setSelectedRankAdminTab(tab.id);
+                    }}
                     className={`${currentBreakpoint === 'mobile' ? 'px-2' : 'px-3'} text-xs rounded-full transition-all duration-200 h-6 flex items-center ${
                       selectedRankAdminTab === tab.id
                         ? "text-[#16569e] font-bold underline"
