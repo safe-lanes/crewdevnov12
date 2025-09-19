@@ -467,34 +467,45 @@ export function mapDatabaseToOwnersDisplay(dbEntry: any): any {
  * Validates vessel owners entry has required fields
  */
 export function validateVesselOwnersEntry(data: any): { isValid: boolean; error?: string } {
+  console.log('🏢 [OWNERS VALIDATION] Validating vessel owners entry:', data);
+  
   // Allow empty names for initial entry creation (consistent with other masters)
   // Only validate name format if provided and not empty
   if (data.name && typeof data.name !== 'string') {
+    console.log('🏢 [OWNERS VALIDATION] Name validation failed - not a string:', data.name);
     return {
       isValid: false,
       error: "Vessel Owners name must be a string"
     };
   }
+  
+  console.log('🏢 [OWNERS VALIDATION] Name validation passed:', data.name);
 
   // Validate vesselIds if present (reusing Additional Groups validation logic)
+  console.log('🏢 [OWNERS VALIDATION] Checking vesselIds:', data.vesselIds);
   if (data.vesselIds) {
+    console.log('🏢 [OWNERS VALIDATION] vesselIds is present, validating format...');
     // If it's a string, try to parse it to validate JSON format
     if (typeof data.vesselIds === 'string') {
+      console.log('🏢 [OWNERS VALIDATION] vesselIds is a string, parsing JSON...');
       try {
         const parsed = JSON.parse(data.vesselIds);
         if (!Array.isArray(parsed)) {
+          console.log('🏢 [OWNERS VALIDATION] vesselIds JSON is not an array:', parsed);
           return {
             isValid: false,
             error: "vesselIds must be a JSON array string or an array"
           };
         }
       } catch (error) {
+        console.log('🏢 [OWNERS VALIDATION] vesselIds JSON parse failed:', error);
         return {
           isValid: false,
           error: "vesselIds must be valid JSON array string"
         };
       }
     } else if (!Array.isArray(data.vesselIds)) {
+      console.log('🏢 [OWNERS VALIDATION] vesselIds is not an array:', data.vesselIds);
       return {
         isValid: false,
         error: "vesselIds must be an array or JSON array string"
@@ -502,6 +513,7 @@ export function validateVesselOwnersEntry(data: any): { isValid: boolean; error?
     }
   }
 
+  console.log('🏢 [OWNERS VALIDATION] All validation passed - returning success');
   return { isValid: true };
 }
 
