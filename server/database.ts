@@ -527,10 +527,7 @@ export class DatabaseStorage implements IStorage {
       
       // If we don't have the enhanced vessel type data structure, seed it
       if (enhancedVesselTypesCount < 10) {
-        console.log("🗂️ Seeding enhanced vessel type master data...");
-        
-        // Clear existing vessel type entries to ensure clean enhanced structure
-        await this.pool.execute("DELETE FROM master_data_entries WHERE master_id = '004'");
+        console.log("🗂️ Seeding enhanced vessel type master data with duplicate checking...");
         
         // Vessel type data with enhanced structure based on maritime industry standards
         const vesselTypeData = [
@@ -546,14 +543,30 @@ export class DatabaseStorage implements IStorage {
           { entryId: "VT010", name: "Dry Bulk Carrier", description: "Dry Bulk Carrier", vtuid: "DBC010", vesselType: "Dry Bulk Carrier", tanker: 0, oilTanker: 0, gasTanker: 0, chemicalTanker: 0, bulk: 1 }
         ];
         
-        // Insert each vessel type entry with enhanced structure
+        // Insert each vessel type entry with enhanced structure (with duplicate checking)
         for (const vesselType of vesselTypeData) {
-          await this.pool.execute(
-            `INSERT INTO master_data_entries 
-             (master_id, entry_id, name, description, vtuid, vesselType, tanker, oilTanker, gasTanker, chemicalTanker, bulk, isActive, isDeleted, created_at, updated_at) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-            ['004', vesselType.entryId, vesselType.name, vesselType.description, vesselType.vtuid, vesselType.vesselType, vesselType.tanker, vesselType.oilTanker, vesselType.gasTanker, vesselType.chemicalTanker, vesselType.bulk, 1, 0]
-          );
+          try {
+            // Check if entry already exists by master_id and entry_id
+            const [existing]: any = await this.pool.execute(
+              "SELECT COUNT(*) as count FROM master_data_entries WHERE master_id = '004' AND entry_id = ?",
+              [vesselType.entryId]
+            );
+            
+            if (existing[0].count === 0) {
+              console.log(`🚢 Creating vessel type entry: ${vesselType.entryId} - ${vesselType.name}`);
+              await this.pool.execute(
+                `INSERT INTO master_data_entries 
+                 (master_id, entry_id, name, description, vtuid, vesselType, tanker, oilTanker, gasTanker, chemicalTanker, bulk, isActive, isDeleted, created_at, updated_at) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+                ['004', vesselType.entryId, vesselType.name, vesselType.description, vesselType.vtuid, vesselType.vesselType, vesselType.tanker, vesselType.oilTanker, vesselType.gasTanker, vesselType.chemicalTanker, vesselType.bulk, 1, 0]
+              );
+            } else {
+              console.log(`✅ Vessel type entry already exists: ${vesselType.entryId} - ${vesselType.name}`);
+            }
+          } catch (error) {
+            console.warn(`⚠️ Warning: Could not create vessel type entry ${vesselType.entryId}:`, error);
+            // Continue with next entry - don't let one failure block others
+          }
         }
         
         console.log("✅ Enhanced vessel type master data seeded successfully with VT001-VT010 format");
@@ -1160,8 +1173,25 @@ export class DatabaseStorage implements IStorage {
         { masterId: "017", entryId: "VO005", name: "Hapag-Lloyd", description: "German international shipping and container transportation company" }
       ];
 
+      // Create sample master entries with duplicate checking
       for (const entry of sampleMasterEntries) {
-        await this.createMasterDataEntry(entry);
+        try {
+          // Check if entry already exists by master_id and entry_id
+          const [existing]: any = await this.pool.execute(
+            "SELECT COUNT(*) as count FROM master_data_entries WHERE master_id = ? AND entry_id = ?",
+            [entry.masterId, entry.entryId]
+          );
+          
+          if (existing[0].count === 0) {
+            console.log(`🆕 Creating new master entry: ${entry.masterId}/${entry.entryId} - ${entry.name}`);
+            await this.createMasterDataEntry(entry);
+          } else {
+            console.log(`✅ Master entry already exists: ${entry.masterId}/${entry.entryId} - ${entry.name}`);
+          }
+        } catch (error) {
+          console.warn(`⚠️ Warning: Could not create master entry ${entry.masterId}/${entry.entryId}:`, error);
+          // Continue with next entry - don't let one failure block others
+        }
       }
 
       // Seed forms (with error handling to prevent blocking data masters)
