@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { UnsavedChangesDialog } from "@/components/dialogs/UnsavedChangesDialog";
 import {
   Table,
   TableBody,
@@ -199,6 +200,38 @@ const AdminModuleInner = (): JSX.Element => {
   // Data Masters state
   const [searchDataMaster, setSearchDataMaster] = useState("");
   const [selectedMaster, setSelectedMaster] = useState<string>("001");
+  
+  // Unsaved changes dialog state
+  const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] = useState(false);
+  
+  // Dialog handler functions
+  const handleSaveChanges = async () => {
+    try {
+      await resolvePendingNavigation('save');
+      setShowUnsavedChangesDialog(false);
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('❌ [UNSAVED_CHANGES] Failed to save changes:', error);
+      }
+      // Keep dialog open on error
+    }
+  };
+  
+  const handleDiscardChanges = async () => {
+    try {
+      await resolvePendingNavigation('discard');
+      setShowUnsavedChangesDialog(false);
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('❌ [UNSAVED_CHANGES] Failed to discard changes:', error);
+      }
+    }
+  };
+  
+  const handleCancelNavigation = () => {
+    resolvePendingNavigation('cancel');
+    setShowUnsavedChangesDialog(false);
+  };
   
   // CSS Constants for consistent grid layouts
   const USERS_MASTER_GRID_CLASSES = "grid grid-cols-5 gap-0";
@@ -629,7 +662,10 @@ const AdminModuleInner = (): JSX.Element => {
     markDirty,
     saving,
     isDirty,
-    pendingChanges
+    pendingChanges,
+    setPendingTarget,
+    resolvePendingNavigation,
+    hasUnsavedChanges
   } = useEditSession();
 
   // Check if this master is currently being edited (replacing isMasterInEditMode)
@@ -739,10 +775,30 @@ const AdminModuleInner = (): JSX.Element => {
   };
 
   const deleteMasterEntry = (itemId: number) => {
+    // Only allow deletion when in edit mode
+    if (!isMasterInEditMode) {
+      toast({
+        title: "Edit Mode Required",
+        description: "Please click 'Edit Master' before deleting entries.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     deleteEntryMutation.mutate(itemId);
   };
 
   const handleNewEntry = () => {
+    // Only allow new entries when in edit mode
+    if (!isMasterInEditMode) {
+      toast({
+        title: "Edit Mode Required",
+        description: "Please click 'Edit Master' before adding new entries.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const newEntryId = Date.now().toString(); // Generate unique entry ID
     
     const newEntryData: Omit<InsertMasterDataEntry, 'masterId'> = (() => {
@@ -2431,7 +2487,12 @@ const AdminModuleInner = (): JSX.Element => {
               </Button>
               <Button
                 onClick={handleNewEntry}
-                className="h-8 bg-[#5dc86f] hover:bg-[#22c55e] text-white text-xs"
+                disabled={!isMasterInEditMode}
+                className={`h-8 text-xs ${
+                  isMasterInEditMode 
+                    ? "bg-[#5dc86f] hover:bg-[#22c55e] text-white" 
+                    : "bg-gray-400 text-gray-600 cursor-not-allowed"
+                }`}
                 data-testid="button-new-entry"
               >
                 + New Entry
@@ -2458,7 +2519,12 @@ const AdminModuleInner = (): JSX.Element => {
               </Button>
               <Button
                 onClick={handleNewEntry}
-                className="h-8 bg-[#5dc86f] hover:bg-[#22c55e] text-white text-xs"
+                disabled={!isMasterInEditMode}
+                className={`h-8 text-xs ${
+                  isMasterInEditMode 
+                    ? "bg-[#5dc86f] hover:bg-[#22c55e] text-white" 
+                    : "bg-gray-400 text-gray-600 cursor-not-allowed"
+                }`}
                 data-testid="button-new-entry"
               >
                 + New Entry
@@ -2506,6 +2572,14 @@ const AdminModuleInner = (): JSX.Element => {
                           if (import.meta.env.DEV) {
                             console.log(`🔍 [CLICK] Selected master: ${master.id} - ${master.name}`);
                           }
+                          
+                          // Check for unsaved changes before navigating
+                          if (hasUnsavedChanges()) {
+                            setPendingTarget(`/admin/masters/${master.id}`);
+                            setShowUnsavedChangesDialog(true);
+                            return;
+                          }
+                          
                           setSelectedMaster(master.id);
                           setSelectedAdminPage('masters');
                           // Use wouter's navigate for proper routing
@@ -2695,8 +2769,13 @@ const AdminModuleInner = (): JSX.Element => {
                             {/* Column 5: Actions (delete button) */}
                             <div className="p-3 flex justify-center">
                               <button
-                                className="text-gray-500 hover:text-red-500 transition-colors"
+                                className={`transition-colors ${
+                                  isMasterInEditMode 
+                                    ? "text-gray-500 hover:text-red-500" 
+                                    : "text-gray-300 cursor-not-allowed"
+                                }`}
                                 onClick={() => deleteMasterEntry(item.id)}
+                                disabled={!isMasterInEditMode}
                                 data-testid={`delete-button-${item.id}`}
                               >
                                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3011,8 +3090,13 @@ const AdminModuleInner = (): JSX.Element => {
                           
                           <div className="p-3 flex justify-center">
                             <button
-                              className="text-gray-500 hover:text-red-500 transition-colors"
+                              className={`transition-colors ${
+                                isMasterInEditMode 
+                                  ? "text-gray-500 hover:text-red-500" 
+                                  : "text-gray-300 cursor-not-allowed"
+                              }`}
                               onClick={() => deleteMasterEntry(item.id)}
+                              disabled={!isMasterInEditMode}
                               data-testid={`delete-button-${item.id}`}
                             >
                               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3330,6 +3414,16 @@ const AdminModuleInner = (): JSX.Element => {
           </div>
         </DialogContent>
       </Dialog>
+      
+      {/* Unsaved Changes Dialog */}
+      <UnsavedChangesDialog
+        isOpen={showUnsavedChangesDialog}
+        onSave={handleSaveChanges}
+        onDiscard={handleDiscardChanges}
+        onCancel={handleCancelNavigation}
+        title="Unsaved Changes"
+        description="You have unsaved changes that will be lost if you continue. What would you like to do?"
+      />
     </>
   );
 };
