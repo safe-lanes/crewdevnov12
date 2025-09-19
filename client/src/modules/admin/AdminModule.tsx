@@ -303,6 +303,9 @@ const AdminModuleInner = (): JSX.Element => {
   // Designation Master Data (for users master dropdown)
   const { data: designationData = [], isLoading: designationLoading } = useMasterDataEntries('012');
   
+  // Vessels Master Data (for vessel selection dropdown - ID 014)
+  const { data: vesselMasterData = [], isLoading: vesselMasterLoading } = useMasterDataEntries('014');
+  
   // Mutations for Data Masters
   const createMasterMutation = useCreateDataMaster();
   const updateMasterMutation = useUpdateDataMaster(selectedMaster);
@@ -520,14 +523,17 @@ const AdminModuleInner = (): JSX.Element => {
     { id: "SF010", firstName: "Robert", lastName: "Chen", rank: "Chief Engineer", nationality: "China", status: "Available" },
   ]);
   
-  // Sample vessel data
-  const vesselOptions = [
-    { value: "vessel1", label: "MV Ocean Star" },
-    { value: "vessel2", label: "MV Sea Eagle" },
-    { value: "vessel3", label: "MV Blue Horizon" },
-    { value: "group1", label: "Tanker Fleet" },
-    { value: "group2", label: "Container Fleet" },
-  ];
+  // Dynamic vessel data from Vessels Master (ID 014)
+  const vesselOptions = useMemo(() => {
+    return vesselMasterData.map((vessel: any) => {
+      // Apply vessel field mapping if the data needs transformation
+      const mappedVessel = mapSafeFieldsToVesselData(vessel);
+      return {
+        value: vessel.id || vessel.value || vessel.vuid || `vessel_${vessel.name}`,
+        label: mappedVessel.vessel || vessel.name || vessel.label || 'Unnamed Vessel'
+      };
+    });
+  }, [vesselMasterData]);
   
   const queryClient = useQueryClient();
 
