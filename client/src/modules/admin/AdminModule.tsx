@@ -63,8 +63,6 @@ import { z } from "zod";
 import SideBarComponent from '../../components/Navbar/SideBarComponent';
 import MainLayout from "@/components/main/MainLayout";
 import SectionTitleComponents from "@/components/Section/SectionTitleComponents";
-import { AgGridTable } from "@/components/AgGrid/AgGridTable";
-import { ColDef, GridApi, GridReadyEvent, ICellEditorParams, ICellRendererParams } from "ag-grid-community";
 import { 
   mapVesselDataToSafeFields, 
   mapSafeFieldsToVesselData, 
@@ -374,17 +372,14 @@ const AdminModuleInner = (): JSX.Element => {
   };
 
   const [isRankMasterEditing, setIsRankMasterEditing] = useState(false);
-  const [rankMasterGridApi, setRankMasterGridApi] = useState<GridApi | null>(null);
   
   // Company state
   const [companyRankData, setCompanyRankData] = useState<CompanyRankData[]>([]);
   const [isCompanyEditing, setIsCompanyEditing] = useState(false);
-  const [companyGridApi, setCompanyGridApi] = useState<GridApi | null>(null);
   
   // Vessel state
   const [vesselRankDataMap, setVesselRankDataMap] = useState<Map<string, VesselRankData[]>>(new Map());
   const [isVesselEditing, setIsVesselEditing] = useState(false);
-  const [vesselGridApi, setVesselGridApi] = useState<GridApi | null>(null);
   const [selectedVessels, setSelectedVessels] = useState<string[]>([]);
   const [selectedRevision, setSelectedRevision] = useState("R1");
   const [flexDate, setFlexDate] = useState("");
@@ -911,9 +906,6 @@ const AdminModuleInner = (): JSX.Element => {
   }, [companyRankData]);
 
   // Rank Master handlers
-  const handleRankMasterGridReady = (event: GridReadyEvent) => {
-    setRankMasterGridApi(event.api);
-  };
 
   const handleNewRank = () => {
     const newRank: RankMasterData = {
@@ -925,16 +917,6 @@ const AdminModuleInner = (): JSX.Element => {
     };
     setRankMasterData(prev => {
       const newData = [...prev, newRank];
-      // Start editing the first cell of the new row after the state updates
-      setTimeout(() => {
-        if (rankMasterGridApi) {
-          const rowIndex = newData.length - 1;
-          rankMasterGridApi.startEditingCell({
-            rowIndex: rowIndex,
-            colKey: 'rank'
-          });
-        }
-      }, 100);
       return newData;
     });
     // Track this as a new rank
@@ -944,11 +926,6 @@ const AdminModuleInner = (): JSX.Element => {
 
   const handleEditRank = () => {
     setIsRankMasterEditing(true);
-    // Refresh grid to update column configurations
-    setTimeout(() => {
-      rankMasterGridApi?.refreshHeader();
-      rankMasterGridApi?.redrawRows();
-    }, 100);
   };
 
   const handleDeleteRank = (rankId: string) => {
@@ -969,7 +946,6 @@ const AdminModuleInner = (): JSX.Element => {
 
   const handleSaveRank = async () => {
     try {
-      rankMasterGridApi?.stopEditing();
       
       // Process deletions first
       for (const deletedId of Array.from(deletedRanks)) {
@@ -1012,12 +988,6 @@ const AdminModuleInner = (): JSX.Element => {
       setNewRanks(new Set());
       setDeletedRanks(new Set());
       setIsRankMasterEditing(false);
-      
-      // Refresh grid to update column configurations
-      setTimeout(() => {
-        rankMasterGridApi?.refreshHeader();
-        rankMasterGridApi?.redrawRows();
-      }, 100);
       
       toast({
         title: "Success",
@@ -1325,33 +1295,17 @@ const AdminModuleInner = (): JSX.Element => {
   };
 
   // Company handlers
-  const handleCompanyGridReady = (event: GridReadyEvent) => {
-    setCompanyGridApi(event.api);
-  };
 
 
   const handleEditCompany = () => {
     setIsCompanyEditing(true);
-    // Refresh grid to update column configurations
-    setTimeout(() => {
-      companyGridApi?.refreshHeader();
-      companyGridApi?.redrawRows();
-    }, 100);
   };
 
   const handleSaveCompany = async () => {
     try {
-      companyGridApi?.stopEditing();
-      
       // TODO: Save company rank data changes to backend
       // For now, just update the editing state
       setIsCompanyEditing(false);
-      
-      // Refresh grid to update column configurations
-      setTimeout(() => {
-        companyGridApi?.refreshHeader();
-        companyGridApi?.redrawRows();
-      }, 100);
       
       toast({
         title: "Success",
@@ -1479,9 +1433,6 @@ const AdminModuleInner = (): JSX.Element => {
   };
 
   // Vessel handlers
-  const handleVesselGridReady = (event: GridReadyEvent) => {
-    setVesselGridApi(event.api);
-  };
 
   const handleVesselMultiple = (rankId: string) => {
     // Find the rank to multiply from vessel data
@@ -1714,98 +1665,9 @@ const AdminModuleInner = (): JSX.Element => {
     return false;
   });
 
-  // Helper function to create checkbox column for vessel
-  const createVesselCheckboxColumn = (headerName: string, field: keyof VesselRankData): ColDef => ({
-    headerName,
-    field,
-    flex: 1,
-    minWidth: 100,
-    cellRenderer: (params: ICellRendererParams) => {
-      const isChecked = params.value || false;
-      const shouldShowCheckbox = revisionMode || isChecked;
-      
-      if (!shouldShowCheckbox) {
-        return <div className="flex items-center justify-center h-full"></div>;
-      }
-      
-      return (
-        <div className="flex items-center justify-center h-full">
-          <input
-            type="checkbox"
-            checked={isChecked}
-            disabled={!revisionMode}
-            onChange={(e) => {
-              if (revisionMode) {
-                updateVesselRankData(prevData => {
-                  const newData = [...prevData];
-                  const rowIndex = newData.findIndex(row => row.id === params.data.id);
-                  if (rowIndex !== -1) {
-                    newData[rowIndex] = { ...newData[rowIndex], [field]: e.target.checked };
-                  }
-                  return newData;
-                });
-              }
-            }}
-            className="form-checkbox h-4 w-4 text-blue-600"
-          />
-        </div>
-      );
-    },
-    cellStyle: { textAlign: 'center' },
-    sortable: false,
-    filter: false,
-    resizable: true,
-    headerClass: 'ag-header-cell-text-wrap-limited',
-    autoHeaderHeight: true,
-    suppressHeaderMenuButton: true
-  });
+  // Vessel checkbox handling removed - using HTML tables now
 
-  // Helper function to create checkbox column
-  const createCheckboxColumn = (headerName: string, field: keyof CompanyRankData): ColDef => ({
-    headerName,
-    field,
-    flex: 1,
-    minWidth: 80,
-    maxWidth: 120,
-    cellRenderer: (params: ICellRendererParams) => {
-      // In non-edit mode: only show checked checkboxes, hide unchecked ones
-      // In edit mode: show all checkboxes (checked and unchecked)
-      const isChecked = params.value || false;
-      const shouldShowCheckbox = isCompanyEditing || isChecked;
-      
-      if (!shouldShowCheckbox) {
-        return <div className="flex items-center justify-center h-full"></div>;
-      }
-      
-      return (
-        <div className="flex items-center justify-center h-full">
-          <input
-            type="checkbox"
-            checked={isChecked}
-            disabled={!isCompanyEditing}
-            onChange={(e) => {
-              if (isCompanyEditing) {
-                const newData = [...companyRankData];
-                const rowIndex = newData.findIndex(row => row.id === params.data.id);
-                if (rowIndex !== -1) {
-                  newData[rowIndex] = { ...newData[rowIndex], [field]: e.target.checked };
-                  setCompanyRankData(newData);
-                }
-              }
-            }}
-            className="form-checkbox h-4 w-4 text-blue-600"
-          />
-        </div>
-      );
-    },
-    cellStyle: { textAlign: 'center' },
-    sortable: false,
-    filter: false,
-    resizable: true,
-    headerClass: 'ag-header-cell-text-wrap-limited',
-    autoHeaderHeight: true,
-    suppressHeaderMenuButton: true
-  });
+  // Company checkbox handling removed - using HTML tables now
 
   // Single source of truth for checkbox columns with tier hierarchy
   const checkboxDescriptors: Array<{
@@ -1973,7 +1835,7 @@ const AdminModuleInner = (): JSX.Element => {
     return baseColumns;
   };
 
-  const companyColumnDefs = useMemo(() => buildCompanyCols(currentBreakpoint, hasRoles, isCompanyEditing), [currentBreakpoint, hasRoles, isCompanyEditing]);
+  // Company column definitions removed - using placeholder for now
 
   // Responsive column definitions for Rank Master
   const getRankMasterColumnDefs = (): ColDef[] => {
@@ -2043,7 +1905,7 @@ const AdminModuleInner = (): JSX.Element => {
     return baseColumns;
   };
 
-  const rankMasterColumnDefs = useMemo(() => getRankMasterColumnDefs(), [currentBreakpoint, isRankMasterEditing]);
+  // Rank Master column definitions removed - using HTML table now
 
   // Vessel column definitions - exact structure as per user specification
   // Vessel checkbox column descriptors with responsive labels and priority
@@ -2159,7 +2021,7 @@ const AdminModuleInner = (): JSX.Element => {
     return baseColumns;
   };
 
-  const vesselColumnDefs = useMemo(() => buildVesselCols(currentBreakpoint, vesselHasRoles, revisionMode), [currentBreakpoint, vesselHasRoles, revisionMode, isVesselEditing]);
+  // Vessel column definitions removed - using placeholder for now
 
   // Fetch forms data from API
   const { data: formsData = [], isLoading, error } = useQuery<Form[]>({
@@ -2710,135 +2572,111 @@ const AdminModuleInner = (): JSX.Element => {
         <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
           <CardContent className="pt-4 pb-4 pl-0">
             {selectedRankAdminTab === "rank-master" && (
-              <div className={`${currentBreakpoint === 'mobile' ? 'h-[400px]' : currentBreakpoint === 'tablet' ? 'h-[500px]' : 'h-[600px]'} overflow-auto border rounded-lg bg-white`}>
-                <table className="w-full border-collapse">
-                  <thead className="bg-gray-50 sticky top-0">
-                    <tr>
-                      <th className="w-10 p-2 text-center border-b border-gray-200 text-xs font-medium text-gray-700">
+              <div className={`${currentBreakpoint === 'mobile' ? 'h-[400px]' : currentBreakpoint === 'tablet' ? 'h-[500px]' : 'h-[600px]'} overflow-auto`}>
+                <Table className="bg-white rounded-lg shadow-md overflow-hidden">
+                  <TableHeader className="bg-[#52baf3]">
+                    <TableRow>
+                      <TableHead className="text-white text-xs font-normal w-10">
                         {/* Drag handle header */}
-                      </th>
-                      <th className="p-2 text-left border-b border-gray-200 text-xs font-medium text-gray-700">
+                      </TableHead>
+                      <TableHead className="text-white text-xs font-normal">
                         Rank
-                      </th>
-                      <th className="w-32 p-2 text-center border-b border-gray-200 text-xs font-medium text-gray-700">
+                      </TableHead>
+                      <TableHead className="text-white text-xs font-normal w-32">
                         Applicable to Company
-                      </th>
-                      <th className="w-16 p-2 text-center border-b border-gray-200 text-xs font-medium text-gray-700">
-                        {/* Delete header */}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                      </TableHead>
+                      <TableHead className="text-white text-xs font-normal w-16">
+                        Actions
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="bg-white">
                     {rankMasterData.map((rank, index) => (
-                      <tr key={rank.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <TableRow
+                        key={rank.id}
+                        className="border-b border-gray-200 bg-white hover:bg-gray-50"
+                      >
                         {/* Drag handle column */}
-                        <td className="w-10 p-2 text-center text-gray-400">
+                        <TableCell className="text-[#4f5863] text-[13px] font-normal py-3 text-center">
                           {isRankMasterEditing && (
-                            <div className="cursor-move text-xs" data-testid={`drag-handle-${rank.id}`}>
+                            <div className="cursor-move text-xs text-gray-400" data-testid={`drag-handle-${rank.id}`}>
                               ⋮⋮
                             </div>
                           )}
-                        </td>
+                        </TableCell>
                         
                         {/* Rank column */}
-                        <td className="p-2">
+                        <TableCell className="text-[#4f5863] text-[13px] font-normal py-3">
                           {isRankMasterEditing ? (
-                            <input
+                            <Input
                               type="text"
                               value={rank.rank}
                               onChange={(e) => handleRankDataChange(rank.id, 'rank', e.target.value)}
-                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="h-8 text-sm"
                               placeholder="Enter rank name"
                               data-testid={`input-rank-${rank.id}`}
                             />
                           ) : (
-                            <span className="text-sm text-gray-900" data-testid={`text-rank-${rank.id}`}>
+                            <span data-testid={`text-rank-${rank.id}`}>
                               {rank.rank}
                             </span>
                           )}
-                        </td>
+                        </TableCell>
                         
                         {/* Applicable to Company checkbox column */}
-                        <td className="w-32 p-2 text-center">
-                          <input
-                            type="checkbox"
-                            checked={rank.applicableToCompany}
-                            onChange={(e) => handleRankDataChange(rank.id, 'applicableToCompany', e.target.checked)}
-                            disabled={!isRankMasterEditing}
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
-                            data-testid={`checkbox-applicable-${rank.id}`}
-                          />
-                        </td>
+                        <TableCell className="text-[#4f5863] text-[13px] font-normal py-3 text-center">
+                          <div className="flex justify-center">
+                            <Checkbox
+                              checked={rank.applicableToCompany}
+                              onCheckedChange={(checked) => handleRankDataChange(rank.id, 'applicableToCompany', checked)}
+                              disabled={!isRankMasterEditing}
+                              className="h-4 w-4"
+                              data-testid={`checkbox-applicable-${rank.id}`}
+                            />
+                          </div>
+                        </TableCell>
                         
                         {/* Delete button column */}
-                        <td className="w-16 p-2 text-center">
-                          {isRankMasterEditing && (
-                            <button
-                              onClick={() => handleDeleteRankFromGrid(rank.id, rank.rank)}
-                              className="text-red-500 hover:text-red-700 text-sm p-1 rounded hover:bg-red-50"
-                              data-testid={`button-delete-${rank.id}`}
-                              title="Delete rank"
-                            >
-                              🗑️
-                            </button>
-                          )}
-                        </td>
-                      </tr>
+                        <TableCell className="text-[#4f5863] text-[13px] font-normal py-3">
+                          <div className="flex gap-2 justify-center">
+                            {isRankMasterEditing && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-destructive hover:bg-destructive/10"
+                                onClick={() => handleDeleteRankFromGrid(rank.id, rank.rank)}
+                                data-testid={`button-delete-rank-${rank.id}`}
+                                title="Delete rank"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
-                
-                {/* Empty state */}
-                {rankMasterData.length === 0 && (
-                  <div className="flex items-center justify-center h-32 text-gray-500 text-sm">
-                    No ranks available. Click "New Rank" to add one.
-                  </div>
-                )}
+                    
+                    {/* Empty state */}
+                    {rankMasterData.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-8">
+                          <div className="text-gray-500 text-sm">
+                            No ranks available. Click "New Rank" to add one.
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               </div>
             )}
             
             {selectedRankAdminTab === "company" && (
-              <div className={`${currentBreakpoint === 'mobile' ? 'h-[400px]' : currentBreakpoint === 'tablet' ? 'h-[500px]' : 'h-[600px]'}`}>
-                <AgGridTable
-                  rowData={companyRankData}
-                  columnDefs={companyColumnDefs}
-                  onGridReady={handleCompanyGridReady}
-                  autoHeight={true}
-                  maxHeight="500px"
-                  minHeight="200px"
-                  width="100%"
-                  enableExport={true}
-                  enableSideBar={true}
-                  enableStatusBar={false}
-                  enableRowGrouping={true}
-                  enablePivoting={true}
-                  enableAdvancedFilter={false}
-                  rowSelection={false}
-                  theme="alpine"
-                  gridOptions={{
-                    rowDragManaged: true,
-                    animateRows: true,
-                    onRowDragEnd: (event) => {
-                      const newData = [...companyRankData];
-                      const fromIndex = event.node?.rowIndex;
-                      const toIndex = event.overIndex;
-                      
-                      if (fromIndex !== undefined && fromIndex !== null && toIndex !== undefined && toIndex !== null && fromIndex !== toIndex) {
-                        const [movedItem] = newData.splice(fromIndex, 1);
-                        newData.splice(toIndex, 0, movedItem);
-                        setCompanyRankData(newData);
-                      }
-                    },
-                    onCellValueChanged: (event) => {
-                      const newData = [...companyRankData];
-                      const rowIndex = newData.findIndex(row => row.id === event.data.id);
-                      if (rowIndex !== -1) {
-                        newData[rowIndex] = { ...newData[rowIndex], [event.colDef.field!]: event.newValue };
-                        setCompanyRankData(newData);
-                      }
-                    }
-                  }}
-                />
+              <div className={`${currentBreakpoint === 'mobile' ? 'h-[400px]' : currentBreakpoint === 'tablet' ? 'h-[500px]' : 'h-[600px]'} flex items-center justify-center bg-gray-50 rounded-lg`}>
+                <div className="text-center text-gray-500">
+                  <p className="text-lg font-medium">Company Ranks</p>
+                  <p className="text-sm">Feature temporarily disabled</p>
+                </div>
               </div>
             )}
             
@@ -2953,51 +2791,12 @@ const AdminModuleInner = (): JSX.Element => {
                 )}
 
                 {/* Vessel Table */}
-                <div className={`${currentBreakpoint === 'mobile' ? 'h-[400px]' : currentBreakpoint === 'tablet' ? 'h-[450px]' : 'h-[500px]'}`}>
-                  <AgGridTable
-                    rowData={vesselRankData}
-                    columnDefs={vesselColumnDefs}
-                    onGridReady={handleVesselGridReady}
-                    autoHeight={true}
-                    maxHeight="450px"
-                    minHeight="200px"
-                    width="100%"
-                    enableExport={true}
-                    enableSideBar={true}
-                    enableStatusBar={false}
-                    enableRowGrouping={true}
-                    enablePivoting={true}
-                    enableAdvancedFilter={false}
-                    rowSelection={false}
-                    theme="alpine"
-                    gridOptions={{
-                      rowDragManaged: true,
-                      animateRows: true,
-                      onRowDragEnd: (event) => {
-                        const newData = [...vesselRankData];
-                        const fromIndex = event.node?.rowIndex;
-                        const toIndex = event.overIndex;
-                        
-                        if (fromIndex !== undefined && fromIndex !== null && toIndex !== undefined && toIndex !== null && fromIndex !== toIndex) {
-                          const [movedItem] = newData.splice(fromIndex, 1);
-                          newData.splice(toIndex, 0, movedItem);
-                          updateVesselRankData(() => newData);
-                        }
-                      },
-                      onCellValueChanged: (event) => {
-                        updateVesselRankData(prevData => {
-                          const newData = [...prevData];
-                          const rowIndex = newData.findIndex(row => row.id === event.data.id);
-                          if (rowIndex !== -1) {
-                            newData[rowIndex] = { ...newData[rowIndex], [event.colDef.field!]: event.newValue };
-                          }
-                          return newData;
-                        });
-                      }
-                    }}
-                  />
+                <div className={`${currentBreakpoint === 'mobile' ? 'h-[400px]' : currentBreakpoint === 'tablet' ? 'h-[450px]' : 'h-[500px]'} flex items-center justify-center bg-gray-50 rounded-lg`}>
+                  <div className="text-center text-gray-500">
+                    <p className="text-lg font-medium">Vessel Ranks</p>
+                    <p className="text-sm">Feature temporarily disabled</p>
+                  </div>
                 </div>
-
               </div>
             )}
           </CardContent>
