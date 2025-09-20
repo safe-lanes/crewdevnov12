@@ -308,7 +308,7 @@ const AdminModuleInner = (): JSX.Element => {
           additionalAction = "The rank list will be refreshed to show current data.";
           
           // Force refresh the rank data to clear stale cache
-          queryClient.invalidateQueries({ queryKey: ["/api/available-ranks"] });
+          rq.invalidateQueries({ queryKey: ["/api/available-ranks"] });
           
           // Also clear the local state to remove stale entries
           setRankMasterData(prev => prev.filter(rank => rank.id !== rankToDelete.id));
@@ -364,7 +364,7 @@ const AdminModuleInner = (): JSX.Element => {
     if (import.meta.env.DEV) {
       console.log('🔄 [REFRESH] Clearing masters cache and refetching...');
     }
-    queryClient.invalidateQueries({ queryKey: ['/api/masters'] });
+    rq.invalidateQueries({ queryKey: ['/api/masters'] });
   };
   
   // Function to navigate directly to Port Master
@@ -635,7 +635,7 @@ const AdminModuleInner = (): JSX.Element => {
     });
   }, [vesselMasterData]);
   
-  const queryClient = useQueryClient();
+  const rq = useQueryClient();
 
   // Initialize company rank data from rank master
   React.useEffect(() => {
@@ -1102,13 +1102,13 @@ const AdminModuleInner = (): JSX.Element => {
             }
             
             // Refetch the query and get fresh data
-            await queryClient.refetchQueries({ 
+            await rq.refetchQueries({ 
               queryKey: ['/api/masters', selectedMaster, 'entries'],
               exact: true
             });
             
             // Get fresh data directly from the query cache
-            const freshRawData = (queryClient.getQueryData(['/api/masters', selectedMaster, 'entries']) as any[]) || [];
+            const freshRawData = (rq.getQueryData(['/api/masters', selectedMaster, 'entries']) as any[]) || [];
             
             // Apply field mapping if needed (same logic as masterData useMemo)
             const freshMasterData = (() => {
@@ -2052,7 +2052,7 @@ const AdminModuleInner = (): JSX.Element => {
       return await apiRequest("POST", "/api/rank-groups", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/forms"] });
+      rq.invalidateQueries({ queryKey: ["/api/forms"] });
       setIsAddRankGroupOpen(false);
       setSelectedFormForRankGroup(null);
     },
@@ -2063,7 +2063,7 @@ const AdminModuleInner = (): JSX.Element => {
       return await apiRequest("POST", "/api/forms", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/forms"] });
+      rq.invalidateQueries({ queryKey: ["/api/forms"] });
       setShowCreateFormDialog(false);
       setNewFormName("");
       setSelectedTemplate("");
@@ -2079,7 +2079,7 @@ const AdminModuleInner = (): JSX.Element => {
     },
     onSuccess: () => {
       // Invalidate cache on success
-      queryClient.invalidateQueries({ queryKey: ["/api/forms"] });
+      rq.invalidateQueries({ queryKey: ["/api/forms"] });
       toast({
         title: "Success",
         description: "Form deleted successfully",
@@ -2090,7 +2090,7 @@ const AdminModuleInner = (): JSX.Element => {
     },
     onError: (error: any) => {
       // Also invalidate cache on error to refresh state
-      queryClient.invalidateQueries({ queryKey: ["/api/forms"] });
+      rq.invalidateQueries({ queryKey: ["/api/forms"] });
       
       // Extract specific error message from server response
       let errorMessage = "Failed to delete form";
@@ -2390,7 +2390,7 @@ const AdminModuleInner = (): JSX.Element => {
                   <Button
                     onClick={() => {
                       // Force refresh rank data to clear any stale cache
-                      queryClient.invalidateQueries({ queryKey: ["/api/available-ranks"] });
+                      rq.invalidateQueries({ queryKey: ["/api/available-ranks"] });
                       toast({
                         title: "Data refreshed",
                         description: "Rank data has been refreshed from the database.",
@@ -2488,7 +2488,7 @@ const AdminModuleInner = (): JSX.Element => {
                 <Button
                   onClick={() => {
                     // Force refresh rank data to clear any stale cache
-                    queryClient.invalidateQueries({ queryKey: ["/api/available-ranks"] });
+                    rq.invalidateQueries({ queryKey: ["/api/available-ranks"] });
                     toast({
                       title: "Data refreshed",
                       description: "Rank data has been refreshed from the database.",
