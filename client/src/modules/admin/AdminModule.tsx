@@ -310,6 +310,41 @@ const AdminModuleInner = (): JSX.Element => {
       setDeletedRanks(new Set());
     }
   }, [sharedRankMasterData]);
+  
+  // Add event listeners for custom cell renderer events
+  useEffect(() => {
+    const handleRankDataChange = (event: CustomEvent) => {
+      const { id, field, value } = event.detail;
+      setRankMasterData(prev => {
+        const newData = [...prev];
+        const rowIndex = newData.findIndex(row => row.id === id);
+        if (rowIndex !== -1) {
+          newData[rowIndex] = { ...newData[rowIndex], [field]: value };
+          
+          // Track changes for save functionality
+          if (!id.startsWith('new_')) {
+            setChangedRanks(prev => new Set(prev).add(id));
+          }
+        }
+        return newData;
+      });
+    };
+
+    const handleDeleteRankClickEvent = (event: CustomEvent) => {
+      const { id, rank } = event.detail;
+      setRankToDelete({ id, name: rank });
+      setShowDeleteConfirmDialog(true);
+    };
+
+    document.addEventListener('rankDataChange', handleRankDataChange as EventListener);
+    document.addEventListener('deleteRankClick', handleDeleteRankClickEvent as EventListener);
+
+    return () => {
+      document.removeEventListener('rankDataChange', handleRankDataChange as EventListener);
+      document.removeEventListener('deleteRankClick', handleDeleteRankClickEvent as EventListener);
+    };
+  }, []);
+
   const [isRankMasterEditing, setIsRankMasterEditing] = useState(false);
   const [rankMasterGridApi, setRankMasterGridApi] = useState<GridApi | null>(null);
   
@@ -2659,6 +2694,10 @@ const AdminModuleInner = (): JSX.Element => {
                   animateRows={true}
                   theme="alpine"
                   gridOptions={{
+                    components: {
+                      checkboxRenderer: CheckboxRenderer,
+                      deleteButtonRenderer: DeleteButtonRenderer
+                    },
                     rowDragManaged: true,
                     animateRows: true,
                     onRowDragEnd: (event) => {
