@@ -2710,59 +2710,90 @@ const AdminModuleInner = (): JSX.Element => {
         <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
           <CardContent className="pt-4 pb-4 pl-0">
             {selectedRankAdminTab === "rank-master" && (
-              <div className={`${currentBreakpoint === 'mobile' ? 'h-[400px]' : currentBreakpoint === 'tablet' ? 'h-[500px]' : 'h-[600px]'}`}>
-                <AgGridTable
-                  rowData={rankMasterData}
-                  columnDefs={rankMasterColumnDefs}
-                  onGridReady={handleRankMasterGridReady}
-                  autoHeight={true}
-                  maxHeight="500px"
-                  enableExport={false}
-                  enableSideBar={false}
-                  enableStatusBar={false}
-                  enableRowGrouping={false}
-                  enablePivoting={false}
-                  rowSelection={false}
-                  animateRows={true}
-                  theme="alpine"
-                  gridOptions={{
-                    components: {
-                      checkboxRenderer: CheckboxRenderer,
-                      deleteButtonRenderer: DeleteButtonRenderer
-                    },
-                    context: {
-                      onRankDataChange: handleRankDataChange,
-                      onDeleteRank: handleDeleteRankFromGrid
-                    },
-                    rowDragManaged: true,
-                    animateRows: true,
-                    onRowDragEnd: (event) => {
-                      const newData = [...rankMasterData];
-                      const fromIndex = event.overIndex;
-                      const toIndex = event.overIndex;
-                      
-                      if (fromIndex !== undefined && toIndex !== undefined && fromIndex !== toIndex) {
-                        const [movedItem] = newData.splice(fromIndex, 1);
-                        newData.splice(toIndex, 0, movedItem);
-                        setRankMasterData(newData);
-                      }
-                    },
-                    onCellValueChanged: (event) => {
-                      const newData = [...rankMasterData];
-                      const rowIndex = newData.findIndex(row => row.id === event.data.id);
-                      if (rowIndex !== -1) {
-                        newData[rowIndex] = { ...newData[rowIndex], [event.colDef.field!]: event.newValue };
-                        setRankMasterData(newData);
+              <div className={`${currentBreakpoint === 'mobile' ? 'h-[400px]' : currentBreakpoint === 'tablet' ? 'h-[500px]' : 'h-[600px]'} overflow-auto border rounded-lg bg-white`}>
+                <table className="w-full border-collapse">
+                  <thead className="bg-gray-50 sticky top-0">
+                    <tr>
+                      <th className="w-10 p-2 text-center border-b border-gray-200 text-xs font-medium text-gray-700">
+                        {/* Drag handle header */}
+                      </th>
+                      <th className="p-2 text-left border-b border-gray-200 text-xs font-medium text-gray-700">
+                        Rank
+                      </th>
+                      <th className="w-32 p-2 text-center border-b border-gray-200 text-xs font-medium text-gray-700">
+                        Applicable to Company
+                      </th>
+                      <th className="w-16 p-2 text-center border-b border-gray-200 text-xs font-medium text-gray-700">
+                        {/* Delete header */}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rankMasterData.map((rank, index) => (
+                      <tr key={rank.id} className="border-b border-gray-100 hover:bg-gray-50">
+                        {/* Drag handle column */}
+                        <td className="w-10 p-2 text-center text-gray-400">
+                          {isRankMasterEditing && (
+                            <div className="cursor-move text-xs" data-testid={`drag-handle-${rank.id}`}>
+                              ⋮⋮
+                            </div>
+                          )}
+                        </td>
                         
-                        // Track changes for persistence
-                        const rowId = event.data.id;
-                        if (!rowId.startsWith('new_')) {
-                          setChangedRanks(prev => new Set([...Array.from(prev), rowId]));
-                        }
-                      }
-                    }
-                  }}
-                />
+                        {/* Rank column */}
+                        <td className="p-2">
+                          {isRankMasterEditing ? (
+                            <input
+                              type="text"
+                              value={rank.rank}
+                              onChange={(e) => handleRankDataChange(rank.id, 'rank', e.target.value)}
+                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Enter rank name"
+                              data-testid={`input-rank-${rank.id}`}
+                            />
+                          ) : (
+                            <span className="text-sm text-gray-900" data-testid={`text-rank-${rank.id}`}>
+                              {rank.rank}
+                            </span>
+                          )}
+                        </td>
+                        
+                        {/* Applicable to Company checkbox column */}
+                        <td className="w-32 p-2 text-center">
+                          <input
+                            type="checkbox"
+                            checked={rank.applicableToCompany}
+                            onChange={(e) => handleRankDataChange(rank.id, 'applicableToCompany', e.target.checked)}
+                            disabled={!isRankMasterEditing}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
+                            data-testid={`checkbox-applicable-${rank.id}`}
+                          />
+                        </td>
+                        
+                        {/* Delete button column */}
+                        <td className="w-16 p-2 text-center">
+                          {isRankMasterEditing && (
+                            <button
+                              onClick={() => handleDeleteRankFromGrid(rank.id, rank.rank)}
+                              className="text-red-500 hover:text-red-700 text-sm p-1 rounded hover:bg-red-50"
+                              data-testid={`button-delete-${rank.id}`}
+                              title="Delete rank"
+                            >
+                              🗑️
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                
+                {/* Empty state */}
+                {rankMasterData.length === 0 && (
+                  <div className="flex items-center justify-center h-32 text-gray-500 text-sm">
+                    No ranks available. Click "New Rank" to add one.
+                  </div>
+                )}
               </div>
             )}
             
