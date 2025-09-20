@@ -142,5 +142,15 @@ export const useDeleteRank = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/available-ranks"] });
     },
+    onError: (error: any) => {
+      // Force cache refresh on error to ensure data consistency
+      queryClient.invalidateQueries({ queryKey: ["/api/available-ranks"] });
+      
+      // Enhance error message for 404s
+      if (error?.status === 404 || error?.message?.includes('404') || error?.message?.includes('not found')) {
+        throw new Error('Rank not found - this rank may have been deleted or may not exist in the database.');
+      }
+      throw error;
+    },
   });
 };

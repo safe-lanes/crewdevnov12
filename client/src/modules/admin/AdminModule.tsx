@@ -56,6 +56,7 @@ import {
   useDeleteMasterDataEntry 
 } from "@/hooks/useDataMasters";
 import { useRankMasterData, useCompanyRanks, useCreateRank, useUpdateRank, useDeleteRank, type RankMasterData } from "@/hooks/useCompanyRanks";
+import { queryClient } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -295,11 +296,41 @@ const AdminModuleInner = (): JSX.Element => {
       setRankToDelete(null);
     } catch (error) {
       console.error('Failed to delete rank:', error);
+      
+      // Handle specific error types
+      let errorMessage = "An unexpected error occurred. Please try again.";
+      let additionalAction = "";
+      
+      if (error instanceof Error) {
+        // Check if it's a 404 error (rank not found)
+        if (error.message.includes('404') || error.message.includes('not found') || error.message.includes('Rank not found')) {
+          errorMessage = `Rank "${rankToDelete.name}" no longer exists in the database. This may be due to stale cache data.`;
+          additionalAction = "The rank list will be refreshed to show current data.";
+          
+          // Force refresh the rank data to clear stale cache
+          queryClient.invalidateQueries({ queryKey: ["/api/available-ranks"] });
+          
+          // Also clear the local state to remove stale entries
+          setRankMasterData(prev => prev.filter(rank => rank.id !== rankToDelete.id));
+          setDeletedRanks(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(rankToDelete.id);
+            return newSet;
+          });
+          
+          // Close the dialog since the rank doesn't exist anyway
+          setShowDeleteConfirmDialog(false);
+          setRankToDelete(null);
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Failed to delete rank",
-        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
+        description: `${errorMessage}${additionalAction ? ` ${additionalAction}` : ''}`,
         variant: "destructive",
-        duration: 5000,
+        duration: 6000,
       });
     }
   };
@@ -2357,6 +2388,22 @@ const AdminModuleInner = (): JSX.Element => {
                     {isRankMasterEditing ? "Save" : "Edit Rank"}
                   </Button>
                   <Button
+                    onClick={() => {
+                      // Force refresh rank data to clear any stale cache
+                      queryClient.invalidateQueries({ queryKey: ["/api/available-ranks"] });
+                      toast({
+                        title: "Data refreshed",
+                        description: "Rank data has been refreshed from the database.",
+                        duration: 2000,
+                      });
+                    }}
+                    variant="outline"
+                    className="h-8 text-xs border-[#e1e8ed] text-[#16569e] hover:bg-[#f3f4f6]"
+                    data-testid="button-refresh-ranks-mobile"
+                  >
+                    🔄 Refresh
+                  </Button>
+                  <Button
                     onClick={handleNewRank}
                     className="h-8 bg-[#5dc86f] hover:bg-[#22c55e] text-white text-xs"
                   >
@@ -2437,6 +2484,22 @@ const AdminModuleInner = (): JSX.Element => {
                   }`}
                 >
                   {isRankMasterEditing ? "Save" : "Edit Rank"}
+                </Button>
+                <Button
+                  onClick={() => {
+                    // Force refresh rank data to clear any stale cache
+                    queryClient.invalidateQueries({ queryKey: ["/api/available-ranks"] });
+                    toast({
+                      title: "Data refreshed",
+                      description: "Rank data has been refreshed from the database.",
+                      duration: 2000,
+                    });
+                  }}
+                  variant="outline"
+                  className="h-8 text-xs border-[#e1e8ed] text-[#16569e] hover:bg-[#f3f4f6]"
+                  data-testid="button-refresh-ranks"
+                >
+                  🔄 Refresh
                 </Button>
                 <Button
                   onClick={handleNewRank}
