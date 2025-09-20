@@ -1832,14 +1832,8 @@ const AdminModuleInner = (): JSX.Element => {
         flex: currentBreakpoint === 'mobile' ? 1 : 1,
         minWidth: currentBreakpoint === 'mobile' ? 80 : 120,
         cellRenderer: (params: ICellRendererParams) => {
-          // In non-edit mode: only show checked checkboxes, hide unchecked ones
-          // In edit mode: show all checkboxes (checked and unchecked)
+          // Always show all checkboxes, but disable them when not in edit mode
           const isChecked = params.value || false;
-          const shouldShowCheckbox = isRankMasterEditing || isChecked;
-          
-          if (!shouldShowCheckbox) {
-            return <div className="flex items-center justify-center h-full"></div>;
-          }
           
           return (
             <div className="flex items-center justify-center h-full">
@@ -1862,7 +1856,7 @@ const AdminModuleInner = (): JSX.Element => {
                     }
                   }
                 }}
-                className="form-checkbox h-4 w-4 text-blue-600"
+                className={`form-checkbox h-4 w-4 text-blue-600 ${!isRankMasterEditing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 data-testid={`checkbox-applicable-company-${params.data.id}`}
               />
             </div>
