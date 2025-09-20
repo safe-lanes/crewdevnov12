@@ -2012,8 +2012,7 @@ const AdminModuleInner = (): JSX.Element => {
         cellRenderer: 'checkboxRenderer',
         editable: false,
         sortable: false,
-        filter: false,
-        suppressClickEdit: true
+        filter: false
       }
     ];
 
@@ -2038,8 +2037,7 @@ const AdminModuleInner = (): JSX.Element => {
       sortable: false,
       filter: false,
       resizable: false,
-      pinned: 'right',
-      suppressClickEdit: true
+      pinned: 'right'
     });
 
     return baseColumns;
