@@ -1815,12 +1815,12 @@ const AdminModuleInner = (): JSX.Element => {
           <div className="flex items-center justify-center h-full">
             <Button
               onClick={() => handleDeleteRankClick(params.data.id, params.data.rank)}
-              className={`${currentBreakpoint === 'mobile' ? 'h-6 w-6' : 'h-8 w-8'} p-0 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition-colors duration-200`}
-              variant="outline"
-              size="sm"
+              className="h-6 w-6"
+              variant="ghost"
+              size="icon"
               data-testid={`button-delete-rank-${params.data.id}`}
             >
-              <Trash2 className={currentBreakpoint === 'mobile' ? 'h-3 w-3' : 'h-4 w-4'} />
+              <Trash2 className="h-[18px] w-[18px] text-gray-500" />
             </Button>
           </div>
         );
