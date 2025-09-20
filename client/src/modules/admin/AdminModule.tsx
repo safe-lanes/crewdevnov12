@@ -1854,10 +1854,16 @@ const AdminModuleInner = (): JSX.Element => {
                     if (rowIndex !== -1) {
                       newData[rowIndex].applicableToCompany = e.target.checked;
                       setRankMasterData(newData);
+                      
+                      // Track changes for save functionality
+                      if (!params.data.id.startsWith('new_')) {
+                        setChangedRanks(prev => new Set(prev).add(params.data.id));
+                      }
                     }
                   }
                 }}
                 className="form-checkbox h-4 w-4 text-blue-600"
+                data-testid={`checkbox-applicable-company-${params.data.id}`}
               />
             </div>
           );
