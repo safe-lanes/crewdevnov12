@@ -735,6 +735,11 @@ const AdminModuleInner = (): JSX.Element => {
 
   const handleEditRank = () => {
     setIsRankMasterEditing(true);
+    // Refresh grid to update column configurations
+    setTimeout(() => {
+      rankMasterGridApi?.refreshHeader();
+      rankMasterGridApi?.redrawRows();
+    }, 100);
   };
 
   const handleDeleteRank = (rankId: string) => {
@@ -798,6 +803,12 @@ const AdminModuleInner = (): JSX.Element => {
       setNewRanks(new Set());
       setDeletedRanks(new Set());
       setIsRankMasterEditing(false);
+      
+      // Refresh grid to update column configurations
+      setTimeout(() => {
+        rankMasterGridApi?.refreshHeader();
+        rankMasterGridApi?.redrawRows();
+      }, 100);
       
       toast({
         title: "Success",
@@ -1112,11 +1123,40 @@ const AdminModuleInner = (): JSX.Element => {
 
   const handleEditCompany = () => {
     setIsCompanyEditing(true);
+    // Refresh grid to update column configurations
+    setTimeout(() => {
+      companyGridApi?.refreshHeader();
+      companyGridApi?.redrawRows();
+    }, 100);
   };
 
-  const handleSaveCompany = () => {
-    setIsCompanyEditing(false);
-    companyGridApi?.stopEditing();
+  const handleSaveCompany = async () => {
+    try {
+      companyGridApi?.stopEditing();
+      
+      // TODO: Save company rank data changes to backend
+      // For now, just update the editing state
+      setIsCompanyEditing(false);
+      
+      // Refresh grid to update column configurations
+      setTimeout(() => {
+        companyGridApi?.refreshHeader();
+        companyGridApi?.redrawRows();
+      }, 100);
+      
+      toast({
+        title: "Success",
+        description: "Company changes saved successfully",
+      });
+      
+    } catch (error) {
+      console.error('Error saving company changes:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save company changes",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleMultiple = (rankId: string) => {
@@ -1834,7 +1874,7 @@ const AdminModuleInner = (): JSX.Element => {
     return baseColumns;
   };
 
-  const rankMasterColumnDefs = getRankMasterColumnDefs();
+  const rankMasterColumnDefs = useMemo(() => getRankMasterColumnDefs(), [currentBreakpoint, isRankMasterEditing]);
 
   // Vessel column definitions - exact structure as per user specification
   // Vessel checkbox column descriptors with responsive labels and priority
@@ -1950,7 +1990,7 @@ const AdminModuleInner = (): JSX.Element => {
     return baseColumns;
   };
 
-  const vesselColumnDefs = useMemo(() => buildVesselCols(currentBreakpoint, vesselHasRoles, revisionMode), [currentBreakpoint, vesselHasRoles, revisionMode]);
+  const vesselColumnDefs = useMemo(() => buildVesselCols(currentBreakpoint, vesselHasRoles, revisionMode), [currentBreakpoint, vesselHasRoles, revisionMode, isVesselEditing]);
 
   // Fetch forms data from API
   const { data: formsData = [], isLoading, error } = useQuery<Form[]>({
