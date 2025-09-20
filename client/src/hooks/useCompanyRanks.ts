@@ -41,7 +41,8 @@ const mapAvailableRankToRankMasterData = (availableRank: AvailableRank): RankMas
     return name;
   };
 
-  // Determine if applicable to company based on category
+  // Since the database doesn't have applicableToCompany field, 
+  // consider all ranks applicable to company by default
   // Senior Officers and Junior Officers are typically applicable to company
   const applicableToCompany = ['Senior Officers', 'Junior Officers'].includes(availableRank.category);
 
