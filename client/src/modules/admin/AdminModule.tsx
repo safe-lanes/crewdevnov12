@@ -94,6 +94,121 @@ const rankGroupSchema = z.object({
   ranks: z.array(z.string()).min(1, "At least one rank must be selected"),
 });
 
+// Custom AG Grid Cell Renderers for proper DOM interaction
+class CheckboxRenderer {
+  private eGui!: HTMLDivElement;
+  private eCheckbox!: HTMLInputElement;
+  private params: any;
+
+  init(params: any) {
+    this.params = params;
+    
+    // Create container
+    this.eGui = document.createElement('div');
+    this.eGui.className = 'flex items-center justify-center h-full';
+    
+    // Create checkbox
+    this.eCheckbox = document.createElement('input');
+    this.eCheckbox.type = 'checkbox';
+    this.eCheckbox.checked = params.value || false;
+    this.eCheckbox.className = 'form-checkbox h-4 w-4 text-blue-600 cursor-pointer';
+    this.eCheckbox.setAttribute('data-testid', `checkbox-applicable-company-${params.data.id}`);
+    
+    // Add event listener
+    this.eCheckbox.addEventListener('change', this.onCheckboxChange.bind(this));
+    
+    this.eGui.appendChild(this.eCheckbox);
+  }
+
+  onCheckboxChange(event: Event) {
+    const target = event.target as HTMLInputElement;
+    
+    // Get grid API and update data
+    const gridApi = this.params.api;
+    const rowNode = this.params.node;
+    
+    // Update the data directly in the grid
+    rowNode.setDataValue(this.params.colDef.field, target.checked);
+    
+    // Emit custom event for parent component to handle
+    const customEvent = new CustomEvent('rankDataChange', {
+      detail: {
+        id: this.params.data.id,
+        field: this.params.colDef.field,
+        value: target.checked
+      }
+    });
+    document.dispatchEvent(customEvent);
+  }
+
+  getGui() {
+    return this.eGui;
+  }
+
+  refresh(params: any) {
+    this.params = params;
+    this.eCheckbox.checked = params.value || false;
+    return true;
+  }
+
+  destroy() {
+    if (this.eCheckbox) {
+      this.eCheckbox.removeEventListener('change', this.onCheckboxChange.bind(this));
+    }
+  }
+}
+
+class DeleteButtonRenderer {
+  private eGui!: HTMLDivElement;
+  private eButton!: HTMLButtonElement;
+  private params: any;
+
+  init(params: any) {
+    this.params = params;
+    
+    // Create container
+    this.eGui = document.createElement('div');
+    this.eGui.className = 'flex items-center justify-center h-full';
+    
+    // Create button
+    this.eButton = document.createElement('button');
+    this.eButton.className = 'h-6 w-6 bg-transparent hover:bg-gray-100 rounded text-gray-500 hover:text-gray-700 transition-colors';
+    this.eButton.setAttribute('data-testid', `button-delete-rank-${params.data.id}`);
+    this.eButton.innerHTML = '🗑️'; // Simple trash icon
+    
+    // Add event listener
+    this.eButton.addEventListener('click', this.onButtonClick.bind(this));
+    
+    this.eGui.appendChild(this.eButton);
+  }
+
+  onButtonClick() {
+    // Emit custom event for parent component to handle
+    const customEvent = new CustomEvent('deleteRankClick', {
+      detail: {
+        id: this.params.data.id,
+        rank: this.params.data.rank
+      }
+    });
+    document.dispatchEvent(customEvent);
+  }
+
+  getGui() {
+    return this.eGui;
+  }
+
+  refresh(params: any) {
+    this.params = params;
+    return true;
+  }
+
+  destroy() {
+    if (this.eButton) {
+      this.eButton.removeEventListener('click', this.onButtonClick.bind(this));
+    }
+  }
+}
+
 // Note: RankMasterData interface moved to shared hook useCompanyRanks.ts
 
 // Interface for Company Rank data
@@ -1831,37 +1946,7 @@ const AdminModuleInner = (): JSX.Element => {
         field: "applicableToCompany",
         flex: currentBreakpoint === 'mobile' ? 1 : 1,
         minWidth: currentBreakpoint === 'mobile' ? 80 : 120,
-        cellRenderer: (params: ICellRendererParams) => {
-          // Always show all checkboxes, but disable them when not in edit mode
-          const isChecked = params.value || false;
-          
-          return (
-            <div className="flex items-center justify-center h-full">
-              <input
-                type="checkbox"
-                checked={isChecked}
-                disabled={!isRankMasterEditing}
-                onChange={(e) => {
-                  if (isRankMasterEditing) {
-                    const newData = [...rankMasterData];
-                    const rowIndex = newData.findIndex(row => row.id === params.data.id);
-                    if (rowIndex !== -1) {
-                      newData[rowIndex].applicableToCompany = e.target.checked;
-                      setRankMasterData(newData);
-                      
-                      // Track changes for save functionality
-                      if (!params.data.id.startsWith('new_')) {
-                        setChangedRanks(prev => new Set(prev).add(params.data.id));
-                      }
-                    }
-                  }
-                }}
-                className={`form-checkbox h-4 w-4 text-blue-600 ${!isRankMasterEditing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                data-testid={`checkbox-applicable-company-${params.data.id}`}
-              />
-            </div>
-          );
-        }
+        cellRenderer: 'checkboxRenderer'
       }
     ];
 
@@ -1881,21 +1966,7 @@ const AdminModuleInner = (): JSX.Element => {
     baseColumns.push({
       headerName: "",
       width: currentBreakpoint === 'mobile' ? 50 : 60,
-      cellRenderer: (params: ICellRendererParams) => {
-        return (
-          <div className="flex items-center justify-center h-full">
-            <Button
-              onClick={() => handleDeleteRankClick(params.data.id, params.data.rank)}
-              className="h-6 w-6"
-              variant="ghost"
-              size="icon"
-              data-testid={`button-delete-rank-${params.data.id}`}
-            >
-              <Trash2 className="h-[18px] w-[18px] text-gray-500" />
-            </Button>
-          </div>
-        );
-      },
+      cellRenderer: 'deleteButtonRenderer',
       sortable: false,
       filter: false,
       resizable: false,
