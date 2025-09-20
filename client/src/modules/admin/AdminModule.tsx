@@ -99,9 +99,17 @@ class CheckboxRenderer {
   private eGui!: HTMLDivElement;
   private eCheckbox!: HTMLInputElement;
   private params: any;
+  private boundChangeHandler!: (event: Event) => void;
+  private boundClickHandler!: (event: Event) => void;
+  private boundMouseDownHandler!: (event: Event) => void;
 
   init(params: any) {
     this.params = params;
+    
+    // Store bound handlers for proper cleanup
+    this.boundChangeHandler = this.onCheckboxChange.bind(this);
+    this.boundClickHandler = this.stopPropagation.bind(this);
+    this.boundMouseDownHandler = this.stopPropagation.bind(this);
     
     // Create container
     this.eGui = document.createElement('div');
@@ -113,32 +121,38 @@ class CheckboxRenderer {
     this.eCheckbox.checked = params.value || false;
     this.eCheckbox.className = 'form-checkbox h-4 w-4 text-blue-600 cursor-pointer';
     this.eCheckbox.setAttribute('data-testid', `checkbox-applicable-company-${params.data.id}`);
+    this.eCheckbox.setAttribute('aria-ref', `checkbox-applicable-company-${params.data.id}`);
+    this.eCheckbox.setAttribute('role', 'checkbox');
+    this.eCheckbox.setAttribute('aria-checked', params.value ? 'true' : 'false');
     
-    // Add event listener
-    this.eCheckbox.addEventListener('change', this.onCheckboxChange.bind(this));
+    // Add event listeners with proper propagation control
+    this.eCheckbox.addEventListener('change', this.boundChangeHandler);
+    this.eCheckbox.addEventListener('click', this.boundClickHandler);
+    this.eCheckbox.addEventListener('mousedown', this.boundMouseDownHandler);
+    this.eGui.addEventListener('click', this.boundClickHandler);
+    this.eGui.addEventListener('mousedown', this.boundMouseDownHandler);
     
     this.eGui.appendChild(this.eCheckbox);
   }
 
+  stopPropagation(event: Event) {
+    event.stopPropagation();
+  }
+
   onCheckboxChange(event: Event) {
+    event.stopPropagation();
     const target = event.target as HTMLInputElement;
     
-    // Get grid API and update data
-    const gridApi = this.params.api;
-    const rowNode = this.params.node;
+    // Update aria-checked attribute
+    this.eCheckbox.setAttribute('aria-checked', target.checked ? 'true' : 'false');
     
     // Update the data directly in the grid
-    rowNode.setDataValue(this.params.colDef.field, target.checked);
+    this.params.node.setDataValue(this.params.colDef.field, target.checked);
     
-    // Emit custom event for parent component to handle
-    const customEvent = new CustomEvent('rankDataChange', {
-      detail: {
-        id: this.params.data.id,
-        field: this.params.colDef.field,
-        value: target.checked
-      }
-    });
-    document.dispatchEvent(customEvent);
+    // Use context callback instead of global events
+    if (this.params.context && this.params.context.onRankDataChange) {
+      this.params.context.onRankDataChange(this.params.data.id, this.params.colDef.field, target.checked);
+    }
   }
 
   getGui() {
@@ -148,12 +162,19 @@ class CheckboxRenderer {
   refresh(params: any) {
     this.params = params;
     this.eCheckbox.checked = params.value || false;
+    this.eCheckbox.setAttribute('aria-checked', params.value ? 'true' : 'false');
     return true;
   }
 
   destroy() {
     if (this.eCheckbox) {
-      this.eCheckbox.removeEventListener('change', this.onCheckboxChange.bind(this));
+      this.eCheckbox.removeEventListener('change', this.boundChangeHandler);
+      this.eCheckbox.removeEventListener('click', this.boundClickHandler);
+      this.eCheckbox.removeEventListener('mousedown', this.boundMouseDownHandler);
+    }
+    if (this.eGui) {
+      this.eGui.removeEventListener('click', this.boundClickHandler);
+      this.eGui.removeEventListener('mousedown', this.boundMouseDownHandler);
     }
   }
 }
@@ -162,9 +183,15 @@ class DeleteButtonRenderer {
   private eGui!: HTMLDivElement;
   private eButton!: HTMLButtonElement;
   private params: any;
+  private boundClickHandler!: (event: Event) => void;
+  private boundMouseDownHandler!: (event: Event) => void;
 
   init(params: any) {
     this.params = params;
+    
+    // Store bound handlers for proper cleanup
+    this.boundClickHandler = this.onButtonClick.bind(this);
+    this.boundMouseDownHandler = this.stopPropagation.bind(this);
     
     // Create container
     this.eGui = document.createElement('div');
@@ -172,25 +199,33 @@ class DeleteButtonRenderer {
     
     // Create button
     this.eButton = document.createElement('button');
+    this.eButton.type = 'button';
     this.eButton.className = 'h-6 w-6 bg-transparent hover:bg-gray-100 rounded text-gray-500 hover:text-gray-700 transition-colors';
     this.eButton.setAttribute('data-testid', `button-delete-rank-${params.data.id}`);
+    this.eButton.setAttribute('aria-ref', `button-delete-rank-${params.data.id}`);
+    this.eButton.setAttribute('aria-label', `Delete rank ${params.data.rank}`);
     this.eButton.innerHTML = '🗑️'; // Simple trash icon
     
-    // Add event listener
-    this.eButton.addEventListener('click', this.onButtonClick.bind(this));
+    // Add event listeners with proper propagation control
+    this.eButton.addEventListener('click', this.boundClickHandler);
+    this.eButton.addEventListener('mousedown', this.boundMouseDownHandler);
+    this.eGui.addEventListener('click', this.boundClickHandler);
+    this.eGui.addEventListener('mousedown', this.boundMouseDownHandler);
     
     this.eGui.appendChild(this.eButton);
   }
 
-  onButtonClick() {
-    // Emit custom event for parent component to handle
-    const customEvent = new CustomEvent('deleteRankClick', {
-      detail: {
-        id: this.params.data.id,
-        rank: this.params.data.rank
-      }
-    });
-    document.dispatchEvent(customEvent);
+  stopPropagation(event: Event) {
+    event.stopPropagation();
+  }
+
+  onButtonClick(event: Event) {
+    event.stopPropagation();
+    
+    // Use context callback instead of global events
+    if (this.params.context && this.params.context.onDeleteRank) {
+      this.params.context.onDeleteRank(this.params.data.id, this.params.data.rank);
+    }
   }
 
   getGui() {
@@ -204,7 +239,12 @@ class DeleteButtonRenderer {
 
   destroy() {
     if (this.eButton) {
-      this.eButton.removeEventListener('click', this.onButtonClick.bind(this));
+      this.eButton.removeEventListener('click', this.boundClickHandler);
+      this.eButton.removeEventListener('mousedown', this.boundMouseDownHandler);
+    }
+    if (this.eGui) {
+      this.eGui.removeEventListener('click', this.boundClickHandler);
+      this.eGui.removeEventListener('mousedown', this.boundMouseDownHandler);
     }
   }
 }
@@ -311,39 +351,27 @@ const AdminModuleInner = (): JSX.Element => {
     }
   }, [sharedRankMasterData]);
   
-  // Add event listeners for custom cell renderer events
-  useEffect(() => {
-    const handleRankDataChange = (event: CustomEvent) => {
-      const { id, field, value } = event.detail;
-      setRankMasterData(prev => {
-        const newData = [...prev];
-        const rowIndex = newData.findIndex(row => row.id === id);
-        if (rowIndex !== -1) {
-          newData[rowIndex] = { ...newData[rowIndex], [field]: value };
-          
-          // Track changes for save functionality
-          if (!id.startsWith('new_')) {
-            setChangedRanks(prev => new Set(prev).add(id));
-          }
+  // Context callback functions for cell renderers
+  const handleRankDataChange = (id: string, field: string, value: any) => {
+    setRankMasterData(prev => {
+      const newData = [...prev];
+      const rowIndex = newData.findIndex(row => row.id === id);
+      if (rowIndex !== -1) {
+        newData[rowIndex] = { ...newData[rowIndex], [field]: value };
+        
+        // Track changes for save functionality
+        if (!id.startsWith('new_')) {
+          setChangedRanks(prev => new Set(prev).add(id));
         }
-        return newData;
-      });
-    };
+      }
+      return newData;
+    });
+  };
 
-    const handleDeleteRankClickEvent = (event: CustomEvent) => {
-      const { id, rank } = event.detail;
-      setRankToDelete({ id, name: rank });
-      setShowDeleteConfirmDialog(true);
-    };
-
-    document.addEventListener('rankDataChange', handleRankDataChange as EventListener);
-    document.addEventListener('deleteRankClick', handleDeleteRankClickEvent as EventListener);
-
-    return () => {
-      document.removeEventListener('rankDataChange', handleRankDataChange as EventListener);
-      document.removeEventListener('deleteRankClick', handleDeleteRankClickEvent as EventListener);
-    };
-  }, []);
+  const handleDeleteRankFromGrid = (id: string, rank: string) => {
+    setRankToDelete({ id, name: rank });
+    setShowDeleteConfirmDialog(true);
+  };
 
   const [isRankMasterEditing, setIsRankMasterEditing] = useState(false);
   const [rankMasterGridApi, setRankMasterGridApi] = useState<GridApi | null>(null);
@@ -1981,7 +2009,11 @@ const AdminModuleInner = (): JSX.Element => {
         field: "applicableToCompany",
         flex: currentBreakpoint === 'mobile' ? 1 : 1,
         minWidth: currentBreakpoint === 'mobile' ? 80 : 120,
-        cellRenderer: 'checkboxRenderer'
+        cellRenderer: 'checkboxRenderer',
+        editable: false,
+        sortable: false,
+        filter: false,
+        suppressClickEdit: true
       }
     ];
 
@@ -2002,10 +2034,12 @@ const AdminModuleInner = (): JSX.Element => {
       headerName: "",
       width: currentBreakpoint === 'mobile' ? 50 : 60,
       cellRenderer: 'deleteButtonRenderer',
+      editable: false,
       sortable: false,
       filter: false,
       resizable: false,
-      pinned: 'right'
+      pinned: 'right',
+      suppressClickEdit: true
     });
 
     return baseColumns;
@@ -2697,6 +2731,10 @@ const AdminModuleInner = (): JSX.Element => {
                     components: {
                       checkboxRenderer: CheckboxRenderer,
                       deleteButtonRenderer: DeleteButtonRenderer
+                    },
+                    context: {
+                      onRankDataChange: handleRankDataChange,
+                      onDeleteRank: handleDeleteRankFromGrid
                     },
                     rowDragManaged: true,
                     animateRows: true,
