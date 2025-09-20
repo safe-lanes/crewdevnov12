@@ -218,6 +218,10 @@ const AdminModuleInner = (): JSX.Element => {
   // Unsaved changes dialog state
   const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] = useState(false);
   
+  // Delete confirmation dialog state
+  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
+  const [rankToDelete, setRankToDelete] = useState<{ id: string; name: string } | null>(null);
+  
   // Dialog handler functions
   const handleSaveChanges = async () => {
     try {
@@ -261,6 +265,48 @@ const AdminModuleInner = (): JSX.Element => {
   const handleCancelNavigation = () => {
     resolvePendingNavigation('cancel');
     setShowUnsavedChangesDialog(false);
+  };
+  
+  // Delete rank handlers
+  const handleDeleteRankClick = (rankId: string, rankName: string) => {
+    setRankToDelete({ id: rankId, name: rankName });
+    setShowDeleteConfirmDialog(true);
+  };
+  
+  const handleConfirmDeleteRank = async () => {
+    if (!rankToDelete) return;
+    
+    try {
+      // Convert string ID to number for the API call
+      const numericId = parseInt(rankToDelete.id, 10);
+      if (isNaN(numericId)) {
+        throw new Error('Invalid rank ID');
+      }
+      
+      await deleteRankMutation.mutateAsync(numericId);
+      
+      toast({
+        title: "Rank deleted successfully",
+        description: `${rankToDelete.name} has been removed from the system.`,
+        duration: 3000,
+      });
+      
+      setShowDeleteConfirmDialog(false);
+      setRankToDelete(null);
+    } catch (error) {
+      console.error('Failed to delete rank:', error);
+      toast({
+        title: "Failed to delete rank",
+        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    }
+  };
+  
+  const handleCancelDeleteRank = () => {
+    setShowDeleteConfirmDialog(false);
+    setRankToDelete(null);
   };
   
   // CSS Constants for consistent grid layouts
@@ -1759,6 +1805,31 @@ const AdminModuleInner = (): JSX.Element => {
         singleClickEdit: true,
       });
     }
+
+    // Add delete column
+    baseColumns.push({
+      headerName: "",
+      width: currentBreakpoint === 'mobile' ? 50 : 60,
+      cellRenderer: (params: ICellRendererParams) => {
+        return (
+          <div className="flex items-center justify-center h-full">
+            <Button
+              onClick={() => handleDeleteRankClick(params.data.id, params.data.rank)}
+              className={`${currentBreakpoint === 'mobile' ? 'h-6 w-6' : 'h-8 w-8'} p-0 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition-colors duration-200`}
+              variant="outline"
+              size="sm"
+              data-testid={`button-delete-rank-${params.data.id}`}
+            >
+              <Trash2 className={currentBreakpoint === 'mobile' ? 'h-3 w-3' : 'h-4 w-4'} />
+            </Button>
+          </div>
+        );
+      },
+      sortable: false,
+      filter: false,
+      resizable: false,
+      pinned: 'right'
+    });
 
     return baseColumns;
   };
@@ -3584,6 +3655,43 @@ const AdminModuleInner = (): JSX.Element => {
         title="Unsaved Changes"
         description="You have unsaved changes that will be lost if you continue. What would you like to do?"
       />
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteConfirmDialog} onOpenChange={setShowDeleteConfirmDialog}>
+        <DialogContent className="sm:max-w-[425px]" data-testid="dialog-delete-rank-confirm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="h-5 w-5" />
+              Delete Rank
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-gray-600 mb-4">
+              Are you sure you want to delete the rank <strong>{rankToDelete?.name}</strong>?
+            </p>
+            <p className="text-sm text-gray-500">
+              This action cannot be undone. The rank will be permanently removed from the system and any associated data will be lost.
+            </p>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={handleCancelDeleteRank}
+              data-testid="button-cancel-delete-rank"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDeleteRank}
+              disabled={deleteRankMutation.isPending}
+              data-testid="button-confirm-delete-rank"
+            >
+              {deleteRankMutation.isPending ? "Deleting..." : "Delete Rank"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
