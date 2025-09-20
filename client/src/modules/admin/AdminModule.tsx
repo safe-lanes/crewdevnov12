@@ -961,7 +961,9 @@ const AdminModuleInner = (): JSX.Element => {
           const categoryFromApplicability = rankData.applicableToCompany ? 'Senior Officers' : 'Ratings';
           await createRankMutation.mutateAsync({
             name: rankData.rank,
-            category: categoryFromApplicability
+            category: categoryFromApplicability,
+            ...(rankData.rankId && { rankId: rankData.rankId }),
+            ...(rankData.label && { label: rankData.label })
           });
         }
       }
@@ -976,7 +978,9 @@ const AdminModuleInner = (): JSX.Element => {
               id: parseInt(changedId),
               data: {
                 name: rankData.rank,
-                category: categoryFromApplicability
+                category: categoryFromApplicability,
+                ...(rankData.rankId && { rankId: rankData.rankId }),
+                ...(rankData.label && { label: rankData.label })
               }
             });
           }
@@ -2579,11 +2583,17 @@ const AdminModuleInner = (): JSX.Element => {
                       <TableHead className="text-white text-xs font-normal w-10">
                         {/* Drag handle header */}
                       </TableHead>
+                      <TableHead className="text-white text-xs font-normal w-24">
+                        Rank ID
+                      </TableHead>
                       <TableHead className="text-white text-xs font-normal">
                         Rank
                       </TableHead>
                       <TableHead className="text-white text-xs font-normal w-32">
                         Applicable to Company
+                      </TableHead>
+                      <TableHead className="text-white text-xs font-normal w-32">
+                        Rank Label
                       </TableHead>
                       <TableHead className="text-white text-xs font-normal w-16">
                         Actions
@@ -2602,6 +2612,24 @@ const AdminModuleInner = (): JSX.Element => {
                             <div className="cursor-move text-xs text-gray-400" data-testid={`drag-handle-${rank.id}`}>
                               ⋮⋮
                             </div>
+                          )}
+                        </TableCell>
+                        
+                        {/* Rank ID column */}
+                        <TableCell className="text-[#4f5863] text-[13px] font-normal py-3">
+                          {isRankMasterEditing ? (
+                            <Input
+                              type="text"
+                              value={rank.rankId}
+                              onChange={(e) => handleRankDataChange(rank.id, 'rankId', e.target.value)}
+                              className="h-8 text-sm"
+                              placeholder="Enter rank ID"
+                              data-testid={`input-rank-id-${rank.id}`}
+                            />
+                          ) : (
+                            <span data-testid={`text-rank-id-${rank.id}`}>
+                              {rank.rankId}
+                            </span>
                           )}
                         </TableCell>
                         
@@ -2636,6 +2664,28 @@ const AdminModuleInner = (): JSX.Element => {
                           </div>
                         </TableCell>
                         
+                        {/* Rank Label column - only show input when Applicable to Company is checked */}
+                        <TableCell className="text-[#4f5863] text-[13px] font-normal py-3">
+                          {rank.applicableToCompany ? (
+                            isRankMasterEditing ? (
+                              <Input
+                                type="text"
+                                value={rank.label}
+                                onChange={(e) => handleRankDataChange(rank.id, 'label', e.target.value)}
+                                className="h-8 text-sm"
+                                placeholder="Enter rank label"
+                                data-testid={`input-rank-label-${rank.id}`}
+                              />
+                            ) : (
+                              <span data-testid={`text-rank-label-${rank.id}`}>
+                                {rank.label}
+                              </span>
+                            )
+                          ) : (
+                            <span className="text-gray-400 text-xs">N/A</span>
+                          )}
+                        </TableCell>
+                        
                         {/* Delete button column */}
                         <TableCell className="text-[#4f5863] text-[13px] font-normal py-3">
                           <div className="flex gap-2 justify-center">
@@ -2659,7 +2709,7 @@ const AdminModuleInner = (): JSX.Element => {
                     {/* Empty state */}
                     {rankMasterData.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center py-8">
+                        <TableCell colSpan={6} className="text-center py-8">
                           <div className="text-gray-500 text-sm">
                             No ranks available. Click "New Rank" to add one.
                           </div>

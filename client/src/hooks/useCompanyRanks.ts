@@ -49,9 +49,9 @@ const mapAvailableRankToRankMasterData = (availableRank: AvailableRank): RankMas
   return {
     id: availableRank.id.toString(),
     rank: availableRank.name,
-    rankId: getRankId(availableRank.name, availableRank.id),
+    rankId: (availableRank as any).rankId || getRankId(availableRank.name, availableRank.id), // Use stored value or fallback to generated
     applicableToCompany,
-    label: getLabel(availableRank.name),
+    label: (availableRank as any).label || getLabel(availableRank.name), // Use stored value or fallback to generated
   };
 };
 
