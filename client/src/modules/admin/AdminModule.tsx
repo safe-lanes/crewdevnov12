@@ -703,7 +703,13 @@ const AdminModuleInner = (): JSX.Element => {
 
   // Initialize company rank data from rank master
   React.useEffect(() => {
+    console.log('🏢 [COMPANY DEBUG] rankMasterData:', rankMasterData);
+    console.log('🏢 [COMPANY DEBUG] rankMasterData length:', rankMasterData.length);
+    
     const applicableRanks = rankMasterData.filter(rank => rank.applicableToCompany);
+    console.log('🏢 [COMPANY DEBUG] applicableRanks:', applicableRanks);
+    console.log('🏢 [COMPANY DEBUG] applicableRanks length:', applicableRanks.length);
+    
     const companyRanks: CompanyRankData[] = applicableRanks.map(rank => ({
       id: rank.id,
       rank: rank.label || rank.rank,
@@ -725,6 +731,10 @@ const AdminModuleInner = (): JSX.Element => {
       emtOfficer: false,
       hasMultiple: false
     }));
+    
+    console.log('🏢 [COMPANY DEBUG] companyRanks:', companyRanks);
+    console.log('🏢 [COMPANY DEBUG] companyRanks length:', companyRanks.length);
+    
     setCompanyRankData(companyRanks);
   }, [rankMasterData]);
 
@@ -1222,12 +1232,19 @@ const AdminModuleInner = (): JSX.Element => {
   // Company handlers
   
   const handleCompanyRankDataChange = (id: string, field: keyof CompanyRankData, value: any) => {
+    console.log('🏢 [CHECKBOX DEBUG] handleCompanyRankDataChange called:', { id, field, value });
+    console.log('🏢 [CHECKBOX DEBUG] current companyRankData:', companyRankData);
+    
     setCompanyRankData(prev => {
       const newData = [...prev];
       const rowIndex = newData.findIndex(row => row.id === id);
       if (rowIndex !== -1) {
+        console.log('🏢 [CHECKBOX DEBUG] updating row at index:', rowIndex);
         newData[rowIndex] = { ...newData[rowIndex], [field]: value };
+      } else {
+        console.log('🏢 [CHECKBOX DEBUG] row not found for id:', id);
       }
+      console.log('🏢 [CHECKBOX DEBUG] new companyRankData:', newData);
       return newData;
     });
   };
