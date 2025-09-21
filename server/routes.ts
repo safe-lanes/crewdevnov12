@@ -317,6 +317,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Cleanup endpoint to clear all available ranks
+  app.delete("/api/available-ranks", async (req, res) => {
+    try {
+      await storage.clearAllAvailableRanks();
+      res.json({ success: true, message: "All ranks cleared successfully" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to clear ranks" });
+    }
+  });
+
   // Crew Members API routes
   app.get("/api/crew-members", async (req, res) => {
     try {

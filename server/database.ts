@@ -797,6 +797,11 @@ export class DatabaseStorage implements IStorage {
     return (result as any).affectedRows > 0;
   }
 
+  async clearAllAvailableRanks(): Promise<boolean> {
+    const result = await this.db.delete(availableRanks);
+    return true;
+  }
+
   // Crew Member methods
   async getCrewMembers(): Promise<CrewMember[]> {
     return await this.db.select().from(crewMembers);

@@ -21,6 +21,7 @@ export interface IStorage {
   createAvailableRank(rank: InsertAvailableRank): Promise<AvailableRank>;
   updateAvailableRank(id: number, rank: Partial<InsertAvailableRank>): Promise<AvailableRank | undefined>;
   deleteAvailableRank(id: number): Promise<boolean>;
+  clearAllAvailableRanks(): Promise<boolean>;
   // Crew Members
   getCrewMembers(): Promise<CrewMember[]>;
   getCrewMember(id: string): Promise<CrewMember | undefined>;
@@ -388,6 +389,11 @@ export class MemStorage implements IStorage {
     return this.availableRanks.delete(id);
   }
 
+  async clearAllAvailableRanks(): Promise<boolean> {
+    this.availableRanks.clear();
+    return true;
+  }
+
   // Crew Members Methods
   async getCrewMembers(): Promise<CrewMember[]> {
     return Array.from(this.crewMembers.values());
@@ -650,6 +656,7 @@ if (databaseUrl) {
       async createAvailableRank(): Promise<any> { this.throwConnectionError(); }
       async updateAvailableRank(): Promise<any> { this.throwConnectionError(); }
       async deleteAvailableRank(): Promise<any> { this.throwConnectionError(); }
+      async clearAllAvailableRanks(): Promise<any> { this.throwConnectionError(); }
       async getCrewMembers(): Promise<any> { this.throwConnectionError(); }
       async getCrewMember(): Promise<any> { this.throwConnectionError(); }
       async createCrewMember(): Promise<any> { this.throwConnectionError(); }
@@ -709,6 +716,7 @@ if (databaseUrl) {
     async createAvailableRank(): Promise<any> { this.throwConnectionError(); }
     async updateAvailableRank(): Promise<any> { this.throwConnectionError(); }
     async deleteAvailableRank(): Promise<any> { this.throwConnectionError(); }
+    async clearAllAvailableRanks(): Promise<any> { this.throwConnectionError(); }
     async getCrewMembers(): Promise<any> { this.throwConnectionError(); }
     async getCrewMember(): Promise<any> { this.throwConnectionError(); }
     async createCrewMember(): Promise<any> { this.throwConnectionError(); }
