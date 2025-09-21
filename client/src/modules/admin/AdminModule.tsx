@@ -2502,7 +2502,7 @@ const AdminModuleInner = (): JSX.Element => {
                           <Checkbox
                             checked={rank.officer}
                             onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'officer', checked)}
-                            disabled={false}
+                            disabled={!isCompanyEditing}
                             className="h-4 w-4"
                             data-testid={`checkbox-officer-${rank.id}`}
                           />
@@ -2512,7 +2512,7 @@ const AdminModuleInner = (): JSX.Element => {
                           <Checkbox
                             checked={rank.rating}
                             onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'rating', checked)}
-                            disabled={false}
+                            disabled={!isCompanyEditing}
                             className="h-4 w-4"
                             data-testid={`checkbox-rating-${rank.id}`}
                           />
@@ -2522,7 +2522,7 @@ const AdminModuleInner = (): JSX.Element => {
                           <Checkbox
                             checked={rank.seniorOfficer}
                             onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'seniorOfficer', checked)}
-                            disabled={false}
+                            disabled={!isCompanyEditing}
                             className="h-4 w-4"
                             data-testid={`checkbox-senior-officer-${rank.id}`}
                           />
@@ -2532,7 +2532,7 @@ const AdminModuleInner = (): JSX.Element => {
                           <Checkbox
                             checked={rank.deckOfficer}
                             onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'deckOfficer', checked)}
-                            disabled={false}
+                            disabled={!isCompanyEditing}
                             className="h-4 w-4"
                             data-testid={`checkbox-deck-officer-${rank.id}`}
                           />
@@ -2542,7 +2542,7 @@ const AdminModuleInner = (): JSX.Element => {
                           <Checkbox
                             checked={rank.engOfficer}
                             onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'engOfficer', checked)}
-                            disabled={false}
+                            disabled={!isCompanyEditing}
                             className="h-4 w-4"
                             data-testid={`checkbox-eng-officer-${rank.id}`}
                           />
@@ -2552,7 +2552,7 @@ const AdminModuleInner = (): JSX.Element => {
                           <Checkbox
                             checked={rank.pettyOfficer}
                             onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'pettyOfficer', checked)}
-                            disabled={false}
+                            disabled={!isCompanyEditing}
                             className="h-4 w-4"
                             data-testid={`checkbox-petty-officer-${rank.id}`}
                           />
@@ -2562,7 +2562,7 @@ const AdminModuleInner = (): JSX.Element => {
                           <Checkbox
                             checked={rank.deckRating}
                             onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'deckRating', checked)}
-                            disabled={false}
+                            disabled={!isCompanyEditing}
                             className="h-4 w-4"
                             data-testid={`checkbox-deck-rating-${rank.id}`}
                           />
@@ -2572,7 +2572,7 @@ const AdminModuleInner = (): JSX.Element => {
                           <Checkbox
                             checked={rank.engineRating}
                             onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'engineRating', checked)}
-                            disabled={false}
+                            disabled={!isCompanyEditing}
                             className="h-4 w-4"
                             data-testid={`checkbox-engine-rating-${rank.id}`}
                           />
@@ -2582,7 +2582,7 @@ const AdminModuleInner = (): JSX.Element => {
                           <Checkbox
                             checked={rank.generalRating}
                             onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'generalRating', checked)}
-                            disabled={false}
+                            disabled={!isCompanyEditing}
                             className="h-4 w-4"
                             data-testid={`checkbox-general-rating-${rank.id}`}
                           />
@@ -2592,7 +2592,7 @@ const AdminModuleInner = (): JSX.Element => {
                           <Checkbox
                             checked={rank.cateringRating}
                             onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'cateringRating', checked)}
-                            disabled={false}
+                            disabled={!isCompanyEditing}
                             className="h-4 w-4"
                             data-testid={`checkbox-catering-rating-${rank.id}`}
                           />
@@ -2602,7 +2602,7 @@ const AdminModuleInner = (): JSX.Element => {
                           <Checkbox
                             checked={rank.safetyOfficer}
                             onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'safetyOfficer', checked)}
-                            disabled={false}
+                            disabled={!isCompanyEditing}
                             className="h-4 w-4"
                             data-testid={`checkbox-safety-officer-${rank.id}`}
                           />
@@ -2612,7 +2612,7 @@ const AdminModuleInner = (): JSX.Element => {
                           <Checkbox
                             checked={rank.sso}
                             onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'sso', checked)}
-                            disabled={false}
+                            disabled={!isCompanyEditing}
                             className="h-4 w-4"
                             data-testid={`checkbox-sso-${rank.id}`}
                           />
@@ -2622,7 +2622,7 @@ const AdminModuleInner = (): JSX.Element => {
                           <Checkbox
                             checked={rank.medicalOfficer}
                             onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'medicalOfficer', checked)}
-                            disabled={false}
+                            disabled={!isCompanyEditing}
                             className="h-4 w-4"
                             data-testid={`checkbox-medical-officer-${rank.id}`}
                           />
@@ -2632,7 +2632,7 @@ const AdminModuleInner = (): JSX.Element => {
                           <Checkbox
                             checked={rank.navigatingOfficer}
                             onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'navigatingOfficer', checked)}
-                            disabled={false}
+                            disabled={!isCompanyEditing}
                             className="h-4 w-4"
                             data-testid={`checkbox-navigating-officer-${rank.id}`}
                           />
@@ -2642,7 +2642,7 @@ const AdminModuleInner = (): JSX.Element => {
                           <Checkbox
                             checked={rank.emtOfficer}
                             onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'emtOfficer', checked)}
-                            disabled={false}
+                            disabled={!isCompanyEditing}
                             className="h-4 w-4"
                             data-testid={`checkbox-emt-officer-${rank.id}`}
                           />
@@ -2657,7 +2657,7 @@ const AdminModuleInner = (): JSX.Element => {
                                 size="sm"
                                 className="text-xs px-2 py-1 h-6"
                                 onClick={() => handleAddMultipleCompanyRole(rank.id)}
-                                disabled={false}
+                                disabled={!isCompanyEditing}
                                 data-testid={`button-multiple-${rank.id}`}
                               >
                                 Multiple
