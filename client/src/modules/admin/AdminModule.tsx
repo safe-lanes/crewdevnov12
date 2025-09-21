@@ -187,16 +187,36 @@ const AdminModuleInner = (): JSX.Element => {
   const [newRanks, setNewRanks] = useState<Set<string>>(new Set());
   const [deletedRanks, setDeletedRanks] = useState<Set<string>>(new Set());
   
-  // Sync local state with shared data on first load
+  // Sync local state with shared data while preserving unsaved changes
   useEffect(() => {
     if (sharedRankMasterData) {
-      setRankMasterData(sharedRankMasterData);
-      // Clear change tracking when data refreshes
-      setChangedRanks(new Set());
-      setNewRanks(new Set());
-      setDeletedRanks(new Set());
+      setRankMasterData(prev => {
+        // Preserve any new ranks that haven't been saved yet
+        const newUnsavedRanks = prev.filter(rank => 
+          rank.id.startsWith('new_') && newRanks.has(rank.id)
+        );
+        
+        // Merge server data with unsaved new ranks
+        return [...sharedRankMasterData, ...newUnsavedRanks];
+      });
+      
+      // Only clear tracking for ranks that now exist on server
+      // (Keep tracking for new ranks that are still unsaved)
+      setChangedRanks(prev => {
+        const serverRankIds = new Set(sharedRankMasterData.map(rank => rank.id));
+        return new Set([...prev].filter(rankId => !serverRankIds.has(rankId)));
+      });
+      
+      // Keep new ranks that haven't been saved to server
+      setNewRanks(prev => {
+        const serverRankIds = new Set(sharedRankMasterData.map(rank => rank.id));
+        return new Set([...prev].filter(rankId => !serverRankIds.has(rankId)));
+      });
+      
+      // Keep deleted ranks tracking (only clear when explicitly saved)
+      // setDeletedRanks remains unchanged
     }
-  }, [sharedRankMasterData]);
+  }, [sharedRankMasterData, newRanks]);
   
   // Context callback functions for cell renderers
   const handleRankDataChange = (id: string, field: string, value: any) => {
