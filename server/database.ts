@@ -793,18 +793,46 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteAvailableRank(id: number): Promise<boolean> {
-    const result = await this.db.delete(availableRanks).where(eq(availableRanks.id, id));
-    return (result as any).affectedRows > 0;
+    try {
+      console.log(`🗑️ [DELETE] Attempting to delete rank with ID: ${id}`);
+      
+      // First check if the rank exists
+      const existing = await this.db.select().from(availableRanks).where(eq(availableRanks.id, id));
+      console.log(`🗑️ [DELETE] Rank exists check: ${existing.length > 0 ? 'YES' : 'NO'}`);
+      
+      if (existing.length === 0) {
+        console.log(`🗑️ [DELETE] Rank ${id} not found in database`);
+        return false;
+      }
+      
+      const result = await this.db.delete(availableRanks).where(eq(availableRanks.id, id));
+      const affectedRows = (result as any).affectedRows;
+      console.log(`🗑️ [DELETE] Affected rows: ${affectedRows}`);
+      
+      const success = affectedRows > 0;
+      console.log(`🗑️ [DELETE] Operation result: ${success ? 'SUCCESS' : 'FAILED'}`);
+      return success;
+    } catch (error) {
+      console.error(`🗑️ [DELETE ERROR] Failed to delete rank ${id}:`, error);
+      throw error;
+    }
   }
 
   async clearAllAvailableRanks(): Promise<boolean> {
-    // Delete all ranks
-    const result = await this.db.delete(availableRanks);
-    
-    // Reset the AUTO_INCREMENT counter to start from 1
-    await this.pool.execute("ALTER TABLE available_ranks AUTO_INCREMENT = 1");
-    
-    return true;
+    try {
+      // Delete all ranks first
+      const result = await this.db.delete(availableRanks);
+      
+      // Reset the AUTO_INCREMENT counter to start from 1 using proper MySQL syntax
+      const dbName = process.env.DB_NAME || 'crew_database';
+      await this.pool.execute(`ALTER TABLE \`${dbName}\`.\`available_ranks\` AUTO_INCREMENT = 1`);
+      
+      console.log('🧹 [CLEANUP] Successfully cleared all ranks and reset AUTO_INCREMENT');
+      return true;
+    } catch (error) {
+      console.error('🧹 [CLEANUP ERROR]', error);
+      throw error;
+    }
   }
 
   // Crew Member methods
