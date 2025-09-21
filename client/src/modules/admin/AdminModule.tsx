@@ -320,7 +320,28 @@ const AdminModuleInner = (): JSX.Element => {
     if (!rankToDelete) return;
     
     try {
-      // Convert string ID to number for the API call
+      // Check if this is a new rank that hasn't been saved to server yet
+      if (rankToDelete.id.startsWith('new_')) {
+        // Handle new rank deletion locally - no server call needed
+        setRankMasterData(prev => prev.filter(rank => rank.id !== rankToDelete.id));
+        setNewRanks(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(rankToDelete.id);
+          return newSet;
+        });
+        
+        toast({
+          title: "Rank deleted successfully",
+          description: `${rankToDelete.name} has been removed.`,
+          duration: 3000,
+        });
+        
+        setShowDeleteConfirmDialog(false);
+        setRankToDelete(null);
+        return;
+      }
+      
+      // Convert string ID to number for the API call (existing ranks only)
       const numericId = parseInt(rankToDelete.id, 10);
       if (isNaN(numericId)) {
         throw new Error('Invalid rank ID');
