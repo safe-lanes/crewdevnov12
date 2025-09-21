@@ -60,12 +60,23 @@ export const useRankMasterData = () => {
   const query = useQuery<AvailableRank[]>({
     queryKey: ["/api/available-ranks"],
     queryFn: async () => {
-      const response = await fetch("/api/available-ranks");
+      const response = await fetch("/api/available-ranks", {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache"
+        }
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch available ranks");
       }
       return response.json();
     },
+    // Force fresh data fetch to prevent stale cache issues
+    staleTime: 0,
+    gcTime: 5000, // Short garbage collection time instead of 0
+    refetchOnMount: true, // Use true instead of "always" to avoid excessive refetching
+    refetchOnWindowFocus: false, // Disable to avoid redundant refetches
+    refetchOnReconnect: true,
   });
 
   const mappedData = query.data?.map(mapAvailableRankToRankMasterData) || [];
@@ -74,6 +85,7 @@ export const useRankMasterData = () => {
     data: mappedData,
     isLoading: query.isLoading,
     error: query.error,
+    refetch: query.refetch,
   };
 };
 
@@ -97,12 +109,23 @@ export const useAvailableRanks = () => {
   return useQuery<AvailableRank[]>({
     queryKey: ["/api/available-ranks"],
     queryFn: async () => {
-      const response = await fetch("/api/available-ranks");
+      const response = await fetch("/api/available-ranks", {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache"
+        }
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch available ranks");
       }
       return response.json();
     },
+    // Force fresh data fetch to prevent stale cache issues
+    staleTime: 0,
+    gcTime: 5000, // Short garbage collection time instead of 0
+    refetchOnMount: true, // Use true instead of "always" to avoid excessive refetching
+    refetchOnWindowFocus: false, // Disable to avoid redundant refetches
+    refetchOnReconnect: true,
   });
 };
 
