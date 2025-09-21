@@ -240,26 +240,9 @@ export class DatabaseStorage implements IStorage {
       
       console.log("✅ master_data_entries schema is up to date");
       
-      // After schema update, ensure nationality data is properly seeded with enhanced structure
-      await this.ensureNationalityDataSeeded();
-      
-      // Fix specific nationality data inconsistencies
-      await this.fixNationalityDataInconsistencies();
-      
-      // Ensure enhanced country data is properly seeded
-      await this.ensureCountryDataSeeded();
-      
-      // Ensure enhanced vessel type data is properly seeded
-      await this.ensureVesselTypeDataSeeded();
-      
-      // Ensure enhanced language data is properly seeded  
-      await this.ensureLanguageDataSeeded();
-      
-      // Migrate any existing Port master data from ID '005' to ID '018' (consolidation)
-      await this.migratePortMasterFromId005ToId018();
-      
-      // Ensure enhanced port data is properly seeded
-      await this.ensurePortDataSeeded();
+      // DISABLED: Automatic data seeding per user request
+      // User manages their own master data entries
+      console.log("ℹ️ Automatic data seeding is disabled - users manage their own entries");
     } catch (error) {
       console.error("❌ Failed to update master_data_entries schema:", error);
       // Don't throw - allow app to start even if schema update fails
