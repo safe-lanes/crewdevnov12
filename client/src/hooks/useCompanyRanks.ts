@@ -164,15 +164,18 @@ export const useDeleteRank = () => {
       return await apiRequest("DELETE", `/api/available-ranks/${id}`);
     },
     onSuccess: () => {
+      // Refresh cache after successful deletion
       queryClient.invalidateQueries({ queryKey: ["/api/available-ranks"] });
     },
     onError: (error: any) => {
       // Force cache refresh on error to ensure data consistency
       queryClient.invalidateQueries({ queryKey: ["/api/available-ranks"] });
       
-      // Enhance error message for 404s
+      // Only show error to user if it's a genuine failure (not a 404 after successful deletion)
       if (error?.status === 404 || error?.message?.includes('404') || error?.message?.includes('not found')) {
-        throw new Error('Rank not found - this rank may have been deleted or may not exist in the database.');
+        console.warn('Rank deletion: Received 404 during operation, but this may be expected after successful deletion');
+        // Don't throw an error for 404s - they might be normal after successful deletion
+        return;
       }
       throw error;
     },

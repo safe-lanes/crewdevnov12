@@ -798,7 +798,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async clearAllAvailableRanks(): Promise<boolean> {
+    // Delete all ranks
     const result = await this.db.delete(availableRanks);
+    
+    // Reset the AUTO_INCREMENT counter to start from 1
+    await this.pool.execute("ALTER TABLE available_ranks AUTO_INCREMENT = 1");
+    
     return true;
   }
 
