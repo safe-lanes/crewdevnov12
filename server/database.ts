@@ -794,35 +794,27 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAvailableRank(id: number): Promise<boolean> {
     try {
-      console.log(`🗑️ [DELETE] Attempting to delete rank with ID: ${id}`);
-      
       // First check if the rank exists
       const existing = await this.db.select().from(availableRanks).where(eq(availableRanks.id, id));
-      console.log(`🗑️ [DELETE] Rank exists check: ${existing.length > 0 ? 'YES' : 'NO'}`);
-      
       if (existing.length === 0) {
-        console.log(`🗑️ [DELETE] Rank ${id} not found in database`);
         return false;
       }
       
       const result = await this.db.delete(availableRanks).where(eq(availableRanks.id, id));
-      console.log(`🗑️ [DELETE] Full result object:`, result);
       
       // Check different possible properties for affected rows
       const affectedRows = (result as any).affectedRows || (result as any).rowsAffected || (result as any).changes;
-      console.log(`🗑️ [DELETE] Affected rows: ${affectedRows}`);
       
       // If we can't determine affected rows, check if the rank still exists
       let success = affectedRows > 0;
       if (affectedRows === undefined) {
         const afterDelete = await this.db.select().from(availableRanks).where(eq(availableRanks.id, id));
         success = afterDelete.length === 0; // Success if rank no longer exists
-        console.log(`🗑️ [DELETE] Fallback check - rank exists after delete: ${afterDelete.length > 0}`);
       }
-      console.log(`🗑️ [DELETE] Operation result: ${success ? 'SUCCESS' : 'FAILED'}`);
+      
       return success;
     } catch (error) {
-      console.error(`🗑️ [DELETE ERROR] Failed to delete rank ${id}:`, error);
+      console.error(`Failed to delete rank ${id}:`, error);
       throw error;
     }
   }
@@ -836,10 +828,9 @@ export class DatabaseStorage implements IStorage {
       const dbName = process.env.DB_NAME || 'crew_database';
       await this.pool.execute(`ALTER TABLE \`${dbName}\`.\`available_ranks\` AUTO_INCREMENT = 1`);
       
-      console.log('🧹 [CLEANUP] Successfully cleared all ranks and reset AUTO_INCREMENT');
       return true;
     } catch (error) {
-      console.error('🧹 [CLEANUP ERROR]', error);
+      console.error('Failed to clear all ranks:', error);
       throw error;
     }
   }
