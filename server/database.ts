@@ -806,10 +806,19 @@ export class DatabaseStorage implements IStorage {
       }
       
       const result = await this.db.delete(availableRanks).where(eq(availableRanks.id, id));
-      const affectedRows = (result as any).affectedRows;
+      console.log(`🗑️ [DELETE] Full result object:`, result);
+      
+      // Check different possible properties for affected rows
+      const affectedRows = (result as any).affectedRows || (result as any).rowsAffected || (result as any).changes;
       console.log(`🗑️ [DELETE] Affected rows: ${affectedRows}`);
       
-      const success = affectedRows > 0;
+      // If we can't determine affected rows, check if the rank still exists
+      let success = affectedRows > 0;
+      if (affectedRows === undefined) {
+        const afterDelete = await this.db.select().from(availableRanks).where(eq(availableRanks.id, id));
+        success = afterDelete.length === 0; // Success if rank no longer exists
+        console.log(`🗑️ [DELETE] Fallback check - rank exists after delete: ${afterDelete.length > 0}`);
+      }
       console.log(`🗑️ [DELETE] Operation result: ${success ? 'SUCCESS' : 'FAILED'}`);
       return success;
     } catch (error) {
