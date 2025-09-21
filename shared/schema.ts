@@ -1,11 +1,11 @@
 
-import { mysqlTable, text, int, boolean, timestamp } from "drizzle-orm/mysql-core";
+import { mysqlTable, text, int, boolean, timestamp, varchar } from "drizzle-orm/mysql-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const users = mysqlTable("users", {
   id: int("id").primaryKey().autoincrement(),
-  username: text("username").notNull().unique(),
+  username: text("username").notNull(),
   password: text("password").notNull(),
 });
 
@@ -22,7 +22,7 @@ export const rankGroups = mysqlTable("rank_groups", {
   id: int("id").primaryKey().autoincrement(),
   formId: int("form_id").notNull().references(() => forms.id),
   name: text("name").notNull(),
-  ranks: text("ranks").notNull(), // JSON string for MySQL compatibility
+  ranks: text("ranks").notNull(), // JSON string
 });
 
 export const availableRanks = mysqlTable("available_ranks", {
