@@ -2051,6 +2051,14 @@ const AdminModuleInner = (): JSX.Element => {
                   >
                     + New Rank
                   </Button>
+                  <Button
+                    onClick={handleCleanupAllRanks}
+                    disabled={clearAllRanksMutation.isPending}
+                    className="h-8 bg-red-600 hover:bg-red-700 text-white text-xs"
+                    data-testid="button-clear-all-ranks-mobile"
+                  >
+                    {clearAllRanksMutation.isPending ? "Clearing..." : "🗑️ Clear All"}
+                  </Button>
                 </div>
               )}
               {selectedRankAdminTab === "company" && (
@@ -2148,6 +2156,14 @@ const AdminModuleInner = (): JSX.Element => {
                   className="h-8 bg-[#5dc86f] hover:bg-[#22c55e] text-white text-xs"
                 >
                   + New Rank
+                </Button>
+                <Button
+                  onClick={handleCleanupAllRanks}
+                  disabled={clearAllRanksMutation.isPending}
+                  className="h-8 bg-red-600 hover:bg-red-700 text-white text-xs"
+                  data-testid="button-clear-all-ranks"
+                >
+                  {clearAllRanksMutation.isPending ? "Clearing..." : "🗑️ Clear All"}
                 </Button>
               </div>
             )}
