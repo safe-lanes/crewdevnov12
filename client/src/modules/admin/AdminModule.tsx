@@ -55,7 +55,7 @@ import {
   useUpdateMasterDataEntry,
   useDeleteMasterDataEntry 
 } from "@/hooks/useDataMasters";
-import { useRankMasterData, useCompanyRanks, useCreateRank, useUpdateRank, useDeleteRank, type RankMasterData } from "@/hooks/useCompanyRanks";
+import { useRankMasterData, useCompanyRanks, useCreateRank, useUpdateRank, useDeleteRank, useClearAllRanks, type RankMasterData } from "@/hooks/useCompanyRanks";
 import { queryClient } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -180,6 +180,7 @@ const AdminModuleInner = (): JSX.Element => {
   const createRankMutation = useCreateRank();
   const updateRankMutation = useUpdateRank();
   const deleteRankMutation = useDeleteRank();
+  const clearAllRanksMutation = useClearAllRanks();
   
   // Local state for editing (initialized from shared data)
   const [rankMasterData, setRankMasterData] = useState<RankMasterData[]>([]);
@@ -832,6 +833,36 @@ const AdminModuleInner = (): JSX.Element => {
       newSet.delete(rankId);
       return newSet;
     });
+  };
+
+  // Database cleanup function - clears all ranks and resets state
+  const handleCleanupAllRanks = async () => {
+    try {
+      // Clear all ranks from database
+      await clearAllRanksMutation.mutateAsync();
+      
+      // Reset all local state
+      setRankMasterData([]);
+      setChangedRanks(new Set());
+      setNewRanks(new Set());
+      setDeletedRanks(new Set());
+      setIsRankMasterEditing(false);
+      
+      toast({
+        title: "Database Cleanup Complete",
+        description: "All rank data has been cleared from the database and cache has been reset.",
+        duration: 5000,
+      });
+      
+    } catch (error) {
+      console.error('Error during cleanup:', error);
+      toast({
+        title: "Cleanup Failed",
+        description: "Failed to clear all rank data. Please try again.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    }
   };
 
   const handleSaveRank = async () => {

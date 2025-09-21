@@ -178,3 +178,24 @@ export const useDeleteRank = () => {
     },
   });
 };
+
+export const useClearAllRanks = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async () => {
+      return await apiRequest("DELETE", "/api/available-ranks");
+    },
+    onSuccess: () => {
+      // Force refresh of all rank-related queries
+      queryClient.invalidateQueries({ queryKey: ["/api/available-ranks"] });
+      // Clear cache completely to ensure fresh start
+      queryClient.resetQueries({ queryKey: ["/api/available-ranks"] });
+    },
+    onError: (error: any) => {
+      // Still refresh cache on error
+      queryClient.invalidateQueries({ queryKey: ["/api/available-ranks"] });
+      throw error;
+    },
+  });
+};
