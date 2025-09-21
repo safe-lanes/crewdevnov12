@@ -701,10 +701,33 @@ const AdminModuleInner = (): JSX.Element => {
   
   const rq = useQueryClient();
 
-  // Initialize company rank data from rank master
+  // Initialize company rank data from rank master (with guards to prevent overwriting user changes)
   React.useEffect(() => {
+    console.log('🔍 [DEBUG] rankMasterData:', rankMasterData);
+    console.log('🔍 [DEBUG] rankMasterData length:', rankMasterData.length);
+    console.log('🔍 [DEBUG] isCompanyEditing:', isCompanyEditing);
+    console.log('🔍 [DEBUG] current companyRankData length:', companyRankData.length);
     
     const applicableRanks = rankMasterData.filter(rank => rank.applicableToCompany);
+    console.log('🔍 [DEBUG] applicableRanks for company:', applicableRanks);
+    console.log('🔍 [DEBUG] applicableRanks length:', applicableRanks.length);
+    
+    // Guard: Don't overwrite during editing mode to preserve user changes
+    if (isCompanyEditing) {
+      console.log('🔍 [DEBUG] Skipping reinit - company editing mode active');
+      return;
+    }
+    
+    // Guard: Don't overwrite if data is already populated with same ranks
+    const currentRankIds = companyRankData.map(r => r.id).sort();
+    const newRankIds = applicableRanks.map(r => r.id).sort();
+    const sameIds = currentRankIds.length === newRankIds.length && 
+                   currentRankIds.every((id, i) => id === newRankIds[i]);
+    
+    if (companyRankData.length > 0 && sameIds) {
+      console.log('🔍 [DEBUG] Skipping reinit - same rank IDs already populated');
+      return;
+    }
     
     const companyRanks: CompanyRankData[] = applicableRanks.map(rank => ({
       id: rank.id,
@@ -730,7 +753,8 @@ const AdminModuleInner = (): JSX.Element => {
     
     
     setCompanyRankData(companyRanks);
-  }, [rankMasterData]);
+    console.log('🔍 [DEBUG] Set new companyRankData:', companyRanks);
+  }, [rankMasterData, isCompanyEditing, companyRankData]);
 
   // Sync vessel rank data with company rank data changes for all vessels
   React.useEffect(() => {
@@ -1226,11 +1250,15 @@ const AdminModuleInner = (): JSX.Element => {
   // Company handlers
   
   const handleCompanyRankDataChange = (id: string, field: keyof CompanyRankData, value: any) => {
+    console.log('🎯 [CHECKBOX] Handler called:', { id, field, value });
     setCompanyRankData(prev => {
       const newData = [...prev];
       const rowIndex = newData.findIndex(row => row.id === id);
       if (rowIndex !== -1) {
         newData[rowIndex] = { ...newData[rowIndex], [field]: value };
+        console.log('🎯 [CHECKBOX] Updated row:', newData[rowIndex]);
+      } else {
+        console.log('🎯 [CHECKBOX] Row not found for id:', id);
       }
       return newData;
     });
