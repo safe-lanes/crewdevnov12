@@ -29,6 +29,9 @@ export const availableRanks = mysqlTable("available_ranks", {
   id: int("id").primaryKey().autoincrement(),
   name: text("name").notNull(),
   category: text("category").notNull(), // Senior Officers, Junior Officers, Ratings, etc.
+  rankId: text("rank_id"), // User-editable rank ID (e.g., "S1", "S2")
+  label: text("label"), // User-editable label (e.g., "Master", "2nd Off")
+  applicableToCompany: boolean("applicable_to_company"), // User-editable company applicability
 });
 
 export const crewMembers = mysqlTable("crew_members", {
@@ -231,7 +234,18 @@ export const insertRankGroupSchema = createInsertSchema(rankGroups).pick({
 export const insertAvailableRankSchema = createInsertSchema(availableRanks).pick({
   name: true,
   category: true,
+  rankId: true,
+  label: true,
+  applicableToCompany: true,
 });
+
+export const updateAvailableRankSchema = createInsertSchema(availableRanks).pick({
+  name: true,
+  category: true,
+  rankId: true,
+  label: true,
+  applicableToCompany: true,
+}).partial();
 
 export const insertCrewMemberSchema = createInsertSchema(crewMembers).pick({
   id: true,
@@ -390,6 +404,7 @@ export type Form = typeof forms.$inferSelect;
 export type InsertRankGroup = z.infer<typeof insertRankGroupSchema>;
 export type RankGroup = typeof rankGroups.$inferSelect;
 export type InsertAvailableRank = z.infer<typeof insertAvailableRankSchema>;
+export type UpdateAvailableRank = z.infer<typeof updateAvailableRankSchema>;
 export type AvailableRank = typeof availableRanks.$inferSelect;
 export type InsertCrewMember = z.infer<typeof insertCrewMemberSchema>;
 export type CrewMember = typeof crewMembers.$inferSelect;
