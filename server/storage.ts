@@ -95,19 +95,19 @@ export class MemStorage implements IStorage {
     });
     this.currentFormId = 2;
     
-    // Initialize with sample available ranks
-    this.availableRanks.set(1, { id: 1, name: "Master", category: "Senior Officers" });
-    this.availableRanks.set(2, { id: 2, name: "Chief Officer", category: "Senior Officers" });
-    this.availableRanks.set(3, { id: 3, name: "Chief Engineer", category: "Senior Officers" });
-    this.availableRanks.set(4, { id: 4, name: "2nd Officer", category: "Junior Officers" });
-    this.availableRanks.set(5, { id: 5, name: "3rd Officer", category: "Junior Officers" });
-    this.availableRanks.set(6, { id: 6, name: "2nd Engineer", category: "Junior Officers" });
-    this.availableRanks.set(7, { id: 7, name: "3rd Engineer", category: "Junior Officers" });
-    this.availableRanks.set(8, { id: 8, name: "Bosun", category: "Ratings" });
-    this.availableRanks.set(9, { id: 9, name: "AB", category: "Ratings" });
-    this.availableRanks.set(10, { id: 10, name: "OS", category: "Ratings" });
-    this.availableRanks.set(11, { id: 11, name: "Oiler", category: "Ratings" });
-    this.availableRanks.set(12, { id: 12, name: "Wiper", category: "Ratings" });
+    // Initialize with sample available ranks (minimal seeding since user manages their own data)
+    this.availableRanks.set(1, { id: 1, name: "Master", category: "Senior Officers", rankId: "S1", label: "Master", applicableToCompany: true });
+    this.availableRanks.set(2, { id: 2, name: "Chief Officer", category: "Senior Officers", rankId: "S2", label: "Chief Officer", applicableToCompany: true });
+    this.availableRanks.set(3, { id: 3, name: "Chief Engineer", category: "Senior Officers", rankId: "S7", label: "Chief Engineer", applicableToCompany: true });
+    this.availableRanks.set(4, { id: 4, name: "2nd Officer", category: "Junior Officers", rankId: "S3", label: "2nd Officer", applicableToCompany: true });
+    this.availableRanks.set(5, { id: 5, name: "3rd Officer", category: "Junior Officers", rankId: "S4", label: "3rd Officer", applicableToCompany: true });
+    this.availableRanks.set(6, { id: 6, name: "2nd Engineer", category: "Junior Officers", rankId: "S9", label: "2nd Engineer", applicableToCompany: true });
+    this.availableRanks.set(7, { id: 7, name: "3rd Engineer", category: "Junior Officers", rankId: "S10", label: "3rd Engineer", applicableToCompany: true });
+    this.availableRanks.set(8, { id: 8, name: "Bosun", category: "Ratings", rankId: "S12", label: "Bosun", applicableToCompany: true });
+    this.availableRanks.set(9, { id: 9, name: "AB", category: "Ratings", rankId: "S14", label: "AB", applicableToCompany: true });
+    this.availableRanks.set(10, { id: 10, name: "OS", category: "Ratings", rankId: "S15", label: "OS", applicableToCompany: false });
+    this.availableRanks.set(11, { id: 11, name: "Oiler", category: "Ratings", rankId: "S16", label: "Oiler", applicableToCompany: false });
+    this.availableRanks.set(12, { id: 12, name: "Wiper", category: "Ratings", rankId: "S17", label: "Wiper", applicableToCompany: false });
     this.currentAvailableRankId = 13;
     
     // Initialize with sample rank groups - showing only 1 for configuration
@@ -368,7 +368,13 @@ export class MemStorage implements IStorage {
 
   async createAvailableRank(insertAvailableRank: InsertAvailableRank): Promise<AvailableRank> {
     const id = this.currentAvailableRankId++;
-    const availableRank: AvailableRank = { ...insertAvailableRank, id };
+    const availableRank: AvailableRank = { 
+      ...insertAvailableRank, 
+      id,
+      rankId: insertAvailableRank.rankId ?? null,
+      label: insertAvailableRank.label ?? null,
+      applicableToCompany: insertAvailableRank.applicableToCompany ?? null
+    };
     this.availableRanks.set(id, availableRank);
     return availableRank;
   }
