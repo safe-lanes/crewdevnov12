@@ -205,13 +205,13 @@ const AdminModuleInner = (): JSX.Element => {
       // (Keep tracking for new ranks that are still unsaved)
       setChangedRanks(prev => {
         const serverRankIds = new Set(sharedRankMasterData.map(rank => rank.id));
-        return new Set([...prev].filter(rankId => !serverRankIds.has(rankId)));
+        return new Set(Array.from(prev).filter(rankId => !serverRankIds.has(rankId)));
       });
       
       // Keep new ranks that haven't been saved to server
       setNewRanks(prev => {
         const serverRankIds = new Set(sharedRankMasterData.map(rank => rank.id));
-        return new Set([...prev].filter(rankId => !serverRankIds.has(rankId)));
+        return new Set(Array.from(prev).filter(rankId => !serverRankIds.has(rankId)));
       });
       
       // Keep deleted ranks tracking (only clear when explicitly saved)
@@ -1546,7 +1546,7 @@ const AdminModuleInner = (): JSX.Element => {
     
     try {
       // Stop any ongoing editing in the grid
-      vesselGridApi?.stopEditing();
+      // vesselGridApi?.stopEditing(); // Commented out - vesselGridApi not defined
       
       // Save draft for all selected vessels
       const draftData = new Map();
@@ -1571,7 +1571,7 @@ const AdminModuleInner = (): JSX.Element => {
 
   const handleCancel = () => {
     // Stop any ongoing editing
-    vesselGridApi?.stopEditing();
+    // vesselGridApi?.stopEditing(); // Commented out - vesselGridApi not defined
     
     // Clear selected vessels and reset states
     setSelectedVessels([]);
@@ -1588,7 +1588,7 @@ const AdminModuleInner = (): JSX.Element => {
     
     try {
       // Stop any ongoing editing
-      vesselGridApi?.stopEditing();
+      // vesselGridApi?.stopEditing(); // Commented out - vesselGridApi not defined
       
       // Prepare submission data for all selected vessels
       const submissionData = new Map();

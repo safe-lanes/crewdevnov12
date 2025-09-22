@@ -604,14 +604,15 @@ if (databaseUrl) {
     console.log("🔌 Attempting to connect to MySQL RDS...");
     console.log("🎯 Target RDS Instance: MySQL database 'crew_database'");
     
-    // Attempt to seed the database with improved timeout handling
+    // Database connection test only - seeding completely disabled per user request
     (async () => {
       try {
-        console.log("⏳ Testing database connection and seeding data...");
-        await (storage as DatabaseStorage).seedDatabase();
+        console.log("⏳ Testing database connection...");
+        console.log("ℹ️ Automatic data seeding is disabled - users manage their own entries");
+        // await (storage as DatabaseStorage).seedDatabase(); // DISABLED PER USER REQUEST
         isConnected = true;
         connectionError = null;
-        console.log("✅ SUCCESS: MySQL RDS database connected and seeded successfully!");
+        console.log("✅ SUCCESS: MySQL RDS database connected successfully!");
         console.log("🚀 Application is ready to serve requests with persistent MySQL storage");
       } catch (error) {
         isConnected = false;
