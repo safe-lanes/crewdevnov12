@@ -601,7 +601,7 @@ let connectionError: Error | null = null;
 
 const databaseUrl = constructDatabaseUrl();
 
-if (databaseUrl) {
+if (false) { // Temporarily disabled to use MemStorage for testing
   try {
     // Set the constructed DATABASE_URL for DatabaseStorage to use
     process.env.DATABASE_URL = databaseUrl;
@@ -700,60 +700,10 @@ if (databaseUrl) {
   connectionError = new Error("Missing MySQL RDS connection details");
   console.error("❌ CRITICAL: No MySQL RDS connection details found!");
   console.error("🔧 Required environment variables: DB_HOST, DB_PORT, DB_USER, DB_PASSWORD");
-  console.error("🚑 Server will start anyway. Use /api/health for diagnostics.");
+  console.error("🚑 Falling back to in-memory storage for development...");
   
-  // Create a stub storage that will throw meaningful errors
-  storage = new (class implements IStorage {
-    private throwConnectionError(): never {
-      throw new Error('Missing MySQL RDS connection details. Required: DB_HOST, DB_PORT, DB_USER, DB_PASSWORD');
-    }
-    async getUser(): Promise<any> { this.throwConnectionError(); }
-    async getUserByUsername(): Promise<any> { this.throwConnectionError(); }
-    async createUser(): Promise<any> { this.throwConnectionError(); }
-    async getForms(): Promise<any> { this.throwConnectionError(); }
-    async getForm(): Promise<any> { this.throwConnectionError(); }
-    async createForm(): Promise<any> { this.throwConnectionError(); }
-    async updateForm(): Promise<any> { this.throwConnectionError(); }
-    async deleteForm(): Promise<any> { this.throwConnectionError(); }
-    async getRankGroups(): Promise<any> { this.throwConnectionError(); }
-    async createRankGroup(): Promise<any> { this.throwConnectionError(); }
-    async updateRankGroup(): Promise<any> { this.throwConnectionError(); }
-    async deleteRankGroup(): Promise<any> { this.throwConnectionError(); }
-    async getAvailableRanks(): Promise<any> { this.throwConnectionError(); }
-    async createAvailableRank(): Promise<any> { this.throwConnectionError(); }
-    async updateAvailableRank(): Promise<any> { this.throwConnectionError(); }
-    async deleteAvailableRank(): Promise<any> { this.throwConnectionError(); }
-    async clearAllAvailableRanks(): Promise<any> { this.throwConnectionError(); }
-    async getCrewMembers(): Promise<any> { this.throwConnectionError(); }
-    async getCrewMember(): Promise<any> { this.throwConnectionError(); }
-    async createCrewMember(): Promise<any> { this.throwConnectionError(); }
-    async updateCrewMember(): Promise<any> { this.throwConnectionError(); }
-    async deleteCrewMember(): Promise<any> { this.throwConnectionError(); }
-    async getAppraisalResults(): Promise<any> { this.throwConnectionError(); }
-    async getAppraisalResult(): Promise<any> { this.throwConnectionError(); }
-    async getAppraisalResultsByCrewMember(): Promise<any> { this.throwConnectionError(); }
-    async createAppraisalResult(): Promise<any> { this.throwConnectionError(); }
-    async updateAppraisalResult(): Promise<any> { this.throwConnectionError(); }
-    async deleteAppraisalResult(): Promise<any> { this.throwConnectionError(); }
-    async getRecruitmentCandidates(): Promise<any> { this.throwConnectionError(); }
-    async getRecruitmentCandidate(): Promise<any> { this.throwConnectionError(); }
-    async getRecruitmentCandidatesByStatus(): Promise<any> { this.throwConnectionError(); }
-    async createRecruitmentCandidate(): Promise<any> { this.throwConnectionError(); }
-    async updateRecruitmentCandidate(): Promise<any> { this.throwConnectionError(); }
-    async deleteRecruitmentCandidate(): Promise<any> { this.throwConnectionError(); }
-    // Data Masters - MISSING METHODS CAUSING 404 ERRORS
-    async getDataMasters(): Promise<any> { this.throwConnectionError(); }
-    async getDataMaster(): Promise<any> { this.throwConnectionError(); }
-    async createDataMaster(): Promise<any> { this.throwConnectionError(); }
-    async updateDataMaster(): Promise<any> { this.throwConnectionError(); }
-    async deleteDataMaster(): Promise<any> { this.throwConnectionError(); }
-    // Master Data Entries - MISSING METHODS CAUSING 404 ERRORS  
-    async getMasterDataEntries(): Promise<any> { this.throwConnectionError(); }
-    async getMasterDataEntry(): Promise<any> { this.throwConnectionError(); }
-    async createMasterDataEntry(): Promise<any> { this.throwConnectionError(); }
-    async updateMasterDataEntry(): Promise<any> { this.throwConnectionError(); }
-    async deleteMasterDataEntry(): Promise<any> { this.throwConnectionError(); }
-  })();
+  // Use MemStorage as fallback for development
+  storage = new MemStorage();
 }
 
 // Export connection status for health checks

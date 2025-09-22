@@ -231,20 +231,12 @@ export const insertRankGroupSchema = createInsertSchema(rankGroups).pick({
   ranks: true,
 });
 
-export const insertAvailableRankSchema = createInsertSchema(availableRanks).pick({
-  name: true,
-  category: true,
-  rankId: true,
-  label: true,
-  applicableToCompany: true,
+export const insertAvailableRankSchema = createInsertSchema(availableRanks).omit({
+  id: true, // Exclude auto-generated ID
 });
 
-export const updateAvailableRankSchema = createInsertSchema(availableRanks).pick({
-  name: true,
-  category: true,
-  rankId: true,
-  label: true,
-  applicableToCompany: true,
+export const updateAvailableRankSchema = createInsertSchema(availableRanks).omit({
+  id: true, // Exclude auto-generated ID
 }).partial();
 
 export const insertCrewMemberSchema = createInsertSchema(crewMembers).pick({
