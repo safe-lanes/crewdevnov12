@@ -1,5 +1,5 @@
 
-import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry } from "@shared/schema";
+import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry } from "@shared/schema";
 
 // modify the interface with any CRUD methods
 // you might need

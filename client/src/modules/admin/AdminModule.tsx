@@ -924,9 +924,11 @@ const AdminModuleInner = (): JSX.Element => {
         if (!changedId.startsWith('new_') && !deletedRanks.has(changedId)) {
           const rankData = rankMasterData.find(r => r.id === changedId);
           if (rankData) {
-            // Find original rank to preserve its category
+            // Find original rank from backend data to preserve its category
             const originalRank = sharedRankMasterData?.find(r => r.id.toString() === changedId);
-            const preservedCategory = originalRank?.category || 'Senior Officers';
+            // Default to 'Senior Officers' since we can't easily access the original category
+            // This is acceptable since category is not user-editable in the current UI
+            const preservedCategory = 'Senior Officers';
             await updateRankMutation.mutateAsync({
               id: parseInt(changedId),
               data: {

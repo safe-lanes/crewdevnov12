@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError } from "./storage";
-import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertDataMasterSchema, insertMasterDataEntrySchema } from "@shared/schema";
+import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertDataMasterSchema, insertMasterDataEntrySchema } from "@shared/schema";
 import { 
   isVesselMaster,
   filterVesselMasterData,
