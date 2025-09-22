@@ -13,8 +13,8 @@ export interface RankMasterData {
 
 // Function to map AvailableRank from database to RankMasterData format
 const mapAvailableRankToRankMasterData = (availableRank: AvailableRank): RankMasterData => {
-  // Generate a simple rankId from the name (e.g., "Master" -> "S1", "Chief Officer" -> "S2")
-  const getRankId = (name: string, id: number): string => {
+  // Helper functions to generate fallback values only when needed
+  const generateRankId = (name: string, id: number): string => {
     if (name.toLowerCase().includes('master')) return 'S1';
     if (name.toLowerCase().includes('chief officer')) return 'S2';
     if (name.toLowerCase().includes('second officer') || name.toLowerCase().includes('2nd officer')) return 'S3';
@@ -26,8 +26,7 @@ const mapAvailableRankToRankMasterData = (availableRank: AvailableRank): RankMas
     return `S${id}`;
   };
 
-  // Generate a label from the name (shortened version)
-  const getLabel = (name: string): string => {
+  const generateLabel = (name: string): string => {
     if (name.toLowerCase().includes('master')) return 'Master';
     if (name.toLowerCase().includes('chief officer')) return 'Chief Off';
     if (name.toLowerCase().includes('second officer') || name.toLowerCase().includes('2nd officer')) return '2nd Off';
@@ -41,17 +40,18 @@ const mapAvailableRankToRankMasterData = (availableRank: AvailableRank): RankMas
     return name;
   };
 
-  // Since the database doesn't have applicableToCompany field, 
-  // consider all ranks applicable to company by default
-  // Senior Officers and Junior Officers are typically applicable to company
-  const applicableToCompany = ['Senior Officers', 'Junior Officers'].includes(availableRank.category);
+  const generateApplicableToCompany = (category: string): boolean => {
+    // Default fallback: Senior Officers and Junior Officers are typically applicable to company
+    return ['Senior Officers', 'Junior Officers'].includes(category);
+  };
 
   return {
     id: availableRank.id.toString(),
     rank: availableRank.name,
-    rankId: (availableRank as any).rankId || getRankId(availableRank.name, availableRank.id), // Use stored value or fallback to generated
-    applicableToCompany,
-    label: (availableRank as any).label || getLabel(availableRank.name), // Use stored value or fallback to generated
+    // FIXED: Use actual database values, only generate fallbacks when null/undefined
+    rankId: availableRank.rankId ?? generateRankId(availableRank.name, availableRank.id),
+    label: availableRank.label ?? generateLabel(availableRank.name),
+    applicableToCompany: availableRank.applicableToCompany ?? generateApplicableToCompany(availableRank.category),
   };
 };
 

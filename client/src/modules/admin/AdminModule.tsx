@@ -907,12 +907,14 @@ const AdminModuleInner = (): JSX.Element => {
       for (const newId of Array.from(newRanks)) {
         const rankData = rankMasterData.find(r => r.id === newId);
         if (rankData && rankData.rank.trim()) { // Only save if rank name is provided
-          const categoryFromApplicability = rankData.applicableToCompany ? 'Senior Officers' : 'Ratings';
+          // Default category for new ranks - can be customized later
+          const defaultCategory = 'Senior Officers';
           await createRankMutation.mutateAsync({
             name: rankData.rank,
-            category: categoryFromApplicability,
-            ...(rankData.rankId && { rankId: rankData.rankId }),
-            ...(rankData.label && { label: rankData.label })
+            category: defaultCategory,
+            rankId: rankData.rankId || null,
+            label: rankData.label || null,
+            applicableToCompany: rankData.applicableToCompany
           });
         }
       }
@@ -922,14 +924,17 @@ const AdminModuleInner = (): JSX.Element => {
         if (!changedId.startsWith('new_') && !deletedRanks.has(changedId)) {
           const rankData = rankMasterData.find(r => r.id === changedId);
           if (rankData) {
-            const categoryFromApplicability = rankData.applicableToCompany ? 'Senior Officers' : 'Ratings';
+            // Find original rank to preserve its category
+            const originalRank = sharedRankMasterData?.find(r => r.id.toString() === changedId);
+            const preservedCategory = originalRank?.category || 'Senior Officers';
             await updateRankMutation.mutateAsync({
               id: parseInt(changedId),
               data: {
                 name: rankData.rank,
-                category: categoryFromApplicability,
-                ...(rankData.rankId && { rankId: rankData.rankId }),
-                ...(rankData.label && { label: rankData.label })
+                category: preservedCategory, // Preserve original category
+                rankId: rankData.rankId || null,
+                label: rankData.label || null,
+                applicableToCompany: rankData.applicableToCompany
               }
             });
           }
