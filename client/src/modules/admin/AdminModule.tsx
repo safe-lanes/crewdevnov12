@@ -2505,7 +2505,16 @@ const AdminModuleInner = (): JSX.Element => {
                         </TableCell>
                         
                         <TableCell className="text-[#4f5863] text-[13px] font-normal py-3">
-                          {rank.rank}
+                          {isCompanyEditing ? (
+                            <Input
+                              value={rank.rank}
+                              onChange={(e) => handleCompanyRankDataChange(rank.id, 'rank', e.target.value)}
+                              className="h-7 text-[13px] border-gray-300 focus:border-[#16569e] focus:ring-[#16569e]"
+                              data-testid={`input-rank-name-${rank.id}`}
+                            />
+                          ) : (
+                            rank.rank
+                          )}
                         </TableCell>
                         
                         <TableCell className="text-[#4f5863] text-[13px] font-normal py-3">
