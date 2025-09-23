@@ -1,4 +1,3 @@
-
 import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry } from "@shared/schema";
 
 // modify the interface with any CRUD methods
@@ -71,88 +70,8 @@ export class MemStorage implements IStorage {
   private currentAppraisalResultId: number;
 
   constructor() {
-    this.users = new Map();
-    this.forms = new Map();
-    this.rankGroups = new Map();
-    this.availableRanks = new Map();
-    this.crewMembers = new Map();
-    this.appraisalResults = new Map();
-    this.recruitmentCandidates = new Map();
-    this.currentUserId = 1;
+    this.initializeDefaultData();
 
-    // Initialize with sample recruitment candidates
-    this.recruitmentCandidates.set("RC-2025-001", {
-      id: "RC-2025-001",
-      fileNo: "RF-2025-001",
-      firstName: "Michael",
-      middleName: "James",
-      familyName: "Thompson",
-      dob: "1985-03-15",
-      nationality: "Filipino",
-      rankAppliedFor: "Chief Officer",
-      presentRank: "2nd Officer",
-      vesselType: "Container",
-      status: "Applied",
-      applicationData: null,
-      createdAt: new Date("2025-09-20"),
-      updatedAt: new Date("2025-09-20")
-    });
-
-    this.recruitmentCandidates.set("RC-2025-002", {
-      id: "RC-2025-002",
-      fileNo: "RF-2025-002",
-      firstName: "Sarah",
-      middleName: null,
-      familyName: "Rodriguez",
-      dob: "1990-07-22",
-      nationality: "Spanish",
-      rankAppliedFor: "3rd Engineer",
-      presentRank: "Engine Cadet",
-      vesselType: "Oil Tanker",
-      status: "Screening",
-      applicationData: null,
-      createdAt: new Date("2025-09-21"),
-      updatedAt: new Date("2025-09-21")
-    });
-
-    this.recruitmentCandidates.set("RC-2025-003", {
-      id: "RC-2025-003",
-      fileNo: "RF-2025-003",
-      firstName: "Alexander",
-      middleName: "Viktor",
-      familyName: "Petrov",
-      dob: "1982-11-08",
-      nationality: "Russian",
-      rankAppliedFor: "Master",
-      presentRank: "Chief Officer",
-      vesselType: "Bulk Carrier",
-      status: "For Approval",
-      applicationData: null,
-      createdAt: new Date("2025-09-19"),
-      updatedAt: new Date("2025-09-22")
-    });
-
-    this.recruitmentCandidates.set("RC-2025-004", {
-      id: "RC-2025-004",
-      fileNo: "RF-2025-004",
-      firstName: "Priya",
-      middleName: "Devi",
-      familyName: "Sharma",
-      dob: "1993-02-14",
-      nationality: "Indian",
-      rankAppliedFor: "Able Seaman",
-      presentRank: "Ordinary Seaman",
-      vesselType: "LPG Tanker",
-      status: "Applied",
-      applicationData: null,
-      createdAt: new Date("2025-09-22"),
-      updatedAt: new Date("2025-09-22")
-    });
-    this.currentFormId = 1;
-    this.currentRankGroupId = 1;
-    this.currentAvailableRankId = 1;
-    this.currentAppraisalResultId = 1;
-    
     // Initialize with sample form data - showing only 1 rank group for configuration
     this.forms.set(1, {
       id: 1,
@@ -163,7 +82,7 @@ export class MemStorage implements IStorage {
       configuration: null,
     });
     this.currentFormId = 2;
-    
+
     // Initialize with sample available ranks (minimal seeding since user manages their own data)
     this.availableRanks.set(1, { id: 1, name: "Master", category: "Senior Officers", rankId: "S1", label: "Master", applicableToCompany: true });
     this.availableRanks.set(2, { id: 2, name: "Chief Officer", category: "Senior Officers", rankId: "S2", label: "Chief Officer", applicableToCompany: true });
@@ -178,7 +97,7 @@ export class MemStorage implements IStorage {
     this.availableRanks.set(11, { id: 11, name: "Oiler", category: "Ratings", rankId: "S16", label: "Oiler", applicableToCompany: false });
     this.availableRanks.set(12, { id: 12, name: "Wiper", category: "Ratings", rankId: "S17", label: "Wiper", applicableToCompany: false });
     this.currentAvailableRankId = 13;
-    
+
     // Initialize with sample rank groups - showing only 1 for configuration
     // Note: Using JSON string for ranks array compatibility with MySQL
     this.rankGroups.set(1, {
@@ -339,6 +258,21 @@ export class MemStorage implements IStorage {
     this.currentAppraisalResultId = 6;
   }
 
+  private initializeDefaultData() {
+    this.users = new Map();
+    this.forms = new Map();
+    this.rankGroups = new Map();
+    this.availableRanks = new Map();
+    this.crewMembers = new Map();
+    this.appraisalResults = new Map();
+    this.recruitmentCandidates = new Map();
+    this.currentUserId = 1;
+    this.currentFormId = 1;
+    this.currentRankGroupId = 1;
+    this.currentAvailableRankId = 1;
+    this.currentAppraisalResultId = 1;
+  }
+
   async getUser(id: number): Promise<User | undefined> {
     return this.users.get(id);
   }
@@ -378,7 +312,7 @@ export class MemStorage implements IStorage {
   async updateForm(id: number, formData: Partial<InsertForm>): Promise<Form | undefined> {
     const existingForm = this.forms.get(id);
     if (!existingForm) return undefined;
-    
+
     const updatedForm: Form = { 
       ...existingForm, 
       ...formData,
@@ -413,7 +347,7 @@ export class MemStorage implements IStorage {
   async updateRankGroup(id: number, rankGroupData: Partial<InsertRankGroup>): Promise<RankGroup | undefined> {
     const existingRankGroup = this.rankGroups.get(id);
     if (!existingRankGroup) return undefined;
-    
+
     const updatedRankGroup: RankGroup = { 
       ...existingRankGroup, 
       ...rankGroupData,
@@ -451,7 +385,7 @@ export class MemStorage implements IStorage {
   async updateAvailableRank(id: number, rankData: Partial<InsertAvailableRank>): Promise<AvailableRank | undefined> {
     const existingRank = this.availableRanks.get(id);
     if (!existingRank) return undefined;
-    
+
     const updatedRank: AvailableRank = { 
       ...existingRank, 
       ...rankData
@@ -493,7 +427,7 @@ export class MemStorage implements IStorage {
   async updateCrewMember(id: string, crewMemberData: Partial<InsertCrewMember>): Promise<CrewMember | undefined> {
     const existingCrewMember = this.crewMembers.get(id);
     if (!existingCrewMember) return undefined;
-    
+
     const updatedCrewMember: CrewMember = { 
       ...existingCrewMember, 
       ...crewMemberData,
@@ -538,7 +472,7 @@ export class MemStorage implements IStorage {
   async updateAppraisalResult(id: number, appraisalResultData: Partial<InsertAppraisalResult>): Promise<AppraisalResult | undefined> {
     const existingAppraisalResult = this.appraisalResults.get(id);
     if (!existingAppraisalResult) return undefined;
-    
+
     const updatedAppraisalResult: AppraisalResult = { 
       ...existingAppraisalResult, 
       ...appraisalResultData
@@ -580,7 +514,7 @@ export class MemStorage implements IStorage {
   async updateRecruitmentCandidate(id: string, candidateData: Partial<InsertRecruitmentCandidate>): Promise<RecruitmentCandidate | undefined> {
     const existingCandidate = this.recruitmentCandidates.get(id);
     if (!existingCandidate) return undefined;
-    
+
     const updatedCandidate: RecruitmentCandidate = { 
       ...existingCandidate, 
       ...candidateData,
@@ -652,13 +586,13 @@ import { DatabaseStorage } from "./database";
 // Construct DATABASE_URL from RDS connection details
 function constructDatabaseUrl(): string | null {
   const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD } = process.env;
-  
+
   if (DB_HOST && DB_PORT && DB_USER && DB_PASSWORD) {
     // URL-encode the password to handle special characters
     const encodedPassword = encodeURIComponent(DB_PASSWORD);
     return `mysql://${DB_USER}:${encodedPassword}@${DB_HOST}:${DB_PORT}/crew_database`;
   }
-  
+
   // Fallback to DATABASE_URL if set directly
   return process.env.DATABASE_URL || null;
 }
@@ -678,10 +612,10 @@ if (databaseUrlForceDisabled) {
     // Set the constructed DATABASE_URL for DatabaseStorage to use
     process.env.DATABASE_URL = databaseUrlForceDisabled;
     storage = new DatabaseStorage();
-    
+
     console.log("🔌 Attempting to connect to MySQL RDS...");
     console.log("🎯 Target RDS Instance: MySQL database 'crew_database'");
-    
+
     // Database connection test only - seeding completely disabled per user request
     (async () => {
       try {
@@ -773,7 +707,7 @@ if (databaseUrlForceDisabled) {
   console.log("📝 FRONTEND DEVELOPMENT MODE: Using temporary storage (MemStorage)");
   console.log("🚀 Application will use sample data for frontend development");
   console.log("💾 No database connection needed - all data stored in memory");
-  
+
   // Use MemStorage for frontend development
   storage = new MemStorage();
   console.log("✅ MemStorage initialized successfully with sample data");
