@@ -6161,14 +6161,18 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               variant="outline" 
               size="sm"
               className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
+              onClick={handleSaveOnly}
+              disabled={saveOnlyMutation.isPending}
             >
               <Save className="h-4 w-4 mr-2" />
-              Save Draft
+              {saveOnlyMutation.isPending ? 'Saving...' : 'Save Draft'}
             </Button>
             <Button 
               variant="outline" 
               size="sm"
               className="sm:hidden"
+              onClick={handleSaveOnly}
+              disabled={saveOnlyMutation.isPending}
             >
               <Save className="h-4 w-4" />
             </Button>
