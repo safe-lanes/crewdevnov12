@@ -126,8 +126,142 @@
       }
     ]
   ],
-  "crewMembers": [],
-  "appraisalResults": [],
+  "crewMembers": [
+    [
+      "2025-05-14",
+      {
+        "id": "2025-05-14",
+        "firstName": "James",
+        "middleName": "Michael",
+        "lastName": "Wilson",
+        "rank": "Master",
+        "nationality": "British",
+        "vessel": "MT Sail One",
+        "vesselType": "Oil Tanker",
+        "signOnDate": "01-Feb-2025",
+        "createdAt": "2025-02-01T00:00:00.000Z",
+        "updatedAt": "2025-02-01T00:00:00.000Z"
+      }
+    ],
+    [
+      "2025-03-12",
+      {
+        "id": "2025-03-12",
+        "firstName": "Anna",
+        "middleName": "Marie",
+        "lastName": "Johnson",
+        "rank": "Chief Engineer",
+        "nationality": "British",
+        "vessel": "MT Sail Ten",
+        "vesselType": "LPG Tanker",
+        "signOnDate": "01-Jan-2025",
+        "createdAt": "2025-01-01T00:00:00.000Z",
+        "updatedAt": "2025-01-01T00:00:00.000Z"
+      }
+    ],
+    [
+      "2025-02-12",
+      {
+        "id": "2025-02-12",
+        "firstName": "David",
+        "middleName": "Lee",
+        "lastName": "Brown",
+        "rank": "Able Seaman",
+        "nationality": "Indian",
+        "vessel": "MT Sail Two",
+        "vesselType": "Container",
+        "signOnDate": "01-Feb-2025",
+        "createdAt": "2025-02-01T00:00:00.000Z",
+        "updatedAt": "2025-02-01T00:00:00.000Z"
+      }
+    ],
+    [
+      "2025-04-18",
+      {
+        "id": "2025-04-18",
+        "firstName": "Carlos",
+        "middleName": "Miguel",
+        "lastName": "Santos",
+        "rank": "2nd Officer",
+        "nationality": "Filipino",
+        "vessel": "MT Sail Three",
+        "vesselType": "Chemical Tanker",
+        "signOnDate": "15-Mar-2025",
+        "createdAt": "2025-03-15T00:00:00.000Z",
+        "updatedAt": "2025-03-15T00:00:00.000Z"
+      }
+    ]
+  ],
+  "appraisalResults": [
+    [
+      1,
+      {
+        "id": 1,
+        "crewMemberId": "2025-05-14",
+        "formId": 1,
+        "appraisalType": "End of Contract",
+        "appraisalDate": "06-Jun-2025",
+        "appraisalData": "{}",
+        "competenceRating": "4.9",
+        "behavioralRating": "4.5",
+        "overallRating": "4.7",
+        "submittedBy": "admin",
+        "createdAt": "2025-06-06T00:00:00.000Z",
+        "updatedAt": "2025-06-06T00:00:00.000Z"
+      }
+    ],
+    [
+      2,
+      {
+        "id": 2,
+        "crewMemberId": "2025-03-12",
+        "formId": 1,
+        "appraisalType": "Mid Term",
+        "appraisalDate": "07-May-2025",
+        "appraisalData": "{}",
+        "competenceRating": "3.5",
+        "behavioralRating": "4.5",
+        "overallRating": "4.0",
+        "submittedBy": "admin",
+        "createdAt": "2025-05-07T00:00:00.000Z",
+        "updatedAt": "2025-05-07T00:00:00.000Z"
+      }
+    ],
+    [
+      3,
+      {
+        "id": 3,
+        "crewMemberId": "2025-02-12",
+        "formId": 1,
+        "appraisalType": "Special",
+        "appraisalDate": "06-Jun-2025",
+        "appraisalData": "{}",
+        "competenceRating": "2.5",
+        "behavioralRating": "3.5",
+        "overallRating": "3.0",
+        "submittedBy": "admin",
+        "createdAt": "2025-06-06T00:00:00.000Z",
+        "updatedAt": "2025-06-06T00:00:00.000Z"
+      }
+    ],
+    [
+      4,
+      {
+        "id": 4,
+        "crewMemberId": "2025-04-18",
+        "formId": 1,
+        "appraisalType": "Probation",
+        "appraisalDate": "07-May-2025",
+        "appraisalData": "{}",
+        "competenceRating": "3.8",
+        "behavioralRating": "4.2",
+        "overallRating": "4.0",
+        "submittedBy": "admin",
+        "createdAt": "2025-05-07T00:00:00.000Z",
+        "updatedAt": "2025-05-07T00:00:00.000Z"
+      }
+    ]
+  ],
   "recruitmentCandidates": [
     [
       "2025-09-23-1758595508955",
@@ -153,5 +287,5 @@
   "currentFormId": 2,
   "currentRankGroupId": 1,
   "currentAvailableRankId": 11,
-  "currentAppraisalResultId": 1
+  "currentAppraisalResultId": 5
 }

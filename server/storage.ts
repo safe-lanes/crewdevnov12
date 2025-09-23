@@ -817,6 +817,126 @@ export class PersistentFileStorage implements IStorage {
     };
 
     this.recruitmentCandidates.set(sampleCandidate.id, sampleCandidate);
+
+    // Initialize with sample crew member data (from original MemStorage)
+    this.crewMembers.set("2025-05-14", {
+      id: "2025-05-14",
+      firstName: "James",
+      middleName: "Michael",
+      lastName: "Wilson",
+      rank: "Master",
+      nationality: "British",
+      vessel: "MT Sail One",
+      vesselType: "Oil Tanker",
+      signOnDate: "01-Feb-2025",
+      createdAt: new Date("2025-02-01"),
+      updatedAt: new Date("2025-02-01")
+    });
+
+    this.crewMembers.set("2025-03-12", {
+      id: "2025-03-12",
+      firstName: "Anna",
+      middleName: "Marie",
+      lastName: "Johnson",
+      rank: "Chief Engineer",
+      nationality: "British",
+      vessel: "MT Sail Ten",
+      vesselType: "LPG Tanker",
+      signOnDate: "01-Jan-2025",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
+
+    this.crewMembers.set("2025-02-12", {
+      id: "2025-02-12",
+      firstName: "David",
+      middleName: "Lee",
+      lastName: "Brown",
+      rank: "Able Seaman",
+      nationality: "Indian",
+      vessel: "MT Sail Two",
+      vesselType: "Container",
+      signOnDate: "01-Feb-2025",
+      createdAt: new Date("2025-02-01"),
+      updatedAt: new Date("2025-02-01")
+    });
+
+    this.crewMembers.set("2025-04-18", {
+      id: "2025-04-18",
+      firstName: "Carlos",
+      middleName: "Miguel",
+      lastName: "Santos",
+      rank: "2nd Officer",
+      nationality: "Filipino",
+      vessel: "MT Sail Three",
+      vesselType: "Chemical Tanker",
+      signOnDate: "15-Mar-2025",
+      createdAt: new Date("2025-03-15"),
+      updatedAt: new Date("2025-03-15")
+    });
+
+    // Initialize with sample appraisal results
+    this.appraisalResults.set(1, {
+      id: 1,
+      crewMemberId: "2025-05-14",
+      formId: 1,
+      appraisalType: "End of Contract",
+      appraisalDate: "06-Jun-2025",
+      appraisalData: JSON.stringify({}),
+      competenceRating: "4.9",
+      behavioralRating: "4.5",
+      overallRating: "4.7",
+      submittedBy: "admin",
+      createdAt: new Date("2025-06-06"),
+      updatedAt: new Date("2025-06-06")
+    });
+
+    this.appraisalResults.set(2, {
+      id: 2,
+      crewMemberId: "2025-03-12",
+      formId: 1,
+      appraisalType: "Mid Term",
+      appraisalDate: "07-May-2025",
+      appraisalData: JSON.stringify({}),
+      competenceRating: "3.5",
+      behavioralRating: "4.5",
+      overallRating: "4.0",
+      submittedBy: "admin",
+      createdAt: new Date("2025-05-07"),
+      updatedAt: new Date("2025-05-07")
+    });
+
+    this.appraisalResults.set(3, {
+      id: 3,
+      crewMemberId: "2025-02-12",
+      formId: 1,
+      appraisalType: "Special",
+      appraisalDate: "06-Jun-2025",
+      appraisalData: JSON.stringify({}),
+      competenceRating: "2.5",
+      behavioralRating: "3.5",
+      overallRating: "3.0",
+      submittedBy: "admin",
+      createdAt: new Date("2025-06-06"),
+      updatedAt: new Date("2025-06-06")
+    });
+
+    this.appraisalResults.set(4, {
+      id: 4,
+      crewMemberId: "2025-04-18",
+      formId: 1,
+      appraisalType: "Probation",
+      appraisalDate: "07-May-2025",
+      appraisalData: JSON.stringify({}),
+      competenceRating: "3.8",
+      behavioralRating: "4.2",
+      overallRating: "4.0",
+      submittedBy: "admin",
+      createdAt: new Date("2025-05-07"),
+      updatedAt: new Date("2025-05-07")
+    });
+
+    this.currentAppraisalResultId = 5;
   }
 
   // User methods (same as MemStorage)
