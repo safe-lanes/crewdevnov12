@@ -1425,6 +1425,67 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
             
             <div>
+              <Label className="text-xs text-gray-500 tracking-wide">Vessel Type</Label>
+              {isEditing ? (
+                <div className="mt-1">
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {formData.vesselType.split(', ').filter(Boolean).map((vesselType) => (
+                      <span
+                        key={vesselType}
+                        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                      >
+                        {vesselType}
+                        <button
+                          type="button"
+                          onClick={() => handleVesselTypeSelection(vesselType)}
+                          className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full text-blue-600 hover:bg-blue-200 hover:text-blue-900"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <Select onValueChange={(value) => handleVesselTypeSelection(value)}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select vessel types" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {VESSEL_TYPES.map(vesselType => (
+                        <SelectItem 
+                          key={vesselType} 
+                          value={vesselType}
+                          className={isVesselTypeSelected(vesselType) ? 'bg-blue-50 text-blue-900' : ''}
+                        >
+                          <div className="flex items-center">
+                            {isVesselTypeSelected(vesselType) && <span className="mr-2 text-blue-600">✓</span>}
+                            {vesselType}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="mt-1 text-sm text-gray-900">
+                  {formData.vesselType ? (
+                    <div className="flex flex-wrap gap-1">
+                      {formData.vesselType.split(', ').filter(Boolean).map((vesselType) => (
+                        <span
+                          key={vesselType}
+                          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
+                        >
+                          {vesselType}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-gray-500">No vessel types selected</span>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            <div>
               <Label className="text-xs text-gray-500 tracking-wide">Date of birth</Label>
               {isEditing ? (
                 <Input
