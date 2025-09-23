@@ -6104,7 +6104,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               {/* Action Buttons */}
               <div className="flex justify-end gap-2 mt-6 pt-4">
                 <Button 
-                  className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8"
+                  className="bg-[#00AF7B] hover:bg-[#009B6B] text-white px-8"
                   onClick={handleSaveAndContinue}
                   disabled={saveMutation.isPending}
                 >
