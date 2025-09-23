@@ -2824,45 +2824,33 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 <div className="flex items-center min-w-[300px]">
                   {/* Fixed width container for alignment */}
                   <div className="flex gap-6 w-[200px]">
-                    <div className="flex items-center space-x-2 w-[50px]">
-                      <RadioGroup 
-                        value={formData[question.field as keyof FormData] as string} 
-                        onValueChange={(value) => updateFormData(question.field as keyof FormData, value)}
-                        className="flex"
-                      >
+                    <RadioGroup 
+                      value={formData[question.field as keyof FormData] as string} 
+                      onValueChange={(value) => updateFormData(question.field as keyof FormData, value)}
+                      className="flex gap-6"
+                    >
+                      <div className="flex items-center space-x-2 w-[50px]">
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="yes" id={`${question.id}-yes`} />
                           <Label htmlFor={`${question.id}-yes`} className="text-sm cursor-pointer">Yes</Label>
                         </div>
-                      </RadioGroup>
-                    </div>
-                    <div className="flex items-center space-x-2 w-[50px]">
-                      <RadioGroup 
-                        value={formData[question.field as keyof FormData] as string} 
-                        onValueChange={(value) => updateFormData(question.field as keyof FormData, value)}
-                        className="flex"
-                      >
+                      </div>
+                      <div className="flex items-center space-x-2 w-[50px]">
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="no" id={`${question.id}-no`} />
                           <Label htmlFor={`${question.id}-no`} className="text-sm cursor-pointer">No</Label>
                         </div>
-                      </RadioGroup>
-                    </div>
-                    {question.hasNA && (
-                      <div className="flex items-center space-x-2 w-[50px]">
-                        <RadioGroup 
-                          value={formData[question.field as keyof FormData] as string} 
-                          onValueChange={(value) => updateFormData(question.field as keyof FormData, value)}
-                          className="flex"
-                        >
+                      </div>
+                      {question.hasNA && (
+                        <div className="flex items-center space-x-2 w-[50px]">
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="na" id={`${question.id}-na`} />
                             <Label htmlFor={`${question.id}-na`} className="text-sm cursor-pointer">NA</Label>
                           </div>
-                        </RadioGroup>
-                      </div>
-                    )}
-                    {!question.hasNA && <div className="w-[50px]"></div>}
+                        </div>
+                      )}
+                      {!question.hasNA && <div className="w-[50px]"></div>}
+                    </RadioGroup>
                   </div>
                   <Button
                     type="button"
@@ -3041,42 +3029,30 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               </Label>
               <div className="flex items-center min-w-[300px]">
                 <div className="flex gap-6 w-[200px]">
-                  <div className="flex items-center space-x-2 w-[50px]">
-                    <RadioGroup 
-                      value={formData.b2ReferenceChecksCompleted as string} 
-                      onValueChange={(value) => updateFormData('b2ReferenceChecksCompleted', value)}
-                      className="flex"
-                    >
+                  <RadioGroup 
+                    value={formData.b2ReferenceChecksCompleted as string} 
+                    onValueChange={(value) => updateFormData('b2ReferenceChecksCompleted', value)}
+                    className="flex gap-6"
+                  >
+                    <div className="flex items-center space-x-2 w-[50px]">
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="yes" id="b2-completed-yes" />
                         <Label htmlFor="b2-completed-yes" className="text-sm cursor-pointer">Yes</Label>
                       </div>
-                    </RadioGroup>
-                  </div>
-                  <div className="flex items-center space-x-2 w-[50px]">
-                    <RadioGroup 
-                      value={formData.b2ReferenceChecksCompleted as string} 
-                      onValueChange={(value) => updateFormData('b2ReferenceChecksCompleted', value)}
-                      className="flex"
-                    >
+                    </div>
+                    <div className="flex items-center space-x-2 w-[50px]">
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="no" id="b2-completed-no" />
                         <Label htmlFor="b2-completed-no" className="text-sm cursor-pointer">No</Label>
                       </div>
-                    </RadioGroup>
-                  </div>
-                  <div className="flex items-center space-x-2 w-[50px]">
-                    <RadioGroup 
-                      value={formData.b2ReferenceChecksCompleted as string} 
-                      onValueChange={(value) => updateFormData('b2ReferenceChecksCompleted', value)}
-                      className="flex"
-                    >
+                    </div>
+                    <div className="flex items-center space-x-2 w-[50px]">
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="na" id="b2-completed-na" />
                         <Label htmlFor="b2-completed-na" className="text-sm cursor-pointer">NA</Label>
                       </div>
-                    </RadioGroup>
-                  </div>
+                    </div>
+                  </RadioGroup>
                 </div>
                 <Button
                   type="button"
@@ -3294,42 +3270,30 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               </Label>
               <div className="flex items-center min-w-[300px]">
                 <div className="flex gap-6 w-[200px]">
-                  <div className="flex items-center space-x-2 w-[50px]">
-                    <RadioGroup 
-                      value={formData.b2CurrentEmployerFeedback as string} 
-                      onValueChange={(value) => updateFormData('b2CurrentEmployerFeedback', value)}
-                      className="flex"
-                    >
+                  <RadioGroup 
+                    value={formData.b2CurrentEmployerFeedback as string} 
+                    onValueChange={(value) => updateFormData('b2CurrentEmployerFeedback', value)}
+                    className="flex gap-6"
+                  >
+                    <div className="flex items-center space-x-2 w-[50px]">
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="yes" id="b2-results-yes" />
                         <Label htmlFor="b2-results-yes" className="text-sm cursor-pointer">Yes</Label>
                       </div>
-                    </RadioGroup>
-                  </div>
-                  <div className="flex items-center space-x-2 w-[50px]">
-                    <RadioGroup 
-                      value={formData.b2CurrentEmployerFeedback as string} 
-                      onValueChange={(value) => updateFormData('b2CurrentEmployerFeedback', value)}
-                      className="flex"
-                    >
+                    </div>
+                    <div className="flex items-center space-x-2 w-[50px]">
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="no" id="b2-results-no" />
                         <Label htmlFor="b2-results-no" className="text-sm cursor-pointer">No</Label>
                       </div>
-                    </RadioGroup>
-                  </div>
-                  <div className="flex items-center space-x-2 w-[50px]">
-                    <RadioGroup 
-                      value={formData.b2CurrentEmployerFeedback as string} 
-                      onValueChange={(value) => updateFormData('b2CurrentEmployerFeedback', value)}
-                      className="flex"
-                    >
+                    </div>
+                    <div className="flex items-center space-x-2 w-[50px]">
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="na" id="b2-results-na" />
                         <Label htmlFor="b2-results-na" className="text-sm cursor-pointer">NA</Label>
                       </div>
-                    </RadioGroup>
-                  </div>
+                    </div>
+                  </RadioGroup>
                 </div>
                 <Button
                   type="button"
@@ -4731,42 +4695,30 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               </Label>
               <div className="flex items-center min-w-[300px]">
                 <div className="flex gap-6 w-[200px]">
-                  <div className="flex items-center space-x-2 w-[50px]">
-                    <RadioGroup 
-                      value={formData.b6InterviewCompleted as string} 
-                      onValueChange={(value) => updateFormData('b6InterviewCompleted', value)}
-                      className="flex"
-                    >
+                  <RadioGroup 
+                    value={formData.b6InterviewCompleted as string} 
+                    onValueChange={(value) => updateFormData('b6InterviewCompleted', value)}
+                    className="flex gap-6"
+                  >
+                    <div className="flex items-center space-x-2 w-[50px]">
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="yes" id="b6-completed-yes" />
                         <Label htmlFor="b6-completed-yes" className="text-sm cursor-pointer">Yes</Label>
                       </div>
-                    </RadioGroup>
-                  </div>
-                  <div className="flex items-center space-x-2 w-[50px]">
-                    <RadioGroup 
-                      value={formData.b6InterviewCompleted as string} 
-                      onValueChange={(value) => updateFormData('b6InterviewCompleted', value)}
-                      className="flex"
-                    >
+                    </div>
+                    <div className="flex items-center space-x-2 w-[50px]">
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="no" id="b6-completed-no" />
                         <Label htmlFor="b6-completed-no" className="text-sm cursor-pointer">No</Label>
                       </div>
-                    </RadioGroup>
-                  </div>
-                  <div className="flex items-center space-x-2 w-[50px]">
-                    <RadioGroup 
-                      value={formData.b6InterviewCompleted as string} 
-                      onValueChange={(value) => updateFormData('b6InterviewCompleted', value)}
-                      className="flex"
-                    >
+                    </div>
+                    <div className="flex items-center space-x-2 w-[50px]">
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="na" id="b6-completed-na" />
                         <Label htmlFor="b6-completed-na" className="text-sm cursor-pointer">NA</Label>
                       </div>
-                    </RadioGroup>
-                  </div>
+                    </div>
+                  </RadioGroup>
                 </div>
                 <Button
                   type="button"
@@ -5218,30 +5170,24 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               </Label>
               <div className="flex items-center min-w-[300px]">
                 <div className="flex gap-6 w-[200px]">
-                  <div className="flex items-center space-x-2 w-[50px]">
-                    <RadioGroup 
-                      value={formData.b8Shortlisted as string} 
-                      onValueChange={(value) => updateFormData('b8Shortlisted', value)}
-                      className="flex"
-                    >
+                  <RadioGroup 
+                    value={formData.b8Shortlisted as string} 
+                    onValueChange={(value) => updateFormData('b8Shortlisted', value)}
+                    className="flex gap-6"
+                  >
+                    <div className="flex items-center space-x-2 w-[50px]">
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="yes" id="b8-shortlisted-yes" />
                         <Label htmlFor="b8-shortlisted-yes" className="text-sm cursor-pointer">Yes</Label>
                       </div>
-                    </RadioGroup>
-                  </div>
-                  <div className="flex items-center space-x-2 w-[50px]">
-                    <RadioGroup 
-                      value={formData.b8Shortlisted as string} 
-                      onValueChange={(value) => updateFormData('b8Shortlisted', value)}
-                      className="flex"
-                    >
+                    </div>
+                    <div className="flex items-center space-x-2 w-[50px]">
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="no" id="b8-shortlisted-no" />
                         <Label htmlFor="b8-shortlisted-no" className="text-sm cursor-pointer">No</Label>
                       </div>
-                    </RadioGroup>
-                  </div>
+                    </div>
+                  </RadioGroup>
                 </div>
                 <Button
                   type="button"
