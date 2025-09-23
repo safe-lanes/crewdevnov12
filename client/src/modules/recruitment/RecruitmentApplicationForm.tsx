@@ -32,7 +32,7 @@ interface FormData {
   familyName: string;
   nationality: string;
   presentRank: string;
-  vesselType: string;
+  vesselType: string[];
   dateOfBirth: string;
   placeOfBirthCity: string;
   placeOfBirthCountry: string;
@@ -286,7 +286,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       nationality: formData.nationality,
       rankAppliedFor: formData.rankAppliedFor,
       presentRank: formData.presentRank,
-      vesselType: '', // Default or could be derived from form
+      vesselType: formData.vesselType.join(', ') || '', // Join array to string for backend
       status: 'Applied', // Default status for new candidates
       applicationData: JSON.stringify(formData) // Save all form data as JSON
     };
@@ -424,7 +424,19 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     familyName: candidate?.familyName || '',
     nationality: candidate?.nationality || '',
     presentRank: candidate?.presentRank || '',
-    vesselType: candidate?.vesselType || savedData.vesselType || '',
+    vesselType: (() => {
+      // Handle both string and array formats for vesselType
+      const candidateVessel = candidate?.vesselType;
+      const savedVessel = savedData.vesselType;
+      
+      if (candidateVessel) {
+        return typeof candidateVessel === 'string' ? candidateVessel.split(', ').filter(Boolean) : candidateVessel;
+      }
+      if (savedVessel) {
+        return Array.isArray(savedVessel) ? savedVessel : savedVessel.split(', ').filter(Boolean);
+      }
+      return [];
+    })(),
     dateOfBirth: candidate?.dob || '',
     placeOfBirthCity: savedData.placeOfBirthCity || '',
     placeOfBirthCountry: savedData.placeOfBirthCountry || '',
@@ -1191,7 +1203,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
 
   // Multi-select vessel type handling
   const handleVesselTypeSelection = (selectedVesselType: string) => {
-    const currentVesselTypes = formData.vesselType ? formData.vesselType.split(', ') : [];
+    const currentVesselTypes = formData.vesselType;
     const isAlreadySelected = currentVesselTypes.includes(selectedVesselType);
     
     let updatedVesselTypes;
@@ -1201,12 +1213,11 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       updatedVesselTypes = [...currentVesselTypes, selectedVesselType];
     }
     
-    updateFormData('vesselType', updatedVesselTypes.join(', '));
+    setFormData(prev => ({ ...prev, vesselType: updatedVesselTypes }));
   };
 
   const isVesselTypeSelected = (vesselType: string): boolean => {
-    const currentVesselTypes = formData.vesselType ? formData.vesselType.split(', ') : [];
-    return currentVesselTypes.includes(vesselType);
+    return formData.vesselType.includes(vesselType);
   };
 
   const renderA11GeneralParticulars = () => {
@@ -1320,7 +1331,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 {isEditing ? (
                   <div className="mt-1">
                     <div className="flex flex-wrap gap-2 mb-2">
-                      {formData.vesselType.split(', ').filter(Boolean).map((vesselType) => (
+                      {formData.vesselType.map((vesselType) => (
                         <span
                           key={vesselType}
                           className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
@@ -1358,9 +1369,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   </div>
                 ) : (
                   <div className="mt-1 text-sm text-gray-900">
-                    {formData.vesselType ? (
+                    {formData.vesselType.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
-                        {formData.vesselType.split(', ').filter(Boolean).map((vesselType) => (
+                        {formData.vesselType.map((vesselType) => (
                           <span
                             key={vesselType}
                             className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
