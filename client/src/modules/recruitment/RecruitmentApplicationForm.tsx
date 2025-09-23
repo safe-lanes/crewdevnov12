@@ -3113,6 +3113,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   const currentDate = new Date().toLocaleDateString();
                   updateFormData('b1SubmittedBy', 'Roxanne, Crewing Executive');
                   updateFormData('b1SubmittedDate', currentDate);
+                  // Also save the data
+                  setTimeout(() => {
+                    handleSaveAndContinue();
+                  }, 100);
                 }}
               >
                 Submit
@@ -3551,6 +3555,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   const currentDate = new Date().toLocaleDateString();
                   updateFormData('b2SubmittedBy', 'Roxanne, Crewing Executive');
                   updateFormData('b2SubmittedDate', currentDate);
+                  // Also save the data
+                  setTimeout(() => {
+                    handleSaveAndContinue();
+                  }, 100);
                 }}
               >
                 Submit
@@ -3995,6 +4003,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   const currentDate = new Date().toLocaleDateString();
                   updateFormData('b3SubmittedBy', 'Roxanne, Crewing Executive');
                   updateFormData('b3SubmittedDate', currentDate);
+                  // Also save the data
+                  setTimeout(() => {
+                    handleSaveAndContinue();
+                  }, 100);
                 }}
               >
                 Submit
@@ -4455,6 +4467,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   const currentDate = new Date().toLocaleDateString();
                   updateFormData('b4SubmittedBy', 'Roxanne, Crewing Executive');
                   updateFormData('b4SubmittedDate', currentDate);
+                  // Also save the data
+                  setTimeout(() => {
+                    handleSaveAndContinue();
+                  }, 100);
                 }}
               >
                 Submit
@@ -4779,6 +4795,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   const currentDate = new Date().toLocaleDateString();
                   updateFormData('b5SubmittedBy', 'Roxanne, Crewing Executive');
                   updateFormData('b5SubmittedDate', currentDate);
+                  // Also save the data
+                  setTimeout(() => {
+                    handleSaveAndContinue();
+                  }, 100);
                 }}
               >
                 Submit
@@ -5120,6 +5140,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   const currentDate = new Date().toLocaleDateString();
                   updateFormData('b6SubmittedBy', 'Roxanne, Crewing Executive');
                   updateFormData('b6SubmittedDate', currentDate);
+                  // Also save the data
+                  setTimeout(() => {
+                    handleSaveAndContinue();
+                  }, 100);
                 }}
               >
                 Submit
@@ -5256,6 +5280,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                     const currentDate = new Date().toLocaleDateString();
                     updateFormData('b7SubmittedBy', 'Roxanne, Crewing Executive');
                     updateFormData('b7SubmittedDate', currentDate);
+                    // Also save the data
+                    setTimeout(() => {
+                      handleSaveAndContinue();
+                    }, 100);
                   }}
                 >
                   Submit
@@ -5453,6 +5481,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                     const currentDate = new Date().toLocaleDateString();
                     updateFormData('b8SubmittedBy', 'Roxanne, Crewing Executive');
                     updateFormData('b8SubmittedDate', currentDate);
+                    // Also save the data
+                    setTimeout(() => {
+                      handleSaveAndContinue();
+                    }, 100);
                   }}
                 >
                   Submit
