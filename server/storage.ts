@@ -1207,13 +1207,13 @@ if (databaseUrlForceDisabled) {
 } else {
   isConnected = false;
   connectionError = null;
-  console.log("📝 FRONTEND DEVELOPMENT MODE: Using temporary storage (MemStorage)");
-  console.log("🚀 Application will use sample data for frontend development");
-  console.log("💾 No database connection needed - all data stored in memory");
+  console.log("📄 PERSISTENT FILE STORAGE MODE: Using file-based storage (PersistentFileStorage)");
+  console.log("🚀 Application will use persistent JSON storage for development");
+  console.log("💾 All data will be saved to test-data.json and persist across restarts");
 
-  // Use MemStorage for frontend development
-  storage = new MemStorage();
-  console.log("✅ MemStorage initialized successfully with sample data");
+  // Use PersistentFileStorage for persistent development storage
+  storage = new PersistentFileStorage();
+  console.log("✅ PersistentFileStorage initialized successfully - data will persist across restarts!");
 }
 
 // Export connection status for health checks
