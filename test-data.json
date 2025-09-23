@@ -281,6 +281,82 @@
         "createdAt": "2025-09-23T10:00:00.000Z",
         "updatedAt": "2025-09-23T10:00:00.000Z"
       }
+    ],
+    [
+      "RC-2025-002",
+      {
+        "id": "RC-2025-002",
+        "fileNo": "RF-2025-002",
+        "firstName": "Sarah",
+        "middleName": null,
+        "familyName": "Rodriguez",
+        "dob": "1990-07-22",
+        "nationality": "Spanish",
+        "rankAppliedFor": "3rd Engineer",
+        "presentRank": "Engine Cadet",
+        "vesselType": "Oil Tanker",
+        "status": "Screening",
+        "applicationData": null,
+        "createdAt": "2025-09-23T00:00:00.000Z",
+        "updatedAt": "2025-09-23T00:00:00.000Z"
+      }
+    ],
+    [
+      "RC-2025-003",
+      {
+        "id": "RC-2025-003",
+        "fileNo": "RF-2025-003",
+        "firstName": "Alexander",
+        "middleName": "Viktor",
+        "familyName": "Petrov",
+        "dob": "1982-11-08",
+        "nationality": "Russian",
+        "rankAppliedFor": "Master",
+        "presentRank": "Chief Officer",
+        "vesselType": "Bulk Carrier",
+        "status": "For Approval",
+        "applicationData": null,
+        "createdAt": "2025-09-23T00:00:00.000Z",
+        "updatedAt": "2025-09-23T00:00:00.000Z"
+      }
+    ],
+    [
+      "RC-2025-004",
+      {
+        "id": "RC-2025-004",
+        "fileNo": "RF-2025-004",
+        "firstName": "Priya",
+        "middleName": "Devi",
+        "familyName": "Sharma",
+        "dob": "1993-02-14",
+        "nationality": "Indian",
+        "rankAppliedFor": "Able Seaman",
+        "presentRank": "Ordinary Seaman",
+        "vesselType": "LPG Tanker",
+        "status": "Applied",
+        "applicationData": null,
+        "createdAt": "2025-09-23T00:00:00.000Z",
+        "updatedAt": "2025-09-23T00:00:00.000Z"
+      }
+    ],
+    [
+      "RC-2025-005",
+      {
+        "id": "RC-2025-005",
+        "fileNo": "RF-2025-005",
+        "firstName": "Ahmed",
+        "middleName": "Hassan",
+        "familyName": "Al-Rashid",
+        "dob": "1985-09-30",
+        "nationality": "Egyptian",
+        "rankAppliedFor": "Chief Officer",
+        "presentRank": "2nd Officer",
+        "vesselType": "Container",
+        "status": "Recruited",
+        "applicationData": null,
+        "createdAt": "2025-09-23T00:00:00.000Z",
+        "updatedAt": "2025-09-23T00:00:00.000Z"
+      }
     ]
   ],
   "currentUserId": 1,
