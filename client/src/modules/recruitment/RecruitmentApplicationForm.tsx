@@ -262,6 +262,48 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     }
   });
 
+  // Handle save only (without closing form or advancing)
+  const handleSaveOnly = () => {
+    if (!formData.firstName || !formData.familyName) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in at least First Name and Family Name before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Generate file number for new candidates
+    const fileNo = candidate?.fileNo || `M${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`;
+    
+    const candidateData: InsertRecruitmentCandidate = {
+      id: candidate?.id || new Date().toISOString().split('T')[0] + '-' + Date.now(),
+      fileNo: fileNo,
+      firstName: formData.firstName,
+      middleName: formData.middleName || '',
+      familyName: formData.familyName,
+      dob: formData.dateOfBirth || '',
+      nationality: formData.nationality || '',
+      rankAppliedFor: formData.rankAppliedFor || '',
+      presentRank: formData.presentRank || '',
+      vesselType: Array.isArray(formData.vesselType) ? formData.vesselType.join(', ') : formData.vesselType || '',
+      status: candidate?.status || 'In Progress',
+      applicationData: JSON.stringify(formData)
+    };
+
+    // Use the save mutation but don't advance to next section
+    saveMutation.mutate(candidateData, {
+      onSuccess: () => {
+        // Don't close the form or advance - just show success message
+        toast({
+          title: "Success",
+          description: "Data saved successfully.",
+          variant: "default",
+        });
+      }
+    });
+  };
+
   // Handle save and continue
   const handleSaveAndContinue = () => {
     if (!formData.firstName || !formData.familyName) {
@@ -3113,9 +3155,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   const currentDate = new Date().toLocaleDateString();
                   updateFormData('b1SubmittedBy', 'Roxanne, Crewing Executive');
                   updateFormData('b1SubmittedDate', currentDate);
-                  // Also save the data
+                  // Also save the data (but don't close form)
                   setTimeout(() => {
-                    handleSaveAndContinue();
+                    handleSaveOnly();
                   }, 100);
                 }}
               >
@@ -3555,9 +3597,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   const currentDate = new Date().toLocaleDateString();
                   updateFormData('b2SubmittedBy', 'Roxanne, Crewing Executive');
                   updateFormData('b2SubmittedDate', currentDate);
-                  // Also save the data
+                  // Also save the data (but don't close form)
                   setTimeout(() => {
-                    handleSaveAndContinue();
+                    handleSaveOnly();
                   }, 100);
                 }}
               >
@@ -4003,9 +4045,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   const currentDate = new Date().toLocaleDateString();
                   updateFormData('b3SubmittedBy', 'Roxanne, Crewing Executive');
                   updateFormData('b3SubmittedDate', currentDate);
-                  // Also save the data
+                  // Also save the data (but don't close form)
                   setTimeout(() => {
-                    handleSaveAndContinue();
+                    handleSaveOnly();
                   }, 100);
                 }}
               >
@@ -4467,9 +4509,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   const currentDate = new Date().toLocaleDateString();
                   updateFormData('b4SubmittedBy', 'Roxanne, Crewing Executive');
                   updateFormData('b4SubmittedDate', currentDate);
-                  // Also save the data
+                  // Also save the data (but don't close form)
                   setTimeout(() => {
-                    handleSaveAndContinue();
+                    handleSaveOnly();
                   }, 100);
                 }}
               >
@@ -4795,9 +4837,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   const currentDate = new Date().toLocaleDateString();
                   updateFormData('b5SubmittedBy', 'Roxanne, Crewing Executive');
                   updateFormData('b5SubmittedDate', currentDate);
-                  // Also save the data
+                  // Also save the data (but don't close form)
                   setTimeout(() => {
-                    handleSaveAndContinue();
+                    handleSaveOnly();
                   }, 100);
                 }}
               >
@@ -5140,9 +5182,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   const currentDate = new Date().toLocaleDateString();
                   updateFormData('b6SubmittedBy', 'Roxanne, Crewing Executive');
                   updateFormData('b6SubmittedDate', currentDate);
-                  // Also save the data
+                  // Also save the data (but don't close form)
                   setTimeout(() => {
-                    handleSaveAndContinue();
+                    handleSaveOnly();
                   }, 100);
                 }}
               >
@@ -5996,7 +6038,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   onClick={handleSaveAndContinue}
                   disabled={saveMutation.isPending}
                 >
-                  {saveMutation.isPending ? 'Saving...' : 'Save & Submit'}
+                  {saveMutation.isPending ? 'Saving...' : 'Submit for Approval'}
                 </Button>
               </div>
             </CardContent>
