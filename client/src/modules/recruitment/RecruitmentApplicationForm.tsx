@@ -211,7 +211,51 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   // Get company ranks from shared hook
   const { data: companyRanks, isLoading: ranksLoading, rankNames } = useCompanyRanks();
 
-  // Create mutation for saving recruitment candidate
+  // Create a save-only mutation (for individual section buttons)
+  const saveOnlyMutation = useMutation({
+    mutationFn: (candidateData: InsertRecruitmentCandidate) => {
+      if (candidate?.id) {
+        // Update existing candidate
+        return fetch(`/api/recruitment-candidates/${candidate.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(candidateData)
+        }).then(res => {
+          if (!res.ok) throw new Error('Failed to update candidate');
+          return res.json();
+        });
+      } else {
+        // Create new candidate
+        return fetch('/api/recruitment-candidates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(candidateData)
+        }).then(res => {
+          if (!res.ok) throw new Error('Failed to create candidate');
+          return res.json();
+        });
+      }
+    },
+    onSuccess: async () => {
+      toast({
+        title: "Success",
+        description: "Data saved successfully!",
+      });
+      // Force immediate refetch of the data
+      await queryClient.refetchQueries({ queryKey: ['/api/recruitment-candidates'] });
+      // DON'T advance to next section - just save data
+    },
+    onError: (error) => {
+      console.error('Error saving candidate:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save candidate. Please check your database connection and try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Create mutation for saving recruitment candidate (advances to next section)
   const saveMutation = useMutation({
     mutationFn: (candidateData: InsertRecruitmentCandidate) => {
       if (candidate?.id) {
@@ -291,17 +335,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       applicationData: JSON.stringify(formData)
     };
 
-    // Use the save mutation but don't advance to next section
-    saveMutation.mutate(candidateData, {
-      onSuccess: () => {
-        // Don't close the form or advance - just show success message
-        toast({
-          title: "Success",
-          description: "Data saved successfully.",
-          variant: "default",
-        });
-      }
-    });
+    // Use the save-only mutation (doesn't advance to next section)
+    saveOnlyMutation.mutate(candidateData);
   };
 
   // Handle save and continue
@@ -5322,9 +5357,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                     const currentDate = new Date().toLocaleDateString();
                     updateFormData('b7SubmittedBy', 'Roxanne, Crewing Executive');
                     updateFormData('b7SubmittedDate', currentDate);
-                    // Also save the data
+                    // Also save the data (but don't close form)
                     setTimeout(() => {
-                      handleSaveAndContinue();
+                      handleSaveOnly();
                     }, 100);
                   }}
                 >
@@ -5523,9 +5558,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                     const currentDate = new Date().toLocaleDateString();
                     updateFormData('b8SubmittedBy', 'Roxanne, Crewing Executive');
                     updateFormData('b8SubmittedDate', currentDate);
-                    // Also save the data
+                    // Also save the data (but don't close form)
                     setTimeout(() => {
-                      handleSaveAndContinue();
+                      handleSaveOnly();
                     }, 100);
                   }}
                 >
