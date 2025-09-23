@@ -32,6 +32,7 @@ interface FormData {
   familyName: string;
   nationality: string;
   presentRank: string;
+  vesselType: string;
   dateOfBirth: string;
   placeOfBirthCity: string;
   placeOfBirthCountry: string;
@@ -423,6 +424,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     familyName: candidate?.familyName || '',
     nationality: candidate?.nationality || '',
     presentRank: candidate?.presentRank || '',
+    vesselType: candidate?.vesselType || savedData.vesselType || '',
     dateOfBirth: candidate?.dob || '',
     placeOfBirthCity: savedData.placeOfBirthCity || '',
     placeOfBirthCountry: savedData.placeOfBirthCountry || '',
@@ -998,6 +1000,25 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     });
   };
 
+  // Vessel types available for selection
+  const VESSEL_TYPES = [
+    'Bulk Carrier',
+    'Container',
+    'Oil Tanker',
+    'Chemical Tanker',
+    'Product Tanker',
+    'Crude Oil Tanker',
+    'LPG Tanker',
+    'LNG Carrier',
+    'General Cargo',
+    'RoRo',
+    'Passenger',
+    'Offshore',
+    'Naval',
+    'Research',
+    'Salvage/Tug'
+  ];
+
   // Comprehensive nationality list matching AppraisalForm standards
   const NATIONALITIES = [
     "Afghan", "Albanian", "Algerian", "American", "Andorran", "Angolan", "Antiguan", "Argentine", "Armenian", "Australian",
@@ -1166,6 +1187,26 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       const currentLanguages = formData.foreignLanguages ? formData.foreignLanguages.split(', ') : [];
       return currentLanguages.includes(language);
     }
+  };
+
+  // Multi-select vessel type handling
+  const handleVesselTypeSelection = (selectedVesselType: string) => {
+    const currentVesselTypes = formData.vesselType ? formData.vesselType.split(', ') : [];
+    const isAlreadySelected = currentVesselTypes.includes(selectedVesselType);
+    
+    let updatedVesselTypes;
+    if (isAlreadySelected) {
+      updatedVesselTypes = currentVesselTypes.filter(type => type !== selectedVesselType);
+    } else {
+      updatedVesselTypes = [...currentVesselTypes, selectedVesselType];
+    }
+    
+    updateFormData('vesselType', updatedVesselTypes.join(', '));
+  };
+
+  const isVesselTypeSelected = (vesselType: string): boolean => {
+    const currentVesselTypes = formData.vesselType ? formData.vesselType.split(', ') : [];
+    return currentVesselTypes.includes(vesselType);
   };
 
   const renderA11GeneralParticulars = () => {
