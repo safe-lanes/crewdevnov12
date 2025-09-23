@@ -667,7 +667,424 @@ export class MemStorage implements IStorage {
   }
 }
 
+// PersistentFileStorage class - saves data to JSON file for persistence across restarts
+export class PersistentFileStorage implements IStorage {
+  private users: Map<number, User>;
+  private forms: Map<number, Form>;
+  private rankGroups: Map<number, RankGroup>;
+  private availableRanks: Map<number, AvailableRank>;
+  private crewMembers: Map<string, CrewMember>;
+  private appraisalResults: Map<number, AppraisalResult>;
+  private recruitmentCandidates: Map<string, RecruitmentCandidate>;
+  private currentUserId: number;
+  private currentFormId: number;
+  private currentRankGroupId: number;
+  private currentAvailableRankId: number;
+  private currentAppraisalResultId: number;
+  private filePath: string;
+
+  constructor() {
+    this.filePath = path.join(process.cwd(), 'test-data.json');
+    this.loadFromFile();
+  }
+
+  private loadFromFile(): void {
+    try {
+      if (fs.existsSync(this.filePath)) {
+        const fileContent = fs.readFileSync(this.filePath, 'utf8');
+        const data = JSON.parse(fileContent);
+        
+        // Convert arrays back to Maps
+        this.users = new Map(data.users || []);
+        this.forms = new Map(data.forms || []);
+        this.rankGroups = new Map(data.rankGroups || []);
+        this.availableRanks = new Map(data.availableRanks || []);
+        this.crewMembers = new Map(data.crewMembers || []);
+        this.appraisalResults = new Map(data.appraisalResults || []);
+        this.recruitmentCandidates = new Map(data.recruitmentCandidates || []);
+        
+        // Load current counters
+        this.currentUserId = data.currentUserId || 1;
+        this.currentFormId = data.currentFormId || 2;
+        this.currentRankGroupId = data.currentRankGroupId || 1;
+        this.currentAvailableRankId = data.currentAvailableRankId || 11;
+        this.currentAppraisalResultId = data.currentAppraisalResultId || 1;
+        
+        console.log("📄 Loaded existing data from test-data.json");
+      } else {
+        console.log("📄 test-data.json not found, initializing with default data");
+        this.initializeDefaultData();
+        this.saveToFile();
+      }
+    } catch (error) {
+      console.error("⚠️ Error loading test-data.json, falling back to default data:", error);
+      this.initializeDefaultData();
+      this.saveToFile();
+    }
+  }
+
+  private saveToFile(): void {
+    try {
+      const data = {
+        users: Array.from(this.users.entries()),
+        forms: Array.from(this.forms.entries()),
+        rankGroups: Array.from(this.rankGroups.entries()),
+        availableRanks: Array.from(this.availableRanks.entries()),
+        crewMembers: Array.from(this.crewMembers.entries()),
+        appraisalResults: Array.from(this.appraisalResults.entries()),
+        recruitmentCandidates: Array.from(this.recruitmentCandidates.entries()),
+        currentUserId: this.currentUserId,
+        currentFormId: this.currentFormId,
+        currentRankGroupId: this.currentRankGroupId,
+        currentAvailableRankId: this.currentAvailableRankId,
+        currentAppraisalResultId: this.currentAppraisalResultId
+      };
+      
+      fs.writeFileSync(this.filePath, JSON.stringify(data, null, 2), 'utf8');
+      console.log("💾 Data saved to test-data.json");
+    } catch (error) {
+      console.error("⚠️ Error saving to test-data.json:", error);
+    }
+  }
+
+  private initializeDefaultData(): void {
+    this.users = new Map();
+    this.forms = new Map();
+    this.rankGroups = new Map();
+    this.availableRanks = new Map();
+    this.crewMembers = new Map();
+    this.appraisalResults = new Map();
+    this.recruitmentCandidates = new Map();
+    this.currentUserId = 1;
+    this.currentFormId = 2;
+    this.currentRankGroupId = 1;
+    this.currentAvailableRankId = 11;
+    this.currentAppraisalResultId = 1;
+
+    // Initialize with sample form data
+    this.forms.set(1, {
+      id: 1,
+      name: "Crew Appraisal Form",
+      rankGroup: "Senior Officers",
+      versionNo: "01",
+      versionDate: "01-Jan-2025",
+      configuration: null,
+    });
+
+    // Initialize with sample available ranks
+    this.availableRanks.set(1, { id: 1, name: "Master", category: "Senior Officers", rankId: "S1", label: "Master", applicableToCompany: true });
+    this.availableRanks.set(2, { id: 2, name: "Chief Officer", category: "Senior Officers", rankId: "S2", label: "Chief Officer", applicableToCompany: true });
+    this.availableRanks.set(3, { id: 3, name: "Chief Engineer", category: "Senior Officers", rankId: "S7", label: "Chief Engineer", applicableToCompany: true });
+    this.availableRanks.set(4, { id: 4, name: "2nd Officer", category: "Junior Officers", rankId: "S3", label: "2nd Officer", applicableToCompany: true });
+    this.availableRanks.set(5, { id: 5, name: "3rd Officer", category: "Junior Officers", rankId: "S4", label: "3rd Officer", applicableToCompany: true });
+    this.availableRanks.set(6, { id: 6, name: "2nd Engineer", category: "Junior Officers", rankId: "S9", label: "2nd Engineer", applicableToCompany: true });
+    this.availableRanks.set(7, { id: 7, name: "3rd Engineer", category: "Junior Officers", rankId: "S10", label: "3rd Engineer", applicableToCompany: true });
+    this.availableRanks.set(8, { id: 8, name: "Bosun", category: "Ratings", rankId: "S12", label: "Bosun", applicableToCompany: true });
+    this.availableRanks.set(9, { id: 9, name: "AB", category: "Ratings", rankId: "S14", label: "AB", applicableToCompany: true });
+    this.availableRanks.set(10, { id: 10, name: "OS", category: "Ratings", rankId: "S15", label: "OS", applicableToCompany: false });
+
+    // Initialize sample recruitment candidate
+    const sampleCandidate: RecruitmentCandidate = {
+      id: "2025-09-23-1758595508955",
+      fileNo: "RC-2025-001",
+      firstName: "Mark",
+      middleName: "Tan",
+      familyName: "Twait",
+      dob: "1981-01-04",
+      nationality: "Malaysian",
+      rankAppliedFor: "Master",
+      presentRank: "Master",
+      vesselType: JSON.stringify(["Oil Tanker"]),
+      status: "Applied",
+      applicationData: JSON.stringify({
+        firstName: "Mark",
+        middleName: "Tan",
+        familyName: "Twait",
+        nationality: "Malaysian",
+        presentRank: "Master",
+        vesselType: ["Oil Tanker"],
+        dateOfBirth: "1981-01-04",
+        ageInYears: "44",
+        nativeLanguage: "English",
+        foreignLanguages: "Spanish",
+        englishProficiency: "Good",
+        rankAppliedFor: "Master",
+        manningAgent: "ABC ",
+        fileNo: "M2025-955"
+      }),
+      createdAt: new Date('2025-09-23T10:00:00Z'),
+      updatedAt: new Date('2025-09-23T10:00:00Z'),
+    };
+
+    this.recruitmentCandidates.set(sampleCandidate.id, sampleCandidate);
+  }
+
+  // User methods (same as MemStorage)
+  async getUser(id: number): Promise<User | undefined> {
+    return this.users.get(id);
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(user => user.username === username);
+  }
+
+  async createUser(user: User): Promise<User> {
+    user.id = this.currentUserId++;
+    this.users.set(user.id, user);
+    this.saveToFile();
+    return user;
+  }
+
+  // Form methods (same as MemStorage)
+  async getForms(): Promise<Form[]> {
+    return Array.from(this.forms.values());
+  }
+
+  async getForm(id: number): Promise<Form | undefined> {
+    return this.forms.get(id);
+  }
+
+  async createForm(insertForm: InsertForm): Promise<Form> {
+    const form: Form = { ...insertForm, id: this.currentFormId++ };
+    this.forms.set(form.id, form);
+    this.saveToFile();
+    return form;
+  }
+
+  async updateForm(id: number, formData: Partial<InsertForm>): Promise<Form | undefined> {
+    const existingForm = this.forms.get(id);
+    if (!existingForm) return undefined;
+
+    const updatedForm: Form = { ...existingForm, ...formData };
+    this.forms.set(id, updatedForm);
+    this.saveToFile();
+    return updatedForm;
+  }
+
+  async deleteForm(id: number): Promise<boolean> {
+    const result = this.forms.delete(id);
+    if (result) this.saveToFile();
+    return result;
+  }
+
+  // Rank Group methods (same as MemStorage)
+  async getRankGroups(): Promise<RankGroup[]> {
+    return Array.from(this.rankGroups.values());
+  }
+
+  async createRankGroup(insertRankGroup: InsertRankGroup): Promise<RankGroup> {
+    const rankGroup: RankGroup = { ...insertRankGroup, id: this.currentRankGroupId++ };
+    this.rankGroups.set(rankGroup.id, rankGroup);
+    this.saveToFile();
+    return rankGroup;
+  }
+
+  async updateRankGroup(id: number, rankGroupData: Partial<InsertRankGroup>): Promise<RankGroup | undefined> {
+    const existingRankGroup = this.rankGroups.get(id);
+    if (!existingRankGroup) return undefined;
+
+    const updatedRankGroup: RankGroup = { ...existingRankGroup, ...rankGroupData };
+    this.rankGroups.set(id, updatedRankGroup);
+    this.saveToFile();
+    return updatedRankGroup;
+  }
+
+  async deleteRankGroup(id: number): Promise<boolean> {
+    const result = this.rankGroups.delete(id);
+    if (result) this.saveToFile();
+    return result;
+  }
+
+  // Available Rank methods (same as MemStorage)
+  async getAvailableRanks(): Promise<AvailableRank[]> {
+    return Array.from(this.availableRanks.values());
+  }
+
+  async createAvailableRank(insertAvailableRank: InsertAvailableRank): Promise<AvailableRank> {
+    const availableRank: AvailableRank = { ...insertAvailableRank, id: this.currentAvailableRankId++ };
+    this.availableRanks.set(availableRank.id, availableRank);
+    this.saveToFile();
+    return availableRank;
+  }
+
+  async updateAvailableRank(id: number, availableRankData: Partial<InsertAvailableRank>): Promise<AvailableRank | undefined> {
+    const existingAvailableRank = this.availableRanks.get(id);
+    if (!existingAvailableRank) return undefined;
+
+    const updatedAvailableRank: AvailableRank = { ...existingAvailableRank, ...availableRankData };
+    this.availableRanks.set(id, updatedAvailableRank);
+    this.saveToFile();
+    return updatedAvailableRank;
+  }
+
+  async deleteAvailableRank(id: number): Promise<boolean> {
+    const result = this.availableRanks.delete(id);
+    if (result) this.saveToFile();
+    return result;
+  }
+
+  async clearAllAvailableRanks(): Promise<void> {
+    this.availableRanks.clear();
+    this.saveToFile();
+  }
+
+  // Crew Member methods (same as MemStorage)
+  async getCrewMembers(): Promise<CrewMember[]> {
+    return Array.from(this.crewMembers.values());
+  }
+
+  async getCrewMember(id: string): Promise<CrewMember | undefined> {
+    return this.crewMembers.get(id);
+  }
+
+  async createCrewMember(insertCrewMember: InsertCrewMember): Promise<CrewMember> {
+    const crewMember: CrewMember = { ...insertCrewMember };
+    this.crewMembers.set(crewMember.id, crewMember);
+    this.saveToFile();
+    return crewMember;
+  }
+
+  async updateCrewMember(id: string, crewMemberData: Partial<InsertCrewMember>): Promise<CrewMember | undefined> {
+    const existingCrewMember = this.crewMembers.get(id);
+    if (!existingCrewMember) return undefined;
+
+    const updatedCrewMember: CrewMember = { ...existingCrewMember, ...crewMemberData };
+    this.crewMembers.set(id, updatedCrewMember);
+    this.saveToFile();
+    return updatedCrewMember;
+  }
+
+  async deleteCrewMember(id: string): Promise<boolean> {
+    const result = this.crewMembers.delete(id);
+    if (result) this.saveToFile();
+    return result;
+  }
+
+  // Appraisal Result methods (same as MemStorage)
+  async getAppraisalResults(): Promise<AppraisalResult[]> {
+    return Array.from(this.appraisalResults.values());
+  }
+
+  async getAppraisalResult(id: number): Promise<AppraisalResult | undefined> {
+    return this.appraisalResults.get(id);
+  }
+
+  async createAppraisalResult(insertAppraisalResult: InsertAppraisalResult): Promise<AppraisalResult> {
+    const appraisalResult: AppraisalResult = { ...insertAppraisalResult, id: this.currentAppraisalResultId++ };
+    this.appraisalResults.set(appraisalResult.id, appraisalResult);
+    this.saveToFile();
+    return appraisalResult;
+  }
+
+  async updateAppraisalResult(id: number, appraisalData: Partial<InsertAppraisalResult>): Promise<AppraisalResult | undefined> {
+    const existingAppraisal = this.appraisalResults.get(id);
+    if (!existingAppraisal) return undefined;
+
+    const updatedAppraisal: AppraisalResult = { ...existingAppraisal, ...appraisalData };
+    this.appraisalResults.set(id, updatedAppraisal);
+    this.saveToFile();
+    return updatedAppraisal;
+  }
+
+  async deleteAppraisalResult(id: number): Promise<boolean> {
+    const result = this.appraisalResults.delete(id);
+    if (result) this.saveToFile();
+    return result;
+  }
+
+  // Recruitment Candidate methods - THE IMPORTANT ONES FOR YOUR FORM!
+  async getRecruitmentCandidates(): Promise<RecruitmentCandidate[]> {
+    return Array.from(this.recruitmentCandidates.values());
+  }
+
+  async getRecruitmentCandidate(id: string): Promise<RecruitmentCandidate | undefined> {
+    return this.recruitmentCandidates.get(id);
+  }
+
+  async getRecruitmentCandidatesByStatus(status: string): Promise<RecruitmentCandidate[]> {
+    return Array.from(this.recruitmentCandidates.values()).filter(candidate => candidate.status === status);
+  }
+
+  async createRecruitmentCandidate(insertCandidate: InsertRecruitmentCandidate): Promise<RecruitmentCandidate> {
+    const candidate: RecruitmentCandidate = { 
+      ...insertCandidate,
+      middleName: insertCandidate.middleName || null,
+      applicationData: insertCandidate.applicationData || null,
+      status: insertCandidate.status || "Applied",
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.recruitmentCandidates.set(candidate.id, candidate);
+    this.saveToFile(); // SAVE TO FILE AFTER EVERY CREATE!
+    return candidate;
+  }
+
+  async updateRecruitmentCandidate(id: string, candidateData: Partial<InsertRecruitmentCandidate>): Promise<RecruitmentCandidate | undefined> {
+    const existingCandidate = this.recruitmentCandidates.get(id);
+    if (!existingCandidate) return undefined;
+
+    const updatedCandidate: RecruitmentCandidate = { 
+      ...existingCandidate, 
+      ...candidateData,
+      updatedAt: new Date()
+    };
+    this.recruitmentCandidates.set(id, updatedCandidate);
+    this.saveToFile(); // SAVE TO FILE AFTER EVERY UPDATE!
+    return updatedCandidate;
+  }
+
+  async deleteRecruitmentCandidate(id: string): Promise<boolean> {
+    const result = this.recruitmentCandidates.delete(id);
+    if (result) this.saveToFile(); // SAVE TO FILE AFTER EVERY DELETE!
+    return result;
+  }
+
+  // Data Masters methods (not supported - same as MemStorage)
+  async getDataMasters(): Promise<any[]> {
+    throw new Error("PersistentFileStorage doesn't support master data entries. Use DatabaseStorage instead.");
+  }
+
+  async getDataMaster(id: string): Promise<any> {
+    throw new Error("PersistentFileStorage doesn't support master data entries. Use DatabaseStorage instead.");
+  }
+
+  async createDataMaster(masterData: any): Promise<any> {
+    throw new Error("PersistentFileStorage doesn't support master data entries. Use DatabaseStorage instead.");
+  }
+
+  async updateDataMaster(id: string, masterData: any): Promise<any> {
+    throw new Error("PersistentFileStorage doesn't support master data entries. Use DatabaseStorage instead.");
+  }
+
+  async deleteDataMaster(id: string): Promise<boolean> {
+    throw new Error("PersistentFileStorage doesn't support master data entries. Use DatabaseStorage instead.");
+  }
+
+  // Master Data Entries methods (not supported - same as MemStorage)  
+  async getMasterDataEntries(masterId: string): Promise<any[]> {
+    throw new Error("PersistentFileStorage doesn't support master data entries. Use DatabaseStorage instead.");
+  }
+
+  async getMasterDataEntry(id: number): Promise<any> {
+    throw new Error("PersistentFileStorage doesn't support master data entries. Use DatabaseStorage instead.");
+  }
+
+  async createMasterDataEntry(entryData: any): Promise<any> {
+    throw new Error("PersistentFileStorage doesn't support master data entries. Use DatabaseStorage instead.");
+  }
+
+  async updateMasterDataEntry(id: number, entryData: any): Promise<any> {
+    throw new Error("PersistentFileStorage doesn't support master data entries. Use DatabaseStorage instead.");
+  }
+
+  async deleteMasterDataEntry(id: number): Promise<boolean> {
+    throw new Error("PersistentFileStorage doesn't support master data entries. Use DatabaseStorage instead.");
+  }
+}
+
 import { DatabaseStorage } from "./database";
+import * as fs from 'fs';
+import * as path from 'path';
 
 // Construct DATABASE_URL from RDS connection details
 function constructDatabaseUrl(): string | null {
