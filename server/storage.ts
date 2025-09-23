@@ -79,6 +79,75 @@ export class MemStorage implements IStorage {
     this.appraisalResults = new Map();
     this.recruitmentCandidates = new Map();
     this.currentUserId = 1;
+
+    // Initialize with sample recruitment candidates
+    this.recruitmentCandidates.set("RC-2025-001", {
+      id: "RC-2025-001",
+      fileNo: "RF-2025-001",
+      firstName: "Michael",
+      middleName: "James",
+      familyName: "Thompson",
+      dob: "1985-03-15",
+      nationality: "Filipino",
+      rankAppliedFor: "Chief Officer",
+      presentRank: "2nd Officer",
+      vesselType: "Container",
+      status: "Applied",
+      applicationData: null,
+      createdAt: new Date("2025-09-20"),
+      updatedAt: new Date("2025-09-20")
+    });
+
+    this.recruitmentCandidates.set("RC-2025-002", {
+      id: "RC-2025-002",
+      fileNo: "RF-2025-002",
+      firstName: "Sarah",
+      middleName: null,
+      familyName: "Rodriguez",
+      dob: "1990-07-22",
+      nationality: "Spanish",
+      rankAppliedFor: "3rd Engineer",
+      presentRank: "Engine Cadet",
+      vesselType: "Oil Tanker",
+      status: "Screening",
+      applicationData: null,
+      createdAt: new Date("2025-09-21"),
+      updatedAt: new Date("2025-09-21")
+    });
+
+    this.recruitmentCandidates.set("RC-2025-003", {
+      id: "RC-2025-003",
+      fileNo: "RF-2025-003",
+      firstName: "Alexander",
+      middleName: "Viktor",
+      familyName: "Petrov",
+      dob: "1982-11-08",
+      nationality: "Russian",
+      rankAppliedFor: "Master",
+      presentRank: "Chief Officer",
+      vesselType: "Bulk Carrier",
+      status: "For Approval",
+      applicationData: null,
+      createdAt: new Date("2025-09-19"),
+      updatedAt: new Date("2025-09-22")
+    });
+
+    this.recruitmentCandidates.set("RC-2025-004", {
+      id: "RC-2025-004",
+      fileNo: "RF-2025-004",
+      firstName: "Priya",
+      middleName: "Devi",
+      familyName: "Sharma",
+      dob: "1993-02-14",
+      nationality: "Indian",
+      rankAppliedFor: "Able Seaman",
+      presentRank: "Ordinary Seaman",
+      vesselType: "LPG Tanker",
+      status: "Applied",
+      applicationData: null,
+      createdAt: new Date("2025-09-22"),
+      updatedAt: new Date("2025-09-22")
+    });
     this.currentFormId = 1;
     this.currentRankGroupId = 1;
     this.currentAvailableRankId = 1;
