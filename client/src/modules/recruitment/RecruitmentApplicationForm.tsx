@@ -6108,7 +6108,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   onClick={handleSaveAndContinue}
                   disabled={saveMutation.isPending}
                 >
-                  {saveMutation.isPending ? 'Saving...' : 'Save & Continue'}
+                  {saveMutation.isPending ? 'Saving...' : 'Submit for Approval'}
                 </Button>
               </div>
             </CardContent>
