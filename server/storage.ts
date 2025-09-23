@@ -601,10 +601,13 @@ let connectionError: Error | null = null;
 
 const databaseUrl = constructDatabaseUrl();
 
-if (databaseUrl) {
+// TEMPORARY: Force MemStorage for frontend development
+// User requested to disconnect from crew_database for frontend development
+const databaseUrlForceDisabled: string | undefined = false ? (databaseUrl || undefined) : undefined;
+if (databaseUrlForceDisabled) {
   try {
     // Set the constructed DATABASE_URL for DatabaseStorage to use
-    process.env.DATABASE_URL = databaseUrl;
+    process.env.DATABASE_URL = databaseUrlForceDisabled;
     storage = new DatabaseStorage();
     
     console.log("🔌 Attempting to connect to MySQL RDS...");
@@ -697,63 +700,14 @@ if (databaseUrl) {
   }
 } else {
   isConnected = false;
-  connectionError = new Error("Missing MySQL RDS connection details");
-  console.error("❌ CRITICAL: No MySQL RDS connection details found!");
-  console.error("🔧 Required environment variables: DB_HOST, DB_PORT, DB_USER, DB_PASSWORD");
-  console.error("🚑 Server will start anyway. Use /api/health for diagnostics.");
+  connectionError = null;
+  console.log("📝 FRONTEND DEVELOPMENT MODE: Using temporary storage (MemStorage)");
+  console.log("🚀 Application will use sample data for frontend development");
+  console.log("💾 No database connection needed - all data stored in memory");
   
-  // Create a stub storage that will throw meaningful errors
-  storage = new (class implements IStorage {
-    private throwConnectionError(): never {
-      throw new Error('Missing MySQL RDS connection details. Required: DB_HOST, DB_PORT, DB_USER, DB_PASSWORD');
-    }
-    async getUser(): Promise<any> { this.throwConnectionError(); }
-    async getUserByUsername(): Promise<any> { this.throwConnectionError(); }
-    async createUser(): Promise<any> { this.throwConnectionError(); }
-    async getForms(): Promise<any> { this.throwConnectionError(); }
-    async getForm(): Promise<any> { this.throwConnectionError(); }
-    async createForm(): Promise<any> { this.throwConnectionError(); }
-    async updateForm(): Promise<any> { this.throwConnectionError(); }
-    async deleteForm(): Promise<any> { this.throwConnectionError(); }
-    async getRankGroups(): Promise<any> { this.throwConnectionError(); }
-    async createRankGroup(): Promise<any> { this.throwConnectionError(); }
-    async updateRankGroup(): Promise<any> { this.throwConnectionError(); }
-    async deleteRankGroup(): Promise<any> { this.throwConnectionError(); }
-    async getAvailableRanks(): Promise<any> { this.throwConnectionError(); }
-    async createAvailableRank(): Promise<any> { this.throwConnectionError(); }
-    async updateAvailableRank(): Promise<any> { this.throwConnectionError(); }
-    async deleteAvailableRank(): Promise<any> { this.throwConnectionError(); }
-    async clearAllAvailableRanks(): Promise<any> { this.throwConnectionError(); }
-    async getCrewMembers(): Promise<any> { this.throwConnectionError(); }
-    async getCrewMember(): Promise<any> { this.throwConnectionError(); }
-    async createCrewMember(): Promise<any> { this.throwConnectionError(); }
-    async updateCrewMember(): Promise<any> { this.throwConnectionError(); }
-    async deleteCrewMember(): Promise<any> { this.throwConnectionError(); }
-    async getAppraisalResults(): Promise<any> { this.throwConnectionError(); }
-    async getAppraisalResult(): Promise<any> { this.throwConnectionError(); }
-    async getAppraisalResultsByCrewMember(): Promise<any> { this.throwConnectionError(); }
-    async createAppraisalResult(): Promise<any> { this.throwConnectionError(); }
-    async updateAppraisalResult(): Promise<any> { this.throwConnectionError(); }
-    async deleteAppraisalResult(): Promise<any> { this.throwConnectionError(); }
-    async getRecruitmentCandidates(): Promise<any> { this.throwConnectionError(); }
-    async getRecruitmentCandidate(): Promise<any> { this.throwConnectionError(); }
-    async getRecruitmentCandidatesByStatus(): Promise<any> { this.throwConnectionError(); }
-    async createRecruitmentCandidate(): Promise<any> { this.throwConnectionError(); }
-    async updateRecruitmentCandidate(): Promise<any> { this.throwConnectionError(); }
-    async deleteRecruitmentCandidate(): Promise<any> { this.throwConnectionError(); }
-    // Data Masters - MISSING METHODS CAUSING 404 ERRORS
-    async getDataMasters(): Promise<any> { this.throwConnectionError(); }
-    async getDataMaster(): Promise<any> { this.throwConnectionError(); }
-    async createDataMaster(): Promise<any> { this.throwConnectionError(); }
-    async updateDataMaster(): Promise<any> { this.throwConnectionError(); }
-    async deleteDataMaster(): Promise<any> { this.throwConnectionError(); }
-    // Master Data Entries - MISSING METHODS CAUSING 404 ERRORS  
-    async getMasterDataEntries(): Promise<any> { this.throwConnectionError(); }
-    async getMasterDataEntry(): Promise<any> { this.throwConnectionError(); }
-    async createMasterDataEntry(): Promise<any> { this.throwConnectionError(); }
-    async updateMasterDataEntry(): Promise<any> { this.throwConnectionError(); }
-    async deleteMasterDataEntry(): Promise<any> { this.throwConnectionError(); }
-  })();
+  // Use MemStorage for frontend development
+  storage = new MemStorage();
+  console.log("✅ MemStorage initialized successfully with sample data");
 }
 
 // Export connection status for health checks
