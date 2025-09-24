@@ -1301,70 +1301,73 @@ const AdminModuleInner = (): JSX.Element => {
   };
 
   const handleMultiple = (rankId: string) => {
-    // Find the rank to multiply - could be original rank or need to get from existing role
+    // Find the rank to multiply - could be original rank or originalRankId from role
+    let originalRankId = rankId;
     let rankToMultiply = companyRankData.find(rank => rank.id === rankId);
     
-    // If not found, this might be an originalRankId, so get data from existing role
-    if (!rankToMultiply) {
-      const existingRole = companyRankData.find(row => row.originalRankId === rankId);
-      if (existingRole) {
-        rankToMultiply = {
-          ...existingRole,
-          id: rankId,
-          role: undefined,
-          originalRankId: undefined,
-          isRoleRow: false,
-          hasMultiple: false
-        };
-      }
+    // If this is a role row, get the original rank ID
+    if (rankToMultiply?.isRoleRow && rankToMultiply.originalRankId) {
+      originalRankId = rankToMultiply.originalRankId;
+      // Get the parent rank data for creating new roles
+      rankToMultiply = companyRankData.find(rank => rank.id === originalRankId);
     }
     
     if (rankToMultiply) {
       setCompanyRankData(prev => {
         const currentData = [...prev];
-        const rankIndex = currentData.findIndex(rank => rank.id === rankId);
         
         // Check if this rank already has role rows
-        const existingRoles = currentData.filter(row => row.originalRankId === rankId);
+        const existingRoles = currentData.filter(row => row.originalRankId === originalRankId);
         
         if (existingRoles.length === 0) {
-          // First time creating roles - replace the parent row with 2 role rows
+          // First time creating roles - keep parent but add 2 role rows
+          const parentIndex = currentData.findIndex(rank => rank.id === originalRankId);
+          
           const role1: CompanyRankData = {
             ...rankToMultiply,
-            id: `${rankToMultiply.id}_role_1_${Date.now()}`,
+            id: `${originalRankId}_role_1_${Date.now()}`,
             role: `${rankToMultiply.rank}_1`,
-            originalRankId: rankId,
+            originalRankId: originalRankId,
             isRoleRow: true,
             hasMultiple: false
           };
           
           const role2: CompanyRankData = {
             ...rankToMultiply,
-            id: `${rankToMultiply.id}_role_2_${Date.now()}`,
+            id: `${originalRankId}_role_2_${Date.now()}`,
             role: `${rankToMultiply.rank}_2`,
-            originalRankId: rankId,
+            originalRankId: originalRankId,
             isRoleRow: true,
             hasMultiple: false
           };
           
-          // Replace the parent row with the 2 role rows
-          currentData.splice(rankIndex, 1, role1, role2);
+          // Insert role rows after parent (parent will be filtered from display)
+          currentData.splice(parentIndex + 1, 0, role1, role2);
         } else {
-          // Adding more roles - find the highest role number and add 1 more
+          // Adding more roles - use gap-filling logic
           const roleNumbers = existingRoles
             .map(role => {
               const match = role.role?.match(/_(\d+)$/);
               return match ? parseInt(match[1], 10) : 0;
             })
-            .filter(num => num > 0);
+            .filter(num => num > 0)
+            .sort((a, b) => a - b);
           
-          const nextRoleNumber = Math.max(...roleNumbers, 0) + 1;
+          // Find the next sequential number (gap-filling)
+          let nextRoleNumber = 1;
+          for (const num of roleNumbers) {
+            if (num === nextRoleNumber) {
+              nextRoleNumber++;
+            } else {
+              break;
+            }
+          }
           
           const newRole: CompanyRankData = {
             ...rankToMultiply,
-            id: `${rankToMultiply.id}_role_${nextRoleNumber}_${Date.now()}`,
+            id: `${originalRankId}_role_${nextRoleNumber}_${Date.now()}`,
             role: `${rankToMultiply.rank}_${nextRoleNumber}`,
-            originalRankId: rankId,
+            originalRankId: originalRankId,
             isRoleRow: true,
             hasMultiple: false
           };
@@ -1384,25 +1387,35 @@ const AdminModuleInner = (): JSX.Element => {
   const handleDeleteCompanyRank = (rankId: string) => {
     setCompanyRankData(prev => {
       const rankToDelete = prev.find(rank => rank.id === rankId);
-      const filteredData = prev.filter(rank => rank.id !== rankId);
+      let filteredData = prev.filter(rank => rank.id !== rankId);
       
-      // If deleting a role row, check if only 1 role remains for this rank
+      // If deleting a role row, implement gap-filling logic
       if (rankToDelete?.isRoleRow && rankToDelete.originalRankId) {
         const remainingRoles = filteredData.filter(row => row.originalRankId === rankToDelete.originalRankId);
         
-        // If only 1 role remains, convert it back to a regular rank
+        // If only 1 role remains, remove it and show parent again
         if (remainingRoles.length === 1) {
-          const lastRoleIndex = filteredData.findIndex(row => row.id === remainingRoles[0].id);
-          if (lastRoleIndex !== -1) {
-            filteredData[lastRoleIndex] = {
-              ...filteredData[lastRoleIndex],
-              role: undefined,
-              originalRankId: undefined,
-              isRoleRow: false,
-              hasMultiple: false,
-              id: rankToDelete.originalRankId // Restore original ID
-            };
-          }
+          filteredData = filteredData.filter(row => row.id !== remainingRoles[0].id);
+        } else if (remainingRoles.length > 1) {
+          // Renumber remaining roles to fill gaps (1, 2, 3...)
+          const sortedRoles = remainingRoles
+            .sort((a, b) => {
+              const aNum = parseInt(a.role?.match(/_(\d+)$/)?.[1] || '0', 10);
+              const bNum = parseInt(b.role?.match(/_(\d+)$/)?.[1] || '0', 10);
+              return aNum - bNum;
+            });
+          
+          // Update role numbers sequentially
+          sortedRoles.forEach((role, index) => {
+            const roleIndex = filteredData.findIndex(row => row.id === role.id);
+            if (roleIndex !== -1) {
+              const newRoleNumber = index + 1;
+              filteredData[roleIndex] = {
+                ...filteredData[roleIndex],
+                role: `${rankToDelete.rank}_${newRoleNumber}`
+              };
+            }
+          });
         }
       }
       
@@ -2511,7 +2524,16 @@ const AdminModuleInner = (): JSX.Element => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {companyRankData.map((rank, index) => (
+                    {companyRankData
+                      .filter(rank => {
+                        // If this is a parent row and it has role rows, hide it
+                        if (!rank.isRoleRow) {
+                          const hasRoleRows = companyRankData.some(r => r.originalRankId === rank.id);
+                          return !hasRoleRows; // Hide parent if it has role rows
+                        }
+                        return true; // Show all role rows
+                      })
+                      .map((rank, index) => (
                       <TableRow key={rank.id} className="hover:bg-gray-50">
                         <TableCell className="text-[#4f5863] text-[13px] font-normal py-3">
                           <div className="w-3 h-3 bg-gray-300 cursor-move rounded-sm" data-testid={`drag-handle-company-${rank.id}`}></div>
@@ -2695,6 +2717,7 @@ const AdminModuleInner = (): JSX.Element => {
                         {/* Multiple button and delete action */}
                         <TableCell className="py-3">
                           <div className="flex items-center gap-2">
+                            {/* Show Multiple button on parent rows (when no role rows exist) */}
                             {!rank.isRoleRow && (
                               <Button
                                 variant="outline"
@@ -2707,18 +2730,40 @@ const AdminModuleInner = (): JSX.Element => {
                                 Multiple
                               </Button>
                             )}
-                            {rank.isRoleRow && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 text-destructive hover:bg-destructive/10"
-                                onClick={() => handleDeleteCompanyRank(rank.id)}
-                                data-testid={`button-delete-company-${rank.id}`}
-                                title="Delete role"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
+                            {/* Show Multiple button on first role row, delete on others */}
+                            {rank.isRoleRow && rank.originalRankId && (() => {
+                              const roleRowsForRank = companyRankData.filter(r => r.originalRankId === rank.originalRankId);
+                              const sortedRoles = roleRowsForRank.sort((a, b) => {
+                                const aNum = parseInt(a.role?.match(/_(\d+)$/)?.[1] || '0', 10);
+                                const bNum = parseInt(b.role?.match(/_(\d+)$/)?.[1] || '0', 10);
+                                return aNum - bNum;
+                              });
+                              const isFirstRole = sortedRoles[0]?.id === rank.id;
+                              
+                              return isFirstRole ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-xs px-2 py-1 h-6"
+                                  onClick={() => handleAddMultipleCompanyRole(rank.id)}
+                                  disabled={!isCompanyEditing}
+                                  data-testid={`button-multiple-${rank.id}`}
+                                >
+                                  Multiple
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-destructive hover:bg-destructive/10"
+                                  onClick={() => handleDeleteCompanyRank(rank.id)}
+                                  data-testid={`button-delete-company-${rank.id}`}
+                                  title="Delete role"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              );
+                            })()}
                           </div>
                         </TableCell>
                       </TableRow>
