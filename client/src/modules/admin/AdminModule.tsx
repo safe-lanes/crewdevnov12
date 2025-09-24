@@ -2912,34 +2912,34 @@ const AdminModuleInner = (): JSX.Element => {
                     <Table className="min-w-full">
                       <TableHeader>
                         <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
-                          <TableHead className="text-white text-xs font-normal min-w-32">
+                          <TableHead className="text-white text-xs font-normal w-24">
                             Rank
                           </TableHead>
-                          <TableHead className="text-white text-xs font-normal text-center w-20 border-r border-white/30">
+                          <TableHead className="text-white text-xs font-normal text-center w-16 border-r border-white/30">
                             Actual Manning
                           </TableHead>
-                          <TableHead className="text-white text-xs font-normal text-center w-20">
+                          <TableHead className="text-white text-xs font-normal text-center w-16">
                             Safe Manning
                           </TableHead>
-                          <TableHead className="text-white text-xs font-normal text-center w-20">
+                          <TableHead className="text-white text-xs font-normal text-center w-16">
                             Optimum Manning
                           </TableHead>
                           <TableHead className="text-white text-xs font-normal text-center w-20">
                             High Workload Manning
                           </TableHead>
-                          <TableHead className="text-white text-xs font-normal text-center w-20">
+                          <TableHead className="text-white text-xs font-normal text-center w-16">
                             Safety Officer
                           </TableHead>
-                          <TableHead className="text-white text-xs font-normal text-center w-20">
+                          <TableHead className="text-white text-xs font-normal text-center w-12">
                             SSO
                           </TableHead>
-                          <TableHead className="text-white text-xs font-normal text-center w-20">
+                          <TableHead className="text-white text-xs font-normal text-center w-16">
                             Medical Officer
                           </TableHead>
-                          <TableHead className="text-white text-xs font-normal text-center w-20">
+                          <TableHead className="text-white text-xs font-normal text-center w-16">
                             Nav Officer
                           </TableHead>
-                          <TableHead className="text-white text-xs font-normal text-center w-20">
+                          <TableHead className="text-white text-xs font-normal text-center w-16">
                             Envt Officer
                           </TableHead>
                         </TableRow>
