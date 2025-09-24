@@ -2968,9 +2968,6 @@ const AdminModuleInner = (): JSX.Element => {
                                   <div className="font-medium">
                                     {rank.isRoleRow ? rank.role : rank.rank}
                                   </div>
-                                  <div className="text-gray-500 text-xs">
-                                    {rank.rankId}
-                                  </div>
                                 </TableCell>
 
                                 {/* Actual Manning checkbox */}
