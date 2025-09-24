@@ -140,6 +140,32 @@ export const vesselRanks = mysqlTable("vessel_ranks", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const companyRanks = mysqlTable("company_ranks", {
+  id: text("id").primaryKey(), // Will use generated IDs like "5_role_1_1727188561"
+  rank: text("rank").notNull(),
+  rankId: text("rank_id").notNull(),
+  role: text("role"), // Role name like "3rd Off_1", "3rd Off_2"
+  originalRankId: text("original_rank_id"), // ID of original rank for role rows
+  isRoleRow: boolean("is_role_row").default(false),
+  officer: boolean("officer").default(false),
+  rating: boolean("rating").default(false),
+  seniorOfficer: boolean("senior_officer").default(false),
+  deckOfficer: boolean("deck_officer").default(false),
+  engOfficer: boolean("eng_officer").default(false),
+  pettyOfficer: boolean("petty_officer").default(false),
+  deckRating: boolean("deck_rating").default(false),
+  engineRating: boolean("engine_rating").default(false),
+  generalRating: boolean("general_rating").default(false),
+  cateringRating: boolean("catering_rating").default(false),
+  safetyOfficer: boolean("safety_officer").default(false),
+  sso: boolean("sso").default(false),
+  medicalOfficer: boolean("medical_officer").default(false),
+  navigatingOfficer: boolean("navigating_officer").default(false),
+  emtOfficer: boolean("emt_officer").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const dataMasters = mysqlTable("data_masters", {
   id: text("id").primaryKey(), // "001", "002", "003", etc.
   name: text("name").notNull(), // "Nationality Master", "Country Master"
@@ -335,6 +361,30 @@ export const insertVesselRankSchema = createInsertSchema(vesselRanks).pick({
   actualManning: true,
 });
 
+export const insertCompanyRankSchema = createInsertSchema(companyRanks).pick({
+  id: true,
+  rank: true,
+  rankId: true,
+  role: true,
+  originalRankId: true,
+  isRoleRow: true,
+  officer: true,
+  rating: true,
+  seniorOfficer: true,
+  deckOfficer: true,
+  engOfficer: true,
+  pettyOfficer: true,
+  deckRating: true,
+  engineRating: true,
+  generalRating: true,
+  cateringRating: true,
+  safetyOfficer: true,
+  sso: true,
+  medicalOfficer: true,
+  navigatingOfficer: true,
+  emtOfficer: true,
+});
+
 export const insertDataMasterSchema = createInsertSchema(dataMasters).pick({
   id: true,
   name: true,
@@ -420,6 +470,8 @@ export type InsertRevision = z.infer<typeof insertRevisionSchema>;
 export type Revision = typeof revisions.$inferSelect;
 export type InsertVesselRank = z.infer<typeof insertVesselRankSchema>;
 export type VesselRank = typeof vesselRanks.$inferSelect;
+export type InsertCompanyRank = z.infer<typeof insertCompanyRankSchema>;
+export type CompanyRank = typeof companyRanks.$inferSelect;
 export type InsertDataMaster = z.infer<typeof insertDataMasterSchema>;
 export type DataMaster = typeof dataMasters.$inferSelect;
 export type InsertMasterDataEntry = z.infer<typeof insertMasterDataEntrySchema>;

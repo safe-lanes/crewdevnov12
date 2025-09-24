@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry } from "@shared/schema";
+import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry } from "@shared/schema";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -21,6 +21,14 @@ export interface IStorage {
   updateAvailableRank(id: number, rank: Partial<InsertAvailableRank>): Promise<AvailableRank | undefined>;
   deleteAvailableRank(id: number): Promise<boolean>;
   clearAllAvailableRanks(): Promise<boolean>;
+  // Company Ranks
+  getCompanyRanks(): Promise<CompanyRank[]>;
+  getCompanyRank(id: string): Promise<CompanyRank | undefined>;
+  createCompanyRank(rank: InsertCompanyRank): Promise<CompanyRank>;
+  updateCompanyRank(id: string, rank: Partial<InsertCompanyRank>): Promise<CompanyRank | undefined>;
+  deleteCompanyRank(id: string): Promise<boolean>;
+  clearAllCompanyRanks(): Promise<boolean>;
+  saveAllCompanyRanks(ranks: InsertCompanyRank[]): Promise<CompanyRank[]>;
   // Crew Members
   getCrewMembers(): Promise<CrewMember[]>;
   getCrewMember(id: string): Promise<CrewMember | undefined>;
@@ -60,6 +68,7 @@ export class MemStorage implements IStorage {
   private forms: Map<number, Form>;
   private rankGroups: Map<number, RankGroup>;
   private availableRanks: Map<number, AvailableRank>;
+  private companyRanks: Map<string, CompanyRank>;
   private crewMembers: Map<string, CrewMember>;
   private appraisalResults: Map<number, AppraisalResult>;
   private recruitmentCandidates: Map<string, RecruitmentCandidate>;
@@ -349,6 +358,7 @@ export class MemStorage implements IStorage {
     this.forms = new Map();
     this.rankGroups = new Map();
     this.availableRanks = new Map();
+    this.companyRanks = new Map();
     this.crewMembers = new Map();
     this.appraisalResults = new Map();
     this.recruitmentCandidates = new Map();

@@ -1281,8 +1281,19 @@ const AdminModuleInner = (): JSX.Element => {
 
   const handleSaveCompany = async () => {
     try {
-      // TODO: Save company rank data changes to backend
-      // For now, just update the editing state
+      // Save company rank data to backend
+      const response = await fetch('/api/company-ranks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(companyRankData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save company ranks');
+      }
+
       setIsCompanyEditing(false);
       
       toast({

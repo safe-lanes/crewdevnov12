@@ -327,6 +327,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Company Ranks endpoints (simple in-memory persistence)
+  let companyRanksData: any[] = [];
+
+  app.get("/api/company-ranks", async (req, res) => {
+    try {
+      res.json(companyRanksData);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch company ranks" });
+    }
+  });
+
+  app.post("/api/company-ranks", async (req, res) => {
+    try {
+      companyRanksData = req.body; // Store the entire array
+      res.json({ success: true, data: companyRanksData });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to save company ranks" });
+    }
+  });
+
   // Crew Members API routes
   app.get("/api/crew-members", async (req, res) => {
     try {
