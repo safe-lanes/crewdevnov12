@@ -74,7 +74,7 @@ export const recruitmentCandidates = mysqlTable("recruitment_candidates", {
   rankAppliedFor: text("rank_applied_for").notNull(),
   presentRank: text("present_rank").notNull(),
   vesselType: text("vessel_type").notNull(),
-  status: text("status").notNull().default("Applied"), // Applied, Screening, For Approval, Recruited, Waitlisted, Rejected
+  status: text("status").notNull().default("Draft"), // Draft, Applied, Screening, For Approval, Recruited, Waitlisted, Rejected
   applicationData: text("application_data"), // JSON string for comprehensive form data
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

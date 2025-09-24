@@ -306,6 +306,88 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     }
   });
 
+  // Helper function to determine status based on section
+  const getStatusForSection = (section: string, isMainSubmit: boolean = false) => {
+    // If already at final status, don't change
+    if (candidate?.status && ['Recruited', 'Waitlisted', 'Rejected'].includes(candidate.status)) {
+      return candidate.status;
+    }
+
+    if (section === 'A5' && isMainSubmit) {
+      return 'Applied'; // A5 Submit for Screening
+    }
+    if (section.startsWith('B') && !isMainSubmit) {
+      return 'Screening'; // Any Part B section submit
+    }
+    if (section === 'B' && isMainSubmit) {
+      return 'For Approval'; // Part B main Submit for Approval
+    }
+    if (section === 'C' && isMainSubmit) {
+      // C3 decisions will be handled separately
+      return candidate?.status || 'For Approval';
+    }
+    
+    // Default: keep current status or Draft
+    return candidate?.status || 'Draft';
+  };
+
+  // Handle C3 final decision submit
+  const handleC3Submit = () => {
+    if (!formData.firstName || !formData.familyName) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in at least First Name and Family Name before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!c3RecruitmentStatus) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a recruitment decision (Yes, Waitlist, or Rejected) before submitting.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Map C3 radio button values to database status values
+    const statusMapping: {[key: string]: string} = {
+      'Yes': 'Recruited',
+      'Waitlist': 'Waitlisted', 
+      'Rejected': 'Rejected'
+    };
+
+    const finalStatus = statusMapping[c3RecruitmentStatus];
+
+    // Generate file number for new candidates
+    const fileNo = candidate?.fileNo || `M${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`;
+    
+    const candidateData: InsertRecruitmentCandidate = {
+      id: candidate?.id || new Date().toISOString().split('T')[0] + '-' + Date.now(),
+      fileNo: fileNo,
+      firstName: formData.firstName,
+      middleName: formData.middleName || '',
+      familyName: formData.familyName,
+      dob: formData.dateOfBirth || '',
+      nationality: formData.nationality || '',
+      rankAppliedFor: formData.rankAppliedFor || '',
+      presentRank: formData.presentRank || '',
+      vesselType: Array.isArray(formData.vesselType) ? formData.vesselType.join(', ') : formData.vesselType || '',
+      status: finalStatus, // Set final recruitment status
+      applicationData: JSON.stringify({
+        ...formData,
+        c3RecruitmentStatus,
+        c3AssignedGroups,
+        c3SubmittedBy,
+        c3SubmittedDate: new Date().toLocaleDateString()
+      })
+    };
+
+    // Use the save-only mutation for final decision
+    saveOnlyMutation.mutate(candidateData);
+  };
+
   // Handle save only (without closing form or advancing)
   const handleSaveOnly = () => {
     if (!formData.firstName || !formData.familyName) {
@@ -331,7 +413,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       rankAppliedFor: formData.rankAppliedFor || '',
       presentRank: formData.presentRank || '',
       vesselType: Array.isArray(formData.vesselType) ? formData.vesselType.join(', ') : formData.vesselType || '',
-      status: candidate?.status || 'In Progress',
+      status: getStatusForSection(activeSection, false), // Individual section submits
       applicationData: JSON.stringify(formData)
     };
 
@@ -364,7 +446,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       rankAppliedFor: formData.rankAppliedFor,
       presentRank: formData.presentRank,
       vesselType: formData.vesselType.join(', ') || '', // Join array to string for backend
-      status: 'Applied', // Default status for new candidates
+      status: getStatusForSection(activeSection, true), // Main section submits
       applicationData: JSON.stringify(formData) // Save all form data as JSON
     };
 
@@ -5887,8 +5969,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   type="button"
                   size="sm"
                   className="bg-green-600 hover:bg-green-700 text-white"
+                  onClick={handleC3Submit}
+                  disabled={saveOnlyMutation.isPending}
                 >
-                  Submit
+                  {saveOnlyMutation.isPending ? 'Saving...' : 'Submit'}
                 </Button>
               </div>
             </div>

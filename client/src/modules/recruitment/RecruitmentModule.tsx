@@ -22,7 +22,7 @@ import { type RecruitmentCandidate } from '@shared/schema';
 
 // Status mapping for filtering
 const STATUS_MAPPING = {
-  "in-progress": ["Applied", "Screening", "For Approval"],
+  "in-progress": ["Draft", "Applied", "Screening", "For Approval"],
   "recruited": ["Recruited"],
   "waitlist": ["Waitlisted"],
   "rejected": ["Rejected"]
