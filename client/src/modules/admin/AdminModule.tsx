@@ -2912,13 +2912,10 @@ const AdminModuleInner = (): JSX.Element => {
                     <Table className="min-w-full">
                       <TableHeader>
                         <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
-                          <TableHead className="text-white text-xs font-normal w-4 sticky left-0 bg-[#52baf3] z-10">
-                            {/* Empty header for actions column */}
-                          </TableHead>
-                          <TableHead className="text-white text-xs font-normal min-w-32 sticky left-12 bg-[#52baf3] z-10">
+                          <TableHead className="text-white text-xs font-normal min-w-32">
                             Rank
                           </TableHead>
-                          <TableHead className="text-white text-xs font-normal text-center min-w-24 border-r border-white/30">
+                          <TableHead className="text-white text-xs font-normal text-center w-20 border-r border-white/30">
                             Actual Manning
                           </TableHead>
                           <TableHead className="text-white text-xs font-normal text-center w-20">
@@ -2950,7 +2947,7 @@ const AdminModuleInner = (): JSX.Element => {
                       <TableBody>
                         {selectedVessels.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={11} className="text-center py-8 text-gray-500">
+                            <TableCell colSpan={10} className="text-center py-8 text-gray-500">
                               Please select one or more vessels to view rank data
                             </TableCell>
                           </TableRow>
@@ -2966,34 +2963,8 @@ const AdminModuleInner = (): JSX.Element => {
 
                             return displayRows.map((rank, index) => (
                               <TableRow key={rank.id} className="hover:bg-gray-50">
-                                {/* Actions column */}
-                                <TableCell className="w-4 sticky left-0 bg-white z-10">
-                                  {!rank.isRoleRow && (
-                                    <div className="flex space-x-1">
-                                      <Button
-                                        onClick={() => handleVesselMultiple(rank.originalRankId || rank.id)}
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-6 w-12 text-xs px-1 py-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                                        data-testid={`vessel-multiple-${rank.id}`}
-                                      >
-                                        Multiple
-                                      </Button>
-                                      <Button
-                                        onClick={() => handleDeleteVesselRank(rank.id)}
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-6 w-6 text-xs px-1 py-0 text-red-600 hover:text-red-800 hover:bg-red-50"
-                                        data-testid={`vessel-delete-${rank.id}`}
-                                      >
-                                        🗑️
-                                      </Button>
-                                    </div>
-                                  )}
-                                </TableCell>
-
                                 {/* Rank column */}
-                                <TableCell className="text-xs sticky left-12 bg-white z-10">
+                                <TableCell className="text-xs">
                                   <div className="font-medium">
                                     {rank.isRoleRow ? rank.role : rank.rank}
                                   </div>
