@@ -4096,7 +4096,7 @@ const AddRankGroupDialog = ({
       createRankGroupMutation.mutate({
         formId,
         name: data.name,
-        ranks: data.ranks,
+        ranks: JSON.stringify(data.ranks), // Convert array to JSON string as expected by schema
       });
     }
   };
