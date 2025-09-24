@@ -1,0 +1,11 @@
+I need the columns to be exactly as per this image, in given order:
+
+1. Actual Manning 
+    Note: Show a right border after this column because this is the main 'Executable' column which will serve as a base of several other functions in the module. Once this is clicked, corresponding rank list on the specific vessel would be updated. It’s like a framework (Organization chart) for a specific vessel is created where then later from the ‘Vessel’ Sub module we will fill in the specific crew member names. At this stage no crewmembers are assigned to any vessel (only the ranks) 
+2. Safe Manning
+     Note: This records whether this rank is required as per vessel's 'Minimum Safe Manning Certificate' – i.e. the minimum that the regulations require.
+3. Optimum Manning
+     Note: This records whether this rank is assessed by the company (to be required beyond the minimum safe manning) based on Dynamic conditions e.g., Type of ship (Chemical Tanker Vs Bulk carrier), trading areas of the ship etc.
+ 4. High Workload Manning
+      Note: There are certain scenarios where the manning needs to temporarily increase say for a period of 1 month for operations such as Ship To Ship Cargo Transfer, navigation in ice areas etc. This would generally be beyond regulatory requirements or normal operations. This column records whether in such situations this rank would be additionally required. E.g., an additional 3rd officer is required in High Workload Manning, so 3rd Off_2 will not be clicked in columns ‘Safe Manning’, ‘Optimum Manning’ but in ‘High Workload situation’ column.
+5. Other columns -  Safety Officer, SSO, Medical Officer, Nav. Officer and Envt. Officer by default would by default adopt the ‘check box’ status of the ‘Company Tab’, but there can be certain unique cases where on a certain vessel , the Safety officer is different than what is a standard for the company. So this function can select a different rank as Safety officer than the Company selection (But in this case the selection should be highlighted in Red Box to indicate this selection is different than company selection)

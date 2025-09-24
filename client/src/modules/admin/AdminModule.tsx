@@ -2918,17 +2918,7 @@ const AdminModuleInner = (): JSX.Element => {
                           <TableHead className="text-white text-xs font-normal min-w-32 sticky left-12 bg-[#52baf3] z-10">
                             Rank
                           </TableHead>
-                          {/* Dynamic vessel columns */}
-                          {selectedVessels.map((vesselId) => {
-                            const vesselLabel = vesselOptions.find((v: VesselOption) => v.value === vesselId)?.label || vesselId;
-                            return (
-                              <TableHead key={vesselId} className="text-white text-xs font-normal text-center min-w-24">
-                                {vesselLabel}
-                              </TableHead>
-                            );
-                          })}
-                          {/* Manning type columns */}
-                          <TableHead className="text-white text-xs font-normal text-center min-w-24">
+                          <TableHead className="text-white text-xs font-normal text-center min-w-24 border-r border-white/30">
                             Actual Manning
                           </TableHead>
                           <TableHead className="text-white text-xs font-normal text-center w-20">
@@ -2940,12 +2930,27 @@ const AdminModuleInner = (): JSX.Element => {
                           <TableHead className="text-white text-xs font-normal text-center w-20">
                             High Workload Manning
                           </TableHead>
+                          <TableHead className="text-white text-xs font-normal text-center w-20">
+                            Safety Officer
+                          </TableHead>
+                          <TableHead className="text-white text-xs font-normal text-center w-20">
+                            SSO
+                          </TableHead>
+                          <TableHead className="text-white text-xs font-normal text-center w-20">
+                            Medical Officer
+                          </TableHead>
+                          <TableHead className="text-white text-xs font-normal text-center w-20">
+                            Nav Officer
+                          </TableHead>
+                          <TableHead className="text-white text-xs font-normal text-center w-20">
+                            Envt Officer
+                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {selectedVessels.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                            <TableCell colSpan={11} className="text-center py-8 text-gray-500">
                               Please select one or more vessels to view rank data
                             </TableCell>
                           </TableRow>
@@ -2997,32 +3002,8 @@ const AdminModuleInner = (): JSX.Element => {
                                   </div>
                                 </TableCell>
 
-                                {/* Dynamic vessel columns */}
-                                {selectedVessels.map((vesselId) => {
-                                  const vesselData = vesselRankDataMap.get(vesselId) || [];
-                                  const vesselRank = vesselData.find(r => r.id === rank.id);
-                                  
-                                  return (
-                                    <TableCell key={vesselId} className="text-center">
-                                      <input
-                                        type="text"
-                                        value={(vesselRank?.actualManning || []).join(', ')}
-                                        onChange={(e) => {
-                                          const newManning = e.target.value.split(',').map(s => s.trim()).filter(s => s.length > 0);
-                                          updateVesselRankData(prev => 
-                                            prev.map(r => r.id === rank.id ? { ...r, actualManning: newManning } : r)
-                                          );
-                                        }}
-                                        className="w-full text-xs border border-gray-300 rounded px-2 py-1"
-                                        placeholder="Crew names"
-                                        data-testid={`vessel-manning-${vesselId}-${rank.id}`}
-                                      />
-                                    </TableCell>
-                                  );
-                                })}
-
                                 {/* Actual Manning column */}
-                                <TableCell className="text-center">
+                                <TableCell className="text-center border-r border-gray-200">
                                   <div className="text-xs">
                                     {(() => {
                                       // Get actual manning from the first selected vessel for display
@@ -3104,6 +3085,121 @@ const AdminModuleInner = (): JSX.Element => {
                                     }}
                                     className="h-4 w-4"
                                     data-testid={`vessel-high-workload-manning-${rank.id}`}
+                                  />
+                                </TableCell>
+
+                                {/* Safety Officer checkbox */}
+                                <TableCell className="text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={(() => {
+                                      const firstVesselId = selectedVessels[0];
+                                      if (firstVesselId) {
+                                        const vesselData = vesselRankDataMap.get(firstVesselId) || [];
+                                        const vesselRank = vesselData.find(r => r.id === rank.id);
+                                        return vesselRank?.safetyOfficer || false;
+                                      }
+                                      return false;
+                                    })()}
+                                    onChange={(e) => {
+                                      updateVesselRankData(prev => 
+                                        prev.map(r => r.id === rank.id ? { ...r, safetyOfficer: e.target.checked } : r)
+                                      );
+                                    }}
+                                    className="h-4 w-4"
+                                    data-testid={`vessel-safety-officer-${rank.id}`}
+                                  />
+                                </TableCell>
+
+                                {/* SO checkbox */}
+                                <TableCell className="text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={(() => {
+                                      const firstVesselId = selectedVessels[0];
+                                      if (firstVesselId) {
+                                        const vesselData = vesselRankDataMap.get(firstVesselId) || [];
+                                        const vesselRank = vesselData.find(r => r.id === rank.id);
+                                        return vesselRank?.sso || false;
+                                      }
+                                      return false;
+                                    })()}
+                                    onChange={(e) => {
+                                      updateVesselRankData(prev => 
+                                        prev.map(r => r.id === rank.id ? { ...r, sso: e.target.checked } : r)
+                                      );
+                                    }}
+                                    className="h-4 w-4"
+                                    data-testid={`vessel-sso-${rank.id}`}
+                                  />
+                                </TableCell>
+
+                                {/* Medical Officer checkbox */}
+                                <TableCell className="text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={(() => {
+                                      const firstVesselId = selectedVessels[0];
+                                      if (firstVesselId) {
+                                        const vesselData = vesselRankDataMap.get(firstVesselId) || [];
+                                        const vesselRank = vesselData.find(r => r.id === rank.id);
+                                        return vesselRank?.medicalOfficer || false;
+                                      }
+                                      return false;
+                                    })()}
+                                    onChange={(e) => {
+                                      updateVesselRankData(prev => 
+                                        prev.map(r => r.id === rank.id ? { ...r, medicalOfficer: e.target.checked } : r)
+                                      );
+                                    }}
+                                    className="h-4 w-4"
+                                    data-testid={`vessel-medical-officer-${rank.id}`}
+                                  />
+                                </TableCell>
+
+                                {/* Nav Officer checkbox */}
+                                <TableCell className="text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={(() => {
+                                      const firstVesselId = selectedVessels[0];
+                                      if (firstVesselId) {
+                                        const vesselData = vesselRankDataMap.get(firstVesselId) || [];
+                                        const vesselRank = vesselData.find(r => r.id === rank.id);
+                                        return vesselRank?.navigatingOfficer || false;
+                                      }
+                                      return false;
+                                    })()}
+                                    onChange={(e) => {
+                                      updateVesselRankData(prev => 
+                                        prev.map(r => r.id === rank.id ? { ...r, navigatingOfficer: e.target.checked } : r)
+                                      );
+                                    }}
+                                    className="h-4 w-4"
+                                    data-testid={`vessel-navigating-officer-${rank.id}`}
+                                  />
+                                </TableCell>
+
+                                {/* Envt Officer checkbox */}
+                                <TableCell className="text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={(() => {
+                                      const firstVesselId = selectedVessels[0];
+                                      if (firstVesselId) {
+                                        const vesselData = vesselRankDataMap.get(firstVesselId) || [];
+                                        const vesselRank = vesselData.find(r => r.id === rank.id);
+                                        return vesselRank?.emtOfficer || false;
+                                      }
+                                      return false;
+                                    })()}
+                                    onChange={(e) => {
+                                      updateVesselRankData(prev => 
+                                        prev.map(r => r.id === rank.id ? { ...r, emtOfficer: e.target.checked } : r)
+                                      );
+                                    }}
+                                    className="h-4 w-4"
+                                    data-testid={`vessel-emt-officer-${rank.id}`}
                                   />
                                 </TableCell>
                               </TableRow>
