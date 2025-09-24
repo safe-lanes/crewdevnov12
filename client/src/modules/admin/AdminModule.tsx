@@ -2973,21 +2973,27 @@ const AdminModuleInner = (): JSX.Element => {
                                   </div>
                                 </TableCell>
 
-                                {/* Actual Manning column */}
+                                {/* Actual Manning checkbox */}
                                 <TableCell className="text-center border-r border-gray-200">
-                                  <div className="text-xs">
-                                    {(() => {
-                                      // Get actual manning from the first selected vessel for display
+                                  <input
+                                    type="checkbox"
+                                    checked={(() => {
                                       const firstVesselId = selectedVessels[0];
                                       if (firstVesselId) {
                                         const vesselData = vesselRankDataMap.get(firstVesselId) || [];
                                         const vesselRank = vesselData.find(r => r.id === rank.id);
-                                        const actualManning = vesselRank?.actualManning || [];
-                                        return actualManning.length > 0 ? actualManning.join(', ') : '-';
+                                        return vesselRank?.actualManningFlag || false;
                                       }
-                                      return '-';
+                                      return false;
                                     })()}
-                                  </div>
+                                    onChange={(e) => {
+                                      updateVesselRankData(prev => 
+                                        prev.map(r => r.id === rank.id ? { ...r, actualManningFlag: e.target.checked } : r)
+                                      );
+                                    }}
+                                    className="h-4 w-4"
+                                    data-testid={`vessel-actual-manning-${rank.id}`}
+                                  />
                                 </TableCell>
 
                                 {/* Safe Manning checkbox */}
