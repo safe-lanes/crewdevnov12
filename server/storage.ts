@@ -437,7 +437,27 @@ export class MemStorage implements IStorage {
         : JSON.stringify(insertRankGroup.ranks)
     };
     this.rankGroups.set(id, rankGroup);
+    
+    // Sync the form's rankGroup field with all associated rank groups
+    await this.syncFormRankGroup(insertRankGroup.formId);
+    
     return rankGroup;
+  }
+
+  // Private helper to sync form's rankGroup field with associated rank groups
+  private async syncFormRankGroup(formId: number): Promise<void> {
+    // Get all rank groups for this form
+    const formRankGroups = Array.from(this.rankGroups.values()).filter(rg => rg.formId === formId);
+    
+    // Create display string from rank group names
+    const rankGroupNames = formRankGroups.map(rg => rg.name).join(", ");
+    
+    // Update the form's rankGroup field
+    const form = this.forms.get(formId);
+    if (form) {
+      form.rankGroup = rankGroupNames || "";
+      this.forms.set(formId, form);
+    }
   }
 
   async updateRankGroup(id: number, rankGroupData: Partial<InsertRankGroup>): Promise<RankGroup | undefined> {
@@ -1082,8 +1102,28 @@ export class PersistentFileStorage implements IStorage {
   async createRankGroup(insertRankGroup: InsertRankGroup): Promise<RankGroup> {
     const rankGroup: RankGroup = { ...insertRankGroup, id: this.currentRankGroupId++ };
     this.rankGroups.set(rankGroup.id, rankGroup);
+    
+    // Sync the form's rankGroup field with all associated rank groups
+    await this.syncFormRankGroup(insertRankGroup.formId);
+    
     this.saveToFile();
     return rankGroup;
+  }
+
+  // Private helper to sync form's rankGroup field with associated rank groups
+  private async syncFormRankGroup(formId: number): Promise<void> {
+    // Get all rank groups for this form
+    const formRankGroups = Array.from(this.rankGroups.values()).filter(rg => rg.formId === formId);
+    
+    // Create display string from rank group names
+    const rankGroupNames = formRankGroups.map(rg => rg.name).join(", ");
+    
+    // Update the form's rankGroup field
+    const form = this.forms.get(formId);
+    if (form) {
+      form.rankGroup = rankGroupNames || "";
+      this.forms.set(formId, form);
+    }
   }
 
   async updateRankGroup(id: number, rankGroupData: Partial<InsertRankGroup>): Promise<RankGroup | undefined> {
