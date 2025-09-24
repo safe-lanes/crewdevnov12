@@ -3000,13 +3000,13 @@ const AdminModuleInner = (): JSX.Element => {
                                 {/* Dynamic vessel columns */}
                                 {selectedVessels.map((vesselId) => {
                                   const vesselData = vesselRankDataMap.get(vesselId) || [];
-                                  const vesselRank = vesselData.find(r => r.id === rank.id) || rank;
+                                  const vesselRank = vesselData.find(r => r.id === rank.id);
                                   
                                   return (
                                     <TableCell key={vesselId} className="text-center">
                                       <input
                                         type="text"
-                                        value={vesselRank.actualManning.join(', ')}
+                                        value={(vesselRank?.actualManning || []).join(', ')}
                                         onChange={(e) => {
                                           const newManning = e.target.value.split(',').map(s => s.trim()).filter(s => s.length > 0);
                                           updateVesselRankData(prev => 
@@ -3024,7 +3024,17 @@ const AdminModuleInner = (): JSX.Element => {
                                 {/* Actual Manning column */}
                                 <TableCell className="text-center">
                                   <div className="text-xs">
-                                    {rank.actualManning.length > 0 ? rank.actualManning.join(', ') : '-'}
+                                    {(() => {
+                                      // Get actual manning from the first selected vessel for display
+                                      const firstVesselId = selectedVessels[0];
+                                      if (firstVesselId) {
+                                        const vesselData = vesselRankDataMap.get(firstVesselId) || [];
+                                        const vesselRank = vesselData.find(r => r.id === rank.id);
+                                        const actualManning = vesselRank?.actualManning || [];
+                                        return actualManning.length > 0 ? actualManning.join(', ') : '-';
+                                      }
+                                      return '-';
+                                    })()}
                                   </div>
                                 </TableCell>
 
@@ -3032,7 +3042,15 @@ const AdminModuleInner = (): JSX.Element => {
                                 <TableCell className="text-center">
                                   <input
                                     type="checkbox"
-                                    checked={rank.safeManning}
+                                    checked={(() => {
+                                      const firstVesselId = selectedVessels[0];
+                                      if (firstVesselId) {
+                                        const vesselData = vesselRankDataMap.get(firstVesselId) || [];
+                                        const vesselRank = vesselData.find(r => r.id === rank.id);
+                                        return vesselRank?.safeManning || false;
+                                      }
+                                      return false;
+                                    })()}
                                     onChange={(e) => {
                                       updateVesselRankData(prev => 
                                         prev.map(r => r.id === rank.id ? { ...r, safeManning: e.target.checked } : r)
@@ -3047,7 +3065,15 @@ const AdminModuleInner = (): JSX.Element => {
                                 <TableCell className="text-center">
                                   <input
                                     type="checkbox"
-                                    checked={rank.optimumManning}
+                                    checked={(() => {
+                                      const firstVesselId = selectedVessels[0];
+                                      if (firstVesselId) {
+                                        const vesselData = vesselRankDataMap.get(firstVesselId) || [];
+                                        const vesselRank = vesselData.find(r => r.id === rank.id);
+                                        return vesselRank?.optimumManning || false;
+                                      }
+                                      return false;
+                                    })()}
                                     onChange={(e) => {
                                       updateVesselRankData(prev => 
                                         prev.map(r => r.id === rank.id ? { ...r, optimumManning: e.target.checked } : r)
@@ -3062,7 +3088,15 @@ const AdminModuleInner = (): JSX.Element => {
                                 <TableCell className="text-center">
                                   <input
                                     type="checkbox"
-                                    checked={rank.highWorkloadManning}
+                                    checked={(() => {
+                                      const firstVesselId = selectedVessels[0];
+                                      if (firstVesselId) {
+                                        const vesselData = vesselRankDataMap.get(firstVesselId) || [];
+                                        const vesselRank = vesselData.find(r => r.id === rank.id);
+                                        return vesselRank?.highWorkloadManning || false;
+                                      }
+                                      return false;
+                                    })()}
                                     onChange={(e) => {
                                       updateVesselRankData(prev => 
                                         prev.map(r => r.id === rank.id ? { ...r, highWorkloadManning: e.target.checked } : r)
