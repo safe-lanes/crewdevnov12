@@ -701,75 +701,58 @@ const AdminModuleInner = (): JSX.Element => {
   
   const rq = useQueryClient();
 
-  // Initialize company rank data from rank master (ONE TIME ONLY)
+  // Add React Query hook for company ranks to prevent flickering
+  const { data: companyRanksFromServer = [] } = useQuery({
+    queryKey: ["/api/company-ranks"],
+    queryFn: async () => {
+      const response = await fetch("/api/company-ranks");
+      if (!response.ok) {
+        return [];
+      }
+      return response.json();
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+  });
+
+  // Initialize company rank data from rank master (ONE TIME ONLY - Fixed flickering issue)
   React.useEffect(() => {
     const applicableRanks = rankMasterData.filter(rank => rank.applicableToCompany);
     
-    // Only run once when we have ranks and no company data yet
+    // Only initialize if we have ranks and no local company data yet, and we're not editing
     if (applicableRanks.length > 0 && companyRankData.length === 0 && !isCompanyEditing) {
       console.log('🔍 [DEBUG] Initializing company rank data for the first time');
       
-      // Try to load saved data, otherwise create fresh data
-      fetch('/api/company-ranks')
-        .then(response => response.ok ? response.json() : [])
-        .then(savedData => {
-          if (savedData && savedData.length > 0) {
-            console.log('🔍 [DEBUG] Loaded saved company data:', savedData);
-            setCompanyRankData(savedData);
-          } else {
-            console.log('🔍 [DEBUG] Creating fresh company data');
-            const companyRanks: CompanyRankData[] = applicableRanks.map(rank => ({
-              id: rank.id,
-              rank: rank.label || rank.rank,
-              rankId: rank.rankId,
-              officer: rank.rank.toLowerCase().includes('officer') || rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('engineer'),
-              rating: !rank.rank.toLowerCase().includes('officer') && !rank.rank.toLowerCase().includes('master') && !rank.rank.toLowerCase().includes('engineer'),
-              seniorOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('chief'),
-              deckOfficer: rank.rank.toLowerCase().includes('officer') && !rank.rank.toLowerCase().includes('engineer'),
-              engOfficer: rank.rank.toLowerCase().includes('engineer'),
-              pettyOfficer: false,
-              deckRating: rank.rank.toLowerCase().includes('cadet') || rank.rank.toLowerCase().includes('deck'),
-              engineRating: false,
-              generalRating: false,
-              cateringRating: false,
-              safetyOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('chief'),
-              sso: rank.rank.toLowerCase().includes('master'),
-              medicalOfficer: false,
-              navigatingOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('officer'),
-              emtOfficer: false,
-              hasMultiple: false
-            }));
-            setCompanyRankData(companyRanks);
-          }
-        })
-        .catch(error => {
-          console.log('🔍 [DEBUG] Error loading company data, creating fresh:', error);
-          // Create fresh data on error
-          const companyRanks: CompanyRankData[] = applicableRanks.map(rank => ({
-            id: rank.id,
-            rank: rank.label || rank.rank,
-            rankId: rank.rankId,
-            officer: rank.rank.toLowerCase().includes('officer') || rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('engineer'),
-            rating: !rank.rank.toLowerCase().includes('officer') && !rank.rank.toLowerCase().includes('master') && !rank.rank.toLowerCase().includes('engineer'),
-            seniorOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('chief'),
-            deckOfficer: rank.rank.toLowerCase().includes('officer') && !rank.rank.toLowerCase().includes('engineer'),
-            engOfficer: rank.rank.toLowerCase().includes('engineer'),
-            pettyOfficer: false,
-            deckRating: rank.rank.toLowerCase().includes('cadet') || rank.rank.toLowerCase().includes('deck'),
-            engineRating: false,
-            generalRating: false,
-            cateringRating: false,
-            safetyOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('chief'),
-            sso: rank.rank.toLowerCase().includes('master'),
-            medicalOfficer: false,
-            navigatingOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('officer'),
-            emtOfficer: false,
-            hasMultiple: false
-          }));
-          setCompanyRankData(companyRanks);
-        });
+      if (companyRanksFromServer && companyRanksFromServer.length > 0) {
+        console.log('🔍 [DEBUG] Using server company data:', companyRanksFromServer);
+        setCompanyRankData(companyRanksFromServer);
+      } else {
+        console.log('🔍 [DEBUG] Creating fresh company data');
+        const companyRanks: CompanyRankData[] = applicableRanks.map(rank => ({
+          id: rank.id,
+          rank: rank.label || rank.rank,
+          rankId: rank.rankId,
+          officer: rank.rank.toLowerCase().includes('officer') || rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('engineer'),
+          rating: !rank.rank.toLowerCase().includes('officer') && !rank.rank.toLowerCase().includes('master') && !rank.rank.toLowerCase().includes('engineer'),
+          seniorOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('chief'),
+          deckOfficer: rank.rank.toLowerCase().includes('officer') && !rank.rank.toLowerCase().includes('engineer'),
+          engOfficer: rank.rank.toLowerCase().includes('engineer'),
+          pettyOfficer: false,
+          deckRating: rank.rank.toLowerCase().includes('cadet') || rank.rank.toLowerCase().includes('deck'),
+          engineRating: false,
+          generalRating: false,
+          cateringRating: false,
+          safetyOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('chief'),
+          sso: rank.rank.toLowerCase().includes('master'),
+          medicalOfficer: false,
+          navigatingOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('officer'),
+          emtOfficer: false,
+          hasMultiple: false
+        }));
+        setCompanyRankData(companyRanks);
+      }
     }
-  }, [rankMasterData]);
+  }, [rankMasterData.length, companyRanksFromServer.length, isCompanyEditing]);
 
   // Sync vessel rank data with company rank data changes for all vessels
   React.useEffect(() => {
