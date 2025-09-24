@@ -478,7 +478,18 @@ export class MemStorage implements IStorage {
   }
 
   async deleteRankGroup(id: number): Promise<boolean> {
-    return this.rankGroups.delete(id);
+    const rankGroup = this.rankGroups.get(id);
+    if (!rankGroup) return false;
+    
+    const formId = rankGroup.formId;
+    const result = this.rankGroups.delete(id);
+    
+    if (result) {
+      // Sync the form's rankGroup field after deletion
+      await this.syncFormRankGroup(formId);
+    }
+    
+    return result;
   }
 
   async getAvailableRanks(): Promise<AvailableRank[]> {
@@ -1095,8 +1106,8 @@ export class PersistentFileStorage implements IStorage {
   }
 
   // Rank Group methods (same as MemStorage)
-  async getRankGroups(): Promise<RankGroup[]> {
-    return Array.from(this.rankGroups.values());
+  async getRankGroups(formId: number): Promise<RankGroup[]> {
+    return Array.from(this.rankGroups.values()).filter(rg => rg.formId === formId);
   }
 
   async createRankGroup(insertRankGroup: InsertRankGroup): Promise<RankGroup> {
@@ -1137,8 +1148,18 @@ export class PersistentFileStorage implements IStorage {
   }
 
   async deleteRankGroup(id: number): Promise<boolean> {
+    const rankGroup = this.rankGroups.get(id);
+    if (!rankGroup) return false;
+    
+    const formId = rankGroup.formId;
     const result = this.rankGroups.delete(id);
-    if (result) this.saveToFile();
+    
+    if (result) {
+      // Sync the form's rankGroup field after deletion
+      await this.syncFormRankGroup(formId);
+      this.saveToFile();
+    }
+    
     return result;
   }
 

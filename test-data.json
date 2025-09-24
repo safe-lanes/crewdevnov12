@@ -6,7 +6,7 @@
       {
         "id": 1,
         "name": "Crew Appraisal Form",
-        "rankGroup": "Senior Officers",
+        "rankGroup": "Junior Officers, Junior Engine Officers",
         "versionNo": "01",
         "versionDate": "01-Jan-2025",
         "configuration": null
@@ -818,7 +818,7 @@
   ],
   "currentUserId": 1,
   "currentFormId": 2,
-  "currentRankGroupId": 3,
+  "currentRankGroupId": 5,
   "currentAvailableRankId": 12,
   "currentAppraisalResultId": 5
 }
