@@ -717,43 +717,71 @@ const AdminModuleInner = (): JSX.Element => {
       console.log('🔍 [DEBUG] Skipping reinit - company editing mode active');
       return;
     }
-    
-    // Guard: Don't overwrite if data is already populated with same ranks
-    const currentRankIds = companyRankData.map(r => r.id).sort();
-    const newRankIds = applicableRanks.map(r => r.id).sort();
-    const sameIds = currentRankIds.length === newRankIds.length && 
-                   currentRankIds.every((id, i) => id === newRankIds[i]);
-    
-    if (companyRankData.length > 0 && sameIds) {
-      console.log('🔍 [DEBUG] Skipping reinit - same rank IDs already populated');
-      return;
-    }
-    
-    const companyRanks: CompanyRankData[] = applicableRanks.map(rank => ({
-      id: rank.id,
-      rank: rank.label || rank.rank,
-      rankId: rank.rankId,
-      officer: rank.rank.toLowerCase().includes('officer') || rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('engineer'),
-      rating: !rank.rank.toLowerCase().includes('officer') && !rank.rank.toLowerCase().includes('master') && !rank.rank.toLowerCase().includes('engineer'),
-      seniorOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('chief'),
-      deckOfficer: rank.rank.toLowerCase().includes('officer') && !rank.rank.toLowerCase().includes('engineer'),
-      engOfficer: rank.rank.toLowerCase().includes('engineer'),
-      pettyOfficer: false,
-      deckRating: rank.rank.toLowerCase().includes('cadet') || rank.rank.toLowerCase().includes('deck'),
-      engineRating: false,
-      generalRating: false,
-      cateringRating: false,
-      safetyOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('chief'),
-      sso: rank.rank.toLowerCase().includes('master'),
-      medicalOfficer: false,
-      navigatingOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('officer'),
-      emtOfficer: false,
-      hasMultiple: false
-    }));
-    
-    
-    setCompanyRankData(companyRanks);
-    console.log('🔍 [DEBUG] Set new companyRankData:', companyRanks);
+
+    // Try to load saved company rank data first (including role rows)
+    const loadSavedData = async () => {
+      try {
+        console.log('🔍 [DEBUG] Attempting to load saved company ranks...');
+        const response = await fetch('/api/company-ranks');
+        if (response.ok) {
+          const savedData = await response.json();
+          if (savedData && savedData.length > 0) {
+            console.log('🔍 [DEBUG] Successfully loaded saved company rank data:', savedData);
+            setCompanyRankData(savedData);
+            return true; // Successfully loaded
+          }
+        }
+        console.log('🔍 [DEBUG] No saved data found, will create fresh data');
+      } catch (error) {
+        console.log('🔍 [DEBUG] Error loading saved data:', error);
+      }
+      return false; // No saved data found
+    };
+
+    // Load saved data or create fresh data  
+    loadSavedData().then((dataLoaded) => {
+      if (dataLoaded) {
+        console.log('🔍 [DEBUG] Using saved company rank data - skipping fresh creation');
+        return; // Don't create fresh data if we loaded saved data
+      }
+
+      // Guard: Don't overwrite if data is already populated with same ranks
+      const currentRankIds = companyRankData.map(r => r.id).sort();
+      const newRankIds = applicableRanks.map(r => r.id).sort();
+      const sameIds = currentRankIds.length === newRankIds.length && 
+                     currentRankIds.every((id, i) => id === newRankIds[i]);
+      
+      if (companyRankData.length > 0 && sameIds) {
+        console.log('🔍 [DEBUG] Skipping reinit - same rank IDs already populated');
+        return;
+      }
+      
+      // Create fresh company rank data
+      const companyRanks: CompanyRankData[] = applicableRanks.map(rank => ({
+        id: rank.id,
+        rank: rank.label || rank.rank,
+        rankId: rank.rankId,
+        officer: rank.rank.toLowerCase().includes('officer') || rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('engineer'),
+        rating: !rank.rank.toLowerCase().includes('officer') && !rank.rank.toLowerCase().includes('master') && !rank.rank.toLowerCase().includes('engineer'),
+        seniorOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('chief'),
+        deckOfficer: rank.rank.toLowerCase().includes('officer') && !rank.rank.toLowerCase().includes('engineer'),
+        engOfficer: rank.rank.toLowerCase().includes('engineer'),
+        pettyOfficer: false,
+        deckRating: rank.rank.toLowerCase().includes('cadet') || rank.rank.toLowerCase().includes('deck'),
+        engineRating: false,
+        generalRating: false,
+        cateringRating: false,
+        safetyOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('chief'),
+        sso: rank.rank.toLowerCase().includes('master'),
+        medicalOfficer: false,
+        navigatingOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('officer'),
+        emtOfficer: false,
+        hasMultiple: false
+      }));
+      
+      setCompanyRankData(companyRanks);
+      console.log('🔍 [DEBUG] Set new companyRankData:', companyRanks);
+    }); // Close the loadSavedData().then() block
   }, [rankMasterData, isCompanyEditing, companyRankData]);
 
   // Sync vessel rank data with company rank data changes for all vessels
