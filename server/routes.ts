@@ -327,22 +327,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Company Ranks endpoints (simple in-memory persistence)
-  let companyRanksData: any[] = [];
-
+  // Company Ranks endpoints - PERSISTENT STORAGE FOR ROLE ENTRIES!
   app.get("/api/company-ranks", async (req, res) => {
     try {
-      res.json(companyRanksData);
+      const companyRanks = await storage.getCompanyRanks();
+      res.json(companyRanks);
     } catch (error) {
+      console.error("❌ Failed to fetch company ranks:", error);
       res.status(500).json({ error: "Failed to fetch company ranks" });
     }
   });
 
   app.post("/api/company-ranks", async (req, res) => {
     try {
-      companyRanksData = req.body; // Store the entire array
-      res.json({ success: true, data: companyRanksData });
+      // Use saveAllCompanyRanks for bulk save (frontend sends entire array)
+      const companyRanks = await storage.saveAllCompanyRanks(req.body);
+      console.log(`💾 [API] Successfully saved ${companyRanks.length} company ranks to persistent storage`);
+      res.json({ success: true, data: companyRanks });
     } catch (error) {
+      console.error("❌ Failed to save company ranks:", error);
       res.status(500).json({ error: "Failed to save company ranks" });
     }
   });
