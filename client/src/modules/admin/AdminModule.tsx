@@ -1740,6 +1740,39 @@ const AdminModuleInner = (): JSX.Element => {
     },
   });
 
+  // Transform forms data to create separate rows for each rank group
+  const expandedFormsData = useMemo(() => {
+    if (!formsData) return [];
+    
+    const expanded: Array<Form & { expandedRankGroup: string; originalFormId: number }> = [];
+    
+    formsData.forEach((form) => {
+      if (form.rankGroup && form.rankGroup.trim()) {
+        // Split the concatenated rank groups and create separate rows
+        const rankGroups = form.rankGroup.split(',').map(rg => rg.trim()).filter(rg => rg.length > 0);
+        
+        rankGroups.forEach((rankGroup, index) => {
+          expanded.push({
+            ...form,
+            id: form.id * 1000 + index, // Create unique numeric ID for each expanded row
+            originalFormId: form.id, // Keep reference to original form ID
+            expandedRankGroup: rankGroup,
+            rankGroup: rankGroup // Override the concatenated rankGroup with individual group
+          });
+        });
+      } else {
+        // If no rank group, add as-is
+        expanded.push({
+          ...form,
+          originalFormId: form.id,
+          expandedRankGroup: form.rankGroup || ''
+        });
+      }
+    });
+    
+    return expanded;
+  }, [formsData]);
+
   const { data: availableRanks = [] } = useQuery<AvailableRank[]>({
     queryKey: ["/api/available-ranks"],
     queryFn: async () => {
@@ -3821,7 +3854,7 @@ const AdminModuleInner = (): JSX.Element => {
                 </TableRow>
               </TableHeader>
               <TableBody className="bg-white">
-                {formsData.map((form) => (
+                {expandedFormsData.map((form) => (
                   <TableRow key={form.id} className="border-b border-gray-200 bg-white hover:bg-gray-50">
                     <TableCell className="text-[#4f5863] text-[13px] font-semibold py-3 border-r border-gray-200 bg-[#ffffff]">
                       <div className="flex items-center justify-between">
@@ -3895,7 +3928,7 @@ const AdminModuleInner = (): JSX.Element => {
       {/* Pagination */}
       {!isLoading && !error && (
         <div className="mt-4 text-xs font-normal font-['Mulish',Helvetica] text-black">
-          {formsData.length > 0 ? `1 to ${formsData.length} of ${formsData.length}` : "0 to 0 of 0"}
+          {expandedFormsData.length > 0 ? `1 to ${expandedFormsData.length} of ${expandedFormsData.length}` : "0 to 0 of 0"}
         </div>
       )}
     </div>
