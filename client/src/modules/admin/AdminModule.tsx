@@ -1740,11 +1740,16 @@ const AdminModuleInner = (): JSX.Element => {
     },
   });
 
-  // Transform forms data to create separate rows for each rank group
+  // Transform forms data to create separate rows for each rank group with merge info
   const expandedFormsData = useMemo(() => {
     if (!formsData) return [];
     
-    const expanded: Array<Form & { expandedRankGroup: string; originalFormId: number }> = [];
+    const expanded: Array<Form & { 
+      expandedRankGroup: string; 
+      originalFormId: number; 
+      isFirstInGroup: boolean; 
+      groupSize: number 
+    }> = [];
     
     formsData.forEach((form) => {
       if (form.rankGroup && form.rankGroup.trim()) {
@@ -1757,7 +1762,9 @@ const AdminModuleInner = (): JSX.Element => {
             id: form.id * 1000 + index, // Create unique numeric ID for each expanded row
             originalFormId: form.id, // Keep reference to original form ID
             expandedRankGroup: rankGroup,
-            rankGroup: rankGroup // Override the concatenated rankGroup with individual group
+            rankGroup: rankGroup, // Override the concatenated rankGroup with individual group
+            isFirstInGroup: index === 0, // Mark first row in each group
+            groupSize: rankGroups.length // Track how many rows this form spans
           });
         });
       } else {
@@ -1765,7 +1772,9 @@ const AdminModuleInner = (): JSX.Element => {
         expanded.push({
           ...form,
           originalFormId: form.id,
-          expandedRankGroup: form.rankGroup || ''
+          expandedRankGroup: form.rankGroup || '',
+          isFirstInGroup: true,
+          groupSize: 1
         });
       }
     });
@@ -3856,19 +3865,24 @@ const AdminModuleInner = (): JSX.Element => {
               <TableBody className="bg-white">
                 {expandedFormsData.map((form) => (
                   <TableRow key={form.id} className="border-b border-gray-200 bg-white hover:bg-gray-50">
-                    <TableCell className="text-[#4f5863] text-[13px] font-semibold py-3 border-r border-gray-200 bg-[#ffffff]">
-                      <div className="flex items-center justify-between">
-                        <span>{form.name}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0 ml-2"
-                          onClick={() => handleAddRankGroup(form.name)}
-                        >
-                          <Plus className="h-4 w-4 text-gray-500" />
-                        </Button>
-                      </div>
-                    </TableCell>
+                    {form.isFirstInGroup && (
+                      <TableCell 
+                        rowSpan={form.groupSize}
+                        className="text-[#4f5863] text-[13px] font-semibold py-3 border-r border-gray-200 bg-[#ffffff]"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span>{form.name}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 ml-2"
+                            onClick={() => handleAddRankGroup(form.name)}
+                          >
+                            <Plus className="h-4 w-4 text-gray-500" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
                     <TableCell className="text-[#4f5863] text-[13px] font-normal pl-6">
                       <div className="flex items-center justify-between">
                         <span>{form.rankGroup}</span>
