@@ -13,7 +13,17 @@
       }
     ]
   ],
-  "rankGroups": [],
+  "rankGroups": [
+    [
+      1,
+      {
+        "formId": 1,
+        "name": "Junior Officers",
+        "ranks": "[\"3rd Officer\",\"2nd Officer\"]",
+        "id": 1
+      }
+    ]
+  ],
   "availableRanks": [
     [
       1,
@@ -799,7 +809,7 @@
   ],
   "currentUserId": 1,
   "currentFormId": 2,
-  "currentRankGroupId": 1,
+  "currentRankGroupId": 2,
   "currentAvailableRankId": 12,
   "currentAppraisalResultId": 5
 }
