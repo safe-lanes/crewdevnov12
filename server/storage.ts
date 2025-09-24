@@ -683,6 +683,7 @@ export class PersistentFileStorage implements IStorage {
   private forms: Map<number, Form>;
   private rankGroups: Map<number, RankGroup>;
   private availableRanks: Map<number, AvailableRank>;
+  private companyRanks: Map<string, CompanyRank>;
   private crewMembers: Map<string, CrewMember>;
   private appraisalResults: Map<number, AppraisalResult>;
   private recruitmentCandidates: Map<string, RecruitmentCandidate>;
@@ -710,6 +711,7 @@ export class PersistentFileStorage implements IStorage {
         this.forms = new Map(data.forms || []);
         this.rankGroups = new Map(data.rankGroups || []);
         this.availableRanks = new Map(data.availableRanks || []);
+        this.companyRanks = new Map(data.companyRanks || []);
         this.crewMembers = new Map(data.crewMembers || []);
         this.appraisalResults = new Map(data.appraisalResults || []);
         this.recruitmentCandidates = new Map(data.recruitmentCandidates || []);
@@ -742,6 +744,7 @@ export class PersistentFileStorage implements IStorage {
         forms: Array.from(this.forms.entries()),
         rankGroups: Array.from(this.rankGroups.entries()),
         availableRanks: Array.from(this.availableRanks.entries()),
+        companyRanks: Array.from(this.companyRanks.entries()),
         crewMembers: Array.from(this.crewMembers.entries()),
         appraisalResults: Array.from(this.appraisalResults.entries()),
         recruitmentCandidates: Array.from(this.recruitmentCandidates.entries()),
@@ -765,6 +768,7 @@ export class PersistentFileStorage implements IStorage {
     this.forms = new Map();
     this.rankGroups = new Map();
     this.availableRanks = new Map();
+    this.companyRanks = new Map();
     this.crewMembers = new Map();
     this.appraisalResults = new Map();
     this.recruitmentCandidates = new Map();
@@ -1126,9 +1130,70 @@ export class PersistentFileStorage implements IStorage {
     return result;
   }
 
-  async clearAllAvailableRanks(): Promise<void> {
+  async clearAllAvailableRanks(): Promise<boolean> {
     this.availableRanks.clear();
     this.saveToFile();
+    return true;
+  }
+
+  // Company Rank methods - CRITICAL FOR ROLE PERSISTENCE!
+  async getCompanyRanks(): Promise<CompanyRank[]> {
+    return Array.from(this.companyRanks.values());
+  }
+
+  async getCompanyRank(id: string): Promise<CompanyRank | undefined> {
+    return this.companyRanks.get(id);
+  }
+
+  async createCompanyRank(insertCompanyRank: InsertCompanyRank): Promise<CompanyRank> {
+    const companyRank: CompanyRank = { ...insertCompanyRank };
+    this.companyRanks.set(companyRank.id, companyRank);
+    this.saveToFile(); // SAVE TO FILE AFTER EVERY CREATE!
+    console.log(`💾 [COMPANY-RANK] Created and saved: ${companyRank.id} - ${companyRank.rank}${companyRank.role ? ` (${companyRank.role})` : ''}`);
+    return companyRank;
+  }
+
+  async updateCompanyRank(id: string, companyRankData: Partial<InsertCompanyRank>): Promise<CompanyRank | undefined> {
+    const existingCompanyRank = this.companyRanks.get(id);
+    if (!existingCompanyRank) return undefined;
+
+    const updatedCompanyRank: CompanyRank = { ...existingCompanyRank, ...companyRankData };
+    this.companyRanks.set(id, updatedCompanyRank);
+    this.saveToFile(); // SAVE TO FILE AFTER EVERY UPDATE!
+    console.log(`💾 [COMPANY-RANK] Updated and saved: ${updatedCompanyRank.id} - ${updatedCompanyRank.rank}${updatedCompanyRank.role ? ` (${updatedCompanyRank.role})` : ''}`);
+    return updatedCompanyRank;
+  }
+
+  async deleteCompanyRank(id: string): Promise<boolean> {
+    const result = this.companyRanks.delete(id);
+    if (result) {
+      this.saveToFile(); // SAVE TO FILE AFTER EVERY DELETE!
+      console.log(`💾 [COMPANY-RANK] Deleted and saved: ${id}`);
+    }
+    return result;
+  }
+
+  async clearAllCompanyRanks(): Promise<boolean> {
+    this.companyRanks.clear();
+    this.saveToFile(); // SAVE TO FILE AFTER CLEAR!
+    console.log(`💾 [COMPANY-RANK] Cleared all company ranks and saved`);
+    return true;
+  }
+
+  async saveAllCompanyRanks(ranks: InsertCompanyRank[]): Promise<CompanyRank[]> {
+    // Clear existing and replace with new data
+    this.companyRanks.clear();
+    const savedRanks: CompanyRank[] = [];
+    
+    for (const rank of ranks) {
+      const companyRank: CompanyRank = { ...rank };
+      this.companyRanks.set(companyRank.id, companyRank);
+      savedRanks.push(companyRank);
+    }
+    
+    this.saveToFile(); // SAVE TO FILE AFTER BULK SAVE!
+    console.log(`💾 [COMPANY-RANK] Bulk saved ${savedRanks.length} company ranks to persistent storage`);
+    return savedRanks;
   }
 
   // Crew Member methods (same as MemStorage)
