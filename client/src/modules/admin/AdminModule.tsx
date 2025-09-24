@@ -2451,6 +2451,12 @@ const AdminModuleInner = (): JSX.Element => {
                       <TableHead className="text-white text-xs font-normal">
                         Rank
                       </TableHead>
+                      {/* Conditionally show Rank (Role) column when role rows exist */}
+                      {companyRankData.some(rank => rank.isRoleRow) && (
+                        <TableHead className="text-white text-xs font-normal w-32">
+                          Rank (Role)
+                        </TableHead>
+                      )}
                       <TableHead className="text-white text-xs font-normal w-20">
                         Rank ID
                       </TableHead>
@@ -2523,6 +2529,13 @@ const AdminModuleInner = (): JSX.Element => {
                             rank.rank
                           )}
                         </TableCell>
+                        
+                        {/* Conditionally show Rank (Role) cell when role rows exist */}
+                        {companyRankData.some(r => r.isRoleRow) && (
+                          <TableCell className="text-[#4f5863] text-[13px] font-normal py-3">
+                            {rank.role || ''}
+                          </TableCell>
+                        )}
                         
                         <TableCell className="text-[#4f5863] text-[13px] font-normal py-3">
                           {rank.rankId}
@@ -2714,7 +2727,7 @@ const AdminModuleInner = (): JSX.Element => {
                     {/* Empty state */}
                     {companyRankData.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={18} className="text-center py-8">
+                        <TableCell colSpan={companyRankData.some(r => r.isRoleRow) ? 19 : 18} className="text-center py-8">
                           <div className="text-gray-500 text-sm">
                             No company ranks available. Mark ranks as "Applicable to Company" in Rank Master tab.
                           </div>

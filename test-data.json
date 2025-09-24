@@ -124,6 +124,17 @@
         "label": "OS",
         "applicableToCompany": false
       }
+    ],
+    [
+      11,
+      {
+        "name": "Fitter",
+        "category": "Senior Officers",
+        "rankId": null,
+        "label": "Fittr",
+        "applicableToCompany": true,
+        "id": 11
+      }
     ]
   ],
   "crewMembers": [
@@ -362,6 +373,6 @@
   "currentUserId": 1,
   "currentFormId": 2,
   "currentRankGroupId": 1,
-  "currentAvailableRankId": 11,
+  "currentAvailableRankId": 12,
   "currentAppraisalResultId": 5
 }
