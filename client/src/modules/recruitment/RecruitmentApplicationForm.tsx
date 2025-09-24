@@ -5344,14 +5344,6 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
-                  className="text-blue-600 border-blue-600 hover:bg-blue-50"
-                >
-                  Save
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
                   className="bg-green-600 hover:bg-green-700 text-white"
                   onClick={() => {
                     const currentDate = new Date().toLocaleDateString();
@@ -5542,14 +5534,6 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 )}
               </div>
               <div className="flex gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="text-blue-600 border-blue-600 hover:bg-blue-50"
-                >
-                  Save
-                </Button>
                 <Button
                   type="button"
                   size="sm"
