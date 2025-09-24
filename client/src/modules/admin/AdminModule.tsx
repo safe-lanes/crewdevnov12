@@ -2951,14 +2951,11 @@ const AdminModuleInner = (): JSX.Element => {
                           </TableRow>
                         ) : (
                           (() => {
-                            // Get vessel rank data for the first selected vessel as template
-                            const templateVesselData = vesselRankDataMap.get(selectedVessels[0]) || [];
-                            
-                            // Filter and display rows: show role rows, hide parent rows that have role rows
-                            const displayRows = templateVesselData.filter(rank => {
+                            // Use company rank data as canonical source, not individual vessel data
+                            const displayRows = companyRankData.filter(rank => {
                               if (rank.isRoleRow) return true; // Always show role rows
                               // Hide parent rows if they have role rows
-                              const hasRoleRows = templateVesselData.some(r => r.originalRankId === rank.id && r.isRoleRow);
+                              const hasRoleRows = companyRankData.some(r => r.originalRankId === rank.id && r.isRoleRow);
                               return !hasRoleRows;
                             });
 
