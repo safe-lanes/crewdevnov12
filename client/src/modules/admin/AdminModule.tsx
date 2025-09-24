@@ -2988,6 +2988,7 @@ const AdminModuleInner = (): JSX.Element => {
                                         prev.map(r => r.id === rank.id ? { ...r, actualManningFlag: e.target.checked } : r)
                                       );
                                     }}
+                                    disabled={!revisionMode}
                                     className="h-4 w-4"
                                     data-testid={`vessel-actual-manning-${rank.id}`}
                                   />
@@ -3011,6 +3012,7 @@ const AdminModuleInner = (): JSX.Element => {
                                         prev.map(r => r.id === rank.id ? { ...r, safeManning: e.target.checked } : r)
                                       );
                                     }}
+                                    disabled={!revisionMode}
                                     className="h-4 w-4"
                                     data-testid={`vessel-safe-manning-${rank.id}`}
                                   />
@@ -3034,6 +3036,7 @@ const AdminModuleInner = (): JSX.Element => {
                                         prev.map(r => r.id === rank.id ? { ...r, optimumManning: e.target.checked } : r)
                                       );
                                     }}
+                                    disabled={!revisionMode}
                                     className="h-4 w-4"
                                     data-testid={`vessel-optimum-manning-${rank.id}`}
                                   />
@@ -3057,6 +3060,7 @@ const AdminModuleInner = (): JSX.Element => {
                                         prev.map(r => r.id === rank.id ? { ...r, highWorkloadManning: e.target.checked } : r)
                                       );
                                     }}
+                                    disabled={!revisionMode}
                                     className="h-4 w-4"
                                     data-testid={`vessel-high-workload-manning-${rank.id}`}
                                   />
@@ -3080,6 +3084,7 @@ const AdminModuleInner = (): JSX.Element => {
                                         prev.map(r => r.id === rank.id ? { ...r, safetyOfficer: e.target.checked } : r)
                                       );
                                     }}
+                                    disabled={!revisionMode}
                                     className="h-4 w-4"
                                     data-testid={`vessel-safety-officer-${rank.id}`}
                                   />
@@ -3103,6 +3108,7 @@ const AdminModuleInner = (): JSX.Element => {
                                         prev.map(r => r.id === rank.id ? { ...r, sso: e.target.checked } : r)
                                       );
                                     }}
+                                    disabled={!revisionMode}
                                     className="h-4 w-4"
                                     data-testid={`vessel-sso-${rank.id}`}
                                   />
@@ -3126,6 +3132,7 @@ const AdminModuleInner = (): JSX.Element => {
                                         prev.map(r => r.id === rank.id ? { ...r, medicalOfficer: e.target.checked } : r)
                                       );
                                     }}
+                                    disabled={!revisionMode}
                                     className="h-4 w-4"
                                     data-testid={`vessel-medical-officer-${rank.id}`}
                                   />
@@ -3149,6 +3156,7 @@ const AdminModuleInner = (): JSX.Element => {
                                         prev.map(r => r.id === rank.id ? { ...r, navigatingOfficer: e.target.checked } : r)
                                       );
                                     }}
+                                    disabled={!revisionMode}
                                     className="h-4 w-4"
                                     data-testid={`vessel-navigating-officer-${rank.id}`}
                                   />
@@ -3172,6 +3180,7 @@ const AdminModuleInner = (): JSX.Element => {
                                         prev.map(r => r.id === rank.id ? { ...r, emtOfficer: e.target.checked } : r)
                                       );
                                     }}
+                                    disabled={!revisionMode}
                                     className="h-4 w-4"
                                     data-testid={`vessel-emt-officer-${rank.id}`}
                                   />
