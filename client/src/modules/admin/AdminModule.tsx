@@ -2907,10 +2907,180 @@ const AdminModuleInner = (): JSX.Element => {
                 )}
 
                 {/* Vessel Table */}
-                <div className={`${currentBreakpoint === 'mobile' ? 'h-[400px]' : currentBreakpoint === 'tablet' ? 'h-[450px]' : 'h-[500px]'} flex items-center justify-center bg-gray-50 rounded-lg`}>
-                  <div className="text-center text-gray-500">
-                    <p className="text-lg font-medium">Vessel Ranks</p>
-                    <p className="text-sm">Feature temporarily disabled</p>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                  <div className={`overflow-auto ${currentBreakpoint === 'mobile' ? 'h-[400px]' : currentBreakpoint === 'tablet' ? 'h-[450px]' : 'h-[500px]'}`}>
+                    <Table className="min-w-full">
+                      <TableHeader>
+                        <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                          <TableHead className="text-white text-xs font-normal w-4 sticky left-0 bg-[#52baf3] z-10">
+                            {/* Empty header for actions column */}
+                          </TableHead>
+                          <TableHead className="text-white text-xs font-normal min-w-32 sticky left-12 bg-[#52baf3] z-10">
+                            Rank
+                          </TableHead>
+                          {/* Dynamic vessel columns */}
+                          {selectedVessels.map((vesselId) => {
+                            const vesselLabel = vesselOptions.find((v: VesselOption) => v.value === vesselId)?.label || vesselId;
+                            return (
+                              <TableHead key={vesselId} className="text-white text-xs font-normal text-center min-w-24">
+                                {vesselLabel}
+                              </TableHead>
+                            );
+                          })}
+                          {/* Manning type columns */}
+                          <TableHead className="text-white text-xs font-normal text-center min-w-24">
+                            Actual Manning
+                          </TableHead>
+                          <TableHead className="text-white text-xs font-normal text-center w-20">
+                            Safe Manning
+                          </TableHead>
+                          <TableHead className="text-white text-xs font-normal text-center w-20">
+                            Optimum Manning
+                          </TableHead>
+                          <TableHead className="text-white text-xs font-normal text-center w-20">
+                            High Workload Manning
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedVessels.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                              Please select one or more vessels to view rank data
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          (() => {
+                            // Get vessel rank data for the first selected vessel as template
+                            const templateVesselData = vesselRankDataMap.get(selectedVessels[0]) || [];
+                            
+                            // Filter and display rows: show role rows, hide parent rows that have role rows
+                            const displayRows = templateVesselData.filter(rank => {
+                              if (rank.isRoleRow) return true; // Always show role rows
+                              // Hide parent rows if they have role rows
+                              const hasRoleRows = templateVesselData.some(r => r.originalRankId === rank.id && r.isRoleRow);
+                              return !hasRoleRows;
+                            });
+
+                            return displayRows.map((rank, index) => (
+                              <TableRow key={rank.id} className="hover:bg-gray-50">
+                                {/* Actions column */}
+                                <TableCell className="w-4 sticky left-0 bg-white z-10">
+                                  {!rank.isRoleRow && (
+                                    <div className="flex space-x-1">
+                                      <Button
+                                        onClick={() => handleVesselMultiple(rank.originalRankId || rank.id)}
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 w-12 text-xs px-1 py-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                        data-testid={`vessel-multiple-${rank.id}`}
+                                      >
+                                        Multiple
+                                      </Button>
+                                      <Button
+                                        onClick={() => handleDeleteVesselRank(rank.id)}
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 w-6 text-xs px-1 py-0 text-red-600 hover:text-red-800 hover:bg-red-50"
+                                        data-testid={`vessel-delete-${rank.id}`}
+                                      >
+                                        🗑️
+                                      </Button>
+                                    </div>
+                                  )}
+                                </TableCell>
+
+                                {/* Rank column */}
+                                <TableCell className="text-xs sticky left-12 bg-white z-10">
+                                  <div className="font-medium">
+                                    {rank.isRoleRow ? rank.role : rank.rank}
+                                  </div>
+                                  <div className="text-gray-500 text-xs">
+                                    {rank.rankId}
+                                  </div>
+                                </TableCell>
+
+                                {/* Dynamic vessel columns */}
+                                {selectedVessels.map((vesselId) => {
+                                  const vesselData = vesselRankDataMap.get(vesselId) || [];
+                                  const vesselRank = vesselData.find(r => r.id === rank.id) || rank;
+                                  
+                                  return (
+                                    <TableCell key={vesselId} className="text-center">
+                                      <input
+                                        type="text"
+                                        value={vesselRank.actualManning.join(', ')}
+                                        onChange={(e) => {
+                                          const newManning = e.target.value.split(',').map(s => s.trim()).filter(s => s.length > 0);
+                                          updateVesselRankData(prev => 
+                                            prev.map(r => r.id === rank.id ? { ...r, actualManning: newManning } : r)
+                                          );
+                                        }}
+                                        className="w-full text-xs border border-gray-300 rounded px-2 py-1"
+                                        placeholder="Crew names"
+                                        data-testid={`vessel-manning-${vesselId}-${rank.id}`}
+                                      />
+                                    </TableCell>
+                                  );
+                                })}
+
+                                {/* Actual Manning column */}
+                                <TableCell className="text-center">
+                                  <div className="text-xs">
+                                    {rank.actualManning.length > 0 ? rank.actualManning.join(', ') : '-'}
+                                  </div>
+                                </TableCell>
+
+                                {/* Safe Manning checkbox */}
+                                <TableCell className="text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={rank.safeManning}
+                                    onChange={(e) => {
+                                      updateVesselRankData(prev => 
+                                        prev.map(r => r.id === rank.id ? { ...r, safeManning: e.target.checked } : r)
+                                      );
+                                    }}
+                                    className="h-4 w-4"
+                                    data-testid={`vessel-safe-manning-${rank.id}`}
+                                  />
+                                </TableCell>
+
+                                {/* Optimum Manning checkbox */}
+                                <TableCell className="text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={rank.optimumManning}
+                                    onChange={(e) => {
+                                      updateVesselRankData(prev => 
+                                        prev.map(r => r.id === rank.id ? { ...r, optimumManning: e.target.checked } : r)
+                                      );
+                                    }}
+                                    className="h-4 w-4"
+                                    data-testid={`vessel-optimum-manning-${rank.id}`}
+                                  />
+                                </TableCell>
+
+                                {/* High Workload Manning checkbox */}
+                                <TableCell className="text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={rank.highWorkloadManning}
+                                    onChange={(e) => {
+                                      updateVesselRankData(prev => 
+                                        prev.map(r => r.id === rank.id ? { ...r, highWorkloadManning: e.target.checked } : r)
+                                      );
+                                    }}
+                                    className="h-4 w-4"
+                                    data-testid={`vessel-high-workload-manning-${rank.id}`}
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            ));
+                          })()
+                        )}
+                      </TableBody>
+                    </Table>
                   </div>
                 </div>
               </div>
