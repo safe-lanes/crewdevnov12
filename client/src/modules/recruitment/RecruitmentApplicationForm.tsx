@@ -6073,7 +6073,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   onClick={handleSaveAndContinue}
                   disabled={saveMutation.isPending}
                 >
-                  {saveMutation.isPending ? 'Saving...' : 'Submit for Approval'}
+                  {saveMutation.isPending ? 'Saving...' : 'Submit for Screening'}
                 </Button>
               </div>
             </CardContent>
