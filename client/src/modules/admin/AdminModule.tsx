@@ -17,6 +17,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -1894,100 +1895,6 @@ const AdminModuleInner = (): JSX.Element => {
     setEditingRankGroup(null);
   };
 
-  // Add Rank Group Dialog Component
-  const AddRankGroupDialog = () => {
-    const form = useForm({
-      resolver: zodResolver(rankGroupSchema),
-      defaultValues: {
-        name: "",
-        ranks: [],
-      },
-    });
-
-    const onSubmit = (data: { name: string; ranks: string[] }) => {
-      if (selectedFormForRankGroup) {
-        // Find the form ID based on the form name
-        const formId = 1; // For now, assume all rank groups belong to form ID 1
-        createRankGroupMutation.mutate({
-          formId,
-          name: data.name,
-          ranks: data.ranks,
-        });
-      }
-    };
-
-    return (
-      <Dialog open={isAddRankGroupOpen} onOpenChange={setIsAddRankGroupOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add Rank Group to {selectedFormForRankGroup}</DialogTitle>
-          </DialogHeader>
-          <FormComponent {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Rank Group Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter rank group name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="ranks"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Select Ranks</FormLabel>
-                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-                      {availableRanks.map((rank) => (
-                        <div key={rank.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`rank-${rank.id}`}
-                            checked={(field.value as string[])?.includes(rank.name) || false}
-                            onCheckedChange={(checked) => {
-                              const currentValue = field.value || [];
-                              if (checked) {
-                                field.onChange([...currentValue, rank.name]);
-                              } else {
-                                field.onChange(currentValue.filter((r: string) => r !== rank.name));
-                              }
-                            }}
-                          />
-                          <label htmlFor={`rank-${rank.id}`} className="text-sm">
-                            {rank.name}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="flex justify-end space-x-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsAddRankGroupOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={createRankGroupMutation.isPending}>
-                  {createRankGroupMutation.isPending ? "Adding..." : "Add Rank Group"}
-                </Button>
-              </div>
-            </form>
-          </FormComponent>
-        </DialogContent>
-      </Dialog>
-    );
-  };
 
   // Debug log the forms data to understand duplication issue
   if (import.meta.env.DEV) {
@@ -4020,7 +3927,13 @@ const AdminModuleInner = (): JSX.Element => {
       )}
 
       {/* Add Rank Group Dialog */}
-      <AddRankGroupDialog />
+      <AddRankGroupDialog 
+        isOpen={isAddRankGroupOpen}
+        onOpenChange={setIsAddRankGroupOpen}
+        selectedFormForRankGroup={selectedFormForRankGroup}
+        availableRanks={availableRanks}
+        createRankGroupMutation={createRankGroupMutation}
+      />
 
       {/* Create Form Dialog */}
       <Dialog open={showCreateFormDialog} onOpenChange={setShowCreateFormDialog}>
@@ -4151,6 +4064,116 @@ const AdminModuleInner = (): JSX.Element => {
         </DialogContent>
       </Dialog>
     </>
+  );
+};
+
+// Add Rank Group Dialog Component (moved outside to prevent re-creation on every render)
+const AddRankGroupDialog = ({ 
+  isOpen, 
+  onOpenChange, 
+  selectedFormForRankGroup, 
+  availableRanks, 
+  createRankGroupMutation 
+}: {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  selectedFormForRankGroup: string | null;
+  availableRanks: AvailableRank[];
+  createRankGroupMutation: any;
+}) => {
+  const form = useForm({
+    resolver: zodResolver(rankGroupSchema),
+    defaultValues: {
+      name: "",
+      ranks: [],
+    },
+  });
+
+  const onSubmit = (data: { name: string; ranks: string[] }) => {
+    if (selectedFormForRankGroup) {
+      // Find the form ID based on the form name
+      const formId = 1; // For now, assume all rank groups belong to form ID 1
+      createRankGroupMutation.mutate({
+        formId,
+        name: data.name,
+        ranks: data.ranks,
+      });
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add Rank Group to {selectedFormForRankGroup}</DialogTitle>
+          <DialogDescription>
+            Create a new rank group configuration for different appraisal requirements.
+          </DialogDescription>
+        </DialogHeader>
+        <FormComponent {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Rank Group Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter rank group name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="ranks"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Select Ranks</FormLabel>
+                  <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                    {availableRanks.map((rank) => (
+                      <div key={rank.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`rank-${rank.id}`}
+                          checked={(field.value as string[])?.includes(rank.name) || false}
+                          onCheckedChange={(checked) => {
+                            const currentValue = field.value || [];
+                            if (checked) {
+                              field.onChange([...currentValue, rank.name]);
+                            } else {
+                              field.onChange(currentValue.filter((r: string) => r !== rank.name));
+                            }
+                          }}
+                        />
+                        <label htmlFor={`rank-${rank.id}`} className="text-sm">
+                          {rank.name}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="flex justify-end space-x-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={createRankGroupMutation.isPending}>
+                {createRankGroupMutation.isPending ? "Adding..." : "Add Rank Group"}
+              </Button>
+            </div>
+          </form>
+        </FormComponent>
+      </DialogContent>
+    </Dialog>
   );
 };
 
