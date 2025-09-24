@@ -686,6 +686,7 @@ export class PersistentFileStorage implements IStorage {
   private crewMembers: Map<string, CrewMember>;
   private appraisalResults: Map<number, AppraisalResult>;
   private recruitmentCandidates: Map<string, RecruitmentCandidate>;
+  private masterDataEntries: Map<string, any>;
   private currentUserId: number;
   private currentFormId: number;
   private currentRankGroupId: number;
@@ -712,6 +713,7 @@ export class PersistentFileStorage implements IStorage {
         this.crewMembers = new Map(data.crewMembers || []);
         this.appraisalResults = new Map(data.appraisalResults || []);
         this.recruitmentCandidates = new Map(data.recruitmentCandidates || []);
+        this.masterDataEntries = new Map(data.masterDataEntries || []);
         
         // Load current counters
         this.currentUserId = data.currentUserId || 1;
@@ -743,6 +745,7 @@ export class PersistentFileStorage implements IStorage {
         crewMembers: Array.from(this.crewMembers.entries()),
         appraisalResults: Array.from(this.appraisalResults.entries()),
         recruitmentCandidates: Array.from(this.recruitmentCandidates.entries()),
+        masterDataEntries: Array.from(this.masterDataEntries.entries()),
         currentUserId: this.currentUserId,
         currentFormId: this.currentFormId,
         currentRankGroupId: this.currentRankGroupId,
@@ -765,6 +768,7 @@ export class PersistentFileStorage implements IStorage {
     this.crewMembers = new Map();
     this.appraisalResults = new Map();
     this.recruitmentCandidates = new Map();
+    this.masterDataEntries = new Map();
     this.currentUserId = 1;
     this.currentFormId = 2;
     this.currentRankGroupId = 1;
@@ -1261,7 +1265,21 @@ export class PersistentFileStorage implements IStorage {
 
   // Master Data Entries methods (not supported - same as MemStorage)  
   async getMasterDataEntries(masterId: string): Promise<any[]> {
-    throw new Error("PersistentFileStorage doesn't support master data entries. Use DatabaseStorage instead.");
+    try {
+      // Filter entries by masterId
+      const filteredEntries: any[] = [];
+      for (const [key, entry] of this.masterDataEntries) {
+        if (entry.masterId === masterId) {
+          filteredEntries.push(entry);
+        }
+      }
+      
+      console.log(`📄 [PERSISTENT] getMasterDataEntries(${masterId}): Found ${filteredEntries.length} entries`);
+      return filteredEntries;
+    } catch (error) {
+      console.error(`❌ [PERSISTENT] Error getting master data entries for ${masterId}:`, error);
+      return [];
+    }
   }
 
   async getMasterDataEntry(id: number): Promise<any> {

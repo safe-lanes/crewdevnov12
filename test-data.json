@@ -370,9 +370,87 @@
       }
     ]
   ],
+  "masterDataEntries": [
+    [
+      "014_001",
+      {
+        "id": "014_001",
+        "masterId": "014",
+        "vesselName": "MT Ocean Explorer", 
+        "vesselType": "Oil Tanker",
+        "imoNumber": "IMO 9876543",
+        "flag": "Marshall Islands",
+        "dwt": 150000,
+        "status": "Active",
+        "createdAt": "2025-01-01T00:00:00.000Z",
+        "updatedAt": "2025-01-01T00:00:00.000Z"
+      }
+    ],
+    [
+      "014_002", 
+      {
+        "id": "014_002",
+        "masterId": "014",
+        "vesselName": "MT Pacific Star",
+        "vesselType": "Chemical Tanker", 
+        "imoNumber": "IMO 9876544",
+        "flag": "Singapore",
+        "dwt": 75000,
+        "status": "Active",
+        "createdAt": "2025-01-01T00:00:00.000Z",
+        "updatedAt": "2025-01-01T00:00:00.000Z"
+      }
+    ],
+    [
+      "014_003",
+      {
+        "id": "014_003", 
+        "masterId": "014",
+        "vesselName": "MV Atlantic Trader",
+        "vesselType": "Container",
+        "imoNumber": "IMO 9876545", 
+        "flag": "Liberia",
+        "dwt": 120000,
+        "status": "Active",
+        "createdAt": "2025-01-01T00:00:00.000Z",
+        "updatedAt": "2025-01-01T00:00:00.000Z"
+      }
+    ],
+    [
+      "014_004",
+      {
+        "id": "014_004",
+        "masterId": "014", 
+        "vesselName": "MV Northern Wind",
+        "vesselType": "Bulk Carrier",
+        "imoNumber": "IMO 9876546",
+        "flag": "Panama", 
+        "dwt": 180000,
+        "status": "Active",
+        "createdAt": "2025-01-01T00:00:00.000Z",
+        "updatedAt": "2025-01-01T00:00:00.000Z"
+      }
+    ],
+    [
+      "014_005",
+      {
+        "id": "014_005",
+        "masterId": "014",
+        "vesselName": "MT Southern Cross", 
+        "vesselType": "LPG Tanker",
+        "imoNumber": "IMO 9876547",
+        "flag": "Marshall Islands",
+        "dwt": 85000,
+        "status": "Active",
+        "createdAt": "2025-01-01T00:00:00.000Z", 
+        "updatedAt": "2025-01-01T00:00:00.000Z"
+      }
+    ]
+  ],
   "currentUserId": 1,
   "currentFormId": 2,
   "currentRankGroupId": 1,
   "currentAvailableRankId": 12,
-  "currentAppraisalResultId": 5
+  "currentAppraisalResultId": 5,
+  "currentMasterDataEntryId": "014_006"
 }
