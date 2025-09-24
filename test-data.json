@@ -22,6 +22,15 @@
         "ranks": "[\"3rd Officer\",\"2nd Officer\"]",
         "id": 1
       }
+    ],
+    [
+      2,
+      {
+        "formId": 1,
+        "name": "Junior Engine Officers",
+        "ranks": "[\"3rd Engineer\",\"2nd Engineer\"]",
+        "id": 2
+      }
     ]
   ],
   "availableRanks": [
@@ -809,7 +818,7 @@
   ],
   "currentUserId": 1,
   "currentFormId": 2,
-  "currentRankGroupId": 2,
+  "currentRankGroupId": 3,
   "currentAvailableRankId": 12,
   "currentAppraisalResultId": 5
 }
