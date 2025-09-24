@@ -2245,21 +2245,6 @@ const AdminModuleInner = (): JSX.Element => {
                 </Button>
               </div>
             )}
-            {selectedRankAdminTab === "company" && (
-              <div className="flex gap-2">
-                <Button
-                  variant={isCompanyEditing ? "default" : "outline"}
-                  onClick={isCompanyEditing ? handleSaveCompany : handleEditCompany}
-                  className={`h-8 text-xs ${
-                    isCompanyEditing 
-                      ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
-                      : "border-[#e1e8ed] text-[#16569e]"
-                  }`}
-                >
-                  {isCompanyEditing ? "Save" : "Edit Table"}
-                </Button>
-              </div>
-            )}
             {selectedRankAdminTab === "vessel" && (
               <div className="flex gap-2">
                 {!revisionMode ? (
