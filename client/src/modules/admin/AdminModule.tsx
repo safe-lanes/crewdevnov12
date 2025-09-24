@@ -2276,19 +2276,19 @@ const AdminModuleInner = (): JSX.Element => {
                       <TableHead className="text-white text-xs font-normal w-10">
                         {/* Drag handle header */}
                       </TableHead>
-                      <TableHead className="text-white text-xs font-normal w-24">
+                      <TableHead className="text-white text-xs font-normal w-20">
                         Rank ID
                       </TableHead>
-                      <TableHead className="text-white text-xs font-normal">
+                      <TableHead className="text-white text-xs font-normal w-36">
                         Rank
                       </TableHead>
-                      <TableHead className="text-white text-xs font-normal w-32">
+                      <TableHead className="text-white text-xs font-normal w-40">
                         Applicable to Company
                       </TableHead>
-                      <TableHead className="text-white text-xs font-normal w-32">
+                      <TableHead className="text-white text-xs font-normal w-44">
                         Rank Label
                       </TableHead>
-                      <TableHead className="text-white text-xs font-normal w-16">
+                      <TableHead className="text-white text-xs font-normal w-20">
                         Actions
                       </TableHead>
                     </TableRow>
