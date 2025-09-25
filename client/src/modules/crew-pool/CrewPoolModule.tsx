@@ -166,86 +166,102 @@ export const CrewPoolModule = (): JSX.Element => {
             headerName: 'General Particulars of Seafarer',
             children: [
                 {
-                    headerName: 'Emp No',
+                    headerName: 'Emp\nNo',
                     field: 'empNo',
-                    width: 80,
+                    width: 70,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agTextColumnFilter',
+                    floatingFilter: true,
                     sortable: true,
                     resizable: true,
-                    pinned: 'left'
+                    pinned: 'left',
+                    headerClass: 'ag-header-cell-text-wrap'
                 },
                 {
-                    headerName: 'First Name',
+                    headerName: 'First\nName',
                     field: 'firstName',
-                    width: 90,
+                    width: 70,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agTextColumnFilter',
+                    floatingFilter: true,
                     sortable: true,
-                    resizable: true
+                    resizable: true,
+                    headerClass: 'ag-header-cell-text-wrap'
                 },
                 {
-                    headerName: 'Middle Name',
+                    headerName: 'Middle\nName',
                     field: 'middleName',
-                    width: 90,
+                    width: 70,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agTextColumnFilter',
+                    floatingFilter: true,
                     sortable: true,
-                    resizable: true
+                    resizable: true,
+                    headerClass: 'ag-header-cell-text-wrap'
                 },
                 {
-                    headerName: 'Family Name',
+                    headerName: 'Family\nName',
                     field: 'familyName',
-                    width: 90,
+                    width: 70,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agTextColumnFilter',
+                    floatingFilter: true,
                     sortable: true,
-                    resizable: true
+                    resizable: true,
+                    headerClass: 'ag-header-cell-text-wrap'
                 },
                 {
                     headerName: 'DOB',
                     field: 'dob',
-                    width: 90,
+                    width: 80,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agDateColumnFilter',
+                    floatingFilter: true,
                     sortable: true,
                     resizable: true
                 },
                 {
                     headerName: 'Age',
                     field: 'age',
-                    width: 60,
+                    width: 50,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agNumberColumnFilter',
+                    floatingFilter: true,
                     sortable: true,
                     resizable: true
                 },
                 {
-                    headerName: 'Present Rank',
+                    headerName: 'Present\nRank',
                     field: 'presentRank',
-                    width: 110,
+                    width: 80,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agSetColumnFilter',
+                    floatingFilter: true,
                     sortable: true,
-                    resizable: true
+                    resizable: true,
+                    headerClass: 'ag-header-cell-text-wrap'
                 },
                 {
                     headerName: 'Nationality',
                     field: 'nationality',
-                    width: 100,
+                    width: 90,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agSetColumnFilter',
+                    floatingFilter: true,
                     sortable: true,
-                    resizable: true
+                    resizable: true,
+                    headerClass: 'ag-header-cell-text-wrap'
                 },
                 {
                     headerName: 'Status',
                     field: 'status',
-                    width: 90,
+                    width: 70,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agSetColumnFilter',
+                    floatingFilter: true,
                     sortable: true,
-                    resizable: true
+                    resizable: true,
+                    headerClass: 'ag-header-cell-text-wrap'
                 }
             ]
         },
@@ -253,40 +269,48 @@ export const CrewPoolModule = (): JSX.Element => {
             headerName: 'Current Assignment',
             children: [
                 {
-                    headerName: 'Present Vessel',
+                    headerName: 'Present\nVessel',
                     field: 'presentVessel',
-                    width: 110,
+                    width: 80,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agTextColumnFilter',
+                    floatingFilter: true,
                     sortable: true,
-                    resizable: true
+                    resizable: true,
+                    headerClass: 'ag-header-cell-text-wrap'
                 },
                 {
-                    headerName: 'Joining Date',
+                    headerName: 'Joining\nDate',
                     field: 'joiningDate',
-                    width: 100,
+                    width: 80,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agDateColumnFilter',
+                    floatingFilter: true,
                     sortable: true,
-                    resizable: true
+                    resizable: true,
+                    headerClass: 'ag-header-cell-text-wrap'
                 },
                 {
-                    headerName: 'Cont. Period',
+                    headerName: 'Cont.\nPeriod',
                     field: 'contractPeriod',
-                    width: 90,
+                    width: 70,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agTextColumnFilter',
+                    floatingFilter: true,
                     sortable: true,
-                    resizable: true
+                    resizable: true,
+                    headerClass: 'ag-header-cell-text-wrap'
                 },
                 {
-                    headerName: 'Relief Due',
+                    headerName: 'Relief\nDue',
                     field: 'reliefDue',
-                    width: 100,
+                    width: 80,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agDateColumnFilter',
+                    floatingFilter: true,
                     sortable: true,
-                    resizable: true
+                    resizable: true,
+                    headerClass: 'ag-header-cell-text-wrap'
                 }
             ]
         },
@@ -294,38 +318,44 @@ export const CrewPoolModule = (): JSX.Element => {
             headerName: 'Previous Assignment',
             children: [
                 {
-                    headerName: 'Last Vessel',
+                    headerName: 'Last\nVessel',
                     field: 'lastVessel',
-                    width: 100,
+                    width: 80,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agTextColumnFilter',
+                    floatingFilter: true,
                     sortable: true,
-                    resizable: true
+                    resizable: true,
+                    headerClass: 'ag-header-cell-text-wrap'
                 },
                 {
-                    headerName: 'S/O Date',
+                    headerName: 'S/O\nDate',
                     field: 'signOffDate',
-                    width: 90,
+                    width: 70,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agDateColumnFilter',
+                    floatingFilter: true,
                     sortable: true,
-                    resizable: true
+                    resizable: true,
+                    headerClass: 'ag-header-cell-text-wrap'
                 },
                 {
                     headerName: 'Reason',
                     field: 'reason',
-                    width: 120,
+                    width: 100,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agTextColumnFilter',
+                    floatingFilter: true,
                     sortable: true,
                     resizable: true
                 },
                 {
                     headerName: 'Avail',
                     field: 'availability',
-                    width: 90,
+                    width: 70,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agTextColumnFilter',
+                    floatingFilter: true,
                     sortable: true,
                     resizable: true
                 }

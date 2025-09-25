@@ -48,15 +48,37 @@
   font-size: 12px !important;
   font-weight: normal !important;
   border-right: none !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 2px 4px !important;
 }
 
 .ag-theme-alpine .ag-header-group-cell-text {
   color: white !important;
 }
 
+/* Floating filter row styling */
+.ag-theme-alpine .ag-floating-filter {
+  background-color: #f8f9fa !important;
+  border-top: 1px solid #dee2e6 !important;
+  height: 35px !important;
+}
+
+.ag-theme-alpine .ag-floating-filter-input {
+  font-size: 11px !important;
+  height: 28px !important;
+}
+
+/* Reduce header row height for wrapped text */
+.ag-theme-alpine .ag-header-cell-text-wrap {
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 2px 4px !important;
+}
+
 /* Header text wrapping for classification parameters */
 .ag-theme-alpine .ag-header-cell-text-wrap .ag-header-cell-text {
-  white-space: normal !important;
+  white-space: pre-line !important;
   word-wrap: break-word !important;
   text-align: center !important;
   line-height: 1.2 !important;
@@ -70,6 +92,13 @@
   display: flex !important;
   flex-direction: column !important;
   justify-content: center !important;
+}
+
+/* AG Grid theme variables for consistent heights */
+.ag-theme-alpine {
+  --ag-header-group-cell-height: 30px;
+  --ag-header-height: 40px;
+  --ag-floating-filters-height: 35px;
 }
 
 /* Limited header text wrapping - max 2 rows */
