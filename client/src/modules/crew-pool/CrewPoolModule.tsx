@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { FilterIcon, PlusIcon, EditIcon } from 'lucide-react';
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
+import { useViewport, getViewportConfig } from '@/hooks/useViewport';
 import CrewPoolSideBar from './CrewPoolSideBar';
 import MainLayout from '../../components/main/MainLayout';
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
@@ -20,6 +21,8 @@ export const CrewPoolModule = (): JSX.Element => {
     const [selectedCrewPoolPage, setSelectedCrewPoolPage] = useState("crew-database");
     const [showFilters, setShowFilters] = useState(true);
     const [gridApi, setGridApi] = useState<GridApi | null>(null);
+    const viewport = useViewport();
+    const viewportConfig = getViewportConfig(viewport);
     
     // Define allowed pages for the crew pool module
     const allowedPages = ["crew-database"];
@@ -169,7 +172,7 @@ export const CrewPoolModule = (): JSX.Element => {
             width: 70,
             cellStyle: { fontSize: '12px', color: '#4f5863' },
             filter: 'agTextColumnFilter',
-            floatingFilter: true,
+            floatingFilter: viewportConfig.showFloatingFilters,
             sortable: true,
             resizable: true,
             pinned: 'left',
@@ -186,7 +189,7 @@ export const CrewPoolModule = (): JSX.Element => {
                     width: 70,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agTextColumnFilter',
-                    floatingFilter: true,
+                    floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true,
                     headerClass: 'ag-header-cell-text-wrap'
@@ -197,7 +200,7 @@ export const CrewPoolModule = (): JSX.Element => {
                     width: 70,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agTextColumnFilter',
-                    floatingFilter: true,
+                    floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true,
                     headerClass: 'ag-header-cell-text-wrap'
@@ -208,7 +211,7 @@ export const CrewPoolModule = (): JSX.Element => {
                     width: 70,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agTextColumnFilter',
-                    floatingFilter: true,
+                    floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true,
                     headerClass: 'ag-header-cell-text-wrap'
@@ -219,7 +222,7 @@ export const CrewPoolModule = (): JSX.Element => {
                     width: 80,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agDateColumnFilter',
-                    floatingFilter: true,
+                    floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true
                 },
@@ -229,7 +232,7 @@ export const CrewPoolModule = (): JSX.Element => {
                     width: 50,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agNumberColumnFilter',
-                    floatingFilter: true,
+                    floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true
                 },
@@ -239,7 +242,7 @@ export const CrewPoolModule = (): JSX.Element => {
                     width: 80,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agSetColumnFilter',
-                    floatingFilter: true,
+                    floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true,
                     headerClass: 'ag-header-cell-text-wrap'
@@ -250,7 +253,7 @@ export const CrewPoolModule = (): JSX.Element => {
                     width: 90,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agSetColumnFilter',
-                    floatingFilter: true,
+                    floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true,
                     headerClass: 'ag-header-cell-text-wrap'
@@ -261,7 +264,7 @@ export const CrewPoolModule = (): JSX.Element => {
                     width: 70,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agSetColumnFilter',
-                    floatingFilter: true,
+                    floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true,
                     headerClass: 'ag-header-cell-text-wrap'
@@ -277,7 +280,7 @@ export const CrewPoolModule = (): JSX.Element => {
                     width: 80,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agTextColumnFilter',
-                    floatingFilter: true,
+                    floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true,
                     headerClass: 'ag-header-cell-text-wrap'
@@ -288,7 +291,7 @@ export const CrewPoolModule = (): JSX.Element => {
                     width: 80,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agDateColumnFilter',
-                    floatingFilter: true,
+                    floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true,
                     headerClass: 'ag-header-cell-text-wrap'
@@ -299,7 +302,7 @@ export const CrewPoolModule = (): JSX.Element => {
                     width: 70,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agTextColumnFilter',
-                    floatingFilter: true,
+                    floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true,
                     headerClass: 'ag-header-cell-text-wrap'
@@ -310,7 +313,7 @@ export const CrewPoolModule = (): JSX.Element => {
                     width: 80,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agDateColumnFilter',
-                    floatingFilter: true,
+                    floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true,
                     headerClass: 'ag-header-cell-text-wrap'
@@ -326,7 +329,7 @@ export const CrewPoolModule = (): JSX.Element => {
                     width: 80,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agTextColumnFilter',
-                    floatingFilter: true,
+                    floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true,
                     headerClass: 'ag-header-cell-text-wrap'
@@ -337,7 +340,7 @@ export const CrewPoolModule = (): JSX.Element => {
                     width: 70,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agDateColumnFilter',
-                    floatingFilter: true,
+                    floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true,
                     headerClass: 'ag-header-cell-text-wrap'
@@ -348,7 +351,7 @@ export const CrewPoolModule = (): JSX.Element => {
                     width: 100,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agTextColumnFilter',
-                    floatingFilter: true,
+                    floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true
                 },
@@ -358,7 +361,7 @@ export const CrewPoolModule = (): JSX.Element => {
                     width: 70,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agTextColumnFilter',
-                    floatingFilter: true,
+                    floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true
                 }
@@ -375,30 +378,13 @@ export const CrewPoolModule = (): JSX.Element => {
             pinned: 'right',
             lockPosition: true
         }
-    ], [ActionsCellRenderer]);
+    ], [ActionsCellRenderer, viewportConfig]);
 
-    // Grid ready handler
+    // Grid ready handler - responsive logic is handled by AgGridTable component
     const onGridReady = useCallback((params: GridReadyEvent) => {
         setGridApi(params.api);
-        params.api.sizeColumnsToFit();
+        // Note: responsive behavior is handled by AgGridTable component
     }, []);
-
-    // Handle window resize with proper cleanup
-    useEffect(() => {
-        const handleResize = () => {
-            if (gridApi && !gridApi.isDestroyed()) {
-                setTimeout(() => {
-                    gridApi.sizeColumnsToFit();
-                }, 100);
-            }
-        };
-        
-        window.addEventListener('resize', handleResize);
-        
-        return () => {
-            window.removeEventListener('resize', handleResize);
-        };
-    }, [gridApi]);
 
     const getTitle = () => {
         switch (selectedCrewPoolPage) {

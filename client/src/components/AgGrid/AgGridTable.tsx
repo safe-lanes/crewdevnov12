@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useEffect, useRef } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { 
   ColDef, 
@@ -33,6 +33,7 @@ import {
 } from 'ag-grid-enterprise';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
+import { useViewport, getViewportConfig } from '@/hooks/useViewport';
 
 // Set AG Grid Enterprise License - check both possible environment variable names
 const licenseKey = import.meta.env.VITE_AG_GRID_LICENSE_KEY || import.meta.env.AG_GRID_LICENSE_KEY;
@@ -123,6 +124,55 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
   enableCharts = false,
   suppressRowClickSelection = false,
 }) => {
+  const viewport = useViewport();
+  const viewportConfig = getViewportConfig(viewport);
+  const gridApiRef = useRef<GridApi | null>(null);
+
+  // Responsive grid handler
+  const handleResponsiveGrid = useCallback((gridApi: GridApi) => {
+    if (!gridApi || gridApi.isDestroyed()) return;
+    
+    const config = getViewportConfig(viewport);
+    
+    if (config.useFitColumns) {
+      // Desktop/Laptop: fit columns to container
+      try {
+        gridApi.sizeColumnsToFit();
+      } catch (error) {
+        console.warn('Failed to size columns to fit:', error);
+      }
+    } else {
+      // Tablet/Phone: set minimum column widths and enable horizontal scroll
+      const allColumns = gridApi.getAllDisplayedColumns();
+      if (allColumns) {
+        const columnWidths = allColumns.map((col: any) => ({
+          key: col.getColId(),
+          newWidth: Math.max(config.minColumnWidth, col.getMinWidth() || 70)
+        }));
+        
+        if (columnWidths.length) {
+          gridApi.setColumnWidths(columnWidths);
+        }
+      }
+    }
+  }, [viewport]);
+
+  // Handle grid ready event with responsive setup
+  const handleGridReady = useCallback((event: GridReadyEvent) => {
+    gridApiRef.current = event.api;
+    handleResponsiveGrid(event.api);
+    
+    if (onGridReady) {
+      onGridReady(event);
+    }
+  }, [onGridReady, handleResponsiveGrid]);
+
+  // Handle viewport changes
+  useEffect(() => {
+    if (gridApiRef.current && !gridApiRef.current.isDestroyed()) {
+      handleResponsiveGrid(gridApiRef.current);
+    }
+  }, [viewport, handleResponsiveGrid]);
 
   // Default column definitions with enterprise features
   const defaultColDef = useMemo(() => ({
@@ -130,8 +180,11 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
     filter: true,
     resizable: true,
     menuTabs: ['filterMenuTab' as const, 'generalMenuTab' as const, 'columnsMenuTab' as const],
-    floatingFilter: false
-  }), []);
+    floatingFilter: false, // Will be set per column based on viewport
+    minWidth: viewportConfig.minColumnWidth,
+    wrapHeaderText: true,
+    autoHeaderHeight: true
+  }), [viewportConfig]);
 
   // Side bar configuration
   const sideBar = useMemo(() => {
@@ -190,29 +243,26 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
 
   // Row selection configuration
   const rowSelectionConfig = useMemo(() => {
-    if (rowSelection === false) return false;
+    if (rowSelection === false) return undefined;
 
-    return {
-      mode: rowSelection === 'single' ? 'singleRow' : 'multiRow',
-      enableClickSelection: true
-    };
+    return rowSelection === 'single' ? 'single' as const : 'multiple' as const;
   }, [rowSelection]);
 
-  // Default grid options with enterprise features
+  // Default grid options with responsive features
   const defaultGridOptions: Partial<GridOptions> = useMemo(() => ({
     theme: 'legacy', // Use legacy theme to avoid theming API conflicts
     defaultColDef,
-    headerHeight: 50,
+    headerHeight: viewportConfig.headerHeight,
     groupHeaderHeight: 30, // Compact group header height
-    rowHeight: 50,
+    rowHeight: viewportConfig.rowHeight,
     suppressHorizontalScroll: false,
     animateRows: true,
     rowSelection: rowSelectionConfig,
     getRowStyle: () => ({ backgroundColor: 'white' }),
     cellSelection: true,
     enableAdvancedFilter,
-    sideBar,
-    statusBar,
+    sideBar: viewportConfig.showSideBar ? sideBar : false,
+    statusBar: viewportConfig.showStatusBar ? statusBar : undefined,
     allowContextMenuWithControlKey: true,
     copyHeadersToClipboard: true,
     copyGroupHeadersToClipboard: true,
@@ -223,7 +273,7 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
     pivotPanelShow: enablePivoting ? 'always' : 'never',
     functionsReadOnly: false,
     suppressAggFuncInHeader: false,
-    alwaysShowHorizontalScroll: false,
+    alwaysShowHorizontalScroll: viewportConfig.alwaysShowHorizontalScroll,
     alwaysShowVerticalScroll: false,
     suppressScrollOnNewData: true,
     debug: false
@@ -234,7 +284,8 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
     sideBar,
     statusBar,
     enableRowGrouping,
-    enablePivoting
+    enablePivoting,
+    viewportConfig
   ]);
 
   // Calculate dynamic height based on row count and screen size
@@ -304,7 +355,7 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
       <AgGridReact
         rowData={rowData}
         columnDefs={columnDefs}
-        onGridReady={onGridReady}
+        onGridReady={handleGridReady}
         context={context}
         {...finalGridOptions}
       />
