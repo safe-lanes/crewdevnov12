@@ -41,6 +41,19 @@
   color: white !important;
 }
 
+/* Column group headers (first header row) styling */
+.ag-theme-alpine .ag-header-group-cell {
+  background-color: #52baf3 !important;
+  color: white !important;
+  font-size: 12px !important;
+  font-weight: normal !important;
+  border-right: none !important;
+}
+
+.ag-theme-alpine .ag-header-group-cell-text {
+  color: white !important;
+}
+
 /* Header text wrapping for classification parameters */
 .ag-theme-alpine .ag-header-cell-text-wrap .ag-header-cell-text {
   white-space: normal !important;
