@@ -162,21 +162,23 @@ export const CrewPoolModule = (): JSX.Element => {
 
     // Column definitions with groups
     const columnDefs: ColDef[] = useMemo(() => [
+        // Standalone Emp No column (pinned)
         {
-            headerName: '',
+            headerName: 'Emp\nNo',
+            field: 'empNo',
+            width: 70,
+            cellStyle: { fontSize: '12px', color: '#4f5863' },
+            filter: 'agTextColumnFilter',
+            floatingFilter: true,
+            sortable: true,
+            resizable: true,
+            pinned: 'left',
+            headerClass: 'ag-header-cell-text-wrap'
+        },
+        // General Particulars group (for remaining columns)
+        {
+            headerName: 'General Particulars of Seafarer',
             children: [
-                {
-                    headerName: 'Emp\nNo',
-                    field: 'empNo',
-                    width: 70,
-                    cellStyle: { fontSize: '12px', color: '#4f5863' },
-                    filter: 'agTextColumnFilter',
-                    floatingFilter: true,
-                    sortable: true,
-                    resizable: true,
-                    pinned: 'left',
-                    headerClass: 'ag-header-cell-text-wrap'
-                },
                 {
                     headerName: 'First\nName',
                     field: 'firstName',
