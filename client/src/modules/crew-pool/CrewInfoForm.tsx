@@ -2327,88 +2327,31 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     };
   }, [isOpen, activeSection]);
 
-  // Render content based on active section
-  const renderContent = () => {
-    switch (activeSection) {
+  // Scroll to section functionality
+  const scrollToSection = (sectionId: string) => {
+    let targetRef;
+    switch (sectionId) {
       case 'A1':
-        return (
-          <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionA1Ref} data-section="A1">
-            <CardContent className="p-3 sm:p-4 lg:p-6">
-              <div className="pb-4 mb-6">
-                <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A1 Seafarers' Particulars</h2>
-                <div style={{ color: '#16569e' }} className="text-sm">Enter details as applicable</div>
-                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
-              </div>
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 2xl:grid-cols-2 gap-6">
-                  <div className="2xl:col-span-1">
-                    {renderA11GeneralParticulars()}
-                  </div>
-                  <div className="2xl:col-span-1">
-                    {renderA12AddressContact()}
-                  </div>
-                </div>
-                <div>
-                  {renderA13FamilyNOK()}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        );
+        targetRef = sectionA1Ref;
+        break;
       case 'A2':
-        return (
-          <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionA2Ref} data-section="A2">
-            <CardContent className="p-3 sm:p-4 lg:p-6">
-              <div className="pb-4 mb-6">
-                <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A2 - Travel & ID Documents</h2>
-                <div style={{ color: '#16569e' }} className="text-sm">Add from the list all applicable identification & travel documents</div>
-                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
-              </div>
-              <div className="space-y-6">
-                {renderA21TravelDocs()}
-                {renderA22Visas()}
-              </div>
-            </CardContent>
-          </Card>
-        );
+        targetRef = sectionA2Ref;
+        break;
       case 'A3':
-        return (
-          <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionA3Ref} data-section="A3">
-            <CardContent className="p-3 sm:p-4 lg:p-6">
-              <div className="pb-4 mb-6">
-                <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A3 - Training & Certificates</h2>
-                <div style={{ color: '#16569e' }} className="text-sm">Add Education, Competency & Training Information</div>
-                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
-              </div>
-              <div className="space-y-6">
-                {renderA31Education()}
-                {renderA32LicenseDCE()}
-                {renderA33TrainingCourse()}
-              </div>
-            </CardContent>
-          </Card>
-        );
+        targetRef = sectionA3Ref;
+        break;
       case 'A4':
-        return (
-          <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionA4Ref} data-section="A4">
-            <CardContent className="p-3 sm:p-4 lg:p-6">
-              <div className="pb-4 mb-6">
-                <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A4 - Sea Service</h2>
-                <div style={{ color: '#16569e' }} className="text-sm">Add Sea service details, latest on top</div>
-                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
-              </div>
-              <div className="space-y-6">
-                {renderA41SeaService()}
-              </div>
-            </CardContent>
-          </Card>
-        );
+        targetRef = sectionA4Ref;
+        break;
       default:
-        return (
-          <div className="p-6 text-center text-gray-600">
-            Content for {activeSection} will be implemented in future iterations.
-          </div>
-        );
+        return;
+    }
+    
+    if (targetRef.current) {
+      targetRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
     }
   };
 
@@ -2463,7 +2406,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                   return (
                     <div key={section.id} className="relative">
                       <button
-                        onClick={() => setActiveSection(section.id)}
+                        onClick={() => scrollToSection(section.id)}
                         className={`w-full flex flex-col items-center p-2 rounded-lg text-center transition-colors hover:bg-gray-100 ${
                           isActive ? "bg-blue-50" : ""
                         }`}
@@ -2488,9 +2431,76 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             </div>
           </div>
           
-          {/* Main Content Area */}
-          <div className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 bg-[#f9fafb]">
-            {renderContent()}
+          {/* Main Content Area - Continuous Scroll */}
+          <div className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 bg-[#f9fafb] space-y-6">
+            {/* A1 - Seafarers' Particulars */}
+            <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionA1Ref} data-section="A1">
+              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <div className="pb-4 mb-6">
+                  <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A1 Seafarers' Particulars</h2>
+                  <div style={{ color: '#16569e' }} className="text-sm">Enter details as applicable</div>
+                  <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+                </div>
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 2xl:grid-cols-2 gap-6">
+                    <div className="2xl:col-span-1">
+                      {renderA11GeneralParticulars()}
+                    </div>
+                    <div className="2xl:col-span-1">
+                      {renderA12AddressContact()}
+                    </div>
+                  </div>
+                  <div>
+                    {renderA13FamilyNOK()}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* A2 - Travel & ID Documents */}
+            <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionA2Ref} data-section="A2">
+              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <div className="pb-4 mb-6">
+                  <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A2 - Travel & ID Documents</h2>
+                  <div style={{ color: '#16569e' }} className="text-sm">Add from the list all applicable identification & travel documents</div>
+                  <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+                </div>
+                <div className="space-y-6">
+                  {renderA21TravelDocs()}
+                  {renderA22Visas()}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* A3 - Training & Certificates */}
+            <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionA3Ref} data-section="A3">
+              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <div className="pb-4 mb-6">
+                  <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A3 - Training & Certificates</h2>
+                  <div style={{ color: '#16569e' }} className="text-sm">Add Education, Competency & Training Information</div>
+                  <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+                </div>
+                <div className="space-y-6">
+                  {renderA31Education()}
+                  {renderA32LicenseDCE()}
+                  {renderA33TrainingCourse()}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* A4 - Sea Service */}
+            <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionA4Ref} data-section="A4">
+              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <div className="pb-4 mb-6">
+                  <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A4 - Sea Service</h2>
+                  <div style={{ color: '#16569e' }} className="text-sm">Add Sea service details, latest on top</div>
+                  <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+                </div>
+                <div className="space-y-6">
+                  {renderA41SeaService()}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
