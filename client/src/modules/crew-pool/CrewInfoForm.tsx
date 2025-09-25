@@ -2405,10 +2405,10 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
         </div>
 
         <div className="flex h-full overflow-hidden">
-          {/* Left Sidebar - Stepper */}
-          <div className="w-20 bg-gray-50 border-r overflow-y-auto">
-            <div className="p-4">
-              <nav className="space-y-2">
+          {/* Left Sidebar - Enhanced Stepper */}
+          <aside className="sticky top-0 self-start basis-20 md:basis-56 lg:basis-64 shrink-0 bg-gray-50 border-r overflow-y-auto">
+            <div className="p-3">
+              <nav className="space-y-1">
                 {sections.map((section, index) => {
                   const isActive = activeSection === section.id;
                   const isCompleted = false; // You can add completion logic here
@@ -2416,30 +2416,42 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                   return (
                     <div key={section.id} className="relative">
                       <button
+                        type="button"
                         onClick={() => scrollToSection(section.id)}
-                        className={`w-full flex flex-col items-center p-2 rounded-lg text-center transition-colors hover:bg-gray-100 ${
-                          isActive ? "bg-blue-50" : ""
+                        className={`group flex items-center w-full px-3 py-2 rounded-md transition-all border-l-4 ${
+                          isActive 
+                            ? "bg-blue-50 border-blue-600 text-blue-700" 
+                            : "border-transparent hover:bg-gray-100 text-gray-700"
                         }`}
-                        title={section.title}
-                        data-testid={`stepper-${section.id}`}
+                        aria-current={isActive ? "step" : undefined}
+                        data-testid={`button-step-${section.id}`}
                       >
-                        <div 
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm ${
-                            isActive ? "bg-blue-600" : isCompleted ? "bg-green-500" : "bg-gray-400"
+                        <span 
+                          className={`flex items-center justify-center w-8 h-8 rounded-full border text-sm font-semibold ${
+                            isActive 
+                              ? "bg-blue-600 text-white border-transparent" 
+                              : "bg-white border-gray-300 text-gray-800"
                           }`}
                         >
                           {section.number}
-                        </div>
+                        </span>
+                        <span 
+                          className="hidden md:block ml-3 truncate text-left"
+                          data-testid={`text-step-title-${section.id}`}
+                          title={section.title}
+                        >
+                          {section.title}
+                        </span>
                       </button>
                       {index < sections.length - 1 && (
-                        <div className="absolute left-[1.75rem] top-12 w-0.5 h-4 bg-gray-300"></div>
+                        <div className="absolute left-7 md:left-7 top-12 w-0.5 h-2 bg-gray-300"></div>
                       )}
                     </div>
                   );
                 })}
               </nav>
             </div>
-          </div>
+          </aside>
           
           {/* Main Content Area - Continuous Scroll */}
           <div className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 bg-[#f9fafb] space-y-6">
