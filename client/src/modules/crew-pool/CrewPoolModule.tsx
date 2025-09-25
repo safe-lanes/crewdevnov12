@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
-import { FilterIcon, PlusIcon } from 'lucide-react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { FilterIcon, PlusIcon, EditIcon } from 'lucide-react';
+import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
 import CrewPoolSideBar from './CrewPoolSideBar';
 import MainLayout from '../../components/main/MainLayout';
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
+import AgGridTable from '@/components/AgGrid/AgGridTable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -16,6 +19,7 @@ import {
 export const CrewPoolModule = (): JSX.Element => {
     const [selectedCrewPoolPage, setSelectedCrewPoolPage] = useState("crew-database");
     const [showFilters, setShowFilters] = useState(true);
+    const [gridApi, setGridApi] = useState<GridApi | null>(null);
     
     // Define allowed pages for the crew pool module
     const allowedPages = ["crew-database"];
@@ -29,6 +33,339 @@ export const CrewPoolModule = (): JSX.Element => {
         status: "",
         reliefDue: ""
     });
+
+    // Dummy data for crew members
+    const crewData = useMemo(() => [
+        {
+            id: "A001",
+            empNo: "A001",
+            firstName: "Aadersh",
+            middleName: "Alok",
+            familyName: "Sinha",
+            dob: "14 Mar 1992",
+            age: "29.0",
+            presentRank: "Chief Officer",
+            nationality: "Indian",
+            status: "On Board",
+            presentVessel: "Jasper",
+            joiningDate: "12 Feb 2021",
+            contractPeriod: "4 M",
+            reliefDue: "12 Jun 2021",
+            lastVessel: "Amethyst",
+            signOffDate: "12 Feb 2021",
+            reason: "Contract Completion",
+            availability: "12 Feb 2021"
+        },
+        {
+            id: "B002",
+            empNo: "B002",
+            firstName: "Marcus",
+            middleName: "James",
+            familyName: "Thompson",
+            dob: "22 Aug 1985",
+            age: "37.5",
+            presentRank: "Master",
+            nationality: "British",
+            status: "On Leave",
+            presentVessel: "Ocean Pioneer",
+            joiningDate: "15 Jan 2021",
+            contractPeriod: "6 M",
+            reliefDue: "15 Jul 2021",
+            lastVessel: "Sea Eagle",
+            signOffDate: "10 Jan 2021",
+            reason: "Relief",
+            availability: "15 Aug 2021"
+        },
+        {
+            id: "C003",
+            empNo: "C003",
+            firstName: "Carlos",
+            middleName: "Roberto",
+            familyName: "Mendez",
+            dob: "05 Dec 1988",
+            age: "33.2",
+            presentRank: "Chief Engineer",
+            nationality: "Philippines",
+            status: "Available",
+            presentVessel: "Atlantic Star",
+            joiningDate: "20 Mar 2021",
+            contractPeriod: "5 M",
+            reliefDue: "20 Aug 2021",
+            lastVessel: "Pacific Dawn",
+            signOffDate: "15 Mar 2021",
+            reason: "Contract Completion",
+            availability: "Available"
+        },
+        {
+            id: "D004",
+            empNo: "D004",
+            firstName: "Dmitri",
+            middleName: "Sergei",
+            familyName: "Volkov",
+            dob: "18 Jun 1990",
+            age: "31.8",
+            presentRank: "Second Officer",
+            nationality: "Ukrainian",
+            status: "On Board",
+            presentVessel: "Global Trader",
+            joiningDate: "10 Apr 2021",
+            contractPeriod: "4 M",
+            reliefDue: "10 Aug 2021",
+            lastVessel: "Nordic Wind",
+            signOffDate: "05 Apr 2021",
+            reason: "Relief",
+            availability: "10 Aug 2021"
+        },
+        {
+            id: "E005",
+            empNo: "E005",
+            firstName: "Ahmed",
+            middleName: "Hassan",
+            familyName: "Al-Rashid",
+            dob: "30 Nov 1987",
+            age: "34.1",
+            presentRank: "Electrician",
+            nationality: "Egyptian",
+            status: "Medical",
+            presentVessel: "Desert Rose",
+            joiningDate: "25 Feb 2021",
+            contractPeriod: "6 M",
+            reliefDue: "25 Aug 2021",
+            lastVessel: "Sand Dune",
+            signOffDate: "20 Feb 2021",
+            reason: "Contract Completion",
+            availability: "TBD"
+        }
+    ], []);
+
+    // Actions cell renderer for edit button
+    const ActionsCellRenderer = useCallback((params: ICellRendererParams) => {
+        const handleEditClick = () => {
+            console.log('Edit clicked for:', params.data.id);
+            // Crew database form will be implemented in next step
+        };
+
+        return (
+            <div className="flex items-center justify-center gap-1 h-full">
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 hover:bg-gray-100"
+                    onClick={handleEditClick}
+                    data-testid={`button-edit-${params.data.id}`}
+                >
+                    <EditIcon className="h-4 w-4 text-gray-600" />
+                </Button>
+            </div>
+        );
+    }, []);
+
+    // Column definitions with groups
+    const columnDefs: ColDef[] = useMemo(() => [
+        {
+            headerName: 'General Particulars of Seafarer',
+            children: [
+                {
+                    headerName: 'Emp No',
+                    field: 'empNo',
+                    width: 80,
+                    cellStyle: { fontSize: '12px', color: '#4f5863' },
+                    filter: 'agTextColumnFilter',
+                    sortable: true,
+                    resizable: true,
+                    pinned: 'left'
+                },
+                {
+                    headerName: 'First Name',
+                    field: 'firstName',
+                    width: 90,
+                    cellStyle: { fontSize: '12px', color: '#4f5863' },
+                    filter: 'agTextColumnFilter',
+                    sortable: true,
+                    resizable: true
+                },
+                {
+                    headerName: 'Middle Name',
+                    field: 'middleName',
+                    width: 90,
+                    cellStyle: { fontSize: '12px', color: '#4f5863' },
+                    filter: 'agTextColumnFilter',
+                    sortable: true,
+                    resizable: true
+                },
+                {
+                    headerName: 'Family Name',
+                    field: 'familyName',
+                    width: 90,
+                    cellStyle: { fontSize: '12px', color: '#4f5863' },
+                    filter: 'agTextColumnFilter',
+                    sortable: true,
+                    resizable: true
+                },
+                {
+                    headerName: 'DOB',
+                    field: 'dob',
+                    width: 90,
+                    cellStyle: { fontSize: '12px', color: '#4f5863' },
+                    filter: 'agDateColumnFilter',
+                    sortable: true,
+                    resizable: true
+                },
+                {
+                    headerName: 'Age',
+                    field: 'age',
+                    width: 60,
+                    cellStyle: { fontSize: '12px', color: '#4f5863' },
+                    filter: 'agNumberColumnFilter',
+                    sortable: true,
+                    resizable: true
+                },
+                {
+                    headerName: 'Present Rank',
+                    field: 'presentRank',
+                    width: 110,
+                    cellStyle: { fontSize: '12px', color: '#4f5863' },
+                    filter: 'agSetColumnFilter',
+                    sortable: true,
+                    resizable: true
+                },
+                {
+                    headerName: 'Nationality',
+                    field: 'nationality',
+                    width: 100,
+                    cellStyle: { fontSize: '12px', color: '#4f5863' },
+                    filter: 'agSetColumnFilter',
+                    sortable: true,
+                    resizable: true
+                },
+                {
+                    headerName: 'Status',
+                    field: 'status',
+                    width: 90,
+                    cellStyle: { fontSize: '12px', color: '#4f5863' },
+                    filter: 'agSetColumnFilter',
+                    sortable: true,
+                    resizable: true
+                }
+            ]
+        },
+        {
+            headerName: 'Current Assignment',
+            children: [
+                {
+                    headerName: 'Present Vessel',
+                    field: 'presentVessel',
+                    width: 110,
+                    cellStyle: { fontSize: '12px', color: '#4f5863' },
+                    filter: 'agTextColumnFilter',
+                    sortable: true,
+                    resizable: true
+                },
+                {
+                    headerName: 'Joining Date',
+                    field: 'joiningDate',
+                    width: 100,
+                    cellStyle: { fontSize: '12px', color: '#4f5863' },
+                    filter: 'agDateColumnFilter',
+                    sortable: true,
+                    resizable: true
+                },
+                {
+                    headerName: 'Cont. Period',
+                    field: 'contractPeriod',
+                    width: 90,
+                    cellStyle: { fontSize: '12px', color: '#4f5863' },
+                    filter: 'agTextColumnFilter',
+                    sortable: true,
+                    resizable: true
+                },
+                {
+                    headerName: 'Relief Due',
+                    field: 'reliefDue',
+                    width: 100,
+                    cellStyle: { fontSize: '12px', color: '#4f5863' },
+                    filter: 'agDateColumnFilter',
+                    sortable: true,
+                    resizable: true
+                }
+            ]
+        },
+        {
+            headerName: 'Previous Assignment',
+            children: [
+                {
+                    headerName: 'Last Vessel',
+                    field: 'lastVessel',
+                    width: 100,
+                    cellStyle: { fontSize: '12px', color: '#4f5863' },
+                    filter: 'agTextColumnFilter',
+                    sortable: true,
+                    resizable: true
+                },
+                {
+                    headerName: 'S/O Date',
+                    field: 'signOffDate',
+                    width: 90,
+                    cellStyle: { fontSize: '12px', color: '#4f5863' },
+                    filter: 'agDateColumnFilter',
+                    sortable: true,
+                    resizable: true
+                },
+                {
+                    headerName: 'Reason',
+                    field: 'reason',
+                    width: 120,
+                    cellStyle: { fontSize: '12px', color: '#4f5863' },
+                    filter: 'agTextColumnFilter',
+                    sortable: true,
+                    resizable: true
+                },
+                {
+                    headerName: 'Avail',
+                    field: 'availability',
+                    width: 90,
+                    cellStyle: { fontSize: '12px', color: '#4f5863' },
+                    filter: 'agTextColumnFilter',
+                    sortable: true,
+                    resizable: true
+                }
+            ]
+        },
+        {
+            headerName: 'Actions',
+            field: 'actions',
+            width: 80,
+            cellRenderer: ActionsCellRenderer,
+            sortable: false,
+            filter: false,
+            cellClass: 'flex items-center justify-center',
+            pinned: 'right',
+            lockPosition: true
+        }
+    ], [ActionsCellRenderer]);
+
+    // Grid ready handler
+    const onGridReady = useCallback((params: GridReadyEvent) => {
+        setGridApi(params.api);
+        params.api.sizeColumnsToFit();
+    }, []);
+
+    // Handle window resize with proper cleanup
+    useEffect(() => {
+        const handleResize = () => {
+            if (gridApi && !gridApi.isDestroyed()) {
+                setTimeout(() => {
+                    gridApi.sizeColumnsToFit();
+                }, 100);
+            }
+        };
+        
+        window.addEventListener('resize', handleResize);
+        
+        return () => {
+            window.removeEventListener('resize', handleResize);
+        };
+    }, [gridApi]);
 
     const getTitle = () => {
         switch (selectedCrewPoolPage) {
@@ -144,13 +481,27 @@ export const CrewPoolModule = (): JSX.Element => {
                     </div>
                 )}
 
-                {/* Table placeholder - will be implemented in next step */}
-                <div className="p-6 text-center text-gray-600" data-testid="crew-database-content">
-                    <div className="mt-20">
-                        <h2 className="text-2xl mb-4">Crew Database Table</h2>
-                        <p>Table will be implemented in the next step.</p>
-                    </div>
-                </div>
+                {/* AG Grid Table */}
+                <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
+                    <CardContent className="p-4 pl-0 bg-[#f7fafc]">
+                        <AgGridTable
+                            rowData={crewData}
+                            columnDefs={columnDefs}
+                            onGridReady={onGridReady}
+                            autoHeight={true}
+                            maxHeight="500px"
+                            minHeight="200px"
+                            width="100%"
+                            enableExport={true}
+                            enableSideBar={true}
+                            enableStatusBar={false}
+                            enableRowGrouping={true}
+                            enablePivoting={true}
+                            enableAdvancedFilter={false}
+                            rowSelection={false}
+                        />
+                    </CardContent>
+                </Card>
             </>
         );
     };
