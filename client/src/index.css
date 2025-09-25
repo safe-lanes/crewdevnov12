@@ -76,6 +76,30 @@
   line-height: 1 !important;
 }
 
+/* Direct label targeting for better centering */
+.ag-theme-alpine .ag-header-group-cell-label {
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+}
+
+/* Specific centering for the center-group-header class */
+.ag-theme-alpine .center-group-header .ag-header-group-cell-label {
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+}
+
 /* Override AG Grid's default positioning on all text elements */
 .ag-theme-alpine .ag-header-group-cell .ag-header-group-text,
 .ag-theme-alpine .ag-header-group-cell .ag-header-cell-text {

@@ -178,6 +178,7 @@ export const CrewPoolModule = (): JSX.Element => {
         // General Particulars group (for remaining columns)
         {
             headerName: 'General Particulars of Seafarer',
+            headerClass: 'center-group-header',
             children: [
                 {
                     headerName: 'First\nName',
