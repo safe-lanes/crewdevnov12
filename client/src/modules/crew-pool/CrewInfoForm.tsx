@@ -2404,7 +2404,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
           </div>
         </div>
 
-        <div className="flex h-full overflow-hidden bg-[#f9fafb]"></div>
+        <div className="flex h-full overflow-hidden bg-[#f9fafb]">
           {/* Left Sidebar - Enhanced Stepper */}
           <aside className="sticky top-0 self-start basis-20 md:basis-56 lg:basis-64 shrink-0 bg-gray-50 border-r overflow-y-auto">
             <div className="p-3">
@@ -2454,7 +2454,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
           </aside>
           
           {/* Main Content Area - Continuous Scroll */}
-          <div className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 bg-[#f9fafb] space-y-6"></div>
+          <div className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 bg-[#f9fafb] space-y-6">
             {/* A1 - Seafarers' Particulars */}
             <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionA1Ref} data-section="A1">
               <CardContent className="p-3 sm:p-4 lg:p-6">
