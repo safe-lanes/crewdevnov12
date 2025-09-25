@@ -1879,7 +1879,7 @@ const AdminModuleInner = (): JSX.Element => {
 
   const handleEditClick = (form: Form) => {
     setEditingForm(form);
-    setEditingRankGroup("Senior Officers"); // Default to Senior Officers for now
+    setEditingRankGroup(form.rankGroup || ""); // Use the actual rank group from the form
   };
 
   const handleAddRankGroup = (formName: string) => {
