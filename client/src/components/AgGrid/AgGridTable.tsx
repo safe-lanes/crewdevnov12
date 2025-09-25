@@ -203,7 +203,7 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
     theme: 'legacy', // Use legacy theme to avoid theming API conflicts
     defaultColDef,
     headerHeight: 50,
-    groupHeaderHeight: 22, // Compact group header height
+    groupHeaderHeight: 30, // Compact group header height
     rowHeight: 50,
     suppressHorizontalScroll: false,
     animateRows: true,
