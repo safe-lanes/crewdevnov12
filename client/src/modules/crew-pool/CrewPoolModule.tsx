@@ -164,37 +164,29 @@ export const CrewPoolModule = (): JSX.Element => {
     const columnDefs: ColDef[] = useMemo(() => [
         {
             headerName: 'General Particulars of Seafarer',
-            marryChildren: true,
             children: [
                 {
-                    headerName: ' ',
-                    headerClass: 'ag-subgroup-compact',
-                    children: [
-                        {
-                            headerName: 'Emp\nNo',
-                            field: 'empNo',
-                            width: 70,
-                            cellStyle: { fontSize: '12px', color: '#4f5863' },
-                            filter: 'agTextColumnFilter',
-                            floatingFilter: true,
-                            sortable: true,
-                            resizable: true,
-                            pinned: 'left',
-                            headerClass: 'ag-header-cell-text-wrap'
-                        },
-                        {
-                            headerName: 'First\nName',
-                            field: 'firstName',
-                            width: 70,
-                            cellStyle: { fontSize: '12px', color: '#4f5863' },
-                            filter: 'agTextColumnFilter',
-                            floatingFilter: true,
-                            sortable: true,
-                            resizable: true,
-                            pinned: 'left',
-                            headerClass: 'ag-header-cell-text-wrap'
-                        }
-                    ]
+                    headerName: 'Emp\nNo',
+                    field: 'empNo',
+                    width: 70,
+                    cellStyle: { fontSize: '12px', color: '#4f5863' },
+                    filter: 'agTextColumnFilter',
+                    floatingFilter: true,
+                    sortable: true,
+                    resizable: true,
+                    pinned: 'left',
+                    headerClass: 'ag-header-cell-text-wrap'
+                },
+                {
+                    headerName: 'First\nName',
+                    field: 'firstName',
+                    width: 70,
+                    cellStyle: { fontSize: '12px', color: '#4f5863' },
+                    filter: 'agTextColumnFilter',
+                    floatingFilter: true,
+                    sortable: true,
+                    resizable: true,
+                    headerClass: 'ag-header-cell-text-wrap'
                 },
                 {
                     headerName: 'Middle\nName',
