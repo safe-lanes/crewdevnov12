@@ -202,7 +202,7 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
   const defaultGridOptions: Partial<GridOptions> = useMemo(() => ({
     theme: 'legacy', // Use legacy theme to avoid theming API conflicts
     defaultColDef,
-    headerHeight: 30, // Match group header height
+    headerHeight: 50,
     groupHeaderHeight: 30, // Compact group header height
     rowHeight: 50,
     suppressHorizontalScroll: false,
