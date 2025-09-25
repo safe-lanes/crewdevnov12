@@ -48,13 +48,21 @@
   font-size: 12px !important;
   font-weight: normal !important;
   border-right: none !important;
-  height: 30px !important;
-  min-height: 30px !important;
-  padding: 2px 4px !important;
+  height: 22px !important;
+  min-height: 22px !important;
+  padding: 0 4px !important;
+  
+  /* Ensure vertical centering */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
 }
 
 .ag-theme-alpine .ag-header-group-cell-text {
   color: white !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 /* Floating filter row styling - match header background */
@@ -109,7 +117,7 @@
 
 /* AG Grid theme variables for consistent heights */
 .ag-theme-alpine {
-  --ag-header-group-cell-height: 30px;
+  --ag-header-group-cell-height: 22px;
   --ag-header-height: 40px;
   --ag-floating-filters-height: 35px;
 }
