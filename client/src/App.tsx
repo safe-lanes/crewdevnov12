@@ -6,6 +6,7 @@ import NotFound from "./modules/not-found";
 import { AdminModule } from "./modules/admin/AdminModule";
 import { ElementCrewAppraisals } from "./modules/crewing/ElementCrewAppraisals";
 import { RecruitmentModule } from "./modules/recruitment/RecruitmentModule";
+import { RefCrewPoolModule } from "./modules/ref-crew-pool/RefCrewPoolModule";
 import HeaderComponent from "./components/Navbar/HeaderComponent";
 
 const queryClient = new QueryClient();
@@ -20,6 +21,7 @@ function App() {
             <Switch>
               <Route path="/" component={ElementCrewAppraisals} />
               <Route path="/recruitment" component={RecruitmentModule} />
+              <Route path="/ref-crew-pool" component={RefCrewPoolModule} />
               <Route path="/admin/*" component={AdminModule} />
               <Route path="/admin" component={AdminModule} />
               <Route component={NotFound} />
