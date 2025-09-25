@@ -16,11 +16,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import CrewInfoForm from './CrewInfoForm';
 
 export const CrewPoolModule = (): JSX.Element => {
     const [selectedCrewPoolPage, setSelectedCrewPoolPage] = useState("crew-database");
     const [showFilters, setShowFilters] = useState(true);
     const [gridApi, setGridApi] = useState<GridApi | null>(null);
+    const [isCrewInfoFormOpen, setIsCrewInfoFormOpen] = useState(false);
+    const [selectedCrewMember, setSelectedCrewMember] = useState<any | null>(null);
     const viewport = useViewport();
     const viewportConfig = getViewportConfig(viewport);
     
@@ -145,7 +148,8 @@ export const CrewPoolModule = (): JSX.Element => {
     const ActionsCellRenderer = useCallback((params: ICellRendererParams) => {
         const handleEditClick = () => {
             console.log('Edit clicked for:', params.data.id);
-            // Crew database form will be implemented in next step
+            setSelectedCrewMember(params.data);
+            setIsCrewInfoFormOpen(true);
         };
 
         return (
@@ -404,6 +408,12 @@ export const CrewPoolModule = (): JSX.Element => {
         // Note: responsive behavior is handled by AgGridTable component
     }, []);
 
+    // Handle closing crew info form
+    const handleCloseCrewInfoForm = () => {
+        setIsCrewInfoFormOpen(false);
+        setSelectedCrewMember(null);
+    };
+
     const getTitle = () => {
         switch (selectedCrewPoolPage) {
             case "crew-database":
@@ -591,6 +601,13 @@ export const CrewPoolModule = (): JSX.Element => {
                 </SectionTitleComponents>
                 {renderContent()}
             </MainLayout>
+            
+            {/* Crew Info Form Dialog */}
+            <CrewInfoForm
+                isOpen={isCrewInfoFormOpen}
+                onClose={handleCloseCrewInfoForm}
+                crewMember={selectedCrewMember}
+            />
         </>
     );
 };
