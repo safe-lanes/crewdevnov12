@@ -373,3 +373,84 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
+
+/* Mobile responsive AG Grid horizontal scrolling - High specificity overrides */
+@media screen and (max-width: 767px) {
+  /* Force horizontal scrolling with maximum specificity */
+  div.ag-theme-alpine div.ag-root-wrapper {
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+  }
+  
+  div.ag-theme-alpine div.ag-root.ag-unselectable {
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+  }
+  
+  div.ag-theme-alpine div.ag-body-viewport.ag-layout-auto-height {
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    display: block !important;
+  }
+  
+  div.ag-theme-alpine div.ag-body-viewport {
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    display: block !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  div.ag-theme-alpine .ag-body-horizontal-scroll-viewport {
+    overflow-x: auto !important;
+  }
+  
+  div.ag-theme-alpine .ag-center-cols-viewport {
+    overflow-x: visible !important;
+    min-width: max-content !important;
+  }
+  
+  div.ag-theme-alpine .ag-center-cols-container {
+    min-width: max-content !important;
+  }
+  
+  /* Override any flex display that might interfere */
+  div.ag-theme-alpine .ag-body-viewport.ag-layout-auto-height,
+  div.ag-theme-alpine .ag-body-viewport {
+    display: block !important;
+  }
+  
+  /* Ensure pinned columns work correctly with horizontal scroll */
+  div.ag-theme-alpine .ag-pinned-left-cols-container {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 10 !important;
+    background: white !important;
+  }
+  
+  div.ag-theme-alpine .ag-pinned-right-cols-container {
+    position: sticky !important;
+    right: 0 !important;
+    z-index: 10 !important;
+    background: white !important;
+  }
+}
+
+/* Tablet responsive AG Grid horizontal scrolling */
+@media screen and (min-width: 768px) and (max-width: 1365px) {
+  /* Enable horizontal scrolling on tablet AG Grid */
+  .ag-theme-alpine .ag-root-wrapper {
+    overflow-x: auto !important;
+  }
+  
+  .ag-theme-alpine .ag-root {
+    overflow-x: auto !important;
+  }
+  
+  .ag-theme-alpine .ag-body-viewport {
+    overflow-x: auto !important;
+  }
+  
+  .ag-theme-alpine .ag-body-horizontal-scroll-viewport {
+    overflow-x: auto !important;
+  }
+}

@@ -163,13 +163,14 @@ export const CrewPoolModule = (): JSX.Element => {
         );
     }, []);
 
-    // Column definitions with groups
+    // Column definitions with groups - responsive widths
     const columnDefs: ColDef[] = useMemo(() => [
         // Standalone Emp No column (pinned)
         {
             headerName: 'Emp\nNo',
             field: 'empNo',
-            width: 70,
+            width: viewportConfig.isDesktopOrLaptop ? undefined : 70,
+            minWidth: 70,
             cellStyle: { fontSize: '12px', color: '#4f5863' },
             filter: 'agTextColumnFilter',
             floatingFilter: viewportConfig.showFloatingFilters,
@@ -186,7 +187,8 @@ export const CrewPoolModule = (): JSX.Element => {
                 {
                     headerName: 'First\nName',
                     field: 'firstName',
-                    width: 70,
+                    width: viewportConfig.isDesktopOrLaptop ? undefined : 70,
+                    minWidth: 70,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agTextColumnFilter',
                     floatingFilter: viewportConfig.showFloatingFilters,
@@ -197,7 +199,8 @@ export const CrewPoolModule = (): JSX.Element => {
                 {
                     headerName: 'Middle\nName',
                     field: 'middleName',
-                    width: 70,
+                    width: viewportConfig.isDesktopOrLaptop ? undefined : 70,
+                    minWidth: 70,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agTextColumnFilter',
                     floatingFilter: viewportConfig.showFloatingFilters,
@@ -208,7 +211,8 @@ export const CrewPoolModule = (): JSX.Element => {
                 {
                     headerName: 'Family\nName',
                     field: 'familyName',
-                    width: 70,
+                    width: viewportConfig.isDesktopOrLaptop ? undefined : 70,
+                    minWidth: 70,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agTextColumnFilter',
                     floatingFilter: viewportConfig.showFloatingFilters,
@@ -219,7 +223,8 @@ export const CrewPoolModule = (): JSX.Element => {
                 {
                     headerName: 'DOB',
                     field: 'dob',
-                    width: 80,
+                    width: viewportConfig.isDesktopOrLaptop ? undefined : 80,
+                    minWidth: 80,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agDateColumnFilter',
                     floatingFilter: viewportConfig.showFloatingFilters,
@@ -229,7 +234,8 @@ export const CrewPoolModule = (): JSX.Element => {
                 {
                     headerName: 'Age',
                     field: 'age',
-                    width: 50,
+                    width: viewportConfig.isDesktopOrLaptop ? undefined : 50,
+                    minWidth: 50,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agNumberColumnFilter',
                     floatingFilter: viewportConfig.showFloatingFilters,
@@ -239,7 +245,8 @@ export const CrewPoolModule = (): JSX.Element => {
                 {
                     headerName: 'Present\nRank',
                     field: 'presentRank',
-                    width: 80,
+                    width: viewportConfig.isDesktopOrLaptop ? undefined : 80,
+                    minWidth: 80,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agSetColumnFilter',
                     floatingFilter: viewportConfig.showFloatingFilters,
@@ -250,7 +257,8 @@ export const CrewPoolModule = (): JSX.Element => {
                 {
                     headerName: 'Nationality',
                     field: 'nationality',
-                    width: 90,
+                    width: viewportConfig.isDesktopOrLaptop ? undefined : 90,
+                    minWidth: 90,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agSetColumnFilter',
                     floatingFilter: viewportConfig.showFloatingFilters,
@@ -261,7 +269,8 @@ export const CrewPoolModule = (): JSX.Element => {
                 {
                     headerName: 'Status',
                     field: 'status',
-                    width: 70,
+                    width: viewportConfig.isDesktopOrLaptop ? undefined : 70,
+                    minWidth: 70,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agSetColumnFilter',
                     floatingFilter: viewportConfig.showFloatingFilters,
@@ -277,7 +286,8 @@ export const CrewPoolModule = (): JSX.Element => {
                 {
                     headerName: 'Present\nVessel',
                     field: 'presentVessel',
-                    width: 80,
+                    width: viewportConfig.isDesktopOrLaptop ? undefined : 80,
+                    minWidth: 80,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agTextColumnFilter',
                     floatingFilter: viewportConfig.showFloatingFilters,
@@ -288,7 +298,8 @@ export const CrewPoolModule = (): JSX.Element => {
                 {
                     headerName: 'Joining\nDate',
                     field: 'joiningDate',
-                    width: 80,
+                    width: viewportConfig.isDesktopOrLaptop ? undefined : 80,
+                    minWidth: 80,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agDateColumnFilter',
                     floatingFilter: viewportConfig.showFloatingFilters,
@@ -299,7 +310,8 @@ export const CrewPoolModule = (): JSX.Element => {
                 {
                     headerName: 'Cont.\nPeriod',
                     field: 'contractPeriod',
-                    width: 70,
+                    width: viewportConfig.isDesktopOrLaptop ? undefined : 70,
+                    minWidth: 70,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agTextColumnFilter',
                     floatingFilter: viewportConfig.showFloatingFilters,
@@ -310,7 +322,8 @@ export const CrewPoolModule = (): JSX.Element => {
                 {
                     headerName: 'Relief\nDue',
                     field: 'reliefDue',
-                    width: 80,
+                    width: viewportConfig.isDesktopOrLaptop ? undefined : 80,
+                    minWidth: 80,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agDateColumnFilter',
                     floatingFilter: viewportConfig.showFloatingFilters,
@@ -326,7 +339,8 @@ export const CrewPoolModule = (): JSX.Element => {
                 {
                     headerName: 'Last\nVessel',
                     field: 'lastVessel',
-                    width: 80,
+                    width: viewportConfig.isDesktopOrLaptop ? undefined : 80,
+                    minWidth: 80,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agTextColumnFilter',
                     floatingFilter: viewportConfig.showFloatingFilters,
@@ -337,7 +351,8 @@ export const CrewPoolModule = (): JSX.Element => {
                 {
                     headerName: 'S/O\nDate',
                     field: 'signOffDate',
-                    width: 70,
+                    width: viewportConfig.isDesktopOrLaptop ? undefined : 70,
+                    minWidth: 70,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agDateColumnFilter',
                     floatingFilter: viewportConfig.showFloatingFilters,
@@ -348,7 +363,8 @@ export const CrewPoolModule = (): JSX.Element => {
                 {
                     headerName: 'Reason',
                     field: 'reason',
-                    width: 100,
+                    width: viewportConfig.isDesktopOrLaptop ? undefined : 100,
+                    minWidth: 100,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agTextColumnFilter',
                     floatingFilter: viewportConfig.showFloatingFilters,
@@ -358,7 +374,8 @@ export const CrewPoolModule = (): JSX.Element => {
                 {
                     headerName: 'Avail',
                     field: 'availability',
-                    width: 70,
+                    width: viewportConfig.isDesktopOrLaptop ? undefined : 70,
+                    minWidth: 70,
                     cellStyle: { fontSize: '12px', color: '#4f5863' },
                     filter: 'agTextColumnFilter',
                     floatingFilter: viewportConfig.showFloatingFilters,
@@ -370,7 +387,8 @@ export const CrewPoolModule = (): JSX.Element => {
         {
             headerName: 'Actions',
             field: 'actions',
-            width: 80,
+            width: viewportConfig.isDesktopOrLaptop ? undefined : 80,
+            minWidth: 80,
             cellRenderer: ActionsCellRenderer,
             sortable: false,
             filter: false,

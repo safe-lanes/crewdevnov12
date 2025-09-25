@@ -142,16 +142,34 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
         console.warn('Failed to size columns to fit:', error);
       }
     } else {
-      // Tablet/Phone: set minimum column widths and enable horizontal scroll
+      // Tablet/Phone: enforce minimum column widths for horizontal scroll
       const allColumns = gridApi.getAllDisplayedColumns();
-      if (allColumns) {
-        const columnWidths = allColumns.map((col: any) => ({
-          key: col.getColId(),
-          newWidth: Math.max(config.minColumnWidth, col.getMinWidth() || 70)
-        }));
+      if (allColumns && allColumns.length > 0) {
+        // Set specific column widths to ensure horizontal scrolling
+        const columnWidths = allColumns.map((col: any) => {
+          const colDef = col.getColDef();
+          const currentWidth = col.getActualWidth();
+          // Use either the defined width from column def or minimum width
+          const targetWidth = colDef.width || Math.max(config.minColumnWidth, currentWidth || 70);
+          
+          return {
+            key: col.getColId(),
+            newWidth: targetWidth
+          };
+        });
         
         if (columnWidths.length) {
-          gridApi.setColumnWidths(columnWidths);
+          try {
+            gridApi.setColumnWidths(columnWidths);
+            // Force layout update to ensure proper horizontal scrolling
+            setTimeout(() => {
+              if (!gridApi.isDestroyed()) {
+                gridApi.refreshCells();
+              }
+            }, 100);
+          } catch (error) {
+            console.warn('Failed to set column widths:', error);
+          }
         }
       }
     }
@@ -276,6 +294,9 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
     alwaysShowHorizontalScroll: viewportConfig.alwaysShowHorizontalScroll,
     alwaysShowVerticalScroll: false,
     suppressScrollOnNewData: true,
+    // Prevent auto-sizing on mobile to maintain fixed column widths
+    suppressAutoSize: viewportConfig.isTabletOrPhone,
+    suppressColumnVirtualisation: false,
     debug: false
   }), [
     defaultColDef,
