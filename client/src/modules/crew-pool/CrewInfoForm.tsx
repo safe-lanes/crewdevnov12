@@ -2292,25 +2292,35 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     onClose();
   };
 
-  // Scroll detection for active section
+  // Enhanced scroll detection for continuous scroll layout
   useEffect(() => {
     if (!isOpen) return;
 
     const observerOptions = {
       root: null,
-      rootMargin: '-20% 0px -50% 0px',
-      threshold: 0.1
+      rootMargin: '-10% 0px -60% 0px', // More sensitive detection
+      threshold: [0.1, 0.3, 0.5, 0.7] // Multiple thresholds for better detection
     };
 
     const observerCallback = (entries: IntersectionObserverEntry[]) => {
+      // Find the section with the highest intersection ratio
+      let maxRatio = 0;
+      let mostVisibleSection = '';
+      
       entries.forEach((entry) => {
-        if (entry.isIntersecting) {
+        if (entry.isIntersecting && entry.intersectionRatio > maxRatio) {
+          maxRatio = entry.intersectionRatio;
           const targetId = entry.target.getAttribute('data-section');
-          if (targetId && targetId !== activeSection) {
-            setActiveSection(targetId);
+          if (targetId) {
+            mostVisibleSection = targetId;
           }
         }
       });
+      
+      // Update active section only if we found a more visible section
+      if (mostVisibleSection && mostVisibleSection !== activeSection) {
+        setActiveSection(mostVisibleSection);
+      }
     };
 
     const observer = new IntersectionObserver(observerCallback, observerOptions);
