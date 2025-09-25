@@ -1,5 +1,7 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { X, Edit, Camera, Plus, Trash2, Paperclip } from 'lucide-react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { X, Edit, Camera, Plus, Trash2, Paperclip, Save, ArrowLeft } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -164,12 +166,28 @@ interface SeaService {
 }
 
 export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, crewMember }) => {
+  const { toast } = useToast();
   const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<string>('A1');
   const [editingSections, setEditingSections] = useState<{[key: string]: boolean}>({
     'A1.1': false,
     'A1.2': false,
     'A1.3': false
   });
+
+  // Sections for stepper navigation  
+  const sections = [
+    { id: 'A1', title: 'Seafarers\' Particulars', number: 'A1' },
+    { id: 'A2', title: 'Travel & ID Documents', number: 'A2' },
+    { id: 'A3', title: 'Training & Certificates', number: 'A3' },
+    { id: 'A4', title: 'Sea Service', number: 'A4' }
+  ];
+
+  // Refs for scroll detection
+  const sectionA1Ref = useRef<HTMLDivElement>(null);
+  const sectionA2Ref = useRef<HTMLDivElement>(null);
+  const sectionA3Ref = useRef<HTMLDivElement>(null);
+  const sectionA4Ref = useRef<HTMLDivElement>(null);
 
   // Master data arrays
   const VESSEL_TYPES = [
@@ -361,13 +379,6 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Toggle edit section
-  const toggleEditSection = (sectionId: 'A1.1' | 'A1.2' | 'A1.3') => {
-    setEditingSections(prev => ({
-      ...prev,
-      [sectionId]: !prev[sectionId]
-    }));
-  };
 
   // Photo upload handler
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -2238,6 +2249,40 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     );
   };
 
+  // Save Draft functionality
+  const handleSaveDraft = () => {
+    console.log('Saving draft for section:', activeSection, formData);
+    toast({
+      title: "Draft Saved",
+      description: `Section ${activeSection} has been saved successfully.`,
+      duration: 2000,
+    });
+  };
+
+  // Auto-save functionality
+  const handleAutoSave = () => {
+    console.log('Auto-saving current section:', activeSection);
+    toast({
+      title: "Auto-saved",
+      description: `Section ${activeSection} has been auto-saved.`,
+      duration: 1500,
+    });
+  };
+
+  // Toggle edit section with auto-save
+  const toggleEditSection = (sectionId: 'A1.1' | 'A1.2' | 'A1.3') => {
+    // If turning off edit mode and another section is being edited, auto-save
+    const currentlyEditing = Object.keys(editingSections).find(key => editingSections[key]);
+    if (currentlyEditing && currentlyEditing !== sectionId && editingSections[currentlyEditing]) {
+      handleAutoSave();
+    }
+    
+    setEditingSections(prev => ({
+      ...prev,
+      [sectionId]: !prev[sectionId]
+    }));
+  };
+
   const handleSave = () => {
     console.log('Saving crew info:', formData);
     onClose();
@@ -2247,64 +2292,209 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     onClose();
   };
 
+  // Scroll detection for active section
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const observerOptions = {
+      root: null,
+      rootMargin: '-20% 0px -50% 0px',
+      threshold: 0.1
+    };
+
+    const observerCallback = (entries: IntersectionObserverEntry[]) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const targetId = entry.target.getAttribute('data-section');
+          if (targetId && targetId !== activeSection) {
+            setActiveSection(targetId);
+          }
+        }
+      });
+    };
+
+    const observer = new IntersectionObserver(observerCallback, observerOptions);
+
+    // Observe all section refs
+    [sectionA1Ref, sectionA2Ref, sectionA3Ref, sectionA4Ref].forEach((ref) => {
+      if (ref.current) {
+        observer.observe(ref.current);
+      }
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [isOpen, activeSection]);
+
+  // Render content based on active section
+  const renderContent = () => {
+    switch (activeSection) {
+      case 'A1':
+        return (
+          <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionA1Ref} data-section="A1">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
+              <div className="pb-4 mb-6">
+                <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A1 Seafarers' Particulars</h2>
+                <div style={{ color: '#16569e' }} className="text-sm">Enter details as applicable</div>
+                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+              </div>
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 2xl:grid-cols-2 gap-6">
+                  <div className="2xl:col-span-1">
+                    {renderA11GeneralParticulars()}
+                  </div>
+                  <div className="2xl:col-span-1">
+                    {renderA12AddressContact()}
+                  </div>
+                </div>
+                <div>
+                  {renderA13FamilyNOK()}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      case 'A2':
+        return (
+          <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionA2Ref} data-section="A2">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
+              <div className="pb-4 mb-6">
+                <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A2 - Travel & ID Documents</h2>
+                <div style={{ color: '#16569e' }} className="text-sm">Add from the list all applicable identification & travel documents</div>
+                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+              </div>
+              <div className="space-y-6">
+                {renderA21TravelDocs()}
+                {renderA22Visas()}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      case 'A3':
+        return (
+          <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionA3Ref} data-section="A3">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
+              <div className="pb-4 mb-6">
+                <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A3 - Training & Certificates</h2>
+                <div style={{ color: '#16569e' }} className="text-sm">Add Education, Competency & Training Information</div>
+                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+              </div>
+              <div className="space-y-6">
+                {renderA31Education()}
+                {renderA32LicenseDCE()}
+                {renderA33TrainingCourse()}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      case 'A4':
+        return (
+          <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionA4Ref} data-section="A4">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
+              <div className="pb-4 mb-6">
+                <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A4 - Sea Service</h2>
+                <div style={{ color: '#16569e' }} className="text-sm">Add Sea service details, latest on top</div>
+                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+              </div>
+              <div className="space-y-6">
+                {renderA41SeaService()}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      default:
+        return (
+          <div className="p-6 text-center text-gray-600">
+            Content for {activeSection} will be implemented in future iterations.
+          </div>
+        );
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-semibold text-[#16569e]">
-            Crew Information - {crewMember?.firstName} {crewMember?.familyName} ({crewMember?.empNo})
-          </DialogTitle>
-        </DialogHeader>
-        
-        <div className="space-y-6">
-          {/* A1.1 General Particulars */}
-          {renderA11GeneralParticulars()}
-          
-          {/* A1.2 Address & Contact Info */}
-          {renderA12AddressContact()}
-          
-          {/* A1.3 Family and NOK */}
-          {renderA13FamilyNOK()}
-          
-          {/* A2.1 Travel Documents */}
-          {renderA21TravelDocs()}
-          
-          {/* A2.2 Visas */}
-          {renderA22Visas()}
-          
-          {/* A3.1 Education */}
-          {renderA31Education()}
-          
-          {/* A3.2 Licenses & DCE */}
-          {renderA32LicenseDCE()}
-          
-          {/* A3.3 Training Courses */}
-          {renderA33TrainingCourse()}
-          
-          {/* A4.1 Sea Service */}
-          {renderA41SeaService()}
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-lg w-full max-w-none 2xl:max-w-[95vw] h-[calc(100vh-1rem)] sm:h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b p-2 sm:p-3 lg:p-4 flex items-center justify-between">
+          <div className="flex items-center gap-1 sm:gap-2 lg:gap-4">
+            <Button variant="ghost" size="icon" onClick={onClose} data-testid="button-close">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <h1 className="text-sm sm:text-lg lg:text-xl font-bold truncate">
+              <span className="hidden sm:inline">Crew Information - </span>
+              {crewMember ? `${crewMember.firstName} ${crewMember.familyName}` : 'Crew Member'}
+            </h1>
+          </div>
+          <div className="flex gap-1 sm:gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
+              onClick={handleSaveDraft}
+              data-testid="button-save-draft"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Save Draft
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="sm:hidden"
+              onClick={handleSaveDraft}
+              data-testid="button-save-draft-mobile"
+            >
+              <Save className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-        
-        <DialogFooter className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleCancel}
-            data-testid="button-cancel"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSave}
-            className="bg-[#16569e] hover:bg-[#0d4a8f]"
-            data-testid="button-save"
-          >
-            Save Changes
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+
+        <div className="flex h-full overflow-hidden">
+          {/* Left Sidebar - Stepper */}
+          <div className="w-20 bg-gray-50 border-r overflow-y-auto">
+            <div className="p-4">
+              <nav className="space-y-2">
+                {sections.map((section, index) => {
+                  const isActive = activeSection === section.id;
+                  const isCompleted = false; // You can add completion logic here
+                  
+                  return (
+                    <div key={section.id} className="relative">
+                      <button
+                        onClick={() => setActiveSection(section.id)}
+                        className={`w-full flex flex-col items-center p-2 rounded-lg text-center transition-colors hover:bg-gray-100 ${
+                          isActive ? "bg-blue-50" : ""
+                        }`}
+                        title={section.title}
+                        data-testid={`stepper-${section.id}`}
+                      >
+                        <div 
+                          className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm ${
+                            isActive ? "bg-blue-600" : isCompleted ? "bg-green-500" : "bg-gray-400"
+                          }`}
+                        >
+                          {section.number}
+                        </div>
+                      </button>
+                      {index < sections.length - 1 && (
+                        <div className="absolute left-[1.75rem] top-12 w-0.5 h-4 bg-gray-300"></div>
+                      )}
+                    </div>
+                  );
+                })}
+              </nav>
+            </div>
+          </div>
+          
+          {/* Main Content Area */}
+          <div className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 bg-[#f9fafb]">
+            {renderContent()}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
