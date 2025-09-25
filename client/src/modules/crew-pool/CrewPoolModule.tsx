@@ -163,7 +163,7 @@ export const CrewPoolModule = (): JSX.Element => {
     // Column definitions with groups
     const columnDefs: ColDef[] = useMemo(() => [
         {
-            headerName: 'General Particulars of Seafarer',
+            headerName: '',
             children: [
                 {
                     headerName: 'Emp\nNo',
