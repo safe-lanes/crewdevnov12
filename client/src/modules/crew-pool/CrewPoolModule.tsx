@@ -52,9 +52,7 @@ export const CrewPoolModule = (): JSX.Element => {
                         {/* Action buttons will be added in future iterations */}
                     </div>
                 </SectionTitleComponents>
-                <div className="ml-[67px] flex-1" data-testid="crew-pool-main">
-                    {renderContent()}
-                </div>
+                {renderContent()}
             </MainLayout>
         </>
     );
