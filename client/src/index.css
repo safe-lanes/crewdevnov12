@@ -65,6 +65,28 @@
   padding: 0 !important;
 }
 
+/* Target AG Grid's inner label elements for proper centering */
+.ag-theme-alpine .ag-header-group-cell .ag-header-group-cell-label {
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+}
+
+/* Override AG Grid's default positioning on all text elements */
+.ag-theme-alpine .ag-header-group-cell .ag-header-group-text,
+.ag-theme-alpine .ag-header-group-cell .ag-header-cell-text {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  height: 100% !important;
+}
+
 /* Floating filter row styling - match header background */
 .ag-theme-alpine .ag-floating-filters,
 .ag-theme-alpine .ag-floating-filter,
