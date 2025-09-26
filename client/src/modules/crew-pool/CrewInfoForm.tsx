@@ -42,13 +42,14 @@ interface FormData {
   placeOfBirthCountry: string;
   heightCm: string;
   weightKg: string;
+  bmi: string;
   nativeLanguage: string;
   foreignLanguages: string;
   englishProficiency: string;
   rankAppliedFor: string;
   vesselType: string[];
   manningAgent: string;
-  fileNo: string;
+  employeeId: string;
   
   // A1.2 Address & Contact Info
   countryOfResidence: string;
@@ -271,13 +272,14 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     placeOfBirthCountry: '',
     heightCm: '',
     weightKg: '',
+    bmi: '',
     nativeLanguage: '',
     foreignLanguages: '',
     englishProficiency: '',
     rankAppliedFor: '',
     vesselType: [],
     manningAgent: '',
-    fileNo: crewMember?.empNo || '',
+    employeeId: crewMember?.empNo || '',
     
     // A1.2 Address & Contact Info
     countryOfResidence: '',
@@ -374,9 +376,31 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     }]
   });
 
-  // Update form data function
+  // Helper function to calculate BMI
+  const calculateBMI = (height: string, weight: string) => {
+    const heightInM = parseFloat(height) / 100; // Convert cm to meters
+    const weightInKg = parseFloat(weight);
+    if (heightInM > 0 && weightInKg > 0) {
+      const bmi = weightInKg / (heightInM * heightInM);
+      return bmi.toFixed(1);
+    }
+    return '';
+  };
+
+  // Update form data function with BMI auto-calculation
   const updateFormData = (field: keyof FormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const updated = { ...prev, [field]: value };
+      
+      // Auto-calculate BMI when height or weight changes
+      if (field === 'heightCm' || field === 'weightKg') {
+        const height = field === 'heightCm' ? value : prev.heightCm;
+        const weight = field === 'weightKg' ? value : prev.weightKg;
+        updated.bmi = calculateBMI(height, weight);
+      }
+      
+      return updated;
+    });
   };
 
 
@@ -724,9 +748,64 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
         </div>
           
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Fields moved from photo area */}
+          {/* Row 1: First Name | Middle Name | Family Name */}
           <div>
-            <Label className="text-xs text-gray-500 tracking-wide">Rank Applied For</Label>
+            <Label className="text-xs text-gray-500 tracking-wide">First Name</Label>
+            {isEditing ? (
+              <Input
+                value={formData.firstName}
+                onChange={(e) => updateFormData('firstName', e.target.value)}
+                className="mt-1"
+              />
+            ) : (
+              <div className="mt-1 text-sm text-gray-900">{formData.firstName}</div>
+            )}
+          </div>
+          
+          <div>
+            <Label className="text-xs text-gray-500 tracking-wide">Middle Name</Label>
+            {isEditing ? (
+              <Input
+                value={formData.middleName}
+                onChange={(e) => updateFormData('middleName', e.target.value)}
+                className="mt-1"
+              />
+            ) : (
+              <div className="mt-1 text-sm text-gray-900">{formData.middleName}</div>
+            )}
+          </div>
+          
+          <div>
+            <Label className="text-xs text-gray-500 tracking-wide">Family Name</Label>
+            {isEditing ? (
+              <Input
+                value={formData.familyName}
+                onChange={(e) => updateFormData('familyName', e.target.value)}
+                className="mt-1"
+              />
+            ) : (
+              <div className="mt-1 text-sm text-gray-900">{formData.familyName}</div>
+            )}
+          </div>
+          
+          {/* Row 2: Employee ID (Auto Generated) | Rank / | Vessel Type */}
+          <div>
+            <Label className="text-xs text-gray-500 tracking-wide">Employee ID (Auto Generated)</Label>
+            {isEditing ? (
+              <Input
+                value={formData.employeeId}
+                onChange={(e) => updateFormData('employeeId', e.target.value)}
+                className="mt-1 bg-gray-50"
+                placeholder="Auto-generated"
+                readOnly
+              />
+            ) : (
+              <div className="mt-1 text-sm text-gray-900">{formData.employeeId}</div>
+            )}
+          </div>
+          
+          <div>
+            <Label className="text-xs text-gray-500 tracking-wide">Rank /</Label>
             {isEditing ? (
               <Select value={formData.rankAppliedFor} onValueChange={(value) => updateFormData('rankAppliedFor', value)}>
                 <SelectTrigger className="mt-1">
@@ -804,59 +883,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             )}
           </div>
           
-          <div>
-            <Label className="text-xs text-gray-500 tracking-wide">File No</Label>
-            {isEditing ? (
-              <Input
-                value={formData.fileNo}
-                onChange={(e) => updateFormData('fileNo', e.target.value)}
-                className="mt-1"
-              />
-            ) : (
-              <div className="mt-1 text-sm text-gray-900">{formData.fileNo}</div>
-            )}
-          </div>
-          
-          {/* Form Fields */}
-          <div>
-            <Label className="text-xs text-gray-500 tracking-wide">First Name</Label>
-            {isEditing ? (
-              <Input
-                value={formData.firstName}
-                onChange={(e) => updateFormData('firstName', e.target.value)}
-                className="mt-1"
-              />
-            ) : (
-              <div className="mt-1 text-sm text-gray-900">{formData.firstName}</div>
-            )}
-          </div>
-          
-          <div>
-            <Label className="text-xs text-gray-500 tracking-wide">Middle Name</Label>
-            {isEditing ? (
-              <Input
-                value={formData.middleName}
-                onChange={(e) => updateFormData('middleName', e.target.value)}
-                className="mt-1"
-              />
-            ) : (
-              <div className="mt-1 text-sm text-gray-900">{formData.middleName}</div>
-            )}
-          </div>
-          
-          <div>
-            <Label className="text-xs text-gray-500 tracking-wide">Family Name</Label>
-            {isEditing ? (
-              <Input
-                value={formData.familyName}
-                onChange={(e) => updateFormData('familyName', e.target.value)}
-                className="mt-1"
-              />
-            ) : (
-              <div className="mt-1 text-sm text-gray-900">{formData.familyName}</div>
-            )}
-          </div>
-          
+          {/* Row 3: Nationality | Date of birth | Age( Years ) */}
           <div>
             <Label className="text-xs text-gray-500 tracking-wide">Nationality</Label>
             {isEditing ? (
@@ -872,24 +899,6 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                 </Select>
             ) : (
               <div className="mt-1 text-sm text-gray-900">{formData.nationality}</div>
-            )}
-          </div>
-          
-          <div>
-            <Label className="text-xs text-gray-500 tracking-wide">Present Rank</Label>
-            {isEditing ? (
-              <Select value={formData.presentRank} onValueChange={(value) => updateFormData('presentRank', value)}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select rank" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[200px]">
-                  {rankNames.map(rank => (
-                    <SelectItem key={rank} value={rank}>{rank}</SelectItem>
-                  ))}
-                </SelectContent>
-                </Select>
-            ) : (
-              <div className="mt-1 text-sm text-gray-900">{formData.presentRank}</div>
             )}
           </div>
           
@@ -922,6 +931,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             )}
           </div>
           
+          {/* Row 4: Place of birth( City ) | Place of birth( Country ) | Height( Cm ) */}
           <div>
             <Label className="text-xs text-gray-500 tracking-wide">Place of birth( City )</Label>
             {isEditing ? (
@@ -970,6 +980,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             )}
           </div>
           
+          {/* Row 5: Weight( kg ) | BMI (Auto Generated) | Native Language */}
           <div>
             <Label className="text-xs text-gray-500 tracking-wide">Weight( kg )</Label>
             {isEditing ? (
@@ -984,6 +995,20 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
               />
             ) : (
               <div className="mt-1 text-sm text-gray-900">{formData.weightKg}</div>
+            )}
+          </div>
+          
+          <div>
+            <Label className="text-xs text-gray-500 tracking-wide">BMI (Auto Generated)</Label>
+            {isEditing ? (
+              <Input
+                value={formData.bmi}
+                className="mt-1 bg-gray-50"
+                placeholder="Auto-calculated from Height & Weight"
+                readOnly
+              />
+            ) : (
+              <div className="mt-1 text-sm text-gray-900">{formData.bmi}</div>
             )}
           </div>
           
@@ -1005,6 +1030,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             )}
           </div>
           
+          {/* Row 6: Foreign Languages | English Proficiency | Manning Agent */}
           <div>
             <Label className="text-xs text-gray-500 tracking-wide">Foreign Languages</Label>
             {isEditing ? (
