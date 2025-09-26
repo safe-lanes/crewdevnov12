@@ -2430,19 +2430,23 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                           className={`flex items-center justify-center w-8 h-8 rounded-full border text-sm font-semibold ${
                             isActive 
                               ? "bg-blue-600 text-white border-transparent" 
-                              : "bg-gray-500 text-white border-transparent"
+                              : "bg-gray-600 text-white border-transparent"
                           }`}
                         >
                           {section.number}
                         </span>
                         <span 
-                          className="hidden md:block ml-3 text-left text-sm leading-tight"
+                          className="hidden md:block ml-3 text-left text-sm leading-tight line-clamp-2"
                           data-testid={`text-step-title-${section.id}`}
                           title={section.title}
                           style={{ 
                             wordBreak: 'break-word',
                             lineHeight: '1.2',
-                            maxWidth: '8rem'
+                            maxWidth: '8rem',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden'
                           }}
                         >
                           {section.title}
