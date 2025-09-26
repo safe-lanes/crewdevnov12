@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { useQuery } from '@tanstack/react-query';
+import type { CrewDashboardSummary } from '@shared/schema';
 
 interface CrewMember {
   id: string;
@@ -168,6 +170,17 @@ interface SeaService {
 
 export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, crewMember }) => {
   const { toast } = useToast();
+  
+  // Dashboard data query
+  const { data: dashboardData, isLoading: isDashboardLoading, error: dashboardError } = useQuery<CrewDashboardSummary>({
+    queryKey: [`/api/crew-members/${crewMember?.id}/dashboard`],
+    enabled: !!crewMember?.id && isOpen,
+  });
+
+  // Data mappings with proper nullish coalescing
+  const statusData = dashboardData?.status;
+  const experienceData = dashboardData?.experience;
+  
   const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<string>('A');
   const [editingSections, setEditingSections] = useState<{[key: string]: boolean}>({
@@ -781,41 +794,51 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                 <div className="text-center" data-testid="experience-company">
                   <div className="text-xs text-gray-500 mb-1">Company</div>
                   <div className="bg-blue-500 h-16 w-full rounded mb-1 flex items-end justify-center" data-testid="bar-company">
-                    <div className="bg-blue-600 w-full h-3/4 rounded-b flex items-center justify-center text-white text-xs font-bold" data-testid="text-company-value">1.2</div>
+                    <div className="bg-blue-600 w-full h-3/4 rounded-b flex items-center justify-center text-white text-xs font-bold" data-testid="text-company-value">
+                      {experienceData?.company || 1.2}
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-600" data-testid="text-company-label">1.2</div>
+                  <div className="text-xs text-gray-600" data-testid="text-company-label">{experienceData?.company || 1.2}</div>
                 </div>
                 
                 <div className="text-center" data-testid="experience-rank">
                   <div className="text-xs text-gray-500 mb-1">Rank</div>
                   <div className="bg-blue-500 h-16 w-full rounded mb-1 flex items-end justify-center" data-testid="bar-rank">
-                    <div className="bg-blue-600 w-full h-4/5 rounded-b flex items-center justify-center text-white text-xs font-bold" data-testid="text-rank-value">1.9</div>
+                    <div className="bg-blue-600 w-full h-4/5 rounded-b flex items-center justify-center text-white text-xs font-bold" data-testid="text-rank-value">
+                      {experienceData?.rank || 1.9}
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-600" data-testid="text-rank-label">1.9</div>
+                  <div className="text-xs text-gray-600" data-testid="text-rank-label">{experienceData?.rank || 1.9}</div>
                 </div>
                 
                 <div className="text-center" data-testid="experience-tankers">
                   <div className="text-xs text-gray-500 mb-1">Tankers</div>
                   <div className="bg-blue-500 h-16 w-full rounded mb-1 flex items-end justify-center" data-testid="bar-tankers">
-                    <div className="bg-blue-600 w-full h-full rounded flex items-center justify-center text-white text-xs font-bold" data-testid="text-tankers-value">2.5</div>
+                    <div className="bg-blue-600 w-full h-full rounded flex items-center justify-center text-white text-xs font-bold" data-testid="text-tankers-value">
+                      {experienceData?.tankers || 2.5}
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-600" data-testid="text-tankers-label">2.5</div>
+                  <div className="text-xs text-gray-600" data-testid="text-tankers-label">{experienceData?.tankers || 2.5}</div>
                 </div>
                 
                 <div className="text-center" data-testid="experience-ocw">
                   <div className="text-xs text-gray-500 mb-1">OCW</div>
                   <div className="bg-blue-500 h-16 w-full rounded mb-1 flex items-end justify-center" data-testid="bar-ocw">
-                    <div className="bg-blue-600 w-full h-full rounded flex items-center justify-center text-white text-xs font-bold" data-testid="text-ocw-value">3.6</div>
+                    <div className="bg-blue-600 w-full h-full rounded flex items-center justify-center text-white text-xs font-bold" data-testid="text-ocw-value">
+                      {experienceData?.ocw || 3.6}
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-600" data-testid="text-ocw-label">3.6</div>
+                  <div className="text-xs text-gray-600" data-testid="text-ocw-label">{experienceData?.ocw || 3.6}</div>
                 </div>
                 
                 <div className="text-center" data-testid="experience-endorsements">
                   <div className="text-xs text-gray-500 mb-1">Endorsements</div>
                   <div className="bg-gray-300 h-16 w-full rounded mb-1 flex items-end justify-center" data-testid="bar-endorsements">
-                    <div className="bg-gray-400 w-full h-1/4 rounded-b flex items-center justify-center text-white text-xs font-bold" data-testid="text-endorsements-value">0 GC</div>
+                    <div className="bg-gray-400 w-full h-1/4 rounded-b flex items-center justify-center text-white text-xs font-bold" data-testid="text-endorsements-value">
+                      {experienceData?.endorsements || '0 GC'}
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-600" data-testid="text-endorsements-label">0 GC</div>
+                  <div className="text-xs text-gray-600" data-testid="text-endorsements-label">{experienceData?.endorsements || '0 GC'}</div>
                 </div>
               </div>
             </div>

@@ -1,4 +1,5 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { Switch, Route } from "wouter";
@@ -7,9 +8,9 @@ import { AdminModule } from "./modules/admin/AdminModule";
 import { ElementCrewAppraisals } from "./modules/crewing/ElementCrewAppraisals";
 import { RecruitmentModule } from "./modules/recruitment/RecruitmentModule";
 import { CrewPoolModule } from "./modules/crew-pool/CrewPoolModule";
+import { DashboardPage } from "./pages/DashboardPage";
 import HeaderComponent from "./components/Navbar/HeaderComponent";
 
-const queryClient = new QueryClient();
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
             <HeaderComponent />
             <Switch>
               <Route path="/" component={ElementCrewAppraisals} />
+              <Route path="/dashboard" component={DashboardPage} />
               <Route path="/recruitment" component={RecruitmentModule} />
               <Route path="/crew-pool" component={CrewPoolModule} />
               <Route path="/admin/*" component={AdminModule} />
