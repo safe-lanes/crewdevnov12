@@ -505,8 +505,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
         });
         // Force immediate refetch of the data
         queryClient.refetchQueries({ queryKey: ['/api/recruitment-candidates'] });
-        // Navigate specifically to Part B for A5 submissions
+        // Navigate specifically to Part B for A5 submissions and clear continuous section highlighting
         setActiveSection('B');
+        setActiveContinuousSection(''); // Clear continuous section highlighting
       }).catch(error => {
         console.error('Error saving candidate:', error);
         toast({
@@ -531,8 +532,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
         });
         // Force immediate refetch of the data
         queryClient.refetchQueries({ queryKey: ['/api/recruitment-candidates'] });
-        // Navigate specifically to Part B for A5 submissions
+        // Navigate specifically to Part B for A5 submissions and clear continuous section highlighting
         setActiveSection('B');
+        setActiveContinuousSection(''); // Clear continuous section highlighting
       }).catch(error => {
         console.error('Error saving candidate:', error);
         toast({
@@ -911,8 +913,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       }
       setTimeout(() => scrollToSection(sectionId), 100); // Small delay to ensure DOM is ready
     } else {
-      // For stepper sections, use traditional navigation
+      // For stepper sections, use traditional navigation and clear continuous section highlighting
       setActiveSection(sectionId);
+      setActiveContinuousSection(''); // Clear continuous section highlighting
     }
   };
 
