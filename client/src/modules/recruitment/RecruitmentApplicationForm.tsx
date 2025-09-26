@@ -6061,10 +6061,12 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     );
   };
 
-  const renderContent = () => {
-    switch (activeSection) {
-      case 'A1':
-        return (
+  // Render all continuous sections (A1-A5) in one scrollable container
+  const renderContinuousSections = () => {
+    return (
+      <div className="space-y-6">
+        {/* A1 Section */}
+        <div ref={a1Ref} data-section-id="A1">
           <Card className="bg-white border border-gray-200 shadow-sm">
             <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="pb-4 mb-6">
@@ -6102,9 +6104,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               </div>
             </CardContent>
           </Card>
-        );
-      case 'A2':
-        return (
+        </div>
+
+        {/* A2 Section */}
+        <div ref={a2Ref} data-section-id="A2">
           <Card className="bg-white border border-gray-200 shadow-sm">
             <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="pb-4 mb-6">
@@ -6131,9 +6134,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               </div>
             </CardContent>
           </Card>
-        );
-      case 'A3':
-        return (
+        </div>
+
+        {/* A3 Section */}
+        <div ref={a3Ref} data-section-id="A3">
           <Card className="bg-white border border-gray-200 shadow-sm">
             <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="pb-4 mb-6">
@@ -6161,9 +6165,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               </div>
             </CardContent>
           </Card>
-        );
-      case 'A4':
-        return (
+        </div>
+
+        {/* A4 Section */}
+        <div ref={a4Ref} data-section-id="A4">
           <Card className="bg-white border border-gray-200 shadow-sm">
             <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="pb-4 mb-6">
@@ -6189,9 +6194,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               </div>
             </CardContent>
           </Card>
-        );
-      case 'A5':
-        return (
+        </div>
+
+        {/* A5 Section */}
+        <div ref={a5Ref} data-section-id="A5">
           <Card className="bg-white border border-gray-200 shadow-sm">
             <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="pb-4 mb-6">
@@ -6217,7 +6223,19 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               </div>
             </CardContent>
           </Card>
-        );
+        </div>
+      </div>
+    );
+  };
+
+  const renderContent = () => {
+    // If activeSection is A1-A5, render all continuous sections
+    if (['A1', 'A2', 'A3', 'A4', 'A5'].includes(activeSection)) {
+      return renderContinuousSections();
+    }
+    
+    // For B and C sections, render them individually as before
+    switch (activeSection) {
       case 'B':
         return (
           <Card className="bg-white border border-gray-200 shadow-sm">
