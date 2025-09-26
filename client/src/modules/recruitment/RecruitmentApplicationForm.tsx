@@ -457,6 +457,93 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     saveMutation.mutate(candidateData);
   };
 
+  // Handle A5 submit for screening - special case to navigate to B
+  const handleA5SubmitForScreening = () => {
+    if (!formData.firstName || !formData.familyName) {
+      toast({
+        title: "Validation Error", 
+        description: "Please fill in at least First Name and Family Name before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Generate file number for new candidates
+    const fileNo = candidate?.fileNo || `M${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`;
+    
+    const candidateData: InsertRecruitmentCandidate = {
+      id: candidate?.id || new Date().toISOString().split('T')[0] + '-' + Date.now(),
+      fileNo: fileNo,
+      firstName: formData.firstName,
+      middleName: formData.middleName || null,
+      familyName: formData.familyName,
+      dob: formData.dateOfBirth,
+      nationality: formData.nationality,
+      rankAppliedFor: formData.rankAppliedFor,
+      presentRank: formData.presentRank,
+      vesselType: formData.vesselType.join(', ') || '', // Join array to string for backend
+      status: getStatusForSection('A5', true), // A5 Submit for Screening
+      applicationData: JSON.stringify(formData) // Save all form data as JSON
+    };
+
+    console.log('🔥 A5 Submit for Screening - saving form data:', formData);
+
+    // Handle the save and navigation manually for A5
+    if (candidate?.id) {
+      // Update existing candidate
+      fetch(`/api/recruitment-candidates/${candidate.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(candidateData)
+      }).then(res => {
+        if (!res.ok) throw new Error('Failed to update candidate');
+        return res.json();
+      }).then(() => {
+        toast({
+          title: "Success",
+          description: "Candidate submitted for screening successfully!",
+        });
+        // Force immediate refetch of the data
+        queryClient.refetchQueries({ queryKey: ['/api/recruitment-candidates'] });
+        // Navigate specifically to Part B for A5 submissions
+        setActiveSection('B');
+      }).catch(error => {
+        console.error('Error saving candidate:', error);
+        toast({
+          title: "Error",
+          description: "Failed to save candidate. Please check your database connection and try again.",
+          variant: "destructive",
+        });
+      });
+    } else {
+      // Create new candidate
+      fetch('/api/recruitment-candidates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(candidateData)
+      }).then(res => {
+        if (!res.ok) throw new Error('Failed to create candidate');
+        return res.json();
+      }).then(() => {
+        toast({
+          title: "Success",
+          description: "Candidate submitted for screening successfully!",
+        });
+        // Force immediate refetch of the data
+        queryClient.refetchQueries({ queryKey: ['/api/recruitment-candidates'] });
+        // Navigate specifically to Part B for A5 submissions
+        setActiveSection('B');
+      }).catch(error => {
+        console.error('Error saving candidate:', error);
+        toast({
+          title: "Error",
+          description: "Failed to save candidate. Please check your database connection and try again.",
+          variant: "destructive",
+        });
+      });
+    }
+  };
+
   const [editingSections, setEditingSections] = useState({
     'A1.1': false,
     'A1.2': false,
@@ -6215,7 +6302,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <div className="flex justify-end gap-2 mt-6 pt-4">
                 <Button 
                   className="bg-green-600 hover:bg-green-700 text-white px-8"
-                  onClick={handleSaveAndContinue}
+                  onClick={handleA5SubmitForScreening}
                   disabled={saveMutation.isPending}
                 >
                   {saveMutation.isPending ? 'Saving...' : 'Submit for Screening'}
