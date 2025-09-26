@@ -1425,16 +1425,281 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
 
         {/* Part F: Summary & Recommendations */}
         <div ref={partFRef} data-section-id="F">
-          <Card className="bg-white">
-            <CardContent className="p-6">
-              <div className="pb-4 mb-6">
-                <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part F: Summary & Recommendations</h3>
-                <div style={{ color: '#16569e' }} className="text-sm">Provide overall assessment and recommendations</div>
-                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
-              </div>
-              {/* Part F content will go here */}
-            </CardContent>
-          </Card>
+          <div className="space-y-6">
+            <Card className="bg-white">
+              <CardContent className="p-6">
+                <div className="pb-4 mb-6">
+                  <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part F Comments & Recommendations</h3>
+                  <div style={{ color: '#16569e' }} className="text-sm">Add any recommendations related to following</div>
+                  <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+                </div>
+
+                {/* F1: Overall Score */}
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>F1. Overall Score</h3>
+                  <div className={`px-4 py-2 rounded text-lg font-bold min-w-[64px] text-center ${getScoreColors(parseFloat(calculateOverallScore())).bgColor} ${getScoreColors(parseFloat(calculateOverallScore())).textColor}`}>
+                    {calculateOverallScore()}
+                  </div>
+                </div>
+
+                {/* F2: Appraiser's Recommendations */}
+                <div className="space-y-4 mb-6">
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>F2. Appraiser's Recommendations</h3>
+                  </div>
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
+                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Recommendations</th>
+                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Yes</th>
+                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">No</th>
+                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">NA</th>
+                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {form.watch("recommendations").map((recommendation, index) => (
+                          <React.Fragment key={recommendation.id}>
+                            <tr className="border-t">
+                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
+                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{recommendation.question}</td>
+                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4 text-center">
+                                <input
+                                  type="radio"
+                                  name={`recommendation-${recommendation.id}`}
+                                  checked={recommendation.answer === "Yes"}
+                                  onChange={() => updateRecommendation(recommendation.id, "answer", "Yes")}
+                                  className="w-4 h-4"
+                                />
+                              </td>
+                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4 text-center">
+                                <input
+                                  type="radio"
+                                  name={`recommendation-${recommendation.id}`}
+                                  checked={recommendation.answer === "No"}
+                                  onChange={() => updateRecommendation(recommendation.id, "answer", "No")}
+                                  className="w-4 h-4"
+                                />
+                              </td>
+                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4 text-center">
+                                <input
+                                  type="radio"
+                                  name={`recommendation-${recommendation.id}`}
+                                  checked={recommendation.answer === "NA"}
+                                  onChange={() => updateRecommendation(recommendation.id, "answer", "NA")}
+                                  className="w-4 h-4"
+                                />
+                              </td>
+                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                <div className="flex justify-center">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setRecommendationComments(prev => ({
+                                      ...prev,
+                                      [recommendation.id]: prev[recommendation.id] || ""
+                                    }))}
+                                    className="h-6 w-6"
+                                  >
+                                    <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                            {recommendationComments[recommendation.id] !== undefined && (
+                              <tr>
+                                <td></td>
+                                <td colSpan={5} className="p-3">
+                                  {editingRecommendationComment === recommendation.id ? (
+                                    <Textarea
+                                      value={recommendationComments[recommendation.id]}
+                                      onChange={(e) => {
+                                        setRecommendationComments(prev => ({
+                                          ...prev,
+                                          [recommendation.id]: e.target.value
+                                        }));
+                                        updateRecommendation(recommendation.id, "comment", e.target.value);
+                                      }}
+                                      onBlur={() => setEditingRecommendationComment(null)}
+                                      placeholder="Comment: Add your observations here..."
+                                      className="text-blue-600 italic border-blue-200"
+                                      rows={2}
+                                      autoFocus
+                                    />
+                                  ) : (
+                                    <div className="flex justify-between items-start">
+                                      <div 
+                                        className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px]"
+                                        onClick={() => setEditingRecommendationComment(recommendation.id)}
+                                      >
+                                        {recommendationComments[recommendation.id] || "Click to add comment..."}
+                                      </div>
+                                      <div className="ml-2">
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => deleteRecommendationComment(recommendation.id)}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* F3: Appraiser Comments */}
+                <div className="space-y-4 mb-6">
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>F3. Appraiser Comments</h3>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-gray-600 border-gray-300"
+                      onClick={() => {
+                        addAppraiserComment("Ashok Kumar", "Chief Officer");
+                      }}
+                    >
+                      + Add Appraiser
+                    </Button>
+                  </div>
+                  <div className="space-y-4">
+                    {form.watch("appraiserComments").map((appraiser, index) => (
+                      <div key={appraiser.id} className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className="font-medium text-[14px] text-[#3164f4]">
+                              {index === 0 ? form.watch("primaryAppraiser") || "Capt. John Leki, Master (Primary Appraiser)" : `${appraiser.name}, ${appraiser.rank}`}
+                            </p>
+                          </div>
+                          <div className="flex space-x-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setEditingAppraiserComment(appraiser.id)}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            {index > 0 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => deleteAppraiserComment(appraiser.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        {editingAppraiserComment === appraiser.id ? (
+                          <Textarea
+                            value={appraiser.comment}
+                            onChange={(e) => updateAppraiserComment(appraiser.id, "comment", e.target.value)}
+                            onBlur={() => setEditingAppraiserComment(null)}
+                            placeholder="Add your comment here..."
+                            className="text-blue-600 italic"
+                            rows={3}
+                            autoFocus
+                          />
+                        ) : (
+                          appraiser.comment && (
+                            <p className="text-blue-600 italic text-sm pl-4">
+                              {appraiser.comment || (index === 0 ? "Officer X has performed consistently throughout the contract and participated in upgradation of the XXX. The inspection performance has been satisfactory, no major findings received in 2 SIRE and 1 PSC inspections." : "Officer X has performed consistently throughout the contract and participated in upgradation of the XXX. The inspection performance has been satisfactory, no major findings received in 2 SIRE and 1 PSC inspections.")}
+                            </p>
+                          )
+                        )}
+                        {editingAppraiserComment !== appraiser.id && !appraiser.comment && (
+                          <div 
+                            className="border-2 border-dashed border-blue-200 p-3 rounded cursor-pointer hover:bg-blue-50"
+                            onClick={() => setEditingAppraiserComment(appraiser.id)}
+                          >
+                            <p className="text-gray-500 text-[13px]">Click to add comment...</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* F4: Seafarer Comments */}
+                <div className="space-y-4">
+                  <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>F4. Seafarer Comments</h3>
+                  <div className="space-y-4">
+                    {form.watch("seafarerComments").map((seafarer, index) => (
+                      <div key={seafarer.id} className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className="font-medium text-[14px] text-[#3164f4]">
+                              {`${form.watch("seafarersName") || "Derek Cole"}, ${form.watch("seafarersRank") || "3rd Officer"}`}
+                            </p>
+                          </div>
+                          <div className="flex space-x-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setEditingSeafarerComment(seafarer.id)}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        {editingSeafarerComment === seafarer.id ? (
+                          <Textarea
+                            value={seafarer.comment}
+                            onChange={(e) => updateSeafarerComment(seafarer.id, "comment", e.target.value)}
+                            onBlur={() => setEditingSeafarerComment(null)}
+                            placeholder="Add your comment here..."
+                            className="text-blue-600 italic"
+                            rows={3}
+                            autoFocus
+                          />
+                        ) : (
+                          seafarer.comment && (
+                            <p className="text-blue-600 italic text-sm pl-4">
+                              {seafarer.comment || "I have received a very good opportunity to learn effectively during my tenure on board. I was able to practically apply the skills I had gained to enhance the operational performance. I would like to return on this vessel."}
+                            </p>
+                          )
+                        )}
+                        {editingSeafarerComment !== seafarer.id && !seafarer.comment && (
+                          <div 
+                            className="border-2 border-dashed border-blue-200 p-3 rounded cursor-pointer hover:bg-blue-50"
+                            onClick={() => setEditingSeafarerComment(seafarer.id)}
+                          >
+                            <p className="text-gray-500 text-[13px]">Click to add comment...</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex justify-end gap-4 mt-6">
+                  <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8">
+                    Save
+                  </Button>
+                  <Button className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8">
+                    Submit
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         {/* Part G: Office Review & Followup */}
