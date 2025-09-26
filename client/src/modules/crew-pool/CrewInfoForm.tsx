@@ -2469,7 +2469,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                           {section.number}
                         </span>
                         <span 
-                          className="hidden lg:block ml-3 text-left text-sm leading-tight flex-1"
+                          className="hidden xl:block ml-3 text-left text-sm leading-tight flex-1"
                           data-testid={`text-step-title-${section.id}`}
                           title={section.title}
                           style={{ 
