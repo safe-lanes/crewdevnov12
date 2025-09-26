@@ -904,7 +904,58 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                 <div style={{ color: '#16569e' }} className="text-sm">Enter details as applicable</div>
                 <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
               </div>
-              {/* Part A content will go here - I'll need to move it from the existing conditional rendering */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="seafarersName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-gray-500 tracking-wide">Seafarer's Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Enter seafarer's name" className="bg-[#ffffff]" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="seafarersRank"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-gray-500 tracking-wide">Seafarer's Rank</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="bg-[#ffffff]">
+                              <SelectValue placeholder="Select rank" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="master">Master</SelectItem>
+                            <SelectItem value="chief-engineer">Chief Engineer</SelectItem>
+                            <SelectItem value="chief-mate">Chief Mate</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="nationality"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-gray-500 tracking-wide">Nationality</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Enter nationality" className="bg-[#ffffff]" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -918,7 +969,20 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                 <div style={{ color: '#16569e' }} className="text-sm">Add below at the start of the Appraisal Period except the Evaluation which must be completed at the end of the Appraisal Period</div>
                 <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
               </div>
-              {/* Part B content will go here - I'll need to move it from the existing conditional rendering */}
+              <div className="space-y-6">
+                <div>
+                  <h3 className="font-medium text-[16px] mb-4" style={{ color: '#16569e' }}>B1. Training</h3>
+                  <div className="bg-white rounded-lg border p-4">
+                    <p className="text-gray-600 text-sm">Training content will be added here...</p>
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-medium text-[16px] mb-4" style={{ color: '#16569e' }}>B2. Target Setting</h3>
+                  <div className="bg-white rounded-lg border p-4">
+                    <p className="text-gray-600 text-sm">Target setting content will be added here...</p>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -939,7 +1003,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                 <div style={{ color: '#16569e' }} className="text-sm">Rate the effectiveness of the seafarer in the following areas</div>
                 <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
               </div>
-              {/* Part C content will go here */}
+              <div className="space-y-4">
+                <div className="bg-white rounded-lg border p-4">
+                  <p className="text-gray-600 text-sm">Competence assessment content will be added here...</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -988,6 +1056,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
       </div>
     );
   };
+
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1127,8 +1196,26 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
                 
-                {/* Part A: Seafarer's Information */}
-                {activeSection === "reference" && (
+                {/* Render content based on section type */}
+                {(['reference', 'information'].includes(activeSection)) && renderContinuousSections1()}
+                {(['competenceAssessment', 'behaviouralAssessment', 'trainingNeeds', 'summary'].includes(activeSection)) && renderContinuousSections2()}
+                
+                {/* Part G: Office Review & Followup - Traditional Stepper */}
+                {activeSection === "officeReview" && (
+                  <Card className="bg-white">
+                    <CardContent className="p-6">
+                      <div className="pb-4 mb-6">
+                        <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part G: Office Review & Followup</h3>
+                        <div style={{ color: '#16569e' }} className="text-sm">To be completed by office personnel</div>
+                        <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+                      </div>
+                      {/* Part G content will be preserved from existing implementation */}
+                    </CardContent>
+                  </Card>
+                )}
+                
+                {/* Part A: Seafarer's Information - moved to continuous function */}
+                {false && activeSection === "reference" && (
                   <Card className="bg-white">
                     <CardContent className="p-6">
                       <div className="pb-4 mb-6">
