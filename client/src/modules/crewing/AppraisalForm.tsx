@@ -1148,10 +1148,131 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
             <CardContent className="p-6">
               <div className="pb-4 mb-6">
                 <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part D: Behavioural Assessment (Soft Skills)</h3>
-                <div style={{ color: '#16569e' }} className="text-sm">Rate the effectiveness of the seafarer in the following soft skills</div>
+                <div style={{ color: '#16569e' }} className="text-sm">Select the most appropriate rating basis assessment of the specific criterion</div>
                 <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
               </div>
-              {/* Part D content will go here */}
+
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Assessment Criteria</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Weight %</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Effectiveness</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  {form.watch("behaviouralAssessments").map((assessment, index) => (
+                    <React.Fragment key={assessment.id}>
+                      <tr className="border-t">
+                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
+                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{assessment.assessmentCriteria}</td>
+                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4 text-center">{assessment.weight}%</td>
+                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                          <Select
+                            value={assessment.effectiveness}
+                            onValueChange={(value) => updateBehaviouralAssessment(assessment.id, "effectiveness", value)}
+                          >
+                            <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                              <SelectValue placeholder="Select Rating" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="5-exceeds-expectations">5- Exceeds Expectations</SelectItem>
+                              <SelectItem value="4-meets-expectations">4- Meets Expectations</SelectItem>
+                              <SelectItem value="3-somewhat-meets-expectations">3- Somewhat Meets Expectations</SelectItem>
+                              <SelectItem value="2-below-expectations">2- Below Expectations</SelectItem>
+                              <SelectItem value="1-significantly-below-expectations">1- Significantly Below Expectations</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </td>
+                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                          <div className="flex gap-2 justify-center">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => setBehaviouralComments(prev => ({
+                                ...prev,
+                                [assessment.id]: prev[assessment.id] || ""
+                              }))}
+                            >
+                              <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                            >
+                              <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                      {behaviouralComments[assessment.id] !== undefined && (
+                        <tr>
+                          <td></td>
+                          <td colSpan={4} className="p-3">
+                            {editingBehaviouralComment === assessment.id ? (
+                              <Textarea
+                                value={behaviouralComments[assessment.id]}
+                                onChange={(e) => {
+                                  setBehaviouralComments(prev => ({
+                                    ...prev,
+                                    [assessment.id]: e.target.value
+                                  }));
+                                  updateBehaviouralAssessment(assessment.id, "comment", e.target.value);
+                                }}
+                                onBlur={() => setEditingBehaviouralComment(null)}
+                                placeholder="Comment: Add your observations here..."
+                                className="text-blue-600 italic border-blue-200"
+                                rows={2}
+                                autoFocus
+                              />
+                            ) : (
+                              <div className="flex justify-between items-start">
+                                <div 
+                                  className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px]"
+                                  onClick={() => setEditingBehaviouralComment(assessment.id)}
+                                >
+                                  {behaviouralComments[assessment.id] || "Click to add comment..."}
+                                </div>
+                                <div className="ml-2">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => deleteBehaviouralComment(assessment.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex justify-between items-center mt-6 p-4 bg-gray-50 rounded-lg">
+                <span className="text-sm font-medium text-gray-600">Section Score:</span>
+                <div className={`px-4 py-2 rounded text-lg font-semibold min-w-[64px] text-center ${getScoreColors(parseFloat(calculateBehaviouralSectionScore())).bgColor} ${getScoreColors(parseFloat(calculateBehaviouralSectionScore())).textColor}`}>
+                  {calculateBehaviouralSectionScore()}
+                </div>
+              </div>
+
+              <div className="flex justify-end mt-6">
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8">
+                  Save
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -1161,11 +1282,143 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
           <Card className="bg-white">
             <CardContent className="p-6">
               <div className="pb-4 mb-6">
-                <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part E: Training Needs & Development</h3>
-                <div style={{ color: '#16569e' }} className="text-sm">Identify training needs and development opportunities</div>
+                <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part E Training Needs & Development</h3>
+                <div style={{ color: '#16569e' }} className="text-sm">Specify any training needs identified during the appraisals period</div>
                 <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
               </div>
-              {/* Part E content will go here */}
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-gray-600 border-gray-300"
+                      onClick={() => addTrainingNeed('database')}
+                    >
+                      + Add Training from Database
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-gray-600 border-gray-300"
+                      onClick={() => addTrainingNeed('new')}
+                    >
+                      + Add New Training
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  {form.watch("trainingNeeds").map((trainingNeed, index) => (
+                    <React.Fragment key={trainingNeed.id}>
+                      <tr className="border-t">
+                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
+                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                          <Input
+                            value={trainingNeed.training}
+                            onChange={(e) => updateTrainingNeed(trainingNeed.id, "training", e.target.value)}
+                            placeholder={`Training ${index + 1}`}
+                            className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          />
+                        </td>
+                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                          <div className="flex gap-2 justify-center">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => setTrainingNeedsComments(prev => ({
+                                ...prev,
+                                [trainingNeed.id]: prev[trainingNeed.id] || ""
+                              }))}
+                            >
+                              <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => deleteTrainingNeed(trainingNeed.id)}
+                            >
+                              <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                      {trainingNeedsComments[trainingNeed.id] !== undefined && (
+                        <tr>
+                          <td></td>
+                          <td colSpan={2} className="p-3">
+                            {editingTrainingNeedsComment === trainingNeed.id ? (
+                              <Textarea
+                                value={trainingNeedsComments[trainingNeed.id]}
+                                onChange={(e) => {
+                                  setTrainingNeedsComments(prev => ({
+                                    ...prev,
+                                    [trainingNeed.id]: e.target.value
+                                  }));
+                                  updateTrainingNeed(trainingNeed.id, "comment", e.target.value);
+                                }}
+                                onBlur={() => setEditingTrainingNeedsComment(null)}
+                                placeholder="Comment: Add your observations here..."
+                                className="text-blue-600 italic border-blue-200"
+                                rows={2}
+                                autoFocus
+                              />
+                            ) : (
+                              <div className="flex justify-between items-start">
+                                <div 
+                                  className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px]"
+                                  onClick={() => setEditingTrainingNeedsComment(trainingNeed.id)}
+                                >
+                                  {trainingNeedsComments[trainingNeed.id] || "Click to add comment..."}
+                                </div>
+                                <div className="ml-2">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => deleteTrainingNeedsComment(trainingNeed.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))}
+                  {form.watch("trainingNeeds").length === 0 && (
+                    <tr>
+                      <td colSpan={3} className="p-8 text-center text-gray-500">
+                        No training needs added yet. Click "Add Training from Database" or "Add New Training" to get started.
+                      </td>
+                    </tr>
+                  )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex justify-end mt-6">
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8">
+                  Save
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
