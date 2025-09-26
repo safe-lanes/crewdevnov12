@@ -1012,13 +1012,131 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
             <CardContent className="p-6">
               <div className="pb-4 mb-6">
                 <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part C: Competence Assessment (Professional Knowledge & Skills)</h3>
-                <div style={{ color: '#16569e' }} className="text-sm">Rate the effectiveness of the seafarer in the following areas</div>
+                <div style={{ color: '#16569e' }} className="text-sm">Select the most appropriate rating basis assessment of the specific criterion</div>
                 <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
               </div>
-              <div className="space-y-4">
-                <div className="bg-white rounded-lg border p-4">
-                  <p className="text-gray-600 text-sm">Competence assessment content will be added here...</p>
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Assessment Criteria</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Weight %</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Effectiveness</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {form.watch("competenceAssessments").map((assessment, index) => (
+                      <React.Fragment key={assessment.id}>
+                        <tr className="border-t">
+                          <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
+                          <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{assessment.assessmentCriteria}</td>
+                          <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{assessment.weight}%</td>
+                          <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                            <Select
+                              value={assessment.effectiveness}
+                              onValueChange={(value) => updateCompetenceAssessment(assessment.id, "effectiveness", value)}
+                            >
+                              <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                                <SelectValue placeholder="Select Rating" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="5-exceeds-expectations">5- Exceeds Expectations</SelectItem>
+                                <SelectItem value="4-meets-expectations">4- Meets Expectations</SelectItem>
+                                <SelectItem value="3-somewhat-meets-expectations">3- Somewhat Meets Expectations</SelectItem>
+                                <SelectItem value="2-below-expectations">2- Below Expectations</SelectItem>
+                                <SelectItem value="1-significantly-below-expectations">1- Significantly Below Expectations</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                            <div className="flex gap-2 justify-center">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => setCompetenceComments(prev => ({
+                                  ...prev,
+                                  [assessment.id]: prev[assessment.id] || ""
+                                }))}
+                              >
+                                <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
+                              </Button>
+
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                              >
+                                <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                        {competenceComments[assessment.id] !== undefined && (
+                          <tr>
+                            <td></td>
+                            <td colSpan={4} className="p-3">
+                              {editingCompetenceComment === assessment.id ? (
+                                <Textarea
+                                  value={competenceComments[assessment.id]}
+                                  onChange={(e) => {
+                                    setCompetenceComments(prev => ({
+                                      ...prev,
+                                      [assessment.id]: e.target.value
+                                    }));
+                                    updateCompetenceAssessment(assessment.id, "comment", e.target.value);
+                                  }}
+                                  onBlur={() => setEditingCompetenceComment(null)}
+                                  placeholder="Comment: Add your observations here..."
+                                  className="text-blue-600 italic border-blue-200"
+                                  rows={2}
+                                  autoFocus
+                                />
+                              ) : (
+                                <div className="flex justify-between items-start">
+                                  <div 
+                                    className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px]"
+                                    onClick={() => setEditingCompetenceComment(assessment.id)}
+                                  >
+                                    {competenceComments[assessment.id] || "Click to add comment..."}
+                                  </div>
+                                  <div className="ml-2">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => deleteCompetenceComment(assessment.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Section Score */}
+              <div className="flex justify-between items-center mt-6 p-4 bg-gray-50 rounded-lg">
+                <div className="text-sm font-medium text-gray-700">Section Score:</div>
+                <div className={`px-4 py-2 rounded text-lg font-semibold min-w-[64px] text-center ${getScoreColors(parseFloat(calculateSectionScore())).bgColor} ${getScoreColors(parseFloat(calculateSectionScore())).textColor}`}>
+                  {calculateSectionScore()}
                 </div>
+              </div>
+
+              <div className="flex justify-end mt-6">
+                <Button className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8">
+                  Save
+                </Button>
               </div>
             </CardContent>
           </Card>
