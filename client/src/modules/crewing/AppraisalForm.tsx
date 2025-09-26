@@ -2204,7 +2204,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
           </nav>
         </div>
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden bg-[#f8fafc]"></div>
           {/* Left Sidebar - Enhanced Stepper (Hidden on Mobile) */}
           <aside className="hidden sm:block sticky top-0 self-start basis-20 md:basis-48 lg:basis-52 shrink-0 bg-[#f8fafc] border-r overflow-y-auto">
             <div className="p-3">
@@ -2269,7 +2269,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
           </aside>
 
           {/* Form Content */}
-          <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 bg-[#f8fafc]">
+          <div className="flex flex-1 overflow-hidden bg-[#f8fafc]"></div>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
                 
