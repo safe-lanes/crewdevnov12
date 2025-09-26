@@ -205,6 +205,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   onClose
 }) => {
   const [activeSection, setActiveSection] = useState('A1');
+  const [activeContinuousSection, setActiveContinuousSection] = useState('A1'); // For continuous scroll sections
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -740,15 +741,93 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     };
   }, [editingSections]);
 
+  // Refs for A1-A5 sections for intersection observer
+  const a1Ref = useRef<HTMLDivElement>(null);
+  const a2Ref = useRef<HTMLDivElement>(null);
+  const a3Ref = useRef<HTMLDivElement>(null);
+  const a4Ref = useRef<HTMLDivElement>(null);
+  const a5Ref = useRef<HTMLDivElement>(null);
+
   const sections = [
-    { id: 'A1', title: 'Seafarers\' Particulars', number: 'A1' },
-    { id: 'A2', title: 'Travel & ID Documents', number: 'A2' },
-    { id: 'A3', title: 'Training & Certificates', number: 'A3' },
-    { id: 'A4', title: 'Sea Service', number: 'A4' },
-    { id: 'A5', title: 'Additional Information', number: 'A5' },
-    { id: 'B', title: 'Company Processing', number: 'B' },
-    { id: 'C', title: 'Approval', number: 'C' }
+    { id: 'A1', title: 'Seafarers\' Particulars', number: 'A1', type: 'continuous', ref: a1Ref },
+    { id: 'A2', title: 'Travel & ID Documents', number: 'A2', type: 'continuous', ref: a2Ref },
+    { id: 'A3', title: 'Training & Certificates', number: 'A3', type: 'continuous', ref: a3Ref },
+    { id: 'A4', title: 'Sea Service', number: 'A4', type: 'continuous', ref: a4Ref },
+    { id: 'A5', title: 'Additional Information', number: 'A5', type: 'continuous', ref: a5Ref },
+    { id: 'B', title: 'Company Processing', number: 'B', type: 'stepper' },
+    { id: 'C', title: 'Approval', number: 'C', type: 'stepper' }
   ];
+
+  // Intersection Observer for continuous sections
+  useEffect(() => {
+    // Only set up observer for continuous sections (A1-A5)
+    if (activeSection === 'B' || activeSection === 'C') return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Find the entry with the highest intersection ratio
+        let mostVisible = entries[0];
+        entries.forEach(entry => {
+          if (entry.intersectionRatio > mostVisible.intersectionRatio) {
+            mostVisible = entry;
+          }
+        });
+
+        // Update the active continuous section if there's a significant intersection
+        if (mostVisible && mostVisible.intersectionRatio > 0.1) {
+          const sectionId = mostVisible.target.getAttribute('data-section-id');
+          if (sectionId && sectionId !== activeContinuousSection) {
+            setActiveContinuousSection(sectionId);
+          }
+        }
+      },
+      {
+        root: null,
+        rootMargin: '-50px 0px -50px 0px',
+        threshold: [0, 0.1, 0.3, 0.5, 0.7, 1.0]
+      }
+    );
+
+    // Observe all A sections when in continuous mode
+    const continuousSections = sections.filter(s => s.type === 'continuous');
+    continuousSections.forEach(section => {
+      if (section.ref?.current) {
+        observer.observe(section.ref.current);
+      }
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [activeSection, activeContinuousSection, sections]);
+
+  // Function to scroll to a specific section
+  const scrollToSection = (sectionId: string) => {
+    const section = sections.find(s => s.id === sectionId);
+    if (section && section.ref?.current) {
+      section.ref.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  };
+
+  // Function to handle section navigation
+  const handleSectionNavigation = (sectionId: string) => {
+    const section = sections.find(s => s.id === sectionId);
+    if (!section) return;
+
+    if (section.type === 'continuous') {
+      // For continuous sections, stay in the continuous view and scroll to section
+      if (activeSection !== 'A1') {
+        setActiveSection('A1'); // Switch to continuous view
+      }
+      setTimeout(() => scrollToSection(sectionId), 100); // Small delay to ensure DOM is ready
+    } else {
+      // For stepper sections, use traditional navigation
+      setActiveSection(sectionId);
+    }
+  };
 
   // Function to get the next section for "Save & Continue"
   const getNextSection = (currentSection: string) => {
