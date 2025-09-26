@@ -780,7 +780,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
     { id: "D", title: "Part D: Behavioural Assessment (Soft Skills)", type: "continuous2", number: "D", ref: partDRef },
     { id: "E", title: "Part E: Training Needs & Development", type: "continuous2", number: "E", ref: partERef },
     { id: "F", title: "Part F: Summary & Recommendations", type: "continuous2", number: "F", ref: partFRef },
-    { id: "G", title: "Part G: Office Review & Followup", type: "stepper", number: "G", ref: partGRef },
+    { id: "G", title: "Part G: Office Review & Followup", type: "continuous2", number: "G", ref: partGRef },
   ];
 
   // Intersection Observer for continuous group 1 (A&B)
@@ -1065,6 +1065,20 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
             </CardContent>
           </Card>
         </div>
+
+        {/* Part G: Office Review & Followup */}
+        <div ref={partGRef} data-section-id="G">
+          <Card className="bg-white">
+            <CardContent className="p-6">
+              <div className="pb-4 mb-6">
+                <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part G: Office Review & Followup</h3>
+                <div style={{ color: '#16569e' }} className="text-sm">To be completed by office personnel</div>
+                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+              </div>
+              {/* Part G content will go here */}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   };
@@ -1214,7 +1228,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                     {renderContinuousSections1()}
                   </div>
                 )}
-                {(['C', 'D', 'E', 'F'].includes(activeSection)) && (
+                {(['C', 'D', 'E', 'F', 'G'].includes(activeSection)) && (
                   <div ref={continuous2ContainerRef} className="h-[calc(100vh-200px)] overflow-y-auto">
                     {renderContinuousSections2()}
                   </div>
