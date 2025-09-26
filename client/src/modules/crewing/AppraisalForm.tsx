@@ -2127,6 +2127,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                     Save
                   </Button>
                   <Button 
+                    type="button"
                     className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8"
                     onClick={navigateToPartG}
                   >
