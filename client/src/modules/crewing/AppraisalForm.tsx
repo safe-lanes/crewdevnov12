@@ -168,9 +168,9 @@ interface AppraisalFormProps {
 }
 
 export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClose }) => {
-  const [activeSection, setActiveSection] = useState("reference");
-  const [activeContinuousSection1, setActiveContinuousSection1] = useState('reference'); // For A&B continuous scroll
-  const [activeContinuousSection2, setActiveContinuousSection2] = useState('competenceAssessment'); // For C-F continuous scroll
+  const [activeSection, setActiveSection] = useState("A");
+  const [activeContinuousSection1, setActiveContinuousSection1] = useState('A'); // For A&B continuous scroll
+  const [activeContinuousSection2, setActiveContinuousSection2] = useState('C'); // For C-F continuous scroll
   const [editingTraining, setEditingTraining] = useState<string | null>(null);
   const [editingTarget, setEditingTarget] = useState<string | null>(null);
   const [trainingComments, setTrainingComments] = useState<{[key: string]: string}>({});
@@ -185,13 +185,18 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
   const [nationalityOpen, setNationalityOpen] = useState(false);
   const [editingOfficeReview, setEditingOfficeReview] = useState<string | null>(null);
   
-  // Refs for continuous scroll sections
-  const referenceRef = useRef<HTMLDivElement>(null);
-  const informationRef = useRef<HTMLDivElement>(null);
-  const competenceAssessmentRef = useRef<HTMLDivElement>(null);
-  const behaviouralAssessmentRef = useRef<HTMLDivElement>(null);
-  const trainingNeedsRef = useRef<HTMLDivElement>(null);
-  const summaryRef = useRef<HTMLDivElement>(null);
+  // Section references using canonical Part IDs
+  const partARef = useRef<HTMLDivElement>(null);
+  const partBRef = useRef<HTMLDivElement>(null);
+  const partCRef = useRef<HTMLDivElement>(null);
+  const partDRef = useRef<HTMLDivElement>(null);
+  const partERef = useRef<HTMLDivElement>(null);
+  const partFRef = useRef<HTMLDivElement>(null);
+  const partGRef = useRef<HTMLDivElement>(null);
+
+  // Scroll container references for continuous groups
+  const continuous1ContainerRef = useRef<HTMLDivElement>(null);
+  const continuous2ContainerRef = useRef<HTMLDivElement>(null);
   
   // States for tracking which comments are being edited
   const [editingTrainingComment, setEditingTrainingComment] = useState<string | null>(null);
@@ -767,18 +772,21 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
     />
   );
 
+  // Canonical sections array with proper Part IDs and refs
   const sections = [
-    { id: "reference", title: "Part A: Seafarer's Information", type: "continuous1", number: "A", ref: referenceRef },
-    { id: "information", title: "Part B: Information at Start of Appraisal Period", type: "continuous1", number: "B", ref: informationRef },
-    { id: "competenceAssessment", title: "Part C: Competence Assessment (Professional Knowledge & Skills)", type: "continuous2", number: "C", ref: competenceAssessmentRef },
-    { id: "behaviouralAssessment", title: "Part D: Behavioural Assessment (Soft Skills)", type: "continuous2", number: "D", ref: behaviouralAssessmentRef },
-    { id: "trainingNeeds", title: "Part E: Training Needs & Development", type: "continuous2", number: "E", ref: trainingNeedsRef },
-    { id: "summary", title: "Part F: Summary & Recommendations", type: "continuous2", number: "F", ref: summaryRef },
-    { id: "officeReview", title: "Part G: Office Review & Followup", type: "stepper", number: "G", ref: null },
+    { id: "A", title: "Part A: Seafarer's Information", type: "continuous1", number: "A", ref: partARef },
+    { id: "B", title: "Part B: Information at Start of Appraisal Period", type: "continuous1", number: "B", ref: partBRef },
+    { id: "C", title: "Part C: Competence Assessment (Professional Knowledge & Skills)", type: "continuous2", number: "C", ref: partCRef },
+    { id: "D", title: "Part D: Behavioural Assessment (Soft Skills)", type: "continuous2", number: "D", ref: partDRef },
+    { id: "E", title: "Part E: Training Needs & Development", type: "continuous2", number: "E", ref: partERef },
+    { id: "F", title: "Part F: Summary & Recommendations", type: "continuous2", number: "F", ref: partFRef },
+    { id: "G", title: "Part G: Office Review & Followup", type: "stepper", number: "G", ref: partGRef },
   ];
 
   // Intersection Observer for continuous group 1 (A&B)
   useEffect(() => {
+    if (!continuous1ContainerRef.current) return;
+
     const observer = new IntersectionObserver(
       (entries) => {
         let mostVisible = entries[0];
@@ -790,7 +798,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
         });
 
         // Update the active continuous section if there's a significant intersection
-        if (mostVisible && mostVisible.intersectionRatio > 0.1) {
+        if (mostVisible && mostVisible.intersectionRatio > 0.6) {
           const sectionId = mostVisible.target.getAttribute('data-section-id');
           if (sectionId && sectionId !== activeContinuousSection1) {
             setActiveContinuousSection1(sectionId);
@@ -798,6 +806,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
         }
       },
       {
+        root: continuous1ContainerRef.current,
         threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
         rootMargin: '-50px 0px -50px 0px'
       }
@@ -814,10 +823,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
     return () => {
       observer.disconnect();
     };
-  }, [activeSection, activeContinuousSection1, sections]);
+  }, [activeContinuousSection1, sections]);
 
   // Intersection Observer for continuous group 2 (C-F)
   useEffect(() => {
+    if (!continuous2ContainerRef.current) return;
+
     const observer = new IntersectionObserver(
       (entries) => {
         let mostVisible = entries[0];
@@ -829,7 +840,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
         });
 
         // Update the active continuous section if there's a significant intersection
-        if (mostVisible && mostVisible.intersectionRatio > 0.1) {
+        if (mostVisible && mostVisible.intersectionRatio > 0.6) {
           const sectionId = mostVisible.target.getAttribute('data-section-id');
           if (sectionId && sectionId !== activeContinuousSection2) {
             setActiveContinuousSection2(sectionId);
@@ -837,6 +848,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
         }
       },
       {
+        root: continuous2ContainerRef.current,
         threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
         rootMargin: '-50px 0px -50px 0px'
       }
@@ -853,7 +865,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
     return () => {
       observer.disconnect();
     };
-  }, [activeSection, activeContinuousSection2, sections]);
+  }, [activeContinuousSection2, sections]);
 
   // Function to scroll to a specific section
   const scrollToSection = (sectionId: string) => {
@@ -866,21 +878,21 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
     }
   };
 
-  // Function to handle section navigation
+  // Function to handle section navigation with canonical IDs
   const handleSectionNavigation = (sectionId: string) => {
     const section = sections.find(s => s.id === sectionId);
     if (!section) return;
 
     if (section.type === 'continuous1') {
       // For continuous1 sections (A&B), stay in the continuous view and scroll to section
-      if (!['reference', 'information'].includes(activeSection)) {
-        setActiveSection('reference'); // Switch to continuous1 view
+      if (!['A', 'B'].includes(activeSection)) {
+        setActiveSection('A'); // Switch to continuous1 view
       }
       setTimeout(() => scrollToSection(sectionId), 100); // Small delay to ensure DOM is ready
     } else if (section.type === 'continuous2') {
       // For continuous2 sections (C-F), stay in the continuous view and scroll to section
-      if (!['competenceAssessment', 'behaviouralAssessment', 'trainingNeeds', 'summary'].includes(activeSection)) {
-        setActiveSection('competenceAssessment'); // Switch to continuous2 view
+      if (!['C', 'D', 'E', 'F'].includes(activeSection)) {
+        setActiveSection('C'); // Switch to continuous2 view
       }
       setTimeout(() => scrollToSection(sectionId), 100); // Small delay to ensure DOM is ready
     } else {
@@ -896,7 +908,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
     return (
       <div className="space-y-4 sm:space-y-6">
         {/* Part A: Seafarer's Information */}
-        <div ref={referenceRef} data-section-id="reference">
+        <div ref={partARef} data-section-id="A">
           <Card className="bg-white">
             <CardContent className="p-6">
               <div className="pb-4 mb-6">
@@ -961,7 +973,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
         </div>
 
         {/* Part B: Information at Start of Appraisal Period */}
-        <div ref={informationRef} data-section-id="information">
+        <div ref={partBRef} data-section-id="B">
           <Card className="bg-white">
             <CardContent className="p-6">
               <div className="pb-4 mb-6">
@@ -995,7 +1007,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
     return (
       <div className="space-y-4 sm:space-y-6">
         {/* Part C: Competence Assessment */}
-        <div ref={competenceAssessmentRef} data-section-id="competenceAssessment">
+        <div ref={partCRef} data-section-id="C">
           <Card className="bg-white">
             <CardContent className="p-6">
               <div className="pb-4 mb-6">
@@ -1197,8 +1209,16 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
                 
                 {/* Render content based on section type */}
-                {(['reference', 'information'].includes(activeSection)) && renderContinuousSections1()}
-                {(['competenceAssessment', 'behaviouralAssessment', 'trainingNeeds', 'summary'].includes(activeSection)) && renderContinuousSections2()}
+                {(['A', 'B'].includes(activeSection)) && (
+                  <div ref={continuous1ContainerRef} className="h-[calc(100vh-200px)] overflow-y-auto">
+                    {renderContinuousSections1()}
+                  </div>
+                )}
+                {(['C', 'D', 'E', 'F'].includes(activeSection)) && (
+                  <div ref={continuous2ContainerRef} className="h-[calc(100vh-200px)] overflow-y-auto">
+                    {renderContinuousSections2()}
+                  </div>
+                )}
                 
                 {/* Part G: Office Review & Followup - Traditional Stepper */}
                 {activeSection === "officeReview" && (
