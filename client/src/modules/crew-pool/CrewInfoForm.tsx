@@ -2506,11 +2506,11 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                   <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
                 </div>
                 <div className="space-y-6">
-                  <div className="grid grid-cols-1 2xl:grid-cols-2 gap-6">
-                    <div className="2xl:col-span-1">
+                  <div className="space-y-6">
+                    <div>
                       {renderA11GeneralParticulars()}
                     </div>
-                    <div className="2xl:col-span-1">
+                    <div>
                       {renderA12AddressContact()}
                     </div>
                   </div>
