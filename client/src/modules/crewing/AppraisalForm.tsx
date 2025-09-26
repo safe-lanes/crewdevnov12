@@ -2218,7 +2218,6 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      </div>
     </div>
   );
 };
