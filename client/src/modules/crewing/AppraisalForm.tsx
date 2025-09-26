@@ -780,7 +780,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
     { id: "D", title: "Part D: Behavioural Assessment (Soft Skills)", type: "continuous2", number: "D", ref: partDRef },
     { id: "E", title: "Part E: Training Needs & Development", type: "continuous2", number: "E", ref: partERef },
     { id: "F", title: "Part F: Summary & Recommendations", type: "continuous2", number: "F", ref: partFRef },
-    { id: "G", title: "Part G: Office Review & Followup", type: "continuous2", number: "G", ref: partGRef },
+    { id: "G", title: "Part G: Office Review & Followup", type: "stepper", number: "G", ref: partGRef },
   ];
 
   // Intersection Observer for continuous group 1 (A&B)
