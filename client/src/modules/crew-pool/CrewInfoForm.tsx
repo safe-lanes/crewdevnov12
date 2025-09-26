@@ -2406,7 +2406,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
 
         <div className="flex h-full overflow-hidden bg-[#f9fafb]">
           {/* Left Sidebar - Enhanced Stepper */}
-          <aside className="sticky top-0 self-start basis-20 md:basis-56 lg:basis-64 shrink-0 bg-gray-50 border-r overflow-y-auto">
+          <aside className="sticky top-0 self-start basis-20 md:basis-48 lg:basis-52 shrink-0 bg-gray-50 border-r overflow-y-auto">
             <div className="p-3">
               <nav className="space-y-1">
                 {sections.map((section, index) => {
@@ -2430,15 +2430,20 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                           className={`flex items-center justify-center w-8 h-8 rounded-full border text-sm font-semibold ${
                             isActive 
                               ? "bg-blue-600 text-white border-transparent" 
-                              : "bg-white border-gray-300 text-gray-800"
+                              : "bg-gray-500 text-white border-transparent"
                           }`}
                         >
                           {section.number}
                         </span>
                         <span 
-                          className="hidden md:block ml-3 truncate text-left"
+                          className="hidden md:block ml-3 text-left text-sm leading-tight"
                           data-testid={`text-step-title-${section.id}`}
                           title={section.title}
+                          style={{ 
+                            wordBreak: 'break-word',
+                            lineHeight: '1.2',
+                            maxWidth: '8rem'
+                          }}
                         >
                           {section.title}
                         </span>
