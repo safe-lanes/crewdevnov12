@@ -656,10 +656,10 @@
         "rankAppliedFor": "Master",
         "presentRank": "Master",
         "vesselType": "[\"Oil Tanker\"]",
-        "status": "Applied",
+        "status": "For Approval",
         "applicationData": "{\"firstName\":\"Mark\",\"middleName\":\"Tan\",\"familyName\":\"Twait\",\"nationality\":\"Malaysian\",\"presentRank\":\"Master\",\"vesselType\":[\"[\\\"Oil Tanker\\\"]\"],\"dateOfBirth\":\"1981-01-04\",\"placeOfBirthCity\":\"\",\"placeOfBirthCountry\":\"\",\"ageInYears\":\"44\",\"heightCm\":\"\",\"weightKg\":\"\",\"nativeLanguage\":\"English\",\"foreignLanguages\":\"Spanish\",\"englishProficiency\":\"Good\",\"rankAppliedFor\":\"Master\",\"manningAgent\":\"ABC \",\"fileNo\":\"RC-2025-001\",\"countryOfResidence\":\"\",\"nearestAirport\":\"\",\"residentialAddressLine1\":\"\",\"residentialAddressLine2\":\"\",\"contactLandline\":\"\",\"mobile\":\"\",\"email\":\"\",\"maritalStatus\":\"\",\"numberOfDependentChildren\":\"\",\"fatherName\":\"\",\"motherName\":\"\",\"spouseFirstName\":\"\",\"spouseMiddleName\":\"\",\"spouseFamilyName\":\"\",\"spouseDateOfBirth\":\"\",\"children\":[],\"nokFirstName\":\"\",\"nokMiddleName\":\"\",\"nokFamilyName\":\"\",\"nokTelephone\":\"\",\"nokEmail\":\"\",\"nokAddress\":\"\",\"nokRelationship\":\"\",\"documents\":[{\"id\":\"1758857959817\",\"document\":\"Test\",\"number\":\"12345\",\"issued\":\"2012-02-22\",\"expiry\":\"2024-02-02\",\"issuingAuthority\":\"Test\"}],\"visas\":[],\"education\":[],\"licenses\":[],\"trainingCourses\":[],\"seaService\":[],\"additionalInfo\":[],\"b1AgeMeetsCriteria\":\"\",\"b1RankMeetsCriteria\":\"\",\"b1CertificatesValid\":\"\",\"b1Shortlisted\":\"\",\"b1Comments\":\"\",\"b1SubmittedBy\":\"\",\"b1SubmittedDate\":\"\",\"b2ReferenceChecksCompleted\":\"\",\"b2CurrentEmployerFeedback\":\"\",\"b2SubmittedBy\":\"\",\"b2SubmittedDate\":\"\",\"b3SecurityChecksCompleted\":\"\",\"b3SecurityChecksResults\":\"\",\"b3SubmittedBy\":\"\",\"b3SubmittedDate\":\"\",\"b4CertificatesAuthenticated\":\"\",\"b4AuthenticationResults\":\"\",\"b4SubmittedBy\":\"\",\"b4SubmittedDate\":\"\",\"b5CesTestsCompleted\":\"\",\"b5SubmittedBy\":\"\",\"b5SubmittedDate\":\"\",\"b6InterviewCompleted\":\"\",\"b6SubmittedBy\":\"\",\"b6SubmittedDate\":\"\",\"b7SubmittedBy\":\"\",\"b7SubmittedDate\":\"\",\"b8Shortlisted\":\"\",\"b8SubmittedBy\":\"\",\"b8SubmittedDate\":\"\"}",
         "createdAt": "2025-09-23T10:00:00.000Z",
-        "updatedAt": "2025-09-26T03:55:55.408Z"
+        "updatedAt": "2025-09-26T03:56:36.737Z"
       }
     ],
     [
