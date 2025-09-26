@@ -967,6 +967,153 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                     )}
                   />
                 </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="vessel"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-gray-500 tracking-wide">Vessel</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="bg-[#ffffff]">
+                              <SelectValue placeholder="Select vessel" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="mt-sail-one">MT Sail One</SelectItem>
+                            <SelectItem value="mt-sail-two">MT Sail Two</SelectItem>
+                            <SelectItem value="mt-sail-three">MT Sail Three</SelectItem>
+                            <SelectItem value="mt-sail-four">MT Sail Four</SelectItem>
+                            <SelectItem value="mt-sail-five">MT Sail Five</SelectItem>
+                            <SelectItem value="mt-sail-ten">MT Sail Ten</SelectItem>
+                            <SelectItem value="mt-sail-eight">MT Sail Eight</SelectItem>
+                            <SelectItem value="mt-sail-eleven">MT Sail Eleven</SelectItem>
+                            <SelectItem value="mt-sail-thirteen">MT Sail Thirteen</SelectItem>
+                            <SelectItem value="mv-sail-seven">MV Sail Seven</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="signOn"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-gray-500 tracking-wide">Sign On Date</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="dd/mm/yyyy" type="date" className="bg-[#ffffff]" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="appraisalType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Type</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="bg-[#ffffff]">
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="end-of-contract">End of Contract</SelectItem>
+                            <SelectItem value="mid-term">Mid Term</SelectItem>
+                            <SelectItem value="special">Special</SelectItem>
+                            <SelectItem value="probation">Probation</SelectItem>
+                            <SelectItem value="appraiser-s-off">Appraiser S/Off</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="appraisalPeriodFrom"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Period From</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="dd.mm.yyyy" type="date" className="bg-[#ffffff]" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="appraisalPeriodTo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Period To</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="dd.mm.yyyy" type="date" className="bg-[#ffffff]" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="primaryAppraiser"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-gray-500 tracking-wide">Primary Appraiser</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="bg-[#ffffff]">
+                              <SelectValue placeholder="Select appraiser" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="captain">Captain</SelectItem>
+                            <SelectItem value="chief-engineer">Chief Engineer</SelectItem>
+                            <SelectItem value="chief-mate">Chief Mate</SelectItem>
+                            <SelectItem value="shore-management">Shore Management</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="personalityIndexCategory"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-gray-500 tracking-wide">Personality Index (PI) Category</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="bg-[#ffffff]">
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="dominance">Dominance</SelectItem>
+                            <SelectItem value="influence">Influence</SelectItem>
+                            <SelectItem value="steadiness">Steadiness</SelectItem>
+                            <SelectItem value="compliance">Compliance</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
