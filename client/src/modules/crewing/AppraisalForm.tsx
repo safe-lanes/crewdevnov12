@@ -2132,7 +2132,6 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
     );
   };
 
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg w-full h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
@@ -2204,8 +2203,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
           </nav>
         </div>
 
-        <div className="flex flex-1 overflow-hidden bg-[#f8fafc]"></div>
-          {/* Left Sidebar - Enhanced Stepper (Hidden on Mobile) */}
+        <div className="flex flex-1 overflow-hidden bg-[#f8fafc]">
+          {/* Left Sidebar - Enhanced Stepper (Hidden on Mobile) */
           <aside className="hidden sm:block sticky top-0 self-start basis-20 md:basis-48 lg:basis-52 shrink-0 bg-[#f8fafc] border-r overflow-y-auto">
             <div className="p-3">
               <nav className="space-y-1">
@@ -2267,9 +2266,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
               </nav>
             </div>
           </aside>
+          }
 
           {/* Form Content */}
-          <div className="flex flex-1 overflow-hidden bg-[#f8fafc]"></div>
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 bg-[#f8fafc]">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
                 
@@ -4076,9 +4076,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
             </Form>
           </div>
         </div>
-      </div>
-      {/* Confirmation Dialog */}
-      <AlertDialog open={confirmDialog.isOpen} onOpenChange={closeConfirmDialog}>
+        </div>
+        
+        {/* Confirmation Dialog */}
+        <AlertDialog open={confirmDialog.isOpen} onOpenChange={closeConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{confirmDialog.title}</AlertDialogTitle>
