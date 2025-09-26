@@ -298,6 +298,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
     onClose();
   };
 
+  const navigateToPartG = () => {
+    // Navigate to Part G stepper after completing the continuous sections
+    setActiveSection("officeReview");
+    setActiveContinuousSection1(''); // Clear continuous section highlighting
+    setActiveContinuousSection2(''); // Clear continuous section highlighting
+  };
+
   // Helper function to show confirmation dialog
   const showConfirmDialog = (title: string, description: string, onConfirm: () => void) => {
     setConfirmDialog({
@@ -780,7 +787,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
     { id: "D", title: "Part D: Behavioural Assessment (Soft Skills)", type: "continuous2", number: "D", ref: partDRef },
     { id: "E", title: "Part E: Training Needs & Development", type: "continuous2", number: "E", ref: partERef },
     { id: "F", title: "Part F: Summary & Recommendations", type: "continuous2", number: "F", ref: partFRef },
-    { id: "G", title: "Part G: Office Review & Followup", type: "continuous2", number: "G", ref: partGRef },
+    { id: "G", title: "Part G: Office Review & Followup", type: "stepper", number: "G", ref: partGRef },
   ];
 
   // Intersection Observer for continuous group 1 (A&B)
@@ -2119,7 +2126,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                   <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8">
                     Save
                   </Button>
-                  <Button className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8">
+                  <Button 
+                    className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8"
+                    onClick={navigateToPartG}
+                  >
                     Submit
                   </Button>
                 </div>
