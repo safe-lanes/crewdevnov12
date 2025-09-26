@@ -169,7 +169,7 @@ interface SeaService {
 export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, crewMember }) => {
   const { toast } = useToast();
   const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(null);
-  const [activeSection, setActiveSection] = useState<string>('A1');
+  const [activeSection, setActiveSection] = useState<string>('A');
   const [editingSections, setEditingSections] = useState<{[key: string]: boolean}>({
     'A1.1': false,
     'A1.2': false,
@@ -178,17 +178,19 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
 
   // Sections for stepper navigation  
   const sections = [
-    { id: 'A1', title: 'Seafarers\' Particulars', number: 'A1' },
-    { id: 'A2', title: 'Travel & ID Documents', number: 'A2' },
-    { id: 'A3', title: 'Training & Certificates', number: 'A3' },
-    { id: 'A4', title: 'Sea Service', number: 'A4' }
+    { id: 'A', title: 'Dashboard', number: 'A' },
+    { id: 'B', title: 'Seafarers\' Particulars', number: 'B' },
+    { id: 'C', title: 'Travel & ID Documents', number: 'C' },
+    { id: 'D', title: 'Training & Certificates', number: 'D' },
+    { id: 'E', title: 'Sea Service', number: 'E' }
   ];
 
   // Refs for scroll detection
-  const sectionA1Ref = useRef<HTMLDivElement>(null);
-  const sectionA2Ref = useRef<HTMLDivElement>(null);
-  const sectionA3Ref = useRef<HTMLDivElement>(null);
-  const sectionA4Ref = useRef<HTMLDivElement>(null);
+  const sectionARef = useRef<HTMLDivElement>(null);
+  const sectionBRef = useRef<HTMLDivElement>(null);
+  const sectionCRef = useRef<HTMLDivElement>(null);
+  const sectionDRef = useRef<HTMLDivElement>(null);
+  const sectionERef = useRef<HTMLDivElement>(null);
 
   // Master data arrays
   const VESSEL_TYPES = [
@@ -723,6 +725,352 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
               Change Photo
             </Button>
           )}
+        </div>
+      </div>
+    );
+  };
+
+  // Dashboard render function
+  const renderDashboard = () => {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Status Overview */}
+          <div className="lg:col-span-1">
+            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-status-overview">
+              <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }} data-testid="text-status-title">Status</h3>
+              
+              <div className="space-y-3">
+                <div className="bg-orange-500 text-white p-3 rounded text-center" data-testid="status-onboard">
+                  <div className="text-sm" data-testid="text-status-value">On Board</div>
+                </div>
+                
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between" data-testid="info-vessel">
+                    <span className="text-gray-600">Vessel:</span>
+                    <span className="font-medium" data-testid="text-vessel-name">{crewMember?.presentVessel || 'Pacific Explorer'}</span>
+                  </div>
+                  <div className="flex justify-between" data-testid="info-joined">
+                    <span className="text-gray-600">Joined:</span>
+                    <span data-testid="text-join-date">15 Mar 2022</span>
+                  </div>
+                  <div className="flex justify-between" data-testid="info-sailing-due">
+                    <span className="text-gray-600">Sailing Due:</span>
+                    <span data-testid="text-sailing-due">15 Jul 2022</span>
+                  </div>
+                  <div className="flex justify-between" data-testid="info-assignment">
+                    <span className="text-gray-600">Present Assignment:</span>
+                    <span data-testid="text-assignment">Chandigarh</span>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-3" data-testid="emergency-contact">
+                    <div>Emergency Contact Name, Relation, Ph:</div>
+                    <div className="text-red-600" data-testid="text-emergency-contact">Mira Kumari, Wife, +91 987 555 8553</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Experience & Timeline */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Experience Metrics */}
+            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-experience-metrics">
+              <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }} data-testid="text-experience-title">Experience</h3>
+              
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6" data-testid="experience-bars-container">
+                <div className="text-center" data-testid="experience-company">
+                  <div className="text-xs text-gray-500 mb-1">Company</div>
+                  <div className="bg-blue-500 h-16 w-full rounded mb-1 flex items-end justify-center" data-testid="bar-company">
+                    <div className="bg-blue-600 w-full h-3/4 rounded-b flex items-center justify-center text-white text-xs font-bold" data-testid="text-company-value">1.2</div>
+                  </div>
+                  <div className="text-xs text-gray-600" data-testid="text-company-label">1.2</div>
+                </div>
+                
+                <div className="text-center" data-testid="experience-rank">
+                  <div className="text-xs text-gray-500 mb-1">Rank</div>
+                  <div className="bg-blue-500 h-16 w-full rounded mb-1 flex items-end justify-center" data-testid="bar-rank">
+                    <div className="bg-blue-600 w-full h-4/5 rounded-b flex items-center justify-center text-white text-xs font-bold" data-testid="text-rank-value">1.9</div>
+                  </div>
+                  <div className="text-xs text-gray-600" data-testid="text-rank-label">1.9</div>
+                </div>
+                
+                <div className="text-center" data-testid="experience-tankers">
+                  <div className="text-xs text-gray-500 mb-1">Tankers</div>
+                  <div className="bg-blue-500 h-16 w-full rounded mb-1 flex items-end justify-center" data-testid="bar-tankers">
+                    <div className="bg-blue-600 w-full h-full rounded flex items-center justify-center text-white text-xs font-bold" data-testid="text-tankers-value">2.5</div>
+                  </div>
+                  <div className="text-xs text-gray-600" data-testid="text-tankers-label">2.5</div>
+                </div>
+                
+                <div className="text-center" data-testid="experience-ocw">
+                  <div className="text-xs text-gray-500 mb-1">OCW</div>
+                  <div className="bg-blue-500 h-16 w-full rounded mb-1 flex items-end justify-center" data-testid="bar-ocw">
+                    <div className="bg-blue-600 w-full h-full rounded flex items-center justify-center text-white text-xs font-bold" data-testid="text-ocw-value">3.6</div>
+                  </div>
+                  <div className="text-xs text-gray-600" data-testid="text-ocw-label">3.6</div>
+                </div>
+                
+                <div className="text-center" data-testid="experience-endorsements">
+                  <div className="text-xs text-gray-500 mb-1">Endorsements</div>
+                  <div className="bg-gray-300 h-16 w-full rounded mb-1 flex items-end justify-center" data-testid="bar-endorsements">
+                    <div className="bg-gray-400 w-full h-1/4 rounded-b flex items-center justify-center text-white text-xs font-bold" data-testid="text-endorsements-value">0 GC</div>
+                  </div>
+                  <div className="text-xs text-gray-600" data-testid="text-endorsements-label">0 GC</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Ship Type Experience */}
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Ship Type Experience</h3>
+              
+              <div className="space-y-3">
+                <div className="flex items-center">
+                  <div className="w-16 text-xs text-gray-600 mr-3">Oil Tkr</div>
+                  <div className="flex-1 bg-gray-200 rounded-full h-4">
+                    <div className="bg-blue-500 h-4 rounded-full" style={{ width: '75%' }}></div>
+                  </div>
+                  <div className="w-8 text-xs text-right ml-3">4.2</div>
+                </div>
+                
+                <div className="flex items-center">
+                  <div className="w-16 text-xs text-gray-600 mr-3">Ch Tkr</div>
+                  <div className="flex-1 bg-gray-200 rounded-full h-4">
+                    <div className="bg-blue-500 h-4 rounded-full" style={{ width: '85%' }}></div>
+                  </div>
+                  <div className="w-8 text-xs text-right ml-3">5.1</div>
+                </div>
+                
+                <div className="flex items-center">
+                  <div className="w-16 text-xs text-gray-600 mr-3">Gas Tkr</div>
+                  <div className="flex-1 bg-gray-200 rounded-full h-4">
+                    <div className="bg-blue-500 h-4 rounded-full" style={{ width: '60%' }}></div>
+                  </div>
+                  <div className="w-8 text-xs text-right ml-3">3.2</div>
+                </div>
+                
+                <div className="flex items-center">
+                  <div className="w-16 text-xs text-gray-600 mr-3">Bulk</div>
+                  <div className="flex-1 bg-gray-200 rounded-full h-4">
+                    <div className="bg-blue-500 h-4 rounded-full" style={{ width: '25%' }}></div>
+                  </div>
+                  <div className="w-8 text-xs text-right ml-3">1.1</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Service Timeline */}
+            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-service-timeline">
+              <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }} data-testid="text-timeline-title">Timeline</h3>
+              
+              <div className="relative" data-testid="timeline-container">
+                {/* Month headers */}
+                <div className="grid grid-cols-6 gap-2 mb-4 text-xs text-gray-500 text-center" data-testid="timeline-months">
+                  <div data-testid="month-jan">Jan</div>
+                  <div data-testid="month-feb">Feb</div>
+                  <div data-testid="month-mar">Mar</div>
+                  <div data-testid="month-apr">Apr</div>
+                  <div data-testid="month-may">May</div>
+                  <div data-testid="month-jun">Jun</div>
+                </div>
+                
+                {/* Timeline bars */}
+                <div className="space-y-2" data-testid="timeline-bars">
+                  <div className="relative">
+                    <div className="grid grid-cols-6 gap-2 h-6" data-testid="timeline-vessels">
+                      <div className="bg-blue-400 rounded flex items-center justify-center" data-testid="vessel-pacific-explorer-1">
+                        <span className="text-white text-xs font-medium">Pacific Explorer</span>
+                      </div>
+                      <div className="bg-blue-400 rounded" data-testid="vessel-pacific-explorer-2"></div>
+                      <div className="bg-blue-400 rounded flex items-center justify-center" data-testid="vessel-transition">
+                        <div className="w-0 h-0 border-l-2 border-r-2 border-t-4 border-transparent border-t-orange-500" data-testid="transition-marker"></div>
+                      </div>
+                      <div className="bg-gray-200 rounded" data-testid="vessel-gap"></div>
+                      <div className="bg-orange-400 rounded flex items-center justify-center" data-testid="vessel-atlantic-explorer-1">
+                        <span className="text-white text-xs font-medium">Atlantic Explorer</span>
+                      </div>
+                      <div className="bg-orange-400 rounded" data-testid="vessel-atlantic-explorer-2"></div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between text-xs text-gray-500 mt-2" data-testid="timeline-status">
+                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded" data-testid="status-approved">Approved</span>
+                    <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded" data-testid="status-on">On</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Compliance & Career Progression */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Compliance Status */}
+          <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-compliance-status">
+            <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }} data-testid="text-compliance-title">Compliance & Training Status</h3>
+            <div className="space-y-3" data-testid="compliance-items">
+              <div className="flex items-center justify-between" data-testid="compliance-travel-docs">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-green-500 rounded-full" data-testid="indicator-travel-docs"></div>
+                  <span className="text-sm">Travel Docs</span>
+                </div>
+                <span className="text-xs text-green-600" data-testid="status-travel-docs">✓</span>
+              </div>
+              <div className="flex items-center justify-between" data-testid="compliance-visas">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-green-500 rounded-full" data-testid="indicator-visas"></div>
+                  <span className="text-sm">Visas</span>
+                </div>
+                <span className="text-xs text-green-600" data-testid="status-visas">✓</span>
+              </div>
+              <div className="flex items-center justify-between" data-testid="compliance-license-dce">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-green-500 rounded-full" data-testid="indicator-license-dce"></div>
+                  <span className="text-sm">License & DCE</span>
+                </div>
+                <span className="text-xs text-green-600" data-testid="status-license-dce">✓</span>
+              </div>
+              <div className="flex items-center justify-between" data-testid="compliance-training">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-red-500 rounded-full" data-testid="indicator-training"></div>
+                  <span className="text-sm">Training</span>
+                </div>
+                <span className="text-xs text-red-600" data-testid="status-training">Issues: 2</span>
+              </div>
+              <div className="flex items-center justify-between" data-testid="compliance-medical">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-green-500 rounded-full" data-testid="indicator-medical"></div>
+                  <span className="text-sm">Medical</span>
+                </div>
+                <span className="text-xs text-gray-500" data-testid="status-medical">Last: 15 Feb 2022</span>
+              </div>
+              <div className="flex items-center justify-between" data-testid="compliance-vaccination">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-yellow-500 rounded-full" data-testid="indicator-vaccination"></div>
+                  <span className="text-sm">Vaccination</span>
+                </div>
+                <span className="text-xs text-yellow-600" data-testid="status-vaccination">Issue: 1</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Career Progression */}
+          <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-career-progression">
+            <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }} data-testid="text-promotion-title">Promotion</h3>
+            <div className="space-y-4">
+              <div className="text-xs text-gray-500 grid grid-cols-4 gap-2 mb-2" data-testid="promotion-headers">
+                <span>Recommend</span>
+                <span>Advance</span>
+                <span>Demote</span>
+                <span>Approved</span>
+              </div>
+              
+              <div className="space-y-3" data-testid="promotion-items">
+                <div className="flex items-center justify-between" data-testid="promotion-ce">
+                  <span className="text-sm font-medium" data-testid="text-ce-title">To C/E</span>
+                  <div className="flex items-center space-x-2" data-testid="ce-status-indicators">
+                    <div className="w-3 h-3 bg-red-500 rounded-full" data-testid="ce-recommend"></div>
+                    <div className="w-3 h-3 bg-gray-300 rounded-full" data-testid="ce-advance"></div>
+                    <div className="w-3 h-3 bg-gray-300 rounded-full" data-testid="ce-demote"></div>
+                    <div className="w-3 h-3 bg-gray-300 rounded-full" data-testid="ce-approved"></div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between" data-testid="promotion-2e">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm" data-testid="text-2e-title">To 2/E</span>
+                    <span className="text-xs text-gray-500" data-testid="text-2e-date">22 Jan 2017</span>
+                  </div>
+                  <div className="flex items-center space-x-2" data-testid="2e-status-indicators">
+                    <div className="w-3 h-3 bg-green-500 rounded-full" data-testid="2e-recommend"></div>
+                    <div className="w-3 h-3 bg-green-500 rounded-full" data-testid="2e-advance"></div>
+                    <div className="w-3 h-3 bg-green-500 rounded-full" data-testid="2e-demote"></div>
+                    <div className="w-3 h-3 bg-green-500 rounded-full" data-testid="2e-approved"></div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between" data-testid="promotion-3e">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm" data-testid="text-3e-title">To 3/E</span>
+                    <span className="text-xs text-gray-500" data-testid="text-3e-date">12 Dec 2014</span>
+                  </div>
+                  <div className="flex items-center space-x-2" data-testid="3e-status-indicators">
+                    <div className="w-3 h-3 bg-green-500 rounded-full" data-testid="3e-recommend"></div>
+                    <div className="w-3 h-3 bg-green-500 rounded-full" data-testid="3e-advance"></div>
+                    <div className="w-3 h-3 bg-green-500 rounded-full" data-testid="3e-demote"></div>
+                    <div className="w-3 h-3 bg-green-500 rounded-full" data-testid="3e-approved"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Performance Appraisals */}
+        <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-performance-appraisals">
+          <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }} data-testid="text-appraisals-title">Appraisals</h3>
+          
+          <div className="relative h-40" data-testid="appraisals-chart-container">
+            <div className="absolute inset-0 flex items-end">
+              {/* Y-axis labels */}
+              <div className="flex flex-col justify-between h-full w-8 pr-2 text-xs text-gray-500" data-testid="y-axis-labels">
+                <span data-testid="y-label-36">36</span>
+                <span data-testid="y-label-34">34</span>
+                <span data-testid="y-label-32">32</span>
+                <span data-testid="y-label-30">30</span>
+                <span data-testid="y-label-28">28</span>
+                <span data-testid="y-label-26">26</span>
+                <span data-testid="y-label-24">24</span>
+                <span data-testid="y-label-22">22</span>
+                <span data-testid="y-label-20">20</span>
+                <span data-testid="y-label-18">18</span>
+              </div>
+              
+              {/* Chart area */}
+              <div className="flex-1 h-full relative" data-testid="chart-area">
+                {/* Background grid lines */}
+                <div className="absolute inset-0 flex flex-col justify-between" data-testid="grid-lines">
+                  {Array.from({ length: 10 }).map((_, i) => (
+                    <div key={i} className="border-t border-gray-100" data-testid={`grid-line-${i}`}></div>
+                  ))}
+                </div>
+                
+                {/* Chart path - simulating the area chart */}
+                <svg className="absolute inset-0 w-full h-full" data-testid="performance-chart-svg">
+                  <defs>
+                    <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#60A5FA" stopOpacity="0.6"/>
+                      <stop offset="50%" stopColor="#A78BFA" stopOpacity="0.4"/>
+                      <stop offset="100%" stopColor="#A78BFA" stopOpacity="0.2"/>
+                    </linearGradient>
+                  </defs>
+                  <path
+                    d="M0,120 L60,100 L120,90 L180,85 L240,80 L300,75 L360,78 L360,160 L0,160 Z"
+                    fill="url(#areaGradient)"
+                    stroke="none"
+                    data-testid="chart-area-fill"
+                  />
+                  <path
+                    d="M0,120 L60,100 L120,90 L180,85 L240,80 L300,75 L360,78"
+                    fill="none"
+                    stroke="#3B82F6"
+                    strokeWidth="2"
+                    data-testid="chart-trend-line"
+                  />
+                </svg>
+              </div>
+            </div>
+            
+            {/* X-axis labels */}
+            <div className="absolute bottom-0 left-8 right-0 flex justify-between text-xs text-gray-500 mt-2" data-testid="x-axis-labels">
+              <span data-testid="x-label-2014">2014</span>
+              <span data-testid="x-label-2016">2016</span>
+              <span data-testid="x-label-2018">2018</span>
+              <span data-testid="x-label-2020">2020</span>
+              <span data-testid="x-label-2022">2022</span>
+              <span data-testid="x-label-2024">2024</span>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -2350,7 +2698,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     const observer = new IntersectionObserver(observerCallback, observerOptions);
 
     // Observe all section refs
-    [sectionA1Ref, sectionA2Ref, sectionA3Ref, sectionA4Ref].forEach((ref) => {
+    [sectionARef, sectionBRef, sectionCRef, sectionDRef, sectionERef].forEach((ref) => {
       if (ref.current) {
         observer.observe(ref.current);
       }
@@ -2365,17 +2713,20 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   const scrollToSection = (sectionId: string) => {
     let targetRef;
     switch (sectionId) {
-      case 'A1':
-        targetRef = sectionA1Ref;
+      case 'A':
+        targetRef = sectionARef;
         break;
-      case 'A2':
-        targetRef = sectionA2Ref;
+      case 'B':
+        targetRef = sectionBRef;
         break;
-      case 'A3':
-        targetRef = sectionA3Ref;
+      case 'C':
+        targetRef = sectionCRef;
         break;
-      case 'A4':
-        targetRef = sectionA4Ref;
+      case 'D':
+        targetRef = sectionDRef;
+        break;
+      case 'E':
+        targetRef = sectionERef;
         break;
       default:
         return;
@@ -2525,11 +2876,18 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
           
           {/* Main Content Area - Continuous Scroll */}
           <div className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 bg-[#f9fafb] space-y-6">
-            {/* A1 - Seafarers' Particulars */}
-            <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionA1Ref} data-section="A1">
+            {/* A - Dashboard */}
+            <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionARef} data-section="A">
+              <CardContent className="p-3 sm:p-4 lg:p-6">
+                {renderDashboard()}
+              </CardContent>
+            </Card>
+
+            {/* B - Seafarers' Particulars */}
+            <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionBRef} data-section="B">
               <CardContent className="p-3 sm:p-4 lg:p-6">
                 <div className="pb-4 mb-6">
-                  <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A1 Seafarers' Particulars</h2>
+                  <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part B Seafarers' Particulars</h2>
                   <div style={{ color: '#16569e' }} className="text-sm">Enter details as applicable</div>
                   <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
                 </div>
@@ -2549,11 +2907,11 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
               </CardContent>
             </Card>
 
-            {/* A2 - Travel & ID Documents */}
-            <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionA2Ref} data-section="A2">
+            {/* C - Travel & ID Documents */}
+            <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionCRef} data-section="C">
               <CardContent className="p-3 sm:p-4 lg:p-6">
                 <div className="pb-4 mb-6">
-                  <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A2 - Travel & ID Documents</h2>
+                  <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part C - Travel & ID Documents</h2>
                   <div style={{ color: '#16569e' }} className="text-sm">Add from the list all applicable identification & travel documents</div>
                   <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
                 </div>
@@ -2564,11 +2922,11 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
               </CardContent>
             </Card>
 
-            {/* A3 - Training & Certificates */}
-            <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionA3Ref} data-section="A3">
+            {/* D - Training & Certificates */}
+            <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionDRef} data-section="D">
               <CardContent className="p-3 sm:p-4 lg:p-6">
                 <div className="pb-4 mb-6">
-                  <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A3 - Training & Certificates</h2>
+                  <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part D - Training & Certificates</h2>
                   <div style={{ color: '#16569e' }} className="text-sm">Add Education, Competency & Training Information</div>
                   <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
                 </div>
@@ -2580,11 +2938,11 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
               </CardContent>
             </Card>
 
-            {/* A4 - Sea Service */}
-            <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionA4Ref} data-section="A4">
+            {/* E - Sea Service */}
+            <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionERef} data-section="E">
               <CardContent className="p-3 sm:p-4 lg:p-6">
                 <div className="pb-4 mb-6">
-                  <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A4 - Sea Service</h2>
+                  <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part E - Sea Service</h2>
                   <div style={{ color: '#16569e' }} className="text-sm">Add Sea service details, latest on top</div>
                   <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
                 </div>
