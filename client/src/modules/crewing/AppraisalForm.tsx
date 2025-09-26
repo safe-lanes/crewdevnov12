@@ -2435,7 +2435,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
         {/* Mobile Horizontal Stepper */}
         <div className="block sm:hidden bg-white border-b px-4 py-3">
           <nav className="flex justify-center space-x-4">
-            {sections.map((section, index) => {
+            {sections.filter(section => section.id !== 'G').map((section, index) => {
               // For continuous sections, use their respective activeContinuousSection, for steppers use activeSection
               const isActive = section.type === 'continuous1' 
                 ? activeContinuousSection1 === section.id
@@ -2475,7 +2475,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
           <aside className="hidden sm:block sticky top-0 self-start basis-20 md:basis-48 lg:basis-52 shrink-0 bg-[#f8fafc] border-r overflow-y-auto">
             <div className="p-3">
               <nav className="space-y-1">
-                {sections.map((section, index) => {
+                {sections.filter(section => section.id !== 'G').map((section, index) => {
                   // For continuous sections, use their respective activeContinuousSection, for steppers use activeSection
                   const isActive = section.type === 'continuous1' 
                     ? activeContinuousSection1 === section.id
@@ -2544,7 +2544,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                     {renderContinuousSections1()}
                   </div>
                 )}
-                {(['C', 'D', 'E', 'F', 'G'].includes(activeSection)) && (
+                {(['C', 'D', 'E', 'F'].includes(activeSection)) && (
                   <div ref={continuous2ContainerRef} className="h-[calc(100vh-200px)] overflow-y-auto">
                     {renderContinuousSections2()}
                   </div>
