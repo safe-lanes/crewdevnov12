@@ -6340,13 +6340,16 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
         <div className="block sm:hidden bg-white border-b px-4 py-3">
           <nav className="flex justify-center space-x-4">
             {sections.map((section, index) => {
-              const isActive = activeSection === section.id;
+              // For continuous sections, use activeContinuousSection, for steppers use activeSection
+              const isActive = section.type === 'continuous' 
+                ? activeContinuousSection === section.id
+                : activeSection === section.id;
               
               return (
                 <div key={section.id} className="flex items-center">
                   <button
                     type="button"
-                    onClick={() => setActiveSection(section.id)}
+                    onClick={() => handleSectionNavigation(section.id)}
                     className="flex items-center justify-center"
                     data-testid={`button-step-mobile-${section.id}`}
                   >
@@ -6375,14 +6378,17 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             <div className="p-3">
               <nav className="space-y-1">
                 {sections.map((section, index) => {
-                  const isActive = activeSection === section.id;
+                  // For continuous sections, use activeContinuousSection, for steppers use activeSection
+                  const isActive = section.type === 'continuous' 
+                    ? activeContinuousSection === section.id
+                    : activeSection === section.id;
                   const isCompleted = false; // You can add completion logic here
                   
                   return (
                     <div key={section.id} className="relative">
                       <button
                         type="button"
-                        onClick={() => setActiveSection(section.id)}
+                        onClick={() => handleSectionNavigation(section.id)}
                         className={`group flex items-center w-full px-3 py-2 rounded-md transition-all border-l-4 min-h-[3rem] ${
                           isActive 
                             ? "bg-blue-50 border-blue-600 text-blue-700" 
