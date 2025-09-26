@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -169,6 +169,8 @@ interface AppraisalFormProps {
 
 export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClose }) => {
   const [activeSection, setActiveSection] = useState("reference");
+  const [activeContinuousSection1, setActiveContinuousSection1] = useState('reference'); // For A&B continuous scroll
+  const [activeContinuousSection2, setActiveContinuousSection2] = useState('competenceAssessment'); // For C-F continuous scroll
   const [editingTraining, setEditingTraining] = useState<string | null>(null);
   const [editingTarget, setEditingTarget] = useState<string | null>(null);
   const [trainingComments, setTrainingComments] = useState<{[key: string]: string}>({});
@@ -182,6 +184,14 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
   const [editingSeafarerComment, setEditingSeafarerComment] = useState<string | null>(null);
   const [nationalityOpen, setNationalityOpen] = useState(false);
   const [editingOfficeReview, setEditingOfficeReview] = useState<string | null>(null);
+  
+  // Refs for continuous scroll sections
+  const referenceRef = useRef<HTMLDivElement>(null);
+  const informationRef = useRef<HTMLDivElement>(null);
+  const competenceAssessmentRef = useRef<HTMLDivElement>(null);
+  const behaviouralAssessmentRef = useRef<HTMLDivElement>(null);
+  const trainingNeedsRef = useRef<HTMLDivElement>(null);
+  const summaryRef = useRef<HTMLDivElement>(null);
   
   // States for tracking which comments are being edited
   const [editingTrainingComment, setEditingTrainingComment] = useState<string | null>(null);
@@ -758,14 +768,226 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
   );
 
   const sections = [
-    { id: "reference", title: "Part A: Seafarer's Information" },
-    { id: "information", title: "Part B: Information at Start of Appraisal Period" },
-    { id: "competenceAssessment", title: "Part C: Competence Assessment (Professional Knowledge & Skills)" },
-    { id: "behaviouralAssessment", title: "Part D: Behavioural Assessment (Soft Skills)" },
-    { id: "trainingNeeds", title: "Part E: Training Needs & Development" },
-    { id: "summary", title: "Part F: Summary & Recommendations" },
-    { id: "officeReview", title: "Part G: Office Review & Followup" },
+    { id: "reference", title: "Part A: Seafarer's Information", type: "continuous1", number: "A", ref: referenceRef },
+    { id: "information", title: "Part B: Information at Start of Appraisal Period", type: "continuous1", number: "B", ref: informationRef },
+    { id: "competenceAssessment", title: "Part C: Competence Assessment (Professional Knowledge & Skills)", type: "continuous2", number: "C", ref: competenceAssessmentRef },
+    { id: "behaviouralAssessment", title: "Part D: Behavioural Assessment (Soft Skills)", type: "continuous2", number: "D", ref: behaviouralAssessmentRef },
+    { id: "trainingNeeds", title: "Part E: Training Needs & Development", type: "continuous2", number: "E", ref: trainingNeedsRef },
+    { id: "summary", title: "Part F: Summary & Recommendations", type: "continuous2", number: "F", ref: summaryRef },
+    { id: "officeReview", title: "Part G: Office Review & Followup", type: "stepper", number: "G", ref: null },
   ];
+
+  // Intersection Observer for continuous group 1 (A&B)
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        let mostVisible = entries[0];
+        
+        entries.forEach((entry) => {
+          if (entry.intersectionRatio > mostVisible.intersectionRatio) {
+            mostVisible = entry;
+          }
+        });
+
+        // Update the active continuous section if there's a significant intersection
+        if (mostVisible && mostVisible.intersectionRatio > 0.1) {
+          const sectionId = mostVisible.target.getAttribute('data-section-id');
+          if (sectionId && sectionId !== activeContinuousSection1) {
+            setActiveContinuousSection1(sectionId);
+          }
+        }
+      },
+      {
+        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
+        rootMargin: '-50px 0px -50px 0px'
+      }
+    );
+
+    // Observe continuous1 sections (A&B)
+    const continuous1Sections = sections.filter(s => s.type === 'continuous1');
+    continuous1Sections.forEach(section => {
+      if (section.ref?.current) {
+        observer.observe(section.ref.current);
+      }
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [activeSection, activeContinuousSection1, sections]);
+
+  // Intersection Observer for continuous group 2 (C-F)
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        let mostVisible = entries[0];
+        
+        entries.forEach((entry) => {
+          if (entry.intersectionRatio > mostVisible.intersectionRatio) {
+            mostVisible = entry;
+          }
+        });
+
+        // Update the active continuous section if there's a significant intersection
+        if (mostVisible && mostVisible.intersectionRatio > 0.1) {
+          const sectionId = mostVisible.target.getAttribute('data-section-id');
+          if (sectionId && sectionId !== activeContinuousSection2) {
+            setActiveContinuousSection2(sectionId);
+          }
+        }
+      },
+      {
+        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
+        rootMargin: '-50px 0px -50px 0px'
+      }
+    );
+
+    // Observe continuous2 sections (C-F)
+    const continuous2Sections = sections.filter(s => s.type === 'continuous2');
+    continuous2Sections.forEach(section => {
+      if (section.ref?.current) {
+        observer.observe(section.ref.current);
+      }
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [activeSection, activeContinuousSection2, sections]);
+
+  // Function to scroll to a specific section
+  const scrollToSection = (sectionId: string) => {
+    const section = sections.find(s => s.id === sectionId);
+    if (section && section.ref?.current) {
+      section.ref.current.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  };
+
+  // Function to handle section navigation
+  const handleSectionNavigation = (sectionId: string) => {
+    const section = sections.find(s => s.id === sectionId);
+    if (!section) return;
+
+    if (section.type === 'continuous1') {
+      // For continuous1 sections (A&B), stay in the continuous view and scroll to section
+      if (!['reference', 'information'].includes(activeSection)) {
+        setActiveSection('reference'); // Switch to continuous1 view
+      }
+      setTimeout(() => scrollToSection(sectionId), 100); // Small delay to ensure DOM is ready
+    } else if (section.type === 'continuous2') {
+      // For continuous2 sections (C-F), stay in the continuous view and scroll to section
+      if (!['competenceAssessment', 'behaviouralAssessment', 'trainingNeeds', 'summary'].includes(activeSection)) {
+        setActiveSection('competenceAssessment'); // Switch to continuous2 view
+      }
+      setTimeout(() => scrollToSection(sectionId), 100); // Small delay to ensure DOM is ready
+    } else {
+      // For stepper sections (G), use traditional navigation and clear continuous section highlighting
+      setActiveSection(sectionId);
+      setActiveContinuousSection1(''); // Clear continuous section highlighting
+      setActiveContinuousSection2(''); // Clear continuous section highlighting
+    }
+  };
+
+  // Function to render continuous sections 1 (A&B) 
+  const renderContinuousSections1 = () => {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        {/* Part A: Seafarer's Information */}
+        <div ref={referenceRef} data-section-id="reference">
+          <Card className="bg-white">
+            <CardContent className="p-6">
+              <div className="pb-4 mb-6">
+                <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A: Seafarer's Information</h3>
+                <div style={{ color: '#16569e' }} className="text-sm">Enter details as applicable</div>
+                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+              </div>
+              {/* Part A content will go here - I'll need to move it from the existing conditional rendering */}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Part B: Information at Start of Appraisal Period */}
+        <div ref={informationRef} data-section-id="information">
+          <Card className="bg-white">
+            <CardContent className="p-6">
+              <div className="pb-4 mb-6">
+                <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part B: Information at Start of Appraisal Period</h3>
+                <div style={{ color: '#16569e' }} className="text-sm">Add below at the start of the Appraisal Period except the Evaluation which must be completed at the end of the Appraisal Period</div>
+                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+              </div>
+              {/* Part B content will go here - I'll need to move it from the existing conditional rendering */}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  };
+
+  // Function to render continuous sections 2 (C-F)
+  const renderContinuousSections2 = () => {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        {/* Part C: Competence Assessment */}
+        <div ref={competenceAssessmentRef} data-section-id="competenceAssessment">
+          <Card className="bg-white">
+            <CardContent className="p-6">
+              <div className="pb-4 mb-6">
+                <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part C: Competence Assessment (Professional Knowledge & Skills)</h3>
+                <div style={{ color: '#16569e' }} className="text-sm">Rate the effectiveness of the seafarer in the following areas</div>
+                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+              </div>
+              {/* Part C content will go here */}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Part D: Behavioural Assessment */}
+        <div ref={behaviouralAssessmentRef} data-section-id="behaviouralAssessment">
+          <Card className="bg-white">
+            <CardContent className="p-6">
+              <div className="pb-4 mb-6">
+                <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part D: Behavioural Assessment (Soft Skills)</h3>
+                <div style={{ color: '#16569e' }} className="text-sm">Rate the effectiveness of the seafarer in the following soft skills</div>
+                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+              </div>
+              {/* Part D content will go here */}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Part E: Training Needs & Development */}
+        <div ref={trainingNeedsRef} data-section-id="trainingNeeds">
+          <Card className="bg-white">
+            <CardContent className="p-6">
+              <div className="pb-4 mb-6">
+                <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part E: Training Needs & Development</h3>
+                <div style={{ color: '#16569e' }} className="text-sm">Identify training needs and development opportunities</div>
+                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+              </div>
+              {/* Part E content will go here */}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Part F: Summary & Recommendations */}
+        <div ref={summaryRef} data-section-id="summary">
+          <Card className="bg-white">
+            <CardContent className="p-6">
+              <div className="pb-4 mb-6">
+                <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part F: Summary & Recommendations</h3>
+                <div style={{ color: '#16569e' }} className="text-sm">Provide overall assessment and recommendations</div>
+                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+              </div>
+              {/* Part F content will go here */}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -803,20 +1025,18 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
         <div className="block sm:hidden bg-white border-b px-4 py-3">
           <nav className="flex justify-center space-x-4">
             {sections.map((section, index) => {
-              const isActive = activeSection === section.id;
-              const sectionLetter = section.id === "reference" ? "A" : 
-                                   section.id === "information" ? "B" :
-                                   section.id === "competenceAssessment" ? "C" :
-                                   section.id === "behaviouralAssessment" ? "D" :
-                                   section.id === "trainingNeeds" ? "E" :
-                                   section.id === "summary" ? "F" :
-                                   section.id === "officeReview" ? "G" : section.id.charAt(0).toUpperCase();
+              // For continuous sections, use their respective activeContinuousSection, for steppers use activeSection
+              const isActive = section.type === 'continuous1' 
+                ? activeContinuousSection1 === section.id
+                : section.type === 'continuous2' 
+                  ? activeContinuousSection2 === section.id
+                  : activeSection === section.id;
               
               return (
                 <div key={section.id} className="flex items-center">
                   <button
                     type="button"
-                    onClick={() => setActiveSection(section.id)}
+                    onClick={() => handleSectionNavigation(section.id)}
                     className="flex items-center justify-center"
                     data-testid={`button-step-mobile-${section.id}`}
                   >
@@ -827,7 +1047,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                           : "bg-gray-600 text-white"
                       }`}
                     >
-                      {sectionLetter}
+                      {section.number}
                     </span>
                   </button>
                   {index < sections.length - 1 && (
@@ -845,21 +1065,19 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
             <div className="p-3">
               <nav className="space-y-1">
                 {sections.map((section, index) => {
-                  const isActive = activeSection === section.id;
+                  // For continuous sections, use their respective activeContinuousSection, for steppers use activeSection
+                  const isActive = section.type === 'continuous1' 
+                    ? activeContinuousSection1 === section.id
+                    : section.type === 'continuous2' 
+                      ? activeContinuousSection2 === section.id
+                      : activeSection === section.id;
                   const isCompleted = false; // You can add completion logic here
-                  const sectionLetter = section.id === "reference" ? "A" : 
-                                       section.id === "information" ? "B" :
-                                       section.id === "competenceAssessment" ? "C" :
-                                       section.id === "behaviouralAssessment" ? "D" :
-                                       section.id === "trainingNeeds" ? "E" :
-                                       section.id === "summary" ? "F" :
-                                       section.id === "officeReview" ? "G" : section.id.charAt(0).toUpperCase();
                   
                   return (
                     <div key={section.id} className="relative">
                       <button
                         type="button"
-                        onClick={() => setActiveSection(section.id)}
+                        onClick={() => handleSectionNavigation(section.id)}
                         className={`group flex items-center w-full px-3 py-2 rounded-md transition-all border-l-4 min-h-[3rem] ${
                           isActive 
                             ? "bg-blue-50 border-blue-600 text-blue-700" 
@@ -875,7 +1093,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                               : "bg-gray-600 text-white"
                           }`}
                         >
-                          {sectionLetter}
+                          {section.number}
                         </span>
                         <span 
                           className="hidden xl:block ml-3 text-left text-sm leading-tight flex-1"
