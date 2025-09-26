@@ -476,3 +476,81 @@ export type InsertDataMaster = z.infer<typeof insertDataMasterSchema>;
 export type DataMaster = typeof dataMasters.$inferSelect;
 export type InsertMasterDataEntry = z.infer<typeof insertMasterDataEntrySchema>;
 export type MasterDataEntry = typeof masterDataEntries.$inferSelect;
+
+// Dashboard Types
+export const dashboardStatusSchema = z.object({
+  status: z.enum(["On Board", "On Leave", "Available", "In Transit"]),
+  vessel: z.string(),
+  joinedDate: z.string(),
+  sailingDue: z.string(),
+  presentAssignment: z.string(),
+  emergencyContact: z.object({
+    name: z.string(),
+    relation: z.string(),
+    phone: z.string(),
+  }),
+});
+
+export const experienceMetricSchema = z.object({
+  company: z.number(),
+  rank: z.number(), 
+  tankers: z.number(),
+  ocw: z.number(),
+  endorsements: z.string(),
+});
+
+export const shipTypeExperienceSchema = z.object({
+  oilTanker: z.number(),
+  chemicalTanker: z.number(),
+  gasTanker: z.number(),
+  bulk: z.number(),
+});
+
+export const serviceAssignmentSchema = z.object({
+  vessel: z.string(),
+  startMonth: z.number(),
+  endMonth: z.number(),
+  type: z.enum(["active", "completed"]),
+});
+
+export const complianceItemSchema = z.object({
+  category: z.string(),
+  status: z.enum(["compliant", "issues", "pending"]),
+  details: z.string().optional(),
+  lastUpdated: z.string().optional(),
+});
+
+export const careerStepSchema = z.object({
+  position: z.string(),
+  date: z.string().optional(),
+  status: z.object({
+    recommend: z.boolean(),
+    advance: z.boolean(), 
+    demote: z.boolean(),
+    approved: z.boolean(),
+  }),
+});
+
+export const appraisalPointSchema = z.object({
+  year: z.number(),
+  score: z.number(),
+});
+
+export const crewDashboardSummarySchema = z.object({
+  status: dashboardStatusSchema,
+  experience: experienceMetricSchema,
+  shipTypes: shipTypeExperienceSchema,
+  serviceTimeline: z.array(serviceAssignmentSchema),
+  compliance: z.array(complianceItemSchema),
+  careerProgression: z.array(careerStepSchema),
+  appraisals: z.array(appraisalPointSchema),
+});
+
+export type DashboardStatus = z.infer<typeof dashboardStatusSchema>;
+export type ExperienceMetric = z.infer<typeof experienceMetricSchema>;
+export type ShipTypeExperience = z.infer<typeof shipTypeExperienceSchema>;
+export type ServiceAssignment = z.infer<typeof serviceAssignmentSchema>;
+export type ComplianceItem = z.infer<typeof complianceItemSchema>;
+export type CareerStep = z.infer<typeof careerStepSchema>;
+export type AppraisalPoint = z.infer<typeof appraisalPointSchema>;
+export type CrewDashboardSummary = z.infer<typeof crewDashboardSummarySchema>;

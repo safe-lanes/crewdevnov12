@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry } from "@shared/schema";
+import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type CrewDashboardSummary } from "@shared/schema";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -61,6 +61,8 @@ export interface IStorage {
   createMasterDataEntry(entry: InsertMasterDataEntry): Promise<MasterDataEntry>;
   updateMasterDataEntry(id: number, entry: Partial<InsertMasterDataEntry>): Promise<MasterDataEntry | undefined>;
   deleteMasterDataEntry(id: number): Promise<boolean>;
+  // Dashboard Summary
+  getCrewDashboardSummary(crewId: string): Promise<CrewDashboardSummary | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -566,6 +568,79 @@ export class MemStorage implements IStorage {
 
   async deleteCrewMember(id: string): Promise<boolean> {
     return this.crewMembers.delete(id);
+  }
+
+  // Dashboard Summary Method
+  async getCrewDashboardSummary(crewId: string): Promise<CrewDashboardSummary | undefined> {
+    const crewMember = await this.getCrewMember(crewId);
+    if (!crewMember) return undefined;
+
+    const appraisals = await this.getAppraisalResultsByCrewMember(crewId);
+
+    // Generate realistic dashboard data based on crew member and appraisals
+    const summary: CrewDashboardSummary = {
+      status: {
+        status: "On Board",
+        vessel: crewMember.vessel,
+        joinedDate: "15 Mar 2022", 
+        sailingDue: "15 Jul 2022",
+        presentAssignment: crewMember.vessel || "Chandigarh",
+        emergencyContact: {
+          name: "Mira Kumari", 
+          relation: "Wife",
+          phone: "+91 987 555 8553"
+        }
+      },
+      experience: {
+        company: 1.2,
+        rank: 1.9,
+        tankers: 2.5, 
+        ocw: 3.6,
+        endorsements: "0 GC"
+      },
+      shipTypes: {
+        oilTanker: 4.2,
+        chemicalTanker: 5.1,
+        gasTanker: 3.2,
+        bulk: 1.1
+      },
+      serviceTimeline: [
+        { vessel: "Pacific Explorer", startMonth: 1, endMonth: 3, type: "completed" },
+        { vessel: "Atlantic Explorer", startMonth: 5, endMonth: 6, type: "active" }
+      ],
+      compliance: [
+        { category: "Travel Docs", status: "compliant", details: "✓" },
+        { category: "Visas", status: "compliant", details: "✓" },
+        { category: "License & DCE", status: "compliant", details: "✓" },
+        { category: "Training", status: "issues", details: "Issues: 2" },
+        { category: "Medical", status: "compliant", details: "Last: 15 Feb 2022" },
+        { category: "Vaccination", status: "issues", details: "Issue: 1" }
+      ],
+      careerProgression: [
+        {
+          position: "To C/E",
+          status: { recommend: false, advance: false, demote: true, approved: false }
+        },
+        {
+          position: "To 2/E", 
+          date: "22 Jan 2017",
+          status: { recommend: true, advance: true, demote: false, approved: true }
+        },
+        {
+          position: "To 3/E",
+          date: "12 Dec 2014", 
+          status: { recommend: true, advance: true, demote: false, approved: true }
+        }
+      ],
+      appraisals: appraisals.map((appraisal, index) => ({
+        year: 2014 + index * 2,
+        score: parseFloat(appraisal.overallRating || "3.0") * 8 // Convert to chart scale
+      })).concat([
+        { year: 2024, score: 31 } // Add current year point
+      ])
+    };
+
+    return summary;
   }
 
   // Appraisal Results Methods

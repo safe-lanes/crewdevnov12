@@ -416,6 +416,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Dashboard Summary endpoint
+  app.get("/api/crew-members/:id/dashboard", async (req, res) => {
+    try {
+      const id = req.params.id;
+      const dashboardSummary = await storage.getCrewDashboardSummary(id);
+      if (!dashboardSummary) {
+        return res.status(404).json({ error: "Crew member not found" });
+      }
+      res.json(dashboardSummary);
+    } catch (error) {
+      console.error("Error fetching dashboard summary:", error);
+      res.status(500).json({ error: "Failed to fetch dashboard summary" });
+    }
+  });
+
   // Appraisal Results API routes
   app.get("/api/appraisals", async (req, res) => {
     try {
