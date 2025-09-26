@@ -2067,6 +2067,26 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                     ))}
                   </div>
                 </div>
+                {/* Action buttons */}
+                <div className="flex justify-end gap-4 mt-6">
+                  <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8">
+                    Save
+                  </Button>
+                  <Button 
+                    type="button"
+                    className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8"
+                    onClick={navigateToPartG}
+                  >
+                    Submit
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -2195,13 +2215,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
               </CardContent>
             </Card>
           </div>
-                )}
-                
                 </form>
               </Form>
             </div>
           </main>
         </div>
+      </div>
       
       {/* Confirmation Dialog */}
       <AlertDialog open={confirmDialog.isOpen} onOpenChange={closeConfirmDialog}>
