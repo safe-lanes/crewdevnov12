@@ -298,13 +298,6 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
     onClose();
   };
 
-  const navigateToPartG = () => {
-    // Navigate to Part G stepper after completing the continuous sections
-    setActiveSection("officeReview");
-    setActiveContinuousSection1(''); // Clear continuous section highlighting
-    setActiveContinuousSection2(''); // Clear continuous section highlighting
-  };
-
   // Helper function to show confirmation dialog
   const showConfirmDialog = (title: string, description: string, onConfirm: () => void) => {
     setConfirmDialog({
@@ -787,7 +780,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
     { id: "D", title: "Part D: Behavioural Assessment (Soft Skills)", type: "continuous2", number: "D", ref: partDRef },
     { id: "E", title: "Part E: Training Needs & Development", type: "continuous2", number: "E", ref: partERef },
     { id: "F", title: "Part F: Summary & Recommendations", type: "continuous2", number: "F", ref: partFRef },
-    { id: "G", title: "Part G: Office Review & Followup", type: "stepper", number: "G", ref: partGRef },
+    { id: "G", title: "Part G: Office Review & Followup", type: "continuous2", number: "G", ref: partGRef },
   ];
 
   // Intersection Observer for continuous group 1 (A&B)
@@ -2067,84 +2060,6 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                     ))}
                   </div>
                 </div>
-                {/* Action buttons */}
-                <div className="flex justify-end gap-4 mt-6">
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8">
-                    Save
-                  </Button>
-                  <Button 
-                    type="button"
-                    className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8"
-                    onClick={navigateToPartG}
-                  >
-                    Submit
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b p-3 sm:p-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 sm:gap-4">
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h1 className="text-lg sm:text-xl font-bold">Crew Appraisal Form</h1>
-          </div>
-        </div>
-
-        <div className="flex flex-1 overflow-hidden">
-          <main className="flex-1 overflow-hidden">
-            <div className="h-full">
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="h-full">
-                  
-                {/* Render content based on section type */}
-                {(['A', 'B'].includes(activeSection)) && (
-                  <div ref={continuous1ContainerRef} className="h-[calc(100vh-200px)] overflow-y-auto">
-                    {renderContinuousSections1()}
-                  </div>
-                )}
-                {(['C', 'D', 'E', 'F'].includes(activeSection)) && (
-                  <div ref={continuous2ContainerRef} className="h-[calc(100vh-200px)] overflow-y-auto">
-                    {renderContinuousSections2()}
-                  </div>
-                )}
-                
-                {/* Part G: Office Review & Followup - Traditional Stepper */}
-                {activeSection === "officeReview" && (
-                  <div className="space-y-6">
-                    <Card className="bg-white">
-                      <CardContent className="p-6">
-                        <div className="pb-4 mb-6">
-                          <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part G Office Review & Followup</h3>
-                          <div style={{ color: '#16569e' }} className="text-sm">This section is visible to office users only</div>
-                          <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
-                        </div>
-
-                        {/* G1: Office Review */}
-                        <div className="space-y-4 mb-6">
-                          <div className="flex justify-between items-center">
-                            <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>G1. Office Review</h3>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="text-gray-600 border-gray-300"
-                              onClick={addOfficeReview}
-                            >
-                              + Add Reviewer
-                            </Button>
-                          </div>
-                        </div>
 
                 {/* F4: Seafarer Comments */}
                 <div className="space-y-4">
@@ -2204,24 +2119,1977 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                   <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8">
                     Save
                   </Button>
-                  <Button 
-                    type="button"
-                    className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8"
-                    onClick={navigateToPartG}
-                  >
+                  <Button className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8">
                     Submit
                   </Button>
                 </div>
               </CardContent>
             </Card>
           </div>
-                </form>
-              </Form>
-            </div>
-          </main>
+        </div>
+
+        {/* Part G: Office Review & Followup */}
+        <div ref={partGRef} data-section-id="G">
+          <div className="space-y-6">
+            <Card className="bg-white">
+              <CardContent className="p-6">
+                <div className="pb-4 mb-6">
+                  <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part G Office Review & Followup</h3>
+                  <div style={{ color: '#16569e' }} className="text-sm">This section is visible to office users only</div>
+                  <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+                </div>
+
+                {/* G1: Office Review */}
+                <div className="space-y-4 mb-6">
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>G1. Office Review</h3>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-gray-600 border-gray-300"
+                      onClick={addOfficeReview}
+                    >
+                      + Add Reviewer
+                    </Button>
+                  </div>
+                  <div className="space-y-4">
+                    {form.watch("officeReviews").map((review, index) => (
+                      <div key={review.id} className="space-y-2">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <p className="font-medium text-[14px]" style={{ color: '#3164f4' }}>
+                              {review.name}, <span className="font-normal italic">{review.position}:</span>
+                            </p>
+                            {editingOfficeReview === review.id ? (
+                              <Textarea
+                                value={review.feedback}
+                                onChange={(e) => updateOfficeReview(review.id, "feedback", e.target.value)}
+                                onBlur={() => setEditingOfficeReview(null)}
+                                placeholder="Add office review feedback..."
+                                className="text-blue-600 italic border-blue-200 mt-1"
+                                rows={2}
+                                autoFocus
+                              />
+                            ) : (
+                              <p 
+                                className="text-blue-600 italic text-sm mt-1 cursor-pointer p-2 rounded hover:bg-gray-50"
+                                onClick={() => setEditingOfficeReview(review.id)}
+                              >
+                                {review.feedback || "Click to add feedback..."}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex space-x-2 ml-4">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteOfficeReview(review.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* G2: Training Followup */}
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>G2. Training Followup</h3>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-gray-600 border-gray-300"
+                        onClick={() => addTrainingFollowup('database')}
+                      >
+                        + Add Training from Database
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-gray-600 border-gray-300"
+                        onClick={() => addTrainingFollowup('new')}
+                      >
+                        + Add New Training
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
+                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
+                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Corresponding in DB</th>
+                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Category</th>
+                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Status</th>
+                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Target or Compl. Date</th>
+                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {form.watch("trainingFollowups").map((followup, index) => (
+                          <React.Fragment key={followup.id}>
+                            <tr className="border-t">
+                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
+                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                <Input
+                                  value={followup.training}
+                                  onChange={(e) => updateTrainingFollowup(followup.id, "training", e.target.value)}
+                                  className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                                />
+                              </td>
+                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                <select
+                                  value={followup.correspondingInDB}
+                                  onChange={(e) => updateTrainingFollowup(followup.id, "correspondingInDB", e.target.value)}
+                                  className="w-full p-1 border rounded text-[13px] h-6"
+                                >
+                                  <option>Select Training from DB</option>
+                                  <option>Training Option 1</option>
+                                  <option>Training Option 2</option>
+                                </select>
+                              </td>
+                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                <select
+                                  value={followup.category}
+                                  onChange={(e) => updateTrainingFollowup(followup.id, "category", e.target.value)}
+                                  className="w-full p-1 border rounded text-[13px] h-6"
+                                >
+                                  <option>Select Rating</option>
+                                  <option>1. Competence</option>
+                                  <option>2- Soft Skills</option>
+                                </select>
+                              </td>
+                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                <select
+                                  value={followup.status}
+                                  onChange={(e) => updateTrainingFollowup(followup.id, "status", e.target.value)}
+                                  className={`w-full p-1 border rounded text-[13px] h-6 ${
+                                    followup.status === "Proposed" ? "bg-gray-200" :
+                                    followup.status === "Approved" ? "bg-blue-200" :
+                                    followup.status === "Planned" ? "bg-yellow-200" :
+                                    followup.status === "Declined" ? "bg-red-200" :
+                                    followup.status === "Completed" ? "bg-green-200" : ""
+                                  }`}
+                                >
+                                  <option value="Proposed">Proposed</option>
+                                  <option value="Approved">Approved</option>
+                                  <option value="Planned">Planned</option>
+                                  <option value="Declined">Declined</option>
+                                  <option value="Completed">Completed</option>
+                                </select>
+                              </td>
+                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                <Input
+                                  type="date"
+                                  value={followup.targetDate}
+                                  onChange={(e) => updateTrainingFollowup(followup.id, "targetDate", e.target.value)}
+                                  className="w-full text-[13px] h-6"
+                                />
+                              </td>
+                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                <div className="flex justify-center gap-2">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => setTrainingFollowupComments(prev => ({
+                                      ...prev,
+                                      [followup.id]: prev[followup.id] || ""
+                                    }))}
+                                  >
+                                    <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => deleteTrainingFollowup(followup.id)}
+                                  >
+                                    <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                            {trainingFollowupComments[followup.id] !== undefined && (
+                              <tr>
+                                <td></td>
+                                <td colSpan={6} className="p-3">
+                                  {editingTrainingFollowupComment === followup.id ? (
+                                    <Textarea
+                                      value={trainingFollowupComments[followup.id]}
+                                      onChange={(e) => {
+                                        setTrainingFollowupComments(prev => ({
+                                          ...prev,
+                                          [followup.id]: e.target.value
+                                        }));
+                                        updateTrainingFollowup(followup.id, "comment", e.target.value);
+                                      }}
+                                      onBlur={() => setEditingTrainingFollowupComment(null)}
+                                      placeholder="Comment: Add your observations here..."
+                                      className="text-blue-600 italic border-blue-200"
+                                      rows={2}
+                                      autoFocus
+                                    />
+                                  ) : (
+                                    <div className="flex justify-between items-start">
+                                      <div 
+                                        className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[14px]"
+                                        onClick={() => setEditingTrainingFollowupComment(followup.id)}
+                                      >
+                                        {trainingFollowupComments[followup.id] || "Click to add comment..."}
+                                      </div>
+                                      <div className="ml-2">
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => deleteTrainingFollowupComment(followup.id)}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex justify-end gap-4 mt-6">
+                  <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8">
+                    Save
+                  </Button>
+                  <Button className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8">
+                    Submit
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
-      
+    );
+  };
+
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg w-full h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b p-3 sm:p-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <h1 className="text-lg sm:text-xl font-bold">Crew Appraisal Form</h1>
+          </div>
+          <div className="flex gap-1 sm:gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => form.handleSubmit(onSubmit)()}
+              className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Save Draft
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => form.handleSubmit(onSubmit)()}
+              className="sm:hidden"
+            >
+              <Save className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Mobile Horizontal Stepper */}
+        <div className="block sm:hidden bg-white border-b px-4 py-3">
+          <nav className="flex justify-center space-x-4">
+            {sections.map((section, index) => {
+              // For continuous sections, use their respective activeContinuousSection, for steppers use activeSection
+              const isActive = section.type === 'continuous1' 
+                ? activeContinuousSection1 === section.id
+                : section.type === 'continuous2' 
+                  ? activeContinuousSection2 === section.id
+                  : activeSection === section.id;
+              
+              return (
+                <div key={section.id} className="flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => handleSectionNavigation(section.id)}
+                    className="flex items-center justify-center"
+                    data-testid={`button-step-mobile-${section.id}`}
+                  >
+                    <span 
+                      className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold shrink-0 ${
+                        isActive 
+                          ? "bg-blue-600 text-white" 
+                          : "bg-gray-600 text-white"
+                      }`}
+                    >
+                      {section.number}
+                    </span>
+                  </button>
+                  {index < sections.length - 1 && (
+                    <div className="w-8 h-0.5 bg-gray-300 mx-2"></div>
+                  )}
+                </div>
+              );
+            })}
+          </nav>
+        </div>
+
+        <div className="flex flex-1 overflow-hidden">
+          {/* Left Sidebar - Enhanced Stepper (Hidden on Mobile) */}
+          <aside className="hidden sm:block sticky top-0 self-start basis-20 md:basis-48 lg:basis-52 shrink-0 bg-[#f8fafc] border-r overflow-y-auto">
+            <div className="p-3">
+              <nav className="space-y-1">
+                {sections.map((section, index) => {
+                  // For continuous sections, use their respective activeContinuousSection, for steppers use activeSection
+                  const isActive = section.type === 'continuous1' 
+                    ? activeContinuousSection1 === section.id
+                    : section.type === 'continuous2' 
+                      ? activeContinuousSection2 === section.id
+                      : activeSection === section.id;
+                  const isCompleted = false; // You can add completion logic here
+                  
+                  return (
+                    <div key={section.id} className="relative">
+                      <button
+                        type="button"
+                        onClick={() => handleSectionNavigation(section.id)}
+                        className={`group flex items-center w-full px-3 py-2 rounded-md transition-all border-l-4 min-h-[3rem] ${
+                          isActive 
+                            ? "bg-blue-50 border-blue-600 text-blue-700" 
+                            : "border-transparent hover:bg-gray-100 text-gray-700"
+                        }`}
+                        aria-current={isActive ? "step" : undefined}
+                        data-testid={`button-step-${section.id}`}
+                      >
+                        <span 
+                          className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold shrink-0 ${
+                            isActive 
+                              ? "bg-blue-600 text-white" 
+                              : "bg-gray-600 text-white"
+                          }`}
+                        >
+                          {section.number}
+                        </span>
+                        <span 
+                          className="hidden xl:block ml-3 text-left text-sm leading-tight flex-1"
+                          data-testid={`text-step-title-${section.id}`}
+                          title={section.title}
+                          style={{ 
+                            wordBreak: 'break-word',
+                            lineHeight: '1.2',
+                            maxWidth: '8rem',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden'
+                          }}
+                        >
+                          {section.title.replace("Part A: ", "").replace("Part B: ", "").replace("Part C: ", "").replace("Part D: ", "").replace("Part E: ", "").replace("Part F: ", "").replace("Part G: ", "")}
+                        </span>
+                      </button>
+                      {index < sections.length - 1 && (
+                        <div className="absolute left-7 top-12 w-0.5 h-3 bg-gray-300"></div>
+                      )}
+                    </div>
+                  );
+                })}
+              </nav>
+            </div>
+          </aside>
+
+          {/* Form Content */}
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 bg-[#f8fafc]">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
+                
+                {/* Render content based on section type */}
+                {(['A', 'B'].includes(activeSection)) && (
+                  <div ref={continuous1ContainerRef} className="h-[calc(100vh-200px)] overflow-y-auto">
+                    {renderContinuousSections1()}
+                  </div>
+                )}
+                {(['C', 'D', 'E', 'F', 'G'].includes(activeSection)) && (
+                  <div ref={continuous2ContainerRef} className="h-[calc(100vh-200px)] overflow-y-auto">
+                    {renderContinuousSections2()}
+                  </div>
+                )}
+                
+                {/* Part G: Office Review & Followup - Traditional Stepper */}
+                {activeSection === "officeReview" && (
+                  <Card className="bg-white">
+                    <CardContent className="p-6">
+                      <div className="pb-4 mb-6">
+                        <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part G: Office Review & Followup</h3>
+                        <div style={{ color: '#16569e' }} className="text-sm">To be completed by office personnel</div>
+                        <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+                      </div>
+                      {/* Part G content will be preserved from existing implementation */}
+                    </CardContent>
+                  </Card>
+                )}
+                
+                {/* Part A: Seafarer's Information - moved to continuous function */}
+                {false && activeSection === "reference" && (
+                  <Card className="bg-white">
+                    <CardContent className="p-6">
+                      <div className="pb-4 mb-6">
+                        <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A: Seafarer's Information</h3>
+                        <div style={{ color: '#16569e' }} className="text-sm">Enter details as applicable</div>
+                        <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="seafarersName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs text-gray-500 tracking-wide">Seafarer's Name</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="Enter seafarer's name" className="bg-[#ffffff]" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="seafarersRank"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs text-gray-500 tracking-wide">Seafarer's Rank</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="bg-[#ffffff]">
+                                    <SelectValue placeholder="Select rank" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="master">Master</SelectItem>
+                                  <SelectItem value="chief-engineer">Chief Engineer</SelectItem>
+                                  <SelectItem value="chief-mate">Chief Mate</SelectItem>
+                                  <SelectItem value="second-officer">Second Officer</SelectItem>
+                                  <SelectItem value="third-engineer">Third Engineer</SelectItem>
+                                  <SelectItem value="able-seaman">Able Seaman</SelectItem>
+                                  <SelectItem value="electrician">Electrician</SelectItem>
+                                  <SelectItem value="bosun">Bosun</SelectItem>
+                                  <SelectItem value="cook">Cook</SelectItem>
+                                  <SelectItem value="steward">Steward</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="nationality"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs text-gray-500 tracking-wide">Nationality</FormLabel>
+                              <Popover open={nationalityOpen} onOpenChange={setNationalityOpen}>
+                                <PopoverTrigger asChild>
+                                  <FormControl>
+                                    <Button
+                                      variant="outline"
+                                      role="combobox"
+                                      aria-expanded={nationalityOpen}
+                                      className={cn(
+                                        "w-full justify-between bg-[#ffffff] border-gray-200 hover:bg-gray-100",
+                                        !field.value && "text-muted-foreground"
+                                      )}
+                                    >
+                                      {field.value
+                                        ? NATIONALITIES.find(
+                                            (nationality) => nationality.toLowerCase() === field.value.toLowerCase()
+                                          )
+                                        : "Select nationality..."}
+                                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                  </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[300px] p-0">
+                                  <Command>
+                                    <CommandInput placeholder="Search nationality..." />
+                                    <CommandList>
+                                      <CommandEmpty>No nationality found.</CommandEmpty>
+                                      <CommandGroup>
+                                        {NATIONALITIES.map((nationality) => (
+                                          <CommandItem
+                                            key={nationality}
+                                            value={nationality}
+                                            onSelect={(currentValue) => {
+                                              field.onChange(currentValue === field.value ? "" : currentValue);
+                                              setNationalityOpen(false);
+                                            }}
+                                          >
+                                            <Check
+                                              className={cn(
+                                                "mr-2 h-4 w-4",
+                                                field.value?.toLowerCase() === nationality.toLowerCase()
+                                                  ? "opacity-100"
+                                                  : "opacity-0"
+                                              )}
+                                            />
+                                            {nationality}
+                                          </CommandItem>
+                                        ))}
+                                      </CommandGroup>
+                                    </CommandList>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="vessel"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs text-gray-500 tracking-wide">Vessel</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="bg-[#ffffff]">
+                                    <SelectValue placeholder="Select vessel" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="mt-sail-one">MT Sail One</SelectItem>
+                                  <SelectItem value="mt-sail-two">MT Sail Two</SelectItem>
+                                  <SelectItem value="mt-sail-three">MT Sail Three</SelectItem>
+                                  <SelectItem value="mt-sail-four">MT Sail Four</SelectItem>
+                                  <SelectItem value="mt-sail-five">MT Sail Five</SelectItem>
+                                  <SelectItem value="mt-sail-ten">MT Sail Ten</SelectItem>
+                                  <SelectItem value="mt-sail-eight">MT Sail Eight</SelectItem>
+                                  <SelectItem value="mt-sail-eleven">MT Sail Eleven</SelectItem>
+                                  <SelectItem value="mt-sail-thirteen">MT Sail Thirteen</SelectItem>
+                                  <SelectItem value="mv-sail-seven">MV Sail Seven</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="signOn"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs text-gray-500 tracking-wide">Sign On Date</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="dd/mm/yyyy" type="date" className="bg-[#ffffff]" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="appraisalType"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Type</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="bg-[#ffffff]">
+                                    <SelectValue placeholder="Select type" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="end-of-contract">End of Contract</SelectItem>
+                                  <SelectItem value="mid-term">Mid Term</SelectItem>
+                                  <SelectItem value="special">Special</SelectItem>
+                                  <SelectItem value="probation">Probation</SelectItem>
+                                  <SelectItem value="appraiser-s-off">Appraiser S/Off</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="appraisalPeriodFrom"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Period From</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="dd.mm.yyyy" type="date" className="bg-[#ffffff]" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="appraisalPeriodTo"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Period To</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="dd.mm.yyyy" type="date" className="bg-[#ffffff]" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="primaryAppraiser"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs text-gray-500 tracking-wide">Primary Appraiser</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="bg-[#ffffff]">
+                                    <SelectValue placeholder="Select appraiser" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="captain">Captain</SelectItem>
+                                  <SelectItem value="chief-engineer">Chief Engineer</SelectItem>
+                                  <SelectItem value="chief-mate">Chief Mate</SelectItem>
+                                  <SelectItem value="shore-management">Shore Management</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="personalityIndexCategory"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs text-gray-500 tracking-wide">Personality Index (PI) Category</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="bg-[#ffffff]">
+                                    <SelectValue placeholder="Select category" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="dominance">Dominance</SelectItem>
+                                  <SelectItem value="influence">Influence</SelectItem>
+                                  <SelectItem value="steadiness">Steadiness</SelectItem>
+                                  <SelectItem value="compliance">Compliance</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="flex justify-end mt-6">
+                        <Button className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8">
+                          Save
+                        </Button>
+                      </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Part B: Information at Start of Appraisal Period */}
+                {activeSection === "information" && (
+                  <Card className="bg-white">
+                    <CardContent className="p-6">
+                      <div className="pb-4 mb-6">
+                        <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part B: Information at Start of Appraisal Period</h3>
+                        <div style={{ color: '#16569e' }} className="text-sm">Add below at the start of the Appraisal Period except the Evaluation which must be completed at the end of the Appraisal Period</div>
+                        <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+                      </div>
+                      <div className="space-y-8">
+                      {/* B1. Trainings conducted prior joining vessel */}
+                      <div>
+                        <div className="flex justify-between items-center mb-4">
+                          <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>B1. Trainings conducted prior joining vessel (To Assess Effectiveness)</h3>
+                          <Button
+                            type="button"
+                            onClick={addTraining}
+                            variant="outline"
+                            size="sm"
+                            className="text-gray-600 border-gray-300"
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add Training
+                          </Button>
+                        </div>
+                        
+                        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                          <div className="overflow-x-auto">
+                            <table className="w-full min-w-[600px]">
+                              <thead className="bg-gray-100">
+                                <tr>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white">
+                              {form.watch("trainings").map((training, index) => (
+                                <React.Fragment key={training.id}>
+                                  <tr className="border-b border-gray-200 bg-white hover:bg-gray-50">
+                                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
+                                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                      <Input
+                                        value={training.training}
+                                        onChange={(e) => updateTraining(training.id, "training", e.target.value)}
+                                        placeholder={`Training ${index + 1}`}
+                                        className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                                      />
+                                    </td>
+                                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                      <Select
+                                        value={training.evaluation}
+                                        onValueChange={(value) => updateTraining(training.id, "evaluation", value)}
+                                      >
+                                        <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                                          <SelectValue placeholder="Select Rating" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="5-exceeded-expectations">5- Exceeded Expectations</SelectItem>
+                                          <SelectItem value="4-meets-expectations">4- Meets Expectations</SelectItem>
+                                          <SelectItem value="3-somewhat-meets-expectations">3- Somewhat Meets Expectations</SelectItem>
+                                          <SelectItem value="2-below-expectations">2- Below Expectations</SelectItem>
+                                          <SelectItem value="1-significantly-below-expectations">1- Significantly Below Expectations</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </td>
+                                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                      <div className="flex gap-2 justify-center">
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6"
+                                          onClick={() => setTrainingComments(prev => ({
+                                            ...prev,
+                                            [training.id]: prev[training.id] || ""
+                                          }))}
+                                        >
+                                          <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
+                                        </Button>
+
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6"
+                                          onClick={() => deleteTraining(training.id)}
+                                        >
+                                          <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                                        </Button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                  {trainingComments[training.id] !== undefined && (
+                                    <tr>
+                                      <td></td>
+                                      <td colSpan={3} className="p-3">
+                                        {editingTrainingComment === training.id ? (
+                                          <Textarea
+                                            value={trainingComments[training.id]}
+                                            onChange={(e) => {
+                                              setTrainingComments(prev => ({
+                                                ...prev,
+                                                [training.id]: e.target.value
+                                              }));
+                                              updateTraining(training.id, "comment", e.target.value);
+                                            }}
+                                            onBlur={() => setEditingTrainingComment(null)}
+                                            placeholder="Comment: Add your observations here..."
+                                            className="text-blue-600 italic border-blue-200"
+                                            rows={2}
+                                            autoFocus
+                                          />
+                                        ) : (
+                                          <div className="flex justify-between items-start">
+                                            <div 
+                                              className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px]"
+                                              onClick={() => setEditingTrainingComment(training.id)}
+                                            >
+                                              {trainingComments[training.id] || "Click to add comment..."}
+                                            </div>
+                                            <div className="ml-2">
+                                              <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => deleteTrainingComment(training.id)}
+                                              >
+                                                <Trash2 className="h-4 w-4" />
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  )}
+                                </React.Fragment>
+                              ))}
+                              {form.watch("trainings").length === 0 && (
+                                <tr>
+                                  <td colSpan={4} className="p-8 text-center text-gray-500">
+                                    No trainings added yet. Click "Add Training" to get started.
+                                  </td>
+                                </tr>
+                              )}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* B2. Target Setting */}
+                      <div>
+                        <div className="flex justify-between items-center mb-4">
+                          <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>B2. Target Setting</h3>
+                          <Button
+                            type="button"
+                            onClick={addTarget}
+                            variant="outline"
+                            size="sm"
+                            className="text-gray-600 border-gray-300"
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add Target
+                          </Button>
+                        </div>
+                        
+                        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                          <table className="w-full">
+                            <thead className="bg-gray-100">
+                              <tr>
+                                <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
+                                <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Target Setting</th>
+                                <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>
+                                <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white">
+                              {form.watch("targets").map((target, index) => (
+                                <React.Fragment key={target.id}>
+                                  <tr className="border-b border-gray-200 bg-white hover:bg-gray-50">
+                                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
+                                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                      <Input
+                                        value={target.targetSetting}
+                                        onChange={(e) => updateTarget(target.id, "targetSetting", e.target.value)}
+                                        placeholder={`Target ${index + 1}`}
+                                        className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                                      />
+                                    </td>
+                                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                      <Select
+                                        value={target.evaluation}
+                                        onValueChange={(value) => updateTarget(target.id, "evaluation", value)}
+                                      >
+                                        <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                                          <SelectValue placeholder="Select Rating" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="5-exceeded-set-target">5- Exceeded Set Target</SelectItem>
+                                          <SelectItem value="4-fully-met-target">4- Fully Met Target</SelectItem>
+                                          <SelectItem value="3-missed-target-small-margin">3- Missed Target by a Small Margin</SelectItem>
+                                          <SelectItem value="2-missed-target-significant-margin">2- Missed Target by a Significant Margin</SelectItem>
+                                          <SelectItem value="1-failed-to-achieve-target">1- Failed to Achieve Target</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </td>
+                                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                      <div className="flex gap-2 justify-center">
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6"
+                                          onClick={() => setTargetComments(prev => ({
+                                            ...prev,
+                                            [target.id]: prev[target.id] || ""
+                                          }))}
+                                        >
+                                          <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
+                                        </Button>
+
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6"
+                                          onClick={() => deleteTarget(target.id)}
+                                        >
+                                          <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                                        </Button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                  {targetComments[target.id] !== undefined && (
+                                    <tr>
+                                      <td></td>
+                                      <td colSpan={3} className="p-3">
+                                        {editingTargetComment === target.id ? (
+                                          <Textarea
+                                            value={targetComments[target.id]}
+                                            onChange={(e) => {
+                                              setTargetComments(prev => ({
+                                                ...prev,
+                                                [target.id]: e.target.value
+                                              }));
+                                              updateTarget(target.id, "comment", e.target.value);
+                                            }}
+                                            onBlur={() => setEditingTargetComment(null)}
+                                            placeholder="Comment: Add your observations here..."
+                                            className="text-blue-600 italic border-blue-200"
+                                            rows={2}
+                                            autoFocus
+                                          />
+                                        ) : (
+                                          <div className="flex justify-between items-start">
+                                            <div 
+                                              className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px]"
+                                              onClick={() => setEditingTargetComment(target.id)}
+                                            >
+                                              {targetComments[target.id] || "Click to add comment..."}
+                                            </div>
+                                            <div className="ml-2">
+                                              <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => deleteTargetComment(target.id)}
+                                              >
+                                                <Trash2 className="h-4 w-4" />
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  )}
+                                </React.Fragment>
+                              ))}
+                              {form.watch("targets").length === 0 && (
+                                <tr>
+                                  <td colSpan={4} className="p-8 text-center text-gray-500">
+                                    No targets added yet. Click "Add Target" to get started.
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-4 mt-6">
+                        <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8">
+                          Save
+                        </Button>
+                        <Button className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8">
+                          Submit
+                        </Button>
+                      </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Part C: Competence Assessment */}
+                {activeSection === "competenceAssessment" && (
+                  <Card className="bg-white">
+                    <CardContent className="p-6">
+                      <div className="pb-4 mb-6">
+                        <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part C: Competence Assessment (Professional Knowledge & Skills)</h3>
+                        <div style={{ color: '#16569e' }} className="text-sm">Select the most appropriate rating basis assessment of the specific criterion</div>
+                        <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+                      </div>
+                      <div className="border rounded-lg overflow-hidden">
+                        <table className="w-full">
+                          <thead className="bg-gray-100">
+                            <tr>
+                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
+                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Assessment Criteria</th>
+                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Weight %</th>
+                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Effectiveness</th>
+                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {form.watch("competenceAssessments").map((assessment, index) => (
+                              <React.Fragment key={assessment.id}>
+                                <tr className="border-t">
+                                  <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
+                                  <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{assessment.assessmentCriteria}</td>
+                                  <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{assessment.weight}%</td>
+                                  <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                    <Select
+                                      value={assessment.effectiveness}
+                                      onValueChange={(value) => updateCompetenceAssessment(assessment.id, "effectiveness", value)}
+                                    >
+                                      <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                                        <SelectValue placeholder="Select Rating" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="5-exceeds-expectations">5- Exceeds Expectations</SelectItem>
+                                        <SelectItem value="4-meets-expectations">4- Meets Expectations</SelectItem>
+                                        <SelectItem value="3-somewhat-meets-expectations">3- Somewhat Meets Expectations</SelectItem>
+                                        <SelectItem value="2-below-expectations">2- Below Expectations</SelectItem>
+                                        <SelectItem value="1-significantly-below-expectations">1- Significantly Below Expectations</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </td>
+                                  <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                    <div className="flex gap-2 justify-center">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6"
+                                        onClick={() => setCompetenceComments(prev => ({
+                                          ...prev,
+                                          [assessment.id]: prev[assessment.id] || ""
+                                        }))}
+                                      >
+                                        <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
+                                      </Button>
+
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6"
+                                      >
+                                        <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                                {competenceComments[assessment.id] !== undefined && (
+                                  <tr>
+                                    <td></td>
+                                    <td colSpan={4} className="p-3">
+                                      {editingCompetenceComment === assessment.id ? (
+                                        <Textarea
+                                          value={competenceComments[assessment.id]}
+                                          onChange={(e) => {
+                                            setCompetenceComments(prev => ({
+                                              ...prev,
+                                              [assessment.id]: e.target.value
+                                            }));
+                                            updateCompetenceAssessment(assessment.id, "comment", e.target.value);
+                                          }}
+                                          onBlur={() => setEditingCompetenceComment(null)}
+                                          placeholder="Comment: Add your observations here..."
+                                          className="text-blue-600 italic border-blue-200"
+                                          rows={2}
+                                          autoFocus
+                                        />
+                                      ) : (
+                                        <div className="flex justify-between items-start">
+                                          <div 
+                                            className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px]"
+                                            onClick={() => setEditingCompetenceComment(assessment.id)}
+                                          >
+                                            {competenceComments[assessment.id] || "Click to add comment..."}
+                                          </div>
+                                          <div className="ml-2">
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => deleteCompetenceComment(assessment.id)}
+                                            >
+                                              <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </td>
+                                  </tr>
+                                )}
+                              </React.Fragment>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Section Score */}
+                      <div className="flex justify-between items-center mt-6 p-4 bg-gray-50 rounded-lg">
+                        <div className="text-sm font-medium text-gray-700">Section Score:</div>
+                        <div className={`px-4 py-2 rounded text-lg font-semibold min-w-[64px] text-center ${getScoreColors(parseFloat(calculateSectionScore())).bgColor} ${getScoreColors(parseFloat(calculateSectionScore())).textColor}`}>
+                          {calculateSectionScore()}
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end mt-6">
+                        <Button className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8">
+                          Save
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Part D: Behavioural Assessment */}
+                {activeSection === "behaviouralAssessment" && (
+                  <Card className="bg-white">
+                    <CardContent className="p-6">
+                      <div className="pb-4 mb-6">
+                        <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part D: Behavioural Assessment (Soft Skills)</h3>
+                        <div style={{ color: '#16569e' }} className="text-sm">Select the most appropriate rating basis assessment of the specific criterion</div>
+                        <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+                      </div>
+
+                      <div className="border rounded-lg overflow-hidden">
+                        <table className="w-full">
+                          <thead className="bg-gray-100">
+                            <tr>
+                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
+                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Assessment Criteria</th>
+                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Weight %</th>
+                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Effectiveness</th>
+                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                          {form.watch("behaviouralAssessments").map((assessment, index) => (
+                            <React.Fragment key={assessment.id}>
+                              <tr className="border-t">
+                                <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
+                                <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{assessment.assessmentCriteria}</td>
+                                <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4 text-center">{assessment.weight}%</td>
+                                <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                  <Select
+                                    value={assessment.effectiveness}
+                                    onValueChange={(value) => updateBehaviouralAssessment(assessment.id, "effectiveness", value)}
+                                  >
+                                    <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                                      <SelectValue placeholder="Select Rating" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="5-exceeds-expectations">5- Exceeds Expectations</SelectItem>
+                                      <SelectItem value="4-meets-expectations">4- Meets Expectations</SelectItem>
+                                      <SelectItem value="3-somewhat-meets-expectations">3- Somewhat Meets Expectations</SelectItem>
+                                      <SelectItem value="2-below-expectations">2- Below Expectations</SelectItem>
+                                      <SelectItem value="1-significantly-below-expectations">1- Significantly Below Expectations</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </td>
+                                <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                  <div className="flex gap-2 justify-center">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6"
+                                      onClick={() => setBehaviouralComments(prev => ({
+                                        ...prev,
+                                        [assessment.id]: prev[assessment.id] || ""
+                                      }))}
+                                    >
+                                      <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6"
+                                    >
+                                      <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                              {behaviouralComments[assessment.id] !== undefined && (
+                                <tr>
+                                  <td></td>
+                                  <td colSpan={4} className="p-3">
+                                    {editingBehaviouralComment === assessment.id ? (
+                                      <Textarea
+                                        value={behaviouralComments[assessment.id]}
+                                        onChange={(e) => {
+                                          setBehaviouralComments(prev => ({
+                                            ...prev,
+                                            [assessment.id]: e.target.value
+                                          }));
+                                          updateBehaviouralAssessment(assessment.id, "comment", e.target.value);
+                                        }}
+                                        onBlur={() => setEditingBehaviouralComment(null)}
+                                        placeholder="Comment: Add your observations here..."
+                                        className="text-blue-600 italic border-blue-200"
+                                        rows={2}
+                                        autoFocus
+                                      />
+                                    ) : (
+                                      <div className="flex justify-between items-start">
+                                        <div 
+                                          className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px]"
+                                          onClick={() => setEditingBehaviouralComment(assessment.id)}
+                                        >
+                                          {behaviouralComments[assessment.id] || "Click to add comment..."}
+                                        </div>
+                                        <div className="ml-2">
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => deleteBehaviouralComment(assessment.id)}
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="flex justify-between items-center mt-6 p-4 bg-gray-50 rounded-lg">
+                        <span className="text-sm font-medium text-gray-600">Section Score:</span>
+                        <div className={`px-4 py-2 rounded text-lg font-semibold min-w-[64px] text-center ${getScoreColors(parseFloat(calculateBehaviouralSectionScore())).bgColor} ${getScoreColors(parseFloat(calculateBehaviouralSectionScore())).textColor}`}>
+                          {calculateBehaviouralSectionScore()}
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end mt-6">
+                        <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8">
+                          Save
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Part E: Training Needs & Development */}
+                {activeSection === "trainingNeeds" && (
+                  <Card className="bg-white">
+                    <CardContent className="p-6">
+                      <div className="pb-4 mb-6">
+                        <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part E Training Needs & Development</h3>
+                        <div style={{ color: '#16569e' }} className="text-sm">Specify any training needs identified during the appraisals period</div>
+                        <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+                      </div>
+                      <div className="flex justify-between items-center mb-4">
+                        <div>
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="text-gray-600 border-gray-300"
+                              onClick={() => addTrainingNeed('database')}
+                            >
+                              + Add Training from Database
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="text-gray-600 border-gray-300"
+                              onClick={() => addTrainingNeed('new')}
+                            >
+                              + Add New Training
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="border rounded-lg overflow-hidden">
+                        <table className="w-full">
+                          <thead className="bg-gray-100">
+                            <tr>
+                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
+                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
+                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                          {form.watch("trainingNeeds").map((trainingNeed, index) => (
+                            <React.Fragment key={trainingNeed.id}>
+                              <tr className="border-t">
+                                <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
+                                <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                  <Input
+                                    value={trainingNeed.training}
+                                    onChange={(e) => updateTrainingNeed(trainingNeed.id, "training", e.target.value)}
+                                    placeholder={`Training ${index + 1}`}
+                                    className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                                  />
+                                </td>
+                                <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                  <div className="flex gap-2 justify-center">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6"
+                                      onClick={() => setTrainingNeedsComments(prev => ({
+                                        ...prev,
+                                        [trainingNeed.id]: prev[trainingNeed.id] || ""
+                                      }))}
+                                    >
+                                      <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6"
+                                      onClick={() => deleteTrainingNeed(trainingNeed.id)}
+                                    >
+                                      <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                              {trainingNeedsComments[trainingNeed.id] !== undefined && (
+                                <tr>
+                                  <td></td>
+                                  <td colSpan={2} className="p-3">
+                                    {editingTrainingNeedsComment === trainingNeed.id ? (
+                                      <Textarea
+                                        value={trainingNeedsComments[trainingNeed.id]}
+                                        onChange={(e) => {
+                                          setTrainingNeedsComments(prev => ({
+                                            ...prev,
+                                            [trainingNeed.id]: e.target.value
+                                          }));
+                                          updateTrainingNeed(trainingNeed.id, "comment", e.target.value);
+                                        }}
+                                        onBlur={() => setEditingTrainingNeedsComment(null)}
+                                        placeholder="Comment: Add your observations here..."
+                                        className="text-blue-600 italic border-blue-200"
+                                        rows={2}
+                                        autoFocus
+                                      />
+                                    ) : (
+                                      <div className="flex justify-between items-start">
+                                        <div 
+                                          className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px]"
+                                          onClick={() => setEditingTrainingNeedsComment(trainingNeed.id)}
+                                        >
+                                          {trainingNeedsComments[trainingNeed.id] || "Click to add comment..."}
+                                        </div>
+                                        <div className="ml-2">
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => deleteTrainingNeedsComment(trainingNeed.id)}
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          ))}
+                          {form.watch("trainingNeeds").length === 0 && (
+                            <tr>
+                              <td colSpan={3} className="p-8 text-center text-gray-500">
+                                No training needs added yet. Click "Add Training from Database" or "Add New Training" to get started.
+                              </td>
+                            </tr>
+                          )}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="flex justify-end mt-6">
+                        <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8">
+                          Save
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Part F: Comments & Recommendations */}
+                {activeSection === "summary" && (
+                  <div className="space-y-6">
+                    <Card className="bg-white">
+                      <CardContent className="p-6">
+                        <div className="pb-4 mb-6">
+                          <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part F Comments & Recommendations</h3>
+                          <div style={{ color: '#16569e' }} className="text-sm">Add any recommendations related to following</div>
+                          <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+                        </div>
+
+                        {/* F1: Overall Score */}
+                        <div className="flex justify-between items-center mb-6">
+                          <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>F1. Overall Score</h3>
+                          <div className={`px-4 py-2 rounded text-lg font-bold min-w-[64px] text-center ${getScoreColors(parseFloat(calculateOverallScore())).bgColor} ${getScoreColors(parseFloat(calculateOverallScore())).textColor}`}>
+                            {calculateOverallScore()}
+                          </div>
+                        </div>
+
+                        {/* F2: Appraiser's Recommendations */}
+                        <div className="space-y-4 mb-6">
+                          <div className="flex justify-between items-center">
+                            <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>F2. Appraiser's Recommendations</h3>
+                          </div>
+                          <div className="border rounded-lg overflow-hidden">
+                            <table className="w-full">
+                              <thead className="bg-gray-100">
+                                <tr>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Recommendations</th>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Yes</th>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">No</th>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">NA</th>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {form.watch("recommendations").map((recommendation, index) => (
+                                  <React.Fragment key={recommendation.id}>
+                                    <tr className="border-t">
+                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
+                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{recommendation.question}</td>
+                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4 text-center">
+                                        <input
+                                          type="radio"
+                                          name={`recommendation-${recommendation.id}`}
+                                          checked={recommendation.answer === "Yes"}
+                                          onChange={() => updateRecommendation(recommendation.id, "answer", "Yes")}
+                                          className="w-4 h-4"
+                                        />
+                                      </td>
+                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4 text-center">
+                                        <input
+                                          type="radio"
+                                          name={`recommendation-${recommendation.id}`}
+                                          checked={recommendation.answer === "No"}
+                                          onChange={() => updateRecommendation(recommendation.id, "answer", "No")}
+                                          className="w-4 h-4"
+                                        />
+                                      </td>
+                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4 text-center">
+                                        <input
+                                          type="radio"
+                                          name={`recommendation-${recommendation.id}`}
+                                          checked={recommendation.answer === "NA"}
+                                          onChange={() => updateRecommendation(recommendation.id, "answer", "NA")}
+                                          className="w-4 h-4"
+                                        />
+                                      </td>
+                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                        <div className="flex justify-center">
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => setRecommendationComments(prev => ({
+                                              ...prev,
+                                              [recommendation.id]: prev[recommendation.id] || ""
+                                            }))}
+                                            className="h-6 w-6"
+                                          >
+                                            <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
+                                          </Button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                    {recommendationComments[recommendation.id] !== undefined && (
+                                      <tr>
+                                        <td></td>
+                                        <td colSpan={5} className="p-3">
+                                          {editingRecommendationComment === recommendation.id ? (
+                                            <Textarea
+                                              value={recommendationComments[recommendation.id]}
+                                              onChange={(e) => {
+                                                setRecommendationComments(prev => ({
+                                                  ...prev,
+                                                  [recommendation.id]: e.target.value
+                                                }));
+                                                updateRecommendation(recommendation.id, "comment", e.target.value);
+                                              }}
+                                              onBlur={() => setEditingRecommendationComment(null)}
+                                              placeholder="Comment: Add your observations here..."
+                                              className="text-blue-600 italic border-blue-200"
+                                              rows={2}
+                                              autoFocus
+                                            />
+                                          ) : (
+                                            <div className="flex justify-between items-start">
+                                              <div 
+                                                className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px]"
+                                                onClick={() => setEditingRecommendationComment(recommendation.id)}
+                                              >
+                                                {recommendationComments[recommendation.id] || "Click to add comment..."}
+                                              </div>
+                                              <div className="ml-2">
+                                                <Button
+                                                  type="button"
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  onClick={() => deleteRecommendationComment(recommendation.id)}
+                                                >
+                                                  <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    )}
+                                  </React.Fragment>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+
+                        {/* F3: Appraiser Comments */}
+                        <div className="space-y-4 mb-6">
+                          <div className="flex justify-between items-center">
+                            <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>F3. Appraiser Comments</h3>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="text-gray-600 border-gray-300"
+                              onClick={() => {
+                                addAppraiserComment("Ashok Kumar", "Chief Officer");
+                              }}
+                            >
+                              + Add Appraiser
+                            </Button>
+                          </div>
+                          <div className="space-y-4">
+                            {form.watch("appraiserComments").map((appraiser, index) => (
+                              <div key={appraiser.id} className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <div>
+                                    <p className="font-medium text-[14px] text-[#3164f4]">
+                                      {index === 0 ? form.watch("primaryAppraiser") || "Capt. John Leki, Master (Primary Appraiser)" : `${appraiser.name}, ${appraiser.rank}`}
+                                    </p>
+                                  </div>
+                                  <div className="flex space-x-2">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setEditingAppraiserComment(appraiser.id)}
+                                    >
+                                      <Edit2 className="h-4 w-4" />
+                                    </Button>
+                                    {index > 0 && (
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => deleteAppraiserComment(appraiser.id)}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                                {editingAppraiserComment === appraiser.id ? (
+                                  <Textarea
+                                    value={appraiser.comment}
+                                    onChange={(e) => updateAppraiserComment(appraiser.id, "comment", e.target.value)}
+                                    onBlur={() => setEditingAppraiserComment(null)}
+                                    placeholder="Add your comment here..."
+                                    className="text-blue-600 italic"
+                                    rows={3}
+                                    autoFocus
+                                  />
+                                ) : (
+                                  appraiser.comment && (
+                                    <p className="text-blue-600 italic text-sm pl-4">
+                                      {appraiser.comment || (index === 0 ? "Officer X has performed consistently throughout the contract and participated in upgradation of the XXX. The inspection performance has been satisfactory, no major findings received in 2 SIRE and 1 PSC inspections." : "Officer X has performed consistently throughout the contract and participated in upgradation of the XXX. The inspection performance has been satisfactory, no major findings received in 2 SIRE and 1 PSC inspections.")}
+                                    </p>
+                                  )
+                                )}
+                                {editingAppraiserComment !== appraiser.id && !appraiser.comment && (
+                                  <div 
+                                    className="border-2 border-dashed border-blue-200 p-3 rounded cursor-pointer hover:bg-blue-50"
+                                    onClick={() => setEditingAppraiserComment(appraiser.id)}
+                                  >
+                                    <p className="text-gray-500 text-[13px]">Click to add comment...</p>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* F4: Seafarer Comments */}
+                        <div className="space-y-4">
+                          <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>F4. Seafarer Comments</h3>
+                          <div className="space-y-4">
+                            {form.watch("seafarerComments").map((seafarer, index) => (
+                              <div key={seafarer.id} className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <div>
+                                    <p className="font-medium text-[14px] text-[#3164f4]">
+                                      {`${form.watch("seafarersName") || "Derek Cole"}, ${form.watch("seafarersRank") || "3rd Officer"}`}
+                                    </p>
+                                  </div>
+                                  <div className="flex space-x-2">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setEditingSeafarerComment(seafarer.id)}
+                                    >
+                                      <Edit2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                                {editingSeafarerComment === seafarer.id ? (
+                                  <Textarea
+                                    value={seafarer.comment}
+                                    onChange={(e) => updateSeafarerComment(seafarer.id, "comment", e.target.value)}
+                                    onBlur={() => setEditingSeafarerComment(null)}
+                                    placeholder="Add your comment here..."
+                                    className="text-blue-600 italic"
+                                    rows={3}
+                                    autoFocus
+                                  />
+                                ) : (
+                                  seafarer.comment && (
+                                    <p className="text-blue-600 italic text-sm pl-4">
+                                      {seafarer.comment || "I have received a very good opportunity to learn effectively during my tenure on board. I was able to practically apply the skills I had gained to enhance the operational performance. I would like to return on this vessel."}
+                                    </p>
+                                  )
+                                )}
+                                {editingSeafarerComment !== seafarer.id && !seafarer.comment && (
+                                  <div 
+                                    className="border-2 border-dashed border-blue-200 p-3 rounded cursor-pointer hover:bg-blue-50"
+                                    onClick={() => setEditingSeafarerComment(seafarer.id)}
+                                  >
+                                    <p className="text-gray-500 text-[13px]">Click to add comment...</p>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex justify-end gap-4 mt-6">
+                          <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8">
+                            Save
+                          </Button>
+                          <Button className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8">
+                            Submit
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
+                {/* Part G: Office Review & Followup */}
+                {activeSection === "officeReview" && (
+                  <div className="space-y-6">
+                    <Card className="bg-white">
+                      <CardContent className="p-6">
+                        <div className="pb-4 mb-6">
+                          <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part G Office Review & Followup</h3>
+                          <div style={{ color: '#16569e' }} className="text-sm">This section is visible to office users only</div>
+                          <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+                        </div>
+
+                        {/* G1: Office Review */}
+                        <div className="space-y-4 mb-6">
+                          <div className="flex justify-between items-center">
+                            <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>G1. Office Review</h3>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="text-gray-600 border-gray-300"
+                              onClick={addOfficeReview}
+                            >
+                              + Add Reviewer
+                            </Button>
+                          </div>
+                          <div className="space-y-4">
+                            {form.watch("officeReviews").map((review, index) => (
+                              <div key={review.id} className="space-y-2">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <p className="font-medium text-[14px]" style={{ color: '#3164f4' }}>
+                                      {review.name}, <span className="font-normal italic">{review.position}:</span>
+                                    </p>
+                                    {editingOfficeReview === review.id ? (
+                                      <Textarea
+                                        value={review.feedback}
+                                        onChange={(e) => updateOfficeReview(review.id, "feedback", e.target.value)}
+                                        onBlur={() => setEditingOfficeReview(null)}
+                                        placeholder="Add office review feedback..."
+                                        className="text-blue-600 italic border-blue-200 mt-1"
+                                        rows={2}
+                                        autoFocus
+                                      />
+                                    ) : (
+                                      <p 
+                                        className="text-blue-600 italic text-sm mt-1 cursor-pointer p-2 rounded hover:bg-gray-50"
+                                        onClick={() => setEditingOfficeReview(review.id)}
+                                      >
+                                        {review.feedback || "Click to add feedback..."}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="flex space-x-2 ml-4">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => deleteOfficeReview(review.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                          </div>
+                        ))}
+                          </div>
+                        </div>
+
+                        {/* G2: Training Followup */}
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center">
+                            <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>G2. Training Followup</h3>
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="text-gray-600 border-gray-300"
+                                onClick={() => addTrainingFollowup('database')}
+                              >
+                                + Add Training from Database
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="text-gray-600 border-gray-300"
+                                onClick={() => addTrainingFollowup('new')}
+                              >
+                                + Add New Training
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="border rounded-lg overflow-hidden">
+                            <table className="w-full">
+                              <thead className="bg-gray-100">
+                                <tr>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Corresponding in DB</th>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Category</th>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Status</th>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Target or Compl. Date</th>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {form.watch("trainingFollowups").map((followup, index) => (
+                                  <React.Fragment key={followup.id}>
+                                    <tr className="border-t">
+                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
+                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                        <Input
+                                          value={followup.training}
+                                          onChange={(e) => updateTrainingFollowup(followup.id, "training", e.target.value)}
+                                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                                        />
+                                      </td>
+                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                        <select
+                                          value={followup.correspondingInDB}
+                                          onChange={(e) => updateTrainingFollowup(followup.id, "correspondingInDB", e.target.value)}
+                                          className="w-full p-1 border rounded text-[13px] h-6"
+                                        >
+                                          <option>Select Training from DB</option>
+                                          <option>Training Option 1</option>
+                                          <option>Training Option 2</option>
+                                        </select>
+                                      </td>
+                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                        <select
+                                          value={followup.category}
+                                          onChange={(e) => updateTrainingFollowup(followup.id, "category", e.target.value)}
+                                          className="w-full p-1 border rounded text-[13px] h-6"
+                                        >
+                                          <option>Select Rating</option>
+                                          <option>1. Competence</option>
+                                          <option>2- Soft Skills</option>
+                                        </select>
+                                      </td>
+                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                        <select
+                                          value={followup.status}
+                                          onChange={(e) => updateTrainingFollowup(followup.id, "status", e.target.value)}
+                                          className={`w-full p-1 border rounded text-[13px] h-6 ${
+                                            followup.status === "Proposed" ? "bg-gray-200" :
+                                            followup.status === "Approved" ? "bg-blue-200" :
+                                            followup.status === "Planned" ? "bg-yellow-200" :
+                                            followup.status === "Declined" ? "bg-red-200" :
+                                            followup.status === "Completed" ? "bg-green-200" : ""
+                                          }`}
+                                        >
+                                          <option value="Proposed">Proposed</option>
+                                          <option value="Approved">Approved</option>
+                                          <option value="Planned">Planned</option>
+                                          <option value="Declined">Declined</option>
+                                          <option value="Completed">Completed</option>
+                                        </select>
+                                      </td>
+                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                        <Input
+                                          type="date"
+                                          value={followup.targetDate}
+                                          onChange={(e) => updateTrainingFollowup(followup.id, "targetDate", e.target.value)}
+                                          className="w-full text-[13px] h-6"
+                                        />
+                                      </td>
+                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                        <div className="flex justify-center gap-2">
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6"
+                                            onClick={() => setTrainingFollowupComments(prev => ({
+                                              ...prev,
+                                              [followup.id]: prev[followup.id] || ""
+                                            }))}
+                                          >
+                                            <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6"
+                                            onClick={() => deleteTrainingFollowup(followup.id)}
+                                          >
+                                            <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                                          </Button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                    {trainingFollowupComments[followup.id] !== undefined && (
+                                      <tr>
+                                        <td></td>
+                                        <td colSpan={6} className="p-3">
+                                          {editingTrainingFollowupComment === followup.id ? (
+                                            <Textarea
+                                              value={trainingFollowupComments[followup.id]}
+                                              onChange={(e) => {
+                                                setTrainingFollowupComments(prev => ({
+                                                  ...prev,
+                                                  [followup.id]: e.target.value
+                                                }));
+                                                updateTrainingFollowup(followup.id, "comment", e.target.value);
+                                              }}
+                                              onBlur={() => setEditingTrainingFollowupComment(null)}
+                                              placeholder="Comment: Add your observations here..."
+                                              className="text-blue-600 italic border-blue-200"
+                                              rows={2}
+                                              autoFocus
+                                            />
+                                          ) : (
+                                            <div className="flex justify-between items-start">
+                                              <div 
+                                                className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[14px]"
+                                                onClick={() => setEditingTrainingFollowupComment(followup.id)}
+                                              >
+                                                {trainingFollowupComments[followup.id] || "Click to add comment..."}
+                                              </div>
+                                              <div className="ml-2">
+                                                <Button
+                                                  type="button"
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  onClick={() => deleteTrainingFollowupComment(followup.id)}
+                                                >
+                                                  <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    )}
+                                  </React.Fragment>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex justify-end gap-4 mt-6">
+                          <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8">
+                            Save
+                          </Button>
+                          <Button className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8">
+                            Submit
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
+              </form>
+            </Form>
+          </div>
+        </div>
+      </div>
       {/* Confirmation Dialog */}
       <AlertDialog open={confirmDialog.isOpen} onOpenChange={closeConfirmDialog}>
         <AlertDialogContent>
