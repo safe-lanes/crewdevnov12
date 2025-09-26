@@ -2138,118 +2138,277 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
             </Card>
           </div>
         </div>
+      </div>
+    );
+  };
 
-        {/* Part G: Office Review & Followup */}
-        <div ref={partGRef} data-section-id="G">
-          <div className="space-y-6">
-            <Card className="bg-white">
-              <CardContent className="p-6">
-                <div className="pb-4 mb-6">
-                  <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part G Office Review & Followup</h3>
-                  <div style={{ color: '#16569e' }} className="text-sm">This section is visible to office users only</div>
-                  <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
-                </div>
 
-                {/* G1: Office Review */}
-                <div className="space-y-4 mb-6">
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>G1. Office Review</h3>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="text-gray-600 border-gray-300"
-                      onClick={addOfficeReview}
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg w-full h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b p-3 sm:p-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <h1 className="text-lg sm:text-xl font-bold">Crew Appraisal Form</h1>
+          </div>
+          <div className="flex gap-1 sm:gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => form.handleSubmit(onSubmit)()}
+              className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Save Draft
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => form.handleSubmit(onSubmit)()}
+              className="sm:hidden"
+            >
+              <Save className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Mobile Horizontal Stepper */}
+        <div className="block sm:hidden bg-white border-b px-4 py-3">
+          <nav className="flex justify-center space-x-4">
+            {sections.map((section, index) => {
+              // For continuous sections, use their respective activeContinuousSection, for steppers use activeSection
+              const isActive = section.type === 'continuous1' 
+                ? activeContinuousSection1 === section.id
+                : section.type === 'continuous2' 
+                  ? activeContinuousSection2 === section.id
+                  : activeSection === section.id;
+              
+              return (
+                <div key={section.id} className="flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => handleSectionNavigation(section.id)}
+                    className="flex items-center justify-center"
+                    data-testid={`button-step-mobile-${section.id}`}
+                  >
+                    <span 
+                      className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold shrink-0 ${
+                        isActive 
+                          ? "bg-blue-600 text-white" 
+                          : "bg-gray-600 text-white"
+                      }`}
                     >
-                      + Add Reviewer
-                    </Button>
+                      {section.number}
+                    </span>
+                  </button>
+                  {index < sections.length - 1 && (
+                    <div className="w-8 h-0.5 bg-gray-300 mx-2"></div>
+                  )}
+                </div>
+              );
+            })}
+          </nav>
+        </div>
+
+        <div className="flex flex-1 overflow-hidden">
+          {/* Left Sidebar - Enhanced Stepper (Hidden on Mobile) */}
+          <aside className="hidden sm:block sticky top-0 self-start basis-20 md:basis-48 lg:basis-52 shrink-0 bg-[#f8fafc] border-r overflow-y-auto">
+            <div className="p-3">
+              <nav className="space-y-1">
+                {sections.map((section, index) => {
+                  // For continuous sections, use their respective activeContinuousSection, for steppers use activeSection
+                  const isActive = section.type === 'continuous1' 
+                    ? activeContinuousSection1 === section.id
+                    : section.type === 'continuous2' 
+                      ? activeContinuousSection2 === section.id
+                      : activeSection === section.id;
+                  const isCompleted = false; // You can add completion logic here
+                  
+                  return (
+                    <div key={section.id} className="relative">
+                      <button
+                        type="button"
+                        onClick={() => handleSectionNavigation(section.id)}
+                        className={`group flex items-center w-full px-3 py-2 rounded-md transition-all border-l-4 min-h-[3rem] ${
+                          isActive 
+                            ? "bg-blue-50 border-blue-600 text-blue-700" 
+                            : "border-transparent hover:bg-gray-100 text-gray-700"
+                        }`}
+                        aria-current={isActive ? "step" : undefined}
+                        data-testid={`button-step-${section.id}`}
+                      >
+                        <span 
+                          className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold shrink-0 ${
+                            isActive 
+                              ? "bg-blue-600 text-white" 
+                              : "bg-gray-600 text-white"
+                          }`}
+                        >
+                          {section.number}
+                        </span>
+                        <span 
+                          className="hidden xl:block ml-3 text-left text-sm leading-tight flex-1"
+                          data-testid={`text-step-title-${section.id}`}
+                          title={section.title}
+                          style={{ 
+                            wordBreak: 'break-word',
+                            lineHeight: '1.2',
+                            maxWidth: '8rem',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden'
+                          }}
+                        >
+                          {section.title}
+                        </span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </nav>
+            </div>
+          </aside>
+
+          {/* Main Content Area */}
+          <main className="flex-1 overflow-hidden">
+            <div className="h-full">
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="h-full">
+                  
+                {/* Render content based on section type */}
+                {(['A', 'B'].includes(activeSection)) && (
+                  <div ref={continuous1ContainerRef} className="h-[calc(100vh-200px)] overflow-y-auto">
+                    {renderContinuousSections1()}
                   </div>
-                  <div className="space-y-4">
-                    {form.watch("officeReviews").map((review, index) => (
-                      <div key={review.id} className="space-y-2">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <p className="font-medium text-[14px]" style={{ color: '#3164f4' }}>
-                              {review.name}, <span className="font-normal italic">{review.position}:</span>
-                            </p>
-                            {editingOfficeReview === review.id ? (
-                              <Textarea
-                                value={review.feedback}
-                                onChange={(e) => updateOfficeReview(review.id, "feedback", e.target.value)}
-                                onBlur={() => setEditingOfficeReview(null)}
-                                placeholder="Add office review feedback..."
-                                className="text-blue-600 italic border-blue-200 mt-1"
-                                rows={2}
-                                autoFocus
-                              />
-                            ) : (
-                              <p 
-                                className="text-blue-600 italic text-sm mt-1 cursor-pointer p-2 rounded hover:bg-gray-50"
-                                onClick={() => setEditingOfficeReview(review.id)}
-                              >
-                                {review.feedback || "Click to add feedback..."}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex space-x-2 ml-4">
+                )}
+                {(['C', 'D', 'E', 'F'].includes(activeSection)) && (
+                  <div ref={continuous2ContainerRef} className="h-[calc(100vh-200px)] overflow-y-auto">
+                    {renderContinuousSections2()}
+                  </div>
+                )}
+                
+                {/* Part G: Office Review & Followup - Traditional Stepper */}
+                {activeSection === "officeReview" && (
+                  <div className="space-y-6">
+                    <Card className="bg-white">
+                      <CardContent className="p-6">
+                        <div className="pb-4 mb-6">
+                          <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part G Office Review & Followup</h3>
+                          <div style={{ color: '#16569e' }} className="text-sm">This section is visible to office users only</div>
+                          <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+                        </div>
+
+                        {/* G1: Office Review */}
+                        <div className="space-y-4 mb-6">
+                          <div className="flex justify-between items-center">
+                            <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>G1. Office Review</h3>
                             <Button
                               type="button"
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
-                              onClick={() => deleteOfficeReview(review.id)}
+                              className="text-gray-600 border-gray-300"
+                              onClick={addOfficeReview}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              + Add Reviewer
                             </Button>
                           </div>
+                          <div className="space-y-4">
+                            {form.watch("officeReviews").map((review, index) => (
+                              <div key={review.id} className="space-y-2">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <p className="font-medium text-[14px]" style={{ color: '#3164f4' }}>
+                                      {review.name}, <span className="font-normal italic">{review.position}:</span>
+                                    </p>
+                                    {editingOfficeReview === review.id ? (
+                                      <Textarea
+                                        value={review.feedback}
+                                        onChange={(e) => updateOfficeReview(review.id, "feedback", e.target.value)}
+                                        onBlur={() => setEditingOfficeReview(null)}
+                                        placeholder="Add office review feedback..."
+                                        className="text-blue-600 italic border-blue-200 mt-1"
+                                        rows={2}
+                                        autoFocus
+                                      />
+                                    ) : (
+                                      <p 
+                                        className="text-blue-600 italic text-sm mt-1 cursor-pointer p-2 rounded hover:bg-gray-50"
+                                        onClick={() => setEditingOfficeReview(review.id)}
+                                      >
+                                        {review.feedback || "Click to add feedback..."}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="flex space-x-2">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setEditingOfficeReview(review.id)}
+                                    >
+                                      <Edit2 className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => removeOfficeReview(review.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
 
-                {/* G2: Training Followup */}
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>G2. Training Followup</h3>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="text-gray-600 border-gray-300"
-                        onClick={() => addTrainingFollowup('database')}
-                      >
-                        + Add Training from Database
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="text-gray-600 border-gray-300"
-                        onClick={() => addTrainingFollowup('new')}
-                      >
-                        + Add New Training
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-gray-100">
-                        <tr>
-                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
-                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
-                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Corresponding in DB</th>
-                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Category</th>
-                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Status</th>
-                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Target or Compl. Date</th>
-                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {form.watch("trainingFollowups").map((followup, index) => (
-                          <React.Fragment key={followup.id}>
-                            <tr className="border-t">
-                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
+                        {/* G2: Training Followup */}
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center">
+                            <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>G2. Training Followup</h3>
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="text-gray-600 border-gray-300"
+                              >
+                                + Add Training from Database
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="text-gray-600 border-gray-300"
+                                onClick={addNewTraining}
+                              >
+                                + Add New Training
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="border rounded-lg overflow-hidden">
+                            <table className="w-full">
+                              <thead className="bg-gray-100">
+                                <tr>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Corresponding in DB</th>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Category</th>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Status</th>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Target or Compl. Date</th>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {form.watch("trainingFollowup").map((training, index) => (
+                                  <React.Fragment key={training.id}>
+                                    <tr className="border-t">
+                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
                               <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                                 <Input
                                   value={followup.training}
