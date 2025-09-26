@@ -2997,10 +2997,43 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
           )}
         </div>
 
+        {/* Mobile Horizontal Stepper */}
+        <div className="block sm:hidden bg-white border-b px-4 py-3">
+          <nav className="flex justify-center space-x-4">
+            {sections.map((section, index) => {
+              const isActive = activeSection === section.id;
+              
+              return (
+                <div key={section.id} className="flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => setActiveSection(section.id)}
+                    className="flex items-center justify-center"
+                    data-testid={`button-step-mobile-${section.id}`}
+                  >
+                    <span 
+                      className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold shrink-0 ${
+                        isActive 
+                          ? "bg-blue-600 text-white" 
+                          : "bg-gray-600 text-white"
+                      }`}
+                    >
+                      {section.displayId}
+                    </span>
+                  </button>
+                  {index < sections.length - 1 && (
+                    <div className="w-8 h-0.5 bg-gray-300 mx-2"></div>
+                  )}
+                </div>
+              );
+            })}
+          </nav>
+        </div>
+
         <div className="flex flex-1 overflow-hidden">
-          {/* Left Sidebar - Stepper Design */}
-          <div className="w-16 sm:w-20 md:w-72 overflow-y-auto bg-[#f8fafc] border-r">
-            <div className="p-2 sm:p-3 md:p-6">
+          {/* Left Sidebar - Enhanced Stepper (Hidden on Mobile) */}
+          <aside className="hidden sm:block sticky top-0 self-start basis-20 md:basis-48 lg:basis-52 shrink-0 bg-[#f8fafc] border-r overflow-y-auto">
+            <div className="p-3">
               <nav className="space-y-1">
                 {sections.map((section, index) => {
                   const isActive = activeSection === section.id;
@@ -3009,34 +3042,52 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
                   return (
                     <div key={section.id} className="relative">
                       <button
+                        type="button"
                         onClick={() => setActiveSection(section.id)}
-                        className={`w-full flex items-center p-2 sm:p-3 rounded-lg text-left transition-colors hover:bg-gray-50 ${
-                          isActive ? "bg-blue-50" : ""
+                        className={`group flex items-center w-full px-3 py-2 rounded-md transition-all border-l-4 min-h-[3rem] ${
+                          isActive 
+                            ? "bg-blue-50 border-blue-600 text-blue-700" 
+                            : "border-transparent hover:bg-gray-100 text-gray-700"
                         }`}
-                        title={section.title} // Add tooltip for mobile
+                        aria-current={isActive ? "step" : undefined}
+                        data-testid={`button-step-${section.id}`}
+                        title={section.title}
                       >
-                        <div 
-                          className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white font-semibold mr-2 sm:mr-4 ${
-                            isActive ? "bg-blue-600" : isCompleted ? "bg-green-500" : "bg-gray-400"
+                        <span 
+                          className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold shrink-0 ${
+                            isActive 
+                              ? "bg-blue-600 text-white" 
+                              : "bg-gray-600 text-white"
                           }`}
                         >
-                          <span className="text-xs sm:text-sm">{section.displayId}</span>
-                        </div>
-                        <div className="flex-1 hidden md:block">
-                          <div className={`font-medium text-sm ${isActive ? "text-blue-700" : "text-gray-700"}`}>
-                            {section.title}
-                          </div>
-                        </div>
+                          {section.displayId}
+                        </span>
+                        <span 
+                          className="hidden lg:block ml-3 text-left text-sm leading-tight flex-1"
+                          data-testid={`text-step-title-${section.id}`}
+                          title={section.title}
+                          style={{ 
+                            wordBreak: 'break-word',
+                            lineHeight: '1.2',
+                            maxWidth: '8rem',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden'
+                          }}
+                        >
+                          {section.title}
+                        </span>
                       </button>
                       {index < sections.length - 1 && (
-                        <div className="absolute left-[1rem] sm:left-[1.25rem] md:left-[2rem] top-12 sm:top-16 w-0.5 h-3 sm:h-4 bg-gray-300 hidden md:block"></div>
+                        <div className="absolute left-7 top-12 w-0.5 h-3 bg-gray-300"></div>
                       )}
                     </div>
                   );
                 })}
               </nav>
             </div>
-          </div>
+          </aside>
 
           {/* Main Content */}
           <div className="flex-1 overflow-y-auto bg-[#f8fafc]">

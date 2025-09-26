@@ -113,61 +113,98 @@ export const BaseSubmoduleForm: React.FC<BaseSubmoduleFormProps> = ({
           </div>
         </div>
 
-        {/* Mobile Navigation Dropdown */}
-        <div className="lg:hidden bg-gray-50 border-b p-3">
-          <select
-            value={activeSection}
-            onChange={(e) => setActiveSection(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-md text-sm bg-white"
-          >
-            {sections.map((section) => (
-              <option key={section.id} value={section.id}>
-                {section.title}
-              </option>
-            ))}
-          </select>
+        {/* Mobile Horizontal Stepper */}
+        <div className="block sm:hidden bg-white border-b px-4 py-3">
+          <nav className="flex justify-center space-x-4">
+            {sections.map((section, index) => {
+              const isActive = activeSection === section.id;
+              const sectionLetter = section.letter || (section.id.length <= 2 ? section.id.toUpperCase() : section.id.charAt(0).toUpperCase());
+              
+              return (
+                <div key={section.id} className="flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => setActiveSection(section.id)}
+                    className="flex items-center justify-center"
+                    data-testid={`button-step-mobile-${section.id}`}
+                  >
+                    <span 
+                      className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold shrink-0 ${
+                        isActive 
+                          ? "bg-blue-600 text-white" 
+                          : "bg-gray-600 text-white"
+                      }`}
+                    >
+                      {sectionLetter}
+                    </span>
+                  </button>
+                  {index < sections.length - 1 && (
+                    <div className="w-8 h-0.5 bg-gray-300 mx-2"></div>
+                  )}
+                </div>
+              );
+            })}
+          </nav>
         </div>
 
         <div className="flex flex-1 overflow-hidden">
-          {/* Desktop Sidebar Navigation - Stepper Design */}
-          <div className="hidden lg:block w-72 overflow-y-auto" style={{ backgroundColor: sailDesignSystem.colors.background }}>
-            <div className="p-6">
+          {/* Left Sidebar - Enhanced Stepper (Hidden on Mobile) */}
+          <aside className="hidden sm:block sticky top-0 self-start basis-20 md:basis-48 lg:basis-52 shrink-0 bg-gray-50 border-r overflow-y-auto">
+            <div className="p-3">
               <nav className="space-y-1">
                 {sections.map((section, index) => {
                   const isActive = activeSection === section.id;
                   const isCompleted = false; // You can add completion logic here
-                  const sectionLetter = section.letter || section.id.charAt(0).toUpperCase();
+                  const sectionLetter = section.letter || (section.id.length <= 2 ? section.id.toUpperCase() : section.id.charAt(0).toUpperCase());
                   
                   return (
                     <div key={section.id} className="relative">
                       <button
+                        type="button"
                         onClick={() => setActiveSection(section.id)}
-                        className={`w-full flex items-center p-3 rounded-lg text-left transition-colors hover:bg-gray-50 ${
-                          isActive ? "bg-blue-50" : ""
+                        className={`group flex items-center w-full px-3 py-2 rounded-md transition-all border-l-4 min-h-[3rem] ${
+                          isActive 
+                            ? "bg-blue-50 border-blue-600 text-blue-700" 
+                            : "border-transparent hover:bg-gray-100 text-gray-700"
                         }`}
+                        aria-current={isActive ? "step" : undefined}
+                        data-testid={`button-step-${section.id}`}
                       >
-                        <div 
-                          className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold mr-4 ${
-                            isActive ? "bg-blue-600" : isCompleted ? "bg-green-500" : "bg-gray-400"
+                        <span 
+                          className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold shrink-0 ${
+                            isActive 
+                              ? "bg-blue-600 text-white" 
+                              : "bg-gray-600 text-white"
                           }`}
                         >
                           {sectionLetter}
-                        </div>
-                        <div className="flex-1">
-                          <div className={`font-medium text-sm ${isActive ? "text-blue-700" : "text-gray-700"}`}>
-                            {section.title.replace(/^Part [A-Z]: /, "")}
-                          </div>
-                        </div>
+                        </span>
+                        <span 
+                          className="hidden lg:block ml-3 text-left text-sm leading-tight flex-1"
+                          data-testid={`text-step-title-${section.id}`}
+                          title={section.title}
+                          style={{ 
+                            wordBreak: 'break-word',
+                            lineHeight: '1.2',
+                            maxWidth: '8rem',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden'
+                          }}
+                        >
+                          {section.title.replace(/^Part [A-Z]: /, "")}
+                        </span>
                       </button>
                       {index < sections.length - 1 && (
-                        <div className="absolute left-[2rem] top-16 w-0.5 h-4 bg-gray-300"></div>
+                        <div className="absolute left-7 top-12 w-0.5 h-3 bg-gray-300"></div>
                       )}
                     </div>
                   );
                 })}
               </nav>
             </div>
-          </div>
+          </aside>
 
           {/* Form Content */}
           <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6" style={{ backgroundColor: sailDesignSystem.colors.background }}>

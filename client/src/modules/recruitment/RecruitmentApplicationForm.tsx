@@ -6239,11 +6239,44 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           </div>
         </div>
 
+        {/* Mobile Horizontal Stepper */}
+        <div className="block sm:hidden bg-white border-b px-4 py-3">
+          <nav className="flex justify-center space-x-4">
+            {sections.map((section, index) => {
+              const isActive = activeSection === section.id;
+              
+              return (
+                <div key={section.id} className="flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => setActiveSection(section.id)}
+                    className="flex items-center justify-center"
+                    data-testid={`button-step-mobile-${section.id}`}
+                  >
+                    <span 
+                      className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold shrink-0 ${
+                        isActive 
+                          ? "bg-blue-600 text-white" 
+                          : "bg-gray-600 text-white"
+                      }`}
+                    >
+                      {section.number}
+                    </span>
+                  </button>
+                  {index < sections.length - 1 && (
+                    <div className="w-8 h-0.5 bg-gray-300 mx-2"></div>
+                  )}
+                </div>
+              );
+            })}
+          </nav>
+        </div>
+
         <div className="flex h-full overflow-hidden">
-          {/* Left Sidebar - Stepper */}
-          <div className="w-20 bg-gray-50 border-r overflow-y-auto">
-            <div className="p-4">
-              <nav className="space-y-2">
+          {/* Left Sidebar - Enhanced Stepper (Hidden on Mobile) */}
+          <aside className="hidden sm:block sticky top-0 self-start basis-20 md:basis-48 lg:basis-52 shrink-0 bg-gray-50 border-r overflow-y-auto">
+            <div className="p-3">
+              <nav className="space-y-1">
                 {sections.map((section, index) => {
                   const isActive = activeSection === section.id;
                   const isCompleted = false; // You can add completion logic here
@@ -6251,29 +6284,51 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   return (
                     <div key={section.id} className="relative">
                       <button
+                        type="button"
                         onClick={() => setActiveSection(section.id)}
-                        className={`w-full flex flex-col items-center p-2 rounded-lg text-center transition-colors hover:bg-gray-100 ${
-                          isActive ? "bg-blue-50" : ""
+                        className={`group flex items-center w-full px-3 py-2 rounded-md transition-all border-l-4 min-h-[3rem] ${
+                          isActive 
+                            ? "bg-blue-50 border-blue-600 text-blue-700" 
+                            : "border-transparent hover:bg-gray-100 text-gray-700"
                         }`}
-                        title={section.title}
+                        aria-current={isActive ? "step" : undefined}
+                        data-testid={`button-step-${section.id}`}
                       >
-                        <div 
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm ${
-                            isActive ? "bg-blue-600" : isCompleted ? "bg-green-500" : "bg-gray-400"
+                        <span 
+                          className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold shrink-0 ${
+                            isActive 
+                              ? "bg-blue-600 text-white" 
+                              : "bg-gray-600 text-white"
                           }`}
                         >
                           {section.number}
-                        </div>
+                        </span>
+                        <span 
+                          className="hidden lg:block ml-3 text-left text-sm leading-tight flex-1"
+                          data-testid={`text-step-title-${section.id}`}
+                          title={section.title}
+                          style={{ 
+                            wordBreak: 'break-word',
+                            lineHeight: '1.2',
+                            maxWidth: '8rem',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden'
+                          }}
+                        >
+                          {section.title}
+                        </span>
                       </button>
                       {index < sections.length - 1 && (
-                        <div className="absolute left-[1.75rem] top-12 w-0.5 h-4 bg-gray-300"></div>
+                        <div className="absolute left-7 top-12 w-0.5 h-3 bg-gray-300"></div>
                       )}
                     </div>
                   );
                 })}
               </nav>
             </div>
-          </div>
+          </aside>
           
           {/* Main Content Area */}
           <div className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 bg-[#f9fafb]">
