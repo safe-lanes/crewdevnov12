@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -176,6 +176,91 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
     partB2: true,
     partD: true,
   });
+
+  // Continuous scroll refs for all sections A-G
+  const partARef = useRef<HTMLDivElement>(null);
+  const partBRef = useRef<HTMLDivElement>(null);
+  const partCRef = useRef<HTMLDivElement>(null);
+  const partDRef = useRef<HTMLDivElement>(null);
+  const partERef = useRef<HTMLDivElement>(null);
+  const partFRef = useRef<HTMLDivElement>(null);
+  const partGRef = useRef<HTMLDivElement>(null);
+  
+  // Continuous scroll container ref
+  const continuousScrollContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Continuous scroll state - tracks which section is most visible during scroll
+  const [activeContinuousSection, setActiveContinuousSection] = useState<string>("A");
+
+  // Intersection Observer for continuous scroll tracking
+  useEffect(() => {
+    if (!continuousScrollContainerRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        let mostVisible = entries[0];
+        
+        entries.forEach((entry) => {
+          if (entry.intersectionRatio > mostVisible.intersectionRatio) {
+            mostVisible = entry;
+          }
+        });
+
+        // Update the active continuous section if there's a significant intersection (lowered threshold for better detection)
+        if (mostVisible && mostVisible.intersectionRatio > 0.3) {
+          const sectionId = mostVisible.target.getAttribute('data-section-id');
+          if (sectionId) {
+            setActiveContinuousSection(sectionId);
+            setActiveSection(sectionId); // Also update the main active section for stepper highlighting
+          }
+        }
+      },
+      {
+        root: continuousScrollContainerRef.current,
+        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
+        rootMargin: '-100px 0px -100px 0px' // Increased for better detection on tall sections
+      }
+    );
+
+    // Observe all section refs
+    const refs = [partARef, partBRef, partCRef, partDRef, partERef, partFRef, partGRef];
+    refs.forEach(ref => {
+      if (ref.current) {
+        observer.observe(ref.current);
+      }
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []); // Removed activeContinuousSection dependency to avoid unnecessary observer recreation
+
+  // Function to scroll to a specific section in continuous mode
+  const scrollToSection = (sectionId: string) => {
+    const section = sections.find(s => s.id === sectionId);
+    if (section?.ref?.current && continuousScrollContainerRef.current) {
+      section.ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    setActiveSection(sectionId);
+  };
+
+  // Function to navigate to previous/next section
+  const navigateToSection = (direction: 'prev' | 'next') => {
+    const visibleSections = sections.filter(section => {
+      if (isConfigMode) return true;
+      if (section.id === "B" && !sectionVisibility.partB) return false;
+      if (section.id === "D" && !sectionVisibility.partD) return false;
+      return true;
+    });
+    
+    const currentIndex = visibleSections.findIndex(s => s.id === activeSection);
+    const nextIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
+    
+    if (nextIndex >= 0 && nextIndex < visibleSections.length) {
+      const nextSectionId = visibleSections[nextIndex].id;
+      scrollToSection(nextSectionId);
+    }
+  };
   
   // Function to toggle field visibility
   const toggleFieldVisibility = (fieldName: string) => {
@@ -1092,13 +1177,13 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
   };
 
   const sections = [
-    { id: "A", title: "Seafarer's Information", active: true },
-    { id: "B", title: "Information at Start of Appraisal Period", active: false },
-    { id: "C", title: "Competence Assessment (Professional Knowledge & Skills)", active: false },
-    { id: "D", title: "Behavioural Assessment (Soft Skills)", active: false },
-    { id: "E", title: "Training Needs & Development", active: false },
-    { id: "F", title: "Summary & Recommendations", active: false },
-    { id: "G", title: "Office Review & Followup", active: false },
+    { id: "A", title: "Seafarer's Information", active: true, ref: partARef },
+    { id: "B", title: "Information at Start of Appraisal Period", active: false, ref: partBRef },
+    { id: "C", title: "Competence Assessment (Professional Knowledge & Skills)", active: false, ref: partCRef },
+    { id: "D", title: "Behavioural Assessment (Soft Skills)", active: false, ref: partDRef },
+    { id: "E", title: "Training Needs & Development", active: false, ref: partERef },
+    { id: "F", title: "Summary & Recommendations", active: false, ref: partFRef },
+    { id: "G", title: "Office Review & Followup", active: false, ref: partGRef },
   ].filter(section => {
     // In config mode, show all sections
     if (isConfigMode) return true;
@@ -2772,6 +2857,80 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
     </div>
   );
 
+  // Continuous scroll render function that combines all sections A-G
+  const renderContinuousScroll = () => {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        {/* Part A: Seafarer's Information */}
+        <div ref={partARef} data-section-id="A">
+          <Card className="bg-white">
+            <CardContent className="p-6">
+              {renderPartA()}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Part B: Information at Start of Appraisal Period */}
+        {(sectionVisibility.partB || isConfigMode) && (
+          <div ref={partBRef} data-section-id="B">
+            <Card className="bg-white">
+              <CardContent className="p-6">
+                {renderPartB()}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Part C: Competence Assessment */}
+        <div ref={partCRef} data-section-id="C">
+          <Card className="bg-white">
+            <CardContent className="p-6">
+              {renderPartC()}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Part D: Behavioural Assessment */}
+        {(sectionVisibility.partD || isConfigMode) && (
+          <div ref={partDRef} data-section-id="D">
+            <Card className="bg-white">
+              <CardContent className="p-6">
+                {renderPartD()}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Part E: Training Needs & Development */}
+        <div ref={partERef} data-section-id="E">
+          <Card className="bg-white">
+            <CardContent className="p-6">
+              {renderPartE()}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Part F: Summary & Recommendations */}
+        <div ref={partFRef} data-section-id="F">
+          <Card className="bg-white">
+            <CardContent className="p-6">
+              {renderPartF()}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Part G: Office Review & Followup */}
+        <div ref={partGRef} data-section-id="G">
+          <Card className="bg-white">
+            <CardContent className="p-6">
+              {renderPartG()}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  };
+
   const renderSectionContent = () => {
     switch (activeSection) {
       case "A": return renderPartA();
@@ -3089,14 +3248,12 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
             </div>
           </aside>
 
-          {/* Main Content */}
-          <div className="flex-1 overflow-y-auto bg-[#f8fafc]">
-            <div className="p-3 sm:p-4 md:p-6">
-              <Card className="bg-white">
-                <CardContent className="p-3 sm:p-4 md:p-6">
-                  {renderSectionContent()}
-                </CardContent>
-              </Card>
+          {/* Main Content - Continuous Scroll Container */}
+          <div className="flex-1 overflow-hidden bg-[#f8fafc]">
+            <div className="p-3 sm:p-4 md:p-6 h-full">
+              <div ref={continuousScrollContainerRef} className="h-full overflow-y-auto">
+                {renderContinuousScroll()}
+              </div>
             </div>
           </div>
         </div>
