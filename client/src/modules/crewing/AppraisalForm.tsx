@@ -1025,7 +1025,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
         </div>
 
         {/* Part D: Behavioural Assessment */}
-        <div ref={behaviouralAssessmentRef} data-section-id="behaviouralAssessment">
+        <div ref={partDRef} data-section-id="D">
           <Card className="bg-white">
             <CardContent className="p-6">
               <div className="pb-4 mb-6">
@@ -1039,7 +1039,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
         </div>
 
         {/* Part E: Training Needs & Development */}
-        <div ref={trainingNeedsRef} data-section-id="trainingNeeds">
+        <div ref={partERef} data-section-id="E">
           <Card className="bg-white">
             <CardContent className="p-6">
               <div className="pb-4 mb-6">
@@ -1053,7 +1053,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
         </div>
 
         {/* Part F: Summary & Recommendations */}
-        <div ref={summaryRef} data-section-id="summary">
+        <div ref={partFRef} data-section-id="F">
           <Card className="bg-white">
             <CardContent className="p-6">
               <div className="pb-4 mb-6">
