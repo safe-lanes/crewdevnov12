@@ -2815,7 +2815,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     const observer = new IntersectionObserver(observerCallback, observerOptions);
 
     // Observe all section refs
-    [sectionARef, sectionBRef, sectionCRef, sectionDRef, sectionERef].forEach((ref) => {
+    [sectionARef, sectionBRef, sectionCRef, sectionDRef, sectionERef, sectionFRef].forEach((ref) => {
       if (ref.current) {
         observer.observe(ref.current);
       }
@@ -2844,6 +2844,9 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
         break;
       case 'E':
         targetRef = sectionERef;
+        break;
+      case 'F':
+        targetRef = sectionFRef;
         break;
       default:
         return;
