@@ -3373,6 +3373,21 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                 </div>
               </CardContent>
             </Card>
+
+            {/* F - Medical Records */}
+            <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionFRef} data-section="F">
+              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <div className="pb-4 mb-6">
+                  <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part F - Medical Records</h2>
+                  <div style={{ color: '#16569e' }} className="text-sm">Add medical record details, latest on top</div>
+                  <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+                </div>
+                <div className="space-y-6">
+                  {renderF1PreJoiningMedicals()}
+                  {renderF2DoctorVisits()}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
