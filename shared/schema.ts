@@ -318,6 +318,16 @@ export const masterDataEntries = pgTable("master_data_entries", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// ID Counters table for auto-generating sequential IDs
+export const idCounters = pgTable("id_counters", {
+  id: serial("id").primaryKey(),
+  counterType: text("counter_type").notNull().unique(), // 'crew_id', 'employee_id', etc.
+  currentValue: integer("current_value").notNull().default(0), // Current highest number used
+  prefix: text("prefix").notNull(), // 'A' for crew, 'E' for employee, etc.
+  format: text("format").notNull().default("000000"), // Padding format, e.g., "000000" for 6 digits
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -605,6 +615,13 @@ export const insertMasterDataEntrySchema = createInsertSchema(masterDataEntries)
   departmentId: true,
 });
 
+export const insertIdCounterSchema = createInsertSchema(idCounters).pick({
+  counterType: true,
+  currentValue: true,
+  prefix: true,
+  format: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertForm = z.infer<typeof insertFormSchema>;
@@ -630,6 +647,8 @@ export type InsertVesselRank = z.infer<typeof insertVesselRankSchema>;
 export type VesselRank = typeof vesselRanks.$inferSelect;
 export type InsertCompanyRank = z.infer<typeof insertCompanyRankSchema>;
 export type CompanyRank = typeof companyRanks.$inferSelect;
+export type InsertIdCounter = z.infer<typeof insertIdCounterSchema>;
+export type IdCounter = typeof idCounters.$inferSelect;
 export type InsertDataMaster = z.infer<typeof insertDataMasterSchema>;
 export type DataMaster = typeof dataMasters.$inferSelect;
 export type InsertMasterDataEntry = z.infer<typeof insertMasterDataEntrySchema>;

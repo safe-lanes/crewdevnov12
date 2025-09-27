@@ -63,6 +63,8 @@ export interface IStorage {
   deleteMasterDataEntry(id: number): Promise<boolean>;
   // Dashboard Summary
   getCrewDashboardSummary(crewId: string): Promise<CrewDashboardSummary | undefined>;
+  // ID Generation
+  getNextCrewId(): Promise<string>;
 }
 
 export class MemStorage implements IStorage {
@@ -79,6 +81,7 @@ export class MemStorage implements IStorage {
   private currentRankGroupId: number;
   private currentAvailableRankId: number;
   private currentAppraisalResultId: number;
+  private currentCrewIdCounter: number;
 
   constructor() {
     this.users = new Map();
@@ -94,6 +97,7 @@ export class MemStorage implements IStorage {
     this.currentRankGroupId = 1;
     this.currentAvailableRankId = 1;
     this.currentAppraisalResultId = 1;
+    this.currentCrewIdCounter = 1;
     
     this.initializeDefaultData();
 
@@ -712,6 +716,13 @@ export class MemStorage implements IStorage {
     return summary;
   }
 
+  // ID Generation Methods
+  async getNextCrewId(): Promise<string> {
+    const nextNumber = this.currentCrewIdCounter++;
+    // Format: A000001, A000002, etc. (A + 6-digit padded number)
+    return `A${nextNumber.toString().padStart(6, '0')}`;
+  }
+
   // Appraisal Results Methods
   async getAppraisalResults(): Promise<AppraisalResult[]> {
     return Array.from(this.appraisalResults.values());
@@ -868,6 +879,7 @@ export class PersistentFileStorage implements IStorage {
   private currentRankGroupId: number;
   private currentAvailableRankId: number;
   private currentAppraisalResultId: number;
+  private currentCrewIdCounter: number;
   private filePath: string;
 
   constructor() {
@@ -899,6 +911,14 @@ export class PersistentFileStorage implements IStorage {
         this.currentAvailableRankId = data.currentAvailableRankId || 11;
         this.currentAppraisalResultId = data.currentAppraisalResultId || 1;
         
+        // Robust crew ID counter initialization
+        if (data.currentCrewIdCounter) {
+          this.currentCrewIdCounter = data.currentCrewIdCounter;
+        } else {
+          // First run with existing data - scan for highest existing A-series ID
+          this.currentCrewIdCounter = this.initializeCrewIdCounter();
+        }
+        
         console.log("📄 Loaded existing data from test-data.json");
       } else {
         console.log("📄 test-data.json not found, initializing with default data");
@@ -928,7 +948,8 @@ export class PersistentFileStorage implements IStorage {
         currentFormId: this.currentFormId,
         currentRankGroupId: this.currentRankGroupId,
         currentAvailableRankId: this.currentAvailableRankId,
-        currentAppraisalResultId: this.currentAppraisalResultId
+        currentAppraisalResultId: this.currentAppraisalResultId,
+        currentCrewIdCounter: this.currentCrewIdCounter
       };
       
       fs.writeFileSync(this.filePath, JSON.stringify(data, null, 2), 'utf8');
@@ -953,6 +974,7 @@ export class PersistentFileStorage implements IStorage {
     this.currentRankGroupId = 1;
     this.currentAvailableRankId = 11;
     this.currentAppraisalResultId = 1;
+    this.currentCrewIdCounter = 1;
 
     // Initialize with sample form data
     this.forms.set(1, {
@@ -1504,6 +1526,33 @@ export class PersistentFileStorage implements IStorage {
     };
 
     return summary;
+  }
+
+  // ID Generation Methods
+  private initializeCrewIdCounter(): number {
+    let maxCounter = 0;
+    
+    // Scan existing crew members for A-series IDs in employeeId field
+    for (const crewMember of this.crewMembers.values()) {
+      if (crewMember.employeeId) {
+        const match = crewMember.employeeId.match(/^A(\d{6})$/);
+        if (match) {
+          const idNumber = parseInt(match[1], 10);
+          maxCounter = Math.max(maxCounter, idNumber);
+        }
+      }
+    }
+    
+    const startingCounter = maxCounter + 1;
+    console.log(`🔢 Initialized crew ID counter to ${startingCounter} (scanned ${this.crewMembers.size} existing crew members)`);
+    return startingCounter;
+  }
+
+  async getNextCrewId(): Promise<string> {
+    const nextNumber = this.currentCrewIdCounter++;
+    // Format: A000001, A000002, etc. (A + 6-digit padded number)
+    this.saveToFile(); // Persist the updated counter
+    return `A${nextNumber.toString().padStart(6, '0')}`;
   }
 
   // Appraisal Result methods (same as MemStorage)
