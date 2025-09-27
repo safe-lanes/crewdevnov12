@@ -18,6 +18,11 @@ export const DashboardPage = () => {
   // Data mappings with proper nullish coalescing
   const statusData = dashboardData?.status;
   const experienceData = dashboardData?.experience;
+  const shipTypesData = dashboardData?.shipTypes;
+  const complianceData = dashboardData?.compliance;
+  const careerProgressionData = dashboardData?.careerProgression;
+  const serviceTimelineData = dashboardData?.serviceTimeline;
+  const appraisalsData = dashboardData?.appraisals;
 
   // Loading state
   if (isDashboardLoading) {
@@ -53,197 +58,349 @@ export const DashboardPage = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Status Overview */}
-        <Card data-testid="card-status-overview">
-          <CardHeader>
-            <CardTitle className="text-lg font-medium">Status Overview</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="bg-orange-500 text-white p-3 rounded text-center" data-testid="status-onboard">
-              <div className="text-sm" data-testid="text-status-value">{statusData?.status ?? 'On Board'}</div>
-            </div>
-            
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between" data-testid="info-vessel">
-                <span className="text-gray-600">Vessel:</span>
-                <span className="font-medium" data-testid="text-vessel-name">{statusData?.vessel ?? 'Pacific Explorer'}</span>
+        {/* LEFT COLUMN - Document Status */}
+        <div className="space-y-4">
+          <Card data-testid="card-document-status">
+            <CardHeader>
+              <CardTitle className="text-lg font-medium">Training/Cert/Docs</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-3 text-sm">
+                {complianceData?.map((item, index) => {
+                  const statusColor = item.status === 'compliant' ? 'bg-green-500' : item.status === 'issues' ? 'bg-red-500' : 'bg-yellow-500';
+                  const testId = item.category.toLowerCase().replace(/[\s&]/g, '-');
+                  return (
+                    <div key={index} className="flex items-center justify-between" data-testid={`doc-${testId}`}>
+                      <span className="text-gray-600">{item.category}:</span>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 ${statusColor} rounded-full`} data-testid={`status-${testId}`}></div>
+                        {item.details && item.details !== '✓' && (
+                          <span className="text-xs text-gray-500" data-testid={`details-${testId}`}>{item.details}</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }) ?? [
+                  // Fallback data if API doesn't return compliance data
+                  { category: 'Travel Docs', status: 'compliant' as const, details: '✓' },
+                  { category: 'Visas', status: 'compliant' as const, details: '✓' },
+                  { category: 'License & DOE', status: 'compliant' as const, details: '✓' },
+                  { category: 'Training', status: 'issues' as const, details: 'Issues: 2' },
+                  { category: 'Medical', status: 'compliant' as const, details: 'Last: 15 Feb 2022' },
+                  { category: 'Vaccination', status: 'issues' as const, details: 'Issue: 1' }
+                ].map((item, index) => {
+                  const statusColor = item.status === 'compliant' ? 'bg-green-500' : item.status === 'issues' ? 'bg-red-500' : 'bg-yellow-500';
+                  const testId = item.category.toLowerCase().replace(/[\s&]/g, '-');
+                  return (
+                    <div key={index} className="flex items-center justify-between" data-testid={`doc-${testId}`}>
+                      <span className="text-gray-600">{item.category}:</span>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 ${statusColor} rounded-full`} data-testid={`status-${testId}`}></div>
+                        {item.details && item.details !== '✓' && (
+                          <span className="text-xs text-gray-500" data-testid={`details-${testId}`}>{item.details}</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="flex justify-between" data-testid="info-joined">
-                <span className="text-gray-600">Joined:</span>
-                <span data-testid="text-join-date">{statusData?.joinedDate ?? '15 Mar 2022'}</span>
-              </div>
-              <div className="flex justify-between" data-testid="info-sailing-due">
-                <span className="text-gray-600">Sailing Due:</span>
-                <span data-testid="text-sailing-due">{statusData?.sailingDue ?? '15 Jul 2022'}</span>
-              </div>
-              <div className="flex justify-between" data-testid="info-assignment">
-                <span className="text-gray-600">Present Assignment:</span>
-                <span data-testid="text-assignment">{statusData?.presentAssignment ?? 'Chandigarh'}</span>
-              </div>
-              <div className="text-xs text-gray-500 mt-3" data-testid="emergency-contact">
-                <div>Emergency Contact Name, Relation, Ph:</div>
-                <div className="text-red-600" data-testid="text-emergency-contact">
-                  {statusData?.emergencyContact ? 
-                    `${statusData.emergencyContact.name}, ${statusData.emergencyContact.relation}, ${statusData.emergencyContact.phone}` :
-                    'Mira Kumari, Wife, +91 987 555 8553'
-                  }
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
 
-        {/* Experience Metrics */}
-        <Card data-testid="card-experience-metrics">
-          <CardHeader>
-            <CardTitle className="text-lg font-medium">Experience Metrics</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-3">
-              <div className="space-y-1" data-testid="metric-company">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Company</span>
-                  <span className="font-medium" data-testid="text-company-years">{(experienceData?.company ?? 1.2).toFixed(1)} years</span>
-                </div>
-                <Progress value={(experienceData?.company ?? 1.2) * 10} className="h-2" data-testid="progress-company" />
+        {/* MIDDLE COLUMN - Status + Experience + Ranks + Ship Types */}
+        <div className="space-y-4">
+          {/* Status Section */}
+          <Card data-testid="card-status-overview">
+            <CardHeader>
+              <CardTitle className="text-lg font-medium">Status</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-orange-500 text-white p-3 rounded text-center" data-testid="status-onboard">
+                <div className="text-sm" data-testid="text-status-value">{statusData?.status ?? 'On Board'}</div>
               </div>
               
-              <div className="space-y-1" data-testid="metric-rank">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Rank</span>
-                  <span className="font-medium" data-testid="text-rank-years">{(experienceData?.rank ?? 2.8).toFixed(1)} years</span>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between" data-testid="info-vessel">
+                  <span className="text-gray-600">Vessel:</span>
+                  <span className="font-medium" data-testid="text-vessel-name">{statusData?.vessel ?? 'Pacific Explorer'}</span>
                 </div>
-                <Progress value={(experienceData?.rank ?? 2.8) * 10} className="h-2" data-testid="progress-rank" />
+                <div className="flex justify-between" data-testid="info-joined">
+                  <span className="text-gray-600">Joined:</span>
+                  <span data-testid="text-join-date">{statusData?.joinedDate ?? '15 Mar 2022'}</span>
+                </div>
+                <div className="flex justify-between" data-testid="info-sailing-due">
+                  <span className="text-gray-600">Sailing Due:</span>
+                  <span data-testid="text-sailing-due">{statusData?.sailingDue ?? '15 Jul 2022'}</span>
+                </div>
+                <div className="flex justify-between" data-testid="info-assignment">
+                  <span className="text-gray-600">Present Assignment:</span>
+                  <span data-testid="text-assignment">{statusData?.presentAssignment ?? 'Chandigarh'}</span>
+                </div>
+                <div className="text-xs text-gray-500 mt-3" data-testid="emergency-contact">
+                  <div>Emergency Contact Name, Relation, Ph:</div>
+                  <div className="text-red-600" data-testid="text-emergency-contact">
+                    {statusData?.emergencyContact ? 
+                      `${statusData.emergencyContact.name}, ${statusData.emergencyContact.relation}, ${statusData.emergencyContact.phone}` :
+                      'Mira Kumari, Wife, +91 987 555 8553'
+                    }
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Experience Metrics */}
+          <Card data-testid="card-experience-metrics">
+            <CardHeader>
+              <CardTitle className="text-lg font-medium">Experience</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-5 gap-2 text-center text-sm">
+                <div>
+                  <div className="text-gray-600">Company</div>
+                  <div className="font-bold text-lg text-blue-600" data-testid="text-company-years">{(experienceData?.company ?? 1.2).toFixed(1)}</div>
+                </div>
+                <div>
+                  <div className="text-gray-600">Rank</div>
+                  <div className="font-bold text-lg text-blue-600" data-testid="text-rank-years">{(experienceData?.rank ?? 1.9).toFixed(1)}</div>
+                </div>
+                <div>
+                  <div className="text-gray-600">Tankers</div>
+                  <div className="font-bold text-lg text-blue-600" data-testid="text-tankers-years">{(experienceData?.tankers ?? 2.5).toFixed(1)}</div>
+                </div>
+                <div>
+                  <div className="text-gray-600">OCW</div>
+                  <div className="font-bold text-lg text-blue-600" data-testid="text-ocw-years">{(experienceData?.ocw ?? 3.6).toFixed(1)}</div>
+                </div>
+                <div>
+                  <div className="text-gray-600">Endors</div>
+                  <div className="font-bold text-lg text-blue-600" data-testid="text-endorsements-count">{experienceData?.endorsements ?? 'OGC'}</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Rank Progression */}
+          <Card data-testid="card-rank-progression">
+            <CardHeader>
+              <CardTitle className="text-lg font-medium">Rank</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-2">
+                {/* Generate rank progression from careerProgressionData or use experience data for rank levels */}
+                {(() => {
+                  // Define rank levels with experience-based values
+                  const rankLevels = [
+                    { rank: 'C/E', level: 0, maxLevel: 5 },
+                    { rank: '2/E', level: Math.floor((experienceData?.rank ?? 1.9) * 1.2), maxLevel: 5 },
+                    { rank: '3/E', level: Math.floor((experienceData?.rank ?? 1.9) * 2), maxLevel: 5 },
+                    { rank: '4/E', level: Math.min(Math.floor((experienceData?.rank ?? 1.9) * 3), 5), maxLevel: 5 }
+                  ];
+                  
+                  return rankLevels.map((item, index) => {
+                    const testId = item.rank.toLowerCase().replace('/', '');
+                    const progressValue = (item.level / item.maxLevel) * 100;
+                    
+                    return (
+                      <div key={index} className="space-y-1" data-testid={`rank-${testId}`}>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">{item.rank}</span>
+                          <span className="font-medium" data-testid={`rank-${testId}-value`}>{item.level}</span>
+                        </div>
+                        <Progress value={progressValue} className="h-2" data-testid={`progress-${testId}`} />
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Ship Type Experience */}
+          <Card data-testid="card-ship-experience">
+            <CardHeader>
+              <CardTitle className="text-lg font-medium">Ship Type</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-2" data-testid="ship-type-oil-tanker">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Oil Tkr</span>
+                  <span className="font-medium" data-testid="text-oil-tanker-years">{(shipTypesData?.oilTanker ?? 4.2).toFixed(1)} years</span>
+                </div>
+                <Progress value={(shipTypesData?.oilTanker ?? 4.2) * 20} className="h-2" data-testid="progress-oil-tanker" />
               </div>
               
-              <div className="space-y-1" data-testid="metric-tankers">
+              <div className="space-y-2" data-testid="ship-type-chemical-tanker">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Tankers</span>
-                  <span className="font-medium" data-testid="text-tankers-years">{(experienceData?.tankers ?? 4.5).toFixed(1)} years</span>
+                  <span className="text-gray-600">Ch. Tkr</span>
+                  <span className="font-medium" data-testid="text-chemical-tanker-years">{(shipTypesData?.chemicalTanker ?? 5.1).toFixed(1)} years</span>
                 </div>
-                <Progress value={(experienceData?.tankers ?? 4.5) * 10} className="h-2" data-testid="progress-tankers" />
+                <Progress value={(shipTypesData?.chemicalTanker ?? 5.1) * 20} className="h-2" data-testid="progress-chemical-tanker" />
               </div>
               
-              <div className="space-y-1" data-testid="metric-ocw">
+              <div className="space-y-2" data-testid="ship-type-gas-tanker">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">OCW</span>
-                  <span className="font-medium" data-testid="text-ocw-years">{(experienceData?.ocw ?? 3.1).toFixed(1)} years</span>
+                  <span className="text-gray-600">Gas Tkr</span>
+                  <span className="font-medium" data-testid="text-gas-tanker-years">{(shipTypesData?.gasTanker ?? 3.2).toFixed(1)} years</span>
                 </div>
-                <Progress value={(experienceData?.ocw ?? 3.1) * 10} className="h-2" data-testid="progress-ocw" />
+                <Progress value={(shipTypesData?.gasTanker ?? 3.2) * 20} className="h-2" data-testid="progress-gas-tanker" />
               </div>
               
-              <div className="space-y-1" data-testid="metric-endorsements">
+              <div className="space-y-2" data-testid="ship-type-bulk">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Endorsements</span>
-                  <span className="font-medium" data-testid="text-endorsements-count">{experienceData?.endorsements ?? 5}</span>
+                  <span className="text-gray-600">Bulk</span>
+                  <span className="font-medium" data-testid="text-bulk-years">{(shipTypesData?.bulk ?? 1.1).toFixed(1)} years</span>
                 </div>
-                <Progress value={(experienceData?.endorsements ?? 5) * 20} className="h-2" data-testid="progress-endorsements" />
+                <Progress value={(shipTypesData?.bulk ?? 1.1) * 20} className="h-2" data-testid="progress-bulk" />
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Ship Type Experience */}
-        <Card data-testid="card-ship-experience">
-          <CardHeader>
-            <CardTitle className="text-lg font-medium">Ship Type Experience</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-2" data-testid="ship-type-oil-chemical">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Oil / Chemical Tanker</span>
-                <span className="font-medium" data-testid="text-oil-chemical-years">4.2 years</span>
+          {/* Promotion Section */}
+          <Card data-testid="card-promotion">
+            <CardHeader>
+              <CardTitle className="text-lg font-medium">Promotion</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                <div>
+                  <div className="text-gray-600">Recommend</div>
+                  <div className="w-3 h-3 bg-green-500 rounded-full mx-auto" data-testid="promotion-recommend"></div>
+                </div>
+                <div>
+                  <div className="text-gray-600">Decline</div>
+                  <div className="w-3 h-3 bg-yellow-500 rounded-full mx-auto" data-testid="promotion-decline"></div>
+                </div>
+                <div>
+                  <div className="text-gray-600">Shortlist</div>
+                  <div className="w-3 h-3 bg-red-500 rounded-full mx-auto" data-testid="promotion-shortlist"></div>
+                </div>
+                <div>
+                  <div className="text-gray-600">Approved</div>
+                  <div className="w-3 h-3 bg-green-500 rounded-full mx-auto" data-testid="promotion-approved"></div>
+                </div>
               </div>
-              <Progress value={84} className="h-2" data-testid="progress-oil-chemical" />
-            </div>
-            
-            <div className="space-y-2" data-testid="ship-type-lng">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">LNG Tanker</span>
-                <span className="font-medium" data-testid="text-lng-years">1.8 years</span>
+              <div className="space-y-1 text-sm">
+                {careerProgressionData?.map((step, index) => {
+                  const testId = step.position.toLowerCase().replace(/[\s\/]/g, '-');
+                  return (
+                    <div key={index} className="flex justify-between">
+                      <span className="text-gray-600">{step.position}</span>
+                      <span data-testid={`promotion-${testId}`}>{step.date || '-'}</span>
+                    </div>
+                  );
+                }) ?? [
+                  // Fallback data if API doesn't return career progression
+                  { position: 'To C/E', date: '22 Jan 2017' },
+                  { position: 'To 2/E', date: '12 Dec 2014' },
+                  { position: 'To 3/E', date: undefined }
+                ].map((step, index) => {
+                  const testId = step.position.toLowerCase().replace(/[\s\/]/g, '-');
+                  return (
+                    <div key={index} className="flex justify-between">
+                      <span className="text-gray-600">{step.position}</span>
+                      <span data-testid={`promotion-${testId}`}>{step.date || '-'}</span>
+                    </div>
+                  );
+                })}
               </div>
-              <Progress value={36} className="h-2" data-testid="progress-lng" />
-            </div>
-            
-            <div className="space-y-2" data-testid="ship-type-container">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Container</span>
-                <span className="font-medium" data-testid="text-container-years">2.1 years</span>
-              </div>
-              <Progress value={42} className="h-2" data-testid="progress-container" />
-            </div>
-            
-            <div className="space-y-2" data-testid="ship-type-bulk">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Bulk Carrier</span>
-                <span className="font-medium" data-testid="text-bulk-years">0.9 years</span>
-              </div>
-              <Progress value={18} className="h-2" data-testid="progress-bulk" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
 
-      {/* Additional Dashboard Sections */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Compliance Status */}
-        <Card data-testid="card-compliance">
-          <CardHeader>
-            <CardTitle className="text-lg font-medium">Compliance Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1" data-testid="compliance-stcw">
-                <Badge variant="default" className="w-full justify-center bg-green-500" data-testid="badge-stcw">STCW</Badge>
-                <div className="text-xs text-center text-gray-500" data-testid="text-stcw-date">Valid until 2025</div>
+        {/* RIGHT COLUMN - Timeline + Appraisals */}
+        <div className="space-y-4">
+          {/* Timeline */}
+          <Card data-testid="card-timeline">
+            <CardHeader>
+              <CardTitle className="text-lg font-medium">Timeline</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Timeline visualization with colored bars */}
+              <div className="space-y-2">
+                <div className="grid grid-cols-6 gap-1 text-xs text-center text-gray-600">
+                  <span data-testid="month-jan">Jan</span>
+                  <span data-testid="month-feb">Feb</span>
+                  <span data-testid="month-mar">Mar</span>
+                  <span data-testid="month-apr">Apr</span>
+                  <span data-testid="month-may">May</span>
+                  <span data-testid="month-jun">Jun</span>
+                </div>
+                {serviceTimelineData?.map((assignment, index) => {
+                  const width = ((assignment.endMonth - assignment.startMonth + 1) / 6) * 100;
+                  const left = ((assignment.startMonth - 1) / 6) * 100;
+                  const bgColor = assignment.type === 'active' ? 'bg-blue-400' : 'bg-gray-400';
+                  return (
+                    <div key={index} className={`${bgColor} h-4 rounded relative`} 
+                         style={{ width: `${width}%`, marginLeft: `${left}%` }}
+                         data-testid={`timeline-bar-${assignment.vessel.toLowerCase().replace(/\s+/g, '-')}`}>
+                      <div className="absolute left-2 top-1 text-xs text-white font-medium"
+                           data-testid={`vessel-label-${assignment.vessel.toLowerCase().replace(/\s+/g, '-')}`}>
+                        {assignment.vessel}
+                      </div>
+                    </div>
+                  );
+                }) ?? [
+                  // Fallback if no timeline data
+                  <div key="default" className="bg-blue-400 h-4 rounded relative" data-testid="timeline-bar">
+                    <div className="absolute left-2 top-1 text-xs text-white font-medium">Pacific Explorer</div>
+                  </div>
+                ]}
+                <div className="flex items-center gap-2 text-xs">
+                  {serviceTimelineData?.map((assignment, index) => (
+                    <div key={index} className="flex items-center gap-1" data-testid={`legend-${assignment.vessel.toLowerCase().replace(/\s+/g, '-')}`}>
+                      <div className={`w-3 h-3 rounded ${assignment.type === 'active' ? 'bg-blue-400' : 'bg-gray-400'}`}></div>
+                      <span className="text-gray-600">{assignment.vessel}</span>
+                    </div>
+                  )) ?? [
+                    <div key="pacific" className="flex items-center gap-1">
+                      <div className="w-3 h-3 bg-blue-400 rounded"></div>
+                      <span className="text-gray-600">Pacific Explorer</span>
+                    </div>,
+                    <div key="atlantic" className="flex items-center gap-1 ml-4">
+                      <div className="w-3 h-3 bg-orange-400 rounded"></div>
+                      <span className="text-gray-600">Atlantic Explorer</span>
+                    </div>
+                  ]}
+                </div>
               </div>
-              <div className="space-y-1" data-testid="compliance-medical">
-                <Badge variant="default" className="w-full justify-center bg-yellow-500" data-testid="badge-medical">Medical</Badge>
-                <div className="text-xs text-center text-gray-500" data-testid="text-medical-date">Expires in 3 months</div>
-              </div>
-              <div className="space-y-1" data-testid="compliance-passport">
-                <Badge variant="default" className="w-full justify-center bg-green-500" data-testid="badge-passport">Passport</Badge>
-                <div className="text-xs text-center text-gray-500" data-testid="text-passport-date">Valid until 2027</div>
-              </div>
-              <div className="space-y-1" data-testid="compliance-visa">
-                <Badge variant="default" className="w-full justify-center bg-red-500" data-testid="badge-visa">Visa</Badge>
-                <div className="text-xs text-center text-gray-500" data-testid="text-visa-date">Renewal required</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Performance Overview */}
-        <Card data-testid="card-performance">
-          <CardHeader>
-            <CardTitle className="text-lg font-medium">Performance Overview</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-2" data-testid="performance-overall">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Overall Rating</span>
-                <span className="font-medium" data-testid="text-overall-rating">4.2/5.0</span>
+          {/* Appraisals Chart */}
+          <Card data-testid="card-appraisals">
+            <CardHeader>
+              <CardTitle className="text-lg font-medium">Appraisals</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Simple area chart representation */}
+              <div className="relative h-32 bg-gray-50 rounded" data-testid="appraisals-chart">
+                <div className="absolute bottom-0 w-full h-16 bg-gradient-to-t from-blue-200 to-blue-100 rounded-b"></div>
+                <div className="absolute bottom-0 w-full h-24 bg-gradient-to-t from-purple-200 to-transparent rounded-b opacity-70"></div>
+                <div className="absolute bottom-2 left-2 text-xs text-gray-600">2014</div>
+                <div className="absolute bottom-2 right-2 text-xs text-gray-600">2024</div>
+                <div className="absolute top-2 left-2 text-xs text-gray-600">36</div>
               </div>
-              <Progress value={84} className="h-2" data-testid="progress-overall" />
-            </div>
-            
-            <div className="space-y-2" data-testid="performance-technical">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Technical Skills</span>
-                <span className="font-medium" data-testid="text-technical-rating">4.5/5.0</span>
+              <div className="grid grid-cols-2 gap-4 text-xs text-center">
+                <div>
+                  <div className="font-medium text-lg" data-testid="score-current">
+                    {appraisalsData && appraisalsData.length > 0 ? appraisalsData[appraisalsData.length - 1].score : 34}
+                  </div>
+                  <div className="text-gray-600">Current Score</div>
+                </div>
+                <div>
+                  <div className="font-medium text-lg" data-testid="score-average">
+                    {appraisalsData && appraisalsData.length > 0 
+                      ? Math.round(appraisalsData.reduce((sum, point) => sum + point.score, 0) / appraisalsData.length)
+                      : 28}
+                  </div>
+                  <div className="text-gray-600">Average</div>
+                </div>
               </div>
-              <Progress value={90} className="h-2" data-testid="progress-technical" />
-            </div>
-            
-            <div className="space-y-2" data-testid="performance-leadership">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Leadership</span>
-                <span className="font-medium" data-testid="text-leadership-rating">3.8/5.0</span>
-              </div>
-              <Progress value={76} className="h-2" data-testid="progress-leadership" />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
