@@ -3462,7 +3462,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
               </button>
               
               {showCrewDropdown && (
-                <div className="absolute top-full left-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
+                <div className="absolute top-full left-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-[100] max-h-64 overflow-y-auto">
                   {allCrewMembers.length > 0 ? (
                     allCrewMembers.map((member) => (
                       <button
@@ -3499,7 +3499,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
               
               {showCrewDropdown && (
                 <div 
-                  className="fixed inset-0 z-40" 
+                  className="fixed inset-0 z-[99]" 
                   onClick={() => setShowCrewDropdown(false)}
                   data-testid="dropdown-overlay"
                 />
