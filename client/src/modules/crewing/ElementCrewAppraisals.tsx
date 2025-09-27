@@ -175,6 +175,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
         },
         rank: crewMember.rank,
         nationality: crewMember.nationality,
+        age: crewMember.age || crewMember.ageInYears || "",
         vessel: crewMember.vessel,
         vesselType: crewMember.vesselType,
         signOn: crewMember.signOnDate,
@@ -284,6 +285,16 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       sortable: true,
       resizable: true,
       enableRowGroup: false
+    },
+    {
+      headerName: 'Age',
+      field: 'age',
+      flex: 0.6,
+      cellStyle: { fontSize: '13px', color: '#4f5863' },
+      filter: 'agNumberColumnFilter',
+      sortable: true,
+      resizable: true,
+      enableRowGroup: true
     },
     {
       headerName: 'Vessel',
