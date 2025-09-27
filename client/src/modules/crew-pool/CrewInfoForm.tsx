@@ -696,10 +696,10 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     }));
   };
 
-  // Sea service management
-  const addSeaService = () => {
+  // Sea service management - Current Company
+  const addCurrentCompanySeaService = () => {
     const newService: SeaService = {
-      id: (formData.seaService.length + 1).toString(),
+      id: `current-${Date.now()}`,
       vesselName: '',
       vesselType: '',
       deadweight: '',
@@ -710,22 +710,55 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
       to: '',
       periodMonths: ''
     };
-    setFormData(prev => ({ ...prev, seaService: [...prev.seaService, newService] }));
+    setFormData(prev => ({ ...prev, currentCompanySeaService: [newService, ...prev.currentCompanySeaService] }));
   };
 
-  const updateSeaService = (id: string, field: keyof SeaService, value: string) => {
+  const updateCurrentCompanySeaService = (id: string, field: keyof SeaService, value: string) => {
     setFormData(prev => ({
       ...prev,
-      seaService: prev.seaService.map(service => 
+      currentCompanySeaService: prev.currentCompanySeaService.map(service => 
         service.id === id ? { ...service, [field]: value } : service
       )
     }));
   };
 
-  const removeSeaService = (id: string) => {
+  const removeCurrentCompanySeaService = (id: string) => {
     setFormData(prev => ({
       ...prev,
-      seaService: prev.seaService.filter(service => service.id !== id)
+      currentCompanySeaService: prev.currentCompanySeaService.filter(service => service.id !== id)
+    }));
+  };
+
+  // Sea service management - External
+  const addExternalSeaService = () => {
+    const newService: SeaService = {
+      id: `external-${Date.now()}`,
+      vesselName: '',
+      vesselType: '',
+      deadweight: '',
+      engineTypePower: '',
+      ownerOperator: '',
+      rank: '',
+      from: '',
+      to: '',
+      periodMonths: ''
+    };
+    setFormData(prev => ({ ...prev, externalSeaService: [newService, ...prev.externalSeaService] }));
+  };
+
+  const updateExternalSeaService = (id: string, field: keyof SeaService, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      externalSeaService: prev.externalSeaService.map(service => 
+        service.id === id ? { ...service, [field]: value } : service
+      )
+    }));
+  };
+
+  const removeExternalSeaService = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      externalSeaService: prev.externalSeaService.filter(service => service.id !== id)
     }));
   };
 
