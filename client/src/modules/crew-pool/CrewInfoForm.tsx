@@ -526,7 +526,11 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
         spouseMiddleName: detailedCrewData.spouseMiddleName || '',
         spouseFamilyName: detailedCrewData.spouseFamilyName || '',
         spouseDateOfBirth: detailedCrewData.spouseDateOfBirth || '',
-        children: detailedCrewData.children || [],
+        children: Array.isArray(detailedCrewData.children) 
+          ? detailedCrewData.children 
+          : detailedCrewData.children 
+            ? JSON.parse(detailedCrewData.children) 
+            : [],
         nokFirstName: detailedCrewData.nokFirstName || '',
         nokMiddleName: detailedCrewData.nokMiddleName || '',
         nokFamilyName: detailedCrewData.nokFamilyName || '',
