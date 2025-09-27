@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FilterIcon, PlusIcon, EditIcon } from 'lucide-react';
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
 import { useViewport, getViewportConfig } from '@/hooks/useViewport';
@@ -17,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import CrewInfoForm from './CrewInfoForm';
+import { normalizeCrewMemberForTable } from '@shared/crew-mapping';
 
 export const CrewPoolModule = (): JSX.Element => {
     const [selectedCrewPoolPage, setSelectedCrewPoolPage] = useState("crew-database");
@@ -40,109 +42,23 @@ export const CrewPoolModule = (): JSX.Element => {
         reliefDue: ""
     });
 
-    // Dummy data for crew members
-    const crewData = useMemo(() => [
-        {
-            id: "2025-05-14",
-            empNo: "2025-05-14",
-            firstName: "James",
-            middleName: "Michael",
-            familyName: "Wilson",
-            dob: "14 Mar 1992",
-            age: "29.0",
-            presentRank: "Chief Officer",
-            nationality: "Indian",
-            status: "On Board",
-            presentVessel: "Jasper",
-            joiningDate: "12 Feb 2021",
-            contractPeriod: "4 M",
-            reliefDue: "12 Jun 2021",
-            lastVessel: "Amethyst",
-            signOffDate: "12 Feb 2021",
-            reason: "Contract Completion",
-            availability: "12 Feb 2021"
+    // Fetch crew members from API
+    const { data: rawCrewData = [], isLoading: isCrewLoading, error: crewError } = useQuery({
+        queryKey: ['/api/crew-members'],
+        queryFn: async () => {
+            const response = await fetch('/api/crew-members');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
         },
-        {
-            id: "B002",
-            empNo: "B002",
-            firstName: "Marcus",
-            middleName: "James",
-            familyName: "Thompson",
-            dob: "22 Aug 1985",
-            age: "37.5",
-            presentRank: "Master",
-            nationality: "British",
-            status: "On Leave",
-            presentVessel: "Ocean Pioneer",
-            joiningDate: "15 Jan 2021",
-            contractPeriod: "6 M",
-            reliefDue: "15 Jul 2021",
-            lastVessel: "Sea Eagle",
-            signOffDate: "10 Jan 2021",
-            reason: "Relief",
-            availability: "15 Aug 2021"
-        },
-        {
-            id: "C003",
-            empNo: "C003",
-            firstName: "Carlos",
-            middleName: "Roberto",
-            familyName: "Mendez",
-            dob: "05 Dec 1988",
-            age: "33.2",
-            presentRank: "Chief Engineer",
-            nationality: "Philippines",
-            status: "Available",
-            presentVessel: "Atlantic Star",
-            joiningDate: "20 Mar 2021",
-            contractPeriod: "5 M",
-            reliefDue: "20 Aug 2021",
-            lastVessel: "Pacific Dawn",
-            signOffDate: "15 Mar 2021",
-            reason: "Contract Completion",
-            availability: "Available"
-        },
-        {
-            id: "D004",
-            empNo: "D004",
-            firstName: "Dmitri",
-            middleName: "Sergei",
-            familyName: "Volkov",
-            dob: "18 Jun 1990",
-            age: "31.8",
-            presentRank: "Second Officer",
-            nationality: "Ukrainian",
-            status: "On Board",
-            presentVessel: "Global Trader",
-            joiningDate: "10 Apr 2021",
-            contractPeriod: "4 M",
-            reliefDue: "10 Aug 2021",
-            lastVessel: "Nordic Wind",
-            signOffDate: "05 Apr 2021",
-            reason: "Relief",
-            availability: "10 Aug 2021"
-        },
-        {
-            id: "E005",
-            empNo: "E005",
-            firstName: "Ahmed",
-            middleName: "Hassan",
-            familyName: "Al-Rashid",
-            dob: "30 Nov 1987",
-            age: "34.1",
-            presentRank: "Electrician",
-            nationality: "Egyptian",
-            status: "Medical",
-            presentVessel: "Desert Rose",
-            joiningDate: "25 Feb 2021",
-            contractPeriod: "6 M",
-            reliefDue: "25 Aug 2021",
-            lastVessel: "Sand Dune",
-            signOffDate: "20 Feb 2021",
-            reason: "Contract Completion",
-            availability: "TBD"
-        }
-    ], []);
+    });
+
+    // Transform API data for table display using mapping layer
+    const crewData = useMemo(() => {
+        if (!rawCrewData || rawCrewData.length === 0) return [];
+        return rawCrewData.map((crew: any) => normalizeCrewMemberForTable(crew));
+    }, [rawCrewData]);
 
     // Actions cell renderer for edit button
     const ActionsCellRenderer = useCallback((params: ICellRendererParams) => {
@@ -531,22 +447,32 @@ export const CrewPoolModule = (): JSX.Element => {
                 {/* AG Grid Table */}
                 <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
                     <CardContent className="p-4 pl-0 bg-[#f7fafc]">
-                        <AgGridTable
-                            rowData={crewData}
-                            columnDefs={columnDefs}
-                            onGridReady={onGridReady}
-                            autoHeight={true}
-                            maxHeight="500px"
-                            minHeight="200px"
-                            width="100%"
-                            enableExport={true}
-                            enableSideBar={true}
-                            enableStatusBar={false}
-                            enableRowGrouping={true}
-                            enablePivoting={true}
-                            enableAdvancedFilter={false}
-                            rowSelection={false}
-                        />
+                        {isCrewLoading ? (
+                            <div className="flex items-center justify-center h-40">
+                                <div className="text-gray-500">Loading crew members...</div>
+                            </div>
+                        ) : crewError ? (
+                            <div className="flex items-center justify-center h-40">
+                                <div className="text-red-500">Error loading crew members: {crewError.message}</div>
+                            </div>
+                        ) : (
+                            <AgGridTable
+                                rowData={crewData}
+                                columnDefs={columnDefs}
+                                onGridReady={onGridReady}
+                                autoHeight={true}
+                                maxHeight="500px"
+                                minHeight="200px"
+                                width="100%"
+                                enableExport={true}
+                                enableSideBar={true}
+                                enableStatusBar={false}
+                                enableRowGrouping={true}
+                                enablePivoting={true}
+                                enableAdvancedFilter={false}
+                                rowSelection={false}
+                            />
+                        )}
                     </CardContent>
                 </Card>
             </>
