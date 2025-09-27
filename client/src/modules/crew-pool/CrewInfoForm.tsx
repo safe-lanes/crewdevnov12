@@ -216,6 +216,12 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     enabled: isOpen,
   });
 
+  // Detailed crew member data query for form fields
+  const { data: detailedCrewData, isLoading: isDetailedDataLoading } = useQuery<any>({
+    queryKey: ['/api/crew-members', crewMember?.id],
+    enabled: !!crewMember?.id && isOpen, // Only fetch when editing existing crew member
+  });
+
   // Crew ID will be auto-assigned by the API during creation
 
   // Data mappings with proper nullish coalescing
@@ -461,6 +467,73 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     // F2. Doctor Visits
     doctorVisits: []
   });
+
+  // Update form data when detailed crew data loads from API
+  useEffect(() => {
+    if (detailedCrewData && crewMember?.id) {
+      setFormData(prev => ({
+        ...prev,
+        // A1.1 General Particulars
+        firstName: detailedCrewData.firstName || '',
+        middleName: detailedCrewData.middleName || '',
+        familyName: detailedCrewData.familyName || '',
+        nationality: detailedCrewData.nationality || '',
+        presentRank: detailedCrewData.presentRank || '',
+        dateOfBirth: detailedCrewData.dob || detailedCrewData.dateOfBirth || '',
+        ageInYears: detailedCrewData.age || detailedCrewData.ageInYears || '',
+        placeOfBirthCity: detailedCrewData.placeOfBirthCity || '',
+        placeOfBirthCountry: detailedCrewData.placeOfBirthCountry || '',
+        heightCm: detailedCrewData.heightCm || '',
+        weightKg: detailedCrewData.weightKg || '',
+        bmi: detailedCrewData.bmi || '',
+        nativeLanguage: detailedCrewData.nativeLanguage || '',
+        foreignLanguages: detailedCrewData.foreignLanguages || '',
+        englishProficiency: detailedCrewData.englishProficiency || '',
+        rankAppliedFor: detailedCrewData.rankAppliedFor || '',
+        vesselType: detailedCrewData.vesselTypes || [],
+        manningAgent: detailedCrewData.manningAgent || '',
+        employeeId: detailedCrewData.employeeId || '',
+        
+        // A1.2 Address & Contact Info
+        countryOfResidence: detailedCrewData.countryOfResidence || '',
+        nearestAirport: detailedCrewData.nearestAirport || '',
+        residentialAddressLine1: detailedCrewData.residentialAddressLine1 || '',
+        residentialAddressLine2: detailedCrewData.residentialAddressLine2 || '',
+        contactLandline: detailedCrewData.contactLandline || '',
+        mobile: detailedCrewData.mobile || '',
+        email: detailedCrewData.email || '',
+        
+        // A1.3 Family and NOK
+        maritalStatus: detailedCrewData.maritalStatus || '',
+        numberOfDependentChildren: detailedCrewData.numberOfDependentChildren || '',
+        fatherName: detailedCrewData.fatherName || '',
+        motherName: detailedCrewData.motherName || '',
+        spouseFirstName: detailedCrewData.spouseFirstName || '',
+        spouseMiddleName: detailedCrewData.spouseMiddleName || '',
+        spouseFamilyName: detailedCrewData.spouseFamilyName || '',
+        spouseDateOfBirth: detailedCrewData.spouseDateOfBirth || '',
+        children: detailedCrewData.children || [],
+        nokFirstName: detailedCrewData.nokFirstName || '',
+        nokMiddleName: detailedCrewData.nokMiddleName || '',
+        nokFamilyName: detailedCrewData.nokFamilyName || '',
+        nokTelephone: detailedCrewData.nokTelephone || '',
+        nokEmail: detailedCrewData.nokEmail || '',
+        nokAddress: detailedCrewData.nokAddress || '',
+        nokRelationship: detailedCrewData.nokRelationship || '',
+        
+        // Complex data arrays
+        documents: detailedCrewData.documents || prev.documents,
+        visas: detailedCrewData.visas || prev.visas,
+        education: detailedCrewData.education || prev.education,
+        licenses: detailedCrewData.licenses || prev.licenses,
+        trainingCourses: detailedCrewData.trainingCourses || prev.trainingCourses,
+        currentCompanySeaService: detailedCrewData.currentCompanySeaService || prev.currentCompanySeaService,
+        externalSeaService: detailedCrewData.externalSeaService || prev.externalSeaService,
+        preJoiningMedicals: detailedCrewData.preJoiningMedicals || prev.preJoiningMedicals,
+        doctorVisits: detailedCrewData.doctorVisits || prev.doctorVisits,
+      }));
+    }
+  }, [detailedCrewData, crewMember?.id]);
 
   // Helper function to calculate BMI
   const calculateBMI = (height: string, weight: string) => {
