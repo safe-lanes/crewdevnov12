@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Progress } from '@/components/ui/progress';
 import { useQuery } from '@tanstack/react-query';
 import type { CrewDashboardSummary } from '@shared/schema';
 
@@ -180,6 +181,11 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   // Data mappings with proper nullish coalescing
   const statusData = dashboardData?.status;
   const experienceData = dashboardData?.experience;
+  const shipTypesData = dashboardData?.shipTypes;
+  const complianceData = dashboardData?.compliance;
+  const careerProgressionData = dashboardData?.careerProgression;
+  const serviceTimelineData = dashboardData?.serviceTimeline;
+  const appraisalsData = dashboardData?.appraisals;
   
   const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<string>('A');
