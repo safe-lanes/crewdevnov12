@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CrewMember, AppraisalResult } from "@shared/schema";
+import { fromStorageCrew, CrewMemberDTO } from "@shared/crew-mapping";
 import SectionTitleComponents from "@/components/Section/SectionTitleComponents";
 import SideBarComponent from "@/components/Navbar/SideBarComponent";
 import MainLayout from "@/components/main/MainLayout";
@@ -32,6 +33,7 @@ interface CrewAppraisalData {
   name: { first: string; middle: string; last: string };
   rank: string;
   nationality: string;
+  age: string;
   vessel: string;
   vesselType: string;
   signOn: string;
@@ -164,21 +166,23 @@ export const ElementCrewAppraisals = (): JSX.Element => {
   // Combine crew member and appraisal data
   const allCrewData: CrewAppraisalData[] = useMemo(() =>
     crewMembers.map((crewMember) => {
+      // Transform raw database data to frontend DTO format
+      const crewDTO = fromStorageCrew(crewMember);
       const appraisal = appraisalResults.find(ar => ar.crewMemberId === crewMember.id);
 
       return {
-        id: crewMember.id,
+        id: crewDTO.id,
         name: {
-          first: crewMember.firstName,
-          middle: crewMember.middleName || "",
-          last: crewMember.familyName || "",
+          first: crewDTO.firstName,
+          middle: crewDTO.middleName || "",
+          last: crewDTO.lastName || crewDTO.familyName || "",
         },
-        rank: crewMember.presentRank,
-        nationality: crewMember.nationality,
-        age: crewMember.age || "",
-        vessel: crewMember.presentVessel,
-        vesselType: crewMember.vesselType,
-        signOn: crewMember.signOnDate || crewMember.joiningDate || "",
+        rank: crewDTO.rank || crewDTO.presentRank || "",
+        nationality: crewDTO.nationality || "",
+        age: crewDTO.ageInYears || crewDTO.age || "",
+        vessel: crewDTO.vessel || crewDTO.presentVessel || "",
+        vesselType: crewDTO.vesselType || "",
+        signOn: crewDTO.signOnDate || crewDTO.joiningDate || "",
         appraisalType: appraisal?.appraisalType || "Not Started",
         appraisalDate: appraisal?.appraisalDate || "N/A",
         competenceRating: {
