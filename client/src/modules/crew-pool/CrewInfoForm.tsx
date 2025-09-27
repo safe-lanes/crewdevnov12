@@ -1966,7 +1966,11 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                 <div className="mt-1 text-sm text-gray-900">{formData.nokRelationship}</div>
               )}
             </div>
-
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   // A2.1 Travel and Identification Documents render function
   const renderA21TravelDocs = () => {
