@@ -10,7 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
+import { toStorageCrew } from '@shared/crew-mapping';
 import type { CrewDashboardSummary } from '@shared/schema';
 
 interface CrewMember {
@@ -3287,12 +3289,17 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
 
   // Save Draft functionality
   const handleSaveDraft = () => {
-    console.log('Saving draft for section:', activeSection, formData);
-    toast({
-      title: "Draft Saved",
-      description: `Section ${activeSection} has been saved successfully.`,
-      duration: 2000,
-    });
+    console.log('Saving crew info:', formData);
+    
+    if (crewMember && crewMember.id) {
+      // Update existing crew member
+      updateCrewMutation.mutate({ id: crewMember.id, data: formData });
+    } else {
+      // Create new crew member - generate ID based on current date
+      const newId = new Date().toISOString().slice(0, 10); // YYYY-MM-DD format
+      const formDataWithId = { ...formData, id: newId };
+      createCrewMutation.mutate(formDataWithId);
+    }
   };
 
   // Auto-save functionality
@@ -3352,10 +3359,75 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     }));
   };
 
+  const queryClient = useQueryClient();
+
+  // Create crew member mutation
+  const createCrewMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const mappedData = toStorageCrew(data);
+      const response = await apiRequest('POST', '/api/crew-members', mappedData);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crew-members'] });
+      toast({
+        title: "Success",
+        description: "Crew member created successfully.",
+        duration: 3000,
+      });
+      onClose();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: `Failed to create crew member: ${error.message}`,
+        variant: "destructive",
+        duration: 5000,
+      });
+    },
+  });
+
+  // Update crew member mutation
+  const updateCrewMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const mappedData = toStorageCrew(data);
+      const response = await apiRequest('PATCH', `/api/crew-members/${id}`, mappedData);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crew-members'] });
+      toast({
+        title: "Success", 
+        description: "Crew member updated successfully.",
+        duration: 3000,
+      });
+      onClose();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: `Failed to update crew member: ${error.message}`,
+        variant: "destructive",
+        duration: 5000,
+      });
+    },
+  });
+
   const handleSave = () => {
     console.log('Saving crew info:', formData);
-    onClose();
+    
+    if (crewMember && crewMember.id) {
+      // Update existing crew member
+      updateCrewMutation.mutate({ id: crewMember.id, data: formData });
+    } else {
+      // Create new crew member - generate ID based on current date
+      const newId = new Date().toISOString().slice(0, 10); // YYYY-MM-DD format
+      const formDataWithId = { ...formData, id: newId };
+      createCrewMutation.mutate(formDataWithId);
+    }
   };
+
+  const isSaving = createCrewMutation.isPending || updateCrewMutation.isPending;
 
   const handleCancel = () => {
     onClose();
@@ -3531,16 +3603,18 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
               size="sm"
               className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
               onClick={handleSaveDraft}
+              disabled={isSaving}
               data-testid="button-save-draft"
             >
               <Save className="h-4 w-4 mr-2" />
-              Save Draft
+              {isSaving ? 'Saving...' : 'Save'}
             </Button>
             <Button 
               variant="outline" 
               size="sm"
               className="sm:hidden"
               onClick={handleSaveDraft}
+              disabled={isSaving}
               data-testid="button-save-draft-mobile"
             >
               <Save className="h-4 w-4" />
