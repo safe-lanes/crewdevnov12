@@ -170,6 +170,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       const crewDTO = fromStorageCrew(crewMember);
       const appraisal = appraisalResults.find(ar => ar.crewMemberId === crewMember.id);
 
+
       return {
         id: crewDTO.id,
         name: {
