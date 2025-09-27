@@ -858,49 +858,34 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
               <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Experience</h3>
               <div className="grid grid-cols-5 gap-4">
                 <div className="text-center">
-                  <div className="text-xs text-gray-500 mb-1">Company (Yrs)</div>
-                  <div className="bg-blue-500 h-16 w-full rounded mb-1 flex items-end justify-center">
-                    <div className="bg-blue-600 w-full h-3/4 rounded-b flex items-center justify-center text-white text-xs font-bold">
-                      {experienceData?.company ?? '—'}
-                    </div>
+                  <div className="text-xs text-gray-500 mb-2">Company (Yrs)</div>
+                  <div className="text-2xl font-medium text-blue-600" data-testid="text-company-years">
+                    {experienceData?.company ?? '—'}
                   </div>
-                  <div className="text-xs text-gray-600" data-testid="text-company-years">{experienceData?.company ?? '—'}</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xs text-gray-500 mb-1">Rank (Yrs)</div>
-                  <div className="bg-blue-500 h-16 w-full rounded mb-1 flex items-end justify-center">
-                    <div className="bg-blue-600 w-full h-4/5 rounded-b flex items-center justify-center text-white text-xs font-bold">
-                      {experienceData?.rank ?? '—'}
-                    </div>
+                  <div className="text-xs text-gray-500 mb-2">Rank (Yrs)</div>
+                  <div className="text-2xl font-medium text-blue-600" data-testid="text-rank-years">
+                    {experienceData?.rank ?? '—'}
                   </div>
-                  <div className="text-xs text-gray-600" data-testid="text-rank-years">{experienceData?.rank ?? '—'}</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xs text-gray-500 mb-1">Tankers (Yrs)</div>
-                  <div className="bg-blue-500 h-16 w-full rounded mb-1 flex items-end justify-center">
-                    <div className="bg-blue-600 w-full h-full rounded flex items-center justify-center text-white text-xs font-bold">
-                      {experienceData?.tankers ?? '—'}
-                    </div>
+                  <div className="text-xs text-gray-500 mb-2">Tankers (Yrs)</div>
+                  <div className="text-2xl font-medium text-blue-600" data-testid="text-tankers-years">
+                    {experienceData?.tankers ?? '—'}
                   </div>
-                  <div className="text-xs text-gray-600" data-testid="text-tankers-years">{experienceData?.tankers ?? '—'}</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xs text-gray-500 mb-1">OOW (Yrs)</div>
-                  <div className="bg-blue-500 h-16 w-full rounded mb-1 flex items-end justify-center">
-                    <div className="bg-blue-600 w-full h-full rounded flex items-center justify-center text-white text-xs font-bold">
-                      {experienceData?.ocw ?? '—'}
-                    </div>
+                  <div className="text-xs text-gray-500 mb-2">OOW (Yrs)</div>
+                  <div className="text-2xl font-medium text-blue-600" data-testid="text-ocw-years">
+                    {experienceData?.ocw ?? '—'}
                   </div>
-                  <div className="text-xs text-gray-600" data-testid="text-ocw-years">{experienceData?.ocw ?? '—'}</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xs text-gray-500 mb-1">Endorsements</div>
-                  <div className="bg-gray-300 h-16 w-full rounded mb-1 flex items-end justify-center">
-                    <div className="bg-gray-400 w-full h-1/4 rounded-b flex items-center justify-center text-white text-xs font-bold">
-                      {experienceData?.endorsements ?? '—'}
-                    </div>
+                  <div className="text-xs text-gray-500 mb-2">Endors</div>
+                  <div className="text-2xl font-medium text-blue-600" data-testid="text-endorsements-count">
+                    {experienceData?.endorsements ?? '—'}
                   </div>
-                  <div className="text-xs text-gray-600" data-testid="text-endorsements-count">{experienceData?.endorsements ?? '—'}</div>
                 </div>
               </div>
             </div>
