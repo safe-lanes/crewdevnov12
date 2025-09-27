@@ -714,6 +714,66 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     }));
   };
 
+  // Pre-joining medical management
+  const addPreJoiningMedical = () => {
+    const newMedical: PreJoiningMedical = {
+      id: `${Date.now()}`,
+      vessel: '',
+      dateOfMedical: '',
+      bp: '', 
+      weight: '',
+      anyMedicationPrescribed: '',
+      fitnessForDuty: '',
+      expiry: ''
+    };
+    setFormData(prev => ({ ...prev, preJoiningMedicals: [newMedical, ...prev.preJoiningMedicals] }));
+  };
+
+  const updatePreJoiningMedical = (id: string, field: keyof PreJoiningMedical, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      preJoiningMedicals: prev.preJoiningMedicals.map(medical => 
+        medical.id === id ? { ...medical, [field]: value } : medical
+      )
+    }));
+  };
+
+  const removePreJoiningMedical = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      preJoiningMedicals: prev.preJoiningMedicals.filter(medical => medical.id !== id)
+    }));
+  };
+
+  // Doctor visit management
+  const addDoctorVisit = () => {
+    const newVisit: DoctorVisit = {
+      id: `${Date.now()}`,
+      vessel: '',
+      port: '',
+      date: '',
+      complaint: '',
+      doctorComments: ''
+    };
+    setFormData(prev => ({ ...prev, doctorVisits: [newVisit, ...prev.doctorVisits] }));
+  };
+
+  const updateDoctorVisit = (id: string, field: keyof DoctorVisit, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      doctorVisits: prev.doctorVisits.map(visit => 
+        visit.id === id ? { ...visit, [field]: value } : visit
+      )
+    }));
+  };
+
+  const removeDoctorVisit = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      doctorVisits: prev.doctorVisits.filter(visit => visit.id !== id)
+    }));
+  };
+
   // Photo Upload Component for Sidebar
   const renderSidebarPhotoUpload = () => {
     const isEditing = editingSections['A1.1']; // Photo editing tied to A1.1 section
@@ -2734,6 +2794,248 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             ))}
           </TableBody>
         </Table>
+      </div>
+    );
+  };
+
+  // F1: Pre Joining Medicals render function
+  const renderF1PreJoiningMedicals = () => {
+    return (
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>F1. Pre Joining Medicals</h3>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={addPreJoiningMedical}
+            className="flex items-center gap-2"
+            data-testid="button-add-medical"
+          >
+            <Plus className="h-4 w-4" />
+            ADD
+          </Button>
+        </div>
+        
+        <div className="border rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[800px]">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Date of Medical</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">BP (mmHG)</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Weight (Kgs)</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Any Medication Prescribed</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Fitness For Duty</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Expiry</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {formData.preJoiningMedicals.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center text-gray-500">
+                      No medical records added yet. Click "ADD" to get started.
+                    </td>
+                  </tr>
+                ) : (
+                  formData.preJoiningMedicals.map((medical) => (
+                    <tr key={medical.id} className="border-t">
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          value={medical.vessel}
+                          onChange={(e) => updatePreJoiningMedical(medical.id, 'vessel', e.target.value)}
+                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          placeholder="Enter vessel"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          type="date"
+                          value={medical.dateOfMedical}
+                          onChange={(e) => updatePreJoiningMedical(medical.id, 'dateOfMedical', e.target.value)}
+                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          value={medical.bp}
+                          onChange={(e) => updatePreJoiningMedical(medical.id, 'bp', e.target.value)}
+                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          placeholder="120/80"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          value={medical.weight}
+                          onChange={(e) => updatePreJoiningMedical(medical.id, 'weight', e.target.value)}
+                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          placeholder="75"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          value={medical.anyMedicationPrescribed}
+                          onChange={(e) => updatePreJoiningMedical(medical.id, 'anyMedicationPrescribed', e.target.value)}
+                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          placeholder="Enter medication"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          value={medical.fitnessForDuty}
+                          onChange={(e) => updatePreJoiningMedical(medical.id, 'fitnessForDuty', e.target.value)}
+                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          placeholder="Fit for sea service"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          type="date"
+                          value={medical.expiry}
+                          onChange={(e) => updatePreJoiningMedical(medical.id, 'expiry', e.target.value)}
+                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                            <Paperclip className="h-3 w-3" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 text-gray-400 hover:text-red-600"
+                            onClick={() => removePreJoiningMedical(medical.id)}
+                            data-testid={`button-delete-medical-${medical.id}`}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // F2: Doctor Visits render function
+  const renderF2DoctorVisits = () => {
+    return (
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>F2. Doctor Visits</h3>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={addDoctorVisit}
+            className="flex items-center gap-2"
+            data-testid="button-add-visit"
+          >
+            <Plus className="h-4 w-4" />
+            ADD
+          </Button>
+        </div>
+        
+        <div className="border rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[700px]">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Port</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Date</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Complaint / Illness / Injury</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Doctor Comments</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {formData.doctorVisits.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-8 text-center text-gray-500">
+                      No doctor visits recorded yet. Click "ADD" to get started.
+                    </td>
+                  </tr>
+                ) : (
+                  formData.doctorVisits.map((visit) => (
+                    <tr key={visit.id} className="border-t">
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          value={visit.vessel}
+                          onChange={(e) => updateDoctorVisit(visit.id, 'vessel', e.target.value)}
+                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          placeholder="Enter vessel"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          value={visit.port}
+                          onChange={(e) => updateDoctorVisit(visit.id, 'port', e.target.value)}
+                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          placeholder="Enter port"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          type="date"
+                          value={visit.date}
+                          onChange={(e) => updateDoctorVisit(visit.id, 'date', e.target.value)}
+                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          value={visit.complaint}
+                          onChange={(e) => updateDoctorVisit(visit.id, 'complaint', e.target.value)}
+                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          placeholder="Enter complaint/illness/injury"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          value={visit.doctorComments}
+                          onChange={(e) => updateDoctorVisit(visit.id, 'doctorComments', e.target.value)}
+                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          placeholder="Enter doctor comments"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                            <Paperclip className="h-3 w-3" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 text-gray-400 hover:text-red-600"
+                            onClick={() => removeDoctorVisit(visit.id)}
+                            data-testid={`button-delete-visit-${visit.id}`}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     );
   };
