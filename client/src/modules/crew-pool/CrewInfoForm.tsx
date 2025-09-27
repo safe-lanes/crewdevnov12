@@ -490,7 +490,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
         nationality: detailedCrewData.nationality || '',
         presentRank: detailedCrewData.presentRank || '',
         dateOfBirth: detailedCrewData.dob || detailedCrewData.dateOfBirth || '',
-        ageInYears: detailedCrewData.age || detailedCrewData.ageInYears || '',
+        ageInYears: detailedCrewData.age || detailedCrewData.ageInYears || calculateAge(detailedCrewData.dob || detailedCrewData.dateOfBirth || ''),
         placeOfBirthCity: detailedCrewData.placeOfBirthCity || '',
         placeOfBirthCountry: detailedCrewData.placeOfBirthCountry || '',
         heightCm: detailedCrewData.heightCm || '',
@@ -600,9 +600,30 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     return '';
   };
 
+  // Helper function to calculate age from date of birth
+  const calculateAge = (dateOfBirth: string) => {
+    if (!dateOfBirth) return '';
+    
+    const birthDate = new Date(dateOfBirth);
+    const today = new Date();
+    
+    // Check if valid date
+    if (isNaN(birthDate.getTime())) return '';
+    
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    // Adjust if birthday hasn't occurred this year yet
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    return age >= 0 ? age.toString() : '';
+  };
+
   // Crew ID will be auto-assigned by the API during creation (no pre-fetching)
 
-  // Update form data function with BMI auto-calculation
+  // Update form data function with BMI and Age auto-calculation
   const updateFormData = (field: keyof FormData, value: string) => {
     setFormData(prev => {
       const updated = { ...prev, [field]: value };
@@ -612,6 +633,11 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
         const height = field === 'heightCm' ? value : prev.heightCm;
         const weight = field === 'weightKg' ? value : prev.weightKg;
         updated.bmi = calculateBMI(height, weight);
+      }
+      
+      // Auto-calculate age when date of birth changes
+      if (field === 'dateOfBirth') {
+        updated.ageInYears = calculateAge(value);
       }
       
       return updated;
