@@ -539,16 +539,52 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
         nokAddress: detailedCrewData.nokAddress || '',
         nokRelationship: detailedCrewData.nokRelationship || '',
         
-        // Complex data arrays
-        documents: detailedCrewData.documents || prev.documents,
-        visas: detailedCrewData.visas || prev.visas,
-        education: detailedCrewData.education || prev.education,
-        licenses: detailedCrewData.licenses || prev.licenses,
-        trainingCourses: detailedCrewData.trainingCourses || prev.trainingCourses,
-        currentCompanySeaService: detailedCrewData.currentCompanySeaService || prev.currentCompanySeaService,
-        externalSeaService: detailedCrewData.externalSeaService || prev.externalSeaService,
-        preJoiningMedicals: detailedCrewData.preJoiningMedicals || prev.preJoiningMedicals,
-        doctorVisits: detailedCrewData.doctorVisits || prev.doctorVisits,
+        // Complex data arrays - parse JSON strings from API
+        documents: Array.isArray(detailedCrewData.documents) 
+          ? detailedCrewData.documents 
+          : detailedCrewData.documents 
+            ? JSON.parse(detailedCrewData.documents) 
+            : prev.documents,
+        visas: Array.isArray(detailedCrewData.visas) 
+          ? detailedCrewData.visas 
+          : detailedCrewData.visas 
+            ? JSON.parse(detailedCrewData.visas) 
+            : prev.visas,
+        education: Array.isArray(detailedCrewData.education) 
+          ? detailedCrewData.education 
+          : detailedCrewData.education 
+            ? JSON.parse(detailedCrewData.education) 
+            : prev.education,
+        licenses: Array.isArray(detailedCrewData.licenses) 
+          ? detailedCrewData.licenses 
+          : detailedCrewData.licenses 
+            ? JSON.parse(detailedCrewData.licenses) 
+            : prev.licenses,
+        trainingCourses: Array.isArray(detailedCrewData.trainingCourses) 
+          ? detailedCrewData.trainingCourses 
+          : detailedCrewData.trainingCourses 
+            ? JSON.parse(detailedCrewData.trainingCourses) 
+            : prev.trainingCourses,
+        currentCompanySeaService: Array.isArray(detailedCrewData.currentCompanySeaService) 
+          ? detailedCrewData.currentCompanySeaService 
+          : detailedCrewData.currentCompanySeaService 
+            ? JSON.parse(detailedCrewData.currentCompanySeaService) 
+            : prev.currentCompanySeaService,
+        externalSeaService: Array.isArray(detailedCrewData.externalSeaService) 
+          ? detailedCrewData.externalSeaService 
+          : detailedCrewData.externalSeaService 
+            ? JSON.parse(detailedCrewData.externalSeaService) 
+            : prev.externalSeaService,
+        preJoiningMedicals: Array.isArray(detailedCrewData.preJoiningMedicals) 
+          ? detailedCrewData.preJoiningMedicals 
+          : detailedCrewData.preJoiningMedicals 
+            ? JSON.parse(detailedCrewData.preJoiningMedicals) 
+            : prev.preJoiningMedicals,
+        doctorVisits: Array.isArray(detailedCrewData.doctorVisits) 
+          ? detailedCrewData.doctorVisits 
+          : detailedCrewData.doctorVisits 
+            ? JSON.parse(detailedCrewData.doctorVisits) 
+            : prev.doctorVisits,
       }));
     }
   }, [detailedCrewData, crewMember?.id]);
