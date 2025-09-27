@@ -98,6 +98,12 @@ interface FormData {
   
   // A4.1 Sea Service
   seaService: SeaService[];
+  
+  // F1. Pre Joining Medicals
+  preJoiningMedicals: PreJoiningMedical[];
+  
+  // F2. Doctor Visits
+  doctorVisits: DoctorVisit[];
 }
 
 interface ChildInfo {
@@ -169,6 +175,26 @@ interface SeaService {
   periodMonths: string;
 }
 
+interface PreJoiningMedical {
+  id: string;
+  vessel: string;
+  dateOfMedical: string;
+  bp: string; // Blood Pressure (mmHG)
+  weight: string; // Weight (Kgs)
+  anyMedicationPrescribed: string;
+  fitnessForDuty: string;
+  expiry: string;
+}
+
+interface DoctorVisit {
+  id: string;
+  vessel: string;
+  port: string;
+  date: string;
+  complaint: string; // Complaint / Illness / Injury
+  doctorComments: string;
+}
+
 export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, crewMember }) => {
   const { toast } = useToast();
   
@@ -201,7 +227,8 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     { id: 'B', title: 'Seafarers\' Particulars', number: 'B' },
     { id: 'C', title: 'Travel & ID Documents', number: 'C' },
     { id: 'D', title: 'Training & Certificates', number: 'D' },
-    { id: 'E', title: 'Sea Service', number: 'E' }
+    { id: 'E', title: 'Sea Service', number: 'E' },
+    { id: 'F', title: 'Medical', number: 'F' }
   ];
 
   // Refs for scroll detection
@@ -210,6 +237,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   const sectionCRef = useRef<HTMLDivElement>(null);
   const sectionDRef = useRef<HTMLDivElement>(null);
   const sectionERef = useRef<HTMLDivElement>(null);
+  const sectionFRef = useRef<HTMLDivElement>(null);
 
   // Master data arrays
   const VESSEL_TYPES = [
@@ -394,7 +422,13 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
       from: '',
       to: '',
       periodMonths: ''
-    }]
+    }],
+    
+    // F1. Pre Joining Medicals
+    preJoiningMedicals: [],
+    
+    // F2. Doctor Visits
+    doctorVisits: []
   });
 
   // Helper function to calculate BMI
