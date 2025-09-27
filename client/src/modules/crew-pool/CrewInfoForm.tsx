@@ -174,7 +174,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   
   // Dashboard data query
   const { data: dashboardData, isLoading: isDashboardLoading, error: dashboardError } = useQuery<CrewDashboardSummary>({
-    queryKey: [`/api/crew-members/${crewMember?.id}/dashboard`],
+    queryKey: ['/api/crew-members', crewMember?.id, 'dashboard'],
     enabled: !!crewMember?.id && isOpen,
   });
 
@@ -764,230 +764,272 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
         {/* 3-Column Grid Layout matching reference design */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* LEFT COLUMN - Document Status & Promotion */}
+          {/* LEFT COLUMN - Status & Compliance */}
           <div className="space-y-6">
-            {/* Document Status */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-compliance-status">
-              <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }} data-testid="text-compliance-title">Compliance & Training Status</h3>
-              
-              <div className="space-y-3" data-testid="compliance-items">
-                {complianceData?.map((item, index) => {
-                  const statusColor = item.status === 'compliant' ? 'bg-green-500' : item.status === 'issues' ? 'bg-red-500' : 'bg-yellow-500';
-                  const testId = item.category.toLowerCase().replace(/[\s&]/g, '-');
-                  return (
-                    <div key={index} className="flex items-center justify-between" data-testid={`doc-${testId}`}>
-                      <div className="flex items-center space-x-2">
-                        <div className={`w-3 h-3 ${statusColor} rounded-full`} data-testid={`status-${testId}`}></div>
-                        <span className="text-sm">{item.category}</span>
-                      </div>
-                      {item.details && item.details !== '✓' && (
-                        <span className="text-xs text-gray-500" data-testid={`details-${testId}`}>{item.details}</span>
-                      )}
+            {/* Status Card */}
+            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-status">
+              <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Status</h3>
+              <div className="space-y-3">
+                <div className={`${statusData?.status ? 'bg-orange-500' : 'bg-gray-400'} text-white p-3 rounded text-center`} data-testid="status-badge">
+                  <div className="text-sm font-medium">{statusData?.status || '—'}</div>
+                </div>
+                
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <div className="text-gray-600 text-xs">Vessel</div>
+                    <div className="font-medium text-lg" data-testid="text-vessel">
+                      {statusData?.vessel || crewMember?.presentVessel || '—'}
                     </div>
-                  );
-                }) ?? [
-                  // Fallback data if API doesn't return compliance data
-                  { category: 'Travel Docs', status: 'compliant' as const, details: '✓' },
-                  { category: 'Visas', status: 'compliant' as const, details: '✓' },
-                  { category: 'License & DCE', status: 'compliant' as const, details: '✓' },
-                  { category: 'Training', status: 'issues' as const, details: 'Issues: 2' },
-                  { category: 'Medical', status: 'compliant' as const, details: 'Last: 15 Feb 2022' },
-                  { category: 'Vaccination', status: 'issues' as const, details: 'Issue: 1' }
-                ].map((item, index) => {
-                  const statusColor = item.status === 'compliant' ? 'bg-green-500' : item.status === 'issues' ? 'bg-red-500' : 'bg-yellow-500';
-                  const testId = item.category.toLowerCase().replace(/[\s&]/g, '-');
-                  return (
-                    <div key={index} className="flex items-center justify-between" data-testid={`doc-${testId}`}>
-                      <div className="flex items-center space-x-2">
-                        <div className={`w-3 h-3 ${statusColor} rounded-full`} data-testid={`status-${testId}`}></div>
-                        <span className="text-sm">{item.category}</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 mt-3">
+                    <div>
+                      <div className="text-gray-600 text-xs">Joined</div>
+                      <div className="font-medium" data-testid="text-joined">
+                        {statusData?.joinedDate || '—'}
                       </div>
-                      {item.details && item.details !== '✓' && (
-                        <span className="text-xs text-gray-500" data-testid={`details-${testId}`}>{item.details}</span>
-                      )}
                     </div>
-                  );
-                })}
+                    <div>
+                      <div className="text-gray-600 text-xs">Relief Due</div>
+                      <div className="font-medium" data-testid="text-sailing-due">
+                        {statusData?.sailingDue || '—'}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-3">
+                    <div className="text-gray-600 text-xs">Nearest Airport</div>
+                    <div className="font-medium" data-testid="text-assignment">
+                      {formData.nearestAirport || statusData?.presentAssignment || '—'}
+                    </div>
+                  </div>
+                  
+                  <div className="mt-3">
+                    <div className="text-gray-600 text-xs">Emergency Contact Name, Relation, Ph:</div>
+                    <div className="text-red-600 text-sm font-medium" data-testid="text-emergency-contact">
+                      {formData.nokFirstName && formData.nokRelationship && formData.nokTelephone ? 
+                        `${formData.nokFirstName} ${formData.nokFamilyName || ''}, ${formData.nokRelationship}, ${formData.nokTelephone}`.trim() : 
+                        statusData?.emergencyContact ? 
+                          `${statusData.emergencyContact.name}, ${statusData.emergencyContact.relation}, ${statusData.emergencyContact.phone}` : 
+                          '—'}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Promotion Section */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-promotion">
-              <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }} data-testid="text-promotion-title">Promotion</h3>
-              <div className="space-y-4">
-                <div className="text-xs text-gray-500 grid grid-cols-4 gap-2 mb-2" data-testid="promotion-headers">
-                  <span>Recommend</span>
-                  <span>Advance</span>
-                  <span>Demote</span>
-                  <span>Approved</span>
-                </div>
-                {careerProgressionData?.map((step, index) => {
-                  const testId = step.position.toLowerCase().replace(/[\s\/]/g, '-');
-                  return (
-                    <div key={index} className="flex items-center justify-between" data-testid={`promotion-${testId}`}>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm font-medium">{step.position}</span>
-                        {step.date && <span className="text-xs text-gray-500">{step.date}</span>}
+            {/* Training/Cert/Docs Card */}
+            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-compliance-status">
+              <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }} data-testid="text-compliance-title">Training/ Cert/ Docs</h3>
+              
+              <div className="space-y-3" data-testid="compliance-items">
+                {complianceData && complianceData.length > 0 ? (
+                  complianceData.map((item, index) => {
+                    const statusColor = item.status === 'compliant' ? 'bg-green-500' : item.status === 'issues' ? 'bg-red-500' : 'bg-yellow-500';
+                    const testId = item.category.toLowerCase().replace(/[\s&]/g, '-');
+                    return (
+                      <div key={index} className="flex items-center justify-between" data-testid={`doc-${testId}`}>
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-3 h-3 ${statusColor} rounded-full`} data-testid={`status-${testId}`}></div>
+                          <span className="text-sm">{item.category}:</span>
+                        </div>
+                        <div className="flex items-center">
+                          {item.details && item.details !== '✓' && (
+                            <span className="text-xs text-gray-500 mr-2" data-testid={`details-${testId}`}>{item.details}</span>
+                          )}
+                          <span className="text-xs text-gray-400">Remarks</span>
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-2" data-testid={`${testId}-status-indicators`}>
-                        <div className={`w-3 h-3 ${step.status?.recommend ? 'bg-green-500' : 'bg-gray-300'} rounded-full`}></div>
-                        <div className={`w-3 h-3 ${step.status?.advance ? 'bg-green-500' : 'bg-gray-300'} rounded-full`}></div>
-                        <div className={`w-3 h-3 ${step.status?.demote ? 'bg-red-500' : 'bg-gray-300'} rounded-full`}></div>
-                        <div className={`w-3 h-3 ${step.status?.approved ? 'bg-green-500' : 'bg-gray-300'} rounded-full`}></div>
-                      </div>
-                    </div>
-                  );
-                }) ?? [
-                  // Fallback if no career progression data
-                  { position: 'To C/E', status: { recommend: false, advance: false, demote: true, approved: false } },
-                  { position: 'To 2/E', date: '22 Jan 2017', status: { recommend: true, advance: true, demote: false, approved: true } },
-                  { position: 'To 3/E', date: '12 Dec 2014', status: { recommend: true, advance: true, demote: false, approved: true } }
-                ].map((step, index) => {
-                  const testId = step.position.toLowerCase().replace(/[\s\/]/g, '-');
-                  return (
-                    <div key={index} className="flex items-center justify-between" data-testid={`promotion-${testId}`}>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm font-medium">{step.position}</span>
-                        {step.date && <span className="text-xs text-gray-500">{step.date}</span>}
-                      </div>
-                      <div className="flex items-center space-x-2" data-testid={`${testId}-status-indicators`}>
-                        <div className={`w-3 h-3 ${step.status?.recommend ? 'bg-green-500' : 'bg-gray-300'} rounded-full`}></div>
-                        <div className={`w-3 h-3 ${step.status?.advance ? 'bg-green-500' : 'bg-gray-300'} rounded-full`}></div>
-                        <div className={`w-3 h-3 ${step.status?.demote ? 'bg-red-500' : 'bg-gray-300'} rounded-full`}></div>
-                        <div className={`w-3 h-3 ${step.status?.approved ? 'bg-green-500' : 'bg-gray-300'} rounded-full`}></div>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                ) : (
+                  <div className="text-center text-gray-500 py-8">
+                    No compliance data available
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          {/* MIDDLE COLUMN - Status, Experience, Ship Types, Timeline */}
+          {/* MIDDLE COLUMN - Experience, Rank, Ship Types */}
           <div className="space-y-6">
-            {/* Status Overview */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-status">
-              <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Status</h3>
-              <div className="space-y-3">
-                <div className="bg-orange-500 text-white p-3 rounded text-center" data-testid="status-badge">
-                  <div className="text-sm">{statusData?.status || 'On Board'}</div>
-                </div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Vessel:</span>
-                    <span className="font-medium" data-testid="text-vessel">{statusData?.vessel || crewMember?.presentVessel || 'MT Sail One'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Joined:</span>
-                    <span data-testid="text-joined">{statusData?.joinedDate || '15 Mar 2022'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Sailing Due:</span>
-                    <span data-testid="text-sailing-due">{statusData?.sailingDue || '15 Jul 2022'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Present Assignment:</span>
-                    <span data-testid="text-assignment">{statusData?.presentAssignment || 'Chandigarh'}</span>
-                  </div>
-                  <div className="text-xs text-gray-500 mt-3">
-                    <div>Emergency Contact Name, Relation, Ph:</div>
-                    <div className="text-red-600" data-testid="text-emergency-contact">
-                      {statusData?.emergencyContact ? 
-                        `${statusData.emergencyContact.name}, ${statusData.emergencyContact.relation}, ${statusData.emergencyContact.phone}` : 
-                        'Mira Kumari, Wife, +91 987 555 8553'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Experience Metrics */}
             <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-experience">
               <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Experience</h3>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="grid grid-cols-5 gap-4">
                 <div className="text-center">
-                  <div className="text-xs text-gray-500 mb-1">Company</div>
+                  <div className="text-xs text-gray-500 mb-1">Company (Yrs)</div>
                   <div className="bg-blue-500 h-16 w-full rounded mb-1 flex items-end justify-center">
                     <div className="bg-blue-600 w-full h-3/4 rounded-b flex items-center justify-center text-white text-xs font-bold">
-                      {experienceData?.company || 1.2}
+                      {experienceData?.company ?? '—'}
                     </div>
                   </div>
-                  <div className="text-xs text-gray-600" data-testid="text-company-years">{experienceData?.company || 1.2}</div>
+                  <div className="text-xs text-gray-600" data-testid="text-company-years">{experienceData?.company ?? '—'}</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xs text-gray-500 mb-1">Rank</div>
+                  <div className="text-xs text-gray-500 mb-1">Rank (Yrs)</div>
                   <div className="bg-blue-500 h-16 w-full rounded mb-1 flex items-end justify-center">
                     <div className="bg-blue-600 w-full h-4/5 rounded-b flex items-center justify-center text-white text-xs font-bold">
-                      {experienceData?.rank || 1.9}
+                      {experienceData?.rank ?? '—'}
                     </div>
                   </div>
-                  <div className="text-xs text-gray-600" data-testid="text-rank-years">{experienceData?.rank || 1.9}</div>
+                  <div className="text-xs text-gray-600" data-testid="text-rank-years">{experienceData?.rank ?? '—'}</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xs text-gray-500 mb-1">Tankers</div>
+                  <div className="text-xs text-gray-500 mb-1">Tankers (Yrs)</div>
                   <div className="bg-blue-500 h-16 w-full rounded mb-1 flex items-end justify-center">
                     <div className="bg-blue-600 w-full h-full rounded flex items-center justify-center text-white text-xs font-bold">
-                      {experienceData?.tankers || 2.5}
+                      {experienceData?.tankers ?? '—'}
                     </div>
                   </div>
-                  <div className="text-xs text-gray-600" data-testid="text-tankers-years">{experienceData?.tankers || 2.5}</div>
+                  <div className="text-xs text-gray-600" data-testid="text-tankers-years">{experienceData?.tankers ?? '—'}</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xs text-gray-500 mb-1">OCW</div>
+                  <div className="text-xs text-gray-500 mb-1">OOW (Yrs)</div>
                   <div className="bg-blue-500 h-16 w-full rounded mb-1 flex items-end justify-center">
                     <div className="bg-blue-600 w-full h-full rounded flex items-center justify-center text-white text-xs font-bold">
-                      {experienceData?.ocw || 3.6}
+                      {experienceData?.ocw ?? '—'}
                     </div>
                   </div>
-                  <div className="text-xs text-gray-600" data-testid="text-ocw-years">{experienceData?.ocw || 3.6}</div>
+                  <div className="text-xs text-gray-600" data-testid="text-ocw-years">{experienceData?.ocw ?? '—'}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-xs text-gray-500 mb-1">Endorsements</div>
                   <div className="bg-gray-300 h-16 w-full rounded mb-1 flex items-end justify-center">
                     <div className="bg-gray-400 w-full h-1/4 rounded-b flex items-center justify-center text-white text-xs font-bold">
-                      {experienceData?.endorsements || 'OGC'}
+                      {experienceData?.endorsements ?? '—'}
                     </div>
                   </div>
-                  <div className="text-xs text-gray-600" data-testid="text-endorsements-count">{experienceData?.endorsements || 'OGC'}</div>
+                  <div className="text-xs text-gray-600" data-testid="text-endorsements-count">{experienceData?.endorsements ?? '—'}</div>
                 </div>
+              </div>
+            </div>
+
+            {/* Rank Experience */}
+            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-rank">
+              <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Rank</h3>
+              <div className="space-y-3">
+                <div className="space-y-1" data-testid="rank-c-e">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">C/E</span>
+                    <span className="font-medium">{careerProgressionData?.chiefEngineer !== undefined ? careerProgressionData.chiefEngineer.toFixed(1) : '—'}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-blue-500 h-2 rounded-full" style={{ 
+                      width: `${careerProgressionData?.chiefEngineer ? Math.min(careerProgressionData.chiefEngineer * 16.67, 100) : 0}%` 
+                    }}></div>
+                  </div>
+                </div>
+                <div className="space-y-1" data-testid="rank-2-e">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">2/E</span>
+                    <span className="font-medium">{careerProgressionData?.secondEngineer !== undefined ? careerProgressionData.secondEngineer.toFixed(1) : '—'}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-blue-500 h-2 rounded-full" style={{ 
+                      width: `${careerProgressionData?.secondEngineer ? Math.min(careerProgressionData.secondEngineer * 16.67, 100) : 0}%` 
+                    }}></div>
+                  </div>
+                </div>
+                <div className="space-y-1" data-testid="rank-3-e">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">3/E</span>
+                    <span className="font-medium">{careerProgressionData?.thirdEngineer !== undefined ? careerProgressionData.thirdEngineer.toFixed(1) : '—'}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-blue-500 h-2 rounded-full" style={{ 
+                      width: `${careerProgressionData?.thirdEngineer ? Math.min(careerProgressionData.thirdEngineer * 16.67, 100) : 0}%` 
+                    }}></div>
+                  </div>
+                </div>
+                <div className="space-y-1" data-testid="rank-4-e">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">4/E</span>
+                    <span className="font-medium">{careerProgressionData?.fourthEngineer !== undefined ? careerProgressionData.fourthEngineer.toFixed(1) : '—'}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-blue-500 h-2 rounded-full" style={{ 
+                      width: `${careerProgressionData?.fourthEngineer ? Math.min(careerProgressionData.fourthEngineer * 16.67, 100) : 0}%` 
+                    }}></div>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 flex justify-between text-xs text-gray-500">
+                <span>0</span>
+                <span>2</span>
+                <span>4</span>
+                <span>6</span>
               </div>
             </div>
 
             {/* Ship Type Experience */}
             <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-ship-types">
-              <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Ship Type Experience</h3>
-              <div className="space-y-2">
-                <div className="space-y-2" data-testid="ship-type-oil-tanker">
+              <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Ship Type</h3>
+              <div className="space-y-3">
+                <div className="space-y-1" data-testid="ship-type-oil-tanker">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Oil Tkr</span>
-                    <span className="font-medium" data-testid="text-oil-tanker-years">{(shipTypesData?.oilTanker ?? 4.2).toFixed(1)} years</span>
+                    <span className="font-medium" data-testid="text-oil-tanker-years">
+                      {shipTypesData?.oilTanker !== undefined ? shipTypesData.oilTanker.toFixed(0) : '—'}
+                    </span>
                   </div>
-                  <Progress value={(shipTypesData?.oilTanker ?? 4.2) * 20} className="h-2" data-testid="progress-oil-tanker" />
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-blue-500 h-2 rounded-full" style={{ 
+                      width: `${shipTypesData?.oilTanker ? Math.min(shipTypesData.oilTanker * 16.67, 100) : 0}%` 
+                    }}></div>
+                  </div>
                 </div>
-                <div className="space-y-2" data-testid="ship-type-chemical-tanker">
+                <div className="space-y-1" data-testid="ship-type-chemical-tanker">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Ch. Tkr</span>
-                    <span className="font-medium" data-testid="text-chemical-tanker-years">{(shipTypesData?.chemicalTanker ?? 5.1).toFixed(1)} years</span>
+                    <span className="text-gray-600">Ch Tkr</span>
+                    <span className="font-medium" data-testid="text-chemical-tanker-years">
+                      {shipTypesData?.chemicalTanker !== undefined ? shipTypesData.chemicalTanker.toFixed(0) : '—'}
+                    </span>
                   </div>
-                  <Progress value={(shipTypesData?.chemicalTanker ?? 5.1) * 20} className="h-2" data-testid="progress-chemical-tanker" />
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-blue-500 h-2 rounded-full" style={{ 
+                      width: `${shipTypesData?.chemicalTanker ? Math.min(shipTypesData.chemicalTanker * 16.67, 100) : 0}%` 
+                    }}></div>
+                  </div>
                 </div>
-                <div className="space-y-2" data-testid="ship-type-gas-tanker">
+                <div className="space-y-1" data-testid="ship-type-gas-tanker">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Gas Tkr</span>
-                    <span className="font-medium" data-testid="text-gas-tanker-years">{(shipTypesData?.gasTanker ?? 3.2).toFixed(1)} years</span>
+                    <span className="font-medium" data-testid="text-gas-tanker-years">
+                      {shipTypesData?.gasTanker !== undefined ? shipTypesData.gasTanker.toFixed(0) : '—'}
+                    </span>
                   </div>
-                  <Progress value={(shipTypesData?.gasTanker ?? 3.2) * 20} className="h-2" data-testid="progress-gas-tanker" />
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-blue-500 h-2 rounded-full" style={{ 
+                      width: `${shipTypesData?.gasTanker ? Math.min(shipTypesData.gasTanker * 16.67, 100) : 0}%` 
+                    }}></div>
+                  </div>
                 </div>
-                <div className="space-y-2" data-testid="ship-type-bulk">
+                <div className="space-y-1" data-testid="ship-type-bulk">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Bulk</span>
-                    <span className="font-medium" data-testid="text-bulk-years">{(shipTypesData?.bulk ?? 1.1).toFixed(1)} years</span>
+                    <span className="font-medium" data-testid="text-bulk-years">
+                      {shipTypesData?.bulk !== undefined ? shipTypesData.bulk.toFixed(0) : '—'}
+                    </span>
                   </div>
-                  <Progress value={(shipTypesData?.bulk ?? 1.1) * 20} className="h-2" data-testid="progress-bulk" />
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-blue-500 h-2 rounded-full" style={{ 
+                      width: `${shipTypesData?.bulk ? Math.min(shipTypesData.bulk * 16.67, 100) : 0}%` 
+                    }}></div>
+                  </div>
                 </div>
               </div>
+              <div className="mt-3 flex justify-between text-xs text-gray-500">
+                <span>0</span>
+                <span>2</span>
+                <span>4</span>
+                <span>6</span>
+              </div>
             </div>
+          </div>
 
+          {/* RIGHT COLUMN - Timeline, Appraisals, Promotion */}
+          <div className="space-y-6">
             {/* Timeline */}
             <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-timeline">
               <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Timeline</h3>
@@ -1000,72 +1042,129 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                   <span data-testid="month-may">May</span>
                   <span data-testid="month-jun">Jun</span>
                 </div>
-                {serviceTimelineData?.map((assignment, index) => {
-                  const width = ((assignment.endMonth - assignment.startMonth + 1) / 6) * 100;
-                  const left = ((assignment.startMonth - 1) / 6) * 100;
-                  const bgColor = assignment.type === 'active' ? 'bg-blue-400' : 'bg-gray-400';
-                  return (
-                    <div key={index} className={`${bgColor} h-4 rounded relative`} 
-                         style={{ width: `${width}%`, marginLeft: `${left}%` }}
-                         data-testid={`timeline-bar-${assignment.vessel.toLowerCase().replace(/\s+/g, '-')}`}>
-                      <div className="absolute left-2 top-1 text-xs text-white font-medium"
-                           data-testid={`vessel-label-${assignment.vessel.toLowerCase().replace(/\s+/g, '-')}`}>
-                        {assignment.vessel}
+                
+                {serviceTimelineData && serviceTimelineData.length > 0 ? (
+                  <div className="space-y-2">
+                    {serviceTimelineData.map((assignment, index) => (
+                      <div key={index} className="relative h-8">
+                        <div 
+                          className={`h-4 rounded relative ${assignment.status === 'active' ? 'bg-red-500' : 'bg-white border-2 border-gray-400'}`}
+                          style={{ 
+                            width: `${assignment.duration}%`, 
+                            marginLeft: `${assignment.startPosition}%`, 
+                            marginBottom: '4px' 
+                          }}
+                          data-testid={`timeline-bar-${assignment.vessel.toLowerCase().replace(/\s+/g, '-')}`}>
+                          <div className={`absolute left-2 top-0 text-xs font-medium ${assignment.status === 'active' ? 'text-white' : 'text-gray-600'}`}
+                               data-testid={`vessel-label-${assignment.vessel.toLowerCase().replace(/\s+/g, '-')}`}>
+                            {assignment.vessel}
+                          </div>
+                        </div>
+                        
+                        {assignment.status === 'active' && (
+                          <div className="absolute right-0 top-0 flex flex-col space-y-1">
+                            <div className="bg-green-500 text-white px-2 py-1 rounded text-xs font-medium">App'd</div>
+                            <div className="bg-yellow-500 text-white px-2 py-1 rounded text-xs font-medium">Req'd</div>
+                          </div>
+                        )}
                       </div>
+                    ))}
+                    
+                    <div className="flex items-center gap-4 text-xs mt-4">
+                      {serviceTimelineData.map((assignment, index) => (
+                        <div key={index} className="flex items-center gap-1">
+                          <div className={`w-3 h-3 rounded ${assignment.status === 'active' ? 'bg-red-500' : 'border-2 border-gray-400 bg-white'}`}></div>
+                          <span className="text-gray-600">{assignment.vessel}</span>
+                        </div>
+                      ))}
                     </div>
-                  );
-                }) ?? [
-                  <div key="default" className="bg-blue-400 h-4 rounded relative" data-testid="timeline-bar">
-                    <div className="absolute left-2 top-1 text-xs text-white font-medium">Pacific Explorer</div>
                   </div>
-                ]}
-                <div className="flex items-center gap-2 text-xs">
-                  {serviceTimelineData?.map((assignment, index) => (
-                    <div key={index} className="flex items-center gap-1" data-testid={`legend-${assignment.vessel.toLowerCase().replace(/\s+/g, '-')}`}>
-                      <div className={`w-3 h-3 rounded ${assignment.type === 'active' ? 'bg-blue-400' : 'bg-gray-400'}`}></div>
-                      <span className="text-gray-600">{assignment.vessel}</span>
-                    </div>
-                  )) ?? [
-                    <div key="pacific" className="flex items-center gap-1">
-                      <div className="w-3 h-3 bg-blue-400 rounded"></div>
-                      <span className="text-gray-600">Pacific Explorer</span>
-                    </div>,
-                    <div key="atlantic" className="flex items-center gap-1 ml-4">
-                      <div className="w-3 h-3 bg-orange-400 rounded"></div>
-                      <span className="text-gray-600">Atlantic Explorer</span>
-                    </div>
-                  ]}
-                </div>
+                ) : (
+                  <div className="text-center text-gray-500 py-8">
+                    No timeline data available
+                  </div>
+                )}
               </div>
             </div>
-          </div>
 
-          {/* RIGHT COLUMN - Appraisals */}
-          <div className="space-y-6">
+            {/* Appraisals */}
             <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-appraisals">
               <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Appraisals</h3>
-              <div className="grid grid-cols-2 gap-4 text-xs text-center">
-                <div>
-                  <div className="font-medium text-lg" data-testid="score-current">
-                    {appraisalsData && appraisalsData.length > 0 ? appraisalsData[appraisalsData.length - 1].score : 34}
-                  </div>
-                  <div className="text-gray-600">Current Score</div>
-                </div>
-                <div>
-                  <div className="font-medium text-lg" data-testid="score-average">
-                    {appraisalsData && appraisalsData.length > 0 
-                      ? Math.round(appraisalsData.reduce((sum, point) => sum + point.score, 0) / appraisalsData.length)
-                      : 28}
-                  </div>
-                  <div className="text-gray-600">Average</div>
-                </div>
-              </div>
               
-              {/* Simple appraisal chart visualization */}
-              <div className="mt-4 h-32 relative" data-testid="appraisals-chart">
-                <div className="absolute inset-0 flex items-end justify-center">
-                  <div className="text-xs text-gray-400">Performance Trend</div>
+              {appraisalsData && appraisalsData.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-2 gap-4 text-center mb-4">
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">Current</div>
+                      <div className="font-medium text-2xl" data-testid="score-current">
+                        {appraisalsData[appraisalsData.length - 1].score}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">Average</div>
+                      <div className="font-medium text-2xl" data-testid="score-average">
+                        {Math.round(appraisalsData.reduce((sum, point) => sum + point.score, 0) / appraisalsData.length)}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Simple trend visualization */}
+                  <div className="h-16 flex items-end justify-between gap-1 mb-2">
+                    {appraisalsData.map((point, index) => (
+                      <div key={index} className="flex-1 flex flex-col items-center">
+                        <div 
+                          className="bg-blue-500 w-full rounded-t"
+                          style={{ height: `${(point.score / 40) * 100}%` }}
+                          title={`${point.date}: ${point.score}`}
+                        ></div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="text-xs text-gray-500 text-center">
+                    Trend over {appraisalsData.length} appraisal{appraisalsData.length !== 1 ? 's' : ''}
+                  </div>
+                </>
+              ) : (
+                <div className="text-center text-gray-500 py-8">
+                  No appraisal data available
                 </div>
+              )}
+            </div>
+
+            {/* Promotion */}
+            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-promotion">
+              <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }} data-testid="text-promotion-title">Promotion</h3>
+              <div className="space-y-4">
+                <div className="text-xs text-gray-500 grid grid-cols-4 gap-2 mb-2" data-testid="promotion-headers">
+                  <span>Recommended</span>
+                  <span>Seaborne</span>
+                  <span>Checklist</span>
+                  <span>Approved</span>
+                </div>
+                {careerProgressionData && careerProgressionData.length > 0 ? (
+                  careerProgressionData.map((step, index) => {
+                    const testId = step.position.toLowerCase().replace(/[\s\/]/g, '-');
+                    return (
+                      <div key={index} className="flex items-center justify-between" data-testid={`promotion-${testId}`}>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm font-medium">{step.position}</span>
+                          {step.date && <span className="text-xs text-gray-500">{step.date}</span>}
+                        </div>
+                        <div className="flex items-center space-x-2" data-testid={`${testId}-status-indicators`}>
+                          <div className={`w-3 h-3 ${step.status?.recommend ? 'bg-green-500' : 'bg-gray-300'} rounded-full`}></div>
+                          <div className={`w-3 h-3 ${step.status?.advance ? 'bg-yellow-500' : 'bg-gray-300'} rounded-full`}></div>
+                          <div className={`w-3 h-3 ${step.status?.demote ? 'bg-yellow-500' : 'bg-gray-300'} rounded-full`}></div>
+                          <div className={`w-3 h-3 ${step.status?.approved ? 'bg-red-500' : 'bg-gray-300'} rounded-full`}></div>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-center text-gray-500 py-8">
+                    No promotion data available
+                  </div>
+                )}
               </div>
             </div>
           </div>
