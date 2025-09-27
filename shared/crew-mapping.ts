@@ -209,6 +209,29 @@ const JSON_FIELDS = [
 ] as const;
 
 /**
+ * Helper function to calculate age from date of birth
+ */
+function calculateAge(dateOfBirth: string | null): string {
+  if (!dateOfBirth) return '';
+  
+  const birthDate = new Date(dateOfBirth);
+  const today = new Date();
+  
+  // Check if valid date
+  if (isNaN(birthDate.getTime())) return '';
+  
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  
+  // Adjust if birthday hasn't occurred this year yet
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  
+  return age >= 0 ? age.toString() : '';
+}
+
+/**
  * Convert database CrewMember to frontend DTO
  */
 export function fromStorageCrew(dbCrew: CrewMember): CrewMemberDTO {
@@ -221,6 +244,27 @@ export function fromStorageCrew(dbCrew: CrewMember): CrewMemberDTO {
       // Keep both for compatibility unless specifically removing
     }
   });
+  
+  // Calculate age if missing but dateOfBirth exists
+  if (!dto.age && !dto.ageInYears && dto.dateOfBirth) {
+    const calculatedAge = calculateAge(dto.dateOfBirth);
+    dto.age = calculatedAge;
+    dto.ageInYears = calculatedAge;
+  }
+  
+  // Handle vessel field mapping - prefer old 'vessel' field if 'presentVessel' is empty
+  if (!dto.vessel && dto.presentVessel) {
+    dto.vessel = dto.presentVessel;
+  } else if (!dto.presentVessel && dto.vessel) {
+    dto.presentVessel = dto.vessel;
+  }
+  
+  // Handle rank field mapping - prefer 'presentRank' if available
+  if (!dto.rank && dto.presentRank) {
+    dto.rank = dto.presentRank;
+  } else if (!dto.presentRank && dto.rank) {
+    dto.presentRank = dto.rank;
+  }
   
   // Parse JSON fields
   JSON_FIELDS.forEach(field => {
