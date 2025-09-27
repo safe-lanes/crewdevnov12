@@ -36,14 +36,94 @@ export const availableRanks = mysqlTable("available_ranks", {
 
 export const crewMembers = mysqlTable("crew_members", {
   id: text("id").primaryKey(),
+  
+  // Basic Personal Information
+  empNo: text("emp_no"), // Employee Number
   firstName: text("first_name").notNull(),
   middleName: text("middle_name"),
-  lastName: text("last_name"),
-  rank: text("rank").notNull(),
+  familyName: text("family_name"), // Changed from lastName to match form
+  dateOfBirth: text("date_of_birth"), // DOB
+  age: text("age"), // Age in years
   nationality: text("nationality").notNull(),
-  vessel: text("vessel").notNull(),
+  
+  // Rank and Employment
+  presentRank: text("present_rank").notNull(), // Changed from rank to match form
+  rankAppliedFor: text("rank_applied_for"),
+  employeeId: text("employee_id"), // From form
+  
+  // Vessel Information
+  presentVessel: text("present_vessel").notNull(), // Changed from vessel
   vesselType: text("vessel_type").notNull(),
-  signOnDate: text("sign_on_date").notNull(),
+  lastVessel: text("last_vessel"),
+  
+  // Contract and Status
+  status: text("status"), // On Leave, Available, etc.
+  joiningDate: text("joining_date"), // Changed from signOnDate
+  signOnDate: text("sign_on_date"), // Keep both for backward compatibility
+  signOffDate: text("sign_off_date"),
+  contractPeriod: text("contract_period"),
+  reliefDue: text("relief_due"),
+  reason: text("reason"), // For sign-off reason
+  availability: text("availability"),
+  
+  // Contact Information
+  email: text("email"),
+  mobile: text("mobile"),
+  contactLandline: text("contact_landline"),
+  
+  // Address Information
+  countryOfResidence: text("country_of_residence"),
+  nearestAirport: text("nearest_airport"),
+  residentialAddressLine1: text("residential_address_line1"),
+  residentialAddressLine2: text("residential_address_line2"),
+  
+  // Physical Information
+  placeOfBirthCity: text("place_of_birth_city"),
+  placeOfBirthCountry: text("place_of_birth_country"),
+  heightCm: text("height_cm"),
+  weightKg: text("weight_kg"),
+  bmi: text("bmi"),
+  
+  // Language and Personal Details
+  nativeLanguage: text("native_language"),
+  foreignLanguages: text("foreign_languages"),
+  englishProficiency: text("english_proficiency"),
+  maritalStatus: text("marital_status"),
+  numberOfDependentChildren: text("number_of_dependent_children"),
+  
+  // Family Information
+  fatherName: text("father_name"),
+  motherName: text("mother_name"),
+  spouseFirstName: text("spouse_first_name"),
+  spouseMiddleName: text("spouse_middle_name"),
+  spouseFamilyName: text("spouse_family_name"),
+  spouseDateOfBirth: text("spouse_date_of_birth"),
+  
+  // Next of Kin Information
+  nokFirstName: text("nok_first_name"),
+  nokMiddleName: text("nok_middle_name"),
+  nokFamilyName: text("nok_family_name"),
+  nokTelephone: text("nok_telephone"),
+  nokEmail: text("nok_email"),
+  nokAddress: text("nok_address"),
+  nokRelationship: text("nok_relationship"),
+  
+  // Additional Information
+  manningAgent: text("manning_agent"),
+  vesselTypes: text("vessel_types"), // JSON array of vessel types
+  
+  // Complex Data as JSON
+  documents: text("documents"), // JSON array of documents
+  visas: text("visas"), // JSON array of visas
+  education: text("education"), // JSON array of education records
+  licenses: text("licenses"), // JSON array of licenses
+  trainingCourses: text("training_courses"), // JSON array of training courses
+  currentCompanySeaService: text("current_company_sea_service"), // JSON array
+  externalSeaService: text("external_sea_service"), // JSON array
+  preJoiningMedicals: text("pre_joining_medicals"), // JSON array
+  doctorVisits: text("doctor_visits"), // JSON array
+  children: text("children"), // JSON array of children information
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -275,14 +355,92 @@ export const updateAvailableRankSchema = createInsertSchema(availableRanks).pick
 
 export const insertCrewMemberSchema = createInsertSchema(crewMembers).pick({
   id: true,
+  // Basic Personal Information
+  empNo: true,
   firstName: true,
   middleName: true,
-  lastName: true,
-  rank: true,
+  familyName: true, // Changed from lastName
+  dateOfBirth: true,
+  age: true,
   nationality: true,
-  vessel: true,
+  
+  // Rank and Employment
+  presentRank: true, // Changed from rank
+  rankAppliedFor: true,
+  employeeId: true,
+  
+  // Vessel Information
+  presentVessel: true, // Changed from vessel
   vesselType: true,
-  signOnDate: true,
+  lastVessel: true,
+  
+  // Contract and Status
+  status: true,
+  joiningDate: true,
+  signOnDate: true, // Keep for backward compatibility
+  signOffDate: true,
+  contractPeriod: true,
+  reliefDue: true,
+  reason: true,
+  availability: true,
+  
+  // Contact Information
+  email: true,
+  mobile: true,
+  contactLandline: true,
+  
+  // Address Information
+  countryOfResidence: true,
+  nearestAirport: true,
+  residentialAddressLine1: true,
+  residentialAddressLine2: true,
+  
+  // Physical Information
+  placeOfBirthCity: true,
+  placeOfBirthCountry: true,
+  heightCm: true,
+  weightKg: true,
+  bmi: true,
+  
+  // Language and Personal Details
+  nativeLanguage: true,
+  foreignLanguages: true,
+  englishProficiency: true,
+  maritalStatus: true,
+  numberOfDependentChildren: true,
+  
+  // Family Information
+  fatherName: true,
+  motherName: true,
+  spouseFirstName: true,
+  spouseMiddleName: true,
+  spouseFamilyName: true,
+  spouseDateOfBirth: true,
+  
+  // Next of Kin Information
+  nokFirstName: true,
+  nokMiddleName: true,
+  nokFamilyName: true,
+  nokTelephone: true,
+  nokEmail: true,
+  nokAddress: true,
+  nokRelationship: true,
+  
+  // Additional Information
+  manningAgent: true,
+  vesselTypes: true,
+  
+  // Complex Data as JSON
+  documents: true,
+  visas: true,
+  education: true,
+  licenses: true,
+  trainingCourses: true,
+  currentCompanySeaService: true,
+  externalSeaService: true,
+  preJoiningMedicals: true,
+  doctorVisits: true,
+  children: true,
 });
 
 export const insertAppraisalResultSchema = createInsertSchema(appraisalResults).pick({
