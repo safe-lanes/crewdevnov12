@@ -247,14 +247,14 @@ export function toStorageCrew(dto: Partial<CrewMemberDTO>): Partial<CrewMember> 
   // Copy all fields that don't need mapping first
   Object.keys(dto).forEach(key => {
     if (!Object.keys(FIELD_MAPPINGS).includes(key)) {
-      dbData[key] = dto[key];
+      dbData[key] = (dto as any)[key];
     }
   });
   
   // Apply field mappings (Frontend -> DB) - replace frontend names with DB names
   Object.entries(FIELD_MAPPINGS).forEach(([frontendField, dbField]) => {
     if (frontendField in dto) {
-      dbData[dbField] = dto[frontendField];
+      dbData[dbField] = (dto as any)[frontendField];
       // Remove the frontend field name to avoid duplicates
       delete dbData[frontendField];
     }
@@ -282,10 +282,10 @@ export function toStorageCrew(dto: Partial<CrewMemberDTO>): Partial<CrewMember> 
 export function normalizeCrewMemberForTable(crew: CrewMember): CrewMemberDTO {
   const normalized = fromStorageCrew(crew);
   
-  // Ensure table-expected fields are available
+  // Ensure table-expected fields are available (match table column field names)
   normalized.dob = normalized.dob || normalized.dateOfBirth;
-  normalized.ageInYears = normalized.ageInYears || normalized.age;
-  normalized.rank = normalized.rank || normalized.presentRank;
+  normalized.age = normalized.age || normalized.ageInYears;  // Table expects 'age'
+  normalized.presentRank = normalized.presentRank || normalized.rank;  // Table expects 'presentRank'
   normalized.vessel = normalized.vessel || normalized.presentVessel;
   normalized.familyName = normalized.familyName || normalized.lastName;
   
