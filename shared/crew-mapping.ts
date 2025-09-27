@@ -239,15 +239,24 @@ export function fromStorageCrew(dbCrew: CrewMember): CrewMemberDTO {
 
 /**
  * Convert frontend DTO to database CrewMember format
+ * Creates a clean object with only database field names to avoid validation issues
  */
 export function toStorageCrew(dto: Partial<CrewMemberDTO>): Partial<CrewMember> {
-  const dbData: any = { ...dto };
+  const dbData: any = {};
   
-  // Apply field mappings (Frontend -> DB)
+  // Copy all fields that don't need mapping first
+  Object.keys(dto).forEach(key => {
+    if (!Object.keys(FIELD_MAPPINGS).includes(key)) {
+      dbData[key] = dto[key];
+    }
+  });
+  
+  // Apply field mappings (Frontend -> DB) - replace frontend names with DB names
   Object.entries(FIELD_MAPPINGS).forEach(([frontendField, dbField]) => {
-    if (frontendField in dbData) {
-      dbData[dbField] = dbData[frontendField];
-      // Keep both for compatibility unless specifically removing
+    if (frontendField in dto) {
+      dbData[dbField] = dto[frontendField];
+      // Remove the frontend field name to avoid duplicates
+      delete dbData[frontendField];
     }
   });
   
