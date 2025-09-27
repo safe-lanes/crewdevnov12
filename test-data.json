@@ -527,7 +527,7 @@
         "age": null,
         "presentRank": "",
         "rankAppliedFor": "Master",
-        "employeeId": null,
+        "employeeId": "A000021",
         "presentVessel": "",
         "lastVessel": null,
         "status": "Active",
@@ -594,7 +594,8 @@
         "vesselType": "LPG Tanker",
         "signOnDate": "01-Jan-2025",
         "createdAt": "2025-01-01T00:00:00.000Z",
-        "updatedAt": "2025-01-01T00:00:00.000Z"
+        "updatedAt": "2025-01-01T00:00:00.000Z",
+        "employeeId": "A000022"
       }
     ],
     [
@@ -610,7 +611,8 @@
         "vesselType": "Container",
         "signOnDate": "01-Feb-2025",
         "createdAt": "2025-02-01T00:00:00.000Z",
-        "updatedAt": "2025-02-01T00:00:00.000Z"
+        "updatedAt": "2025-02-01T00:00:00.000Z",
+        "employeeId": "A000023"
       }
     ],
     [
@@ -626,7 +628,8 @@
         "vesselType": "Chemical Tanker",
         "signOnDate": "15-Mar-2025",
         "createdAt": "2025-03-15T00:00:00.000Z",
-        "updatedAt": "2025-03-15T00:00:00.000Z"
+        "updatedAt": "2025-03-15T00:00:00.000Z",
+        "employeeId": "A000024"
       }
     ],
     [
@@ -701,21 +704,6 @@
         "employeeId": "A000012",
         "presentVessel": "MV Complex",
         "vesselType": "Tanker",
-        "status": "Available"
-      }
-    ],
-    [
-      null,
-      {
-        "firstName": "Allocation",
-        "familyName": "Fix",
-        "dateOfBirth": "1990-01-01",
-        "age": "34",
-        "nationality": "Test",
-        "presentRank": "Officer",
-        "employeeId": "A000015",
-        "presentVessel": "MV Allocation",
-        "vesselType": "Container",
         "status": "Available"
       }
     ],
@@ -984,5 +972,5 @@
   "currentRankGroupId": 5,
   "currentAvailableRankId": 12,
   "currentAppraisalResultId": 5,
-  "currentCrewIdCounter": 21
+  "currentCrewIdCounter": 25
 }

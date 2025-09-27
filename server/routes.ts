@@ -513,6 +513,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Retroactive crew ID assignment endpoint
+  app.post("/api/crew-members/assign-missing-ids", async (req, res) => {
+    try {
+      console.log("🔄 Starting retroactive crew ID assignment...");
+      
+      // Get all crew members
+      const allCrewMembers = await storage.getCrewMembers();
+      
+      // Find crew members without crew IDs (employeeId is null or empty)
+      const crewMembersNeedingIds = allCrewMembers.filter(member => 
+        !member.employeeId || member.employeeId === null || member.employeeId === ''
+      );
+      
+      console.log(`📊 Found ${crewMembersNeedingIds.length} crew members needing crew IDs`);
+      
+      if (crewMembersNeedingIds.length === 0) {
+        return res.json({ 
+          success: true, 
+          message: "No crew members need crew ID assignment",
+          assigned: []
+        });
+      }
+      
+      const assignments = [];
+      
+      // Assign crew IDs to each crew member needing one
+      for (const crewMember of crewMembersNeedingIds) {
+        try {
+          // Get next crew ID
+          const newCrewId = await storage.getNextCrewId();
+          
+          // Update the crew member with the new ID
+          await storage.updateCrewMember(crewMember.id, { employeeId: newCrewId });
+          
+          assignments.push({
+            id: crewMember.id,
+            name: `${crewMember.firstName} ${crewMember.familyName}`,
+            assignedId: newCrewId
+          });
+          
+          console.log(`✅ Assigned ${newCrewId} to ${crewMember.firstName} ${crewMember.familyName}`);
+        } catch (error) {
+          console.error(`❌ Failed to assign crew ID to ${crewMember.firstName} ${crewMember.familyName}:`, error);
+        }
+      }
+      
+      console.log(`🎉 Successfully assigned crew IDs to ${assignments.length} crew members`);
+      
+      res.json({ 
+        success: true,
+        message: `Successfully assigned crew IDs to ${assignments.length} crew members`,
+        assigned: assignments
+      });
+      
+    } catch (error) {
+      console.error("❌ Failed to assign missing crew IDs:", error);
+      res.status(500).json({ error: "Failed to assign missing crew IDs" });
+    }
+  });
+
   // Appraisal Results API routes
   app.get("/api/appraisals", async (req, res) => {
     try {
