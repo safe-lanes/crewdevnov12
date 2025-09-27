@@ -3603,7 +3603,8 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                   <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
                 </div>
                 <div className="space-y-6">
-                  {renderA41SeaService()}
+                  {renderE1CurrentCompanySeaService()}
+                  {renderE2ExternalSeaService()}
                 </div>
               </CardContent>
             </Card>
