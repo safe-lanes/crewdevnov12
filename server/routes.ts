@@ -437,6 +437,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PATCH route for partial updates (used by CrewInfoForm)
+  app.patch("/api/crew-members/:id", async (req, res) => {
+    try {
+      const id = req.params.id;
+      
+      // Check if this is form data from CrewInfoForm (comprehensive)
+      // or simple crew member data (basic fields only)
+      let mappedData;
+      if (req.body.documents || req.body.education || req.body.licenses || req.body.currentCompanySeaService) {
+        // This is comprehensive form data - use form mapping
+        mappedData = mapFormDataToStorage(req.body);
+      } else {
+        // This is basic crew member data - use direct storage mapping
+        mappedData = toStorageCrew(req.body);
+      }
+      
+      const result = insertCrewMemberSchema.partial().safeParse(mappedData);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid crew member data", details: result.error.issues });
+      }
+      const crewMember = await storage.updateCrewMember(id, result.data);
+      if (!crewMember) {
+        return res.status(404).json({ error: "Crew member not found" });
+      }
+      
+      // Return normalized data to frontend
+      const normalizedCrewMember = fromStorageCrew(crewMember);
+      res.json(normalizedCrewMember);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update crew member" });
+    }
+  });
+
   app.delete("/api/crew-members/:id", async (req, res) => {
     try {
       const id = req.params.id;
