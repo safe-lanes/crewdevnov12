@@ -3408,8 +3408,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <h1 className="text-sm sm:text-lg lg:text-xl font-bold truncate">
-              <span className="hidden sm:inline">Crew Information - </span>
-              {crewMember ? `${crewMember.firstName} ${crewMember.familyName}` : 'Crew Member'}
+              {crewMember ? `${crewMember.firstName} ${crewMember.familyName}, ${crewMember.presentRank || 'Crew Member'}` : 'Crew Member'}
             </h1>
           </div>
           <div className="flex gap-1 sm:gap-2">
