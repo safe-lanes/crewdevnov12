@@ -215,6 +215,8 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     enabled: isOpen,
   });
 
+  // Crew ID will be auto-assigned by the API during creation
+
   // Data mappings with proper nullish coalescing
   const statusData = dashboardData?.status;
   const experienceData = dashboardData?.experience;
@@ -469,6 +471,8 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     }
     return '';
   };
+
+  // Crew ID will be auto-assigned by the API during creation (no pre-fetching)
 
   // Update form data function with BMI auto-calculation
   const updateFormData = (field: keyof FormData, value: string) => {

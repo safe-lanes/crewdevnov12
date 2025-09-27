@@ -352,6 +352,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Crew Members API routes
+  app.get("/api/crew-members/next-crew-id", async (req, res) => {
+    try {
+      const nextCrewId = await storage.getNextCrewId();
+      res.json({ crewId: nextCrewId });
+    } catch (error) {
+      console.error("❌ Failed to generate next crew ID:", error);
+      res.status(500).json({ error: "Failed to generate next crew ID" });
+    }
+  });
+
   app.get("/api/crew-members", async (req, res) => {
     try {
       const crewMembers = await storage.getCrewMembers();
@@ -389,6 +399,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         // This is basic crew member data - use direct storage mapping
         mappedData = toStorageCrew(req.body);
+      }
+      
+      // Auto-assign crew ID if not provided (backwards compatibility)
+      if (!mappedData.employeeId) {
+        mappedData.employeeId = await storage.getNextCrewId();
       }
       
       const result = insertCrewMemberSchema.safeParse(mappedData);

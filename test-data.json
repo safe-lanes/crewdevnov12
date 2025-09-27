@@ -628,6 +628,111 @@
         "createdAt": "2025-03-15T00:00:00.000Z",
         "updatedAt": "2025-03-15T00:00:00.000Z"
       }
+    ],
+    [
+      "temp-1758974964473",
+      {
+        "id": "temp-1758974964473",
+        "firstName": "John",
+        "familyName": "Smith",
+        "age": "44",
+        "nationality": "USA",
+        "presentRank": "Chief Engineer",
+        "employeeId": "A000007",
+        "presentVessel": "MV Test Ship",
+        "vesselType": "Container Ship",
+        "status": "Available"
+      }
+    ],
+    [
+      "temp-1758975059435",
+      {
+        "id": "temp-1758975059435",
+        "firstName": "Alice",
+        "familyName": "Johnson",
+        "age": "39",
+        "nationality": "Canada",
+        "presentRank": "Second Officer",
+        "employeeId": "A000009",
+        "presentVessel": "MV Nordic",
+        "vesselType": "Tanker",
+        "status": "Available"
+      }
+    ],
+    [
+      "temp-1758975062489",
+      {
+        "id": "temp-1758975062489",
+        "firstName": "Bob",
+        "familyName": "Wilson",
+        "age": "34",
+        "nationality": "UK",
+        "presentRank": "Third Engineer",
+        "employeeId": "CUSTOM001",
+        "presentVessel": "MV Atlantic",
+        "vesselType": "Bulk Carrier",
+        "status": "Available"
+      }
+    ],
+    [
+      "temp-1758975225575",
+      {
+        "id": "temp-1758975225575",
+        "firstName": "Test",
+        "familyName": "Restore",
+        "age": "34",
+        "nationality": "Test",
+        "presentRank": "Officer",
+        "employeeId": "A000011",
+        "presentVessel": "MV Test",
+        "vesselType": "Container",
+        "status": "Available"
+      }
+    ],
+    [
+      "temp-1758975261981",
+      {
+        "id": "temp-1758975261981",
+        "firstName": "Comprehensive",
+        "familyName": "Test",
+        "age": "49",
+        "nationality": "Philippines",
+        "presentRank": "Captain",
+        "employeeId": "A000012",
+        "presentVessel": "MV Complex",
+        "vesselType": "Tanker",
+        "status": "Available"
+      }
+    ],
+    [
+      null,
+      {
+        "firstName": "Allocation",
+        "familyName": "Fix",
+        "dateOfBirth": "1990-01-01",
+        "age": "34",
+        "nationality": "Test",
+        "presentRank": "Officer",
+        "employeeId": "A000015",
+        "presentVessel": "MV Allocation",
+        "vesselType": "Container",
+        "status": "Available"
+      }
+    ],
+    [
+      null,
+      {
+        "firstName": "Final",
+        "familyName": "Test",
+        "dateOfBirth": "1990-01-01",
+        "age": "34",
+        "nationality": "Test",
+        "presentRank": "Officer",
+        "employeeId": "A000018",
+        "presentVessel": "MV Final",
+        "vesselType": "Container",
+        "status": "Available"
+      }
     ]
   ],
   "appraisalResults": [
@@ -878,5 +983,6 @@
   "currentFormId": 2,
   "currentRankGroupId": 5,
   "currentAvailableRankId": 12,
-  "currentAppraisalResultId": 5
+  "currentAppraisalResultId": 5,
+  "currentCrewIdCounter": 20
 }
