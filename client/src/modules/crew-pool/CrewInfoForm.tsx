@@ -1551,7 +1551,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
           <div>
             <Label className="text-xs text-gray-500 tracking-wide">Rank</Label>
             {isEditing ? (
-              <Select value={formData.rankAppliedFor} onValueChange={(value) => updateFormData('rankAppliedFor', value)}>
+              <Select value={formData.presentRank} onValueChange={(value) => updateFormData('presentRank', value)}>
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Select rank" />
                 </SelectTrigger>
@@ -1562,7 +1562,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                 </SelectContent>
               </Select>
             ) : (
-              <div className="mt-1 text-sm text-gray-900">{formData.rankAppliedFor}</div>
+              <div className="mt-1 text-sm text-gray-900">{formData.presentRank}</div>
             )}
           </div>
           
