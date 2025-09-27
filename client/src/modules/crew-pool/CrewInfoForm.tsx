@@ -1374,9 +1374,9 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             )}
           </div>
           
-          {/* Row 2: Employee ID (Auto Generated) | Rank / | Vessel Type */}
+          {/* Row 2: Crew ID (Auto Generated) | Rank / | Vessel Type */}
           <div>
-            <Label className="text-xs text-gray-500 tracking-wide">Employee ID (Auto Generated)</Label>
+            <Label className="text-xs text-gray-500 tracking-wide">Crew ID (Auto Generated)</Label>
             {isEditing ? (
               <Input
                 value={formData.employeeId}
