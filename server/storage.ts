@@ -81,6 +81,20 @@ export class MemStorage implements IStorage {
   private currentAppraisalResultId: number;
 
   constructor() {
+    this.users = new Map();
+    this.forms = new Map();
+    this.rankGroups = new Map();
+    this.availableRanks = new Map();
+    this.companyRanks = new Map();
+    this.crewMembers = new Map();
+    this.appraisalResults = new Map();
+    this.recruitmentCandidates = new Map();
+    this.currentUserId = 1;
+    this.currentFormId = 1;
+    this.currentRankGroupId = 1;
+    this.currentAvailableRankId = 1;
+    this.currentAppraisalResultId = 1;
+    
     this.initializeDefaultData();
 
     // Initialize with sample form data - showing only 1 rank group for configuration
@@ -122,14 +136,69 @@ export class MemStorage implements IStorage {
     // Initialize with sample crew member data
     this.crewMembers.set("2025-05-14", {
       id: "2025-05-14",
+      empNo: "EMP001",
       firstName: "James",
       middleName: "Michael",
-      lastName: "",
-      rank: "Master",
+      familyName: "Smith",
+      dateOfBirth: "1985-03-15",
+      age: "39",
       nationality: "British",
-      vessel: "MT Sail One",
+      presentRank: "Master",
+      rankAppliedFor: null,
+      employeeId: "EMP001",
+      presentVessel: "MT Sail One",
       vesselType: "Oil Tanker",
+      lastVessel: null,
+      status: "On Board",
+      joiningDate: "01-Feb-2025",
       signOnDate: "01-Feb-2025",
+      signOffDate: null,
+      contractPeriod: "6 months",
+      reliefDue: "01-Aug-2025",
+      reason: null,
+      availability: "On Board",
+      email: "james.smith@example.com",
+      mobile: "+44 7700 900123",
+      contactLandline: null,
+      countryOfResidence: "United Kingdom",
+      nearestAirport: "LHR",
+      residentialAddressLine1: null,
+      residentialAddressLine2: null,
+      placeOfBirthCity: "London",
+      placeOfBirthCountry: "United Kingdom",
+      heightCm: null,
+      weightKg: null,
+      bmi: null,
+      nativeLanguage: "English",
+      foreignLanguages: null,
+      englishProficiency: "Native",
+      maritalStatus: "Married",
+      numberOfDependentChildren: "2",
+      fatherName: null,
+      motherName: null,
+      spouseFirstName: null,
+      spouseMiddleName: null,
+      spouseFamilyName: null,
+      spouseDateOfBirth: null,
+      nokFirstName: null,
+      nokMiddleName: null,
+      nokFamilyName: null,
+      nokTelephone: null,
+      nokEmail: null,
+      nokAddress: null,
+      nokRelationship: null,
+      manningAgent: null,
+      vesselTypes: JSON.stringify(["Oil Tanker", "Chemical Tanker"]),
+      documents: null,
+      visas: null,
+      education: null,
+      licenses: null,
+      trainingCourses: null,
+      currentCompanySeaService: null,
+      externalSeaService: null,
+      preJoiningMedicals: null,
+      doctorVisits: null,
+      children: null,
       createdAt: new Date("2025-02-01"),
       updatedAt: new Date("2025-02-01")
     });

@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError } from "./storage";
 import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertDataMasterSchema, insertMasterDataEntrySchema } from "@shared/schema";
+import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew } from "@shared/crew-mapping";
 import { 
   isVesselMaster,
   filterVesselMasterData,
@@ -354,7 +355,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/crew-members", async (req, res) => {
     try {
       const crewMembers = await storage.getCrewMembers();
-      res.json(crewMembers);
+      // Normalize crew members for table/frontend consumption
+      const normalizedCrewMembers = crewMembers.map(normalizeCrewMemberForTable);
+      res.json(normalizedCrewMembers);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch crew members" });
     }
@@ -367,7 +370,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!crewMember) {
         return res.status(404).json({ error: "Crew member not found" });
       }
-      res.json(crewMember);
+      // Normalize crew member for frontend consumption
+      const normalizedCrewMember = fromStorageCrew(crewMember);
+      res.json(normalizedCrewMember);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch crew member" });
     }
@@ -375,12 +380,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/crew-members", async (req, res) => {
     try {
-      const result = insertCrewMemberSchema.safeParse(req.body);
+      // Check if this is form data from CrewInfoForm (comprehensive)
+      // or simple crew member data (basic fields only)
+      let mappedData;
+      if (req.body.documents || req.body.education || req.body.licenses || req.body.currentCompanySeaService) {
+        // This is comprehensive form data - use form mapping
+        mappedData = mapFormDataToStorage(req.body);
+      } else {
+        // This is basic crew member data - use direct storage mapping
+        mappedData = toStorageCrew(req.body);
+      }
+      
+      const result = insertCrewMemberSchema.safeParse(mappedData);
       if (!result.success) {
         return res.status(400).json({ error: "Invalid crew member data", details: result.error.issues });
       }
       const crewMember = await storage.createCrewMember(result.data);
-      res.status(201).json(crewMember);
+      
+      // Return normalized data to frontend
+      const normalizedCrewMember = fromStorageCrew(crewMember);
+      res.status(201).json(normalizedCrewMember);
     } catch (error) {
       res.status(500).json({ error: "Failed to create crew member" });
     }
@@ -389,7 +408,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/crew-members/:id", async (req, res) => {
     try {
       const id = req.params.id;
-      const result = insertCrewMemberSchema.partial().safeParse(req.body);
+      
+      // Check if this is form data from CrewInfoForm (comprehensive)
+      // or simple crew member data (basic fields only)
+      let mappedData;
+      if (req.body.documents || req.body.education || req.body.licenses || req.body.currentCompanySeaService) {
+        // This is comprehensive form data - use form mapping
+        mappedData = mapFormDataToStorage(req.body);
+      } else {
+        // This is basic crew member data - use direct storage mapping
+        mappedData = toStorageCrew(req.body);
+      }
+      
+      const result = insertCrewMemberSchema.partial().safeParse(mappedData);
       if (!result.success) {
         return res.status(400).json({ error: "Invalid crew member data", details: result.error.issues });
       }
@@ -397,7 +428,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!crewMember) {
         return res.status(404).json({ error: "Crew member not found" });
       }
-      res.json(crewMember);
+      
+      // Return normalized data to frontend
+      const normalizedCrewMember = fromStorageCrew(crewMember);
+      res.json(normalizedCrewMember);
     } catch (error) {
       res.status(500).json({ error: "Failed to update crew member" });
     }
