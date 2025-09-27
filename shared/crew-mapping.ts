@@ -290,9 +290,18 @@ export function normalizeCrewMemberForTable(crew: CrewMember): CrewMemberDTO {
   // Ensure table-expected fields are available (match table column field names)
   normalized.dob = normalized.dob || normalized.dateOfBirth;
   normalized.age = normalized.age || normalized.ageInYears;  // Table expects 'age'
-  normalized.presentRank = normalized.presentRank || normalized.rank;  // Table expects 'presentRank'
+  
+  // Handle rank fields - use original DB data directly if normalized fields are missing
+  if (!normalized.presentRank) {
+    normalized.presentRank = normalized.rank || (crew as any).rank || (crew as any).presentRank;
+  }
+  
+  // Handle family name fields - use original DB data directly if normalized fields are missing
+  if (!normalized.familyName) {
+    normalized.familyName = normalized.lastName || (crew as any).lastName || (crew as any).familyName;
+  }
+  
   normalized.vessel = normalized.vessel || normalized.presentVessel;
-  normalized.familyName = normalized.familyName || normalized.lastName;
   
   return normalized;
 }

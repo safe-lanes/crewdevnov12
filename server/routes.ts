@@ -380,8 +380,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!crewMember) {
         return res.status(404).json({ error: "Crew member not found" });
       }
-      // Normalize crew member for frontend consumption
-      const normalizedCrewMember = fromStorageCrew(crewMember);
+      // Use same normalization as list endpoint for consistency
+      const normalizedCrewMember = normalizeCrewMemberForTable(crewMember);
       res.json(normalizedCrewMember);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch crew member" });
