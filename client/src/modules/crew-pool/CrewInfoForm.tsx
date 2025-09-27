@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useMemo, useRef, useEffect, createPortal } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Edit, Camera, Plus, Trash2, Paperclip, Save, ArrowLeft, ChevronDown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
