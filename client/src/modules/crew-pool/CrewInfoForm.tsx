@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { X, Edit, Camera, Plus, Trash2, Paperclip, Save, ArrowLeft } from 'lucide-react';
+import { X, Edit, Camera, Plus, Trash2, Paperclip, Save, ArrowLeft, ChevronDown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -30,6 +30,7 @@ interface CrewInfoFormProps {
   isOpen: boolean;
   onClose: () => void;
   crewMember: CrewMember | null;
+  onCrewMemberChange?: (crewMember: CrewMember) => void;
 }
 
 interface FormData {
@@ -196,13 +197,19 @@ interface DoctorVisit {
   doctorComments: string;
 }
 
-export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, crewMember }) => {
+export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, crewMember, onCrewMemberChange }) => {
   const { toast } = useToast();
   
   // Dashboard data query
   const { data: dashboardData, isLoading: isDashboardLoading, error: dashboardError } = useQuery<CrewDashboardSummary>({
     queryKey: ['/api/crew-members', crewMember?.id, 'dashboard'],
     enabled: !!crewMember?.id && isOpen,
+  });
+
+  // All crew members query for dropdown
+  const { data: allCrewMembers = [] } = useQuery<CrewMember[]>({
+    queryKey: ['/api/crew-members'],
+    enabled: isOpen,
   });
 
   // Data mappings with proper nullish coalescing
@@ -221,6 +228,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     'A1.2': false,
     'A1.3': false
   });
+  const [showCrewDropdown, setShowCrewDropdown] = useState(false);
 
   // Sections for stepper navigation  
   const sections = [
@@ -3294,6 +3302,39 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     });
   };
 
+  // Crew member selection handler
+  const handleCrewMemberSelection = (selectedCrewMember: CrewMember) => {
+    // Update form data with selected crew member's basic information
+    setFormData(prev => ({
+      ...prev,
+      firstName: selectedCrewMember.firstName || '',
+      middleName: selectedCrewMember.middleName || '',
+      familyName: selectedCrewMember.familyName || '',
+      nationality: selectedCrewMember.nationality || '',
+      presentRank: selectedCrewMember.presentRank || '',
+      dateOfBirth: selectedCrewMember.dob || '',
+      ageInYears: selectedCrewMember.age || '',
+      employeeId: selectedCrewMember.empNo || '',
+    }));
+
+    // Close dropdown
+    setShowCrewDropdown(false);
+
+    // Reset photo
+    setUploadedPhoto(null);
+
+    // Call parent handler if provided
+    if (onCrewMemberChange) {
+      onCrewMemberChange(selectedCrewMember);
+    }
+
+    toast({
+      title: "Crew Member Changed",
+      description: `Switched to ${selectedCrewMember.firstName} ${selectedCrewMember.familyName}`,
+      duration: 2000,
+    });
+  };
+
   // Toggle edit section with auto-save
   const toggleEditSection = (sectionId: 'A1.1' | 'A1.2' | 'A1.3') => {
     // If turning off edit mode and another section is being edited, auto-save
@@ -3407,9 +3448,63 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             <Button variant="ghost" size="icon" onClick={onClose} data-testid="button-close">
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <h1 className="text-sm sm:text-lg lg:text-xl font-bold truncate">
-              {crewMember ? `${crewMember.firstName} ${crewMember.familyName}, ${crewMember.presentRank || 'Crew Member'}` : 'Crew Member'}
-            </h1>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowCrewDropdown(!showCrewDropdown)}
+                className="flex items-center gap-2 text-sm sm:text-lg lg:text-xl font-bold truncate hover:text-blue-600 transition-colors"
+                data-testid="button-crew-dropdown"
+              >
+                <span>
+                  {crewMember ? `${crewMember.firstName} ${crewMember.familyName}, ${crewMember.presentRank || 'Crew Member'}` : 'Crew Member'}
+                </span>
+                <ChevronDown className="h-4 w-4 flex-shrink-0" />
+              </button>
+              
+              {showCrewDropdown && (
+                <div className="absolute top-full left-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
+                  {allCrewMembers.length > 0 ? (
+                    allCrewMembers.map((member) => (
+                      <button
+                        key={member.id}
+                        type="button"
+                        onClick={() => handleCrewMemberSelection(member)}
+                        className={`w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors ${
+                          crewMember?.id === member.id ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                        }`}
+                        data-testid={`option-crew-${member.id}`}
+                      >
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <div className="font-medium">
+                              {member.firstName} {member.familyName}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {member.presentRank} • {member.empNo}
+                            </div>
+                          </div>
+                          {crewMember?.id === member.id && (
+                            <div className="text-blue-600 text-sm">Current</div>
+                          )}
+                        </div>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-4 py-3 text-gray-500 text-sm">
+                      No crew members available
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {showCrewDropdown && (
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setShowCrewDropdown(false)}
+                  data-testid="dropdown-overlay"
+                />
+              )}
+            </div>
           </div>
           <div className="flex gap-1 sm:gap-2">
             <Button 
