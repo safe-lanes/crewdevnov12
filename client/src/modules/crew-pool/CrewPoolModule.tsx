@@ -85,10 +85,10 @@ export const CrewPoolModule = (): JSX.Element => {
 
     // Column definitions with groups - responsive widths
     const columnDefs: ColDef[] = useMemo(() => [
-        // Standalone Emp No column (pinned)
+        // Standalone Crew ID column (pinned)
         {
-            headerName: 'Emp\nNo',
-            field: 'empNo',
+            headerName: 'Crew\nID',
+            field: 'employeeId',
             width: viewportConfig.isDesktopOrLaptop ? undefined : 70,
             minWidth: 70,
             cellStyle: { fontSize: '12px', color: '#4f5863' },

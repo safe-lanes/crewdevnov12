@@ -18,6 +18,7 @@ import type { CrewDashboardSummary } from '@shared/schema';
 interface CrewMember {
   id: string;
   empNo: string;
+  employeeId: string; // Added for crew ID display
   firstName: string;
   middleName: string;
   familyName: string;
@@ -344,7 +345,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     rankAppliedFor: '',
     vesselType: [],
     manningAgent: '',
-    employeeId: crewMember?.empNo || '',
+    employeeId: crewMember?.employeeId || '',
     
     // A1.2 Address & Contact Info
     countryOfResidence: '',
@@ -3328,7 +3329,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
       presentRank: selectedCrewMember.presentRank || '',
       dateOfBirth: selectedCrewMember.dob || '',
       ageInYears: selectedCrewMember.age || '',
-      employeeId: selectedCrewMember.empNo || '',
+      employeeId: selectedCrewMember.employeeId || '',
     }));
 
     // Close dropdown
