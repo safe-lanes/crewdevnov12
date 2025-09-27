@@ -751,359 +751,329 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
 
   // Dashboard render function
   const renderDashboard = () => {
+    if (isDashboardLoading) {
+      return <div className="text-center py-8">Loading dashboard...</div>;
+    }
+
+    if (dashboardError) {
+      return <div className="text-center py-8 text-red-600">Error loading dashboard data</div>;
+    }
+
     return (
       <div className="space-y-6">
+        {/* 3-Column Grid Layout matching reference design */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Status Overview */}
-          <div className="lg:col-span-1">
-            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-status-overview">
-              <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }} data-testid="text-status-title">Status</h3>
+          
+          {/* LEFT COLUMN - Document Status & Promotion */}
+          <div className="space-y-6">
+            {/* Document Status */}
+            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-compliance-status">
+              <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }} data-testid="text-compliance-title">Compliance & Training Status</h3>
               
-              <div className="space-y-3">
-                <div className="bg-orange-500 text-white p-3 rounded text-center" data-testid="status-onboard">
-                  <div className="text-sm" data-testid="text-status-value">On Board</div>
+              <div className="space-y-3" data-testid="compliance-items">
+                {complianceData?.map((item, index) => {
+                  const statusColor = item.status === 'compliant' ? 'bg-green-500' : item.status === 'issues' ? 'bg-red-500' : 'bg-yellow-500';
+                  const testId = item.category.toLowerCase().replace(/[\s&]/g, '-');
+                  return (
+                    <div key={index} className="flex items-center justify-between" data-testid={`doc-${testId}`}>
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-3 h-3 ${statusColor} rounded-full`} data-testid={`status-${testId}`}></div>
+                        <span className="text-sm">{item.category}</span>
+                      </div>
+                      {item.details && item.details !== '✓' && (
+                        <span className="text-xs text-gray-500" data-testid={`details-${testId}`}>{item.details}</span>
+                      )}
+                    </div>
+                  );
+                }) ?? [
+                  // Fallback data if API doesn't return compliance data
+                  { category: 'Travel Docs', status: 'compliant' as const, details: '✓' },
+                  { category: 'Visas', status: 'compliant' as const, details: '✓' },
+                  { category: 'License & DCE', status: 'compliant' as const, details: '✓' },
+                  { category: 'Training', status: 'issues' as const, details: 'Issues: 2' },
+                  { category: 'Medical', status: 'compliant' as const, details: 'Last: 15 Feb 2022' },
+                  { category: 'Vaccination', status: 'issues' as const, details: 'Issue: 1' }
+                ].map((item, index) => {
+                  const statusColor = item.status === 'compliant' ? 'bg-green-500' : item.status === 'issues' ? 'bg-red-500' : 'bg-yellow-500';
+                  const testId = item.category.toLowerCase().replace(/[\s&]/g, '-');
+                  return (
+                    <div key={index} className="flex items-center justify-between" data-testid={`doc-${testId}`}>
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-3 h-3 ${statusColor} rounded-full`} data-testid={`status-${testId}`}></div>
+                        <span className="text-sm">{item.category}</span>
+                      </div>
+                      {item.details && item.details !== '✓' && (
+                        <span className="text-xs text-gray-500" data-testid={`details-${testId}`}>{item.details}</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Promotion Section */}
+            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-promotion">
+              <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }} data-testid="text-promotion-title">Promotion</h3>
+              <div className="space-y-4">
+                <div className="text-xs text-gray-500 grid grid-cols-4 gap-2 mb-2" data-testid="promotion-headers">
+                  <span>Recommend</span>
+                  <span>Advance</span>
+                  <span>Demote</span>
+                  <span>Approved</span>
                 </div>
-                
+                {careerProgressionData?.map((step, index) => {
+                  const testId = step.position.toLowerCase().replace(/[\s\/]/g, '-');
+                  return (
+                    <div key={index} className="flex items-center justify-between" data-testid={`promotion-${testId}`}>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium">{step.position}</span>
+                        {step.date && <span className="text-xs text-gray-500">{step.date}</span>}
+                      </div>
+                      <div className="flex items-center space-x-2" data-testid={`${testId}-status-indicators`}>
+                        <div className={`w-3 h-3 ${step.status?.recommend ? 'bg-green-500' : 'bg-gray-300'} rounded-full`}></div>
+                        <div className={`w-3 h-3 ${step.status?.advance ? 'bg-green-500' : 'bg-gray-300'} rounded-full`}></div>
+                        <div className={`w-3 h-3 ${step.status?.demote ? 'bg-red-500' : 'bg-gray-300'} rounded-full`}></div>
+                        <div className={`w-3 h-3 ${step.status?.approved ? 'bg-green-500' : 'bg-gray-300'} rounded-full`}></div>
+                      </div>
+                    </div>
+                  );
+                }) ?? [
+                  // Fallback if no career progression data
+                  { position: 'To C/E', status: { recommend: false, advance: false, demote: true, approved: false } },
+                  { position: 'To 2/E', date: '22 Jan 2017', status: { recommend: true, advance: true, demote: false, approved: true } },
+                  { position: 'To 3/E', date: '12 Dec 2014', status: { recommend: true, advance: true, demote: false, approved: true } }
+                ].map((step, index) => {
+                  const testId = step.position.toLowerCase().replace(/[\s\/]/g, '-');
+                  return (
+                    <div key={index} className="flex items-center justify-between" data-testid={`promotion-${testId}`}>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium">{step.position}</span>
+                        {step.date && <span className="text-xs text-gray-500">{step.date}</span>}
+                      </div>
+                      <div className="flex items-center space-x-2" data-testid={`${testId}-status-indicators`}>
+                        <div className={`w-3 h-3 ${step.status?.recommend ? 'bg-green-500' : 'bg-gray-300'} rounded-full`}></div>
+                        <div className={`w-3 h-3 ${step.status?.advance ? 'bg-green-500' : 'bg-gray-300'} rounded-full`}></div>
+                        <div className={`w-3 h-3 ${step.status?.demote ? 'bg-red-500' : 'bg-gray-300'} rounded-full`}></div>
+                        <div className={`w-3 h-3 ${step.status?.approved ? 'bg-green-500' : 'bg-gray-300'} rounded-full`}></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* MIDDLE COLUMN - Status, Experience, Ship Types, Timeline */}
+          <div className="space-y-6">
+            {/* Status Overview */}
+            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-status">
+              <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Status</h3>
+              <div className="space-y-3">
+                <div className="bg-orange-500 text-white p-3 rounded text-center" data-testid="status-badge">
+                  <div className="text-sm">{statusData?.status || 'On Board'}</div>
+                </div>
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between" data-testid="info-vessel">
+                  <div className="flex justify-between">
                     <span className="text-gray-600">Vessel:</span>
-                    <span className="font-medium" data-testid="text-vessel-name">{crewMember?.presentVessel || 'Pacific Explorer'}</span>
+                    <span className="font-medium" data-testid="text-vessel">{statusData?.vessel || crewMember?.presentVessel || 'MT Sail One'}</span>
                   </div>
-                  <div className="flex justify-between" data-testid="info-joined">
+                  <div className="flex justify-between">
                     <span className="text-gray-600">Joined:</span>
-                    <span data-testid="text-join-date">15 Mar 2022</span>
+                    <span data-testid="text-joined">{statusData?.joinedDate || '15 Mar 2022'}</span>
                   </div>
-                  <div className="flex justify-between" data-testid="info-sailing-due">
+                  <div className="flex justify-between">
                     <span className="text-gray-600">Sailing Due:</span>
-                    <span data-testid="text-sailing-due">15 Jul 2022</span>
+                    <span data-testid="text-sailing-due">{statusData?.sailingDue || '15 Jul 2022'}</span>
                   </div>
-                  <div className="flex justify-between" data-testid="info-assignment">
+                  <div className="flex justify-between">
                     <span className="text-gray-600">Present Assignment:</span>
-                    <span data-testid="text-assignment">Chandigarh</span>
+                    <span data-testid="text-assignment">{statusData?.presentAssignment || 'Chandigarh'}</span>
                   </div>
-                  <div className="text-xs text-gray-500 mt-3" data-testid="emergency-contact">
+                  <div className="text-xs text-gray-500 mt-3">
                     <div>Emergency Contact Name, Relation, Ph:</div>
-                    <div className="text-red-600" data-testid="text-emergency-contact">Mira Kumari, Wife, +91 987 555 8553</div>
+                    <div className="text-red-600" data-testid="text-emergency-contact">
+                      {statusData?.emergencyContact ? 
+                        `${statusData.emergencyContact.name}, ${statusData.emergencyContact.relation}, ${statusData.emergencyContact.phone}` : 
+                        'Mira Kumari, Wife, +91 987 555 8553'}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-          
-          {/* Experience & Timeline */}
-          <div className="lg:col-span-2 space-y-6">
+
             {/* Experience Metrics */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-experience-metrics">
-              <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }} data-testid="text-experience-title">Experience</h3>
-              
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6" data-testid="experience-bars-container">
-                <div className="text-center" data-testid="experience-company">
+            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-experience">
+              <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Experience</h3>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="text-center">
                   <div className="text-xs text-gray-500 mb-1">Company</div>
-                  <div className="bg-blue-500 h-16 w-full rounded mb-1 flex items-end justify-center" data-testid="bar-company">
-                    <div className="bg-blue-600 w-full h-3/4 rounded-b flex items-center justify-center text-white text-xs font-bold" data-testid="text-company-value">
+                  <div className="bg-blue-500 h-16 w-full rounded mb-1 flex items-end justify-center">
+                    <div className="bg-blue-600 w-full h-3/4 rounded-b flex items-center justify-center text-white text-xs font-bold">
                       {experienceData?.company || 1.2}
                     </div>
                   </div>
-                  <div className="text-xs text-gray-600" data-testid="text-company-label">{experienceData?.company || 1.2}</div>
+                  <div className="text-xs text-gray-600" data-testid="text-company-years">{experienceData?.company || 1.2}</div>
                 </div>
-                
-                <div className="text-center" data-testid="experience-rank">
+                <div className="text-center">
                   <div className="text-xs text-gray-500 mb-1">Rank</div>
-                  <div className="bg-blue-500 h-16 w-full rounded mb-1 flex items-end justify-center" data-testid="bar-rank">
-                    <div className="bg-blue-600 w-full h-4/5 rounded-b flex items-center justify-center text-white text-xs font-bold" data-testid="text-rank-value">
+                  <div className="bg-blue-500 h-16 w-full rounded mb-1 flex items-end justify-center">
+                    <div className="bg-blue-600 w-full h-4/5 rounded-b flex items-center justify-center text-white text-xs font-bold">
                       {experienceData?.rank || 1.9}
                     </div>
                   </div>
-                  <div className="text-xs text-gray-600" data-testid="text-rank-label">{experienceData?.rank || 1.9}</div>
+                  <div className="text-xs text-gray-600" data-testid="text-rank-years">{experienceData?.rank || 1.9}</div>
                 </div>
-                
-                <div className="text-center" data-testid="experience-tankers">
+                <div className="text-center">
                   <div className="text-xs text-gray-500 mb-1">Tankers</div>
-                  <div className="bg-blue-500 h-16 w-full rounded mb-1 flex items-end justify-center" data-testid="bar-tankers">
-                    <div className="bg-blue-600 w-full h-full rounded flex items-center justify-center text-white text-xs font-bold" data-testid="text-tankers-value">
+                  <div className="bg-blue-500 h-16 w-full rounded mb-1 flex items-end justify-center">
+                    <div className="bg-blue-600 w-full h-full rounded flex items-center justify-center text-white text-xs font-bold">
                       {experienceData?.tankers || 2.5}
                     </div>
                   </div>
-                  <div className="text-xs text-gray-600" data-testid="text-tankers-label">{experienceData?.tankers || 2.5}</div>
+                  <div className="text-xs text-gray-600" data-testid="text-tankers-years">{experienceData?.tankers || 2.5}</div>
                 </div>
-                
-                <div className="text-center" data-testid="experience-ocw">
+                <div className="text-center">
                   <div className="text-xs text-gray-500 mb-1">OCW</div>
-                  <div className="bg-blue-500 h-16 w-full rounded mb-1 flex items-end justify-center" data-testid="bar-ocw">
-                    <div className="bg-blue-600 w-full h-full rounded flex items-center justify-center text-white text-xs font-bold" data-testid="text-ocw-value">
+                  <div className="bg-blue-500 h-16 w-full rounded mb-1 flex items-end justify-center">
+                    <div className="bg-blue-600 w-full h-full rounded flex items-center justify-center text-white text-xs font-bold">
                       {experienceData?.ocw || 3.6}
                     </div>
                   </div>
-                  <div className="text-xs text-gray-600" data-testid="text-ocw-label">{experienceData?.ocw || 3.6}</div>
+                  <div className="text-xs text-gray-600" data-testid="text-ocw-years">{experienceData?.ocw || 3.6}</div>
                 </div>
-                
-                <div className="text-center" data-testid="experience-endorsements">
+                <div className="text-center">
                   <div className="text-xs text-gray-500 mb-1">Endorsements</div>
-                  <div className="bg-gray-300 h-16 w-full rounded mb-1 flex items-end justify-center" data-testid="bar-endorsements">
-                    <div className="bg-gray-400 w-full h-1/4 rounded-b flex items-center justify-center text-white text-xs font-bold" data-testid="text-endorsements-value">
-                      {experienceData?.endorsements || '0 GC'}
+                  <div className="bg-gray-300 h-16 w-full rounded mb-1 flex items-end justify-center">
+                    <div className="bg-gray-400 w-full h-1/4 rounded-b flex items-center justify-center text-white text-xs font-bold">
+                      {experienceData?.endorsements || 'OGC'}
                     </div>
                   </div>
-                  <div className="text-xs text-gray-600" data-testid="text-endorsements-label">{experienceData?.endorsements || '0 GC'}</div>
+                  <div className="text-xs text-gray-600" data-testid="text-endorsements-count">{experienceData?.endorsements || 'OGC'}</div>
                 </div>
               </div>
             </div>
 
             {/* Ship Type Experience */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
+            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-ship-types">
               <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Ship Type Experience</h3>
-              
-              <div className="space-y-3">
-                <div className="flex items-center">
-                  <div className="w-16 text-xs text-gray-600 mr-3">Oil Tkr</div>
-                  <div className="flex-1 bg-gray-200 rounded-full h-4">
-                    <div className="bg-blue-500 h-4 rounded-full" style={{ width: '75%' }}></div>
+              <div className="space-y-2">
+                <div className="space-y-2" data-testid="ship-type-oil-tanker">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Oil Tkr</span>
+                    <span className="font-medium" data-testid="text-oil-tanker-years">{(shipTypesData?.oilTanker ?? 4.2).toFixed(1)} years</span>
                   </div>
-                  <div className="w-8 text-xs text-right ml-3">4.2</div>
+                  <Progress value={(shipTypesData?.oilTanker ?? 4.2) * 20} className="h-2" data-testid="progress-oil-tanker" />
                 </div>
-                
-                <div className="flex items-center">
-                  <div className="w-16 text-xs text-gray-600 mr-3">Ch Tkr</div>
-                  <div className="flex-1 bg-gray-200 rounded-full h-4">
-                    <div className="bg-blue-500 h-4 rounded-full" style={{ width: '85%' }}></div>
+                <div className="space-y-2" data-testid="ship-type-chemical-tanker">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Ch. Tkr</span>
+                    <span className="font-medium" data-testid="text-chemical-tanker-years">{(shipTypesData?.chemicalTanker ?? 5.1).toFixed(1)} years</span>
                   </div>
-                  <div className="w-8 text-xs text-right ml-3">5.1</div>
+                  <Progress value={(shipTypesData?.chemicalTanker ?? 5.1) * 20} className="h-2" data-testid="progress-chemical-tanker" />
                 </div>
-                
-                <div className="flex items-center">
-                  <div className="w-16 text-xs text-gray-600 mr-3">Gas Tkr</div>
-                  <div className="flex-1 bg-gray-200 rounded-full h-4">
-                    <div className="bg-blue-500 h-4 rounded-full" style={{ width: '60%' }}></div>
+                <div className="space-y-2" data-testid="ship-type-gas-tanker">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Gas Tkr</span>
+                    <span className="font-medium" data-testid="text-gas-tanker-years">{(shipTypesData?.gasTanker ?? 3.2).toFixed(1)} years</span>
                   </div>
-                  <div className="w-8 text-xs text-right ml-3">3.2</div>
+                  <Progress value={(shipTypesData?.gasTanker ?? 3.2) * 20} className="h-2" data-testid="progress-gas-tanker" />
                 </div>
-                
-                <div className="flex items-center">
-                  <div className="w-16 text-xs text-gray-600 mr-3">Bulk</div>
-                  <div className="flex-1 bg-gray-200 rounded-full h-4">
-                    <div className="bg-blue-500 h-4 rounded-full" style={{ width: '25%' }}></div>
+                <div className="space-y-2" data-testid="ship-type-bulk">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Bulk</span>
+                    <span className="font-medium" data-testid="text-bulk-years">{(shipTypesData?.bulk ?? 1.1).toFixed(1)} years</span>
                   </div>
-                  <div className="w-8 text-xs text-right ml-3">1.1</div>
+                  <Progress value={(shipTypesData?.bulk ?? 1.1) * 20} className="h-2" data-testid="progress-bulk" />
                 </div>
               </div>
             </div>
 
-            {/* Service Timeline */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-service-timeline">
-              <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }} data-testid="text-timeline-title">Timeline</h3>
-              
-              <div className="relative" data-testid="timeline-container">
-                {/* Month headers */}
-                <div className="grid grid-cols-6 gap-2 mb-4 text-xs text-gray-500 text-center" data-testid="timeline-months">
-                  <div data-testid="month-jan">Jan</div>
-                  <div data-testid="month-feb">Feb</div>
-                  <div data-testid="month-mar">Mar</div>
-                  <div data-testid="month-apr">Apr</div>
-                  <div data-testid="month-may">May</div>
-                  <div data-testid="month-jun">Jun</div>
+            {/* Timeline */}
+            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-timeline">
+              <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Timeline</h3>
+              <div className="space-y-2">
+                <div className="grid grid-cols-6 gap-1 text-xs text-center text-gray-600">
+                  <span data-testid="month-jan">Jan</span>
+                  <span data-testid="month-feb">Feb</span>
+                  <span data-testid="month-mar">Mar</span>
+                  <span data-testid="month-apr">Apr</span>
+                  <span data-testid="month-may">May</span>
+                  <span data-testid="month-jun">Jun</span>
                 </div>
-                
-                {/* Timeline bars */}
-                <div className="space-y-2" data-testid="timeline-bars">
-                  <div className="relative">
-                    <div className="grid grid-cols-6 gap-2 h-6" data-testid="timeline-vessels">
-                      <div className="bg-blue-400 rounded flex items-center justify-center" data-testid="vessel-pacific-explorer-1">
-                        <span className="text-white text-xs font-medium">Pacific Explorer</span>
+                {serviceTimelineData?.map((assignment, index) => {
+                  const width = ((assignment.endMonth - assignment.startMonth + 1) / 6) * 100;
+                  const left = ((assignment.startMonth - 1) / 6) * 100;
+                  const bgColor = assignment.type === 'active' ? 'bg-blue-400' : 'bg-gray-400';
+                  return (
+                    <div key={index} className={`${bgColor} h-4 rounded relative`} 
+                         style={{ width: `${width}%`, marginLeft: `${left}%` }}
+                         data-testid={`timeline-bar-${assignment.vessel.toLowerCase().replace(/\s+/g, '-')}`}>
+                      <div className="absolute left-2 top-1 text-xs text-white font-medium"
+                           data-testid={`vessel-label-${assignment.vessel.toLowerCase().replace(/\s+/g, '-')}`}>
+                        {assignment.vessel}
                       </div>
-                      <div className="bg-blue-400 rounded" data-testid="vessel-pacific-explorer-2"></div>
-                      <div className="bg-blue-400 rounded flex items-center justify-center" data-testid="vessel-transition">
-                        <div className="w-0 h-0 border-l-2 border-r-2 border-t-4 border-transparent border-t-orange-500" data-testid="transition-marker"></div>
-                      </div>
-                      <div className="bg-gray-200 rounded" data-testid="vessel-gap"></div>
-                      <div className="bg-orange-400 rounded flex items-center justify-center" data-testid="vessel-atlantic-explorer-1">
-                        <span className="text-white text-xs font-medium">Atlantic Explorer</span>
-                      </div>
-                      <div className="bg-orange-400 rounded" data-testid="vessel-atlantic-explorer-2"></div>
                     </div>
+                  );
+                }) ?? [
+                  <div key="default" className="bg-blue-400 h-4 rounded relative" data-testid="timeline-bar">
+                    <div className="absolute left-2 top-1 text-xs text-white font-medium">Pacific Explorer</div>
                   </div>
-                  
-                  <div className="flex justify-between text-xs text-gray-500 mt-2" data-testid="timeline-status">
-                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded" data-testid="status-approved">Approved</span>
-                    <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded" data-testid="status-on">On</span>
-                  </div>
+                ]}
+                <div className="flex items-center gap-2 text-xs">
+                  {serviceTimelineData?.map((assignment, index) => (
+                    <div key={index} className="flex items-center gap-1" data-testid={`legend-${assignment.vessel.toLowerCase().replace(/\s+/g, '-')}`}>
+                      <div className={`w-3 h-3 rounded ${assignment.type === 'active' ? 'bg-blue-400' : 'bg-gray-400'}`}></div>
+                      <span className="text-gray-600">{assignment.vessel}</span>
+                    </div>
+                  )) ?? [
+                    <div key="pacific" className="flex items-center gap-1">
+                      <div className="w-3 h-3 bg-blue-400 rounded"></div>
+                      <span className="text-gray-600">Pacific Explorer</span>
+                    </div>,
+                    <div key="atlantic" className="flex items-center gap-1 ml-4">
+                      <div className="w-3 h-3 bg-orange-400 rounded"></div>
+                      <span className="text-gray-600">Atlantic Explorer</span>
+                    </div>
+                  ]}
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Compliance & Career Progression */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Compliance Status */}
-          <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-compliance-status">
-            <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }} data-testid="text-compliance-title">Compliance & Training Status</h3>
-            <div className="space-y-3" data-testid="compliance-items">
-              <div className="flex items-center justify-between" data-testid="compliance-travel-docs">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full" data-testid="indicator-travel-docs"></div>
-                  <span className="text-sm">Travel Docs</span>
-                </div>
-                <span className="text-xs text-green-600" data-testid="status-travel-docs">✓</span>
-              </div>
-              <div className="flex items-center justify-between" data-testid="compliance-visas">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full" data-testid="indicator-visas"></div>
-                  <span className="text-sm">Visas</span>
-                </div>
-                <span className="text-xs text-green-600" data-testid="status-visas">✓</span>
-              </div>
-              <div className="flex items-center justify-between" data-testid="compliance-license-dce">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full" data-testid="indicator-license-dce"></div>
-                  <span className="text-sm">License & DCE</span>
-                </div>
-                <span className="text-xs text-green-600" data-testid="status-license-dce">✓</span>
-              </div>
-              <div className="flex items-center justify-between" data-testid="compliance-training">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-red-500 rounded-full" data-testid="indicator-training"></div>
-                  <span className="text-sm">Training</span>
-                </div>
-                <span className="text-xs text-red-600" data-testid="status-training">Issues: 2</span>
-              </div>
-              <div className="flex items-center justify-between" data-testid="compliance-medical">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full" data-testid="indicator-medical"></div>
-                  <span className="text-sm">Medical</span>
-                </div>
-                <span className="text-xs text-gray-500" data-testid="status-medical">Last: 15 Feb 2022</span>
-              </div>
-              <div className="flex items-center justify-between" data-testid="compliance-vaccination">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-yellow-500 rounded-full" data-testid="indicator-vaccination"></div>
-                  <span className="text-sm">Vaccination</span>
-                </div>
-                <span className="text-xs text-yellow-600" data-testid="status-vaccination">Issue: 1</span>
               </div>
             </div>
           </div>
 
-          {/* Career Progression */}
-          <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-career-progression">
-            <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }} data-testid="text-promotion-title">Promotion</h3>
-            <div className="space-y-4">
-              <div className="text-xs text-gray-500 grid grid-cols-4 gap-2 mb-2" data-testid="promotion-headers">
-                <span>Recommend</span>
-                <span>Advance</span>
-                <span>Demote</span>
-                <span>Approved</span>
+          {/* RIGHT COLUMN - Appraisals */}
+          <div className="space-y-6">
+            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-appraisals">
+              <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Appraisals</h3>
+              <div className="grid grid-cols-2 gap-4 text-xs text-center">
+                <div>
+                  <div className="font-medium text-lg" data-testid="score-current">
+                    {appraisalsData && appraisalsData.length > 0 ? appraisalsData[appraisalsData.length - 1].score : 34}
+                  </div>
+                  <div className="text-gray-600">Current Score</div>
+                </div>
+                <div>
+                  <div className="font-medium text-lg" data-testid="score-average">
+                    {appraisalsData && appraisalsData.length > 0 
+                      ? Math.round(appraisalsData.reduce((sum, point) => sum + point.score, 0) / appraisalsData.length)
+                      : 28}
+                  </div>
+                  <div className="text-gray-600">Average</div>
+                </div>
               </div>
               
-              <div className="space-y-3" data-testid="promotion-items">
-                <div className="flex items-center justify-between" data-testid="promotion-ce">
-                  <span className="text-sm font-medium" data-testid="text-ce-title">To C/E</span>
-                  <div className="flex items-center space-x-2" data-testid="ce-status-indicators">
-                    <div className="w-3 h-3 bg-red-500 rounded-full" data-testid="ce-recommend"></div>
-                    <div className="w-3 h-3 bg-gray-300 rounded-full" data-testid="ce-advance"></div>
-                    <div className="w-3 h-3 bg-gray-300 rounded-full" data-testid="ce-demote"></div>
-                    <div className="w-3 h-3 bg-gray-300 rounded-full" data-testid="ce-approved"></div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between" data-testid="promotion-2e">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm" data-testid="text-2e-title">To 2/E</span>
-                    <span className="text-xs text-gray-500" data-testid="text-2e-date">22 Jan 2017</span>
-                  </div>
-                  <div className="flex items-center space-x-2" data-testid="2e-status-indicators">
-                    <div className="w-3 h-3 bg-green-500 rounded-full" data-testid="2e-recommend"></div>
-                    <div className="w-3 h-3 bg-green-500 rounded-full" data-testid="2e-advance"></div>
-                    <div className="w-3 h-3 bg-green-500 rounded-full" data-testid="2e-demote"></div>
-                    <div className="w-3 h-3 bg-green-500 rounded-full" data-testid="2e-approved"></div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between" data-testid="promotion-3e">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm" data-testid="text-3e-title">To 3/E</span>
-                    <span className="text-xs text-gray-500" data-testid="text-3e-date">12 Dec 2014</span>
-                  </div>
-                  <div className="flex items-center space-x-2" data-testid="3e-status-indicators">
-                    <div className="w-3 h-3 bg-green-500 rounded-full" data-testid="3e-recommend"></div>
-                    <div className="w-3 h-3 bg-green-500 rounded-full" data-testid="3e-advance"></div>
-                    <div className="w-3 h-3 bg-green-500 rounded-full" data-testid="3e-demote"></div>
-                    <div className="w-3 h-3 bg-green-500 rounded-full" data-testid="3e-approved"></div>
-                  </div>
+              {/* Simple appraisal chart visualization */}
+              <div className="mt-4 h-32 relative" data-testid="appraisals-chart">
+                <div className="absolute inset-0 flex items-end justify-center">
+                  <div className="text-xs text-gray-400">Performance Trend</div>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Performance Appraisals */}
-        <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-performance-appraisals">
-          <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }} data-testid="text-appraisals-title">Appraisals</h3>
-          
-          <div className="relative h-40" data-testid="appraisals-chart-container">
-            <div className="absolute inset-0 flex items-end">
-              {/* Y-axis labels */}
-              <div className="flex flex-col justify-between h-full w-8 pr-2 text-xs text-gray-500" data-testid="y-axis-labels">
-                <span data-testid="y-label-36">36</span>
-                <span data-testid="y-label-34">34</span>
-                <span data-testid="y-label-32">32</span>
-                <span data-testid="y-label-30">30</span>
-                <span data-testid="y-label-28">28</span>
-                <span data-testid="y-label-26">26</span>
-                <span data-testid="y-label-24">24</span>
-                <span data-testid="y-label-22">22</span>
-                <span data-testid="y-label-20">20</span>
-                <span data-testid="y-label-18">18</span>
-              </div>
-              
-              {/* Chart area */}
-              <div className="flex-1 h-full relative" data-testid="chart-area">
-                {/* Background grid lines */}
-                <div className="absolute inset-0 flex flex-col justify-between" data-testid="grid-lines">
-                  {Array.from({ length: 10 }).map((_, i) => (
-                    <div key={i} className="border-t border-gray-100" data-testid={`grid-line-${i}`}></div>
-                  ))}
-                </div>
-                
-                {/* Chart path - simulating the area chart */}
-                <svg className="absolute inset-0 w-full h-full" data-testid="performance-chart-svg">
-                  <defs>
-                    <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="#60A5FA" stopOpacity="0.6"/>
-                      <stop offset="50%" stopColor="#A78BFA" stopOpacity="0.4"/>
-                      <stop offset="100%" stopColor="#A78BFA" stopOpacity="0.2"/>
-                    </linearGradient>
-                  </defs>
-                  <path
-                    d="M0,120 L60,100 L120,90 L180,85 L240,80 L300,75 L360,78 L360,160 L0,160 Z"
-                    fill="url(#areaGradient)"
-                    stroke="none"
-                    data-testid="chart-area-fill"
-                  />
-                  <path
-                    d="M0,120 L60,100 L120,90 L180,85 L240,80 L300,75 L360,78"
-                    fill="none"
-                    stroke="#3B82F6"
-                    strokeWidth="2"
-                    data-testid="chart-trend-line"
-                  />
-                </svg>
-              </div>
-            </div>
-            
-            {/* X-axis labels */}
-            <div className="absolute bottom-0 left-8 right-0 flex justify-between text-xs text-gray-500 mt-2" data-testid="x-axis-labels">
-              <span data-testid="x-label-2014">2014</span>
-              <span data-testid="x-label-2016">2016</span>
-              <span data-testid="x-label-2018">2018</span>
-              <span data-testid="x-label-2020">2020</span>
-              <span data-testid="x-label-2022">2022</span>
-              <span data-testid="x-label-2024">2024</span>
             </div>
           </div>
         </div>
       </div>
     );
   };
+
 
   // A1.1 General Particulars render function
   const renderA11GeneralParticulars = () => {
@@ -1996,11 +1966,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                 <div className="mt-1 text-sm text-gray-900">{formData.nokRelationship}</div>
               )}
             </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
+
 
   // A2.1 Travel and Identification Documents render function
   const renderA21TravelDocs = () => {
