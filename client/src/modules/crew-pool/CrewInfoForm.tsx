@@ -2700,148 +2700,334 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     );
   };
 
-  // A4.1 Sea Service render function
-  const renderA41SeaService = () => {
+  // E1: Current Company Sea Service render function
+  const renderE1CurrentCompanySeaService = () => {
     return (
-      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+      <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A4.1 Details of Sea Service</h3>
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>E1. Details of Sea Service (Company)</h3>
           <Button
+            type="button"
             variant="outline"
             size="sm"
-            onClick={addSeaService}
-            className="text-gray-600 border-gray-300 hover:bg-gray-50"
-            data-testid="button-add-sea-service"
+            onClick={addCurrentCompanySeaService}
+            className="flex items-center gap-2"
+            data-testid="button-add-current-service"
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="h-4 w-4" />
             ADD
           </Button>
         </div>
         
-        <Table className="w-full">
-          <TableHeader>
-            <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Vessel Name</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Vessel Type</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Deadweight</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Engine Type/ Power</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Owner / operator</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Rank</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">From</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">To</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Period(M)</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {formData.seaService.map((service) => (
-              <TableRow key={service.id} className="border-b border-gray-200">
-                <TableCell className="p-3">
-                  <Input
-                    value={service.vesselName}
-                    onChange={(e) => updateSeaService(service.id, 'vesselName', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
-                    placeholder="Enter vessel name"
-                  />
-                </TableCell>
-                <TableCell className="p-3">
-                  <Select
-                    value={service.vesselType}
-                    onValueChange={(value) => updateSeaService(service.id, 'vesselType', value)}
-                  >
-                    <SelectTrigger className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto">
-                      <SelectValue placeholder="Select vessel type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {vesselTypeMasterData.map((vesselType) => (
-                        <SelectItem key={vesselType} value={vesselType}>
-                          {vesselType}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-                <TableCell className="p-3">
-                  <Input
-                    value={service.deadweight}
-                    onChange={(e) => updateSeaService(service.id, 'deadweight', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
-                  />
-                </TableCell>
-                <TableCell className="p-3">
-                  <Input
-                    value={service.engineTypePower}
-                    onChange={(e) => updateSeaService(service.id, 'engineTypePower', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
-                  />
-                </TableCell>
-                <TableCell className="p-3">
-                  <Input
-                    value={service.ownerOperator}
-                    onChange={(e) => updateSeaService(service.id, 'ownerOperator', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
-                  />
-                </TableCell>
-                <TableCell className="p-3">
-                  <Select
-                    value={service.rank}
-                    onValueChange={(value) => updateSeaService(service.id, 'rank', value)}
-                  >
-                    <SelectTrigger className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto">
-                      <SelectValue placeholder="Select rank" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {rankNames.map((rank) => (
-                        <SelectItem key={rank} value={rank}>
-                          {rank}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-                <TableCell className="p-3">
-                  <Input
-                    type="date"
-                    value={service.from}
-                    onChange={(e) => updateSeaService(service.id, 'from', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
-                  />
-                </TableCell>
-                <TableCell className="p-3">
-                  <Input
-                    type="date"
-                    value={service.to}
-                    onChange={(e) => updateSeaService(service.id, 'to', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
-                  />
-                </TableCell>
-                <TableCell className="p-3">
-                  <Input
-                    value={service.periodMonths}
-                    readOnly
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto bg-gray-50 cursor-not-allowed"
-                    title="Auto-calculated based on From & To dates"
-                  />
-                </TableCell>
-                <TableCell className="p-3">
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
-                      <Edit className="h-3 w-3" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-6 w-6 text-gray-400 hover:text-red-600"
-                      onClick={() => removeSeaService(service.id)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <div className="border rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1000px]">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Name</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Type</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Deadweight</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Engine Type/ Power</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Owner / operator</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Rank</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">From</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">To</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Period(M)</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {formData.currentCompanySeaService.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="p-8 text-center text-gray-500">
+                      No current company sea service records added yet. Click "ADD" to get started.
+                    </td>
+                  </tr>
+                ) : (
+                  formData.currentCompanySeaService.map((service) => (
+                    <tr key={service.id} className="border-t">
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          value={service.vesselName}
+                          onChange={(e) => updateCurrentCompanySeaService(service.id, 'vesselName', e.target.value)}
+                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          placeholder="Enter vessel name"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Select
+                          value={service.vesselType}
+                          onValueChange={(value) => updateCurrentCompanySeaService(service.id, 'vesselType', value)}
+                        >
+                          <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                            <SelectValue placeholder="Select vessel type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {vesselTypeMasterData.map((vesselType) => (
+                              <SelectItem key={vesselType} value={vesselType}>
+                                {vesselType}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          value={service.deadweight}
+                          onChange={(e) => updateCurrentCompanySeaService(service.id, 'deadweight', e.target.value)}
+                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          placeholder="Enter deadweight"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          value={service.engineTypePower}
+                          onChange={(e) => updateCurrentCompanySeaService(service.id, 'engineTypePower', e.target.value)}
+                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          placeholder="Enter engine type/power"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          value={service.ownerOperator}
+                          onChange={(e) => updateCurrentCompanySeaService(service.id, 'ownerOperator', e.target.value)}
+                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          placeholder="Enter owner/operator"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Select
+                          value={service.rank}
+                          onValueChange={(value) => updateCurrentCompanySeaService(service.id, 'rank', value)}
+                        >
+                          <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                            <SelectValue placeholder="Select rank" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {rankNames.map((rank) => (
+                              <SelectItem key={rank} value={rank}>
+                                {rank}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          type="date"
+                          value={service.from}
+                          onChange={(e) => updateCurrentCompanySeaService(service.id, 'from', e.target.value)}
+                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          type="date"
+                          value={service.to}
+                          onChange={(e) => updateCurrentCompanySeaService(service.id, 'to', e.target.value)}
+                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          value={service.periodMonths}
+                          readOnly
+                          className="border-0 bg-gray-50 p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6 cursor-not-allowed"
+                          title="Auto-calculated based on From & To dates"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                            <Paperclip className="h-3 w-3" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 text-gray-400 hover:text-red-600"
+                            onClick={() => removeCurrentCompanySeaService(service.id)}
+                            data-testid={`button-delete-current-service-${service.id}`}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // E2: External Sea Service render function
+  const renderE2ExternalSeaService = () => {
+    return (
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>E2. Details of Sea Service (External)</h3>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={addExternalSeaService}
+            className="flex items-center gap-2"
+            data-testid="button-add-external-service"
+          >
+            <Plus className="h-4 w-4" />
+            ADD
+          </Button>
+        </div>
+        
+        <div className="border rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1000px]">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Name</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Type</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Deadweight</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Engine Type/ Power</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Owner / operator</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Rank</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">From</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">To</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Period(M)</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {formData.externalSeaService.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="p-8 text-center text-gray-500">
+                      No external sea service records added yet. Click "ADD" to get started.
+                    </td>
+                  </tr>
+                ) : (
+                  formData.externalSeaService.map((service) => (
+                    <tr key={service.id} className="border-t">
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          value={service.vesselName}
+                          onChange={(e) => updateExternalSeaService(service.id, 'vesselName', e.target.value)}
+                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          placeholder="Enter vessel name"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Select
+                          value={service.vesselType}
+                          onValueChange={(value) => updateExternalSeaService(service.id, 'vesselType', value)}
+                        >
+                          <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                            <SelectValue placeholder="Select vessel type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {vesselTypeMasterData.map((vesselType) => (
+                              <SelectItem key={vesselType} value={vesselType}>
+                                {vesselType}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          value={service.deadweight}
+                          onChange={(e) => updateExternalSeaService(service.id, 'deadweight', e.target.value)}
+                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          placeholder="Enter deadweight"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          value={service.engineTypePower}
+                          onChange={(e) => updateExternalSeaService(service.id, 'engineTypePower', e.target.value)}
+                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          placeholder="Enter engine type/power"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          value={service.ownerOperator}
+                          onChange={(e) => updateExternalSeaService(service.id, 'ownerOperator', e.target.value)}
+                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          placeholder="Enter owner/operator"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Select
+                          value={service.rank}
+                          onValueChange={(value) => updateExternalSeaService(service.id, 'rank', value)}
+                        >
+                          <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                            <SelectValue placeholder="Select rank" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {rankNames.map((rank) => (
+                              <SelectItem key={rank} value={rank}>
+                                {rank}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          type="date"
+                          value={service.from}
+                          onChange={(e) => updateExternalSeaService(service.id, 'from', e.target.value)}
+                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          type="date"
+                          value={service.to}
+                          onChange={(e) => updateExternalSeaService(service.id, 'to', e.target.value)}
+                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Input
+                          value={service.periodMonths}
+                          readOnly
+                          className="border-0 bg-gray-50 p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6 cursor-not-allowed"
+                          title="Auto-calculated based on From & To dates"
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                            <Paperclip className="h-3 w-3" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 text-gray-400 hover:text-red-600"
+                            onClick={() => removeExternalSeaService(service.id)}
+                            data-testid={`button-delete-external-service-${service.id}`}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     );
   };
