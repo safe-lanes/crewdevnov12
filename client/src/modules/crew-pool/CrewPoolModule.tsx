@@ -163,7 +163,7 @@ export const CrewPoolModule = (): JSX.Element => {
                     resizable: true
                 },
                 {
-                    headerName: 'Present\nRank',
+                    headerName: 'Rank',
                     field: 'presentRank',
                     width: viewportConfig.isDesktopOrLaptop ? undefined : 80,
                     minWidth: 80,
