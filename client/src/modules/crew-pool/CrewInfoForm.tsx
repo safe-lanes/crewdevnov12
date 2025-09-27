@@ -3366,10 +3366,28 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     mutationFn: async (data: any) => {
       const mappedData = toStorageCrew(data);
       const response = await apiRequest('POST', '/api/crew-members', mappedData);
-      return await response.json();
+      
+      // Check if the response was successful
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      // Handle different response types
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        return await response.json();
+      } else if (response.status === 204) {
+        return null; // No content response
+      } else {
+        return { success: true };
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/crew-members'] });
+      // Also invalidate dashboard data if open
+      if (crewMember?.id) {
+        queryClient.invalidateQueries({ queryKey: [`/api/crew-members/${crewMember.id}/dashboard`] });
+      }
       toast({
         title: "Success",
         description: "Crew member created successfully.",
@@ -3392,10 +3410,26 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
       const mappedData = toStorageCrew(data);
       const response = await apiRequest('PATCH', `/api/crew-members/${id}`, mappedData);
-      return await response.json();
+      
+      // Check if the response was successful
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      // Handle different response types
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        return await response.json();
+      } else if (response.status === 204) {
+        return null; // No content response
+      } else {
+        return { success: true };
+      }
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/crew-members'] });
+      // Also invalidate dashboard data for the updated crew member
+      queryClient.invalidateQueries({ queryKey: [`/api/crew-members/${variables.id}/dashboard`] });
       toast({
         title: "Success", 
         description: "Crew member updated successfully.",
