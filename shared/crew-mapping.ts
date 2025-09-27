@@ -310,7 +310,9 @@ export function mapFormDataToStorage(formData: any): Partial<InsertCrewMember> {
     rankAppliedFor: formData.rankAppliedFor || null,
     employeeId: formData.employeeId || null,
     presentVessel: formData.presentVessel || '',
-    vesselType: formData.vesselType || '',
+    vesselType: Array.isArray(formData.vesselType) 
+      ? formData.vesselType[0] || '' 
+      : formData.vesselType || '',
     lastVessel: null,
     status: 'Active',
     joiningDate: formData.joiningDate || null,
