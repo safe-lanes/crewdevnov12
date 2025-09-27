@@ -247,7 +247,12 @@ export function toStorageCrew(dto: Partial<CrewMemberDTO>): Partial<CrewMember> 
   // Copy all fields that don't need mapping first
   Object.keys(dto).forEach(key => {
     if (!Object.keys(FIELD_MAPPINGS).includes(key)) {
-      dbData[key] = (dto as any)[key];
+      // Special handling for vesselType array
+      if (key === 'vesselType' && Array.isArray((dto as any)[key])) {
+        dbData[key] = (dto as any)[key][0] || '';
+      } else {
+        dbData[key] = (dto as any)[key];
+      }
     }
   });
   
