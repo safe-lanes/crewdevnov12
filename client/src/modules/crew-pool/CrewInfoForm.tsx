@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect, createPortal } from 'react';
 import { X, Edit, Camera, Plus, Trash2, Paperclip, Save, ArrowLeft, ChevronDown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -229,6 +229,8 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     'A1.3': false
   });
   const [showCrewDropdown, setShowCrewDropdown] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
+  const dropdownButtonRef = useRef<HTMLButtonElement>(null);
 
   // Sections for stepper navigation  
   const sections = [
@@ -3451,7 +3453,17 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setShowCrewDropdown(!showCrewDropdown)}
+                onClick={(e) => {
+                  if (!showCrewDropdown) {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setDropdownPosition({
+                      top: rect.bottom + window.scrollY + 8,
+                      left: rect.left + window.scrollX
+                    });
+                  }
+                  setShowCrewDropdown(!showCrewDropdown);
+                }}
+                ref={dropdownButtonRef}
                 className="flex items-center gap-2 text-sm sm:text-lg lg:text-xl font-bold truncate hover:text-blue-600 transition-colors"
                 data-testid="button-crew-dropdown"
               >
@@ -3461,48 +3473,54 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                 <ChevronDown className="h-4 w-4 flex-shrink-0" />
               </button>
               
-              {showCrewDropdown && (
-                <div className="absolute top-full left-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-[100] max-h-64 overflow-y-auto">
-                  {allCrewMembers.length > 0 ? (
-                    allCrewMembers.map((member) => (
-                      <button
-                        key={member.id}
-                        type="button"
-                        onClick={() => handleCrewMemberSelection(member)}
-                        className={`w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors ${
-                          crewMember?.id === member.id ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                        }`}
-                        data-testid={`option-crew-${member.id}`}
-                      >
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <div className="font-medium">
-                              {member.firstName} {member.familyName}
+              {showCrewDropdown && createPortal(
+                <>
+                  <div 
+                    className="fixed inset-0 z-[999]" 
+                    onClick={() => setShowCrewDropdown(false)}
+                    data-testid="dropdown-overlay"
+                  />
+                  <div 
+                    className="fixed w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-[1000] max-h-64 overflow-y-auto"
+                    style={{
+                      top: `${dropdownPosition.top}px`,
+                      left: `${dropdownPosition.left}px`,
+                    }}
+                  >
+                    {allCrewMembers.length > 0 ? (
+                      allCrewMembers.map((member) => (
+                        <button
+                          key={member.id}
+                          type="button"
+                          onClick={() => handleCrewMemberSelection(member)}
+                          className={`w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors ${
+                            crewMember?.id === member.id ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                          }`}
+                          data-testid={`option-crew-${member.id}`}
+                        >
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <div className="font-medium">
+                                {member.firstName} {member.familyName}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {member.presentRank} • {member.empNo}
+                              </div>
                             </div>
-                            <div className="text-sm text-gray-500">
-                              {member.presentRank} • {member.empNo}
-                            </div>
+                            {crewMember?.id === member.id && (
+                              <div className="text-blue-600 text-sm">Current</div>
+                            )}
                           </div>
-                          {crewMember?.id === member.id && (
-                            <div className="text-blue-600 text-sm">Current</div>
-                          )}
-                        </div>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="px-4 py-3 text-gray-500 text-sm">
-                      No crew members available
-                    </div>
-                  )}
-                </div>
-              )}
-              
-              {showCrewDropdown && (
-                <div 
-                  className="fixed inset-0 z-[99]" 
-                  onClick={() => setShowCrewDropdown(false)}
-                  data-testid="dropdown-overlay"
-                />
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-4 py-3 text-gray-500 text-sm">
+                        No crew members available
+                      </div>
+                    )}
+                  </div>
+                </>,
+                document.body
               )}
             </div>
           </div>
