@@ -97,7 +97,8 @@ interface FormData {
   trainingCourses: TrainingCourse[];
   
   // A4.1 Sea Service
-  seaService: SeaService[];
+  currentCompanySeaService: SeaService[];
+  externalSeaService: SeaService[];
   
   // F1. Pre Joining Medicals
   preJoiningMedicals: PreJoiningMedical[];
@@ -410,8 +411,22 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
       expiry: ''
     }],
     
-    // A4.1 Sea Service
-    seaService: [{
+    // A4.1 Sea Service - Current Company
+    currentCompanySeaService: [{
+      id: '1',
+      vesselName: '',
+      vesselType: '',
+      deadweight: '',
+      engineTypePower: '',
+      ownerOperator: '',
+      rank: '',
+      from: '',
+      to: '',
+      periodMonths: ''
+    }],
+    
+    // A4.2 Sea Service - External
+    externalSeaService: [{
       id: '1',
       vesselName: '',
       vesselType: '',
