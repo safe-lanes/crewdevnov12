@@ -1,16 +1,16 @@
 
-import { mysqlTable, text, int, boolean, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { pgTable, text, integer, boolean, timestamp, varchar, serial } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = mysqlTable("users", {
-  id: int("id").primaryKey().autoincrement(),
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
   username: text("username").notNull(),
   password: text("password").notNull(),
 });
 
-export const forms = mysqlTable("forms", {
-  id: int("id").primaryKey().autoincrement(),
+export const forms = pgTable("forms", {
+  id: serial("id").primaryKey(),
   name: text("name").notNull(),
   rankGroup: text("rank_group").notNull(),
   versionNo: text("version_no").notNull(),
@@ -18,15 +18,15 @@ export const forms = mysqlTable("forms", {
   configuration: text("configuration"), // JSON string for form configuration
 });
 
-export const rankGroups = mysqlTable("rank_groups", {
-  id: int("id").primaryKey().autoincrement(),
-  formId: int("form_id").notNull().references(() => forms.id),
+export const rankGroups = pgTable("rank_groups", {
+  id: serial("id").primaryKey(),
+  formId: integer("form_id").notNull().references(() => forms.id),
   name: text("name").notNull(),
   ranks: text("ranks").notNull(), // JSON string
 });
 
-export const availableRanks = mysqlTable("available_ranks", {
-  id: int("id").primaryKey().autoincrement(),
+export const availableRanks = pgTable("available_ranks", {
+  id: serial("id").primaryKey(),
   name: text("name").notNull(),
   category: text("category").notNull(), // Senior Officers, Junior Officers, Ratings, etc.
   rankId: text("rank_id"), // User-editable rank ID (e.g., "S1", "S2")
@@ -34,7 +34,7 @@ export const availableRanks = mysqlTable("available_ranks", {
   applicableToCompany: boolean("applicable_to_company"), // User-editable company applicability
 });
 
-export const crewMembers = mysqlTable("crew_members", {
+export const crewMembers = pgTable("crew_members", {
   id: text("id").primaryKey(),
   
   // Basic Personal Information
@@ -128,10 +128,10 @@ export const crewMembers = mysqlTable("crew_members", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const appraisalResults = mysqlTable("appraisal_results", {
-  id: int("id").primaryKey().autoincrement(),
+export const appraisalResults = pgTable("appraisal_results", {
+  id: serial("id").primaryKey(),
   crewMemberId: text("crew_member_id").notNull().references(() => crewMembers.id),
-  formId: int("form_id").notNull().references(() => forms.id),
+  formId: integer("form_id").notNull().references(() => forms.id),
   appraisalType: text("appraisal_type").notNull(),
   appraisalDate: text("appraisal_date").notNull(),
   appraisalData: text("appraisal_data").notNull(), // JSON string
@@ -143,7 +143,7 @@ export const appraisalResults = mysqlTable("appraisal_results", {
   status: text("status").notNull().default("draft"), // draft, submitted, approved
 });
 
-export const recruitmentCandidates = mysqlTable("recruitment_candidates", {
+export const recruitmentCandidates = pgTable("recruitment_candidates", {
   id: text("id").primaryKey(),
   fileNo: text("file_no").notNull().unique(),
   firstName: text("first_name").notNull(),
@@ -160,8 +160,8 @@ export const recruitmentCandidates = mysqlTable("recruitment_candidates", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const vessels = mysqlTable("vessels", {
-  id: int("id").primaryKey().autoincrement(),
+export const vessels = pgTable("vessels", {
+  id: serial("id").primaryKey(),
   name: text("name").notNull(),
   vesselGroup: text("vessel_group"),
   vesselType: text("vessel_type").notNull(),
@@ -169,8 +169,8 @@ export const vessels = mysqlTable("vessels", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const seafarers = mysqlTable("seafarers", {
-  id: int("id").primaryKey().autoincrement(),
+export const seafarers = pgTable("seafarers", {
+  id: serial("id").primaryKey(),
   firstName: text("first_name").notNull(),
   middleName: text("middle_name"),
   lastName: text("last_name").notNull(),
@@ -181,9 +181,9 @@ export const seafarers = mysqlTable("seafarers", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const revisions = mysqlTable("revisions", {
-  id: int("id").primaryKey().autoincrement(),
-  vesselId: int("vessel_id").notNull().references(() => vessels.id),
+export const revisions = pgTable("revisions", {
+  id: serial("id").primaryKey(),
+  vesselId: integer("vessel_id").notNull().references(() => vessels.id),
   revisionNo: text("revision_no").notNull(),
   flexDate: text("flex_date"),
   status: text("status").notNull().default("draft"), // draft, submitted
@@ -191,10 +191,10 @@ export const revisions = mysqlTable("revisions", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const vesselRanks = mysqlTable("vessel_ranks", {
-  id: int("id").primaryKey().autoincrement(),
-  vesselId: int("vessel_id").notNull().references(() => vessels.id),
-  revisionId: int("revision_id").notNull().references(() => revisions.id),
+export const vesselRanks = pgTable("vessel_ranks", {
+  id: serial("id").primaryKey(),
+  vesselId: integer("vessel_id").notNull().references(() => vessels.id),
+  revisionId: integer("revision_id").notNull().references(() => revisions.id),
   rank: text("rank").notNull(),
   rankId: text("rank_id").notNull(),
   role: text("role"), // Role name like "3rd Off_1", "3rd Off_2"
@@ -220,7 +220,7 @@ export const vesselRanks = mysqlTable("vessel_ranks", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const companyRanks = mysqlTable("company_ranks", {
+export const companyRanks = pgTable("company_ranks", {
   id: text("id").primaryKey(), // Will use generated IDs like "5_role_1_1727188561"
   rank: text("rank").notNull(),
   rankId: text("rank_id").notNull(),
@@ -246,7 +246,7 @@ export const companyRanks = mysqlTable("company_ranks", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const dataMasters = mysqlTable("data_masters", {
+export const dataMasters = pgTable("data_masters", {
   id: text("id").primaryKey(), // "001", "002", "003", etc.
   name: text("name").notNull(), // "Nationality Master", "Country Master"
   description: text("description"),
@@ -254,8 +254,8 @@ export const dataMasters = mysqlTable("data_masters", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const masterDataEntries = mysqlTable("master_data_entries", {
-  id: int("id").primaryKey().autoincrement(),
+export const masterDataEntries = pgTable("master_data_entries", {
+  id: serial("id").primaryKey(),
   masterId: text("master_id").notNull().references(() => dataMasters.id),
   entryId: text("entry_id").notNull(),
   nuid: text("nuid"),
@@ -278,7 +278,7 @@ export const masterDataEntries = mysqlTable("master_data_entries", {
   isDeleted: boolean("isDeleted").default(false),
   createdBy: text("createdBy"),
   domain: text("domain"),
-  orderBy: int("orderBy"),
+  orderBy: integer("orderBy"),
   // Fleet Groups specific fields (masterId 015)
   fuid: text("fuid"),
   managerId: text("managerId"),
