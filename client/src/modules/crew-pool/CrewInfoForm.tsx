@@ -204,8 +204,6 @@ interface DoctorVisit {
 export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, crewMember, onCrewMemberChange }) => {
   const { toast } = useToast();
   
-  // Debug logging
-  console.log('CrewInfoForm props:', { isOpen, crewMember });
   
   // Dashboard data query
   const { data: dashboardData, isLoading: isDashboardLoading, error: dashboardError } = useQuery<CrewDashboardSummary>({
@@ -221,17 +219,10 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
 
   // Detailed crew member data query for form fields
   const queryEnabled = !!crewMember?.id && isOpen;
-  console.log('Query debug:', { 
-    crewMemberId: crewMember?.id, 
-    isOpen, 
-    queryEnabled,
-    shouldFetch: queryEnabled 
-  });
   
   const { data: detailedCrewData, isLoading: isDetailedDataLoading } = useQuery<any>({
     queryKey: ['/api/crew-members', crewMember?.id, 'details'], // Added 'details' to make unique
     queryFn: async () => {
-      console.log('Making API call for crew member:', crewMember?.id);
       const response = await fetch(`/api/crew-members/${crewMember?.id}`);
       if (!response.ok) {
         throw new Error('Failed to fetch crew member details');
@@ -489,7 +480,6 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
 
   // Update form data when detailed crew data loads from API
   useEffect(() => {
-    console.log('useEffect triggered:', { detailedCrewData: !!detailedCrewData, crewMemberId: crewMember?.id });
     if (detailedCrewData && crewMember?.id) {
       setFormData(prev => ({
         ...prev,
