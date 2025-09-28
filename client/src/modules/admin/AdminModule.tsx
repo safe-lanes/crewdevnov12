@@ -275,6 +275,7 @@ const AdminModuleInner = (): JSX.Element => {
   // Company state
   const [companyRankData, setCompanyRankData] = useState<CompanyRankData[]>([]);
   const [isCompanyEditing, setIsCompanyEditing] = useState(false);
+  const [changedCompanyRanks, setChangedCompanyRanks] = useState<Set<string>>(new Set());
   
   // Vessel state
   const [vesselRankDataMap, setVesselRankDataMap] = useState<Map<string, VesselRankData[]>>(new Map());
@@ -788,58 +789,71 @@ const AdminModuleInner = (): JSX.Element => {
   
   const rq = useQueryClient();
 
-  // Add React Query hook for company ranks to prevent flickering
-  const { data: companyRanksFromServer = [] } = useQuery({
-    queryKey: ["/api/company-ranks"],
-    queryFn: async () => {
-      const response = await fetch("/api/company-ranks");
-      if (!response.ok) {
-        return [];
-      }
-      return response.json();
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: false,
-  });
 
-  // Initialize company rank data from rank master (ONE TIME ONLY - Fixed flickering issue)
+  // Sync company rank data with rank master data (always keep in sync)
   React.useEffect(() => {
     const applicableRanks = rankMasterData.filter(rank => rank.applicableToCompany);
     
-    // Only initialize if we have ranks and no local company data yet, and we're not editing
-    if (applicableRanks.length > 0 && companyRankData.length === 0 && !isCompanyEditing) {
-      console.log('🔍 [DEBUG] Initializing company rank data for the first time');
+    // Don't update if we're currently editing to avoid losing unsaved changes
+    if (isCompanyEditing) {
+      return;
+    }
+    
+    console.log('🔍 [DEBUG] Syncing company rank data with rank master', {
+      applicableRanksCount: applicableRanks.length,
+      currentCompanyDataCount: companyRankData.length
+    });
+    
+    // Create a map of existing company data to preserve company-specific fields
+    const existingCompanyData = new Map<string, CompanyRankData>();
+    companyRankData.forEach(item => {
+      existingCompanyData.set(item.id, item);
+    });
+    
+    // Build the new company rank data from applicable ranks
+    const newCompanyRanks: CompanyRankData[] = applicableRanks.map(rank => {
+      const existing = existingCompanyData.get(rank.id);
       
-      if (companyRanksFromServer && companyRanksFromServer.length > 0) {
-        console.log('🔍 [DEBUG] Using server company data:', companyRanksFromServer);
-        setCompanyRankData(companyRanksFromServer);
-      } else {
-        console.log('🔍 [DEBUG] Creating fresh company data');
-        const companyRanks: CompanyRankData[] = applicableRanks.map(rank => ({
-          id: rank.id,
+      // If we have existing data, preserve company-specific fields
+      if (existing) {
+        return {
+          ...existing,
+          // Update core rank fields from rank master
           rank: rank.label || rank.rank,
           rankId: rank.rankId,
-          officer: rank.rank.toLowerCase().includes('officer') || rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('engineer'),
-          rating: !rank.rank.toLowerCase().includes('officer') && !rank.rank.toLowerCase().includes('master') && !rank.rank.toLowerCase().includes('engineer'),
-          seniorOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('chief'),
-          deckOfficer: rank.rank.toLowerCase().includes('officer') && !rank.rank.toLowerCase().includes('engineer'),
-          engOfficer: rank.rank.toLowerCase().includes('engineer'),
-          pettyOfficer: false,
-          deckRating: rank.rank.toLowerCase().includes('cadet') || rank.rank.toLowerCase().includes('deck'),
-          engineRating: false,
-          generalRating: false,
-          cateringRating: false,
-          safetyOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('chief'),
-          sso: rank.rank.toLowerCase().includes('master'),
-          medicalOfficer: false,
-          navigatingOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('officer'),
-          emtOfficer: false,
-          hasMultiple: false
-        }));
-        setCompanyRankData(companyRanks);
+        };
       }
+      
+      // For new ranks, create default company data
+      return {
+        id: rank.id,
+        rank: rank.label || rank.rank,
+        rankId: rank.rankId,
+        officer: rank.rank.toLowerCase().includes('officer') || rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('engineer'),
+        rating: !rank.rank.toLowerCase().includes('officer') && !rank.rank.toLowerCase().includes('master') && !rank.rank.toLowerCase().includes('engineer'),
+        seniorOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('chief'),
+        deckOfficer: rank.rank.toLowerCase().includes('officer') && !rank.rank.toLowerCase().includes('engineer'),
+        engOfficer: rank.rank.toLowerCase().includes('engineer'),
+        pettyOfficer: false,
+        deckRating: rank.rank.toLowerCase().includes('cadet') || rank.rank.toLowerCase().includes('deck'),
+        engineRating: false,
+        generalRating: false,
+        cateringRating: false,
+        safetyOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('chief'),
+        sso: rank.rank.toLowerCase().includes('master'),
+        medicalOfficer: false,
+        navigatingOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('officer'),
+        emtOfficer: false,
+        hasMultiple: false
+      };
+    });
+    
+    // Only update if there's a meaningful change
+    if (JSON.stringify(companyRankData) !== JSON.stringify(newCompanyRanks)) {
+      console.log('🔍 [DEBUG] Updating company rank data');
+      setCompanyRankData(newCompanyRanks);
     }
-  }, [rankMasterData.length, companyRanksFromServer.length, isCompanyEditing]);
+  }, [rankMasterData, isCompanyEditing]);
 
   // Sync vessel rank data with company rank data changes for all vessels
   React.useEffect(() => {
@@ -1388,6 +1402,11 @@ const AdminModuleInner = (): JSX.Element => {
       if (rowIndex !== -1) {
         newData[rowIndex] = { ...newData[rowIndex], [field]: value };
         console.log('🎯 [CHECKBOX] Updated row:', newData[rowIndex]);
+        
+        // Track changes that affect the main rank database
+        if (field === 'rank' || field === 'rankId') {
+          setChangedCompanyRanks(prev => new Set(prev).add(id));
+        }
       } else {
         console.log('🎯 [CHECKBOX] Row not found for id:', id);
       }
@@ -1405,19 +1424,43 @@ const AdminModuleInner = (): JSX.Element => {
 
   const handleSaveCompany = async () => {
     try {
-      // Save company rank data to backend
-      const response = await fetch('/api/company-ranks', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(companyRankData),
+      console.log('🔄 [COMPANY_SAVE] Starting save process', {
+        changedCompanyRanks: Array.from(changedCompanyRanks),
+        companyRankDataCount: companyRankData.length
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to save company ranks');
+      // Update each changed rank in the main rank database
+      for (const changedId of Array.from(changedCompanyRanks)) {
+        const companyRank = companyRankData.find(rank => rank.id === changedId);
+        if (companyRank) {
+          // Find the original rank data to preserve its structure
+          const originalRank = sharedRankMasterData?.find(rank => rank.id.toString() === changedId);
+          
+          if (originalRank) {
+            console.log('🔄 [COMPANY_SAVE] Updating rank:', {
+              id: changedId,
+              name: originalRank.rank,
+              updatedLabel: companyRank.rank
+            });
+
+            await updateRankMutation.mutateAsync({
+              id: parseInt(changedId),
+              data: {
+                // Preserve original rank data structure
+                name: originalRank.rank,
+                category: 'Senior Officers', // Default category
+                rankId: companyRank.rankId || originalRank.rankId,
+                label: companyRank.rank || originalRank.label,
+                // Keep the existing applicableToCompany value
+                applicableToCompany: originalRank.applicableToCompany
+              }
+            });
+          }
+        }
       }
 
+      // Clear change tracking
+      setChangedCompanyRanks(new Set());
       setIsCompanyEditing(false);
       
       toast({
