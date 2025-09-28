@@ -111,6 +111,7 @@ interface CompanyRankData {
   parentId?: string; // ID of parent rank for role rows (deprecated)
   originalRankId?: string; // ID of original rank for role rows (replaces parentId)
   isRoleRow?: boolean; // True for role rows, false/undefined for regular rows
+  applicableToCompany?: boolean; // Added to track Company applicability status
   officer: boolean;
   rating: boolean;
   seniorOfficer: boolean;
