@@ -2218,22 +2218,10 @@ const AdminModuleInner = (): JSX.Element => {
                 // Filter ranks to hide parent ranks when role variants exist
                 const displayRows = companyRankData.filter(rank => {
                   if (rank.isRoleRow) return true; // Always show role rows
-                  
                   // Hide parent rows if they have role rows
                   const hasRoleRows = companyRankData.some(r => r.originalRankId === rank.id && r.isRoleRow);
-                  
-                  // Debug logging
-                  if (rank.rank === "Chief Officer") {
-                    console.log(`🔍 [FILTER DEBUG] Chief Officer - hasRoleRows: ${hasRoleRows}`, {
-                      rankId: rank.id,
-                      roleRows: companyRankData.filter(r => r.originalRankId === rank.id && r.isRoleRow)
-                    });
-                  }
-                  
                   return !hasRoleRows;
                 });
-                
-                console.log(`🔍 [FILTER DEBUG] Total data: ${companyRankData.length}, Displayed: ${displayRows.length}`);
                 return displayRows;
               })().map((rank) => (
                 <TableRow key={rank.id} className="border-b border-gray-100 hover:bg-gray-50 text-xs">
