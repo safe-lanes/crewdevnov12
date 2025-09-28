@@ -2207,10 +2207,10 @@ const AdminModuleInner = (): JSX.Element => {
               {companyRankData.map((rank) => (
                 <TableRow key={rank.id} className="border-b border-gray-100 hover:bg-gray-50 text-xs">
                   <TableCell className="w-4"></TableCell>
-                  <TableCell className="font-medium">{rank.name}</TableCell>
+                  <TableCell className="font-medium">{rank.rank}</TableCell>
                   {companyRankData.some(rank => rank.isRoleRow) && (
                     <TableCell className="text-gray-600">
-                      {rank.isRoleRow ? rank.roleName || rank.name : ""}
+                      {rank.isRoleRow ? (rank.role || rank.rank) : ""}
                     </TableCell>
                   )}
                   <TableCell className="text-gray-600">{rank.rankId}</TableCell>
@@ -2219,7 +2219,7 @@ const AdminModuleInner = (): JSX.Element => {
                       type="checkbox"
                       checked={rank.applicableToCompany}
                       onChange={(e) => {
-                        updateCompanyRankData(prev => 
+                        setCompanyRankData(prev => 
                           prev.map(r => r.id === rank.id ? { ...r, applicableToCompany: e.target.checked } : r)
                         );
                       }}
@@ -2233,7 +2233,7 @@ const AdminModuleInner = (): JSX.Element => {
                       type="checkbox"
                       checked={rank.officer}
                       onChange={(e) => {
-                        updateCompanyRankData(prev => 
+                        setCompanyRankData(prev => 
                           prev.map(r => r.id === rank.id ? { ...r, officer: e.target.checked } : r)
                         );
                       }}
@@ -2247,7 +2247,7 @@ const AdminModuleInner = (): JSX.Element => {
                       type="checkbox"
                       checked={rank.rating}
                       onChange={(e) => {
-                        updateCompanyRankData(prev => 
+                        setCompanyRankData(prev => 
                           prev.map(r => r.id === rank.id ? { ...r, rating: e.target.checked } : r)
                         );
                       }}
@@ -2261,7 +2261,7 @@ const AdminModuleInner = (): JSX.Element => {
                       type="checkbox"
                       checked={rank.seniorOfficer}
                       onChange={(e) => {
-                        updateCompanyRankData(prev => 
+                        setCompanyRankData(prev => 
                           prev.map(r => r.id === rank.id ? { ...r, seniorOfficer: e.target.checked } : r)
                         );
                       }}
