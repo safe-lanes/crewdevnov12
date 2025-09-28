@@ -48,7 +48,7 @@
         "rankId": "S7",
         "label": "Chief Engineer",
         "applicableToCompany": true,
-        "sortOrder": 3
+        "sortOrder": 5
       }
     ],
     [
@@ -60,7 +60,7 @@
         "rankId": "S3",
         "label": "2nd Officer",
         "applicableToCompany": true,
-        "sortOrder": 4
+        "sortOrder": 3
       }
     ],
     [
@@ -72,7 +72,7 @@
         "rankId": "S4",
         "label": "3rd Officer",
         "applicableToCompany": true,
-        "sortOrder": 5
+        "sortOrder": 4
       }
     ],
     [
@@ -133,6 +133,42 @@
         "label": "OS",
         "applicableToCompany": false,
         "sortOrder": 10
+      }
+    ],
+    [
+      11,
+      {
+        "name": "4th Engineer",
+        "category": "Senior Officers",
+        "rankId": "S16",
+        "label": "4th Engineer",
+        "applicableToCompany": true,
+        "id": 11,
+        "sortOrder": 11
+      }
+    ],
+    [
+      12,
+      {
+        "name": "Fitter",
+        "category": "Senior Officers",
+        "rankId": "S17",
+        "label": "Fitter",
+        "applicableToCompany": true,
+        "id": 12,
+        "sortOrder": 12
+      }
+    ],
+    [
+      13,
+      {
+        "name": "Oiler",
+        "category": "Senior Officers",
+        "rankId": "S18",
+        "label": "Oiler",
+        "applicableToCompany": true,
+        "id": 13,
+        "sortOrder": 13
       }
     ]
   ],
@@ -829,6 +865,16 @@
         "createdAt": "2025-09-28T09:07:46.456Z",
         "updatedAt": "2025-09-28T09:07:46.456Z"
       }
+    ],
+    [
+      2,
+      {
+        "name": "Fleet 2",
+        "vesselIds": "[\"3\",\"4\",\"5\"]",
+        "id": 2,
+        "createdAt": "2025-09-28T09:21:02.328Z",
+        "updatedAt": "2025-09-28T09:21:02.328Z"
+      }
     ]
   ],
   "masterDataEntries": [
@@ -936,8 +982,8 @@
   "currentUserId": 1,
   "currentFormId": 2,
   "currentRankGroupId": 1,
-  "currentAvailableRankId": 11,
+  "currentAvailableRankId": 14,
   "currentAppraisalResultId": 5,
   "currentCrewIdCounter": 5,
-  "currentVesselGroupId": 2
+  "currentVesselGroupId": 3
 }
