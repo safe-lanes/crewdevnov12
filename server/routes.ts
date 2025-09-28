@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError } from "./storage";
-import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertDataMasterSchema, insertMasterDataEntrySchema } from "@shared/schema";
+import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema } from "@shared/schema";
 import { z } from "zod";
 import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew } from "@shared/crew-mapping";
 import { 
@@ -373,6 +373,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("❌ Failed to save company ranks:", error);
       res.status(500).json({ error: "Failed to save company ranks" });
+    }
+  });
+
+  // Vessel Groups API routes
+  app.get("/api/vessel-groups", async (req, res) => {
+    try {
+      const vesselGroups = await storage.getVesselGroups();
+      res.json(vesselGroups);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch vessel groups" });
+    }
+  });
+
+  app.get("/api/vessel-groups/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const vesselGroup = await storage.getVesselGroup(id);
+      if (!vesselGroup) {
+        return res.status(404).json({ error: "Vessel group not found" });
+      }
+      res.json(vesselGroup);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch vessel group" });
+    }
+  });
+
+  app.post("/api/vessel-groups", async (req, res) => {
+    try {
+      // Normalize vesselIds to JSON string before validation if it's an array
+      const normalizedBody = {
+        ...req.body,
+        vesselIds: Array.isArray(req.body.vesselIds) 
+          ? JSON.stringify(req.body.vesselIds) 
+          : req.body.vesselIds
+      };
+      
+      const result = insertVesselGroupSchema.safeParse(normalizedBody);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid vessel group data", details: result.error.issues });
+      }
+      
+      const vesselGroup = await storage.createVesselGroup(result.data);
+      res.status(201).json(vesselGroup);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create vessel group" });
+    }
+  });
+
+  app.patch("/api/vessel-groups/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Normalize vesselIds to JSON string before validation if it's an array
+      const normalizedBody = {
+        ...req.body,
+        ...(req.body.vesselIds && {
+          vesselIds: Array.isArray(req.body.vesselIds) 
+            ? JSON.stringify(req.body.vesselIds) 
+            : req.body.vesselIds
+        })
+      };
+      
+      const result = insertVesselGroupSchema.partial().safeParse(normalizedBody);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid vessel group data", details: result.error.issues });
+      }
+      
+      const vesselGroup = await storage.updateVesselGroup(id, result.data);
+      if (!vesselGroup) {
+        return res.status(404).json({ error: "Vessel group not found" });
+      }
+      res.json(vesselGroup);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update vessel group" });
+    }
+  });
+
+  app.delete("/api/vessel-groups/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteVesselGroup(id);
+      if (!success) {
+        return res.status(404).json({ error: "Vessel group not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete vessel group" });
     }
   });
 
