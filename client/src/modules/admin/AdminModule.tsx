@@ -797,7 +797,7 @@ const AdminModuleInner = (): JSX.Element => {
     const allRanks = rankMasterData;
     
     // Don't update if we're currently editing to avoid losing unsaved changes
-    if (isCompanyEditing) {
+    if (isCompanyEditing || isRankMasterEditing) {
       return;
     }
     
