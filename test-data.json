@@ -819,6 +819,18 @@
       }
     ]
   ],
+  "vesselGroups": [
+    [
+      1,
+      {
+        "name": "Fleet 1",
+        "vesselIds": "[\"1\",\"2\"]",
+        "id": 1,
+        "createdAt": "2025-09-28T09:07:46.456Z",
+        "updatedAt": "2025-09-28T09:07:46.456Z"
+      }
+    ]
+  ],
   "masterDataEntries": [
     [
       1,
@@ -926,5 +938,6 @@
   "currentRankGroupId": 1,
   "currentAvailableRankId": 11,
   "currentAppraisalResultId": 5,
-  "currentCrewIdCounter": 5
+  "currentCrewIdCounter": 5,
+  "currentVesselGroupId": 2
 }

@@ -2860,7 +2860,10 @@ const AdminModuleInner = (): JSX.Element => {
                                 onSelect={() => {
                                   // Handle vessel group selection
                                   if (vessel.type === 'group' && vessel.vesselIds) {
-                                    const groupVesselIds = vessel.vesselIds;
+                                    // Parse vesselIds if it's a JSON string
+                                    const groupVesselIds = Array.isArray(vessel.vesselIds) 
+                                      ? vessel.vesselIds 
+                                      : JSON.parse(vessel.vesselIds || '[]');
                                     const allGroupVesselsSelected = groupVesselIds.every(id => selectedVessels.includes(id));
                                     
                                     if (allGroupVesselsSelected) {
@@ -2887,7 +2890,11 @@ const AdminModuleInner = (): JSX.Element => {
                                   <Checkbox 
                                     checked={(() => {
                                       if (vessel.type === 'group' && vessel.vesselIds) {
-                                        return vessel.vesselIds.every(id => selectedVessels.includes(id));
+                                        // Parse vesselIds if it's a JSON string
+                                        const vesselIdArray = Array.isArray(vessel.vesselIds) 
+                                          ? vessel.vesselIds 
+                                          : JSON.parse(vessel.vesselIds || '[]');
+                                        return vesselIdArray.every(id => selectedVessels.includes(id));
                                       }
                                       return selectedVessels.includes(vessel.value);
                                     })()}
@@ -2899,7 +2906,11 @@ const AdminModuleInner = (): JSX.Element => {
                                   className={`ml-auto h-4 w-4 ${
                                     (() => {
                                       if (vessel.type === 'group' && vessel.vesselIds) {
-                                        return vessel.vesselIds.every(id => selectedVessels.includes(id)) ? "opacity-100" : "opacity-0";
+                                        // Parse vesselIds if it's a JSON string
+                                        const vesselIdArray = Array.isArray(vessel.vesselIds) 
+                                          ? vessel.vesselIds 
+                                          : JSON.parse(vessel.vesselIds || '[]');
+                                        return vesselIdArray.every(id => selectedVessels.includes(id)) ? "opacity-100" : "opacity-0";
                                       }
                                       return selectedVessels.includes(vessel.value) ? "opacity-100" : "opacity-0";
                                     })()
