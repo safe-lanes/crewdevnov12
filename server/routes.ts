@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError } from "./storage";
 import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertDataMasterSchema, insertMasterDataEntrySchema } from "@shared/schema";
+import { z } from "zod";
 import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew } from "@shared/crew-mapping";
 import { 
   isVesselMaster,
@@ -49,6 +50,12 @@ function applyBasicFieldTransformation(entry: any): any {
   
   return transformed;
 }
+
+// Schema for rank reorder request
+const rankReorderSchema = z.array(z.object({
+  id: z.number(),
+  sortOrder: z.number().int().nonnegative()
+}));
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for database connectivity
@@ -325,6 +332,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, message: "All ranks cleared successfully" });
     } catch (error) {
       res.status(500).json({ error: "Failed to clear ranks" });
+    }
+  });
+
+  // Rank reorder endpoint for drag-and-drop functionality
+  app.post("/api/available-ranks/reorder", async (req, res) => {
+    try {
+      const validatedData = rankReorderSchema.parse(req.body);
+      const success = await storage.updateRankOrders(validatedData);
+      if (!success) {
+        return res.status(500).json({ error: "Failed to update rank orders" });
+      }
+      res.json({ success: true, message: "Rank orders updated successfully" });
+    } catch (error) {
+      console.error('Rank reorder error:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid reorder data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to reorder ranks" });
     }
   });
 
