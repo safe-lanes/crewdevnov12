@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown, Trash2 } from "lucide-react";
+import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown, Trash2, ChevronUp, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UnsavedChangesDialog } from "@/components/dialogs/UnsavedChangesDialog";
 import {
@@ -182,6 +182,33 @@ const AdminModuleInner = (): JSX.Element => {
   const updateRankMutation = useUpdateRank();
   const deleteRankMutation = useDeleteRank();
   const clearAllRanksMutation = useClearAllRanks();
+  
+  // Rank reorder mutation
+  const reorderRanksMutation = useMutation({
+    mutationFn: async (rankOrders: Array<{ id: number; sortOrder: number }>) => {
+      return apiRequest('/api/available-ranks/reorder', {
+        method: 'POST',
+        body: rankOrders,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/available-ranks'] });
+      toast({
+        title: "Ranks reordered successfully",
+        description: "The rank order has been updated.",
+        duration: 3000,
+      });
+    },
+    onError: (error) => {
+      console.error('Failed to reorder ranks:', error);
+      toast({
+        title: "Failed to reorder ranks",
+        description: "An error occurred while updating rank order.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    },
+  });
   
   
   // Local state for editing (initialized from shared data)
@@ -863,6 +890,45 @@ const AdminModuleInner = (): JSX.Element => {
       newSet.delete(rankId);
       return newSet;
     });
+  };
+
+  // Rank reordering handlers
+  const handleMoveRankUp = (currentIndex: number) => {
+    if (currentIndex === 0) return; // Can't move up if already at top
+    
+    const newData = [...rankMasterData];
+    // Swap current item with the one above it
+    [newData[currentIndex - 1], newData[currentIndex]] = [newData[currentIndex], newData[currentIndex - 1]];
+    
+    setRankMasterData(newData);
+    
+    // Create rank order updates
+    const rankOrderUpdates = newData.map((rank, index) => ({
+      id: parseInt(rank.id),
+      sortOrder: index + 1
+    }));
+
+    // Send update to server
+    reorderRanksMutation.mutate(rankOrderUpdates);
+  };
+
+  const handleMoveRankDown = (currentIndex: number) => {
+    if (currentIndex === rankMasterData.length - 1) return; // Can't move down if already at bottom
+    
+    const newData = [...rankMasterData];
+    // Swap current item with the one below it
+    [newData[currentIndex], newData[currentIndex + 1]] = [newData[currentIndex + 1], newData[currentIndex]];
+    
+    setRankMasterData(newData);
+    
+    // Create rank order updates
+    const rankOrderUpdates = newData.map((rank, index) => ({
+      id: parseInt(rank.id),
+      sortOrder: index + 1
+    }));
+
+    // Send update to server
+    reorderRanksMutation.mutate(rankOrderUpdates);
   };
 
   // Database cleanup function - clears all ranks and resets state
@@ -2303,6 +2369,28 @@ const AdminModuleInner = (): JSX.Element => {
                           <div className="flex items-center justify-center gap-1">
                             {isRankMasterEditing && (
                               <>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleMoveRankUp(index)}
+                                  disabled={index === 0}
+                                  className="h-6 w-6 p-0 text-blue-600 hover:bg-blue-50 disabled:text-gray-300 disabled:cursor-not-allowed"
+                                  data-testid={`button-move-up-${rank.id}`}
+                                  title="Move rank up"
+                                >
+                                  <ChevronUp className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleMoveRankDown(index)}
+                                  disabled={index === rankMasterData.length - 1}
+                                  className="h-6 w-6 p-0 text-blue-600 hover:bg-blue-50 disabled:text-gray-300 disabled:cursor-not-allowed"
+                                  data-testid={`button-move-down-${rank.id}`}
+                                  title="Move rank down"
+                                >
+                                  <ChevronDown className="h-3 w-3" />
+                                </Button>
                                 <Button
                                   size="sm"
                                   variant="ghost"
