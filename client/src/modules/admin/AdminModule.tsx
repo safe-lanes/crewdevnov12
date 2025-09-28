@@ -2159,9 +2159,145 @@ const AdminModuleInner = (): JSX.Element => {
   );
 
   const renderCompanyTab = () => (
-    <>
-      {/* Company tab content will be moved here */}
-    </>
+    <div>
+      {/* Company Header with Edit/Save buttons */}
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-2">
+          <h3 className="text-lg font-medium text-gray-900">Company Ranks</h3>
+          <span className="text-sm text-gray-500">
+            ({companyRankData.length} ranks)
+          </span>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant={isCompanyEditing ? "default" : "outline"}
+            onClick={isCompanyEditing ? handleSaveCompany : handleEditCompany}
+            className={`h-8 text-xs ${
+              isCompanyEditing 
+                ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
+                : "border-[#e1e8ed] text-[#16569e]"
+            }`}
+            data-testid={isCompanyEditing ? "button-save-company" : "button-edit-company"}
+          >
+            {isCompanyEditing ? "Save" : "Edit Table"}
+          </Button>
+        </div>
+      </div>
+      
+      {/* Company Table with Vertical Scroll */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <ScrollArea className="h-[500px] w-full">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                <TableHead className="text-white text-xs font-normal w-4"></TableHead>
+                <TableHead className="text-white text-xs font-normal">Rank</TableHead>
+                {companyRankData.some(rank => rank.isRoleRow) && (
+                  <TableHead className="text-white text-xs font-normal w-32">Rank (Role)</TableHead>
+                )}
+                <TableHead className="text-white text-xs font-normal w-20">Rank ID</TableHead>
+                <TableHead className="text-white text-xs font-normal w-24 text-center">Applicable to Company</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center">Officer</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center">Rating</TableHead>
+                <TableHead className="text-white text-xs font-normal w-20 text-center">Senior Officer</TableHead>
+                <TableHead className="text-white text-xs font-normal w-20 text-center">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {companyRankData.map((rank) => (
+                <TableRow key={rank.id} className="border-b border-gray-100 hover:bg-gray-50 text-xs">
+                  <TableCell className="w-4"></TableCell>
+                  <TableCell className="font-medium">{rank.name}</TableCell>
+                  {companyRankData.some(rank => rank.isRoleRow) && (
+                    <TableCell className="text-gray-600">
+                      {rank.isRoleRow ? rank.roleName || rank.name : ""}
+                    </TableCell>
+                  )}
+                  <TableCell className="text-gray-600">{rank.rankId}</TableCell>
+                  <TableCell className="text-center">
+                    <input
+                      type="checkbox"
+                      checked={rank.applicableToCompany}
+                      onChange={(e) => {
+                        updateCompanyRankData(prev => 
+                          prev.map(r => r.id === rank.id ? { ...r, applicableToCompany: e.target.checked } : r)
+                        );
+                      }}
+                      disabled={!isCompanyEditing}
+                      className="h-4 w-4"
+                      data-testid={`company-applicable-${rank.id}`}
+                    />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <input
+                      type="checkbox"
+                      checked={rank.officer}
+                      onChange={(e) => {
+                        updateCompanyRankData(prev => 
+                          prev.map(r => r.id === rank.id ? { ...r, officer: e.target.checked } : r)
+                        );
+                      }}
+                      disabled={!isCompanyEditing}
+                      className="h-4 w-4"
+                      data-testid={`company-officer-${rank.id}`}
+                    />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <input
+                      type="checkbox"
+                      checked={rank.rating}
+                      onChange={(e) => {
+                        updateCompanyRankData(prev => 
+                          prev.map(r => r.id === rank.id ? { ...r, rating: e.target.checked } : r)
+                        );
+                      }}
+                      disabled={!isCompanyEditing}
+                      className="h-4 w-4"
+                      data-testid={`company-rating-${rank.id}`}
+                    />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <input
+                      type="checkbox"
+                      checked={rank.seniorOfficer}
+                      onChange={(e) => {
+                        updateCompanyRankData(prev => 
+                          prev.map(r => r.id === rank.id ? { ...r, seniorOfficer: e.target.checked } : r)
+                        );
+                      }}
+                      disabled={!isCompanyEditing}
+                      className="h-4 w-4"
+                      data-testid={`company-senior-officer-${rank.id}`}
+                    />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-destructive hover:bg-destructive/10"
+                      onClick={() => handleDeleteCompanyRank(rank.id)}
+                      data-testid={`button-delete-company-${rank.id}`}
+                      title="Delete role"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {companyRankData.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={companyRankData.some(r => r.isRoleRow) ? 6 : 5} className="text-center py-8">
+                    <div className="text-gray-500 text-sm">
+                      No company ranks available. Mark ranks as "Applicable to Company" in Rank Master tab.
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </ScrollArea>
+      </div>
+    </div>
   );
 
   const renderVesselTab = () => (
@@ -2560,300 +2696,8 @@ const AdminModuleInner = (): JSX.Element => {
               </div>
             )}
             
-            {selectedRankAdminTab === "company" && (
-              <div>
-                {/* Company Header with Edit/Save buttons */}
-                <div className="flex justify-between items-center mb-4">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-medium text-gray-900">Company Ranks</h3>
-                    <span className="text-sm text-gray-500">
-                      ({companyRankData.length} ranks)
-                    </span>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant={isCompanyEditing ? "default" : "outline"}
-                      onClick={isCompanyEditing ? handleSaveCompany : handleEditCompany}
-                      className={`h-8 text-xs ${
-                        isCompanyEditing 
-                          ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
-                          : "border-[#e1e8ed] text-[#16569e]"
-                      }`}
-                      data-testid={isCompanyEditing ? "button-save-company" : "button-edit-company"}
-                    >
-                      {isCompanyEditing ? "Save" : "Edit Table"}
-                    </Button>
-                  </div>
-                </div>
-                
-                {/* Company Table with Vertical Scroll */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                  <ScrollArea className="h-[500px] w-full">
-                    <Table>
-                  <TableHeader>
-                    <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
-                      <TableHead className="text-white text-xs font-normal w-4">
-                        
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal">
-                        Rank
-                      </TableHead>
-                      {/* Conditionally show Rank (Role) column when role rows exist */}
-                      {companyRankData.some(rank => rank.isRoleRow) && (
-                        <TableHead className="text-white text-xs font-normal w-32">
-                          Rank (Role)
-                        </TableHead>
-                      )}
-                      <TableHead className="text-white text-xs font-normal w-20">
-                        Rank ID
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal w-24 text-center">
-                        Applicable to Company
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal w-16 text-center">
-                        Officer
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal w-16 text-center">
-                        Rating
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal w-20 text-center">
-                        Senior Officer
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal w-20 text-center">
-                        Deck Officer
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal w-20 text-center">
-                        Eng Officer
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal w-20 text-center">
-                        Petty Officer
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal w-20 text-center">
-                        Deck Rating
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal w-20 text-center">
-                        Engine Rating
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal w-20 text-center">
-                        Gen Rating
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal w-20 text-center">
-                        Catering Rating
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal w-20 text-center">
-                        Safety Officer
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal w-16 text-center">
-                        SSO
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal w-20 text-center">
-                        Medical Officer
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal w-20 text-center">
-                        Navigating Officer
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal w-20 text-center">
-                        Emt Officer
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal w-16">
-                        
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {companyRankData
-                      .filter(rank => {
-                        // If this is a parent row and it has role rows, hide it
-                        if (!rank.isRoleRow) {
-                          const hasRoleRows = companyRankData.some(r => r.originalRankId === rank.id);
-                          return !hasRoleRows; // Hide parent if it has role rows
-                        }
-                        return true; // Show all role rows
-                      })
-                      .map((rank, index) => (
-                      <TableRow key={rank.id} className="hover:bg-gray-50">
-                        <TableCell className="text-[#4f5863] text-[13px] font-normal py-3">
-                          <div className="w-3 h-3 bg-gray-300 cursor-move rounded-sm" data-testid={`drag-handle-company-${rank.id}`}></div>
-                        </TableCell>
-                        
-                        <TableCell className="text-[#4f5863] text-[13px] font-normal py-3">
-                          {isCompanyEditing ? (
-                            <Input
-                              value={rank.rank}
-                              onChange={(e) => handleCompanyRankDataChange(rank.id, 'rank', e.target.value)}
-                              className="h-7 text-[13px] border-gray-300 focus:border-[#16569e] focus:ring-[#16569e]"
-                              data-testid={`input-rank-name-${rank.id}`}
-                            />
-                          ) : (
-                            rank.rank
-                          )}
-                        </TableCell>
-                        
-                        {/* Conditionally show Rank (Role) cell when role rows exist */}
-                        {companyRankData.some(r => r.isRoleRow) && (
-                          <TableCell className="text-[#4f5863] text-[13px] font-normal py-3">
-                            {rank.role || ''}
-                          </TableCell>
-                        )}
-                        
-                        <TableCell className="text-[#4f5863] text-[13px] font-normal py-3">
-                          {rank.rankId}
-                        </TableCell>
-                        
-                        {/* Applicable to Company checkbox */}
-                        <TableCell className="text-center py-3">
-                          <Checkbox
-                            checked={rank.applicableToCompany || false}
-                            onCheckedChange={(checked) => {
-                              // Ensure boolean value
-                              const booleanValue = checked === true;
-                              
-                              // Update the main rank database for immediate visual feedback
-                              handleRankDataChange(rank.id, 'applicableToCompany', booleanValue);
-                              
-                              // Also update the company rank data to keep it in sync
-                              setCompanyRankData(prev => {
-                                const newData = [...prev];
-                                const rowIndex = newData.findIndex(row => row.id === rank.id);
-                                if (rowIndex !== -1) {
-                                  newData[rowIndex] = { ...newData[rowIndex], applicableToCompany: booleanValue };
-                                }
-                                return newData;
-                              });
-                              
-                              // Track this as a company change for saving
-                              setChangedCompanyRanks(prev => new Set(prev).add(rank.id));
-                            }}
-                            disabled={!isCompanyEditing}
-                            className="h-4 w-4"
-                            data-testid={`checkbox-applicable-to-company-${rank.id}`}
-                          />
-                        </TableCell>
-                        
-                        {/* Checkbox columns */}
-                        <TableCell className="text-center py-3">
-                          <Checkbox
-                            checked={rank.officer}
-                            onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'officer', checked)}
-                            disabled={!isCompanyEditing}
-                            className="h-4 w-4"
-                            data-testid={`checkbox-officer-${rank.id}`}
-                          />
-                        </TableCell>
-                        
-                        <TableCell className="text-center py-3">
-                          <Checkbox
-                            checked={rank.rating}
-                            onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'rating', checked)}
-                            disabled={!isCompanyEditing}
-                            className="h-4 w-4"
-                            data-testid={`checkbox-rating-${rank.id}`}
-                          />
-                        </TableCell>
-                        
-                        <TableCell className="text-center py-3">
-                          <Checkbox
-                            checked={rank.seniorOfficer}
-                            onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'seniorOfficer', checked)}
-                            disabled={!isCompanyEditing}
-                            className="h-4 w-4"
-                            data-testid={`checkbox-senior-officer-${rank.id}`}
-                          />
-                        </TableCell>
-                        
-                        <TableCell className="text-center py-3">
-                          <Checkbox
-                            checked={rank.deckOfficer}
-                            onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'deckOfficer', checked)}
-                            disabled={!isCompanyEditing}
-                            className="h-4 w-4"
-                            data-testid={`checkbox-deck-officer-${rank.id}`}
-                          />
-                        </TableCell>
-                        
-                        <TableCell className="text-center py-3">
-                          <Checkbox
-                            checked={rank.engOfficer}
-                            onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'engOfficer', checked)}
-                            disabled={!isCompanyEditing}
-                            className="h-4 w-4"
-                            data-testid={`checkbox-eng-officer-${rank.id}`}
-                          />
-                        </TableCell>
-                        
-                        <TableCell className="text-center py-3">
-                          <Checkbox
-                            checked={rank.pettyOfficer}
-                            onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'pettyOfficer', checked)}
-                            disabled={!isCompanyEditing}
-                            className="h-4 w-4"
-                            data-testid={`checkbox-petty-officer-${rank.id}`}
-                          />
-                        </TableCell>
-                        
-                        <TableCell className="text-center py-3">
-                          <Checkbox
-                            checked={rank.deckRating}
-                            onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'deckRating', checked)}
-                            disabled={!isCompanyEditing}
-                            className="h-4 w-4"
-                            data-testid={`checkbox-deck-rating-${rank.id}`}
-                          />
-                        </TableCell>
-                        
-                        <TableCell className="text-center py-3">
-                          <Checkbox
-                            checked={rank.engineRating}
-                            onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'engineRating', checked)}
-                            disabled={!isCompanyEditing}
-                            className="h-4 w-4"
-                            data-testid={`checkbox-engine-rating-${rank.id}`}
-                          />
-                        </TableCell>
-                        
-                        <TableCell className="text-center py-3">
-                          <Checkbox
-                            checked={rank.generalRating}
-                            onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'generalRating', checked)}
-                            disabled={!isCompanyEditing}
-                            className="h-4 w-4"
-                            data-testid={`checkbox-general-rating-${rank.id}`}
-                          />
-                        </TableCell>
-                        
-                        <TableCell className="text-center py-3">
-                          <Checkbox
-                            checked={rank.cateringRating}
-                            onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'cateringRating', checked)}
-                            disabled={!isCompanyEditing}
-                            className="h-4 w-4"
-                            data-testid={`checkbox-catering-rating-${rank.id}`}
-                          />
-                        </TableCell>
-                        
-                        <TableCell className="text-center py-3">
-                          <Checkbox
-                            checked={rank.safetyOfficer}
-                            onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'safetyOfficer', checked)}
-                            disabled={!isCompanyEditing}
-                            className="h-4 w-4"
-                            data-testid={`checkbox-safety-officer-${rank.id}`}
-                          />
-                        </TableCell>
-                        
-                        <TableCell className="text-center py-3">
-                          <Checkbox
-                            checked={rank.sso}
-                            onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'sso', checked)}
-                            disabled={!isCompanyEditing}
-                            className="h-4 w-4"
-                            data-testid={`checkbox-sso-${rank.id}`}
-                          />
-                        </TableCell>
-                        
-                        <TableCell className="text-center py-3">
-                          <Checkbox
-                            checked={rank.medicalOfficer}
+            {selectedRankAdminTab === "company" && renderCompanyTab()}
+            
                             onCheckedChange={(checked) => handleCompanyRankDataChange(rank.id, 'medicalOfficer', checked)}
                             disabled={!isCompanyEditing}
                             className="h-4 w-4"
@@ -2948,7 +2792,7 @@ const AdminModuleInner = (): JSX.Element => {
                     )}
                   </TableBody>
                 </Table>
-                  </ScrollArea>
+                </ScrollArea>
               </div>
             )}
             
