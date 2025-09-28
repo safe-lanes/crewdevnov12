@@ -4205,7 +4205,9 @@ const AdminModuleInner = (): JSX.Element => {
               Cancel
             </Button>
             <Button
-              type="submit"
+              onClick={vesselGroupForm.handleSubmit((data) => {
+                createVesselGroupMutation.mutate(data);
+              })}
               disabled={!vesselGroupForm.formState.isValid || createVesselGroupMutation.isPending}
               className="h-8 text-xs"
               data-testid="button-create-vessel-group"
