@@ -2304,7 +2304,7 @@ const AdminModuleInner = (): JSX.Element => {
                   </TableHeader>
                   <TableBody>
                     {rankMasterData.map((rank, index) => (
-                      <TableRow key={rank.id} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"} data-testid={`row-rank-master-${rank.id}`}>
+                      <TableRow key={rank.id} className="bg-white" data-testid={`row-rank-master-${rank.id}`}>
                         <TableCell className="py-3 text-center border-r">
                           {isRankMasterEditing ? (
                             <input

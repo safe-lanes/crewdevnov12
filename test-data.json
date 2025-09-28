@@ -23,7 +23,8 @@
         "category": "Senior Officers",
         "rankId": "S1",
         "label": "Master",
-        "applicableToCompany": true
+        "applicableToCompany": true,
+        "sortOrder": 1
       }
     ],
     [
@@ -34,7 +35,8 @@
         "category": "Senior Officers",
         "rankId": "S2",
         "label": "Chief Officer",
-        "applicableToCompany": true
+        "applicableToCompany": true,
+        "sortOrder": 2
       }
     ],
     [
@@ -45,7 +47,8 @@
         "category": "Senior Officers",
         "rankId": "S7",
         "label": "Chief Engineer",
-        "applicableToCompany": true
+        "applicableToCompany": true,
+        "sortOrder": 3
       }
     ],
     [
@@ -56,7 +59,8 @@
         "category": "Junior Officers",
         "rankId": "S3",
         "label": "2nd Officer",
-        "applicableToCompany": true
+        "applicableToCompany": true,
+        "sortOrder": 4
       }
     ],
     [
@@ -67,7 +71,8 @@
         "category": "Junior Officers",
         "rankId": "S4",
         "label": "3rd Officer",
-        "applicableToCompany": true
+        "applicableToCompany": true,
+        "sortOrder": 5
       }
     ],
     [
@@ -78,7 +83,8 @@
         "category": "Junior Officers",
         "rankId": "S9",
         "label": "2nd Engineer",
-        "applicableToCompany": true
+        "applicableToCompany": true,
+        "sortOrder": 6
       }
     ],
     [
@@ -89,7 +95,8 @@
         "category": "Junior Officers",
         "rankId": "S10",
         "label": "3rd Engineer",
-        "applicableToCompany": true
+        "applicableToCompany": true,
+        "sortOrder": 7
       }
     ],
     [
@@ -100,7 +107,8 @@
         "category": "Ratings",
         "rankId": "S12",
         "label": "Bosun",
-        "applicableToCompany": true
+        "applicableToCompany": true,
+        "sortOrder": 8
       }
     ],
     [
@@ -111,7 +119,8 @@
         "category": "Ratings",
         "rankId": "S14",
         "label": "AB",
-        "applicableToCompany": true
+        "applicableToCompany": true,
+        "sortOrder": 9
       }
     ],
     [
@@ -122,7 +131,8 @@
         "category": "Ratings",
         "rankId": "S15",
         "label": "OS",
-        "applicableToCompany": false
+        "applicableToCompany": false,
+        "sortOrder": 10
       }
     ]
   ],
