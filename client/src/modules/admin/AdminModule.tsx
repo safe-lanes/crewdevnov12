@@ -852,7 +852,7 @@ const AdminModuleInner = (): JSX.Element => {
         medicalOfficer: false,
         navigatingOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('officer'),
         emtOfficer: false,
-        hasMultiple: false
+        hasMultiple: rank.rank.toLowerCase().includes('officer') || rank.rank.toLowerCase().includes('engineer')
       };
     });
     
@@ -2195,11 +2195,21 @@ const AdminModuleInner = (): JSX.Element => {
                 {companyRankData.some(rank => rank.isRoleRow) && (
                   <TableHead className="text-white text-xs font-normal w-32">Rank (Role)</TableHead>
                 )}
-                <TableHead className="text-white text-xs font-normal w-20">Rank ID</TableHead>
-                <TableHead className="text-white text-xs font-normal w-24 text-center">Applicable to Company</TableHead>
+                <TableHead className="text-white text-xs font-normal w-20">Rank ID (Sail)</TableHead>
                 <TableHead className="text-white text-xs font-normal w-16 text-center">Officer</TableHead>
                 <TableHead className="text-white text-xs font-normal w-16 text-center">Rating</TableHead>
                 <TableHead className="text-white text-xs font-normal w-20 text-center">Senior Officer</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center">Deck Officer</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center">Eng Officer</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center">Petty Officer</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center">Deck Rating</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center">Engine Rating</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center">Gen Catering Rating</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center">Safety Officer</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center">SSO</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center">Medical Officer</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center">Navigating Officer</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center">Envt. Officer</TableHead>
                 <TableHead className="text-white text-xs font-normal w-20 text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -2217,21 +2227,7 @@ const AdminModuleInner = (): JSX.Element => {
                   <TableCell className="text-center">
                     <input
                       type="checkbox"
-                      checked={rank.applicableToCompany}
-                      onChange={(e) => {
-                        setCompanyRankData(prev => 
-                          prev.map(r => r.id === rank.id ? { ...r, applicableToCompany: e.target.checked } : r)
-                        );
-                      }}
-                      disabled={!isCompanyEditing}
-                      className="h-4 w-4"
-                      data-testid={`company-applicable-${rank.id}`}
-                    />
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <input
-                      type="checkbox"
-                      checked={rank.officer}
+                      checked={rank.officer || false}
                       onChange={(e) => {
                         setCompanyRankData(prev => 
                           prev.map(r => r.id === rank.id ? { ...r, officer: e.target.checked } : r)
@@ -2245,7 +2241,7 @@ const AdminModuleInner = (): JSX.Element => {
                   <TableCell className="text-center">
                     <input
                       type="checkbox"
-                      checked={rank.rating}
+                      checked={rank.rating || false}
                       onChange={(e) => {
                         setCompanyRankData(prev => 
                           prev.map(r => r.id === rank.id ? { ...r, rating: e.target.checked } : r)
@@ -2259,7 +2255,7 @@ const AdminModuleInner = (): JSX.Element => {
                   <TableCell className="text-center">
                     <input
                       type="checkbox"
-                      checked={rank.seniorOfficer}
+                      checked={rank.seniorOfficer || false}
                       onChange={(e) => {
                         setCompanyRankData(prev => 
                           prev.map(r => r.id === rank.id ? { ...r, seniorOfficer: e.target.checked } : r)
@@ -2271,22 +2267,189 @@ const AdminModuleInner = (): JSX.Element => {
                     />
                   </TableCell>
                   <TableCell className="text-center">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-destructive hover:bg-destructive/10"
-                      onClick={() => handleDeleteCompanyRank(rank.id)}
-                      data-testid={`button-delete-company-${rank.id}`}
-                      title="Delete role"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <input
+                      type="checkbox"
+                      checked={rank.deckOfficer || false}
+                      onChange={(e) => {
+                        setCompanyRankData(prev => 
+                          prev.map(r => r.id === rank.id ? { ...r, deckOfficer: e.target.checked } : r)
+                        );
+                      }}
+                      disabled={!isCompanyEditing}
+                      className="h-4 w-4"
+                      data-testid={`company-deck-officer-${rank.id}`}
+                    />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <input
+                      type="checkbox"
+                      checked={rank.engOfficer || false}
+                      onChange={(e) => {
+                        setCompanyRankData(prev => 
+                          prev.map(r => r.id === rank.id ? { ...r, engOfficer: e.target.checked } : r)
+                        );
+                      }}
+                      disabled={!isCompanyEditing}
+                      className="h-4 w-4"
+                      data-testid={`company-eng-officer-${rank.id}`}
+                    />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <input
+                      type="checkbox"
+                      checked={rank.pettyOfficer || false}
+                      onChange={(e) => {
+                        setCompanyRankData(prev => 
+                          prev.map(r => r.id === rank.id ? { ...r, pettyOfficer: e.target.checked } : r)
+                        );
+                      }}
+                      disabled={!isCompanyEditing}
+                      className="h-4 w-4"
+                      data-testid={`company-petty-officer-${rank.id}`}
+                    />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <input
+                      type="checkbox"
+                      checked={rank.deckRating || false}
+                      onChange={(e) => {
+                        setCompanyRankData(prev => 
+                          prev.map(r => r.id === rank.id ? { ...r, deckRating: e.target.checked } : r)
+                        );
+                      }}
+                      disabled={!isCompanyEditing}
+                      className="h-4 w-4"
+                      data-testid={`company-deck-rating-${rank.id}`}
+                    />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <input
+                      type="checkbox"
+                      checked={rank.engineRating || false}
+                      onChange={(e) => {
+                        setCompanyRankData(prev => 
+                          prev.map(r => r.id === rank.id ? { ...r, engineRating: e.target.checked } : r)
+                        );
+                      }}
+                      disabled={!isCompanyEditing}
+                      className="h-4 w-4"
+                      data-testid={`company-engine-rating-${rank.id}`}
+                    />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <input
+                      type="checkbox"
+                      checked={rank.cateringRating || false}
+                      onChange={(e) => {
+                        setCompanyRankData(prev => 
+                          prev.map(r => r.id === rank.id ? { ...r, cateringRating: e.target.checked } : r)
+                        );
+                      }}
+                      disabled={!isCompanyEditing}
+                      className="h-4 w-4"
+                      data-testid={`company-catering-rating-${rank.id}`}
+                    />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <input
+                      type="checkbox"
+                      checked={rank.safetyOfficer || false}
+                      onChange={(e) => {
+                        setCompanyRankData(prev => 
+                          prev.map(r => r.id === rank.id ? { ...r, safetyOfficer: e.target.checked } : r)
+                        );
+                      }}
+                      disabled={!isCompanyEditing}
+                      className="h-4 w-4"
+                      data-testid={`company-safety-officer-${rank.id}`}
+                    />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <input
+                      type="checkbox"
+                      checked={rank.sso || false}
+                      onChange={(e) => {
+                        setCompanyRankData(prev => 
+                          prev.map(r => r.id === rank.id ? { ...r, sso: e.target.checked } : r)
+                        );
+                      }}
+                      disabled={!isCompanyEditing}
+                      className="h-4 w-4"
+                      data-testid={`company-sso-${rank.id}`}
+                    />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <input
+                      type="checkbox"
+                      checked={rank.medicalOfficer || false}
+                      onChange={(e) => {
+                        setCompanyRankData(prev => 
+                          prev.map(r => r.id === rank.id ? { ...r, medicalOfficer: e.target.checked } : r)
+                        );
+                      }}
+                      disabled={!isCompanyEditing}
+                      className="h-4 w-4"
+                      data-testid={`company-medical-officer-${rank.id}`}
+                    />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <input
+                      type="checkbox"
+                      checked={rank.navigatingOfficer || false}
+                      onChange={(e) => {
+                        setCompanyRankData(prev => 
+                          prev.map(r => r.id === rank.id ? { ...r, navigatingOfficer: e.target.checked } : r)
+                        );
+                      }}
+                      disabled={!isCompanyEditing}
+                      className="h-4 w-4"
+                      data-testid={`company-navigating-officer-${rank.id}`}
+                    />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <input
+                      type="checkbox"
+                      checked={rank.emtOfficer || false}
+                      onChange={(e) => {
+                        setCompanyRankData(prev => 
+                          prev.map(r => r.id === rank.id ? { ...r, emtOfficer: e.target.checked } : r)
+                        );
+                      }}
+                      disabled={!isCompanyEditing}
+                      className="h-4 w-4"
+                      data-testid={`company-emt-officer-${rank.id}`}
+                    />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {rank.hasMultiple ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs px-2 py-1 h-6"
+                        onClick={() => handleMultiple(rank.id)}
+                        disabled={!isCompanyEditing}
+                        data-testid={`button-multiple-${rank.id}`}
+                      >
+                        Multiple
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-destructive hover:bg-destructive/10"
+                        onClick={() => handleDeleteCompanyRank(rank.id)}
+                        data-testid={`button-delete-company-${rank.id}`}
+                        title="Delete role"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
               {companyRankData.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={companyRankData.some(r => r.isRoleRow) ? 6 : 5} className="text-center py-8">
+                  <TableCell colSpan={companyRankData.some(r => r.isRoleRow) ? 19 : 18} className="text-center py-8">
                     <div className="text-gray-500 text-sm">
                       No company ranks available. Mark ranks as "Applicable to Company" in Rank Master tab.
                     </div>
