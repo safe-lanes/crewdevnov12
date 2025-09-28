@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type CrewDashboardSummary } from "@shared/schema";
+import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type CrewDashboardSummary } from "@shared/schema";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -62,6 +62,12 @@ export interface IStorage {
   createMasterDataEntry(entry: InsertMasterDataEntry): Promise<MasterDataEntry>;
   updateMasterDataEntry(id: number, entry: Partial<InsertMasterDataEntry>): Promise<MasterDataEntry | undefined>;
   deleteMasterDataEntry(id: number): Promise<boolean>;
+  // Vessel Groups
+  getVesselGroups(): Promise<VesselGroup[]>;
+  getVesselGroup(id: number): Promise<VesselGroup | undefined>;
+  createVesselGroup(vesselGroup: InsertVesselGroup): Promise<VesselGroup>;
+  updateVesselGroup(id: number, vesselGroup: Partial<InsertVesselGroup>): Promise<VesselGroup | undefined>;
+  deleteVesselGroup(id: number): Promise<boolean>;
   // Dashboard Summary
   getCrewDashboardSummary(crewId: string): Promise<CrewDashboardSummary | undefined>;
   // ID Generation
@@ -77,12 +83,14 @@ export class MemStorage implements IStorage {
   private crewMembers: Map<string, CrewMember>;
   private appraisalResults: Map<number, AppraisalResult>;
   private recruitmentCandidates: Map<string, RecruitmentCandidate>;
+  private vesselGroups: Map<number, VesselGroup>;
   private currentUserId: number;
   private currentFormId: number;
   private currentRankGroupId: number;
   private currentAvailableRankId: number;
   private currentAppraisalResultId: number;
   private currentCrewIdCounter: number;
+  private currentVesselGroupId: number;
 
   constructor() {
     this.users = new Map();
@@ -93,12 +101,14 @@ export class MemStorage implements IStorage {
     this.crewMembers = new Map();
     this.appraisalResults = new Map();
     this.recruitmentCandidates = new Map();
+    this.vesselGroups = new Map();
     this.currentUserId = 1;
     this.currentFormId = 1;
     this.currentRankGroupId = 1;
     this.currentAvailableRankId = 1;
     this.currentAppraisalResultId = 1;
     this.currentCrewIdCounter = 1;
+    this.currentVesselGroupId = 1;
     
     this.initializeDefaultData();
 
@@ -438,11 +448,13 @@ export class MemStorage implements IStorage {
     this.crewMembers = new Map();
     this.appraisalResults = new Map();
     this.recruitmentCandidates = new Map();
+    this.vesselGroups = new Map();
     this.currentUserId = 1;
     this.currentFormId = 1;
     this.currentRankGroupId = 1;
     this.currentAvailableRankId = 1;
     this.currentAppraisalResultId = 1;
+    this.currentVesselGroupId = 1;
   }
 
   async getUser(id: number): Promise<User | undefined> {
@@ -748,6 +760,44 @@ export class MemStorage implements IStorage {
     return `A${nextNumber.toString().padStart(6, '0')}`;
   }
 
+  // Vessel Groups Methods
+  async getVesselGroups(): Promise<VesselGroup[]> {
+    return Array.from(this.vesselGroups.values());
+  }
+
+  async getVesselGroup(id: number): Promise<VesselGroup | undefined> {
+    return this.vesselGroups.get(id);
+  }
+
+  async createVesselGroup(insertVesselGroup: InsertVesselGroup): Promise<VesselGroup> {
+    const id = this.currentVesselGroupId++;
+    const vesselGroup: VesselGroup = { 
+      ...insertVesselGroup, 
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.vesselGroups.set(id, vesselGroup);
+    return vesselGroup;
+  }
+
+  async updateVesselGroup(id: number, vesselGroupData: Partial<InsertVesselGroup>): Promise<VesselGroup | undefined> {
+    const existingVesselGroup = this.vesselGroups.get(id);
+    if (!existingVesselGroup) return undefined;
+
+    const updatedVesselGroup: VesselGroup = { 
+      ...existingVesselGroup, 
+      ...vesselGroupData,
+      updatedAt: new Date()
+    };
+    this.vesselGroups.set(id, updatedVesselGroup);
+    return updatedVesselGroup;
+  }
+
+  async deleteVesselGroup(id: number): Promise<boolean> {
+    return this.vesselGroups.delete(id);
+  }
+
   // Appraisal Results Methods
   async getAppraisalResults(): Promise<AppraisalResult[]> {
     return Array.from(this.appraisalResults.values());
@@ -898,6 +948,7 @@ export class PersistentFileStorage implements IStorage {
   private crewMembers: Map<string, CrewMember>;
   private appraisalResults: Map<number, AppraisalResult>;
   private recruitmentCandidates: Map<string, RecruitmentCandidate>;
+  private vesselGroups: Map<number, VesselGroup>;
   private masterDataEntries: Map<string, any>;
   private currentUserId: number;
   private currentFormId: number;
@@ -905,6 +956,7 @@ export class PersistentFileStorage implements IStorage {
   private currentAvailableRankId: number;
   private currentAppraisalResultId: number;
   private currentCrewIdCounter: number;
+  private currentVesselGroupId: number;
   private filePath: string;
 
   constructor() {
@@ -927,6 +979,7 @@ export class PersistentFileStorage implements IStorage {
         this.crewMembers = new Map(data.crewMembers || []);
         this.appraisalResults = new Map(data.appraisalResults || []);
         this.recruitmentCandidates = new Map(data.recruitmentCandidates || []);
+        this.vesselGroups = new Map(data.vesselGroups || []);
         this.masterDataEntries = new Map(data.masterDataEntries || []);
         
         // Load current counters
@@ -943,6 +996,9 @@ export class PersistentFileStorage implements IStorage {
           // First run with existing data - scan for highest existing A-series ID
           this.currentCrewIdCounter = this.initializeCrewIdCounter();
         }
+
+        // Initialize vessel group counter
+        this.currentVesselGroupId = data.currentVesselGroupId || 1;
         
         console.log("📄 Loaded existing data from test-data.json");
       } else {
@@ -968,13 +1024,15 @@ export class PersistentFileStorage implements IStorage {
         crewMembers: Array.from(this.crewMembers.entries()),
         appraisalResults: Array.from(this.appraisalResults.entries()),
         recruitmentCandidates: Array.from(this.recruitmentCandidates.entries()),
+        vesselGroups: Array.from(this.vesselGroups.entries()),
         masterDataEntries: Array.from(this.masterDataEntries.entries()),
         currentUserId: this.currentUserId,
         currentFormId: this.currentFormId,
         currentRankGroupId: this.currentRankGroupId,
         currentAvailableRankId: this.currentAvailableRankId,
         currentAppraisalResultId: this.currentAppraisalResultId,
-        currentCrewIdCounter: this.currentCrewIdCounter
+        currentCrewIdCounter: this.currentCrewIdCounter,
+        currentVesselGroupId: this.currentVesselGroupId
       };
       
       fs.writeFileSync(this.filePath, JSON.stringify(data, null, 2), 'utf8');
@@ -1609,6 +1667,50 @@ export class PersistentFileStorage implements IStorage {
     // Format: A000001, A000002, etc. (A + 6-digit padded number)
     this.saveToFile(); // Persist the updated counter
     return `A${nextNumber.toString().padStart(6, '0')}`;
+  }
+
+  // Vessel Groups Methods
+  async getVesselGroups(): Promise<VesselGroup[]> {
+    return Array.from(this.vesselGroups.values());
+  }
+
+  async getVesselGroup(id: number): Promise<VesselGroup | undefined> {
+    return this.vesselGroups.get(id);
+  }
+
+  async createVesselGroup(insertVesselGroup: InsertVesselGroup): Promise<VesselGroup> {
+    const id = this.currentVesselGroupId++;
+    const vesselGroup: VesselGroup = { 
+      ...insertVesselGroup, 
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.vesselGroups.set(id, vesselGroup);
+    this.saveToFile(); // Persist the changes
+    return vesselGroup;
+  }
+
+  async updateVesselGroup(id: number, vesselGroupData: Partial<InsertVesselGroup>): Promise<VesselGroup | undefined> {
+    const existingVesselGroup = this.vesselGroups.get(id);
+    if (!existingVesselGroup) return undefined;
+
+    const updatedVesselGroup: VesselGroup = { 
+      ...existingVesselGroup, 
+      ...vesselGroupData,
+      updatedAt: new Date()
+    };
+    this.vesselGroups.set(id, updatedVesselGroup);
+    this.saveToFile(); // Persist the changes
+    return updatedVesselGroup;
+  }
+
+  async deleteVesselGroup(id: number): Promise<boolean> {
+    const result = this.vesselGroups.delete(id);
+    if (result) {
+      this.saveToFile(); // Persist the changes
+    }
+    return result;
   }
 
   // Appraisal Result methods (same as MemStorage)
