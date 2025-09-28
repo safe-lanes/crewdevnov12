@@ -30,6 +30,7 @@ import MainLayout from "@/components/main/MainLayout";
 // Interface for combined crew member and appraisal data
 interface CrewAppraisalData {
   id: string;
+  employeeId: string;
   name: { first: string; middle: string; last: string };
   rank: string;
   nationality: string;
@@ -173,6 +174,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
 
       return {
         id: crewDTO.id,
+        employeeId: crewDTO.employeeId || "", // Add employeeId for crew ID display
         name: {
           first: crewDTO.firstName,
           middle: crewDTO.middleName || "",
@@ -252,7 +254,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
   const columnDefs: ColDef[] = useMemo(() => [
     {
       headerName: 'Crew ID',
-      field: 'id',
+      field: 'employeeId',
       flex: 0.8,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agTextColumnFilter',
