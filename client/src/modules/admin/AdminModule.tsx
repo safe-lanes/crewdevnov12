@@ -4166,7 +4166,7 @@ const AdminModuleInner = (): JSX.Element => {
                     </FormLabel>
                     <FormControl>
                       <div className="border border-gray-200 rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
-                        {vesselOptions.map((vessel: any) => (
+                        {vesselOptions.filter((vessel: VesselOption) => vessel.type === 'vessel').map((vessel: VesselOption) => (
                           <div key={vessel.value} className="flex items-center space-x-2">
                             <Checkbox
                               checked={field.value.includes(vessel.value)}
