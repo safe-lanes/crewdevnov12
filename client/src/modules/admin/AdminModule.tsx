@@ -18,6 +18,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -42,7 +43,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
-import { Form, RankGroup, AvailableRank, InsertMasterDataEntry } from "@shared/schema";
+import { Form, RankGroup, AvailableRank, InsertMasterDataEntry, insertVesselGroupSchema } from "@shared/schema";
 import { FormEditorFactory } from "@/components/FormEditorFactory";
 import { formTemplates, createFormEditor } from "@/utils/formEditorGenerator";
 import { apiRequest } from "@/lib/queryClient";
@@ -284,6 +285,44 @@ const AdminModuleInner = (): JSX.Element => {
   // Data Masters state
   const [searchDataMaster, setSearchDataMaster] = useState("");
   const [selectedMaster, setSelectedMaster] = useState<string>("001");
+  
+  // Vessel Group Modal state
+  const [isVesselGroupModalOpen, setIsVesselGroupModalOpen] = useState(false);
+  
+  // Vessel Group Form setup
+  const vesselGroupForm = useForm({
+    resolver: zodResolver(insertVesselGroupSchema.extend({
+      vesselIds: z.array(z.string()).min(1, "Please select at least one vessel")
+    })),
+    defaultValues: {
+      name: "",
+      vesselIds: [] as string[]
+    }
+  });
+
+  // Vessel Group Mutation
+  const createVesselGroupMutation = useMutation({
+    mutationFn: async (data: { name: string; vesselIds: string[] }) => {
+      return await apiRequest('POST', '/api/vessel-groups', data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Vessel group created successfully",
+      });
+      setIsVesselGroupModalOpen(false);
+      vesselGroupForm.reset();
+      // Invalidate vessel group queries if needed
+      queryClient.invalidateQueries({ queryKey: ['/api/vessel-groups'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to create vessel group",
+        variant: "destructive",
+      });
+    }
+  });
   
   // Unsaved changes dialog state
   const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] = useState(false);
@@ -2832,6 +2871,7 @@ const AdminModuleInner = (): JSX.Element => {
                       variant="outline"
                       size="sm"
                       className="h-8 w-8 p-0 text-[#0f172a] hover:bg-gray-50"
+                      onClick={() => setIsVesselGroupModalOpen(true)}
                       data-testid="vessel-group-settings"
                     >
                       <Settings className="h-4 w-4" />
@@ -4030,6 +4070,105 @@ const AdminModuleInner = (): JSX.Element => {
         availableRanks={availableRanks}
         createRankGroupMutation={createRankGroupMutation}
       />
+
+      {/* Vessel Group Modal */}
+      <Dialog open={isVesselGroupModalOpen} onOpenChange={(open) => {
+        setIsVesselGroupModalOpen(open);
+        if (!open) {
+          vesselGroupForm.reset();
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Vessel Group</DialogTitle>
+            <DialogDescription>
+              Create a new vessel group to manage multiple vessels together.
+            </DialogDescription>
+          </DialogHeader>
+          <FormComponent {...vesselGroupForm}>
+            <form className="space-y-4" onSubmit={vesselGroupForm.handleSubmit((data) => {
+              createVesselGroupMutation.mutate(data);
+            })}>
+              <FormField
+                control={vesselGroupForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs text-gray-500 tracking-wide">
+                      Group Name
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="Enter vessel group name"
+                        className="h-8 text-xs"
+                        data-testid="input-vessel-group-name"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={vesselGroupForm.control}
+                name="vesselIds"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs text-gray-500 tracking-wide">
+                      Select Vessels
+                    </FormLabel>
+                    <FormControl>
+                      <div className="border border-gray-200 rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
+                        {vesselOptions.map((vessel: any) => (
+                          <div key={vessel.value} className="flex items-center space-x-2">
+                            <Checkbox
+                              checked={field.value.includes(vessel.value)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  field.onChange([...field.value, vessel.value]);
+                                } else {
+                                  field.onChange(field.value.filter((id: string) => id !== vessel.value));
+                                }
+                              }}
+                              className="h-4 w-4"
+                              data-testid={`checkbox-vessel-${vessel.value}`}
+                            />
+                            <label className="text-xs">{vessel.label}</label>
+                          </div>
+                        ))}
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </form>
+          </FormComponent>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsVesselGroupModalOpen(false);
+                vesselGroupForm.reset();
+              }}
+              className="h-8 text-xs"
+              data-testid="button-cancel-vessel-group"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={!vesselGroupForm.formState.isValid || createVesselGroupMutation.isPending}
+              className="h-8 text-xs"
+              data-testid="button-create-vessel-group"
+            >
+              {createVesselGroupMutation.isPending ? "Creating..." : "Create Group"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Create Form Dialog */}
       <Dialog open={showCreateFormDialog} onOpenChange={setShowCreateFormDialog}>
