@@ -2682,37 +2682,29 @@ const AdminModuleInner = (): JSX.Element => {
                               rankMasterData.find(r => r.id.toString() === rank.id)?.applicableToCompany || false
                             }
                             onCheckedChange={(checked) => {
-                              console.log('🎯 [APPLICABLE_TO_COMPANY] Click handler triggered!', { 
-                                rankId: rank.id, 
-                                rankName: rank.rank, 
-                                isEditing: isCompanyEditing,
-                                checked: checked
-                              });
-                              
                               // Ensure boolean value
                               const booleanValue = checked === true;
                               
-                              console.log('🎯 [APPLICABLE_TO_COMPANY] Checkbox changed:', { 
-                                rankId: rank.id, 
-                                rankName: rank.rank, 
-                                newValue: booleanValue 
-                              });
-                              
                               // Update the main rank database for immediate visual feedback
                               handleRankDataChange(rank.id, 'applicableToCompany', booleanValue);
-                              // Also track this as a company change for saving
+                              
+                              // Also update the company rank data to keep it in sync
+                              setCompanyRankData(prev => {
+                                const newData = [...prev];
+                                const rowIndex = newData.findIndex(row => row.id === rank.id);
+                                if (rowIndex !== -1) {
+                                  newData[rowIndex] = { ...newData[rowIndex], applicableToCompany: booleanValue };
+                                }
+                                return newData;
+                              });
+                              
+                              // Track this as a company change for saving
                               setChangedCompanyRanks(prev => new Set(prev).add(rank.id));
                             }}
                             disabled={!isCompanyEditing}
                             className="h-4 w-4"
                             data-testid={`checkbox-applicable-to-company-${rank.id}`}
                           />
-                          {/* Debug info */}
-                          {import.meta.env.DEV && (
-                            <div className="text-xs text-gray-400 mt-1">
-                              ID: {rank.id}, Editing: {isCompanyEditing ? 'Y' : 'N'}
-                            </div>
-                          )}
                         </TableCell>
                         
                         {/* Checkbox columns */}
