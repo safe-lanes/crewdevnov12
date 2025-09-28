@@ -2151,6 +2151,24 @@ const AdminModuleInner = (): JSX.Element => {
     setEditingRankGroup(null);
   };
 
+  // Render functions for each tab to isolate JSX structure
+  const renderRankMasterTab = () => (
+    <>
+      {/* Rank Master tab content will be moved here */}
+    </>
+  );
+
+  const renderCompanyTab = () => (
+    <>
+      {/* Company tab content will be moved here */}
+    </>
+  );
+
+  const renderVesselTab = () => (
+    <>
+      {/* Vessel tab content will be moved here */}
+    </>
+  );
 
   // Debug log the forms data to understand duplication issue
   if (import.meta.env.DEV) {
@@ -2282,21 +2300,6 @@ const AdminModuleInner = (): JSX.Element => {
                     data-testid="button-clear-all-ranks-mobile"
                   >
                     {clearAllRanksMutation.isPending ? "Clearing..." : "🗑️ Clear All"}
-                  </Button>
-                </div>
-              )}
-              {selectedRankAdminTab === "company" && (
-                <div className="flex gap-2">
-                  <Button
-                    variant={isCompanyEditing ? "default" : "outline"}
-                    onClick={isCompanyEditing ? handleSaveCompany : handleEditCompany}
-                    className={`h-8 text-xs ${
-                      isCompanyEditing 
-                        ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
-                        : "border-[#e1e8ed] text-[#16569e]"
-                    }`}
-                  >
-                    {isCompanyEditing ? "Save" : "Edit Table"}
                   </Button>
                 </div>
               )}
@@ -2945,7 +2948,7 @@ const AdminModuleInner = (): JSX.Element => {
                     )}
                   </TableBody>
                 </Table>
-              </div>
+                  </ScrollArea>
               </div>
             )}
             
