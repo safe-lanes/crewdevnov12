@@ -790,9 +790,10 @@ const AdminModuleInner = (): JSX.Element => {
   const rq = useQueryClient();
 
 
-  // Sync company rank data with rank master data (always keep in sync)
+  // Sync company rank data with rank master data (show ALL ranks, not just applicable ones)
   React.useEffect(() => {
-    const applicableRanks = rankMasterData.filter(rank => rank.applicableToCompany);
+    // Show ALL ranks so users can toggle false→true for applicableToCompany
+    const allRanks = rankMasterData;
     
     // Don't update if we're currently editing to avoid losing unsaved changes
     if (isCompanyEditing) {
@@ -800,7 +801,7 @@ const AdminModuleInner = (): JSX.Element => {
     }
     
     console.log('🔍 [DEBUG] Syncing company rank data with rank master', {
-      applicableRanksCount: applicableRanks.length,
+      allRanksCount: allRanks.length,
       currentCompanyDataCount: companyRankData.length
     });
     
@@ -810,8 +811,8 @@ const AdminModuleInner = (): JSX.Element => {
       existingCompanyData.set(item.id, item);
     });
     
-    // Build the new company rank data from applicable ranks
-    const newCompanyRanks: CompanyRankData[] = applicableRanks.map(rank => {
+    // Build the new company rank data from ALL ranks
+    const newCompanyRanks: CompanyRankData[] = allRanks.map(rank => {
       const existing = existingCompanyData.get(rank.id);
       
       // If we have existing data, preserve company-specific fields
@@ -1431,36 +1432,60 @@ const AdminModuleInner = (): JSX.Element => {
 
       // Update each changed rank in the main rank database
       for (const changedId of Array.from(changedCompanyRanks)) {
+        // Skip new ranks that haven't been saved yet (they have 'new_' prefix)
+        if (changedId.startsWith('new_')) {
+          console.log('🔄 [COMPANY_SAVE] Skipping new unsaved rank:', changedId);
+          continue;
+        }
+        
+        // Guard against invalid IDs
+        const numericId = parseInt(changedId, 10);
+        if (isNaN(numericId)) {
+          console.error('🔄 [COMPANY_SAVE] Invalid rank ID:', changedId);
+          continue;
+        }
+        
         const companyRank = companyRankData.find(rank => rank.id === changedId);
         if (companyRank) {
           // Find the original rank data to preserve its structure
           const originalRank = sharedRankMasterData?.find(rank => rank.id.toString() === changedId);
           
           if (originalRank) {
+            // Get the updated applicableToCompany value from rank master data
+            const updatedRankMasterData = rankMasterData.find(r => r.id.toString() === changedId);
+            const updatedApplicableToCompany = updatedRankMasterData?.applicableToCompany ?? originalRank.applicableToCompany;
+            
             console.log('🔄 [COMPANY_SAVE] Updating rank:', {
               id: changedId,
               name: originalRank.rank,
-              updatedLabel: companyRank.rank
+              updatedLabel: companyRank.rank,
+              applicableToCompany: updatedApplicableToCompany
             });
 
             await updateRankMutation.mutateAsync({
-              id: parseInt(changedId),
+              id: numericId,
               data: {
                 // Preserve original rank data structure
                 name: originalRank.rank,
                 category: 'Senior Officers', // Default category
                 rankId: companyRank.rankId || originalRank.rankId,
                 label: companyRank.rank || originalRank.label,
-                // Keep the existing applicableToCompany value
-                applicableToCompany: originalRank.applicableToCompany
+                // Update the applicableToCompany value from company tab changes
+                applicableToCompany: updatedApplicableToCompany
               }
             });
           }
         }
       }
 
-      // Clear change tracking
+      // Clear change tracking for both company and rank master
       setChangedCompanyRanks(new Set());
+      // Also clear rank master changes for the IDs we just saved
+      setChangedRanks(prev => {
+        const newSet = new Set(prev);
+        changedCompanyRanks.forEach(id => newSet.delete(id));
+        return newSet;
+      });
       setIsCompanyEditing(false);
       
       toast({
@@ -2557,6 +2582,9 @@ const AdminModuleInner = (): JSX.Element => {
                       <TableHead className="text-white text-xs font-normal w-20">
                         Rank ID
                       </TableHead>
+                      <TableHead className="text-white text-xs font-normal w-24 text-center">
+                        Applicable to Company
+                      </TableHead>
                       <TableHead className="text-white text-xs font-normal w-16 text-center">
                         Officer
                       </TableHead>
@@ -2645,6 +2673,33 @@ const AdminModuleInner = (): JSX.Element => {
                         
                         <TableCell className="text-[#4f5863] text-[13px] font-normal py-3">
                           {rank.rankId}
+                        </TableCell>
+                        
+                        {/* Applicable to Company checkbox */}
+                        <TableCell className="text-center py-3">
+                          <Checkbox
+                            checked={
+                              rankMasterData.find(r => r.id.toString() === rank.id)?.applicableToCompany || false
+                            }
+                            onCheckedChange={(checked) => {
+                              // Ensure boolean value
+                              const booleanValue = checked === true;
+                              
+                              console.log('🎯 [APPLICABLE_TO_COMPANY] Checkbox changed:', { 
+                                rankId: rank.id, 
+                                rankName: rank.rank, 
+                                newValue: booleanValue 
+                              });
+                              
+                              // Update the main rank database for immediate visual feedback
+                              handleRankDataChange(rank.id, 'applicableToCompany', booleanValue);
+                              // Also track this as a company change for saving
+                              setChangedCompanyRanks(prev => new Set(prev).add(rank.id));
+                            }}
+                            disabled={!isCompanyEditing}
+                            className="h-4 w-4"
+                            data-testid={`checkbox-applicable-to-company-${rank.id}`}
+                          />
                         </TableCell>
                         
                         {/* Checkbox columns */}

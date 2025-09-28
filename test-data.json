@@ -108,7 +108,7 @@
         "rankId": "S12",
         "label": "Bosun",
         "applicableToCompany": true,
-        "sortOrder": 8
+        "sortOrder": 9
       }
     ],
     [
@@ -120,7 +120,7 @@
         "rankId": "S14",
         "label": "AB",
         "applicableToCompany": true,
-        "sortOrder": 9
+        "sortOrder": 10
       }
     ],
     [
@@ -132,7 +132,7 @@
         "rankId": "S15",
         "label": "OS",
         "applicableToCompany": false,
-        "sortOrder": 10
+        "sortOrder": 11
       }
     ],
     [
@@ -144,7 +144,7 @@
         "label": "4th Engineer",
         "applicableToCompany": true,
         "id": 11,
-        "sortOrder": 11
+        "sortOrder": 8
       }
     ],
     [
