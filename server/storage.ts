@@ -21,6 +21,7 @@ export interface IStorage {
   updateAvailableRank(id: number, rank: Partial<InsertAvailableRank>): Promise<AvailableRank | undefined>;
   deleteAvailableRank(id: number): Promise<boolean>;
   clearAllAvailableRanks(): Promise<boolean>;
+  updateRankOrders(rankOrders: Array<{ id: number; sortOrder: number }>): Promise<boolean>;
   // Company Ranks
   getCompanyRanks(): Promise<CompanyRank[]>;
   getCompanyRank(id: string): Promise<CompanyRank | undefined>;
@@ -113,18 +114,18 @@ export class MemStorage implements IStorage {
     this.currentFormId = 2;
 
     // Initialize with sample available ranks (minimal seeding since user manages their own data)
-    this.availableRanks.set(1, { id: 1, name: "Master", category: "Senior Officers", rankId: "S1", label: "Master", applicableToCompany: true });
-    this.availableRanks.set(2, { id: 2, name: "Chief Officer", category: "Senior Officers", rankId: "S2", label: "Chief Officer", applicableToCompany: true });
-    this.availableRanks.set(3, { id: 3, name: "Chief Engineer", category: "Senior Officers", rankId: "S7", label: "Chief Engineer", applicableToCompany: true });
-    this.availableRanks.set(4, { id: 4, name: "2nd Officer", category: "Junior Officers", rankId: "S3", label: "2nd Officer", applicableToCompany: true });
-    this.availableRanks.set(5, { id: 5, name: "3rd Officer", category: "Junior Officers", rankId: "S4", label: "3rd Officer", applicableToCompany: true });
-    this.availableRanks.set(6, { id: 6, name: "2nd Engineer", category: "Junior Officers", rankId: "S9", label: "2nd Engineer", applicableToCompany: true });
-    this.availableRanks.set(7, { id: 7, name: "3rd Engineer", category: "Junior Officers", rankId: "S10", label: "3rd Engineer", applicableToCompany: true });
-    this.availableRanks.set(8, { id: 8, name: "Bosun", category: "Ratings", rankId: "S12", label: "Bosun", applicableToCompany: true });
-    this.availableRanks.set(9, { id: 9, name: "AB", category: "Ratings", rankId: "S14", label: "AB", applicableToCompany: true });
-    this.availableRanks.set(10, { id: 10, name: "OS", category: "Ratings", rankId: "S15", label: "OS", applicableToCompany: false });
-    this.availableRanks.set(11, { id: 11, name: "Oiler", category: "Ratings", rankId: "S16", label: "Oiler", applicableToCompany: false });
-    this.availableRanks.set(12, { id: 12, name: "Wiper", category: "Ratings", rankId: "S17", label: "Wiper", applicableToCompany: false });
+    this.availableRanks.set(1, { id: 1, name: "Master", category: "Senior Officers", rankId: "S1", label: "Master", applicableToCompany: true, sortOrder: 1 });
+    this.availableRanks.set(2, { id: 2, name: "Chief Officer", category: "Senior Officers", rankId: "S2", label: "Chief Officer", applicableToCompany: true, sortOrder: 2 });
+    this.availableRanks.set(3, { id: 3, name: "Chief Engineer", category: "Senior Officers", rankId: "S7", label: "Chief Engineer", applicableToCompany: true, sortOrder: 3 });
+    this.availableRanks.set(4, { id: 4, name: "2nd Officer", category: "Junior Officers", rankId: "S3", label: "2nd Officer", applicableToCompany: true, sortOrder: 4 });
+    this.availableRanks.set(5, { id: 5, name: "3rd Officer", category: "Junior Officers", rankId: "S4", label: "3rd Officer", applicableToCompany: true, sortOrder: 5 });
+    this.availableRanks.set(6, { id: 6, name: "2nd Engineer", category: "Junior Officers", rankId: "S9", label: "2nd Engineer", applicableToCompany: true, sortOrder: 6 });
+    this.availableRanks.set(7, { id: 7, name: "3rd Engineer", category: "Junior Officers", rankId: "S10", label: "3rd Engineer", applicableToCompany: true, sortOrder: 7 });
+    this.availableRanks.set(8, { id: 8, name: "Bosun", category: "Ratings", rankId: "S12", label: "Bosun", applicableToCompany: true, sortOrder: 8 });
+    this.availableRanks.set(9, { id: 9, name: "AB", category: "Ratings", rankId: "S14", label: "AB", applicableToCompany: true, sortOrder: 9 });
+    this.availableRanks.set(10, { id: 10, name: "OS", category: "Ratings", rankId: "S15", label: "OS", applicableToCompany: false, sortOrder: 10 });
+    this.availableRanks.set(11, { id: 11, name: "Oiler", category: "Ratings", rankId: "S16", label: "Oiler", applicableToCompany: false, sortOrder: 11 });
+    this.availableRanks.set(12, { id: 12, name: "Wiper", category: "Ratings", rankId: "S17", label: "Wiper", applicableToCompany: false, sortOrder: 12 });
     this.currentAvailableRankId = 13;
 
     // Initialize with sample rank groups - showing only 1 for configuration
@@ -568,17 +569,22 @@ export class MemStorage implements IStorage {
   }
 
   async getAvailableRanks(): Promise<AvailableRank[]> {
-    return Array.from(this.availableRanks.values());
+    return Array.from(this.availableRanks.values()).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   }
 
   async createAvailableRank(insertAvailableRank: InsertAvailableRank): Promise<AvailableRank> {
     const id = this.currentAvailableRankId++;
+    // Get the next sortOrder value
+    const existingRanks = await this.getAvailableRanks();
+    const maxSortOrder = existingRanks.length > 0 ? Math.max(...existingRanks.map(r => r.sortOrder || 0)) : 0;
+    
     const availableRank: AvailableRank = { 
       ...insertAvailableRank, 
       id,
       rankId: insertAvailableRank.rankId ?? null,
       label: insertAvailableRank.label ?? null,
-      applicableToCompany: insertAvailableRank.applicableToCompany ?? null
+      applicableToCompany: insertAvailableRank.applicableToCompany ?? null,
+      sortOrder: insertAvailableRank.sortOrder ?? (maxSortOrder + 1)
     };
     this.availableRanks.set(id, availableRank);
     return availableRank;
@@ -603,6 +609,25 @@ export class MemStorage implements IStorage {
   async clearAllAvailableRanks(): Promise<boolean> {
     this.availableRanks.clear();
     return true;
+  }
+
+  async updateRankOrders(rankOrders: Array<{ id: number; sortOrder: number }>): Promise<boolean> {
+    try {
+      for (const { id, sortOrder } of rankOrders) {
+        const existingRank = this.availableRanks.get(id);
+        if (existingRank) {
+          const updatedRank: AvailableRank = { 
+            ...existingRank, 
+            sortOrder 
+          };
+          this.availableRanks.set(id, updatedRank);
+        }
+      }
+      return true;
+    } catch (error) {
+      console.error('Failed to update rank orders:', error);
+      return false;
+    }
   }
 
   // Crew Members Methods
@@ -1331,11 +1356,22 @@ export class PersistentFileStorage implements IStorage {
 
   // Available Rank methods (same as MemStorage)
   async getAvailableRanks(): Promise<AvailableRank[]> {
-    return Array.from(this.availableRanks.values());
+    return Array.from(this.availableRanks.values()).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   }
 
   async createAvailableRank(insertAvailableRank: InsertAvailableRank): Promise<AvailableRank> {
-    const availableRank: AvailableRank = { ...insertAvailableRank, id: this.currentAvailableRankId++ };
+    // Get the next sortOrder value
+    const existingRanks = await this.getAvailableRanks();
+    const maxSortOrder = existingRanks.length > 0 ? Math.max(...existingRanks.map(r => r.sortOrder || 0)) : 0;
+    
+    const availableRank: AvailableRank = { 
+      ...insertAvailableRank, 
+      id: this.currentAvailableRankId++,
+      rankId: insertAvailableRank.rankId ?? null,
+      label: insertAvailableRank.label ?? null,
+      applicableToCompany: insertAvailableRank.applicableToCompany ?? null,
+      sortOrder: insertAvailableRank.sortOrder ?? (maxSortOrder + 1)
+    };
     this.availableRanks.set(availableRank.id, availableRank);
     this.saveToFile();
     return availableRank;
@@ -1361,6 +1397,26 @@ export class PersistentFileStorage implements IStorage {
     this.availableRanks.clear();
     this.saveToFile();
     return true;
+  }
+
+  async updateRankOrders(rankOrders: Array<{ id: number; sortOrder: number }>): Promise<boolean> {
+    try {
+      for (const { id, sortOrder } of rankOrders) {
+        const existingRank = this.availableRanks.get(id);
+        if (existingRank) {
+          const updatedRank: AvailableRank = { 
+            ...existingRank, 
+            sortOrder 
+          };
+          this.availableRanks.set(id, updatedRank);
+        }
+      }
+      this.saveToFile();
+      return true;
+    } catch (error) {
+      console.error('Failed to update rank orders:', error);
+      return false;
+    }
   }
 
   // Company Rank methods - CRITICAL FOR ROLE PERSISTENCE!
