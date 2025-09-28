@@ -4,10 +4,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown, Trash2 } from "lucide-react";
-import { AgGridReact } from "ag-grid-react";
-import type { ColDef, GridOptions, RowDragEndEvent } from "ag-grid-community";
-import "ag-grid-community/styles/ag-grid.css";
-import "ag-grid-community/styles/ag-theme-alpine.css";
 import { useToast } from "@/hooks/use-toast";
 import { UnsavedChangesDialog } from "@/components/dialogs/UnsavedChangesDialog";
 import {
@@ -187,32 +183,6 @@ const AdminModuleInner = (): JSX.Element => {
   const deleteRankMutation = useDeleteRank();
   const clearAllRanksMutation = useClearAllRanks();
   
-  // Rank reorder mutation
-  const reorderRanksMutation = useMutation({
-    mutationFn: async (rankOrders: Array<{ id: number; sortOrder: number }>) => {
-      return apiRequest('/api/available-ranks/reorder', {
-        method: 'POST',
-        body: rankOrders,
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/available-ranks'] });
-      toast({
-        title: "Ranks reordered successfully",
-        description: "The rank order has been updated.",
-        duration: 3000,
-      });
-    },
-    onError: (error) => {
-      console.error('Failed to reorder ranks:', error);
-      toast({
-        title: "Failed to reorder ranks",
-        description: "An error occurred while updating rank order.",
-        variant: "destructive",
-        duration: 5000,
-      });
-    },
-  });
   
   // Local state for editing (initialized from shared data)
   const [rankMasterData, setRankMasterData] = useState<RankMasterData[]>([]);
@@ -439,190 +409,7 @@ const AdminModuleInner = (): JSX.Element => {
   // CSS Constants for consistent grid layouts
   const USERS_MASTER_GRID_CLASSES = "grid grid-cols-5 gap-0";
 
-  // AG Grid column definitions for Rank Master with drag-and-drop
-  const rankMasterColumnDefs: ColDef[] = useMemo(() => [
-    {
-      headerName: '',
-      width: 40,
-      suppressMenu: true,
-      sortable: false,
-      filter: false,
-      rowDrag: true,
-      pinned: 'left',
-      cellRenderer: () => isRankMasterEditing ? '⋮⋮' : '',
-      cellStyle: { 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center',
-        cursor: isRankMasterEditing ? 'move' : 'default',
-        color: '#9ca3af',
-        fontSize: '12px'
-      }
-    },
-    {
-      headerName: 'Rank ID',
-      field: 'rankId',
-      width: 120,
-      editable: isRankMasterEditing,
-      cellRenderer: ({ value, data, setValue }) => {
-        if (isRankMasterEditing) {
-          return `<input 
-            type="text" 
-            value="${value || ''}" 
-            placeholder="Enter rank ID"
-            class="w-full h-8 px-2 text-sm border rounded"
-            onchange="this.dispatchEvent(new CustomEvent('ag-grid-input-change', { detail: { value: this.value, field: 'rankId', id: '${data.id}' }, bubbles: true }))"
-          />`;
-        }
-        return value || '';
-      }
-    },
-    {
-      headerName: 'Rank',
-      field: 'rank',
-      width: 180,
-      editable: isRankMasterEditing,
-      cellRenderer: ({ value, data }) => {
-        if (isRankMasterEditing) {
-          return `<input 
-            type="text" 
-            value="${value || ''}" 
-            placeholder="Enter rank name"
-            class="w-full h-8 px-2 text-sm border rounded"
-            onchange="this.dispatchEvent(new CustomEvent('ag-grid-input-change', { detail: { value: this.value, field: 'rank', id: '${data.id}' }, bubbles: true }))"
-          />`;
-        }
-        return value || '';
-      }
-    },
-    {
-      headerName: 'Applicable to Company',
-      field: 'applicableToCompany',
-      width: 180,
-      cellRenderer: ({ value, data }) => {
-        const checked = value ? 'checked' : '';
-        const disabled = !isRankMasterEditing ? 'disabled' : '';
-        return `<div class="flex justify-center">
-          <input 
-            type="checkbox" 
-            ${checked} 
-            ${disabled}
-            class="h-4 w-4"
-            onchange="this.dispatchEvent(new CustomEvent('ag-grid-checkbox-change', { detail: { checked: this.checked, field: 'applicableToCompany', id: '${data.id}' }, bubbles: true }))"
-          />
-        </div>`;
-      }
-    },
-    {
-      headerName: 'Rank Label',
-      field: 'label',
-      width: 180,
-      cellRenderer: ({ value, data }) => {
-        if (!data.applicableToCompany) {
-          return '<span class="text-gray-400 text-xs">N/A</span>';
-        }
-        if (isRankMasterEditing) {
-          return `<input 
-            type="text" 
-            value="${value || ''}" 
-            placeholder="Enter rank label"
-            class="w-full h-8 px-2 text-sm border rounded"
-            onchange="this.dispatchEvent(new CustomEvent('ag-grid-input-change', { detail: { value: this.value, field: 'label', id: '${data.id}' }, bubbles: true }))"
-          />`;
-        }
-        return value || '';
-      }
-    },
-    {
-      headerName: 'Actions',
-      width: 100,
-      cellRenderer: ({ data }) => {
-        if (!isRankMasterEditing) return '';
-        return `<div class="flex justify-center">
-          <button 
-            class="h-6 w-6 text-red-600 hover:bg-red-50 rounded flex items-center justify-center"
-            onclick="this.dispatchEvent(new CustomEvent('ag-grid-delete', { detail: { id: '${data.id}', rank: '${data.rank}' }, bubbles: true }))"
-            title="Delete rank"
-          >
-            🗑️
-          </button>
-        </div>`;
-      }
-    }
-  ], [isRankMasterEditing]);
-
-  // Handle row drag end for reordering
-  const handleRowDragEnd = (event: RowDragEndEvent) => {
-    if (!isRankMasterEditing) return;
-    
-    const { node, overNode } = event;
-    if (!node || !overNode) return;
-
-    // Get all visible nodes after the drag operation
-    const allNodes: any[] = [];
-    event.api.forEachNodeAfterFilterAndSort((node: any) => {
-      allNodes.push(node);
-    });
-
-    // Create rank order updates based on new positions
-    const rankOrderUpdates = allNodes.map((node, index) => ({
-      id: parseInt(node.data.id),
-      sortOrder: index + 1
-    }));
-
-    // Update local state to reflect new order immediately
-    const reorderedData = allNodes.map((node, index) => ({
-      ...node.data,
-      sortOrder: index + 1
-    }));
-    setRankMasterData(reorderedData);
-
-    // Send update to server
-    reorderRanksMutation.mutate(rankOrderUpdates);
-  };
-
-  // Grid options for rank master
-  const rankMasterGridOptions: GridOptions = {
-    rowDragManaged: true,
-    animateRows: true,
-    getRowId: (params) => params.data.id,
-    suppressMoveWhenRowDragging: true,
-    onRowDragEnd: handleRowDragEnd,
-    defaultColDef: {
-      sortable: false,
-      filter: false,
-      resizable: false
-    },
-    rowSelection: 'single'
-  };
   
-  // AG Grid event listeners
-  useEffect(() => {
-    const handleInputChange = (event: any) => {
-      const { value, field, id } = event.detail;
-      handleRankDataChange(id, field, value);
-    };
-
-    const handleCheckboxChange = (event: any) => {
-      const { checked, field, id } = event.detail;
-      handleRankDataChange(id, field, checked);
-    };
-
-    const handleDeleteClick = (event: any) => {
-      const { id, rank } = event.detail;
-      handleDeleteRankFromGrid(id, rank);
-    };
-
-    document.addEventListener('ag-grid-input-change', handleInputChange);
-    document.addEventListener('ag-grid-checkbox-change', handleCheckboxChange);
-    document.addEventListener('ag-grid-delete', handleDeleteClick);
-
-    return () => {
-      document.removeEventListener('ag-grid-input-change', handleInputChange);
-      document.removeEventListener('ag-grid-checkbox-change', handleCheckboxChange);
-      document.removeEventListener('ag-grid-delete', handleDeleteClick);
-    };
-  }, []);
 
   // Data Masters API hooks
   const { data: mastersList = [], isLoading: mastersLoading, error: mastersError } = useDataMasters();
@@ -2441,19 +2228,99 @@ const AdminModuleInner = (): JSX.Element => {
         <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
           <CardContent className="pt-4 pb-4 pl-0">
             {selectedRankAdminTab === "rank-master" && (
-              <div className={`${currentBreakpoint === 'mobile' ? 'h-[400px]' : currentBreakpoint === 'tablet' ? 'h-[500px]' : 'h-[600px]'} ag-theme-alpine`}>
-                <AgGridReact
-                  columnDefs={rankMasterColumnDefs}
-                  rowData={rankMasterData}
-                  gridOptions={rankMasterGridOptions}
-                  suppressRowClickSelection={true}
-                  suppressCellFocus={true}
-                  headerHeight={40}
-                  rowHeight={45}
-                  domLayout="normal"
-                  className="rounded-lg shadow-md"
-                  data-testid="rank-master-grid"
-                />
+              <div className="overflow-auto max-h-[600px]">
+                <Table className="bg-white border border-gray-200 rounded-lg shadow-md">
+                  <TableHeader>
+                    <TableRow className="bg-gray-50 text-gray-700 border-b">
+                      <TableHead className="text-center py-2 border-r">Rank ID</TableHead>
+                      <TableHead className="text-center py-2 border-r">Rank</TableHead>
+                      <TableHead className="text-center py-2 border-r">Applicable to Company</TableHead>
+                      <TableHead className="text-center py-2 border-r">Rank Label</TableHead>
+                      <TableHead className="text-center py-2">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {rankMasterData.map((rank, index) => (
+                      <TableRow key={rank.id} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"} data-testid={`row-rank-master-${rank.id}`}>
+                        <TableCell className="py-3 text-center border-r">
+                          {isRankMasterEditing ? (
+                            <input
+                              type="text"
+                              value={rank.rankId || ''}
+                              onChange={(e) => handleRankDataChange(rank.id, 'rankId', e.target.value)}
+                              placeholder="Enter rank ID"
+                              className="w-full h-8 px-2 text-sm border rounded"
+                              data-testid={`input-rank-id-${rank.id}`}
+                            />
+                          ) : (
+                            <span className="text-sm" data-testid={`text-rank-id-${rank.id}`}>{rank.rankId || ''}</span>
+                          )}
+                        </TableCell>
+                        
+                        <TableCell className="py-3 text-center border-r">
+                          {isRankMasterEditing ? (
+                            <input
+                              type="text"
+                              value={rank.rank || ''}
+                              onChange={(e) => handleRankDataChange(rank.id, 'rank', e.target.value)}
+                              placeholder="Enter rank name"
+                              className="w-full h-8 px-2 text-sm border rounded"
+                              data-testid={`input-rank-${rank.id}`}
+                            />
+                          ) : (
+                            <span className="text-sm" data-testid={`text-rank-${rank.id}`}>{rank.rank || ''}</span>
+                          )}
+                        </TableCell>
+                        
+                        <TableCell className="text-center py-3 border-r">
+                          <Checkbox
+                            checked={rank.applicableToCompany}
+                            onCheckedChange={(checked) => handleRankDataChange(rank.id, 'applicableToCompany', checked)}
+                            disabled={!isRankMasterEditing}
+                            className="h-4 w-4"
+                            data-testid={`checkbox-applicable-company-${rank.id}`}
+                          />
+                        </TableCell>
+                        
+                        <TableCell className="py-3 text-center border-r">
+                          {!rank.applicableToCompany ? (
+                            <span className="text-gray-400 text-xs" data-testid={`text-rank-label-na-${rank.id}`}>N/A</span>
+                          ) : isRankMasterEditing ? (
+                            <input
+                              type="text"
+                              value={rank.label || ''}
+                              onChange={(e) => handleRankDataChange(rank.id, 'label', e.target.value)}
+                              placeholder="Enter rank label"
+                              className="w-full h-8 px-2 text-sm border rounded"
+                              data-testid={`input-rank-label-${rank.id}`}
+                            />
+                          ) : (
+                            <span className="text-sm" data-testid={`text-rank-label-${rank.id}`}>{rank.label || ''}</span>
+                          )}
+                        </TableCell>
+                        
+                        <TableCell className="text-center py-3">
+                          <div className="flex items-center justify-center gap-1">
+                            {isRankMasterEditing && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleDeleteRank(rank.id, rank.rank)}
+                                  className="h-6 w-6 p-0 text-red-600 hover:bg-red-50"
+                                  data-testid={`button-delete-rank-${rank.id}`}
+                                  title="Delete rank"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             )}
             
