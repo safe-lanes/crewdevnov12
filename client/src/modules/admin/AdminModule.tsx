@@ -186,10 +186,7 @@ const AdminModuleInner = (): JSX.Element => {
   // Rank reorder mutation
   const reorderRanksMutation = useMutation({
     mutationFn: async (rankOrders: Array<{ id: number; sortOrder: number }>) => {
-      return apiRequest('/api/available-ranks/reorder', {
-        method: 'POST',
-        body: rankOrders,
-      });
+      return apiRequest('POST', '/api/available-ranks/reorder', rankOrders);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/available-ranks'] });
@@ -2297,12 +2294,12 @@ const AdminModuleInner = (): JSX.Element => {
               <div className="overflow-auto max-h-[600px]">
                 <Table className="bg-white border border-gray-200 rounded-lg shadow-md">
                   <TableHeader>
-                    <TableRow className="bg-gray-50 text-gray-700 border-b">
-                      <TableHead className="text-center py-2 border-r">Rank ID</TableHead>
-                      <TableHead className="text-center py-2 border-r">Rank</TableHead>
-                      <TableHead className="text-center py-2 border-r">Applicable to Company</TableHead>
-                      <TableHead className="text-center py-2 border-r">Rank Label</TableHead>
-                      <TableHead className="text-center py-2">Actions</TableHead>
+                    <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                      <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20">Rank ID</TableHead>
+                      <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20">Rank</TableHead>
+                      <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20">Applicable to Company</TableHead>
+                      <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20">Rank Label</TableHead>
+                      <TableHead className="text-white text-xs font-normal text-center py-2">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -2394,7 +2391,7 @@ const AdminModuleInner = (): JSX.Element => {
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  onClick={() => handleDeleteRank(rank.id, rank.rank)}
+                                  onClick={() => handleDeleteRank(rank.id)}
                                   className="h-6 w-6 p-0 text-red-600 hover:bg-red-50"
                                   data-testid={`button-delete-rank-${rank.id}`}
                                   title="Delete rank"
