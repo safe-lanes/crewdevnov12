@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown, Trash2, ChevronUp, ChevronDown } from "lucide-react";
+import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown, Trash2, ChevronUp, ChevronDown, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UnsavedChangesDialog } from "@/components/dialogs/UnsavedChangesDialog";
 import {
@@ -2826,6 +2826,16 @@ const AdminModuleInner = (): JSX.Element => {
                         </Command>
                       </PopoverContent>
                     </Popover>
+
+                    {/* Settings icon for Vessel Group management */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-[#0f172a] hover:bg-gray-50"
+                      data-testid="vessel-group-settings"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
 
                     <Select value={selectedRevision} onValueChange={setSelectedRevision}>
                       <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]" data-testid="revision-select">
