@@ -819,7 +819,108 @@
       }
     ]
   ],
-  "masterDataEntries": [],
+  "masterDataEntries": [
+    [
+      1,
+      {
+        "id": 1,
+        "masterId": "014",
+        "entryId": "VSL-001",
+        "name": "MV Atlantic Pioneer",
+        "description": "9245678",
+        "vesselType": "Container Vessel",
+        "isActive": true,
+        "isDeleted": false,
+        "createdBy": "admin",
+        "createdAt": "2025-01-01T00:00:00.000Z",
+        "updatedAt": "2025-01-01T00:00:00.000Z"
+      }
+    ],
+    [
+      2,
+      {
+        "id": 2,
+        "masterId": "014",
+        "entryId": "VSL-002",
+        "name": "MV Ocean Explorer",
+        "description": "9234567",
+        "vesselType": "Bulk Carrier",
+        "isActive": true,
+        "isDeleted": false,
+        "createdBy": "admin",
+        "createdAt": "2025-01-01T00:00:00.000Z",
+        "updatedAt": "2025-01-01T00:00:00.000Z"
+      }
+    ],
+    [
+      3,
+      {
+        "id": 3,
+        "masterId": "014",
+        "entryId": "VSL-003",
+        "name": "MT Nordic Star",
+        "description": "9156789",
+        "vesselType": "Oil Tanker",
+        "tanker": true,
+        "oilTanker": true,
+        "isActive": true,
+        "isDeleted": false,
+        "createdBy": "admin",
+        "createdAt": "2025-01-01T00:00:00.000Z",
+        "updatedAt": "2025-01-01T00:00:00.000Z"
+      }
+    ],
+    [
+      4,
+      {
+        "id": 4,
+        "masterId": "014",
+        "entryId": "VSL-004",
+        "name": "MV Pacific Voyager",
+        "description": "9178901",
+        "vesselType": "General Cargo",
+        "isActive": true,
+        "isDeleted": false,
+        "createdBy": "admin",
+        "createdAt": "2025-01-01T00:00:00.000Z",
+        "updatedAt": "2025-01-01T00:00:00.000Z"
+      }
+    ],
+    [
+      5,
+      {
+        "id": 5,
+        "masterId": "014",
+        "entryId": "VSL-005",
+        "name": "MT Liberty Gas",
+        "description": "9189012",
+        "vesselType": "LPG Tanker",
+        "tanker": true,
+        "gasTanker": true,
+        "isActive": true,
+        "isDeleted": false,
+        "createdBy": "admin",
+        "createdAt": "2025-01-01T00:00:00.000Z",
+        "updatedAt": "2025-01-01T00:00:00.000Z"
+      }
+    ],
+    [
+      6,
+      {
+        "id": 6,
+        "masterId": "014",
+        "entryId": "VSL-006",
+        "name": "MV Global Trader",
+        "description": "9201234",
+        "vesselType": "Container Vessel",
+        "isActive": true,
+        "isDeleted": false,
+        "createdBy": "admin",
+        "createdAt": "2025-01-01T00:00:00.000Z",
+        "updatedAt": "2025-01-01T00:00:00.000Z"
+      }
+    ]
+  ],
   "currentUserId": 1,
   "currentFormId": 2,
   "currentRankGroupId": 1,
