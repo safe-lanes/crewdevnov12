@@ -77,6 +77,8 @@ import {
 interface VesselOption {
   value: string;
   label: string;
+  type?: 'vessel' | 'group';
+  vesselIds?: string[];
 }
 
 import {
@@ -530,6 +532,11 @@ const AdminModuleInner = (): JSX.Element => {
   // Vessels Master Data (for vessel selection dropdown - ID 014)
   const { data: vesselMasterData = [], isLoading: vesselMasterLoading } = useMasterDataEntries('014');
   
+  // Vessel Groups Data (for vessel group selection)
+  const { data: vesselGroupsData = [], isLoading: vesselGroupsLoading } = useQuery({
+    queryKey: ['/api/vessel-groups']
+  });
+  
   // Mutations for Data Masters
   const createMasterMutation = useCreateDataMaster();
   const updateMasterMutation = useUpdateDataMaster(selectedMaster);
@@ -747,9 +754,10 @@ const AdminModuleInner = (): JSX.Element => {
     { id: "SF010", firstName: "Robert", lastName: "Chen", rank: "Chief Engineer", nationality: "China", status: "Available" },
   ]);
   
-  // Dynamic vessel data from Vessels Master (ID 014)
+  // Dynamic vessel data from Vessels Master (ID 014) and Vessel Groups
   const vesselOptions = useMemo((): VesselOption[] => {
-    return vesselMasterData.map((vessel: any): VesselOption => {
+    // Individual vessels from master data
+    const individualVessels = vesselMasterData.map((vessel: any): VesselOption => {
       // Apply vessel field mapping if the data needs transformation
       const mappedVessel = mapSafeFieldsToVesselData(vessel);
       
@@ -761,10 +769,22 @@ const AdminModuleInner = (): JSX.Element => {
       
       return {
         value: String(vesselValue), // Ensure it's always a string
-        label: String(vesselLabel)  // Ensure it's always a string
+        label: `🚢 ${String(vesselLabel)}`, // Individual vessel with ship icon
+        type: 'vessel'
       };
     });
-  }, [vesselMasterData]);
+    
+    // Vessel groups from API
+    const vesselGroups = (vesselGroupsData as any[]).map((group: any): VesselOption => ({
+      value: `group_${group.id}`,
+      label: `📁 ${group.name}`, // Vessel group with folder icon  
+      type: 'group',
+      vesselIds: group.vesselIds
+    }));
+    
+    // Combine groups first (at top), then individual vessels
+    return [...vesselGroups, ...individualVessels];
+  }, [vesselMasterData, vesselGroupsData]);
   
   const rq = useQueryClient();
 
@@ -2838,25 +2858,51 @@ const AdminModuleInner = (): JSX.Element => {
                                 key={vessel.value}
                                 value={vessel.value}
                                 onSelect={() => {
-                                  const isSelected = selectedVessels.includes(vessel.value);
-                                  if (isSelected) {
-                                    setSelectedVessels(selectedVessels.filter(v => v !== vessel.value));
+                                  // Handle vessel group selection
+                                  if (vessel.type === 'group' && vessel.vesselIds) {
+                                    const groupVesselIds = vessel.vesselIds;
+                                    const allGroupVesselsSelected = groupVesselIds.every(id => selectedVessels.includes(id));
+                                    
+                                    if (allGroupVesselsSelected) {
+                                      // Deselect all vessels in the group
+                                      setSelectedVessels(selectedVessels.filter(v => !groupVesselIds.includes(v)));
+                                    } else {
+                                      // Select all vessels in the group (add only missing ones)
+                                      const newVessels = groupVesselIds.filter(id => !selectedVessels.includes(id));
+                                      setSelectedVessels([...selectedVessels, ...newVessels]);
+                                    }
                                   } else {
-                                    setSelectedVessels([...selectedVessels, vessel.value]);
+                                    // Handle individual vessel selection
+                                    const isSelected = selectedVessels.includes(vessel.value);
+                                    if (isSelected) {
+                                      setSelectedVessels(selectedVessels.filter(v => v !== vessel.value));
+                                    } else {
+                                      setSelectedVessels([...selectedVessels, vessel.value]);
+                                    }
                                   }
                                 }}
                                 className="text-xs"
                               >
                                 <div className="flex items-center space-x-2">
                                   <Checkbox 
-                                    checked={selectedVessels.includes(vessel.value)}
+                                    checked={(() => {
+                                      if (vessel.type === 'group' && vessel.vesselIds) {
+                                        return vessel.vesselIds.every(id => selectedVessels.includes(id));
+                                      }
+                                      return selectedVessels.includes(vessel.value);
+                                    })()}
                                     className="h-4 w-4"
                                   />
                                   <span>{vessel.label}</span>
                                 </div>
                                 <Check
                                   className={`ml-auto h-4 w-4 ${
-                                    selectedVessels.includes(vessel.value) ? "opacity-100" : "opacity-0"
+                                    (() => {
+                                      if (vessel.type === 'group' && vessel.vesselIds) {
+                                        return vessel.vesselIds.every(id => selectedVessels.includes(id)) ? "opacity-100" : "opacity-0";
+                                      }
+                                      return selectedVessels.includes(vessel.value) ? "opacity-100" : "opacity-0";
+                                    })()
                                   }`}
                                 />
                               </CommandItem>
