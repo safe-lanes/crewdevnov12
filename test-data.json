@@ -148,7 +148,7 @@
         "age": null,
         "presentRank": "Master",
         "rankAppliedFor": null,
-        "employeeId": null,
+        "employeeId": "A000001",
         "presentVessel": "",
         "lastVessel": null,
         "status": "Active",
@@ -222,7 +222,7 @@
         "age": null,
         "presentRank": "Chief Engineer",
         "rankAppliedFor": null,
-        "employeeId": null,
+        "employeeId": "A000002",
         "presentVessel": "",
         "lastVessel": null,
         "status": "Active",
@@ -296,7 +296,7 @@
         "age": null,
         "presentRank": "Electrician",
         "rankAppliedFor": null,
-        "employeeId": null,
+        "employeeId": "A000003",
         "presentVessel": "",
         "lastVessel": null,
         "status": "Active",
@@ -363,7 +363,8 @@
         "vesselType": "Chemical Tanker",
         "signOnDate": "15-Mar-2025",
         "createdAt": "2025-03-15T00:00:00.000Z",
-        "updatedAt": "2025-03-15T00:00:00.000Z"
+        "updatedAt": "2025-03-15T00:00:00.000Z",
+        "employeeId": "A000004"
       }
     ]
   ],
@@ -540,5 +541,5 @@
   "currentRankGroupId": 1,
   "currentAvailableRankId": 11,
   "currentAppraisalResultId": 5,
-  "currentCrewIdCounter": 1
+  "currentCrewIdCounter": 5
 }

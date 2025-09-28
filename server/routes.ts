@@ -498,6 +498,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Assign crew IDs to existing crew members who don't have them
+  app.post("/api/crew-members/assign-ids", async (req, res) => {
+    try {
+      const crewMembers = await storage.getCrewMembers();
+      const crewMembersWithoutIds = crewMembers.filter(cm => !cm.employeeId);
+      
+      if (crewMembersWithoutIds.length === 0) {
+        return res.json({ 
+          message: "All crew members already have IDs", 
+          totalCrew: crewMembers.length 
+        });
+      }
+
+      let updatedCount = 0;
+      for (const crewMember of crewMembersWithoutIds) {
+        const crewId = await storage.getNextCrewId();
+        const updated = await storage.updateCrewMember(crewMember.id, { employeeId: crewId });
+        if (updated) {
+          updatedCount++;
+          console.log(`✅ Assigned crew ID ${crewId} to ${crewMember.firstName} ${crewMember.lastName || crewMember.familyName}`);
+        }
+      }
+
+      res.json({ 
+        message: "Crew ID assignment completed", 
+        updatedCount,
+        totalWithoutIds: crewMembersWithoutIds.length 
+      });
+    } catch (error) {
+      console.error("Error assigning crew IDs:", error);
+      res.status(500).json({ error: "Failed to assign crew IDs" });
+    }
+  });
+
   // Dashboard Summary endpoint
   app.get("/api/crew-members/:id/dashboard", async (req, res) => {
     try {
