@@ -852,7 +852,7 @@ const AdminModuleInner = (): JSX.Element => {
         medicalOfficer: false,
         navigatingOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('officer'),
         emtOfficer: false,
-        hasMultiple: rank.rank.toLowerCase().includes('officer') || rank.rank.toLowerCase().includes('engineer')
+        hasMultiple: !rank.rank.toLowerCase().includes('master') // Most ranks can have multiples except Master
       };
     });
     
@@ -2214,7 +2214,28 @@ const AdminModuleInner = (): JSX.Element => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {companyRankData.map((rank) => (
+              {(() => {
+                // Filter ranks to hide parent ranks when role variants exist
+                const displayRows = companyRankData.filter(rank => {
+                  if (rank.isRoleRow) return true; // Always show role rows
+                  
+                  // Hide parent rows if they have role rows
+                  const hasRoleRows = companyRankData.some(r => r.originalRankId === rank.id && r.isRoleRow);
+                  
+                  // Debug logging
+                  if (rank.rank === "Chief Officer") {
+                    console.log(`🔍 [FILTER DEBUG] Chief Officer - hasRoleRows: ${hasRoleRows}`, {
+                      rankId: rank.id,
+                      roleRows: companyRankData.filter(r => r.originalRankId === rank.id && r.isRoleRow)
+                    });
+                  }
+                  
+                  return !hasRoleRows;
+                });
+                
+                console.log(`🔍 [FILTER DEBUG] Total data: ${companyRankData.length}, Displayed: ${displayRows.length}`);
+                return displayRows;
+              })().map((rank) => (
                 <TableRow key={rank.id} className="border-b border-gray-100 hover:bg-gray-50 text-xs">
                   <TableCell className="w-4"></TableCell>
                   <TableCell className="font-medium">{rank.rank}</TableCell>
@@ -2421,7 +2442,21 @@ const AdminModuleInner = (): JSX.Element => {
                     />
                   </TableCell>
                   <TableCell className="text-center">
-                    {rank.hasMultiple ? (
+                    {rank.isRoleRow ? (
+                      // Role variants always show delete button to remove the variant
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-destructive hover:bg-destructive/10"
+                        onClick={() => handleDeleteCompanyRank(rank.id)}
+                        disabled={!isCompanyEditing}
+                        data-testid={`button-delete-company-${rank.id}`}
+                        title="Delete role variant"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    ) : rank.hasMultiple ? (
+                      // Regular ranks with hasMultiple show Multiple button
                       <Button
                         variant="outline"
                         size="sm"
@@ -2433,13 +2468,15 @@ const AdminModuleInner = (): JSX.Element => {
                         Multiple
                       </Button>
                     ) : (
+                      // Only Master rank shows delete button (hasMultiple: false)
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6 text-destructive hover:bg-destructive/10"
                         onClick={() => handleDeleteCompanyRank(rank.id)}
+                        disabled={!isCompanyEditing}
                         data-testid={`button-delete-company-${rank.id}`}
-                        title="Delete role"
+                        title="Delete rank"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
