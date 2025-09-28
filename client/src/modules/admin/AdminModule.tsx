@@ -2682,6 +2682,13 @@ const AdminModuleInner = (): JSX.Element => {
                               rankMasterData.find(r => r.id.toString() === rank.id)?.applicableToCompany || false
                             }
                             onCheckedChange={(checked) => {
+                              console.log('🎯 [APPLICABLE_TO_COMPANY] Click handler triggered!', { 
+                                rankId: rank.id, 
+                                rankName: rank.rank, 
+                                isEditing: isCompanyEditing,
+                                checked: checked
+                              });
+                              
                               // Ensure boolean value
                               const booleanValue = checked === true;
                               
@@ -2700,6 +2707,12 @@ const AdminModuleInner = (): JSX.Element => {
                             className="h-4 w-4"
                             data-testid={`checkbox-applicable-to-company-${rank.id}`}
                           />
+                          {/* Debug info */}
+                          {import.meta.env.DEV && (
+                            <div className="text-xs text-gray-400 mt-1">
+                              ID: {rank.id}, Editing: {isCompanyEditing ? 'Y' : 'N'}
+                            </div>
+                          )}
                         </TableCell>
                         
                         {/* Checkbox columns */}
