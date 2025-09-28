@@ -221,6 +221,11 @@ const AdminModuleInner = (): JSX.Element => {
   // Sync local state with shared data while preserving unsaved changes
   useEffect(() => {
     if (sharedRankMasterData) {
+      // Don't sync if we're currently editing to avoid losing unsaved changes
+      if (isRankMasterEditing || isCompanyEditing) {
+        return;
+      }
+      
       setRankMasterData(prev => {
         // Preserve any new ranks that haven't been saved yet
         const newUnsavedRanks = prev.filter(rank => 
