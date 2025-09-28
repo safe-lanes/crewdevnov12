@@ -818,6 +818,9 @@ const AdminModuleInner = (): JSX.Element => {
       existingCompanyData.set(item.id, item);
     });
     
+    // Preserve existing role variants (they don't exist in rank master data)
+    const existingRoleVariants = companyRankData.filter(item => item.isRoleRow);
+    
     // Build the new company rank data from ALL ranks
     const newCompanyRanks: CompanyRankData[] = allRanks.map(rank => {
       const existing = existingCompanyData.get(rank.id);
@@ -856,10 +859,13 @@ const AdminModuleInner = (): JSX.Element => {
       };
     });
     
+    // Add back the role variants that were preserved
+    const finalCompanyRanks = [...newCompanyRanks, ...existingRoleVariants];
+    
     // Only update if there's a meaningful change
-    if (JSON.stringify(companyRankData) !== JSON.stringify(newCompanyRanks)) {
-      console.log('🔍 [DEBUG] Updating company rank data');
-      setCompanyRankData(newCompanyRanks);
+    if (JSON.stringify(companyRankData) !== JSON.stringify(finalCompanyRanks)) {
+      console.log('🔍 [DEBUG] Updating company rank data with role variants preserved');
+      setCompanyRankData(finalCompanyRanks);
     }
   }, [rankMasterData, isCompanyEditing]);
 
@@ -1437,6 +1443,31 @@ const AdminModuleInner = (): JSX.Element => {
         companyRankDataCount: companyRankData.length
       });
 
+      // First, save role variants as new ranks in the database
+      const roleVariants = companyRankData.filter(rank => rank.isRoleRow);
+      console.log('🔄 [COMPANY_SAVE] Found role variants to save:', roleVariants.length);
+      
+      for (const roleVariant of roleVariants) {
+        // Check if this role variant doesn't have a numeric ID (needs to be created)
+        const numericId = parseInt(roleVariant.id, 10);
+        if (isNaN(numericId)) {
+          console.log('🔄 [COMPANY_SAVE] Creating new role variant:', roleVariant.role);
+          
+          // Find the original rank to get category and other info
+          const originalRank = sharedRankMasterData?.find(rank => rank.id.toString() === roleVariant.originalRankId);
+          
+          if (originalRank) {
+            await createRankMutation.mutateAsync({
+              name: roleVariant.role || roleVariant.rank,
+              category: 'Senior Officers', // Default category for role variants
+              rankId: roleVariant.rankId,
+              label: roleVariant.role || roleVariant.rank,
+              applicableToCompany: true // Role variants are always applicable to company
+            });
+          }
+        }
+      }
+
       // Update each changed rank in the main rank database
       for (const changedId of Array.from(changedCompanyRanks)) {
         // Skip new ranks that haven't been saved yet (they have 'new_' prefix)
@@ -1494,6 +1525,9 @@ const AdminModuleInner = (): JSX.Element => {
         return newSet;
       });
       setIsCompanyEditing(false);
+      
+      // Refresh rank data to pick up newly created role variants
+      rq.invalidateQueries({ queryKey: ["/api/available-ranks"] });
       
       toast({
         title: "Success",
