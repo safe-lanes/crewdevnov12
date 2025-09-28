@@ -128,10 +128,10 @@
       {
         "id": 10,
         "name": "OS",
-        "category": "Ratings",
+        "category": "Senior Officers",
         "rankId": "S15",
         "label": "OS",
-        "applicableToCompany": false,
+        "applicableToCompany": true,
         "sortOrder": 11
       }
     ],

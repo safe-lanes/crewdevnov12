@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -1510,15 +1511,21 @@ const AdminModuleInner = (): JSX.Element => {
   };
 
   const handleMultiple = (rankId: string) => {
+    console.log('🔄 [MULTIPLE DEBUG] Multiple button clicked for rankId:', rankId);
+    console.log('🔄 [MULTIPLE DEBUG] Current companyRankData count:', companyRankData.length);
+    
     // Find the rank to multiply - could be original rank or originalRankId from role
     let originalRankId = rankId;
     let rankToMultiply = companyRankData.find(rank => rank.id === rankId);
+    
+    console.log('🔄 [MULTIPLE DEBUG] Found rankToMultiply:', rankToMultiply);
     
     // If this is a role row, get the original rank ID
     if (rankToMultiply?.isRoleRow && rankToMultiply.originalRankId) {
       originalRankId = rankToMultiply.originalRankId;
       // Get the parent rank data for creating new roles
       rankToMultiply = companyRankData.find(rank => rank.id === originalRankId);
+      console.log('🔄 [MULTIPLE DEBUG] This is a role row, using originalRankId:', originalRankId);
     }
     
     if (rankToMultiply) {
@@ -1588,8 +1595,16 @@ const AdminModuleInner = (): JSX.Element => {
           currentData.splice(lastRoleIndex + 1, 0, newRole);
         }
         
+        console.log('🔄 [MULTIPLE DEBUG] Updated companyRankData count:', currentData.length);
+        console.log('🔄 [MULTIPLE DEBUG] Role rows created for originalRankId:', originalRankId);
+        const roleRows = currentData.filter(r => r.originalRankId === originalRankId);
+        console.log('🔄 [MULTIPLE DEBUG] Total role rows for this rank:', roleRows.length);
+        console.log('🔄 [MULTIPLE DEBUG] Role rows:', roleRows.map(r => ({ id: r.id, role: r.role, isRoleRow: r.isRoleRow })));
+        
         return currentData;
       });
+    } else {
+      console.error('🔄 [MULTIPLE DEBUG] rankToMultiply not found for rankId:', rankId);
     }
   };
 
@@ -2568,9 +2583,10 @@ const AdminModuleInner = (): JSX.Element => {
                   </div>
                 </div>
                 
-                {/* Company Table */}
+                {/* Company Table with Vertical Scroll */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <Table>
+                  <ScrollArea className="h-[500px] w-full">
+                    <Table>
                   <TableHeader>
                     <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
                       <TableHead className="text-white text-xs font-normal w-4">
@@ -2684,9 +2700,7 @@ const AdminModuleInner = (): JSX.Element => {
                         {/* Applicable to Company checkbox */}
                         <TableCell className="text-center py-3">
                           <Checkbox
-                            checked={
-                              rankMasterData.find(r => r.id.toString() === rank.id)?.applicableToCompany || false
-                            }
+                            checked={rank.applicableToCompany || false}
                             onCheckedChange={(checked) => {
                               // Ensure boolean value
                               const booleanValue = checked === true;
@@ -2873,7 +2887,7 @@ const AdminModuleInner = (): JSX.Element => {
                                 variant="outline"
                                 size="sm"
                                 className="text-xs px-2 py-1 h-6"
-                                onClick={() => handleAddMultipleCompanyRole(rank.id)}
+                                onClick={() => handleMultiple(rank.id)}
                                 disabled={!isCompanyEditing}
                                 data-testid={`button-multiple-${rank.id}`}
                               >
@@ -2895,7 +2909,7 @@ const AdminModuleInner = (): JSX.Element => {
                                   variant="outline"
                                   size="sm"
                                   className="text-xs px-2 py-1 h-6"
-                                  onClick={() => handleAddMultipleCompanyRole(rank.id)}
+                                  onClick={() => handleMultiple(rank.id)}
                                   disabled={!isCompanyEditing}
                                   data-testid={`button-multiple-${rank.id}`}
                                 >
