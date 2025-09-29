@@ -855,7 +855,7 @@ const AdminModuleInner = (): JSX.Element => {
         medicalOfficer: false,
         navigatingOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('officer'),
         emtOfficer: false,
-        hasMultiple: !rank.rank.toLowerCase().includes('master') // Most ranks can have multiples except Master
+        hasMultiple: true // All ranks can have role variants including Master
       };
     });
     
