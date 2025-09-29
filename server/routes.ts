@@ -489,23 +489,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/vessel-drafts/by-vessel/:vesselId", async (req, res) => {
     try {
       const { vesselId } = req.params;
+      console.log(`🚢 [VESSEL DRAFT API] Fetching drafts for vessel: ${vesselId}`);
       const vesselDrafts = await storage.getVesselDraftsByVessel(vesselId);
+      console.log(`🚢 [VESSEL DRAFT API] Found ${vesselDrafts.length} drafts for vessel ${vesselId}`);
       res.json(vesselDrafts);
     } catch (error) {
+      console.error(`🚢 [VESSEL DRAFT API ERROR] Failed to fetch vessel drafts for vessel ${req.params.vesselId}:`, error);
       res.status(500).json({ error: "Failed to fetch vessel drafts for vessel" });
     }
   });
 
   app.post("/api/vessel-drafts", async (req, res) => {
     try {
+      console.log(`🚢 [VESSEL DRAFT CREATE] Attempting to create vessel draft with data:`, req.body);
       const result = insertVesselDraftSchema.safeParse(req.body);
       if (!result.success) {
+        console.error(`🚢 [VESSEL DRAFT VALIDATION ERROR] Schema validation failed:`, result.error.issues);
         return res.status(400).json({ error: "Invalid vessel draft data", details: result.error.issues });
       }
       
+      console.log(`🚢 [VESSEL DRAFT CREATE] Validation passed, creating draft for vessel ${result.data.vesselId}`);
       const vesselDraft = await storage.createVesselDraft(result.data);
+      console.log(`🚢 [VESSEL DRAFT CREATE] Successfully created draft with ID: ${vesselDraft.id}`);
       res.status(201).json(vesselDraft);
     } catch (error) {
+      console.error(`🚢 [VESSEL DRAFT CREATE ERROR] Failed to create vessel draft:`, error);
       res.status(500).json({ error: "Failed to create vessel draft" });
     }
   });
