@@ -44,7 +44,12 @@ app.use((req, res, next) => {
     const message = err.message || "Internal Server Error";
 
     res.status(status).json({ message });
-    throw err;
+    
+    // Log error but don't throw - prevents unnecessary server shutdowns
+    log(`API Error ${status}: ${message}`);
+    if (status >= 500) {
+      log(`Server Error Details: ${err.stack || err}`);
+    }
   });
 
   // importantly only setup vite in development and after
@@ -60,11 +65,56 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = 5000;
-  server.listen({
+  const httpServer = server.listen({
     port,
     host: "0.0.0.0",
-    reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+  });
+
+  // Handle port conflicts explicitly
+  httpServer.on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      log(`Port ${port} is already in use. Please ensure no other process is using this port.`);
+      process.exit(1);
+    } else {
+      log(`Server error: ${err.message}`);
+      throw err;
+    }
+  });
+
+  // Graceful shutdown handling to prevent port conflicts
+  let isShuttingDown = false;
+  const gracefulShutdown = (signal: string) => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    
+    log(`${signal} received. Shutting down gracefully...`);
+    httpServer.close(() => {
+      log('HTTP server closed.');
+      process.exit(0);
+    });
+
+    // Force close after 10 seconds
+    setTimeout(() => {
+      log('Forcing server close after 10 seconds...');
+      process.exit(1);
+    }, 10000);
+  };
+
+  // Listen for termination signals
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  process.on('SIGUSR2', () => gracefulShutdown('SIGUSR2')); // Used by nodemon
+
+  // Handle uncaught errors to prevent crashes
+  process.on('uncaughtException', (err) => {
+    log(`Uncaught Exception: ${err.message}`);
+    gracefulShutdown('UNCAUGHT_EXCEPTION');
+  });
+
+  process.on('unhandledRejection', (reason) => {
+    log(`Unhandled Rejection: ${reason}`);
+    gracefulShutdown('UNHANDLED_REJECTION');
   });
 })();

@@ -1935,11 +1935,37 @@ const AdminModuleInner = (): JSX.Element => {
       const revision = "R1"; // Use R1 for current draft revision
       
       console.log('🔧 [SAVE DRAFT] Current vesselRankDataMap size:', vesselRankDataMap.size);
-      console.log('🔧 [SAVE DRAFT] VesselRankDataMap contents:', Array.from(vesselRankDataMap.entries()));
+      console.log('🔧 [SAVE DRAFT] VesselRankDataMap keys:', Array.from(vesselRankDataMap.keys()));
+      console.log('🔧 [SAVE DRAFT] Selected vessels:', selectedVessels);
+      console.log('🔧 [SAVE DRAFT] Multiple vessels selected:', selectedVessels.length > 1);
+      console.log('🔧 [SAVE DRAFT] Revision mode:', revisionMode);
       
+      // Check vessel data availability in detail
       for (const vesselId of selectedVessels) {
         const vesselData = vesselRankDataMap.get(vesselId);
-        console.log(`🔧 [SAVE DRAFT] Processing vessel ${vesselId}, data exists:`, !!vesselData, 'data length:', vesselData?.length || 0);
+        const hasData = !!vesselData;
+        const dataLength = vesselData?.length || 0;
+        
+        console.log(`🔧 [SAVE DRAFT] Vessel ${vesselId}:`, {
+          hasData,
+          dataLength,
+          sampleRecord: vesselData?.[0] || null,
+          allKeys: vesselData ? Object.keys(vesselData[0] || {}) : []
+        });
+        
+        if (vesselData && vesselData.length > 0) {
+          // Count actual checkboxes that are checked
+          const checkedCount = vesselData.reduce((count, record) => {
+            const checks = [
+              record.actualManning, 
+              record.safeManning, 
+              record.optimumManning
+            ].filter(Boolean).length;
+            return count + checks;
+          }, 0);
+          console.log(`🔧 [SAVE DRAFT] Vessel ${vesselId} checked items:`, checkedCount);
+        }
+        
         if (vesselData) {
           // Convert vessel data to JSON string for storage
           const draftData = JSON.stringify([...vesselData]);
@@ -3148,14 +3174,14 @@ const AdminModuleInner = (): JSX.Element => {
                                     const groupVesselIds = Array.isArray(vessel.vesselIds) 
                                       ? vessel.vesselIds 
                                       : JSON.parse(vessel.vesselIds || '[]');
-                                    const allGroupVesselsSelected = groupVesselIds.every(id => selectedVessels.includes(id));
+                                    const allGroupVesselsSelected = groupVesselIds.every((id: string) => selectedVessels.includes(id));
                                     
                                     if (allGroupVesselsSelected) {
                                       // Deselect all vessels in the group
                                       setSelectedVessels(selectedVessels.filter(v => !groupVesselIds.includes(v)));
                                     } else {
                                       // Select all vessels in the group (add only missing ones)
-                                      const newVessels = groupVesselIds.filter(id => !selectedVessels.includes(id));
+                                      const newVessels = groupVesselIds.filter((id: string) => !selectedVessels.includes(id));
                                       setSelectedVessels([...selectedVessels, ...newVessels]);
                                     }
                                   } else {
@@ -3178,7 +3204,7 @@ const AdminModuleInner = (): JSX.Element => {
                                         const vesselIdArray = Array.isArray(vessel.vesselIds) 
                                           ? vessel.vesselIds 
                                           : JSON.parse(vessel.vesselIds || '[]');
-                                        return vesselIdArray.every(id => selectedVessels.includes(id));
+                                        return vesselIdArray.every((id: string) => selectedVessels.includes(id));
                                       }
                                       return selectedVessels.includes(vessel.value);
                                     })()}
@@ -3194,7 +3220,7 @@ const AdminModuleInner = (): JSX.Element => {
                                         const vesselIdArray = Array.isArray(vessel.vesselIds) 
                                           ? vessel.vesselIds 
                                           : JSON.parse(vessel.vesselIds || '[]');
-                                        return vesselIdArray.every(id => selectedVessels.includes(id)) ? "opacity-100" : "opacity-0";
+                                        return vesselIdArray.every((id: string) => selectedVessels.includes(id)) ? "opacity-100" : "opacity-0";
                                       }
                                       return selectedVessels.includes(vessel.value) ? "opacity-100" : "opacity-0";
                                     })()

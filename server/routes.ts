@@ -716,7 +716,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const updated = await storage.updateCrewMember(crewMember.id, { employeeId: crewId });
         if (updated) {
           updatedCount++;
-          console.log(`✅ Assigned crew ID ${crewId} to ${crewMember.firstName} ${crewMember.lastName || crewMember.familyName}`);
+          console.log(`✅ Assigned crew ID ${crewId} to ${crewMember.firstName} ${crewMember.familyName || 'Unknown'}`);
         }
       }
 
