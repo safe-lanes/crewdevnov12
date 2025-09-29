@@ -1915,10 +1915,8 @@ const AdminModuleInner = (): JSX.Element => {
       console.warn('Cannot start revision mode: No vessels selected');
       return;
     }
-    console.log('🔧 [REVISION DEBUG] Setting revision mode to true, selectedVessels:', selectedVessels);
     setRevisionMode(true);
     setIsVesselEditing(true);
-    console.log('🔧 [REVISION DEBUG] Revision mode should now be active');
   };
 
   const handleSaveDraft = async () => {
@@ -3236,13 +3234,6 @@ const AdminModuleInner = (): JSX.Element => {
                   </div>
                 </div>
 
-                {/* DEBUG: State Display */}
-                {selectedVessels.length > 0 && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 mb-2 text-xs">
-                    <strong>DEBUG:</strong> revisionMode={revisionMode.toString()}, selectedVessels={selectedVessels.length}, checkboxes disabled={(!revisionMode).toString()}
-                  </div>
-                )}
-
                 {/* Selected Vessels Revision Indicator */}
                 {revisionMode && selectedVessels.length > 0 && (
                   <div className={`bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 ${currentBreakpoint === 'mobile' ? 'text-sm' : ''}`} data-testid="selected-vessels-indicator">
@@ -3324,13 +3315,7 @@ const AdminModuleInner = (): JSX.Element => {
                               return !hasRoleRows;
                             });
 
-                            return displayRows.map((rank, index) => {
-                              // Debug log for the first checkbox to understand the state
-                              if (index === 0) {
-                                console.log('🔧 [RENDER DEBUG] revisionMode:', revisionMode, 'selectedVessels:', selectedVessels, 'disabled will be:', !revisionMode);
-                              }
-                              
-                              return (
+                            return displayRows.map((rank, index) => (
                               <TableRow key={rank.id} className="hover:bg-gray-50">
                                 {/* Rank column */}
                                 <TableCell className="text-xs">
@@ -3375,7 +3360,21 @@ const AdminModuleInner = (): JSX.Element => {
                                 </TableCell>
 
                                 {/* Safe Manning checkbox */}
-                                <TableCell className="text-center">
+                                <TableCell 
+                                  className="text-center cursor-pointer p-2"
+                                  onClick={() => {
+                                    if (!revisionMode) return;
+                                    const firstVesselId = selectedVessels[0];
+                                    if (firstVesselId) {
+                                      const vesselData = vesselRankDataMap.get(firstVesselId) || [];
+                                      const vesselRank = vesselData.find(r => r.id === rank.id);
+                                      const newValue = !(vesselRank?.safeManning || false);
+                                      updateVesselRankData(prev => 
+                                        prev.map(r => r.id === rank.id ? { ...r, safeManning: newValue } : r)
+                                      );
+                                    }
+                                  }}
+                                >
                                   <input
                                     type="checkbox"
                                     checked={(() => {
@@ -3387,19 +3386,29 @@ const AdminModuleInner = (): JSX.Element => {
                                       }
                                       return false;
                                     })()}
-                                    onChange={(e) => {
-                                      updateVesselRankData(prev => 
-                                        prev.map(r => r.id === rank.id ? { ...r, safeManning: e.target.checked } : r)
-                                      );
-                                    }}
+                                    onChange={() => {}} // Handled by cell onClick
                                     disabled={!revisionMode}
-                                    className="h-4 w-4"
+                                    className="h-4 w-4 pointer-events-none"
                                     data-testid={`vessel-safe-manning-${rank.id}`}
                                   />
                                 </TableCell>
 
                                 {/* Optimum Manning checkbox */}
-                                <TableCell className="text-center">
+                                <TableCell 
+                                  className="text-center cursor-pointer p-2"
+                                  onClick={() => {
+                                    if (!revisionMode) return;
+                                    const firstVesselId = selectedVessels[0];
+                                    if (firstVesselId) {
+                                      const vesselData = vesselRankDataMap.get(firstVesselId) || [];
+                                      const vesselRank = vesselData.find(r => r.id === rank.id);
+                                      const newValue = !(vesselRank?.optimumManning || false);
+                                      updateVesselRankData(prev => 
+                                        prev.map(r => r.id === rank.id ? { ...r, optimumManning: newValue } : r)
+                                      );
+                                    }
+                                  }}
+                                >
                                   <input
                                     type="checkbox"
                                     checked={(() => {
@@ -3411,13 +3420,9 @@ const AdminModuleInner = (): JSX.Element => {
                                       }
                                       return false;
                                     })()}
-                                    onChange={(e) => {
-                                      updateVesselRankData(prev => 
-                                        prev.map(r => r.id === rank.id ? { ...r, optimumManning: e.target.checked } : r)
-                                      );
-                                    }}
+                                    onChange={() => {}} // Handled by cell onClick
                                     disabled={!revisionMode}
-                                    className="h-4 w-4"
+                                    className="h-4 w-4 pointer-events-none"
                                     data-testid={`vessel-optimum-manning-${rank.id}`}
                                   />
                                 </TableCell>
@@ -3566,8 +3571,7 @@ const AdminModuleInner = (): JSX.Element => {
                                   />
                                 </TableCell>
                               </TableRow>
-                              );
-                            });
+                            ));
                           })()
                         )}
                       </TableBody>
