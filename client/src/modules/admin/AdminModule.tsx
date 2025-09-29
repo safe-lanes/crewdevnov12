@@ -2883,8 +2883,9 @@ const AdminModuleInner = (): JSX.Element => {
         <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
           <CardContent className="pt-4 pb-4 pl-0">
             {selectedRankAdminTab === "rank-master" && (
-              <div className="overflow-auto max-h-[600px]">
-                <Table className="bg-white border border-gray-200 rounded-lg shadow-md">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                <ScrollArea className="h-[500px] w-full">
+                  <Table>
                   <TableHeader>
                     <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
                       <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Rank ID</TableHead>
@@ -2997,7 +2998,8 @@ const AdminModuleInner = (): JSX.Element => {
                       </TableRow>
                     ))}
                   </TableBody>
-                </Table>
+                  </Table>
+                </ScrollArea>
               </div>
             )}
             
