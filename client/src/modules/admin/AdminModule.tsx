@@ -1915,8 +1915,10 @@ const AdminModuleInner = (): JSX.Element => {
       console.warn('Cannot start revision mode: No vessels selected');
       return;
     }
+    console.log('🔧 [REVISION DEBUG] Setting revision mode to true, selectedVessels:', selectedVessels);
     setRevisionMode(true);
     setIsVesselEditing(true);
+    console.log('🔧 [REVISION DEBUG] Revision mode should now be active');
   };
 
   const handleSaveDraft = async () => {
@@ -3234,6 +3236,13 @@ const AdminModuleInner = (): JSX.Element => {
                   </div>
                 </div>
 
+                {/* DEBUG: State Display */}
+                {selectedVessels.length > 0 && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 mb-2 text-xs">
+                    <strong>DEBUG:</strong> revisionMode={revisionMode.toString()}, selectedVessels={selectedVessels.length}, checkboxes disabled={(!revisionMode).toString()}
+                  </div>
+                )}
+
                 {/* Selected Vessels Revision Indicator */}
                 {revisionMode && selectedVessels.length > 0 && (
                   <div className={`bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 ${currentBreakpoint === 'mobile' ? 'text-sm' : ''}`} data-testid="selected-vessels-indicator">
@@ -3315,7 +3324,13 @@ const AdminModuleInner = (): JSX.Element => {
                               return !hasRoleRows;
                             });
 
-                            return displayRows.map((rank, index) => (
+                            return displayRows.map((rank, index) => {
+                              // Debug log for the first checkbox to understand the state
+                              if (index === 0) {
+                                console.log('🔧 [RENDER DEBUG] revisionMode:', revisionMode, 'selectedVessels:', selectedVessels, 'disabled will be:', !revisionMode);
+                              }
+                              
+                              return (
                               <TableRow key={rank.id} className="hover:bg-gray-50">
                                 {/* Rank column */}
                                 <TableCell className="text-xs">
@@ -3338,6 +3353,7 @@ const AdminModuleInner = (): JSX.Element => {
                                       return false;
                                     })()}
                                     onChange={(e) => {
+                                      console.log('🔧 [CHECKBOX DEBUG] revisionMode:', revisionMode, 'selectedVessels:', selectedVessels.length);
                                       updateVesselRankData(prev => 
                                         prev.map(r => r.id === rank.id ? { ...r, actualManningFlag: e.target.checked } : r)
                                       );
@@ -3540,7 +3556,8 @@ const AdminModuleInner = (): JSX.Element => {
                                   />
                                 </TableCell>
                               </TableRow>
-                            ));
+                              );
+                            });
                           })()
                         )}
                       </TableBody>
