@@ -58,7 +58,7 @@ import {
   useUpdateMasterDataEntry,
   useDeleteMasterDataEntry 
 } from "@/hooks/useDataMasters";
-import { useRankMasterData, useCompanyRanks, useCreateRank, useUpdateRank, useDeleteRank, useClearAllRanks, type RankMasterData } from "@/hooks/useCompanyRanks";
+import { useRankMasterData, useCompanyRanks, useCreateRank, useUpdateRank, useDeleteRank, useClearAllRanks, useSaveCompanyRanks, type RankMasterData } from "@/hooks/useCompanyRanks";
 import { queryClient } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -186,6 +186,7 @@ const AdminModuleInner = (): JSX.Element => {
   const createRankMutation = useCreateRank();
   const updateRankMutation = useUpdateRank();
   const deleteRankMutation = useDeleteRank();
+  const saveCompanyRanksMutation = useSaveCompanyRanks();
   const clearAllRanksMutation = useClearAllRanks();
   
   // Rank reorder mutation
@@ -1572,6 +1573,39 @@ const AdminModuleInner = (): JSX.Element => {
         }
       }
 
+      // CRITICAL: Bulk save ALL company rank data with checkbox settings
+      console.log('🔄 [COMPANY_SAVE] Bulk saving all company rank data to persistent storage');
+      const companyRankDataForSave = companyRankData.map(rank => ({
+        id: rank.id,
+        rank: rank.rank,
+        rankId: rank.rankId,
+        officer: rank.officer || false,
+        rating: rank.rating || false,
+        seniorOfficer: rank.seniorOfficer || false,
+        deckOfficer: rank.deckOfficer || false,
+        engOfficer: rank.engOfficer || false,
+        pettyOfficer: rank.pettyOfficer || false,
+        deckRating: rank.deckRating || false,
+        engineRating: rank.engineRating || false,
+        generalRating: rank.generalRating || false,
+        cateringRating: rank.cateringRating || false,
+        safetyOfficer: rank.safetyOfficer || false,
+        sso: rank.sso || false,
+        medicalOfficer: rank.medicalOfficer || false,
+        navigatingOfficer: rank.navigatingOfficer || false,
+        emtOfficer: rank.emtOfficer || false,
+        hasMultiple: rank.hasMultiple || false,
+        // Include role variant data
+        ...(rank.isRoleRow && {
+          isRoleRow: true,
+          role: rank.role,
+          originalRankId: rank.originalRankId
+        })
+      }));
+
+      await saveCompanyRanksMutation.mutateAsync(companyRankDataForSave);
+      console.log('✅ [COMPANY_SAVE] Successfully bulk saved all company rank data');
+
       // Clear change tracking for both company and rank master
       setChangedCompanyRanks(new Set());
       // Also clear rank master changes for the IDs we just saved
@@ -1587,7 +1621,7 @@ const AdminModuleInner = (): JSX.Element => {
       
       toast({
         title: "Success",
-        description: "Company changes saved successfully",
+        description: "Company rank data and settings saved to persistent storage successfully",
       });
       
     } catch (error) {
