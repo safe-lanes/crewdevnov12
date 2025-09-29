@@ -58,7 +58,7 @@ import {
   useUpdateMasterDataEntry,
   useDeleteMasterDataEntry 
 } from "@/hooks/useDataMasters";
-import { useRankMasterData, useCompanyRanks, useCreateRank, useUpdateRank, useDeleteRank, useClearAllRanks, useSaveCompanyRanks, useCreateVesselDraft, useUpdateVesselDraft, type RankMasterData } from "@/hooks/useCompanyRanks";
+import { useRankMasterData, useCompanyRanks, useFetchCompanyRanks, useCreateRank, useUpdateRank, useDeleteRank, useClearAllRanks, useSaveCompanyRanks, useCreateVesselDraft, useUpdateVesselDraft, type RankMasterData } from "@/hooks/useCompanyRanks";
 import { queryClient } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -181,6 +181,8 @@ const AdminModuleInner = (): JSX.Element => {
   
   // Rank Master data from shared hook (for initialization)
   const { data: sharedRankMasterData, isLoading: rankMasterLoading, error: rankMasterError } = useRankMasterData();
+  // Fetch saved company rank data (including role variants)
+  const { data: savedCompanyRanks = [], isLoading: isCompanyRanksLoading } = useFetchCompanyRanks();
   
   // Mutation hooks for rank management
   const createRankMutation = useCreateRank();
@@ -810,19 +812,25 @@ const AdminModuleInner = (): JSX.Element => {
       return;
     }
     
+    // Don't run until we have both rank master data and saved company ranks
+    if (isCompanyRanksLoading || rankMasterLoading || allRanks.length === 0) {
+      return;
+    }
+    
     console.log('🔍 [DEBUG] Syncing company rank data with rank master', {
       allRanksCount: allRanks.length,
+      savedCompanyRanksCount: savedCompanyRanks.length,
       currentCompanyDataCount: companyRankData.length
     });
     
-    // Create a map of existing company data to preserve company-specific fields
+    // Create a map of existing company data from saved backend data
     const existingCompanyData = new Map<string, CompanyRankData>();
-    companyRankData.forEach(item => {
+    savedCompanyRanks.forEach(item => {
       existingCompanyData.set(item.id, item);
     });
     
-    // Preserve existing role variants (they don't exist in rank master data)
-    const existingRoleVariants = companyRankData.filter(item => item.isRoleRow);
+    // Preserve existing role variants from saved data (they don't exist in rank master data)
+    const existingRoleVariants = savedCompanyRanks.filter(item => item.isRoleRow);
     
     // Build the new company rank data from ALL ranks
     const newCompanyRanks: CompanyRankData[] = allRanks.map(rank => {
@@ -926,7 +934,7 @@ const AdminModuleInner = (): JSX.Element => {
       console.log('🔍 [DEBUG] Updating company rank data with role variants preserved');
       setCompanyRankData(finalCompanyRanks);
     }
-  }, [rankMasterData, isCompanyEditing]);
+  }, [rankMasterData, savedCompanyRanks, isCompanyEditing, isCompanyRanksLoading, rankMasterLoading]);
 
   // Sync vessel rank data with company rank data changes for all vessels
   React.useEffect(() => {

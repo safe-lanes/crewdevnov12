@@ -104,6 +104,25 @@ export const useCompanyRanks = () => {
   };
 };
 
+// Hook to fetch saved company rank data (including role variants)
+export const useFetchCompanyRanks = () => {
+  return useQuery<any[]>({
+    queryKey: ["/api/company-ranks"],
+    queryFn: async () => {
+      const response = await fetch("/api/company-ranks");
+      if (!response.ok) {
+        throw new Error("Failed to fetch company ranks");
+      }
+      return response.json();
+    },
+    staleTime: 0,
+    gcTime: 5000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+  });
+};
+
 // Hook to get available ranks from API (for compatibility with existing code)
 export const useAvailableRanks = () => {
   return useQuery<AvailableRank[]>({
