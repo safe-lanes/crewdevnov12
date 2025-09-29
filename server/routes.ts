@@ -1032,11 +1032,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let responseEntries = entries;
       if (needsSpecialHandling(masterId) && entries) {
         responseEntries = entries.map((entry: any) => applyMasterSpecificMapping(entry, masterId));
-        console.log(`🔧 [GET_LIST] Applied transformations for master ${masterId}, entries count: ${responseEntries.length}`);
+        // Only log in development mode for performance
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`🔧 [GET_LIST] Applied transformations for master ${masterId}, entries count: ${responseEntries.length}`);
+        }
       } else if (entries) {
         // Apply basic field transformation for regular masters (snake_case to camelCase)
         responseEntries = entries.map((entry: any) => applyBasicFieldTransformation(entry));
-        console.log(`🔧 [GET_LIST] Applied basic field transformation for master ${masterId}, entries count: ${responseEntries.length}`);
+        // Only log in development mode for performance
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`🔧 [GET_LIST] Applied basic field transformation for master ${masterId}, entries count: ${responseEntries.length}`);
+        }
       }
       
       res.json(responseEntries);

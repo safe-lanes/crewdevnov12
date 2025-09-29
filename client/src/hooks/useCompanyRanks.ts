@@ -60,23 +60,18 @@ export const useRankMasterData = () => {
   const query = useQuery<AvailableRank[]>({
     queryKey: ["/api/available-ranks"],
     queryFn: async () => {
-      const response = await fetch("/api/available-ranks", {
-        cache: "no-store",
-        headers: {
-          "Cache-Control": "no-cache"
-        }
-      });
+      const response = await fetch("/api/available-ranks");
       if (!response.ok) {
         throw new Error("Failed to fetch available ranks");
       }
       return response.json();
     },
-    // Force fresh data fetch to prevent stale cache issues
-    staleTime: 0,
-    gcTime: 5000, // Short garbage collection time instead of 0
-    refetchOnMount: true, // Use true instead of "always" to avoid excessive refetching
-    refetchOnWindowFocus: false, // Disable to avoid redundant refetches
-    refetchOnReconnect: true,
+    // Optimize performance - reasonable cache time
+    staleTime: 5 * 60 * 1000, // 5 minutes - data doesn't change frequently
+    gcTime: 30 * 60 * 1000, // 30 minutes in memory
+    refetchOnMount: false, // Use cache if available
+    refetchOnWindowFocus: false, // Don't refetch on focus
+    refetchOnReconnect: true, // Refetch on reconnect is fine
   });
 
   const mappedData = query.data?.map(mapAvailableRankToRankMasterData) || [];
@@ -125,27 +120,8 @@ export const useFetchCompanyRanks = () => {
 
 // Hook to get available ranks from API (for compatibility with existing code)
 export const useAvailableRanks = () => {
-  return useQuery<AvailableRank[]>({
-    queryKey: ["/api/available-ranks"],
-    queryFn: async () => {
-      const response = await fetch("/api/available-ranks", {
-        cache: "no-store",
-        headers: {
-          "Cache-Control": "no-cache"
-        }
-      });
-      if (!response.ok) {
-        throw new Error("Failed to fetch available ranks");
-      }
-      return response.json();
-    },
-    // Force fresh data fetch to prevent stale cache issues
-    staleTime: 0,
-    gcTime: 5000, // Short garbage collection time instead of 0
-    refetchOnMount: true, // Use true instead of "always" to avoid excessive refetching
-    refetchOnWindowFocus: false, // Disable to avoid redundant refetches
-    refetchOnReconnect: true,
-  });
+  // Reuse the same query as useRankMasterData for maximum efficiency
+  return useRankMasterData();
 };
 
 // Mutation hooks for rank management

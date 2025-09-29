@@ -1967,7 +1967,10 @@ export class PersistentFileStorage implements IStorage {
         }
       }
       
-      console.log(`📄 [PERSISTENT] getMasterDataEntries(${masterId}): Found ${filteredEntries.length} entries`);
+      // Only log in development mode for performance
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`📄 [PERSISTENT] getMasterDataEntries(${masterId}): Found ${filteredEntries.length} entries`);
+      }
       return filteredEntries;
     } catch (error) {
       console.error(`❌ [PERSISTENT] Error getting master data entries for ${masterId}:`, error);

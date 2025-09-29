@@ -74,7 +74,10 @@ export function isVesselMaster(masterId: string): boolean {
     const isOwners = masterId === "017";
     cached = { isVessel, isGroups, isOwners };
     masterTypeCache.set(masterId, cached);
-    console.log(`🔧 [MASTER CACHE] Cached types for masterId "${masterId}": vessel=${isVessel}, groups=${isGroups}, owners=${isOwners}`);
+    // Only log cache creation in development mode for performance
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔧 [MASTER CACHE] Cached types for masterId "${masterId}": vessel=${isVessel}, groups=${isGroups}, owners=${isOwners}`);
+    }
   }
   return cached.isVessel;
 }
@@ -218,7 +221,10 @@ export function isAdditionalGroupsMaster(masterId: string): boolean {
     const isOwners = masterId === "017";
     cached = { isVessel, isGroups, isOwners };
     masterTypeCache.set(masterId, cached);
-    console.log(`🔧 [MASTER CACHE] Cached types for masterId "${masterId}": vessel=${isVessel}, groups=${isGroups}, owners=${isOwners}`);
+    // Only log cache creation in development mode for performance
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔧 [MASTER CACHE] Cached types for masterId "${masterId}": vessel=${isVessel}, groups=${isGroups}, owners=${isOwners}`);
+    }
   }
   return cached.isGroups;
 }
@@ -409,7 +415,10 @@ export function isVesselOwnersMaster(masterId: string): boolean {
     const isOwners = masterId === "017";
     cached = { isVessel, isGroups, isOwners };
     masterTypeCache.set(masterId, cached);
-    console.log(`🔧 [MASTER CACHE] Cached types for masterId "${masterId}": vessel=${isVessel}, groups=${isGroups}, owners=${isOwners}`);
+    // Only log cache creation in development mode for performance
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔧 [MASTER CACHE] Cached types for masterId "${masterId}": vessel=${isVessel}, groups=${isGroups}, owners=${isOwners}`);
+    }
   }
   return cached.isOwners;
 }
