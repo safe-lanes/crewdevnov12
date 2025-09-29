@@ -3340,7 +3340,22 @@ const AdminModuleInner = (): JSX.Element => {
                                 </TableCell>
 
                                 {/* Actual Manning checkbox */}
-                                <TableCell className="text-center border-r border-gray-200">
+                                <TableCell 
+                                  className="text-center border-r border-gray-200 cursor-pointer p-2"
+                                  onClick={() => {
+                                    if (!revisionMode) return;
+                                    console.log('🔧 [CELL CLICKED] Toggling actual manning for rank:', rank.id);
+                                    const firstVesselId = selectedVessels[0];
+                                    if (firstVesselId) {
+                                      const vesselData = vesselRankDataMap.get(firstVesselId) || [];
+                                      const vesselRank = vesselData.find(r => r.id === rank.id);
+                                      const newValue = !(vesselRank?.actualManningFlag || false);
+                                      updateVesselRankData(prev => 
+                                        prev.map(r => r.id === rank.id ? { ...r, actualManningFlag: newValue } : r)
+                                      );
+                                    }
+                                  }}
+                                >
                                   <input
                                     type="checkbox"
                                     checked={(() => {
@@ -3352,19 +3367,9 @@ const AdminModuleInner = (): JSX.Element => {
                                       }
                                       return false;
                                     })()}
-                                    onChange={(e) => {
-                                      console.log('🔧 [CHECKBOX CLICKED] revisionMode:', revisionMode, 'checked:', e.target.checked, 'rank:', rank.id);
-                                      updateVesselRankData(prev => 
-                                        prev.map(r => r.id === rank.id ? { ...r, actualManningFlag: e.target.checked } : r)
-                                      );
-                                    }}
-                                    onClick={(e) => {
-                                      console.log('🔧 [CHECKBOX CLICK] Direct click event fired!', (e.target as HTMLInputElement).checked);
-                                      e.stopPropagation();
-                                    }}
+                                    onChange={() => {}} // Handled by cell onClick
                                     disabled={!revisionMode}
-                                    className="h-4 w-4 relative z-50 cursor-pointer"
-                                    style={{ pointerEvents: 'auto' }}
+                                    className="h-4 w-4 pointer-events-none"
                                     data-testid={`vessel-actual-manning-${rank.id}`}
                                   />
                                 </TableCell>
