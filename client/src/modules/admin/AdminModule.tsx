@@ -1920,9 +1920,7 @@ const AdminModuleInner = (): JSX.Element => {
   };
 
   const handleSaveDraft = async () => {
-    console.log('🔧 [SAVE DRAFT] Starting save process, selectedVessels:', selectedVessels);
     if (selectedVessels.length === 0) {
-      console.log('🔧 [SAVE DRAFT] No vessels selected, aborting save');
       return;
     }
     
@@ -1934,38 +1932,8 @@ const AdminModuleInner = (): JSX.Element => {
       const savedVessels: string[] = [];
       const revision = "R1"; // Use R1 for current draft revision
       
-      console.log('🔧 [SAVE DRAFT] Current vesselRankDataMap size:', vesselRankDataMap.size);
-      console.log('🔧 [SAVE DRAFT] VesselRankDataMap keys:', Array.from(vesselRankDataMap.keys()));
-      console.log('🔧 [SAVE DRAFT] Selected vessels:', selectedVessels);
-      console.log('🔧 [SAVE DRAFT] Multiple vessels selected:', selectedVessels.length > 1);
-      console.log('🔧 [SAVE DRAFT] Revision mode:', revisionMode);
-      
-      // Check vessel data availability in detail
       for (const vesselId of selectedVessels) {
         const vesselData = vesselRankDataMap.get(vesselId);
-        const hasData = !!vesselData;
-        const dataLength = vesselData?.length || 0;
-        
-        console.log(`🔧 [SAVE DRAFT] Vessel ${vesselId}:`, {
-          hasData,
-          dataLength,
-          sampleRecord: vesselData?.[0] || null,
-          allKeys: vesselData ? Object.keys(vesselData[0] || {}) : []
-        });
-        
-        if (vesselData && vesselData.length > 0) {
-          // Count actual checkboxes that are checked
-          const checkedCount = vesselData.reduce((count, record) => {
-            const checks = [
-              record.actualManning, 
-              record.safeManning, 
-              record.optimumManning
-            ].filter(Boolean).length;
-            return count + checks;
-          }, 0);
-          console.log(`🔧 [SAVE DRAFT] Vessel ${vesselId} checked items:`, checkedCount);
-        }
-        
         if (vesselData) {
           // Convert vessel data to JSON string for storage
           const draftData = JSON.stringify([...vesselData]);
@@ -2900,7 +2868,13 @@ const AdminModuleInner = (): JSX.Element => {
                         Cancel
                       </Button>
                       <Button
-                        onClick={handleSaveDraft}
+                        onClick={() => {
+                          console.log('🔴 [CLICK DEBUG] Save Draft button clicked!');
+                          console.log('🔴 [CLICK DEBUG] selectedVessels length:', selectedVessels.length);
+                          console.log('🔴 [CLICK DEBUG] selectedVessels:', selectedVessels);
+                          console.log('🔴 [CLICK DEBUG] revisionMode:', revisionMode);
+                          handleSaveDraft();
+                        }}
                         className="h-8 bg-[#15569e] hover:bg-[#0f4078] text-white text-xs"
                       >
                         Save Draft
