@@ -3122,14 +3122,9 @@ const AdminModuleInner = (): JSX.Element => {
                           role="combobox"
                           className={`h-8 ${currentBreakpoint === 'mobile' ? 'w-full' : 'w-48'} justify-between text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] bg-transparent hover:bg-transparent`}
                           data-testid="vessel-select"
-                          onClick={() => {
-                            console.log('🚢 [VESSEL SELECT] Dropdown clicked');
-                            console.log('🚢 [VESSEL SELECT] Available vessel options:', vesselOptions);
-                            console.log('🚢 [VESSEL SELECT] Current selectedVessels:', selectedVessels);
-                          }}
                         >
                           {selectedVessels.length === 0 
-                            ? "⚠️ Select Vessel First!" 
+                            ? "Select Vessel or Group to Edit" 
                             : selectedVessels.length === 1 
                               ? vesselOptions.find((v: VesselOption) => v.value === selectedVessels[0])?.label
                               : `${selectedVessels.length} vessels selected`
@@ -3339,25 +3334,20 @@ const AdminModuleInner = (): JSX.Element => {
 
                                 {/* Actual Manning checkbox */}
                                 <TableCell 
-                                  className="text-center border-r border-gray-200 cursor-pointer p-2"
+                                  className={`text-center border-r border-gray-200 p-2 ${
+                                    revisionMode && selectedVessels.length > 0 
+                                      ? 'cursor-pointer hover:bg-gray-50' 
+                                      : 'cursor-not-allowed opacity-50'
+                                  }`}
+                                  title={!revisionMode 
+                                    ? "Enter Revision Mode to edit" 
+                                    : selectedVessels.length === 0 
+                                      ? "Select a vessel first to edit" 
+                                      : "Click to toggle Actual Manning"}
                                   onClick={() => {
-                                    console.log('🔧 [CHECKBOX DEBUG] Actual Manning clicked for rank:', rank.id);
-                                    console.log('🔧 [CHECKBOX DEBUG] revisionMode:', revisionMode);
-                                    console.log('🔧 [CHECKBOX DEBUG] selectedVessels:', selectedVessels);
-                                    console.log('🔧 [CHECKBOX DEBUG] selectedVessels length:', selectedVessels.length);
-                                    
-                                    if (!revisionMode) {
-                                      console.log('❌ [CHECKBOX DEBUG] Not in revision mode - checkbox disabled');
-                                      return;
-                                    }
-                                    
-                                    if (selectedVessels.length === 0) {
-                                      console.log('❌ [CHECKBOX DEBUG] No vessels selected - select a vessel first!');
-                                      return;
-                                    }
-                                    
+                                    if (!revisionMode || selectedVessels.length === 0) return;
+                                    console.log('🔧 [CELL CLICKED] Toggling actual manning for rank:', rank.id);
                                     const firstVesselId = selectedVessels[0];
-                                    console.log('🔧 [CHECKBOX DEBUG] Using vessel ID:', firstVesselId);
                                     if (firstVesselId) {
                                       const vesselData = vesselRankDataMap.get(firstVesselId) || [];
                                       const vesselRank = vesselData.find(r => r.id === rank.id);
@@ -3388,9 +3378,18 @@ const AdminModuleInner = (): JSX.Element => {
 
                                 {/* Safe Manning checkbox */}
                                 <TableCell 
-                                  className="text-center cursor-pointer p-2"
+                                  className={`text-center p-2 ${
+                                    revisionMode && selectedVessels.length > 0 
+                                      ? 'cursor-pointer hover:bg-gray-50' 
+                                      : 'cursor-not-allowed opacity-50'
+                                  }`}
+                                  title={!revisionMode 
+                                    ? "Enter Revision Mode to edit" 
+                                    : selectedVessels.length === 0 
+                                      ? "Select a vessel first to edit" 
+                                      : "Click to toggle Safe Manning"}
                                   onClick={() => {
-                                    if (!revisionMode) return;
+                                    if (!revisionMode || selectedVessels.length === 0) return;
                                     const firstVesselId = selectedVessels[0];
                                     if (firstVesselId) {
                                       const vesselData = vesselRankDataMap.get(firstVesselId) || [];
@@ -3422,9 +3421,18 @@ const AdminModuleInner = (): JSX.Element => {
 
                                 {/* Optimum Manning checkbox */}
                                 <TableCell 
-                                  className="text-center cursor-pointer p-2"
+                                  className={`text-center p-2 ${
+                                    revisionMode && selectedVessels.length > 0 
+                                      ? 'cursor-pointer hover:bg-gray-50' 
+                                      : 'cursor-not-allowed opacity-50'
+                                  }`}
+                                  title={!revisionMode 
+                                    ? "Enter Revision Mode to edit" 
+                                    : selectedVessels.length === 0 
+                                      ? "Select a vessel first to edit" 
+                                      : "Click to toggle Optimum Manning"}
                                   onClick={() => {
-                                    if (!revisionMode) return;
+                                    if (!revisionMode || selectedVessels.length === 0) return;
                                     const firstVesselId = selectedVessels[0];
                                     if (firstVesselId) {
                                       const vesselData = vesselRankDataMap.get(firstVesselId) || [];
@@ -3455,7 +3463,18 @@ const AdminModuleInner = (): JSX.Element => {
                                 </TableCell>
 
                                 {/* High Workload Manning checkbox */}
-                                <TableCell className="text-center">
+                                <TableCell 
+                                  className={`text-center p-2 ${
+                                    revisionMode && selectedVessels.length > 0 
+                                      ? 'cursor-pointer hover:bg-gray-50' 
+                                      : 'cursor-not-allowed opacity-50'
+                                  }`}
+                                  title={!revisionMode 
+                                    ? "Enter Revision Mode to edit" 
+                                    : selectedVessels.length === 0 
+                                      ? "Select a vessel first to edit" 
+                                      : "Click to toggle High Workload Manning"}
+                                >
                                   <input
                                     type="checkbox"
                                     checked={(() => {
@@ -3468,12 +3487,13 @@ const AdminModuleInner = (): JSX.Element => {
                                       return false;
                                     })()}
                                     onChange={(e) => {
+                                      if (!revisionMode || selectedVessels.length === 0) return;
                                       updateVesselRankData(prev => 
                                         prev.map(r => r.id === rank.id ? { ...r, highWorkloadManning: e.target.checked } : r)
                                       );
                                     }}
-                                    disabled={!revisionMode}
-                                    className="h-4 w-4"
+                                    disabled={!revisionMode || selectedVessels.length === 0}
+                                    className="h-4 w-4 pointer-events-none"
                                     data-testid={`vessel-high-workload-manning-${rank.id}`}
                                   />
                                 </TableCell>
