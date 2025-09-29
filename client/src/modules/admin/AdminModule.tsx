@@ -1920,7 +1920,11 @@ const AdminModuleInner = (): JSX.Element => {
   };
 
   const handleSaveDraft = async () => {
-    if (selectedVessels.length === 0) return;
+    console.log('🔧 [SAVE DRAFT] Starting save process, selectedVessels:', selectedVessels);
+    if (selectedVessels.length === 0) {
+      console.log('🔧 [SAVE DRAFT] No vessels selected, aborting save');
+      return;
+    }
     
     try {
       // Stop any ongoing editing in the grid
@@ -1930,8 +1934,12 @@ const AdminModuleInner = (): JSX.Element => {
       const savedVessels: string[] = [];
       const revision = "R1"; // Use R1 for current draft revision
       
+      console.log('🔧 [SAVE DRAFT] Current vesselRankDataMap size:', vesselRankDataMap.size);
+      console.log('🔧 [SAVE DRAFT] VesselRankDataMap contents:', Array.from(vesselRankDataMap.entries()));
+      
       for (const vesselId of selectedVessels) {
         const vesselData = vesselRankDataMap.get(vesselId);
+        console.log(`🔧 [SAVE DRAFT] Processing vessel ${vesselId}, data exists:`, !!vesselData, 'data length:', vesselData?.length || 0);
         if (vesselData) {
           // Convert vessel data to JSON string for storage
           const draftData = JSON.stringify([...vesselData]);
