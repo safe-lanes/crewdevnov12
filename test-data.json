@@ -170,6 +170,30 @@
         "id": 13,
         "sortOrder": 13
       }
+    ],
+    [
+      14,
+      {
+        "name": "Chief Cook",
+        "category": "Senior Officers",
+        "rankId": "S19",
+        "label": "Chief Cook",
+        "applicableToCompany": true,
+        "id": 14,
+        "sortOrder": 14
+      }
+    ],
+    [
+      15,
+      {
+        "name": "Messman",
+        "category": "Senior Officers",
+        "rankId": "S20",
+        "label": "Messman",
+        "applicableToCompany": true,
+        "id": 15,
+        "sortOrder": 15
+      }
     ]
   ],
   "companyRanks": [
@@ -982,7 +1006,7 @@
   "currentUserId": 1,
   "currentFormId": 2,
   "currentRankGroupId": 1,
-  "currentAvailableRankId": 14,
+  "currentAvailableRankId": 16,
   "currentAppraisalResultId": 5,
   "currentCrewIdCounter": 5,
   "currentVesselGroupId": 3
