@@ -182,7 +182,7 @@ const AdminModuleInner = (): JSX.Element => {
   // Rank Master data from shared hook (for initialization)
   const { data: sharedRankMasterData, isLoading: rankMasterLoading, error: rankMasterError } = useRankMasterData();
   // Fetch saved company rank data (including role variants)
-  const { data: savedCompanyRanks = [], isLoading: isCompanyRanksLoading } = useFetchCompanyRanks();
+  // STRATEGIC FIX: Use controlled refetch to prevent overwrites during editing\n  const { data: savedCompanyRanks = [], isLoading: isCompanyRanksLoading, refetch: refetchCompanyRanks } = useFetchCompanyRanks();
   
   // Mutation hooks for rank management
   const createRankMutation = useCreateRank();
@@ -288,6 +288,13 @@ const AdminModuleInner = (): JSX.Element => {
   const [companyRankData, setCompanyRankData] = useState<CompanyRankData[]>([]);
   const [isCompanyEditing, setIsCompanyEditing] = useState(false);
   const [changedCompanyRanks, setChangedCompanyRanks] = useState<Set<string>>(new Set());
+  
+  // Company Ranks Form (React Hook Form integration)
+  const companyForm = useForm<{ ranks: CompanyRankData[] }>({
+    defaultValues: { ranks: [] },
+    mode: 'onChange'
+  });
+  const { watch: watchCompany, setValue: setCompanyValue, reset: resetCompany } = companyForm;
   
   // Vessel state
   const [vesselRankDataMap, setVesselRankDataMap] = useState<Map<string, VesselRankData[]>>(new Map());
@@ -1003,6 +1010,36 @@ const AdminModuleInner = (): JSX.Element => {
       return newMap;
     });
   }, [companyRankData]);
+
+  // CRITICAL: Sync React Hook Form with companyRankData changes (Fix dual source of truth)
+  React.useEffect(() => {
+    if (companyRankData.length > 0) {
+      const displayRows = companyRankData.filter(rank => {
+        if (rank.isRoleRow) return true;
+        const hasRoleRows = companyRankData.some(r => r.originalRankId === rank.id && r.isRoleRow);
+        return !hasRoleRows;
+      });
+      
+      // Sync form data with display rows, ensuring boolean values
+      resetCompany({ 
+        ranks: displayRows.map(rank => ({
+          ...rank,
+          // Ensure all boolean fields are properly typed to prevent form issues
+          officer: !!rank.officer,
+          rating: !!rank.rating,
+          seniorOfficer: !!rank.seniorOfficer,
+          deckOfficer: !!rank.deckOfficer,
+          engOfficer: !!rank.engOfficer,
+          pettyOfficer: !!rank.pettyOfficer,
+          deckRating: !!rank.deckRating,
+          engineRating: !!rank.engineRating,
+          generalRating: !!rank.generalRating,
+          cateringRating: !!rank.cateringRating,
+          applicableToCompany: !!rank.applicableToCompany
+        }))
+      });
+    }
+  }, [companyRankData, resetCompany]);
 
   // Rank Master handlers
 
