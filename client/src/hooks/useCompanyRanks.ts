@@ -202,3 +202,22 @@ export const useClearAllRanks = () => {
     },
   });
 };
+
+// Company Ranks Mutations
+export const useSaveCompanyRanks = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (ranks: any[]) => {
+      return await apiRequest("POST", "/api/company-ranks", ranks);
+    },
+    onSuccess: () => {
+      // Refresh company ranks cache after successful save
+      queryClient.invalidateQueries({ queryKey: ["/api/company-ranks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/available-ranks"] });
+    },
+    onError: (error: any) => {
+      throw error;
+    },
+  });
+};
