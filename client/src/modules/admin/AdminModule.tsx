@@ -3353,13 +3353,18 @@ const AdminModuleInner = (): JSX.Element => {
                                       return false;
                                     })()}
                                     onChange={(e) => {
-                                      console.log('🔧 [CHECKBOX DEBUG] revisionMode:', revisionMode, 'selectedVessels:', selectedVessels.length);
+                                      console.log('🔧 [CHECKBOX CLICKED] revisionMode:', revisionMode, 'checked:', e.target.checked, 'rank:', rank.id);
                                       updateVesselRankData(prev => 
                                         prev.map(r => r.id === rank.id ? { ...r, actualManningFlag: e.target.checked } : r)
                                       );
                                     }}
+                                    onClick={(e) => {
+                                      console.log('🔧 [CHECKBOX CLICK] Direct click event fired!', (e.target as HTMLInputElement).checked);
+                                      e.stopPropagation();
+                                    }}
                                     disabled={!revisionMode}
-                                    className="h-4 w-4"
+                                    className="h-4 w-4 relative z-50 cursor-pointer"
+                                    style={{ pointerEvents: 'auto' }}
                                     data-testid={`vessel-actual-manning-${rank.id}`}
                                   />
                                 </TableCell>
