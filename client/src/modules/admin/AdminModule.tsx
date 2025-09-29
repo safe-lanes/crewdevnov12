@@ -2467,18 +2467,45 @@ const AdminModuleInner = (): JSX.Element => {
                   </TableCell>
                   <TableCell className="text-center">
                     {rank.isRoleRow ? (
-                      // Role variants always show delete button to remove the variant
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-destructive hover:bg-destructive/10"
-                        onClick={() => handleDeleteCompanyRank(rank.id)}
-                        disabled={!isCompanyEditing}
-                        data-testid={`button-delete-company-${rank.id}`}
-                        title="Delete role variant"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      // Check if this is the first role variant (should show Multiple button)
+                      (() => {
+                        const roleVariants = companyRankData.filter(r => 
+                          r.isRoleRow && r.originalRankId === rank.originalRankId
+                        );
+                        const sortedVariants = roleVariants.sort((a, b) => {
+                          const aNum = parseInt(a.role?.match(/_(\d+)$/)?.[1] || '0', 10);
+                          const bNum = parseInt(b.role?.match(/_(\d+)$/)?.[1] || '0', 10);
+                          return aNum - bNum;
+                        });
+                        const isFirstVariant = sortedVariants[0]?.id === rank.id;
+                        
+                        return isFirstVariant ? (
+                          // First role variant shows Multiple button to create more variants
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs px-2 py-1 h-6"
+                            onClick={() => handleMultiple(rank.id)}
+                            disabled={!isCompanyEditing}
+                            data-testid={`button-multiple-${rank.id}`}
+                          >
+                            Multiple
+                          </Button>
+                        ) : (
+                          // Subsequent role variants show delete button
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDeleteCompanyRank(rank.id)}
+                            disabled={!isCompanyEditing}
+                            data-testid={`button-delete-company-${rank.id}`}
+                            title="Delete role variant"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        );
+                      })()
                     ) : rank.hasMultiple ? (
                       // Regular ranks with hasMultiple show Multiple button
                       <Button
