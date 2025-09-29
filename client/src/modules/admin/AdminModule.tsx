@@ -2883,16 +2883,16 @@ const AdminModuleInner = (): JSX.Element => {
         <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
           <CardContent className="pt-4 pb-4 pl-0">
             {selectedRankAdminTab === "rank-master" && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <ScrollArea className="h-[500px] w-full">
-                  <Table>
-                  <TableHeader>
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div className="max-h-[500px] overflow-auto relative">
+                  <Table className="relative">
+                  <TableHeader className="sticky top-0 z-40">
                     <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
-                      <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Rank ID</TableHead>
-                      <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Rank</TableHead>
-                      <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Applicable to Company</TableHead>
-                      <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Rank Label</TableHead>
-                      <TableHead className="text-white text-xs font-normal text-center py-2 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Actions</TableHead>
+                      <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20 bg-[#52baf3]">Rank ID</TableHead>
+                      <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20 bg-[#52baf3]">Rank</TableHead>
+                      <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20 bg-[#52baf3]">Applicable to Company</TableHead>
+                      <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20 bg-[#52baf3]">Rank Label</TableHead>
+                      <TableHead className="text-white text-xs font-normal text-center py-2 bg-[#52baf3]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -2999,7 +2999,7 @@ const AdminModuleInner = (): JSX.Element => {
                     ))}
                   </TableBody>
                   </Table>
-                </ScrollArea>
+                </div>
               </div>
             )}
             
