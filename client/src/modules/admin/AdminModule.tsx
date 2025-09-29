@@ -58,7 +58,7 @@ import {
   useUpdateMasterDataEntry,
   useDeleteMasterDataEntry 
 } from "@/hooks/useDataMasters";
-import { useRankMasterData, useCompanyRanks, useCreateRank, useUpdateRank, useDeleteRank, useClearAllRanks, useSaveCompanyRanks, type RankMasterData } from "@/hooks/useCompanyRanks";
+import { useRankMasterData, useCompanyRanks, useCreateRank, useUpdateRank, useDeleteRank, useClearAllRanks, useSaveCompanyRanks, useCreateVesselDraft, useUpdateVesselDraft, type RankMasterData } from "@/hooks/useCompanyRanks";
 import { queryClient } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -188,6 +188,8 @@ const AdminModuleInner = (): JSX.Element => {
   const deleteRankMutation = useDeleteRank();
   const saveCompanyRanksMutation = useSaveCompanyRanks();
   const clearAllRanksMutation = useClearAllRanks();
+  const createVesselDraftMutation = useCreateVesselDraft();
+  const updateVesselDraftMutation = useUpdateVesselDraft();
   
   // Rank reorder mutation
   const reorderRanksMutation = useMutation({
@@ -1909,31 +1911,85 @@ const AdminModuleInner = (): JSX.Element => {
     setIsVesselEditing(true);
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     if (selectedVessels.length === 0) return;
     
     try {
       // Stop any ongoing editing in the grid
       // vesselGridApi?.stopEditing(); // Commented out - vesselGridApi not defined
       
-      // Save draft for all selected vessels
-      const draftData = new Map();
-      selectedVessels.forEach(vesselId => {
+      // Save draft for all selected vessels with upsert logic
+      const savedVessels: string[] = [];
+      const revision = "R1"; // Use R1 for current draft revision
+      
+      for (const vesselId of selectedVessels) {
         const vesselData = vesselRankDataMap.get(vesselId);
         if (vesselData) {
-          draftData.set(vesselId, [...vesselData]);
+          // Convert vessel data to JSON string for storage
+          const draftData = JSON.stringify([...vesselData]);
+          
+          try {
+            // First, try to get existing drafts for this vessel
+            const response = await fetch(`/api/vessel-drafts/by-vessel/${vesselId}`);
+            if (response.ok) {
+              const existingDrafts = await response.json();
+              
+              // Find existing draft with same revision
+              const existingDraft = existingDrafts.find(
+                (draft: any) => draft.revision === revision
+              );
+              
+              if (existingDraft) {
+                // Update existing draft
+                await updateVesselDraftMutation.mutateAsync({
+                  id: existingDraft.id,
+                  data: { draftData }
+                });
+              } else {
+                // Create new draft
+                await createVesselDraftMutation.mutateAsync({
+                  vesselId: vesselId,
+                  revision: revision,
+                  draftData: draftData
+                });
+              }
+            } else {
+              // If we can't fetch existing drafts, just create a new one
+              await createVesselDraftMutation.mutateAsync({
+                vesselId: vesselId,
+                revision: revision,
+                draftData: draftData
+              });
+            }
+            
+            savedVessels.push(vesselId);
+          } catch (vesselError) {
+            console.error(`Error saving draft for vessel ${vesselId}:`, vesselError);
+            // Continue with other vessels even if one fails
+          }
         }
-      });
-      
-      // TODO: Persist draft data to backend/localStorage
-      console.log("Saving draft for vessels:", Array.from(draftData.keys()));
-      console.log("Draft data:", Object.fromEntries(draftData));
-      
-      // Show success feedback (could add toast here)
-      
+      }
+
+      if (savedVessels.length > 0) {
+        console.log("Draft saved for vessels:", savedVessels);
+        toast({
+          title: "Draft saved successfully", 
+          description: `Saved draft for ${savedVessels.length} vessel(s)`,
+        });
+      } else {
+        toast({
+          title: "No drafts saved",
+          description: "No vessel data to save or all saves failed",
+          variant: "destructive"
+        });
+      }
     } catch (error) {
       console.error("Error saving draft:", error);
-      // TODO: Show error feedback
+      toast({
+        title: "Error saving draft",
+        description: "Please try again",
+        variant: "destructive"
+      });
     }
   };
 

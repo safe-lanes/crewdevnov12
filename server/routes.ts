@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError } from "./storage";
-import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema } from "@shared/schema";
+import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema } from "@shared/schema";
 import { z } from "zod";
 import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew } from "@shared/crew-mapping";
 import { 
@@ -460,6 +460,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete vessel group" });
+    }
+  });
+
+  // Vessel Drafts API routes
+  app.get("/api/vessel-drafts", async (req, res) => {
+    try {
+      const vesselDrafts = await storage.getVesselDrafts();
+      res.json(vesselDrafts);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch vessel drafts" });
+    }
+  });
+
+  app.get("/api/vessel-drafts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const vesselDraft = await storage.getVesselDraft(id);
+      if (!vesselDraft) {
+        return res.status(404).json({ error: "Vessel draft not found" });
+      }
+      res.json(vesselDraft);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch vessel draft" });
+    }
+  });
+
+  app.get("/api/vessel-drafts/by-vessel/:vesselId", async (req, res) => {
+    try {
+      const { vesselId } = req.params;
+      const vesselDrafts = await storage.getVesselDraftsByVessel(vesselId);
+      res.json(vesselDrafts);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch vessel drafts for vessel" });
+    }
+  });
+
+  app.post("/api/vessel-drafts", async (req, res) => {
+    try {
+      const result = insertVesselDraftSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid vessel draft data", details: result.error.issues });
+      }
+      
+      const vesselDraft = await storage.createVesselDraft(result.data);
+      res.status(201).json(vesselDraft);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create vessel draft" });
+    }
+  });
+
+  app.patch("/api/vessel-drafts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      const result = insertVesselDraftSchema.partial().safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid vessel draft data", details: result.error.issues });
+      }
+      
+      const vesselDraft = await storage.updateVesselDraft(id, result.data);
+      if (!vesselDraft) {
+        return res.status(404).json({ error: "Vessel draft not found" });
+      }
+      res.json(vesselDraft);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update vessel draft" });
+    }
+  });
+
+  app.delete("/api/vessel-drafts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteVesselDraft(id);
+      if (!success) {
+        return res.status(404).json({ error: "Vessel draft not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete vessel draft" });
     }
   });
 

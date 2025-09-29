@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AvailableRank, InsertAvailableRank } from "@shared/schema";
+import { AvailableRank, InsertAvailableRank, VesselDraft, InsertVesselDraft } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 
 // Interface for Rank Master data that mirrors AdminModule structure
@@ -219,5 +219,44 @@ export const useSaveCompanyRanks = () => {
     onError: (error: any) => {
       throw error;
     },
+  });
+};
+
+// Vessel Draft mutation hooks
+export const useCreateVesselDraft = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (data: InsertVesselDraft) => {
+      return await apiRequest("POST", "/api/vessel-drafts", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/vessel-drafts"] });
+    },
+  });
+};
+
+export const useUpdateVesselDraft = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<InsertVesselDraft> }) => {
+      return await apiRequest("PATCH", `/api/vessel-drafts/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/vessel-drafts"] });
+    },
+  });
+};
+
+export const useVesselDraftsByVessel = (vesselId: string) => {
+  return useQuery<VesselDraft[]>({
+    queryKey: ["/api/vessel-drafts", "by-vessel", vesselId],
+    queryFn: async () => {
+      const response = await fetch(`/api/vessel-drafts/by-vessel/${vesselId}`);
+      if (!response.ok) throw new Error("Failed to fetch vessel drafts");
+      return response.json();
+    },
+    enabled: !!vesselId
   });
 };

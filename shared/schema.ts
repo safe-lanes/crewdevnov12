@@ -179,6 +179,15 @@ export const vesselGroups = pgTable("vessel_groups", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const vesselDrafts = pgTable("vessel_drafts", {
+  id: serial("id").primaryKey(),
+  vesselId: text("vessel_id").notNull(),
+  revision: text("revision").notNull().default("R1"),
+  draftData: text("draft_data").notNull(), // JSON string of vessel rank data
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const seafarers = pgTable("seafarers", {
   id: serial("id").primaryKey(),
   firstName: text("first_name").notNull(),
@@ -504,6 +513,12 @@ export const insertVesselGroupSchema = createInsertSchema(vesselGroups).pick({
   vesselIds: true,
 });
 
+export const insertVesselDraftSchema = createInsertSchema(vesselDrafts).pick({
+  vesselId: true,
+  revision: true,
+  draftData: true,
+});
+
 export const insertSeafarerSchema = createInsertSchema(seafarers).pick({
   firstName: true,
   middleName: true,
@@ -658,6 +673,8 @@ export type InsertVessel = z.infer<typeof insertVesselSchema>;
 export type Vessel = typeof vessels.$inferSelect;
 export type InsertVesselGroup = z.infer<typeof insertVesselGroupSchema>;
 export type VesselGroup = typeof vesselGroups.$inferSelect;
+export type InsertVesselDraft = z.infer<typeof insertVesselDraftSchema>;
+export type VesselDraft = typeof vesselDrafts.$inferSelect;
 export type InsertSeafarer = z.infer<typeof insertSeafarerSchema>;
 export type Seafarer = typeof seafarers.$inferSelect;
 export type InsertRevision = z.infer<typeof insertRevisionSchema>;
