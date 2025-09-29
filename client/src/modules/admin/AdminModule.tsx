@@ -832,6 +832,8 @@ const AdminModuleInner = (): JSX.Element => {
           // Update core rank fields from rank master
           rank: rank.label || rank.rank,
           rankId: rank.rankId,
+          // Fix hasMultiple for existing Master rows - all ranks should have Multiple button
+          hasMultiple: existing.isRoleRow ? false : true,
         };
       }
       
