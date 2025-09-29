@@ -35,7 +35,7 @@
         "category": "Senior Officers",
         "rankId": "S2",
         "label": "Chief Officer",
-        "applicableToCompany": true,
+        "applicableToCompany": false,
         "sortOrder": 2
       }
     ],
@@ -47,7 +47,7 @@
         "category": "Senior Officers",
         "rankId": "S7",
         "label": "Chief Engineer",
-        "applicableToCompany": true,
+        "applicableToCompany": false,
         "sortOrder": 5
       }
     ],
@@ -56,10 +56,10 @@
       {
         "id": 4,
         "name": "2nd Officer",
-        "category": "Junior Officers",
+        "category": "Senior Officers",
         "rankId": "S3",
         "label": "2nd Officer",
-        "applicableToCompany": true,
+        "applicableToCompany": false,
         "sortOrder": 3
       }
     ],
@@ -68,10 +68,10 @@
       {
         "id": 5,
         "name": "3rd Officer",
-        "category": "Junior Officers",
+        "category": "Senior Officers",
         "rankId": "S4",
         "label": "3rd Officer",
-        "applicableToCompany": true,
+        "applicableToCompany": false,
         "sortOrder": 4
       }
     ],
@@ -1549,6 +1549,7 @@
       }
     ]
   ],
+  "vesselDrafts": [],
   "masterDataEntries": [
     [
       1,
@@ -1657,5 +1658,6 @@
   "currentAvailableRankId": 18,
   "currentAppraisalResultId": 5,
   "currentCrewIdCounter": 5,
-  "currentVesselGroupId": 3
+  "currentVesselGroupId": 3,
+  "currentVesselDraftId": 1
 }

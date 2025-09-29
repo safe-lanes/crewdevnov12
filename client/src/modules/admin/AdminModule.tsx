@@ -182,7 +182,8 @@ const AdminModuleInner = (): JSX.Element => {
   // Rank Master data from shared hook (for initialization)
   const { data: sharedRankMasterData, isLoading: rankMasterLoading, error: rankMasterError } = useRankMasterData();
   // Fetch saved company rank data (including role variants)
-  // STRATEGIC FIX: Use controlled refetch to prevent overwrites during editing\n  const { data: savedCompanyRanks = [], isLoading: isCompanyRanksLoading, refetch: refetchCompanyRanks } = useFetchCompanyRanks();
+  // STRATEGIC FIX: Use controlled refetch to prevent overwrites during editing
+  const { data: savedCompanyRanks = [], isLoading: isCompanyRanksLoading, refetch: refetchCompanyRanks } = useFetchCompanyRanks();
   
   // Mutation hooks for rank management
   const createRankMutation = useCreateRank();
@@ -1013,6 +1014,8 @@ const AdminModuleInner = (): JSX.Element => {
 
   // CRITICAL: Sync React Hook Form with companyRankData changes (Fix dual source of truth)
   React.useEffect(() => {
+    // STRATEGIC FIX: Prevent overwrite during editing - critical guard condition
+    if (isCompanyEditing || companyRankData.length === 0) return;
     if (companyRankData.length > 0) {
       const displayRows = companyRankData.filter(rank => {
         if (rank.isRoleRow) return true;
@@ -1039,7 +1042,7 @@ const AdminModuleInner = (): JSX.Element => {
         }))
       });
     }
-  }, [companyRankData, resetCompany]);
+  }, [companyRankData, isCompanyEditing, resetCompany]);
 
   // Rank Master handlers
 
