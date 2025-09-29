@@ -2280,27 +2280,27 @@ const AdminModuleInner = (): JSX.Element => {
           <Table>
             <TableHeader>
               <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
-                <TableHead className="text-white text-xs font-normal w-4"></TableHead>
-                <TableHead className="text-white text-xs font-normal">Rank</TableHead>
+                <TableHead className="text-white text-xs font-normal w-4 sticky top-0 z-30 bg-[#52baf3] shadow-sm"></TableHead>
+                <TableHead className="text-white text-xs font-normal sticky top-0 z-30 bg-[#52baf3] shadow-sm">Rank</TableHead>
                 {companyRankData.some(rank => rank.isRoleRow) && (
-                  <TableHead className="text-white text-xs font-normal w-32">Rank (Role)</TableHead>
+                  <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Rank (Role)</TableHead>
                 )}
-                <TableHead className="text-white text-xs font-normal w-20">Rank ID (Sail)</TableHead>
-                <TableHead className="text-white text-xs font-normal w-16 text-center">Officer</TableHead>
-                <TableHead className="text-white text-xs font-normal w-16 text-center">Rating</TableHead>
-                <TableHead className="text-white text-xs font-normal w-20 text-center">Senior Officer</TableHead>
-                <TableHead className="text-white text-xs font-normal w-16 text-center">Deck Officer</TableHead>
-                <TableHead className="text-white text-xs font-normal w-16 text-center">Eng Officer</TableHead>
-                <TableHead className="text-white text-xs font-normal w-16 text-center">Petty Officer</TableHead>
-                <TableHead className="text-white text-xs font-normal w-16 text-center">Deck Rating</TableHead>
-                <TableHead className="text-white text-xs font-normal w-16 text-center">Engine Rating</TableHead>
-                <TableHead className="text-white text-xs font-normal w-16 text-center">Gen Catering Rating</TableHead>
-                <TableHead className="text-white text-xs font-normal w-16 text-center">Safety Officer</TableHead>
-                <TableHead className="text-white text-xs font-normal w-16 text-center">SSO</TableHead>
-                <TableHead className="text-white text-xs font-normal w-16 text-center">Medical Officer</TableHead>
-                <TableHead className="text-white text-xs font-normal w-16 text-center">Navigating Officer</TableHead>
-                <TableHead className="text-white text-xs font-normal w-16 text-center">Envt. Officer</TableHead>
-                <TableHead className="text-white text-xs font-normal w-20 text-center">Actions</TableHead>
+                <TableHead className="text-white text-xs font-normal w-20 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Rank ID (Sail)</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center sticky top-0 z-30 bg-[#52baf3] shadow-sm">Officer</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center sticky top-0 z-30 bg-[#52baf3] shadow-sm">Rating</TableHead>
+                <TableHead className="text-white text-xs font-normal w-20 text-center sticky top-0 z-30 bg-[#52baf3] shadow-sm">Senior Officer</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center sticky top-0 z-30 bg-[#52baf3] shadow-sm">Deck Officer</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center sticky top-0 z-30 bg-[#52baf3] shadow-sm">Eng Officer</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center sticky top-0 z-30 bg-[#52baf3] shadow-sm">Petty Officer</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center sticky top-0 z-30 bg-[#52baf3] shadow-sm">Deck Rating</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center sticky top-0 z-30 bg-[#52baf3] shadow-sm">Engine Rating</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center sticky top-0 z-30 bg-[#52baf3] shadow-sm">Gen Catering Rating</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center sticky top-0 z-30 bg-[#52baf3] shadow-sm">Safety Officer</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center sticky top-0 z-30 bg-[#52baf3] shadow-sm">SSO</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center sticky top-0 z-30 bg-[#52baf3] shadow-sm">Medical Officer</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center sticky top-0 z-30 bg-[#52baf3] shadow-sm">Navigating Officer</TableHead>
+                <TableHead className="text-white text-xs font-normal w-16 text-center sticky top-0 z-30 bg-[#52baf3] shadow-sm">Envt. Officer</TableHead>
+                <TableHead className="text-white text-xs font-normal w-20 text-center sticky top-0 z-30 bg-[#52baf3] shadow-sm">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -2887,11 +2887,11 @@ const AdminModuleInner = (): JSX.Element => {
                 <Table className="bg-white border border-gray-200 rounded-lg shadow-md">
                   <TableHeader>
                     <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
-                      <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20">Rank ID</TableHead>
-                      <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20">Rank</TableHead>
-                      <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20">Applicable to Company</TableHead>
-                      <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20">Rank Label</TableHead>
-                      <TableHead className="text-white text-xs font-normal text-center py-2">Actions</TableHead>
+                      <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Rank ID</TableHead>
+                      <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Rank</TableHead>
+                      <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Applicable to Company</TableHead>
+                      <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Rank Label</TableHead>
+                      <TableHead className="text-white text-xs font-normal text-center py-2 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -3166,34 +3166,34 @@ const AdminModuleInner = (): JSX.Element => {
                     <Table className="min-w-full">
                       <TableHeader>
                         <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
-                          <TableHead className="text-white text-xs font-normal w-24">
+                          <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3] shadow-sm">
                             Rank
                           </TableHead>
-                          <TableHead className="text-white text-xs font-normal text-center w-16 border-r border-white/30">
+                          <TableHead className="text-white text-xs font-normal text-center w-16 border-r border-white/30 sticky top-0 z-30 bg-[#52baf3] shadow-sm">
                             Actual Manning
                           </TableHead>
-                          <TableHead className="text-white text-xs font-normal text-center w-16">
+                          <TableHead className="text-white text-xs font-normal text-center w-16 sticky top-0 z-30 bg-[#52baf3] shadow-sm">
                             Safe Manning
                           </TableHead>
-                          <TableHead className="text-white text-xs font-normal text-center w-16">
+                          <TableHead className="text-white text-xs font-normal text-center w-16 sticky top-0 z-30 bg-[#52baf3] shadow-sm">
                             Optimum Manning
                           </TableHead>
-                          <TableHead className="text-white text-xs font-normal text-center w-20">
+                          <TableHead className="text-white text-xs font-normal text-center w-20 sticky top-0 z-30 bg-[#52baf3] shadow-sm">
                             High Workload Manning
                           </TableHead>
-                          <TableHead className="text-white text-xs font-normal text-center w-16">
+                          <TableHead className="text-white text-xs font-normal text-center w-16 sticky top-0 z-30 bg-[#52baf3] shadow-sm">
                             Safety Officer
                           </TableHead>
-                          <TableHead className="text-white text-xs font-normal text-center w-12">
+                          <TableHead className="text-white text-xs font-normal text-center w-12 sticky top-0 z-30 bg-[#52baf3] shadow-sm">
                             SSO
                           </TableHead>
-                          <TableHead className="text-white text-xs font-normal text-center w-16">
+                          <TableHead className="text-white text-xs font-normal text-center w-16 sticky top-0 z-30 bg-[#52baf3] shadow-sm">
                             Medical Officer
                           </TableHead>
-                          <TableHead className="text-white text-xs font-normal text-center w-16">
+                          <TableHead className="text-white text-xs font-normal text-center w-16 sticky top-0 z-30 bg-[#52baf3] shadow-sm">
                             Nav Officer
                           </TableHead>
-                          <TableHead className="text-white text-xs font-normal text-center w-16">
+                          <TableHead className="text-white text-xs font-normal text-center w-16 sticky top-0 z-30 bg-[#52baf3] shadow-sm">
                             Envt Officer
                           </TableHead>
                         </TableRow>
@@ -4164,22 +4164,24 @@ const AdminModuleInner = (): JSX.Element => {
       {!isLoading && !error && (
         <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
           <CardContent className="p-4 pl-0 bg-[#f7fafc]">
-            <Table className="bg-white rounded-lg shadow-md overflow-hidden">
-              <TableHeader className="bg-[#52baf3]">
-                <TableRow>
-                  <TableHead className="text-white text-xs font-normal">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <ScrollArea className="h-[500px] w-full">
+                <Table className="bg-white rounded-lg shadow-md overflow-hidden">
+              <TableHeader>
+                <TableRow className="bg-[#52baf3]">
+                  <TableHead className="text-white text-xs font-normal sticky top-0 z-30 bg-[#52baf3] shadow-sm">
                     Form
                   </TableHead>
-                  <TableHead className="text-white text-xs font-normal">
+                  <TableHead className="text-white text-xs font-normal sticky top-0 z-30 bg-[#52baf3] shadow-sm">
                     Rank Group
                   </TableHead>
-                  <TableHead className="text-white text-xs font-normal">
+                  <TableHead className="text-white text-xs font-normal sticky top-0 z-30 bg-[#52baf3] shadow-sm">
                     Version No
                   </TableHead>
-                  <TableHead className="text-white text-xs font-normal">
+                  <TableHead className="text-white text-xs font-normal sticky top-0 z-30 bg-[#52baf3] shadow-sm">
                     Version Date
                   </TableHead>
-                  <TableHead className="text-white text-xs font-normal w-24">
+                  <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3] shadow-sm">
                     Actions
                   </TableHead>
                 </TableRow>
@@ -4256,7 +4258,9 @@ const AdminModuleInner = (): JSX.Element => {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+                </Table>
+              </ScrollArea>
+            </div>
           </CardContent>
         </Card>
       )}
