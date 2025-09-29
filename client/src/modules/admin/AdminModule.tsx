@@ -2485,9 +2485,9 @@ const AdminModuleInner = (): JSX.Element => {
                             variant="outline"
                             size="sm"
                             className="text-xs px-2 py-1 h-6"
-                            onClick={() => handleMultiple(rank.id)}
+                            onClick={() => handleMultiple(rank.originalRankId || rank.id)}
                             disabled={!isCompanyEditing}
-                            data-testid={`button-multiple-${rank.id}`}
+                            data-testid={`button-multiple-${rank.originalRankId || rank.id}`}
                           >
                             Multiple
                           </Button>
