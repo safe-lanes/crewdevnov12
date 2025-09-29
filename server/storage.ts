@@ -1933,9 +1933,11 @@ export class PersistentFileStorage implements IStorage {
     return result;
   }
 
-  // Data Masters methods (not supported - same as MemStorage)
+  // Data Masters methods (return empty array for frontend compatibility)
   async getDataMasters(): Promise<any[]> {
-    throw new Error("PersistentFileStorage doesn't support master data entries. Use DatabaseStorage instead.");
+    // PersistentFileStorage doesn't have data masters - return empty array for frontend compatibility
+    // Individual masters work via getMasterDataEntries() instead
+    return [];
   }
 
   async getDataMaster(id: string): Promise<any> {

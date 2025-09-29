@@ -58,14 +58,25 @@ const VESSEL_UNSAFE_FIELDS = [
   'vesselImage'
 ];
 
+// Performance cache for master type checks
+const masterTypeCache = new Map<string, { isVessel: boolean; isGroups: boolean; isOwners: boolean }>();
+
 /**
- * Checks if a master ID is for vessel master
+ * Checks if a master ID is for vessel master (with caching for performance)
  */
 export function isVesselMaster(masterId: string): boolean {
-  console.log(`🚢 [VESSEL CHECK] Checking if masterId "${masterId}" is vessel master`);
-  const isVessel = masterId === "014";
-  console.log(`🚢 [VESSEL CHECK] Result: ${isVessel}`);
-  return isVessel;
+  // Check cache first
+  let cached = masterTypeCache.get(masterId);
+  if (!cached) {
+    // Calculate once and cache
+    const isVessel = masterId === "014";
+    const isGroups = masterId === "016"; 
+    const isOwners = masterId === "017";
+    cached = { isVessel, isGroups, isOwners };
+    masterTypeCache.set(masterId, cached);
+    console.log(`🔧 [MASTER CACHE] Cached types for masterId "${masterId}": vessel=${isVessel}, groups=${isGroups}, owners=${isOwners}`);
+  }
+  return cached.isVessel;
 }
 
 /**
@@ -195,13 +206,21 @@ export function getVesselMasterInfo() {
 // ======================= ADDITIONAL GROUPS MASTER (ID 016) FUNCTIONS =======================
 
 /**
- * Checks if a master ID is for additional groups master
+ * Checks if a master ID is for additional groups master (with caching for performance)
  */
 export function isAdditionalGroupsMaster(masterId: string): boolean {
-  console.log(`🎯 [GROUPS CHECK] Checking if masterId "${masterId}" is additional groups master`);
-  const isGroups = masterId === "016";
-  console.log(`🎯 [GROUPS CHECK] Result: ${isGroups}`);
-  return isGroups;
+  // Use cached result
+  let cached = masterTypeCache.get(masterId);
+  if (!cached) {
+    // This should be called after isVesselMaster in most cases, but handle edge case
+    const isVessel = masterId === "014";
+    const isGroups = masterId === "016"; 
+    const isOwners = masterId === "017";
+    cached = { isVessel, isGroups, isOwners };
+    masterTypeCache.set(masterId, cached);
+    console.log(`🔧 [MASTER CACHE] Cached types for masterId "${masterId}": vessel=${isVessel}, groups=${isGroups}, owners=${isOwners}`);
+  }
+  return cached.isGroups;
 }
 
 /**
@@ -378,13 +397,21 @@ export function validateAdditionalGroupsEntry(data: any): { isValid: boolean; er
 // ======================= VESSEL OWNERS MASTER (ID 017) FUNCTIONS =======================
 
 /**
- * Checks if a master ID is for vessel owners master
+ * Checks if a master ID is for vessel owners master (with caching for performance)
  */
 export function isVesselOwnersMaster(masterId: string): boolean {
-  console.log(`🏢 [OWNERS CHECK] Checking if masterId "${masterId}" is vessel owners master`);
-  const isOwners = masterId === "017";
-  console.log(`🏢 [OWNERS CHECK] Result: ${isOwners}`);
-  return isOwners;
+  // Use cached result
+  let cached = masterTypeCache.get(masterId);
+  if (!cached) {
+    // This should be called after isVesselMaster in most cases, but handle edge case
+    const isVessel = masterId === "014";
+    const isGroups = masterId === "016"; 
+    const isOwners = masterId === "017";
+    cached = { isVessel, isGroups, isOwners };
+    masterTypeCache.set(masterId, cached);
+    console.log(`🔧 [MASTER CACHE] Cached types for masterId "${masterId}": vessel=${isVessel}, groups=${isGroups}, owners=${isOwners}`);
+  }
+  return cached.isOwners;
 }
 
 /**
