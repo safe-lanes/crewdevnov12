@@ -861,8 +861,62 @@ const AdminModuleInner = (): JSX.Element => {
       };
     });
     
-    // Add back the role variants that were preserved
-    const finalCompanyRanks = [...newCompanyRanks, ...existingRoleVariants];
+    // Properly insert role variants after their parent ranks to maintain hierarchy
+    const finalCompanyRanks: CompanyRankData[] = [];
+    
+    // Group role variants by their original rank ID (with fallbacks for legacy data)
+    const roleVariantsByOriginal = new Map<string, CompanyRankData[]>();
+    const unmatchedVariants: CompanyRankData[] = [];
+    
+    existingRoleVariants.forEach(variant => {
+      // Use originalRankId, then legacy parentId, then variant's own id as fallback
+      const originalId = variant.originalRankId || variant.parentId || variant.id;
+      
+      // Check if we have a matching parent rank in newCompanyRanks
+      const hasMatchingParent = newCompanyRanks.some(rank => rank.id === originalId);
+      
+      if (hasMatchingParent) {
+        if (!roleVariantsByOriginal.has(originalId)) {
+          roleVariantsByOriginal.set(originalId, []);
+        }
+        roleVariantsByOriginal.get(originalId)!.push(variant);
+      } else {
+        // Variant with no matching parent - collect for safety append
+        console.warn('🚨 [RANK_ORDER] Found role variant without matching parent:', {
+          variantId: variant.id,
+          variantRole: variant.role,
+          expectedParentId: originalId,
+          availableParentIds: newCompanyRanks.map(r => r.id)
+        });
+        unmatchedVariants.push(variant);
+      }
+    });
+    
+    // Sort role variants within each group by their numeric suffix
+    roleVariantsByOriginal.forEach((variants) => {
+      variants.sort((a, b) => {
+        const aNum = parseInt(a.role?.match(/_(\d+)$/)?.[1] || '0', 10);
+        const bNum = parseInt(b.role?.match(/_(\d+)$/)?.[1] || '0', 10);
+        return aNum - bNum;
+      });
+    });
+    
+    // Insert each rank followed by its role variants (if any) to maintain hierarchy
+    newCompanyRanks.forEach(rank => {
+      finalCompanyRanks.push(rank);
+      
+      // Add role variants for this rank immediately after it
+      const variants = roleVariantsByOriginal.get(rank.id);
+      if (variants) {
+        finalCompanyRanks.push(...variants);
+      }
+    });
+    
+    // Append any unmatched variants at the end to prevent data loss
+    if (unmatchedVariants.length > 0) {
+      console.warn('🚨 [RANK_ORDER] Appending unmatched role variants at end to prevent data loss:', unmatchedVariants.length);
+      finalCompanyRanks.push(...unmatchedVariants);
+    }
     
     // Only update if there's a meaningful change
     if (JSON.stringify(companyRankData) !== JSON.stringify(finalCompanyRanks)) {
