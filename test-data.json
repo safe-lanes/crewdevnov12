@@ -108,7 +108,7 @@
         "rankId": "S12",
         "label": "Bosun",
         "applicableToCompany": true,
-        "sortOrder": 9
+        "sortOrder": 10
       }
     ],
     [
@@ -120,7 +120,7 @@
         "rankId": "S14",
         "label": "AB",
         "applicableToCompany": true,
-        "sortOrder": 10
+        "sortOrder": 11
       }
     ],
     [
@@ -132,7 +132,7 @@
         "rankId": "S15",
         "label": "OS",
         "applicableToCompany": true,
-        "sortOrder": 11
+        "sortOrder": 12
       }
     ],
     [
@@ -156,7 +156,7 @@
         "label": "Fitter",
         "applicableToCompany": true,
         "id": 12,
-        "sortOrder": 12
+        "sortOrder": 13
       }
     ],
     [
@@ -168,7 +168,7 @@
         "label": "Oiler",
         "applicableToCompany": true,
         "id": 13,
-        "sortOrder": 13
+        "sortOrder": 14
       }
     ],
     [
@@ -180,7 +180,7 @@
         "label": "Chief Cook",
         "applicableToCompany": true,
         "id": 14,
-        "sortOrder": 14
+        "sortOrder": 15
       }
     ],
     [
@@ -192,7 +192,19 @@
         "label": "Messman",
         "applicableToCompany": true,
         "id": 15,
-        "sortOrder": 15
+        "sortOrder": 16
+      }
+    ],
+    [
+      16,
+      {
+        "name": "Electrical Officer",
+        "category": "Senior Officers",
+        "rankId": "S21",
+        "label": "Electrical Officer",
+        "applicableToCompany": true,
+        "id": 16,
+        "sortOrder": 9
       }
     ]
   ],
@@ -1006,7 +1018,7 @@
   "currentUserId": 1,
   "currentFormId": 2,
   "currentRankGroupId": 1,
-  "currentAvailableRankId": 16,
+  "currentAvailableRankId": 17,
   "currentAppraisalResultId": 5,
   "currentCrewIdCounter": 5,
   "currentVesselGroupId": 3
