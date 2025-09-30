@@ -533,6 +533,22 @@ export const insertVesselRevisionSchema = createInsertSchema(vesselRevisions).pi
   revision: true,
   revisionDate: true,
   revisionData: true,
+}).extend({
+  revisionDate: z.string()
+    .min(1, "Revision date is required")
+    .regex(/^\d{2}\/\d{2}\/\d{4}$/, "Date must be in dd/mm/yyyy format")
+    .refine((dateStr) => {
+      // Validate that it's an actual valid date
+      const [day, month, year] = dateStr.split('/').map(Number);
+      const date = new Date(year, month - 1, day);
+      return (
+        date.getFullYear() === year &&
+        date.getMonth() === month - 1 &&
+        date.getDate() === day
+      );
+    }, {
+      message: "Invalid date - please provide a valid date in dd/mm/yyyy format"
+    })
 });
 
 export const insertSeafarerSchema = createInsertSchema(seafarers).pick({
