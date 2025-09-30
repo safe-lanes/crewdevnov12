@@ -45,6 +45,14 @@ client/src/
 
 ## Recent Changes
 
+### Navigation Menu Fix (September 30, 2025)
+- **Date**: September 30, 2025
+- **Changes**:
+  - Fixed duplicate key issue where "Vessel" and "Admin" menu items both used `/admin` route
+  - Changed "Vessel" menu item to use unique `/vessel` route
+  - Resolved multiple menu highlighting bug - now only the clicked menu item gets highlighted
+  - "Vessel" route now shows 404 page until vessel submodule is implemented
+
 ### Vessel Checkbox Performance Fix (September 30, 2025)
 - **Date**: September 30, 2025
 - **Changes**:

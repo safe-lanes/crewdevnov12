@@ -46,7 +46,7 @@ const navItems = [
     },
     {
         label: "Vessel",
-        href: "/admin",
+        href: "/vessel",
         icon: Ship,
         activeBg: "#5DADE2",
         activeText: "white",
