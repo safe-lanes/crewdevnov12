@@ -1032,7 +1032,7 @@ const AdminModuleInner = (): JSX.Element => {
         }))
       });
     }
-  }, [companyRankData, isCompanyEditing, resetCompany]);
+  }, [companyRankData, isCompanyEditing]);
 
   // Load saved vessel data when vessels are selected
   React.useEffect(() => {

@@ -45,6 +45,15 @@ client/src/
 
 ## Recent Changes
 
+### Performance Fix - Infinite Loop Resolved (September 30, 2025)
+- **Date**: September 30, 2025
+- **Changes**:
+  - **Critical Fix**: Resolved infinite loop causing "Maximum update depth exceeded" error
+  - Fixed "Page Unresponsive" dialog and browser freezing in AdminModule
+  - Root cause: `resetCompany` (React Hook Form function) incorrectly included in useEffect dependency array
+  - Solution: Removed `resetCompany` from dependencies as it's a stable function reference
+  - Application now runs smoothly without performance issues
+
 ### Navigation Menu Fix (September 30, 2025)
 - **Date**: September 30, 2025
 - **Changes**:
