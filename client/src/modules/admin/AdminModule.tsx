@@ -301,7 +301,7 @@ const AdminModuleInner = (): JSX.Element => {
   const [vesselRankDataMap, setVesselRankDataMap] = useState<Map<string, VesselRankData[]>>(new Map());
   const [isVesselEditing, setIsVesselEditing] = useState(false);
   const [selectedVessels, setSelectedVessels] = useState<string[]>([]);
-  const [selectedRevision, setSelectedRevision] = useState("R1");
+  const [nextRevision, setNextRevision] = useState<string>("R0"); // Auto-assigned next revision
   const [flexDate, setFlexDate] = useState("");
   const [revisionMode, setRevisionMode] = useState(false);
   
@@ -1967,13 +1967,31 @@ const AdminModuleInner = (): JSX.Element => {
     });
   };
 
-  const handleRevision = () => {
+  const handleRevision = async () => {
     if (selectedVessels.length === 0) {
       console.warn('Cannot start revision mode: No vessels selected');
       return;
     }
     setRevisionMode(true);
     setIsVesselEditing(true);
+    
+    // Fetch next revision number for the first selected vessel
+    // (If multiple vessels, each will get their own next revision on submit)
+    if (selectedVessels.length === 1) {
+      try {
+        const response = await fetch(`/api/vessel-revisions/next-revision/${selectedVessels[0]}`);
+        if (response.ok) {
+          const data = await response.json();
+          setNextRevision(data.nextRevision);
+        }
+      } catch (error) {
+        console.error('Error fetching next revision:', error);
+        setNextRevision('R0'); // Default to R0 if fetch fails
+      }
+    } else {
+      // For multiple vessels, show that each will get auto-assigned
+      setNextRevision('Auto');
+    }
   };
 
   const handleSaveDraft = async () => {
@@ -1982,12 +2000,10 @@ const AdminModuleInner = (): JSX.Element => {
     }
     
     try {
-      // Stop any ongoing editing in the grid
-      // vesselGridApi?.stopEditing(); // Commented out - vesselGridApi not defined
-      
-      // Save draft for all selected vessels with upsert logic
+      // Save draft for all selected vessels using upsert endpoint
       const savedVessels: string[] = [];
-      const revision = "R1"; // Use R1 for current draft revision
+      const failedVessels: string[] = [];
+      const revision = "R1"; // Use R1 for draft revision
       
       for (const vesselId of selectedVessels) {
         const vesselData = vesselRankDataMap.get(vesselId);
@@ -1996,57 +2012,44 @@ const AdminModuleInner = (): JSX.Element => {
           const draftData = JSON.stringify([...vesselData]);
           
           try {
-            // First, try to get existing drafts for this vessel
-            const response = await fetch(`/api/vessel-drafts/by-vessel/${vesselId}`);
-            if (response.ok) {
-              const existingDrafts = await response.json();
-              
-              // Find existing draft with same revision
-              const existingDraft = existingDrafts.find(
-                (draft: any) => draft.revision === revision
-              );
-              
-              if (existingDraft) {
-                // Update existing draft
-                await updateVesselDraftMutation.mutateAsync({
-                  id: existingDraft.id,
-                  data: { draftData }
-                });
-              } else {
-                // Create new draft
-                await createVesselDraftMutation.mutateAsync({
-                  vesselId: vesselId,
-                  revision: revision,
-                  draftData: draftData
-                });
-              }
-            } else {
-              // If we can't fetch existing drafts, just create a new one
-              await createVesselDraftMutation.mutateAsync({
-                vesselId: vesselId,
-                revision: revision,
-                draftData: draftData
-              });
-            }
+            // Use upsert endpoint (updates if exists, creates if not)
+            const response = await fetch('/api/vessel-drafts/upsert', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                vesselId,
+                revision,
+                draftData
+              })
+            });
             
-            savedVessels.push(vesselId);
+            if (response.ok) {
+              const result = await response.json();
+              console.log(`💾 ${result.action === 'created' ? 'Created' : 'Updated'} draft for vessel ${vesselId}`);
+              savedVessels.push(vesselId);
+            } else {
+              const error = await response.json();
+              console.error(`Failed to save draft for vessel ${vesselId}:`, error);
+              failedVessels.push(vesselId);
+            }
           } catch (vesselError) {
             console.error(`Error saving draft for vessel ${vesselId}:`, vesselError);
-            // Continue with other vessels even if one fails
+            failedVessels.push(vesselId);
           }
         }
       }
 
       if (savedVessels.length > 0) {
-        console.log("Draft saved for vessels:", savedVessels);
         toast({
           title: "Draft saved successfully", 
           description: `Saved draft for ${savedVessels.length} vessel(s)`,
         });
-      } else {
+      }
+      
+      if (failedVessels.length > 0) {
         toast({
-          title: "No drafts saved",
-          description: "No vessel data to save or all saves failed",
+          title: failedVessels.length === selectedVessels.length ? "Failed to save drafts" : "Some drafts failed to save",
+          description: `Failed to save draft for ${failedVessels.length} vessel(s). Please try again.`,
           variant: "destructive"
         });
       }
@@ -2074,38 +2077,94 @@ const AdminModuleInner = (): JSX.Element => {
     console.log("Cancelled vessel revision mode");
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (selectedVessels.length === 0) return;
     
+    // Validate that flexDate is provided
+    if (!flexDate) {
+      toast({
+        title: "Date required",
+        description: "Please provide a date in dd/mm/yyyy format before submitting",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Convert date from yyyy-mm-dd to dd/mm/yyyy format
+    const dateObj = new Date(flexDate);
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const year = dateObj.getFullYear();
+    const formattedDate = `${day}/${month}/${year}`;
+    
     try {
-      // Stop any ongoing editing
-      // vesselGridApi?.stopEditing(); // Commented out - vesselGridApi not defined
+      // Submit revisions for all selected vessels
+      const submittedVessels: string[] = [];
+      const failedVessels: string[] = [];
       
-      // Prepare submission data for all selected vessels
-      const submissionData = new Map();
-      selectedVessels.forEach(vesselId => {
+      for (const vesselId of selectedVessels) {
         const vesselData = vesselRankDataMap.get(vesselId);
         if (vesselData) {
-          // Filter out any invalid data and prepare for submission
+          // Filter out invalid data and convert to JSON string
           const validData = vesselData.filter(row => row.rank && row.rank.trim() !== '');
-          submissionData.set(vesselId, validData);
+          const revisionData = JSON.stringify(validData);
+          
+          try {
+            const response = await fetch('/api/vessel-revisions/submit', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                vesselId,
+                revisionDate: formattedDate,
+                revisionData
+              })
+            });
+            
+            if (response.ok) {
+              const result = await response.json();
+              console.log(`✅ Submitted revision ${result.metadata.autoAssignedRevision} for vessel ${vesselId}`);
+              submittedVessels.push(vesselId);
+            } else {
+              const error = await response.json();
+              console.error(`Failed to submit for vessel ${vesselId}:`, error);
+              failedVessels.push(vesselId);
+            }
+          } catch (vesselError) {
+            console.error(`Error submitting for vessel ${vesselId}:`, vesselError);
+            failedVessels.push(vesselId);
+          }
         }
-      });
+      }
       
-      // TODO: Submit to backend API
-      console.log("Submitting changes for vessels:", Array.from(submissionData.keys()));
-      console.log("Submission data:", Object.fromEntries(submissionData));
+      // Show feedback
+      if (submittedVessels.length > 0) {
+        toast({
+          title: "Revisions submitted successfully",
+          description: `Submitted revisions for ${submittedVessels.length} vessel(s). Drafts have been cleaned up.`
+        });
+        
+        // Reset states after successful submission
+        setSelectedVessels([]);
+        setRevisionMode(false);
+        setIsVesselEditing(false);
+        setFlexDate("");
+      }
       
-      // Reset states after successful submission
-      setSelectedVessels([]);
-      setRevisionMode(false);
-      setIsVesselEditing(false);
-      
-      // TODO: Show success feedback and potentially refresh data
+      if (failedVessels.length > 0) {
+        toast({
+          title: "Some submissions failed",
+          description: `Failed to submit for ${failedVessels.length} vessel(s). Please try again.`,
+          variant: "destructive"
+        });
+      }
       
     } catch (error) {
       console.error("Error submitting changes:", error);
-      // TODO: Show error feedback, keep revision mode active
+      toast({
+        title: "Error submitting revisions",
+        description: "Please try again",
+        variant: "destructive"
+      });
     }
   };
 
@@ -3275,17 +3334,10 @@ const AdminModuleInner = (): JSX.Element => {
                       <Settings className="h-4 w-4" />
                     </Button>
 
-                    <Select value={selectedRevision} onValueChange={setSelectedRevision}>
-                      <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]" data-testid="revision-select">
-                        <SelectValue placeholder="Revision No." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="R0">R0</SelectItem>
-                        <SelectItem value="R1">R1</SelectItem>
-                        <SelectItem value="R2">R2</SelectItem>
-                        <SelectItem value="R3">R3</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    {/* Display auto-assigned next revision */}
+                    <div className="h-8 w-32 px-3 flex items-center border border-gray-200 rounded-md bg-gray-50 text-xs text-[#0f172a]" data-testid="next-revision-display">
+                      <span className="font-medium">Next: {nextRevision}</span>
+                    </div>
 
                     <Input
                       type="date"

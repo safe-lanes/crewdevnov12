@@ -1124,6 +1124,15 @@ export class PersistentFileStorage implements IStorage {
         }
         this.currentVesselDraftId = data.currentVesselDraftId || 1;
         
+        // Initialize vessel revisions and counter
+        this.vesselRevisions = new Map();
+        if (data.vesselRevisions) {
+          for (const [id, revision] of Object.entries(data.vesselRevisions)) {
+            this.vesselRevisions.set(Number(id), revision as VesselRevision);
+          }
+        }
+        this.currentVesselRevisionId = data.currentVesselRevisionId || 1;
+        
         console.log("📄 Loaded existing data from test-data.json");
       } else {
         console.log("📄 test-data.json not found, initializing with default data");
@@ -1150,6 +1159,7 @@ export class PersistentFileStorage implements IStorage {
         recruitmentCandidates: Array.from(this.recruitmentCandidates.entries()),
         vesselGroups: Array.from(this.vesselGroups.entries()),
         vesselDrafts: Array.from(this.vesselDrafts.entries()),
+        vesselRevisions: Array.from(this.vesselRevisions.entries()),
         masterDataEntries: Array.from(this.masterDataEntries.entries()),
         currentUserId: this.currentUserId,
         currentFormId: this.currentFormId,
@@ -1158,7 +1168,8 @@ export class PersistentFileStorage implements IStorage {
         currentAppraisalResultId: this.currentAppraisalResultId,
         currentCrewIdCounter: this.currentCrewIdCounter,
         currentVesselGroupId: this.currentVesselGroupId,
-        currentVesselDraftId: this.currentVesselDraftId
+        currentVesselDraftId: this.currentVesselDraftId,
+        currentVesselRevisionId: this.currentVesselRevisionId
       };
       
       fs.writeFileSync(this.filePath, JSON.stringify(data, null, 2), 'utf8');
