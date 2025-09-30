@@ -918,6 +918,23 @@ const AdminModuleInner = (): JSX.Element => {
       
       vesselOptions.forEach((vessel: VesselOption) => {
         const existingVesselData = prev.get(vessel.value) || [];
+        
+        // Check if this vessel has loaded data (any checkbox is true)
+        const hasLoadedData = existingVesselData.some(rank => 
+          rank.actualManningFlag || 
+          rank.safeManning || 
+          rank.optimumManning || 
+          rank.highWorkloadManning ||
+          rank.actualManning.length > 0
+        );
+        
+        // If vessel has loaded data, preserve it completely - don't recreate from company structure
+        if (hasLoadedData && existingVesselData.length > 0) {
+          newMap.set(vessel.value, existingVesselData);
+          return;
+        }
+        
+        // Otherwise, create fresh structure from company data (for new vessels or unloaded vessels)
         const preservedManningData = new Map<string, {
           actualManning: string[];
           actualManningFlag: boolean;
@@ -1013,6 +1030,69 @@ const AdminModuleInner = (): JSX.Element => {
       });
     }
   }, [companyRankData, isCompanyEditing, resetCompany]);
+
+  // Load saved vessel data when vessels are selected
+  React.useEffect(() => {
+    if (selectedVessels.length === 0 || companyRankData.length === 0) return;
+
+    const loadVesselData = async () => {
+      try {
+        for (const vesselId of selectedVessels) {
+          if (revisionMode) {
+            // IN REVISION MODE: Load draft data for editing
+            const draftResponse = await fetch(`/api/vessel-drafts/by-vessel/${vesselId}`);
+            if (draftResponse.ok) {
+              const drafts = await draftResponse.json();
+              if (drafts.length > 0) {
+                const latestDraft = drafts[0];
+                const loadedData: VesselRankData[] = JSON.parse(latestDraft.draftData);
+                
+                setVesselRankDataMap(prev => {
+                  const newMap = new Map(prev);
+                  newMap.set(vesselId, loadedData);
+                  return newMap;
+                });
+                
+                console.log(`📥 Loaded draft for vessel ${vesselId} (${loadedData.length} ranks)`);
+              }
+            }
+          } else {
+            // NON-REVISION MODE: Load latest revision for display
+            const revisionResponse = await fetch(`/api/vessel-revisions/by-vessel/${vesselId}`);
+            if (revisionResponse.ok) {
+              const revisions = await revisionResponse.json();
+              if (revisions.length > 0) {
+                // Sort by revision number to get the latest
+                const sortedRevisions = [...revisions].sort((a, b) => {
+                  const aNum = parseInt(a.revision.replace('R', ''));
+                  const bNum = parseInt(b.revision.replace('R', ''));
+                  return bNum - aNum;
+                });
+                
+                const latestRevision = sortedRevisions[0];
+                const loadedData: VesselRankData[] = JSON.parse(latestRevision.revisionData);
+                
+                setVesselRankDataMap(prev => {
+                  const newMap = new Map(prev);
+                  newMap.set(vesselId, loadedData);
+                  return newMap;
+                });
+                
+                // Also set the revision date for display
+                setFlexDate(latestRevision.revisionDate);
+                
+                console.log(`📥 Loaded revision ${latestRevision.revision} for vessel ${vesselId} (${loadedData.length} ranks, date: ${latestRevision.revisionDate})`);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading vessel data:', error);
+      }
+    };
+
+    loadVesselData();
+  }, [selectedVessels, revisionMode, companyRankData.length]);
 
   // Rank Master handlers
 
