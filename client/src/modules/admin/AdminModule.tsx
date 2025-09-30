@@ -1078,8 +1078,15 @@ const AdminModuleInner = (): JSX.Element => {
                   return newMap;
                 });
                 
-                // Also set the revision date for display
-                setFlexDate(latestRevision.revisionDate);
+                // Convert date from dd/mm/yyyy (storage) to yyyy-mm-dd (HTML date input format)
+                const dateParts = latestRevision.revisionDate.split('/');
+                if (dateParts.length === 3) {
+                  const [day, month, year] = dateParts;
+                  const htmlDateFormat = `${year}-${month}-${day}`;
+                  setFlexDate(htmlDateFormat);
+                } else {
+                  setFlexDate(latestRevision.revisionDate); // Fallback to original if format unexpected
+                }
                 
                 console.log(`📥 Loaded revision ${latestRevision.revision} for vessel ${vesselId} (${loadedData.length} ranks, date: ${latestRevision.revisionDate})`);
               }
