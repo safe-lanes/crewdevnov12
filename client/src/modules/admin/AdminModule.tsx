@@ -712,69 +712,23 @@ const AdminModuleInner = (): JSX.Element => {
     ? vesselRankDataMap.get(selectedVessels[0]) || []
     : [];
 
-  // Helper function to update vessel rank data for selected vessels with robust error handling
+  // Helper function to update vessel rank data for selected vessels
+  // PERFORMANCE: Removed expensive validation from hot path to prevent browser freezing
   const updateVesselRankData = (updater: (current: VesselRankData[]) => VesselRankData[]) => {
-    if (!updater || typeof updater !== 'function') {
-      console.error('updateVesselRankData: Invalid updater function provided');
-      return;
-    }
-
     if (!selectedVessels || selectedVessels.length === 0) {
-      console.warn('updateVesselRankData: No vessels selected for update');
       return;
     }
 
     setVesselRankDataMap(prev => {
-      try {
-        const newMap = new Map(prev);
-        let hasUpdates = false;
-        
-        selectedVessels.forEach(vesselId => {
-          if (!vesselId) {
-            console.warn('updateVesselRankData: Invalid vessel ID encountered');
-            return;
-          }
-          
-          try {
-            const currentData = newMap.get(vesselId) || [];
-            const updatedData = updater(currentData);
-            
-            // Validate updated data structure
-            if (!Array.isArray(updatedData)) {
-              console.error(`updateVesselRankData: Updater returned non-array for vessel ${vesselId}`);
-              return;
-            }
-            
-            // Validate each rank in the updated data
-            const isValidRankData = updatedData.every(rank => {
-              return rank && 
-                typeof rank.id === 'string' && 
-                typeof rank.rank === 'string' &&
-                typeof rank.rankId === 'string' &&
-                Array.isArray(rank.actualManning) &&
-                typeof rank.actualManningFlag === 'boolean' &&
-                typeof rank.safeManning === 'boolean' &&
-                typeof rank.optimumManning === 'boolean' &&
-                typeof rank.highWorkloadManning === 'boolean';
-            });
-            
-            if (!isValidRankData) {
-              console.error(`updateVesselRankData: Invalid rank data structure for vessel ${vesselId}`);
-              return;
-            }
-            
-            newMap.set(vesselId, updatedData);
-            hasUpdates = true;
-          } catch (vesselError) {
-            console.error(`updateVesselRankData: Error updating vessel ${vesselId}:`, vesselError);
-          }
-        });
-        
-        return hasUpdates ? newMap : prev;
-      } catch (error) {
-        console.error('updateVesselRankData: Critical error during update:', error);
-        return prev; // Return original state to prevent data corruption
-      }
+      const newMap = new Map(prev);
+      
+      selectedVessels.forEach(vesselId => {
+        const currentData = newMap.get(vesselId) || [];
+        const updatedData = updater(currentData);
+        newMap.set(vesselId, updatedData);
+      });
+      
+      return newMap;
     });
   };
   
