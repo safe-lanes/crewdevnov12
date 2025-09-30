@@ -550,6 +550,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Upsert vessel draft (update if exists, create if not) - convenience endpoint for Save Draft functionality
+  app.post("/api/vessel-drafts/upsert", async (req, res) => {
+    try {
+      console.log(`💾 [DRAFT UPSERT] Attempting to save draft for vessel:`, req.body.vesselId);
+      
+      // Validate the request body
+      const result = insertVesselDraftSchema.safeParse(req.body);
+      if (!result.success) {
+        console.error(`💾 [DRAFT UPSERT ERROR] Validation failed:`, result.error.issues);
+        return res.status(400).json({ error: "Invalid vessel draft data", details: result.error.issues });
+      }
+      
+      // Check if a draft already exists for this vessel
+      const existingDrafts = await storage.getVesselDraftsByVessel(result.data.vesselId);
+      
+      if (existingDrafts.length > 0) {
+        // Update the existing draft
+        const existingDraft = existingDrafts[0]; // Use the first draft if multiple exist
+        console.log(`💾 [DRAFT UPSERT] Found existing draft (ID: ${existingDraft.id}), updating...`);
+        const updatedDraft = await storage.updateVesselDraft(existingDraft.id, result.data);
+        console.log(`💾 [DRAFT UPSERT] Successfully updated draft ID: ${existingDraft.id}`);
+        res.json({ action: "updated", draft: updatedDraft });
+      } else {
+        // Create a new draft
+        console.log(`💾 [DRAFT UPSERT] No existing draft found, creating new draft...`);
+        const newDraft = await storage.createVesselDraft(result.data);
+        console.log(`💾 [DRAFT UPSERT] Successfully created new draft ID: ${newDraft.id}`);
+        res.status(201).json({ action: "created", draft: newDraft });
+      }
+    } catch (error) {
+      console.error(`💾 [DRAFT UPSERT ERROR] Failed to upsert vessel draft:`, error);
+      res.status(500).json({ error: "Failed to save vessel draft" });
+    }
+  });
+
   // Vessel Revisions API routes
   app.get("/api/vessel-revisions", async (req, res) => {
     try {
