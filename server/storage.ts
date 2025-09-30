@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type CrewDashboardSummary } from "@shared/schema";
+import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type CrewDashboardSummary } from "@shared/schema";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -75,6 +75,11 @@ export interface IStorage {
   createVesselDraft(vesselDraft: InsertVesselDraft): Promise<VesselDraft>;
   updateVesselDraft(id: number, vesselDraft: Partial<InsertVesselDraft>): Promise<VesselDraft | undefined>;
   deleteVesselDraft(id: number): Promise<boolean>;
+  // Vessel Revisions
+  getVesselRevisions(): Promise<VesselRevision[]>;
+  getVesselRevision(id: number): Promise<VesselRevision | undefined>;
+  getVesselRevisionsByVessel(vesselId: string): Promise<VesselRevision[]>;
+  createVesselRevision(vesselRevision: InsertVesselRevision): Promise<VesselRevision>;
   // Dashboard Summary
   getCrewDashboardSummary(crewId: string): Promise<CrewDashboardSummary | undefined>;
   // ID Generation
@@ -92,6 +97,7 @@ export class MemStorage implements IStorage {
   private recruitmentCandidates: Map<string, RecruitmentCandidate>;
   private vesselGroups: Map<number, VesselGroup>;
   private vesselDrafts: Map<number, VesselDraft>;
+  private vesselRevisions: Map<number, VesselRevision>;
   private currentUserId: number;
   private currentFormId: number;
   private currentRankGroupId: number;
@@ -100,6 +106,7 @@ export class MemStorage implements IStorage {
   private currentCrewIdCounter: number;
   private currentVesselGroupId: number;
   private currentVesselDraftId: number;
+  private currentVesselRevisionId: number;
 
   constructor() {
     this.users = new Map();
@@ -112,6 +119,7 @@ export class MemStorage implements IStorage {
     this.recruitmentCandidates = new Map();
     this.vesselGroups = new Map();
     this.vesselDrafts = new Map();
+    this.vesselRevisions = new Map();
     this.currentUserId = 1;
     this.currentFormId = 1;
     this.currentRankGroupId = 1;
@@ -120,6 +128,7 @@ export class MemStorage implements IStorage {
     this.currentCrewIdCounter = 1;
     this.currentVesselGroupId = 1;
     this.currentVesselDraftId = 1;
+    this.currentVesselRevisionId = 1;
     
     this.initializeDefaultData();
 
@@ -852,6 +861,30 @@ export class MemStorage implements IStorage {
     return this.vesselDrafts.delete(id);
   }
 
+  // Vessel Revisions methods
+  async getVesselRevisions(): Promise<VesselRevision[]> {
+    return Array.from(this.vesselRevisions.values());
+  }
+
+  async getVesselRevision(id: number): Promise<VesselRevision | undefined> {
+    return this.vesselRevisions.get(id);
+  }
+
+  async getVesselRevisionsByVessel(vesselId: string): Promise<VesselRevision[]> {
+    return Array.from(this.vesselRevisions.values()).filter(revision => revision.vesselId === vesselId);
+  }
+
+  async createVesselRevision(insertVesselRevision: InsertVesselRevision): Promise<VesselRevision> {
+    const id = this.currentVesselRevisionId++;
+    const vesselRevision: VesselRevision = { 
+      ...insertVesselRevision, 
+      id,
+      createdAt: new Date()
+    };
+    this.vesselRevisions.set(id, vesselRevision);
+    return vesselRevision;
+  }
+
   // Appraisal Results Methods
   async getAppraisalResults(): Promise<AppraisalResult[]> {
     return Array.from(this.appraisalResults.values());
@@ -1005,6 +1038,7 @@ export class PersistentFileStorage implements IStorage {
   private vesselGroups: Map<number, VesselGroup>;
   private masterDataEntries: Map<string, any>;
   private vesselDrafts: Map<number, VesselDraft>;
+  private vesselRevisions: Map<number, VesselRevision>;
   private currentUserId: number;
   private currentFormId: number;
   private currentRankGroupId: number;
@@ -1013,6 +1047,7 @@ export class PersistentFileStorage implements IStorage {
   private currentCrewIdCounter: number;
   private currentVesselGroupId: number;
   private currentVesselDraftId: number;
+  private currentVesselRevisionId: number;
   private filePath: string;
 
   constructor() {
@@ -1028,6 +1063,7 @@ export class PersistentFileStorage implements IStorage {
     this.vesselGroups = new Map();
     this.masterDataEntries = new Map();
     this.vesselDrafts = new Map();
+    this.vesselRevisions = new Map();
     this.currentUserId = 1;
     this.currentFormId = 1;
     this.currentRankGroupId = 1;
@@ -1036,6 +1072,7 @@ export class PersistentFileStorage implements IStorage {
     this.currentCrewIdCounter = 1;
     this.currentVesselGroupId = 1;
     this.currentVesselDraftId = 1;
+    this.currentVesselRevisionId = 1;
     
     this.filePath = path.join(process.cwd(), 'test-data.json');
     this.loadFromFile();
@@ -1848,6 +1885,31 @@ export class PersistentFileStorage implements IStorage {
       this.saveToFile(); // Persist the changes
     }
     return result;
+  }
+
+  // Vessel Revisions methods
+  async getVesselRevisions(): Promise<VesselRevision[]> {
+    return Array.from(this.vesselRevisions.values());
+  }
+
+  async getVesselRevision(id: number): Promise<VesselRevision | undefined> {
+    return this.vesselRevisions.get(id);
+  }
+
+  async getVesselRevisionsByVessel(vesselId: string): Promise<VesselRevision[]> {
+    return Array.from(this.vesselRevisions.values()).filter(revision => revision.vesselId === vesselId);
+  }
+
+  async createVesselRevision(insertVesselRevision: InsertVesselRevision): Promise<VesselRevision> {
+    const id = this.currentVesselRevisionId++;
+    const vesselRevision: VesselRevision = { 
+      ...insertVesselRevision, 
+      id,
+      createdAt: new Date()
+    };
+    this.vesselRevisions.set(id, vesselRevision);
+    this.saveToFile(); // Persist the changes
+    return vesselRevision;
   }
 
   // Appraisal Result methods (same as MemStorage)
