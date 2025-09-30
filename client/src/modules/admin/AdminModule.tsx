@@ -305,22 +305,15 @@ const AdminModuleInner = (): JSX.Element => {
   const [flexDate, setFlexDate] = useState("");
   const [revisionMode, setRevisionMode] = useState(false);
   
-  // PERFORMANCE OPTIMIZATION: Pre-compute nested lookup map for instant O(1) access
-  // Instead of doing expensive .find() on every checkbox render (450+ operations),
-  // we create a nested Map structure: vesselId -> (rankId -> VesselRankData)
-  const optimizedVesselRankLookup = useMemo(() => {
-    const lookup = new Map<string, Map<string, VesselRankData>>();
+  // PERFORMANCE OPTIMIZATION: Only build lookup for the CURRENT vessel being displayed
+  // This avoids rebuilding Maps for all vessels on every checkbox click
+  const currentVesselRankLookup = useMemo(() => {
+    const currentVesselData = selectedVessels.length > 0 
+      ? vesselRankDataMap.get(selectedVessels[0]) || []
+      : [];
     
-    vesselRankDataMap.forEach((rankDataArray, vesselId) => {
-      const rankMap = new Map<string, VesselRankData>();
-      rankDataArray.forEach(rankData => {
-        rankMap.set(rankData.id, rankData);
-      });
-      lookup.set(vesselId, rankMap);
-    });
-    
-    return lookup;
-  }, [vesselRankDataMap]);
+    return new Map(currentVesselData.map(rank => [rank.id, rank]));
+  }, [vesselRankDataMap, selectedVessels]);
   
   // Data Masters state
   const [searchDataMaster, setSearchDataMaster] = useState("");
@@ -3412,7 +3405,7 @@ const AdminModuleInner = (): JSX.Element => {
                                     console.log('🔧 [CELL CLICKED] Toggling actual manning for rank:', rank.id);
                                     const firstVesselId = selectedVessels[0];
                                     if (firstVesselId) {
-                                      const vesselRank = optimizedVesselRankLookup.get(firstVesselId)?.get(rank.id);
+                                      const vesselRank = currentVesselRankLookup.get(rank.id);
                                       const newValue = !(vesselRank?.actualManningFlag || false);
                                       updateVesselRankData(prev => 
                                         prev.map(r => r.id === rank.id ? { ...r, actualManningFlag: newValue } : r)
@@ -3422,7 +3415,7 @@ const AdminModuleInner = (): JSX.Element => {
                                 >
                                   <input
                                     type="checkbox"
-                                    checked={optimizedVesselRankLookup.get(selectedVessels[0])?.get(rank.id)?.actualManningFlag || false}
+                                    checked={currentVesselRankLookup.get(rank.id)?.actualManningFlag || false}
                                     onChange={() => {}} // Handled by cell onClick
                                     disabled={!revisionMode}
                                     className="h-4 w-4 pointer-events-none"
@@ -3446,7 +3439,7 @@ const AdminModuleInner = (): JSX.Element => {
                                     if (!revisionMode || selectedVessels.length === 0) return;
                                     const firstVesselId = selectedVessels[0];
                                     if (firstVesselId) {
-                                      const vesselRank = optimizedVesselRankLookup.get(firstVesselId)?.get(rank.id);
+                                      const vesselRank = currentVesselRankLookup.get(rank.id);
                                       const newValue = !(vesselRank?.safeManning || false);
                                       updateVesselRankData(prev => 
                                         prev.map(r => r.id === rank.id ? { ...r, safeManning: newValue } : r)
@@ -3456,7 +3449,7 @@ const AdminModuleInner = (): JSX.Element => {
                                 >
                                   <input
                                     type="checkbox"
-                                    checked={optimizedVesselRankLookup.get(selectedVessels[0])?.get(rank.id)?.safeManning || false}
+                                    checked={currentVesselRankLookup.get(rank.id)?.safeManning || false}
                                     onChange={() => {}} // Handled by cell onClick
                                     disabled={!revisionMode}
                                     className="h-4 w-4 pointer-events-none"
@@ -3480,7 +3473,7 @@ const AdminModuleInner = (): JSX.Element => {
                                     if (!revisionMode || selectedVessels.length === 0) return;
                                     const firstVesselId = selectedVessels[0];
                                     if (firstVesselId) {
-                                      const vesselRank = optimizedVesselRankLookup.get(firstVesselId)?.get(rank.id);
+                                      const vesselRank = currentVesselRankLookup.get(rank.id);
                                       const newValue = !(vesselRank?.optimumManning || false);
                                       updateVesselRankData(prev => 
                                         prev.map(r => r.id === rank.id ? { ...r, optimumManning: newValue } : r)
@@ -3490,7 +3483,7 @@ const AdminModuleInner = (): JSX.Element => {
                                 >
                                   <input
                                     type="checkbox"
-                                    checked={optimizedVesselRankLookup.get(selectedVessels[0])?.get(rank.id)?.optimumManning || false}
+                                    checked={currentVesselRankLookup.get(rank.id)?.optimumManning || false}
                                     onChange={() => {}} // Handled by cell onClick
                                     disabled={!revisionMode}
                                     className="h-4 w-4 pointer-events-none"
@@ -3513,7 +3506,7 @@ const AdminModuleInner = (): JSX.Element => {
                                 >
                                   <input
                                     type="checkbox"
-                                    checked={optimizedVesselRankLookup.get(selectedVessels[0])?.get(rank.id)?.highWorkloadManning || false}
+                                    checked={currentVesselRankLookup.get(rank.id)?.highWorkloadManning || false}
                                     onChange={(e) => {
                                       if (!revisionMode || selectedVessels.length === 0) return;
                                       updateVesselRankData(prev => 
@@ -3530,7 +3523,7 @@ const AdminModuleInner = (): JSX.Element => {
                                 <TableCell className="text-center">
                                   <input
                                     type="checkbox"
-                                    checked={optimizedVesselRankLookup.get(selectedVessels[0])?.get(rank.id)?.safetyOfficer || false}
+                                    checked={currentVesselRankLookup.get(rank.id)?.safetyOfficer || false}
                                     onChange={(e) => {
                                       updateVesselRankData(prev => 
                                         prev.map(r => r.id === rank.id ? { ...r, safetyOfficer: e.target.checked } : r)
@@ -3546,7 +3539,7 @@ const AdminModuleInner = (): JSX.Element => {
                                 <TableCell className="text-center">
                                   <input
                                     type="checkbox"
-                                    checked={optimizedVesselRankLookup.get(selectedVessels[0])?.get(rank.id)?.sso || false}
+                                    checked={currentVesselRankLookup.get(rank.id)?.sso || false}
                                     onChange={(e) => {
                                       updateVesselRankData(prev => 
                                         prev.map(r => r.id === rank.id ? { ...r, sso: e.target.checked } : r)
@@ -3562,7 +3555,7 @@ const AdminModuleInner = (): JSX.Element => {
                                 <TableCell className="text-center">
                                   <input
                                     type="checkbox"
-                                    checked={optimizedVesselRankLookup.get(selectedVessels[0])?.get(rank.id)?.medicalOfficer || false}
+                                    checked={currentVesselRankLookup.get(rank.id)?.medicalOfficer || false}
                                     onChange={(e) => {
                                       updateVesselRankData(prev => 
                                         prev.map(r => r.id === rank.id ? { ...r, medicalOfficer: e.target.checked } : r)
@@ -3578,7 +3571,7 @@ const AdminModuleInner = (): JSX.Element => {
                                 <TableCell className="text-center">
                                   <input
                                     type="checkbox"
-                                    checked={optimizedVesselRankLookup.get(selectedVessels[0])?.get(rank.id)?.navigatingOfficer || false}
+                                    checked={currentVesselRankLookup.get(rank.id)?.navigatingOfficer || false}
                                     onChange={(e) => {
                                       updateVesselRankData(prev => 
                                         prev.map(r => r.id === rank.id ? { ...r, navigatingOfficer: e.target.checked } : r)
@@ -3594,7 +3587,7 @@ const AdminModuleInner = (): JSX.Element => {
                                 <TableCell className="text-center">
                                   <input
                                     type="checkbox"
-                                    checked={optimizedVesselRankLookup.get(selectedVessels[0])?.get(rank.id)?.emtOfficer || false}
+                                    checked={currentVesselRankLookup.get(rank.id)?.emtOfficer || false}
                                     onChange={(e) => {
                                       updateVesselRankData(prev => 
                                         prev.map(r => r.id === rank.id ? { ...r, emtOfficer: e.target.checked } : r)
