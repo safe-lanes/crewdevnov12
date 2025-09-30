@@ -680,6 +680,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Submit vessel revision - comprehensive endpoint that handles the entire Submit workflow
+  app.post("/api/vessel-revisions/submit", async (req, res) => {
+    try {
+      console.log(`✅ [SUBMIT] Starting Submit workflow for vessel:`, req.body.vesselId);
+      
+      // Step 1: Validate the request body (excluding revision since it will be auto-assigned)
+      // Submit schema omits "revision" field because it's computed server-side
+      const submitSchema = insertVesselRevisionSchema.omit({ revision: true });
+      const validationResult = submitSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        console.error(`✅ [SUBMIT ERROR] Validation failed:`, validationResult.error.issues);
+        return res.status(400).json({ 
+          error: "Invalid vessel revision data", 
+          details: validationResult.error.issues 
+        });
+      }
+      
+      const { vesselId, revisionData, revisionDate } = validationResult.data;
+      console.log(`✅ [SUBMIT] Validation passed for vessel ${vesselId}, date: ${revisionDate}`);
+      
+      // Step 2: Get the next revision number for this vessel
+      const existingRevisions = await storage.getVesselRevisionsByVessel(vesselId);
+      let maxRevisionNumber = -1;
+      for (const revision of existingRevisions) {
+        const match = revision.revision.match(/^R(\d+)$/);
+        if (match) {
+          const revisionNumber = parseInt(match[1], 10);
+          if (revisionNumber > maxRevisionNumber) {
+            maxRevisionNumber = revisionNumber;
+          }
+        }
+      }
+      const nextRevisionNumber = maxRevisionNumber + 1;
+      const nextRevision = `R${nextRevisionNumber}`;
+      console.log(`✅ [SUBMIT] Auto-assigned revision: ${nextRevision} (vessel has ${existingRevisions.length} existing revisions)`);
+      
+      // Step 3: Create the finalized vessel revision with the auto-assigned revision number
+      const revisionToCreate = {
+        vesselId,
+        revision: nextRevision,
+        revisionDate,
+        revisionData
+      };
+      const createdRevision = await storage.createVesselRevision(revisionToCreate);
+      console.log(`✅ [SUBMIT] Created revision with ID: ${createdRevision.id}, revision: ${nextRevision}`);
+      
+      // Step 4: Delete any existing drafts for this vessel (best-effort cleanup)
+      const existingDrafts = await storage.getVesselDraftsByVessel(vesselId);
+      let deletedDraftsCount = 0;
+      const failedDraftIds: number[] = [];
+      for (const draft of existingDrafts) {
+        try {
+          const deleted = await storage.deleteVesselDraft(draft.id);
+          if (deleted) {
+            deletedDraftsCount++;
+          } else {
+            failedDraftIds.push(draft.id);
+          }
+        } catch (deleteError) {
+          console.warn(`✅ [SUBMIT WARNING] Failed to delete draft ${draft.id}:`, deleteError);
+          failedDraftIds.push(draft.id);
+        }
+      }
+      console.log(`✅ [SUBMIT] Cleaned up ${deletedDraftsCount} draft(s) for vessel ${vesselId}${failedDraftIds.length > 0 ? `, failed to delete ${failedDraftIds.length} draft(s)` : ''}`);
+      
+      // Step 5: Return the created revision with metadata
+      res.status(201).json({
+        success: true,
+        revision: createdRevision,
+        metadata: {
+          autoAssignedRevision: nextRevision,
+          deletedDrafts: deletedDraftsCount,
+          failedDraftIds: failedDraftIds.length > 0 ? failedDraftIds : undefined
+        }
+      });
+      console.log(`✅ [SUBMIT] Submit workflow completed successfully for vessel ${vesselId}`);
+    } catch (error) {
+      console.error(`✅ [SUBMIT ERROR] Submit workflow failed:`, error);
+      res.status(500).json({ error: "Failed to submit vessel revision" });
+    }
+  });
+
   // Crew Members API routes
   app.get("/api/crew-members/next-crew-id", async (req, res) => {
     try {
