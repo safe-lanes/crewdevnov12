@@ -305,6 +305,9 @@ const AdminModuleInner = (): JSX.Element => {
   const [flexDate, setFlexDate] = useState("");
   const [revisionMode, setRevisionMode] = useState(false);
   
+  // Track which vessels have been loaded to prevent duplicate fetches
+  const loadedVesselsRef = React.useRef<Set<string>>(new Set());
+  
   // PERFORMANCE OPTIMIZATION: Only build lookup for the CURRENT vessel being displayed
   // This avoids rebuilding Maps for all vessels on every checkbox click
   const currentVesselRankLookup = useMemo(() => {
