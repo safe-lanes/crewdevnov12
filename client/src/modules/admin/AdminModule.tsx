@@ -1039,65 +1039,88 @@ const AdminModuleInner = (): JSX.Element => {
     if (selectedVessels.length === 0 || companyRankData.length === 0) return;
 
     const loadVesselData = async () => {
+      // Determine which vessels need to be loaded (haven't been loaded yet)
+      const vesselsToLoad = selectedVessels.filter(vesselId => !loadedVesselsRef.current.has(vesselId));
+      
+      if (vesselsToLoad.length === 0) {
+        console.info('📥 All selected vessels already loaded, skipping fetch');
+        return;
+      }
+
+      console.info(`📥 Loading data for ${vesselsToLoad.length} vessel(s) in ${revisionMode ? 'REVISION' : 'NON-REVISION'} mode`);
+
       try {
-        for (const vesselId of selectedVessels) {
-          if (revisionMode) {
-            // IN REVISION MODE: Load draft data for editing
-            const draftResponse = await fetch(`/api/vessel-drafts/by-vessel/${vesselId}`);
-            if (draftResponse.ok) {
-              const drafts = await draftResponse.json();
-              if (drafts.length > 0) {
-                const latestDraft = drafts[0];
-                const loadedData: VesselRankData[] = JSON.parse(latestDraft.draftData);
-                
-                setVesselRankDataMap(prev => {
-                  const newMap = new Map(prev);
-                  newMap.set(vesselId, loadedData);
-                  return newMap;
-                });
-                
-                console.log(`📥 Loaded draft for vessel ${vesselId} (${loadedData.length} ranks)`);
-              }
-            }
-          } else {
-            // NON-REVISION MODE: Load latest revision for display
-            const revisionResponse = await fetch(`/api/vessel-revisions/by-vessel/${vesselId}`);
-            if (revisionResponse.ok) {
-              const revisions = await revisionResponse.json();
-              if (revisions.length > 0) {
-                // Sort by revision number to get the latest
-                const sortedRevisions = [...revisions].sort((a, b) => {
-                  const aNum = parseInt(a.revision.replace('R', ''));
-                  const bNum = parseInt(b.revision.replace('R', ''));
-                  return bNum - aNum;
-                });
-                
-                const latestRevision = sortedRevisions[0];
-                const loadedData: VesselRankData[] = JSON.parse(latestRevision.revisionData);
-                
-                setVesselRankDataMap(prev => {
-                  const newMap = new Map(prev);
-                  newMap.set(vesselId, loadedData);
-                  return newMap;
-                });
-                
-                // Convert date from dd/mm/yyyy (storage) to yyyy-mm-dd (HTML date input format)
-                const dateParts = latestRevision.revisionDate.split('/');
-                if (dateParts.length === 3) {
-                  const [day, month, year] = dateParts;
-                  const htmlDateFormat = `${year}-${month}-${day}`;
-                  setFlexDate(htmlDateFormat);
+        // Load all vessels in parallel using Promise.all for better performance
+        await Promise.all(vesselsToLoad.map(async (vesselId) => {
+          try {
+            if (revisionMode) {
+              // IN REVISION MODE: Load draft data for editing
+              const draftResponse = await fetch(`/api/vessel-drafts/by-vessel/${vesselId}`);
+              if (draftResponse.ok) {
+                const drafts = await draftResponse.json();
+                if (drafts.length > 0) {
+                  const latestDraft = drafts[0];
+                  const loadedData: VesselRankData[] = JSON.parse(latestDraft.draftData);
+                  
+                  setVesselRankDataMap(prev => {
+                    const newMap = new Map(prev);
+                    newMap.set(vesselId, loadedData);
+                    return newMap;
+                  });
+                  
+                  loadedVesselsRef.current.add(vesselId);
+                  console.log(`📥 ✓ Loaded draft for vessel ${vesselId} (${loadedData.length} ranks)`);
                 } else {
-                  setFlexDate(latestRevision.revisionDate); // Fallback to original if format unexpected
+                  console.info(`📥 No draft found for vessel ${vesselId} - will start with latest revision or company structure`);
                 }
-                
-                console.log(`📥 Loaded revision ${latestRevision.revision} for vessel ${vesselId} (${loadedData.length} ranks, date: ${latestRevision.revisionDate})`);
+              }
+            } else {
+              // NON-REVISION MODE: Load latest revision for display
+              const revisionResponse = await fetch(`/api/vessel-revisions/by-vessel/${vesselId}`);
+              if (revisionResponse.ok) {
+                const revisions = await revisionResponse.json();
+                if (revisions.length > 0) {
+                  // Sort by revision number to get the latest
+                  const sortedRevisions = [...revisions].sort((a, b) => {
+                    const aNum = parseInt(a.revision.replace('R', ''));
+                    const bNum = parseInt(b.revision.replace('R', ''));
+                    return bNum - aNum;
+                  });
+                  
+                  const latestRevision = sortedRevisions[0];
+                  const loadedData: VesselRankData[] = JSON.parse(latestRevision.revisionData);
+                  
+                  setVesselRankDataMap(prev => {
+                    const newMap = new Map(prev);
+                    newMap.set(vesselId, loadedData);
+                    return newMap;
+                  });
+                  
+                  // Convert date from dd/mm/yyyy (storage) to yyyy-mm-dd (HTML date input format)
+                  const dateParts = latestRevision.revisionDate.split('/');
+                  if (dateParts.length === 3) {
+                    const [day, month, year] = dateParts;
+                    const htmlDateFormat = `${year}-${month}-${day}`;
+                    setFlexDate(htmlDateFormat);
+                  } else {
+                    setFlexDate(latestRevision.revisionDate); // Fallback to original if format unexpected
+                  }
+                  
+                  loadedVesselsRef.current.add(vesselId);
+                  console.log(`📥 ✓ Loaded revision ${latestRevision.revision} for vessel ${vesselId} (${loadedData.length} ranks, date: ${latestRevision.revisionDate})`);
+                } else {
+                  console.info(`📥 No revisions found for vessel ${vesselId} - will use company structure`);
+                  setFlexDate(''); // Clear date when no revisions exist
+                }
               }
             }
+          } catch (vesselError) {
+            console.error(`📥 ✗ Error loading data for vessel ${vesselId}:`, vesselError);
+            // Continue loading other vessels even if one fails
           }
-        }
+        }));
       } catch (error) {
-        console.error('Error loading vessel data:', error);
+        console.error('📥 ✗ Error loading vessel data:', error);
       }
     };
 
@@ -2115,8 +2138,9 @@ const AdminModuleInner = (): JSX.Element => {
     setRevisionMode(false);
     setIsVesselEditing(false);
     
-    // TODO: Revert any unsaved changes by reloading original data
-    // For now, we could reload from server or reset to original state
+    // Clear loaded vessels tracking to allow fresh load next time
+    loadedVesselsRef.current.clear();
+    
     console.log("Cancelled vessel revision mode");
   };
 
@@ -2127,7 +2151,7 @@ const AdminModuleInner = (): JSX.Element => {
     if (!flexDate) {
       toast({
         title: "Date required",
-        description: "Please provide a date in dd/mm/yyyy format before submitting",
+        description: "Please provide a date before submitting",
         variant: "destructive"
       });
       return;
@@ -2191,6 +2215,9 @@ const AdminModuleInner = (): JSX.Element => {
         setRevisionMode(false);
         setIsVesselEditing(false);
         setFlexDate("");
+        
+        // Clear loaded vessels tracking to allow fresh load next time
+        loadedVesselsRef.current.clear();
       }
       
       if (failedVessels.length > 0) {
