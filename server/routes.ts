@@ -561,7 +561,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // IMPORTANT: by-vessel route must come BEFORE :id route to avoid route shadowing
+  // IMPORTANT: Literal path segments must come BEFORE parameterized routes to avoid shadowing
   app.get("/api/vessel-revisions/by-vessel/:vesselId", async (req, res) => {
     try {
       const { vesselId } = req.params;
@@ -572,6 +572,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to fetch vessel revisions by vessel:", error);
       res.status(500).json({ error: "Failed to fetch vessel revisions" });
+    }
+  });
+
+  // Get next revision number for a vessel (must come before :id route)
+  app.get("/api/vessel-revisions/next-revision/:vesselId", async (req, res) => {
+    try {
+      const { vesselId } = req.params;
+      console.log(`📜 [NEXT REVISION] Getting next revision number for vessel: ${vesselId}`);
+      
+      // Get all existing revisions for this vessel
+      const existingRevisions = await storage.getVesselRevisionsByVessel(vesselId);
+      
+      // Extract revision numbers and find the highest one
+      // Expected format: "R0", "R1", "R2", etc.
+      let maxRevisionNumber = -1;
+      for (const revision of existingRevisions) {
+        const match = revision.revision.match(/^R(\d+)$/);
+        if (match) {
+          const revisionNumber = parseInt(match[1], 10);
+          if (revisionNumber > maxRevisionNumber) {
+            maxRevisionNumber = revisionNumber;
+          }
+        }
+      }
+      
+      // Next revision is maxRevisionNumber + 1, formatted as "R{n}"
+      const nextRevisionNumber = maxRevisionNumber + 1;
+      const nextRevision = `R${nextRevisionNumber}`;
+      
+      console.log(`📜 [NEXT REVISION] Vessel ${vesselId} has ${existingRevisions.length} existing revisions, next: ${nextRevision}`);
+      res.json({ vesselId, nextRevision, revisionNumber: nextRevisionNumber });
+    } catch (error) {
+      console.error("Failed to get next revision number:", error);
+      res.status(500).json({ error: "Failed to get next revision number" });
     }
   });
 
