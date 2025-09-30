@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError } from "./storage";
-import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema } from "@shared/schema";
+import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema } from "@shared/schema";
 import { z } from "zod";
 import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew } from "@shared/crew-mapping";
 import { 
@@ -547,6 +547,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete vessel draft" });
+    }
+  });
+
+  // Vessel Revisions API routes
+  app.get("/api/vessel-revisions", async (req, res) => {
+    try {
+      const vesselRevisions = await storage.getVesselRevisions();
+      res.json(vesselRevisions);
+    } catch (error) {
+      console.error("Failed to fetch vessel revisions:", error);
+      res.status(500).json({ error: "Failed to fetch vessel revisions" });
+    }
+  });
+
+  // IMPORTANT: by-vessel route must come BEFORE :id route to avoid route shadowing
+  app.get("/api/vessel-revisions/by-vessel/:vesselId", async (req, res) => {
+    try {
+      const { vesselId } = req.params;
+      console.log(`📜 [VESSEL REVISION API] Fetching revisions for vessel: ${vesselId}`);
+      const vesselRevisions = await storage.getVesselRevisionsByVessel(vesselId);
+      console.log(`📜 [VESSEL REVISION API] Found ${vesselRevisions.length} revisions for vessel ${vesselId}`);
+      res.json(vesselRevisions);
+    } catch (error) {
+      console.error("Failed to fetch vessel revisions by vessel:", error);
+      res.status(500).json({ error: "Failed to fetch vessel revisions" });
+    }
+  });
+
+  app.get("/api/vessel-revisions/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      // Validate that id is a valid number
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid revision ID - must be a number" });
+      }
+      const vesselRevision = await storage.getVesselRevision(id);
+      if (!vesselRevision) {
+        return res.status(404).json({ error: "Vessel revision not found" });
+      }
+      res.json(vesselRevision);
+    } catch (error) {
+      console.error("Failed to fetch vessel revision:", error);
+      res.status(500).json({ error: "Failed to fetch vessel revision" });
+    }
+  });
+
+  app.post("/api/vessel-revisions", async (req, res) => {
+    try {
+      console.log(`📜 [VESSEL REVISION CREATE] Attempting to create vessel revision with data:`, req.body);
+      const result = insertVesselRevisionSchema.safeParse(req.body);
+      if (!result.success) {
+        console.error(`📜 [VESSEL REVISION VALIDATION ERROR] Schema validation failed:`, result.error.issues);
+        return res.status(400).json({ error: "Invalid vessel revision data", details: result.error.issues });
+      }
+      
+      const vesselRevision = await storage.createVesselRevision(result.data);
+      console.log(`📜 [VESSEL REVISION CREATED] Successfully created revision with ID: ${vesselRevision.id}`);
+      res.status(201).json(vesselRevision);
+    } catch (error) {
+      console.error(`📜 [VESSEL REVISION CREATE ERROR] Failed to create vessel revision:`, error);
+      res.status(500).json({ error: "Failed to create vessel revision" });
     }
   });
 
