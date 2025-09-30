@@ -911,7 +911,7 @@ const AdminModuleInner = (): JSX.Element => {
   // Sync vessel rank data with company rank data changes for all vessels
   React.useEffect(() => {
     // Don't sync if companyRankData is empty (initial state)
-    if (companyRankData.length === 0) return;
+    if (companyRankData.length === 0 || vesselOptions.length === 0) return;
 
     setVesselRankDataMap(prev => {
       const newMap = new Map();
@@ -972,9 +972,15 @@ const AdminModuleInner = (): JSX.Element => {
         newMap.set(vessel.value, vesselRanks);
       });
       
-      return newMap;
+      // Only update if there's a meaningful change to prevent infinite loops
+      const hasChanged = Array.from(newMap.entries()).some(([key, value]) => {
+        const prevValue = prev.get(key);
+        return !prevValue || JSON.stringify(value) !== JSON.stringify(prevValue);
+      });
+      
+      return hasChanged ? newMap : prev;
     });
-  }, [companyRankData]);
+  }, [companyRankData, vesselOptions]);
 
   // CRITICAL: Sync React Hook Form with companyRankData changes (Fix dual source of truth)
   React.useEffect(() => {

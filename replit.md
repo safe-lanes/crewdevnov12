@@ -45,6 +45,16 @@ client/src/
 
 ## Recent Changes
 
+### Vessel Checkbox Performance Fix (September 30, 2025)
+- **Date**: September 30, 2025
+- **Changes**:
+  - Fixed critical infinite loop causing "Maximum update depth exceeded" errors
+  - Resolved browser freeze when clicking vessel rank checkboxes
+  - Replaced global `optimizedVesselRankLookup` with scoped `currentVesselRankLookup` for O(R) performance
+  - Fixed React useEffect dependency array violation by adding `vesselOptions` to dependencies
+  - Added change detection to prevent unnecessary state updates and infinite loops
+  - Checkboxes now respond instantly without browser freezing or "Page Unresponsive" dialogs
+
 ### Vessel Revision System Implementation (September 30, 2025)
 - **Date**: September 30, 2025
 - **Changes**:
