@@ -3533,7 +3533,7 @@ const AdminModuleInner = (): JSX.Element => {
                                       );
                                     }}
                                     disabled={!revisionMode || selectedVessels.length === 0}
-                                    className="h-4 w-4 pointer-events-none"
+                                    className="h-4 w-4 cursor-pointer"
                                     data-testid={`vessel-high-workload-manning-${rank.id}`}
                                   />
                                 </TableCell>
