@@ -1,4 +1,4 @@
-import { File, UserPlus, Users, AlignJustify, Grid3x3 } from 'lucide-react';
+import { File, UserPlus, Users, AlignJustify, Grid3x3, Ship } from 'lucide-react';
 import React from 'react'
 
 type SideBarComponentProps = {
@@ -32,6 +32,11 @@ const sideBarList: { name: string; icon: React.ReactNode; page: string }[] = [
         name: "Training Matrix",
         icon: <Grid3x3 size={20} className='text-white' />,
         page: "training-matrix"
+    },
+    {
+        name: "Vessel Particulars",
+        icon: <Ship size={20} className='text-white' />,
+        page: "vessel-particulars"
     }
 ]
 
