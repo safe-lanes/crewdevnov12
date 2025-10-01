@@ -31,7 +31,7 @@ The application is built with a modern web stack, adhering to a module-first arc
 - **Routing**: Wouter
 
 ### Module Structure
-The codebase is organized into feature modules (`crewing`, `admin`) within the `client/src/modules/` directory, alongside shared components, utilities, hooks, and global types.
+The codebase is organized into feature modules (`crewing`, `admin`, `vessel`, `crew-pool`, `recruitment`) within the `client/src/modules/` directory, alongside shared components, utilities, hooks, and global types. Each module has its own dedicated sidebar for navigation when applicable.
 
 ### UI/UX Decisions
 - **Layout and Alignment**: Content, filter bars, and tables align consistently with screen titles.
