@@ -41,7 +41,10 @@ The codebase is organized into feature modules (`crewing`, `admin`, `vessel`, `c
 
 ### Technical Implementations
 - **Vessel Revision System**: Manages vessel rank assignments with distinct "Save Draft" (temporary, no date) and "Submit" (finalized, mandatory date, auto-sequencing R0→R1→R2) workflows. It includes robust date validation and cleans up drafts upon submission.
-- **Performance Optimization**: Utilizes Map-based O(1) lookups for vessel rank checkboxes to prevent browser freezing, and TanStack Query for data caching.
+- **Performance Optimization**: 
+  - Map-based O(1) lookups for vessel rank checkboxes to prevent browser freezing
+  - TanStack Query for data caching
+  - useRef pattern in AdminModule to prevent infinite re-render loops when syncing rank master data (uses reference equality checks to avoid redundant state updates)
 - **Data Storage**: Uses `PersistentFileStorage` (`test-data.json`) for development, with a defined PostgreSQL/Drizzle ORM schema for production readiness.
 
 ## External Dependencies
