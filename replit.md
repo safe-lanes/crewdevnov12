@@ -41,10 +41,18 @@ The codebase is organized into feature modules (`crewing`, `admin`, `vessel`, `c
 
 ### Technical Implementations
 - **Vessel Revision System**: Manages vessel rank assignments with distinct "Save Draft" (temporary, no date) and "Submit" (finalized, mandatory date, auto-sequencing R0→R1→R2) workflows. It includes robust date validation and cleans up drafts upon submission.
+- **Vessel Database Module**: Displays all vessels configured in Admin > Rank Admin > Vessel Tab (Master Data ID 014). Features:
+  - Real-time vessel data fetching from `/api/masters/014/data`
+  - Dynamic crew count calculation by matching crew members to vessels
+  - Filter bar with radio buttons for Vessel, Fleet, and Add Group views
+  - AG Grid table with columns: Vessel name, Type, Crew o/b count, Actions
+  - Loading states handled via TanStack Query
+  - Integrated with crew management system for accurate on-board counts
 - **Performance Optimization**: 
   - Map-based O(1) lookups for vessel rank checkboxes to prevent browser freezing
   - TanStack Query for data caching
   - useRef pattern in AdminModule to prevent infinite re-render loops when syncing rank master data (uses reference equality checks to avoid redundant state updates)
+  - useMemo for derived vessel data calculations to minimize re-renders
 - **Data Storage**: Uses `PersistentFileStorage` (`test-data.json`) for development, with a defined PostgreSQL/Drizzle ORM schema for production readiness.
 
 ## External Dependencies
