@@ -231,13 +231,13 @@ export const VesselModule = (): JSX.Element => {
                     {/* Right: Back Button */}
                     <div className="flex-shrink-0">
                         <Button
-                            variant="ghost"
+                            variant="outline"
                             onClick={handleBackToList}
-                            className="gap-2 text-[#3b82f6] hover:text-[#2563eb] hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                            className="h-8 border-[#e1e8ed] text-[#16569e] flex items-center gap-2"
                             data-testid="button-back-to-list"
                         >
                             <ArrowLeft className="h-4 w-4" />
-                            Back
+                            <span className="text-xs">Back</span>
                         </Button>
                     </div>
                 </div>
