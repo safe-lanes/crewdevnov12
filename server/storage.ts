@@ -1078,6 +1078,39 @@ export class PersistentFileStorage implements IStorage {
     this.loadFromFile();
   }
 
+  private loadNestedMapData(data: any): Map<number, VesselRevision> {
+    // Helper function to recursively extract revision objects from nested arrays
+    const extractRevisions = (arr: any, results: VesselRevision[] = []): VesselRevision[] => {
+      if (!Array.isArray(arr)) return results;
+      
+      for (const item of arr) {
+        if (Array.isArray(item) && item.length === 2) {
+          const [key, value] = item;
+          // Check if value is a revision object (has vesselId property)
+          if (typeof value === 'object' && value !== null && !Array.isArray(value) && value.vesselId) {
+            results.push(value);
+          } else {
+            // Recursively search in nested arrays
+            extractRevisions(item, results);
+          }
+        }
+      }
+      return results;
+    };
+    
+    const revisions = extractRevisions(data);
+    const map = new Map<number, VesselRevision>();
+    
+    for (const revision of revisions) {
+      if (revision.id !== undefined) {
+        map.set(revision.id, revision);
+      }
+    }
+    
+    console.log(`📊 Loaded ${map.size} vessel revisions from file`);
+    return map;
+  }
+
   private loadFromFile(): void {
     try {
       if (fs.existsSync(this.filePath)) {
@@ -1118,8 +1151,8 @@ export class PersistentFileStorage implements IStorage {
         this.vesselDrafts = new Map(data.vesselDrafts || []);
         this.currentVesselDraftId = data.currentVesselDraftId || 1;
         
-        // Load vessel revisions and counter (same format as other maps)
-        this.vesselRevisions = new Map(data.vesselRevisions || []);
+        // Load vessel revisions and counter - flatten nested structure if needed
+        this.vesselRevisions = this.loadNestedMapData(data.vesselRevisions || []);
         this.currentVesselRevisionId = data.currentVesselRevisionId || 1;
         
         console.log("📄 Loaded existing data from test-data.json");
