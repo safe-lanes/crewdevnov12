@@ -316,6 +316,10 @@ const AdminModuleInner = (): JSX.Element => {
   // Track which vessels have been loaded to prevent duplicate fetches
   const loadedVesselsRef = React.useRef<Set<string>>(new Set());
   
+  // PERFORMANCE FIX: Track previous vesselOptions to prevent infinite loops
+  // Only sync when vesselOptions actually changes (not just reference)
+  const prevVesselOptionsRef = React.useRef<string>('');
+  
   // PERFORMANCE OPTIMIZATION: Only build lookup for the CURRENT vessel being displayed
   // This avoids rebuilding Maps for all vessels on every checkbox click
   const currentVesselRankLookup = useMemo(() => {
@@ -924,13 +928,24 @@ const AdminModuleInner = (): JSX.Element => {
     // Don't sync if companyRankData is empty (initial state)
     if (companyRankData.length === 0 || vesselOptions.length === 0) return;
 
+    // PERFORMANCE FIX: Only sync if vesselOptions actually changed (prevent infinite loops)
+    const vesselOptionsKey = JSON.stringify(vesselOptions);
+    if (prevVesselOptionsRef.current === vesselOptionsKey) {
+      return; // No change, skip sync
+    }
+    prevVesselOptionsRef.current = vesselOptionsKey;
+
     setVesselRankDataMap(prev => {
       const newMap = new Map();
       
       vesselOptions.forEach((vessel: VesselOption) => {
         const existingVesselData = prev.get(vessel.value) || [];
         
-        // Check if this vessel has loaded data (any checkbox is true)
+        // CRITICAL: Skip vessels that have been loaded from API to prevent race condition
+        // Check loadedVesselsRef first to avoid overwriting during async load
+        const isLoadedFromAPI = loadedVesselsRef.current.has(vessel.value);
+        
+        // Also check if this vessel has loaded data (any checkbox is true)
         const hasLoadedData = existingVesselData.some(rank => 
           rank.actualManningFlag || 
           rank.safeManning || 
@@ -939,8 +954,8 @@ const AdminModuleInner = (): JSX.Element => {
           rank.actualManning.length > 0
         );
         
-        // If vessel has loaded data, preserve it completely - don't recreate from company structure
-        if (hasLoadedData && existingVesselData.length > 0) {
+        // If vessel has been loaded from API OR has loaded data, preserve it completely
+        if ((isLoadedFromAPI || hasLoadedData) && existingVesselData.length > 0) {
           newMap.set(vessel.value, existingVesselData);
           return;
         }
