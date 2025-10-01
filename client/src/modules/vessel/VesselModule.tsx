@@ -41,6 +41,15 @@ const useCrewMembers = () => {
     });
 };
 
+// Hook to fetch vessel ranks from latest revision
+const useVesselRanks = (vesselId: string | null) => {
+    return useQuery({
+        queryKey: ['/api/vessel-revisions/ranks', vesselId],
+        enabled: !!vesselId,
+        select: (data: any[]) => data
+    });
+};
+
 export const VesselModule = (): JSX.Element => {
     const [selectedVesselPage, setSelectedVesselPage] = useState("vessel-database");
     
@@ -63,6 +72,9 @@ export const VesselModule = (): JSX.Element => {
     // Fetch vessels and crew members
     const { data: vessels = [], isLoading: vesselsLoading } = useVessels();
     const { data: crewMembers = [], isLoading: crewLoading } = useCrewMembers();
+    
+    // Fetch vessel ranks for selected vessel
+    const { data: vesselRanks = [], isLoading: ranksLoading } = useVesselRanks(selectedVessel?.vesselId || null);
 
     const handleClearFilters = () => {
         setVesselValue("");
@@ -293,28 +305,71 @@ export const VesselModule = (): JSX.Element => {
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {/* Sample empty row to show structure */}
-                                                <TableRow className="hover:bg-gray-50 border-b border-gray-100">
-                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-sno-1">1.</TableCell>
-                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-rank-1">Master</TableCell>
-                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-name-1">Sabharwal, Alok Nath</TableCell>
-                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-nationality-1">Indian</TableCell>
-                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-joined-1">25 Mar 22, Rotterdam</TableCell>
-                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-doccheck-1"></TableCell>
-                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-famil-1"></TableCell>
-                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-relief-1"></TableCell>
-                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-planned-1"></TableCell>
-                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-docexp-1"></TableCell>
-                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-medical-1"></TableCell>
-                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-vaccexp-1"></TableCell>
-                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-appraisal-1"></TableCell>
-                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-handover-1"></TableCell>
-                                                    <TableCell className="text-xs" data-testid="cell-actions-1">
-                                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                                            <Eye className="h-4 w-4 text-gray-500" />
-                                                        </Button>
-                                                    </TableCell>
-                                                </TableRow>
+                                                {ranksLoading ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={15} className="text-center text-xs text-gray-500 py-8">
+                                                            Loading vessel positions...
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : vesselRanks.length === 0 ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={15} className="text-center text-xs text-gray-500 py-8">
+                                                            No positions configured for this vessel. Please configure positions in Admin &gt; Rank Admin &gt; Vessel.
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : (
+                                                    vesselRanks.map((rank: any, index: number) => (
+                                                        <TableRow key={rank.id || index} className="hover:bg-gray-50 border-b border-gray-100">
+                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-sno-${index + 1}`}>
+                                                                {index + 1}.
+                                                            </TableCell>
+                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-rank-${index + 1}`}>
+                                                                {rank.role || rank.rank}
+                                                            </TableCell>
+                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-name-${index + 1}`}>
+                                                                {/* Empty - will be filled when crew assigned */}
+                                                            </TableCell>
+                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-nationality-${index + 1}`}>
+                                                                {/* Empty - will be filled when crew assigned */}
+                                                            </TableCell>
+                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-joined-${index + 1}`}>
+                                                                {/* Empty - will be filled when crew assigned */}
+                                                            </TableCell>
+                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-doccheck-${index + 1}`}>
+                                                                {/* Empty - will be filled when crew assigned */}
+                                                            </TableCell>
+                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-famil-${index + 1}`}>
+                                                                {/* Empty - will be filled when crew assigned */}
+                                                            </TableCell>
+                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-relief-${index + 1}`}>
+                                                                {/* Empty - will be filled when crew assigned */}
+                                                            </TableCell>
+                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-planned-${index + 1}`}>
+                                                                {/* Empty - will be filled when crew assigned */}
+                                                            </TableCell>
+                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-docexp-${index + 1}`}>
+                                                                {/* Empty - will be filled when crew assigned */}
+                                                            </TableCell>
+                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-medical-${index + 1}`}>
+                                                                {/* Empty - will be filled when crew assigned */}
+                                                            </TableCell>
+                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-vaccexp-${index + 1}`}>
+                                                                {/* Empty - will be filled when crew assigned */}
+                                                            </TableCell>
+                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-appraisal-${index + 1}`}>
+                                                                {/* Empty - will be filled when crew assigned */}
+                                                            </TableCell>
+                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-handover-${index + 1}`}>
+                                                                {/* Empty - will be filled when crew assigned */}
+                                                            </TableCell>
+                                                            <TableCell className="text-xs" data-testid={`cell-actions-${index + 1}`}>
+                                                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                                    <Eye className="h-4 w-4 text-gray-500" />
+                                                                </Button>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))
+                                                )}
                                             </TableBody>
                                         </Table>
                                     </ScrollArea>
