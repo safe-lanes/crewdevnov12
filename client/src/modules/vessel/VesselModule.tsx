@@ -7,7 +7,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Filter, Edit, ArrowLeft, ChevronDown, Download } from 'lucide-react';
+import { Filter, Edit, ArrowLeft, Download } from 'lucide-react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -183,7 +183,7 @@ export const VesselModule = (): JSX.Element => {
         return (
             <div className="flex flex-col h-full">
                 {/* Header with vessel dropdown, tabs, and back button */}
-                <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
+                <div className="flex items-center justify-between mb-6 pb-4">
                     {/* Left: Vessel Dropdown */}
                     <div className="flex-shrink-0">
                         <Select value={selectedVessel.name} onValueChange={handleVesselChange}>
@@ -191,10 +191,7 @@ export const VesselModule = (): JSX.Element => {
                                 className="h-10 border-none shadow-none text-xl font-semibold text-[#0f172a] dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800"
                                 data-testid="select-vessel-detail"
                             >
-                                <div className="flex items-center gap-2">
-                                    <span>{selectedVessel.name}</span>
-                                    <ChevronDown className="h-4 w-4 text-gray-500" />
-                                </div>
+                                <SelectValue>{selectedVessel.name}</SelectValue>
                             </SelectTrigger>
                             <SelectContent>
                                 {vessels.map((vessel: any) => (
