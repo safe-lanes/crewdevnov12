@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import VesselSideBar from './VesselSideBar';
 import MainLayout from '@/components/main/MainLayout';
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
@@ -10,6 +11,31 @@ import { Filter, Edit } from 'lucide-react';
 import { Card, CardContent } from "@/components/ui/card";
 import AgGridTable from '@/components/AgGrid/AgGridTable';
 import { ColDef, GridApi } from 'ag-grid-community';
+
+// Hook to fetch vessels from Master Data (ID 014)
+const useVessels = () => {
+    return useQuery({
+        queryKey: ['/api/masters/014/data'],
+        select: (data: any[]) => {
+            return data
+                .filter((vessel: any) => !vessel.isDeleted)
+                .map((vessel: any) => ({
+                    id: vessel.id,
+                    vesselId: vessel.entryId,
+                    name: vessel.name || vessel.vessel || 'Unknown Vessel',
+                    vesselType: vessel.vesselType || 'Unknown Type',
+                }));
+        }
+    });
+};
+
+// Hook to fetch crew members
+const useCrewMembers = () => {
+    return useQuery({
+        queryKey: ['/api/crew-members'],
+        select: (data: any[]) => data
+    });
+};
 
 export const VesselModule = (): JSX.Element => {
     const [selectedVesselPage, setSelectedVesselPage] = useState("vessel-database");
@@ -26,6 +52,10 @@ export const VesselModule = (): JSX.Element => {
 
     const gridApiRef = useRef<GridApi | null>(null);
 
+    // Fetch vessels and crew members
+    const { data: vessels = [], isLoading: vesselsLoading } = useVessels();
+    const { data: crewMembers = [], isLoading: crewLoading } = useCrewMembers();
+
     const handleClearFilters = () => {
         setVesselValue("");
         setFleetValue("");
@@ -33,17 +63,22 @@ export const VesselModule = (): JSX.Element => {
         setFilterType("vessel");
     };
 
-    // Sample vessel data
-    const vesselData = [
-        { id: 1, vessel: 'Vessel 1', type: 'Oil Tanker', crewOnBoard: 21 },
-        { id: 2, vessel: 'Vessel 1', type: 'Oil Tanker', crewOnBoard: 21 },
-        { id: 3, vessel: 'Vessel 1', type: 'Oil Tanker', crewOnBoard: 21 },
-        { id: 4, vessel: 'Vessel 1', type: 'Oil Tanker', crewOnBoard: 21 },
-        { id: 5, vessel: 'Vessel 1', type: 'Oil Tanker', crewOnBoard: 21 },
-        { id: 6, vessel: 'Vessel 1', type: 'Oil Tanker', crewOnBoard: 21 },
-        { id: 7, vessel: 'Vessel 1', type: 'Oil Tanker', crewOnBoard: 21 },
-        { id: 8, vessel: 'Vessel 1', type: 'Oil Tanker', crewOnBoard: 21 },
-    ];
+    // Calculate crew on board for each vessel
+    const vesselData = useMemo(() => {
+        return vessels.map((vessel: any) => {
+            const crewCount = crewMembers.filter((crew: any) => 
+                crew.presentVessel === vessel.name || 
+                crew.presentVessel === vessel.vesselId
+            ).length;
+
+            return {
+                id: vessel.id,
+                vessel: vessel.name,
+                type: vessel.vesselType,
+                crewOnBoard: crewCount
+            };
+        });
+    }, [vessels, crewMembers]);
 
     const ActionsCellRenderer = (props: any) => {
         return (
@@ -148,13 +183,16 @@ export const VesselModule = (): JSX.Element => {
                                     <SelectTrigger 
                                         className="h-8 w-40 ml-2 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
                                         data-testid="select-vessel-value"
+                                        disabled={vesselsLoading}
                                     >
-                                        <SelectValue placeholder="Vessel" />
+                                        <SelectValue placeholder={vesselsLoading ? "Loading..." : "Vessel"} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="vessel1">Vessel 1</SelectItem>
-                                        <SelectItem value="vessel2">Vessel 2</SelectItem>
-                                        <SelectItem value="vessel3">Vessel 3</SelectItem>
+                                        {vessels.map((vessel: any) => (
+                                            <SelectItem key={vessel.id} value={vessel.name}>
+                                                {vessel.name}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -233,6 +271,7 @@ export const VesselModule = (): JSX.Element => {
                             rowData={vesselData}
                             columnDefs={columnDefs}
                             onGridReady={onGridReady}
+                            loading={vesselsLoading || crewLoading}
                             autoHeight={true}
                             maxHeight="500px"
                             minHeight="200px"
