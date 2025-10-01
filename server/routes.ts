@@ -610,6 +610,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get vessel ranks from latest revision (must come before :id route)
+  app.get("/api/vessel-revisions/ranks/:vesselId", async (req, res) => {
+    try {
+      const { vesselId } = req.params;
+      console.log(`📜 [VESSEL RANKS API] Fetching ranks for vessel: ${vesselId}`);
+      
+      // Get all revisions for this vessel
+      const vesselRevisions = await storage.getVesselRevisionsByVessel(vesselId);
+      
+      if (vesselRevisions.length === 0) {
+        console.log(`📜 [VESSEL RANKS API] No revisions found for vessel ${vesselId}`);
+        return res.json([]);
+      }
+      
+      // Sort revisions by revision number to get the latest (R0, R1, R2, etc.)
+      const sortedRevisions = vesselRevisions.sort((a, b) => {
+        const aNum = parseInt(a.revision.replace('R', ''));
+        const bNum = parseInt(b.revision.replace('R', ''));
+        return bNum - aNum;
+      });
+      
+      const latestRevision = sortedRevisions[0];
+      console.log(`📜 [VESSEL RANKS API] Latest revision for vessel ${vesselId}: ${latestRevision.revision}`);
+      
+      // Parse the revisionData JSON to get the ranks
+      const rankData = JSON.parse(latestRevision.revisionData);
+      
+      // Filter ranks that have at least one manning checkbox checked
+      const activeRanks = rankData.filter((rank: any) => 
+        rank.actualManning || rank.safeManning || rank.optimumManning || rank.highWorkloadManning
+      );
+      
+      console.log(`📜 [VESSEL RANKS API] Found ${activeRanks.length} active ranks for vessel ${vesselId}`);
+      res.json(activeRanks);
+    } catch (error) {
+      console.error("Failed to fetch vessel ranks:", error);
+      res.status(500).json({ error: "Failed to fetch vessel ranks" });
+    }
+  });
+
   // Get next revision number for a vessel (must come before :id route)
   app.get("/api/vessel-revisions/next-revision/:vesselId", async (req, res) => {
     try {
