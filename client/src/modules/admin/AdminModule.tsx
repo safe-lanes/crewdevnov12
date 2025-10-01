@@ -1083,7 +1083,7 @@ const AdminModuleInner = (): JSX.Element => {
                 }
               }
             } else {
-              // NON-REVISION MODE: Load latest revision for display, or drafts if no revisions exist
+              // NON-REVISION MODE: Load latest revision for display
               const revisionResponse = await fetch(`/api/vessel-revisions/by-vessel/${vesselId}`);
               if (revisionResponse.ok) {
                 const revisions = await revisionResponse.json();
@@ -1117,27 +1117,7 @@ const AdminModuleInner = (): JSX.Element => {
                   loadedVesselsRef.current.add(vesselId);
                   console.log(`📥 ✓ Loaded revision ${latestRevision.revision} for vessel ${vesselId} (${loadedData.length} ranks, date: ${latestRevision.revisionDate})`);
                 } else {
-                  // No revisions found - check for drafts as fallback
-                  console.info(`📥 No revisions found for vessel ${vesselId} - checking for drafts...`);
-                  const draftResponse = await fetch(`/api/vessel-drafts/by-vessel/${vesselId}`);
-                  if (draftResponse.ok) {
-                    const drafts = await draftResponse.json();
-                    if (drafts.length > 0) {
-                      const latestDraft = drafts[0];
-                      const loadedData: VesselRankData[] = JSON.parse(latestDraft.draftData);
-                      
-                      setVesselRankDataMap(prev => {
-                        const newMap = new Map(prev);
-                        newMap.set(vesselId, loadedData);
-                        return newMap;
-                      });
-                      
-                      loadedVesselsRef.current.add(vesselId);
-                      console.log(`📥 ✓ Loaded draft for vessel ${vesselId} (${loadedData.length} ranks) - no revisions available`);
-                    } else {
-                      console.info(`📥 No drafts found either for vessel ${vesselId} - will use company structure`);
-                    }
-                  }
+                  console.info(`📥 No revisions found for vessel ${vesselId} - will use company structure`);
                   setFlexDate(''); // Clear date when no revisions exist
                 }
               }
