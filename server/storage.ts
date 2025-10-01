@@ -1036,7 +1036,6 @@ export class PersistentFileStorage implements IStorage {
   private appraisalResults: Map<number, AppraisalResult>;
   private recruitmentCandidates: Map<string, RecruitmentCandidate>;
   private vesselGroups: Map<number, VesselGroup>;
-  private dataMasters: Map<string, DataMaster>;
   private masterDataEntries: Map<string, any>;
   private vesselDrafts: Map<number, VesselDraft>;
   private vesselRevisions: Map<number, VesselRevision>;
@@ -1062,7 +1061,6 @@ export class PersistentFileStorage implements IStorage {
     this.appraisalResults = new Map();
     this.recruitmentCandidates = new Map();
     this.vesselGroups = new Map();
-    this.dataMasters = new Map();
     this.masterDataEntries = new Map();
     this.vesselDrafts = new Map();
     this.vesselRevisions = new Map();
@@ -1096,30 +1094,7 @@ export class PersistentFileStorage implements IStorage {
         this.appraisalResults = new Map(data.appraisalResults || []);
         this.recruitmentCandidates = new Map(data.recruitmentCandidates || []);
         this.vesselGroups = new Map(data.vesselGroups || []);
-        this.dataMasters = new Map(data.dataMasters || []);
         this.masterDataEntries = new Map(data.masterDataEntries || []);
-        
-        // Initialize dataMasters if empty (for backward compatibility with old test-data.json files)
-        if (this.dataMasters.size === 0) {
-          this.dataMasters.set("001", { id: "001", name: "Nationality Master", description: "Master data for nationalities" });
-          this.dataMasters.set("002", { id: "002", name: "Country Master", description: "Master data for countries" });
-          this.dataMasters.set("003", { id: "003", name: "Language Master", description: "Master data for languages" });
-          this.dataMasters.set("004", { id: "004", name: "Vessel Type Master", description: "Master data for vessel types" });
-          this.dataMasters.set("006", { id: "006", name: "Qualification Master", description: "Master data for qualifications" });
-          this.dataMasters.set("007", { id: "007", name: "Course Master", description: "Master data for courses" });
-          this.dataMasters.set("008", { id: "008", name: "Contract Type Master", description: "Master data for contract types" });
-          this.dataMasters.set("009", { id: "009", name: "Medical Status Master", description: "Master data for medical statuses" });
-          this.dataMasters.set("010", { id: "010", name: "Document Type Master", description: "Master data for document types" });
-          this.dataMasters.set("011", { id: "011", name: "Ship Equipment Master", description: "Master data for ship equipment" });
-          this.dataMasters.set("012", { id: "012", name: "Designation Master", description: "Master data for designations" });
-          this.dataMasters.set("013", { id: "013", name: "User Master", description: "Master data for users" });
-          this.dataMasters.set("014", { id: "014", name: "Vessels Master", description: "Master data for vessels" });
-          this.dataMasters.set("015", { id: "015", name: "Fleet Groups Master", description: "Master data for fleet groups" });
-          this.dataMasters.set("016", { id: "016", name: "Additional Groups Master", description: "Master data for additional groups" });
-          this.dataMasters.set("017", { id: "017", name: "Vessel Owners Master", description: "Master data for vessel owners" });
-          this.dataMasters.set("018", { id: "018", name: "Port Master", description: "Master data for ports" });
-          this.saveToFile(); // Save the initialized dataMasters
-        }
         
         // Load current counters
         this.currentUserId = data.currentUserId || 1;
@@ -1185,7 +1160,6 @@ export class PersistentFileStorage implements IStorage {
         vesselGroups: Array.from(this.vesselGroups.entries()),
         vesselDrafts: Array.from(this.vesselDrafts.entries()),
         vesselRevisions: Array.from(this.vesselRevisions.entries()),
-        dataMasters: Array.from(this.dataMasters.entries()),
         masterDataEntries: Array.from(this.masterDataEntries.entries()),
         currentUserId: this.currentUserId,
         currentFormId: this.currentFormId,
@@ -1214,28 +1188,7 @@ export class PersistentFileStorage implements IStorage {
     this.crewMembers = new Map();
     this.appraisalResults = new Map();
     this.recruitmentCandidates = new Map();
-    this.dataMasters = new Map();
     this.masterDataEntries = new Map();
-    
-    // Initialize data masters with 18 master categories
-    this.dataMasters.set("001", { id: "001", name: "Nationality Master", description: "Master data for nationalities" });
-    this.dataMasters.set("002", { id: "002", name: "Country Master", description: "Master data for countries" });
-    this.dataMasters.set("003", { id: "003", name: "Language Master", description: "Master data for languages" });
-    this.dataMasters.set("004", { id: "004", name: "Vessel Type Master", description: "Master data for vessel types" });
-    this.dataMasters.set("006", { id: "006", name: "Qualification Master", description: "Master data for qualifications" });
-    this.dataMasters.set("007", { id: "007", name: "Course Master", description: "Master data for courses" });
-    this.dataMasters.set("008", { id: "008", name: "Contract Type Master", description: "Master data for contract types" });
-    this.dataMasters.set("009", { id: "009", name: "Medical Status Master", description: "Master data for medical statuses" });
-    this.dataMasters.set("010", { id: "010", name: "Document Type Master", description: "Master data for document types" });
-    this.dataMasters.set("011", { id: "011", name: "Ship Equipment Master", description: "Master data for ship equipment" });
-    this.dataMasters.set("012", { id: "012", name: "Designation Master", description: "Master data for designations" });
-    this.dataMasters.set("013", { id: "013", name: "User Master", description: "Master data for users" });
-    this.dataMasters.set("014", { id: "014", name: "Vessels Master", description: "Master data for vessels" });
-    this.dataMasters.set("015", { id: "015", name: "Fleet Groups Master", description: "Master data for fleet groups" });
-    this.dataMasters.set("016", { id: "016", name: "Additional Groups Master", description: "Master data for additional groups" });
-    this.dataMasters.set("017", { id: "017", name: "Vessel Owners Master", description: "Master data for vessel owners" });
-    this.dataMasters.set("018", { id: "018", name: "Port Master", description: "Master data for ports" });
-    
     this.currentUserId = 1;
     this.currentFormId = 2;
     this.currentRankGroupId = 1;
@@ -1488,339 +1441,6 @@ export class PersistentFileStorage implements IStorage {
     });
 
     this.currentAppraisalResultId = 5;
-
-    // Initialize sample master data entries
-    let masterEntryId = 100; // Start from 100 to avoid conflicts with existing vessel data
-    
-    // Nationality Master (001) - Sample nationalities
-    this.masterDataEntries.set(String(masterEntryId++), {
-      id: masterEntryId - 1,
-      masterId: "001",
-      entryId: `NAT-001`,
-      name: "Indian",
-      description: "India",
-      isActive: true,
-      isDeleted: false,
-      createdBy: "admin",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-    
-    this.masterDataEntries.set(String(masterEntryId++), {
-      id: masterEntryId - 1,
-      masterId: "001",
-      entryId: `NAT-002`,
-      name: "Filipino",
-      description: "Philippines",
-      isActive: true,
-      isDeleted: false,
-      createdBy: "admin",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-    
-    this.masterDataEntries.set(String(masterEntryId++), {
-      id: masterEntryId - 1,
-      masterId: "001",
-      entryId: `NAT-003`,
-      name: "British",
-      description: "United Kingdom",
-      isActive: true,
-      isDeleted: false,
-      createdBy: "admin",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-    
-    this.masterDataEntries.set(String(masterEntryId++), {
-      id: masterEntryId - 1,
-      masterId: "001",
-      entryId: `NAT-004`,
-      name: "Chinese",
-      description: "China",
-      isActive: true,
-      isDeleted: false,
-      createdBy: "admin",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-    
-    this.masterDataEntries.set(String(masterEntryId++), {
-      id: masterEntryId - 1,
-      masterId: "001",
-      entryId: `NAT-005`,
-      name: "Ukrainian",
-      description: "Ukraine",
-      isActive: true,
-      isDeleted: false,
-      createdBy: "admin",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-
-    // Country Master (002) - Sample countries
-    this.masterDataEntries.set(String(masterEntryId++), {
-      id: masterEntryId - 1,
-      masterId: "002",
-      entryId: `CTY-001`,
-      name: "India",
-      description: "IN",
-      isActive: true,
-      isDeleted: false,
-      createdBy: "admin",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-    
-    this.masterDataEntries.set(String(masterEntryId++), {
-      id: masterEntryId - 1,
-      masterId: "002",
-      entryId: `CTY-002`,
-      name: "Philippines",
-      description: "PH",
-      isActive: true,
-      isDeleted: false,
-      createdBy: "admin",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-    
-    this.masterDataEntries.set(String(masterEntryId++), {
-      id: masterEntryId - 1,
-      masterId: "002",
-      entryId: `CTY-003`,
-      name: "United Kingdom",
-      description: "UK",
-      isActive: true,
-      isDeleted: false,
-      createdBy: "admin",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-    
-    this.masterDataEntries.set(String(masterEntryId++), {
-      id: masterEntryId - 1,
-      masterId: "002",
-      entryId: `CTY-004`,
-      name: "China",
-      description: "CN",
-      isActive: true,
-      isDeleted: false,
-      createdBy: "admin",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-    
-    this.masterDataEntries.set(String(masterEntryId++), {
-      id: masterEntryId - 1,
-      masterId: "002",
-      entryId: `CTY-005`,
-      name: "Ukraine",
-      description: "UA",
-      isActive: true,
-      isDeleted: false,
-      createdBy: "admin",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-
-    // Language Master (003) - Sample languages
-    this.masterDataEntries.set(String(masterEntryId++), {
-      id: masterEntryId - 1,
-      masterId: "003",
-      entryId: `LNG-001`,
-      name: "English",
-      description: "EN",
-      isActive: true,
-      isDeleted: false,
-      createdBy: "admin",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-    
-    this.masterDataEntries.set(String(masterEntryId++), {
-      id: masterEntryId - 1,
-      masterId: "003",
-      entryId: `LNG-002`,
-      name: "Mandarin",
-      description: "ZH",
-      isActive: true,
-      isDeleted: false,
-      createdBy: "admin",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-    
-    this.masterDataEntries.set(String(masterEntryId++), {
-      id: masterEntryId - 1,
-      masterId: "003",
-      entryId: `LNG-003`,
-      name: "Hindi",
-      description: "HI",
-      isActive: true,
-      isDeleted: false,
-      createdBy: "admin",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-    
-    this.masterDataEntries.set(String(masterEntryId++), {
-      id: masterEntryId - 1,
-      masterId: "003",
-      entryId: `LNG-004`,
-      name: "Spanish",
-      description: "ES",
-      isActive: true,
-      isDeleted: false,
-      createdBy: "admin",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-    
-    this.masterDataEntries.set(String(masterEntryId++), {
-      id: masterEntryId - 1,
-      masterId: "003",
-      entryId: `LNG-005`,
-      name: "Tagalog",
-      description: "TL",
-      isActive: true,
-      isDeleted: false,
-      createdBy: "admin",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-
-    // Vessel Type Master (004) - Sample vessel types
-    this.masterDataEntries.set(String(masterEntryId++), {
-      id: masterEntryId - 1,
-      masterId: "004",
-      entryId: `VTP-001`,
-      name: "Oil Tanker",
-      description: "Crude oil and petroleum products",
-      isActive: true,
-      isDeleted: false,
-      createdBy: "admin",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-    
-    this.masterDataEntries.set(String(masterEntryId++), {
-      id: masterEntryId - 1,
-      masterId: "004",
-      entryId: `VTP-002`,
-      name: "Container",
-      description: "Container cargo vessels",
-      isActive: true,
-      isDeleted: false,
-      createdBy: "admin",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-    
-    this.masterDataEntries.set(String(masterEntryId++), {
-      id: masterEntryId - 1,
-      masterId: "004",
-      entryId: `VTP-003`,
-      name: "Bulk Carrier",
-      description: "Dry bulk cargo vessels",
-      isActive: true,
-      isDeleted: false,
-      createdBy: "admin",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-    
-    this.masterDataEntries.set(String(masterEntryId++), {
-      id: masterEntryId - 1,
-      masterId: "004",
-      entryId: `VTP-004`,
-      name: "LPG Tanker",
-      description: "Liquefied petroleum gas carriers",
-      isActive: true,
-      isDeleted: false,
-      createdBy: "admin",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-    
-    this.masterDataEntries.set(String(masterEntryId++), {
-      id: masterEntryId - 1,
-      masterId: "004",
-      entryId: `VTP-005`,
-      name: "Chemical Tanker",
-      description: "Chemical products carriers",
-      isActive: true,
-      isDeleted: false,
-      createdBy: "admin",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-
-    // Port Master (018) - Sample ports
-    this.masterDataEntries.set(String(masterEntryId++), {
-      id: masterEntryId - 1,
-      masterId: "018",
-      entryId: `PRT-001`,
-      name: "Singapore",
-      description: "SG",
-      isActive: true,
-      isDeleted: false,
-      createdBy: "admin",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-    
-    this.masterDataEntries.set(String(masterEntryId++), {
-      id: masterEntryId - 1,
-      masterId: "018",
-      entryId: `PRT-002`,
-      name: "Rotterdam",
-      description: "NL",
-      isActive: true,
-      isDeleted: false,
-      createdBy: "admin",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-    
-    this.masterDataEntries.set(String(masterEntryId++), {
-      id: masterEntryId - 1,
-      masterId: "018",
-      entryId: `PRT-003`,
-      name: "Shanghai",
-      description: "CN",
-      isActive: true,
-      isDeleted: false,
-      createdBy: "admin",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-    
-    this.masterDataEntries.set(String(masterEntryId++), {
-      id: masterEntryId - 1,
-      masterId: "018",
-      entryId: `PRT-004`,
-      name: "Mumbai",
-      description: "IN",
-      isActive: true,
-      isDeleted: false,
-      createdBy: "admin",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-    
-    this.masterDataEntries.set(String(masterEntryId++), {
-      id: masterEntryId - 1,
-      masterId: "018",
-      entryId: `PRT-005`,
-      name: "Manila",
-      description: "PH",
-      isActive: true,
-      isDeleted: false,
-      createdBy: "admin",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
   }
 
   // User methods (same as MemStorage)
@@ -2386,9 +2006,11 @@ export class PersistentFileStorage implements IStorage {
     return result;
   }
 
-  // Data Masters methods
+  // Data Masters methods (return empty array for frontend compatibility)
   async getDataMasters(): Promise<any[]> {
-    return Array.from(this.dataMasters.values());
+    // PersistentFileStorage doesn't have data masters - return empty array for frontend compatibility
+    // Individual masters work via getMasterDataEntries() instead
+    return [];
   }
 
   async getDataMaster(id: string): Promise<any> {
