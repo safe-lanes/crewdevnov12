@@ -16,11 +16,15 @@ export const VesselModule = (): JSX.Element => {
 
     // Filter state
     const [filterType, setFilterType] = useState<"vessel" | "fleet" | "addGroup">("vessel");
-    const [selectedValue, setSelectedValue] = useState("");
+    const [vesselValue, setVesselValue] = useState("");
+    const [fleetValue, setFleetValue] = useState("");
+    const [addGroupValue, setAddGroupValue] = useState("");
     const [showFilters, setShowFilters] = useState(true);
 
     const handleClearFilters = () => {
-        setSelectedValue("");
+        setVesselValue("");
+        setFleetValue("");
+        setAddGroupValue("");
         setFilterType("vessel");
     };
 
@@ -43,16 +47,13 @@ export const VesselModule = (): JSX.Element => {
                 </SectionTitleComponents>
 
                 {showFilters && (
-                    <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-[#f7fafc] dark:bg-neutral-900 rounded-lg">
+                    <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-transparent rounded-lg">
                         <RadioGroup 
                             value={filterType} 
-                            onValueChange={(value: "vessel" | "fleet" | "addGroup") => {
-                                setFilterType(value);
-                                setSelectedValue("");
-                            }}
+                            onValueChange={(value: "vessel" | "fleet" | "addGroup") => setFilterType(value)}
                             className="flex items-center gap-6"
                         >
-                            <div className="flex items-center gap-2 min-w-[14rem]">
+                            <div className="flex items-center gap-2">
                                 <RadioGroupItem 
                                     value="vessel" 
                                     id="filter-vessel"
@@ -65,24 +66,22 @@ export const VesselModule = (): JSX.Element => {
                                 >
                                     Vessel
                                 </Label>
-                                {filterType === "vessel" && (
-                                    <Select value={selectedValue} onValueChange={setSelectedValue}>
-                                        <SelectTrigger 
-                                            className="h-8 w-40 ml-2 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-white dark:bg-neutral-900"
-                                            data-testid="select-vessel-value"
-                                        >
-                                            <SelectValue placeholder="Vessel" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="vessel1">Vessel 1</SelectItem>
-                                            <SelectItem value="vessel2">Vessel 2</SelectItem>
-                                            <SelectItem value="vessel3">Vessel 3</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                )}
+                                <Select value={vesselValue} onValueChange={setVesselValue}>
+                                    <SelectTrigger 
+                                        className="h-8 w-40 ml-2 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
+                                        data-testid="select-vessel-value"
+                                    >
+                                        <SelectValue placeholder="Vessel" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="vessel1">Vessel 1</SelectItem>
+                                        <SelectItem value="vessel2">Vessel 2</SelectItem>
+                                        <SelectItem value="vessel3">Vessel 3</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
 
-                            <div className="flex items-center gap-2 min-w-[14rem]">
+                            <div className="flex items-center gap-2">
                                 <RadioGroupItem 
                                     value="fleet" 
                                     id="filter-fleet"
@@ -95,24 +94,22 @@ export const VesselModule = (): JSX.Element => {
                                 >
                                     Fleet
                                 </Label>
-                                {filterType === "fleet" && (
-                                    <Select value={selectedValue} onValueChange={setSelectedValue}>
-                                        <SelectTrigger 
-                                            className="h-8 w-40 ml-2 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-white dark:bg-neutral-900"
-                                            data-testid="select-fleet-value"
-                                        >
-                                            <SelectValue placeholder="Fleet" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="fleet1">Fleet Group 1</SelectItem>
-                                            <SelectItem value="fleet2">Fleet Group 2</SelectItem>
-                                            <SelectItem value="fleet3">Fleet Group 3</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                )}
+                                <Select value={fleetValue} onValueChange={setFleetValue}>
+                                    <SelectTrigger 
+                                        className="h-8 w-40 ml-2 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
+                                        data-testid="select-fleet-value"
+                                    >
+                                        <SelectValue placeholder="Fleet" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="fleet1">Fleet Group 1</SelectItem>
+                                        <SelectItem value="fleet2">Fleet Group 2</SelectItem>
+                                        <SelectItem value="fleet3">Fleet Group 3</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
 
-                            <div className="flex items-center gap-2 min-w-[14rem]">
+                            <div className="flex items-center gap-2">
                                 <RadioGroupItem 
                                     value="addGroup" 
                                     id="filter-addgroup"
@@ -125,29 +122,26 @@ export const VesselModule = (): JSX.Element => {
                                 >
                                     Add Group
                                 </Label>
-                                {filterType === "addGroup" && (
-                                    <Select value={selectedValue} onValueChange={setSelectedValue}>
-                                        <SelectTrigger 
-                                            className="h-8 w-40 ml-2 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-white dark:bg-neutral-900"
-                                            data-testid="select-addgroup-value"
-                                        >
-                                            <SelectValue placeholder="Add Group" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="group1">Additional Group 1</SelectItem>
-                                            <SelectItem value="group2">Additional Group 2</SelectItem>
-                                            <SelectItem value="group3">Additional Group 3</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                )}
+                                <Select value={addGroupValue} onValueChange={setAddGroupValue}>
+                                    <SelectTrigger 
+                                        className="h-8 w-40 ml-2 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
+                                        data-testid="select-addgroup-value"
+                                    >
+                                        <SelectValue placeholder="Add Group" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="group1">Additional Group 1</SelectItem>
+                                        <SelectItem value="group2">Additional Group 2</SelectItem>
+                                        <SelectItem value="group3">Additional Group 3</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </RadioGroup>
 
                         <Button
-                            variant="ghost"
-                            size="sm"
+                            variant="outline"
                             onClick={handleClearFilters}
-                            className="ml-auto h-8 text-xs text-[#4f5863] dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                            className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
                             data-testid="button-clear-filters"
                         >
                             Clear
