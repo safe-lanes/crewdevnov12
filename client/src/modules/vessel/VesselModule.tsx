@@ -7,8 +7,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Filter, Edit } from 'lucide-react';
+import { Filter, Edit, ArrowLeft, ChevronDown } from 'lucide-react';
 import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AgGridTable from '@/components/AgGrid/AgGridTable';
 import { ColDef, GridApi } from 'ag-grid-community';
 
@@ -50,6 +51,10 @@ export const VesselModule = (): JSX.Element => {
     const [addGroupValue, setAddGroupValue] = useState("");
     const [showFilters, setShowFilters] = useState(true);
 
+    // Vessel detail view state
+    const [selectedVessel, setSelectedVessel] = useState<any>(null);
+    const [activeTab, setActiveTab] = useState("crew-list");
+
     const gridApiRef = useRef<GridApi | null>(null);
 
     // Fetch vessels and crew members
@@ -61,6 +66,26 @@ export const VesselModule = (): JSX.Element => {
         setFleetValue("");
         setAddGroupValue("");
         setFilterType("vessel");
+    };
+
+    const handleEditVessel = (vesselData: any) => {
+        const vessel = vessels.find((v: any) => v.id === vesselData.id);
+        if (vessel) {
+            setSelectedVessel(vessel);
+            setActiveTab("crew-list");
+        }
+    };
+
+    const handleBackToList = () => {
+        setSelectedVessel(null);
+        setActiveTab("crew-list");
+    };
+
+    const handleVesselChange = (vesselName: string) => {
+        const vessel = vessels.find((v: any) => v.name === vesselName);
+        if (vessel) {
+            setSelectedVessel(vessel);
+        }
     };
 
     // Calculate crew on board for each vessel
@@ -87,6 +112,7 @@ export const VesselModule = (): JSX.Element => {
                     variant="ghost" 
                     size="sm" 
                     className="h-8 w-8 p-0"
+                    onClick={() => handleEditVessel(props.data)}
                     data-testid={`button-edit-${props.data.id}`}
                 >
                     <Edit className="h-4 w-4 text-gray-500" />
@@ -139,6 +165,137 @@ export const VesselModule = (): JSX.Element => {
 
     const onGridReady = (params: { api: GridApi }) => {
         gridApiRef.current = params.api;
+    };
+
+    const renderVesselDetail = () => {
+        if (!selectedVessel) return null;
+
+        return (
+            <div className="flex flex-col h-full">
+                {/* Header with vessel dropdown, tabs, and back button */}
+                <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
+                    {/* Left: Vessel Dropdown */}
+                    <div className="flex-shrink-0">
+                        <Select value={selectedVessel.name} onValueChange={handleVesselChange}>
+                            <SelectTrigger 
+                                className="h-10 border-none shadow-none text-xl font-semibold text-[#0f172a] dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800"
+                                data-testid="select-vessel-detail"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <span>{selectedVessel.name}</span>
+                                    <ChevronDown className="h-4 w-4 text-gray-500" />
+                                </div>
+                            </SelectTrigger>
+                            <SelectContent>
+                                {vessels.map((vessel: any) => (
+                                    <SelectItem key={vessel.id} value={vessel.name}>
+                                        {vessel.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Center: Tabs */}
+                    <div className="flex-1 flex justify-center">
+                        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
+                            <TabsList className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                                <TabsTrigger 
+                                    value="crew-list" 
+                                    className="data-[state=active]:bg-[#3b82f6] data-[state=active]:text-white text-sm"
+                                    data-testid="tab-crew-list"
+                                >
+                                    Crew List
+                                </TabsTrigger>
+                                <TabsTrigger 
+                                    value="training-matrix" 
+                                    className="data-[state=active]:bg-[#3b82f6] data-[state=active]:text-white text-sm"
+                                    data-testid="tab-training-matrix"
+                                >
+                                    Training Matrix
+                                </TabsTrigger>
+                                <TabsTrigger 
+                                    value="officer-matrix" 
+                                    className="data-[state=active]:bg-[#3b82f6] data-[state=active]:text-white text-sm"
+                                    data-testid="tab-officer-matrix"
+                                >
+                                    Officer Matrix
+                                </TabsTrigger>
+                                <TabsTrigger 
+                                    value="planning" 
+                                    className="data-[state=active]:bg-[#3b82f6] data-[state=active]:text-white text-sm"
+                                    data-testid="tab-planning"
+                                >
+                                    Planning
+                                </TabsTrigger>
+                            </TabsList>
+                        </Tabs>
+                    </div>
+
+                    {/* Right: Back Button */}
+                    <div className="flex-shrink-0">
+                        <Button
+                            variant="ghost"
+                            onClick={handleBackToList}
+                            className="gap-2 text-[#3b82f6] hover:text-[#2563eb] hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                            data-testid="button-back-to-list"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                            Back
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Tab Content */}
+                <div className="flex-1 overflow-auto">
+                    <Tabs value={activeTab} className="w-full h-full">
+                        <TabsContent value="crew-list" className="mt-0">
+                            <div className="p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                                    Crew List - {selectedVessel.name}
+                                </h3>
+                                <p className="text-gray-500 dark:text-gray-400">
+                                    Crew list content will be displayed here.
+                                </p>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="training-matrix" className="mt-0">
+                            <div className="p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                                    Training Matrix - {selectedVessel.name}
+                                </h3>
+                                <p className="text-gray-500 dark:text-gray-400">
+                                    Training matrix content will be displayed here.
+                                </p>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="officer-matrix" className="mt-0">
+                            <div className="p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                                    Officer Matrix - {selectedVessel.name}
+                                </h3>
+                                <p className="text-gray-500 dark:text-gray-400">
+                                    Officer matrix content will be displayed here.
+                                </p>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="planning" className="mt-0">
+                            <div className="p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                                    Planning - {selectedVessel.name}
+                                </h3>
+                                <p className="text-gray-500 dark:text-gray-400">
+                                    Planning content will be displayed here.
+                                </p>
+                            </div>
+                        </TabsContent>
+                    </Tabs>
+                </div>
+            </div>
+        );
     };
 
     const renderVesselDatabase = () => {
@@ -298,7 +455,11 @@ export const VesselModule = (): JSX.Element => {
                 allowedPages={allowedPages} 
             />
             <MainLayout>
-                {selectedVesselPage === "vessel-database" && renderVesselDatabase()}
+                {selectedVessel ? (
+                    renderVesselDetail()
+                ) : (
+                    selectedVesselPage === "vessel-database" && renderVesselDatabase()
+                )}
             </MainLayout>
         </>
     );
