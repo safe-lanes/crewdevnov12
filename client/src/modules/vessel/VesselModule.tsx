@@ -206,31 +206,31 @@ export const VesselModule = (): JSX.Element => {
                     {/* Center: Tabs */}
                     <div className="flex-1 flex justify-center">
                         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
-                            <TabsList className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                            <TabsList className="bg-transparent border-0 p-0 h-auto gap-1">
                                 <TabsTrigger 
                                     value="crew-list" 
-                                    className="data-[state=active]:bg-[#3b82f6] data-[state=active]:text-white text-sm"
+                                    className="data-[state=active]:bg-[#3b82f6] data-[state=active]:text-white data-[state=inactive]:bg-transparent data-[state=inactive]:text-gray-600 dark:data-[state=inactive]:text-gray-400 text-sm px-4 py-2 rounded-md border-0 shadow-none"
                                     data-testid="tab-crew-list"
                                 >
                                     Crew List
                                 </TabsTrigger>
                                 <TabsTrigger 
                                     value="training-matrix" 
-                                    className="data-[state=active]:bg-[#3b82f6] data-[state=active]:text-white text-sm"
+                                    className="data-[state=active]:bg-[#3b82f6] data-[state=active]:text-white data-[state=inactive]:bg-transparent data-[state=inactive]:text-gray-600 dark:data-[state=inactive]:text-gray-400 text-sm px-4 py-2 rounded-md border-0 shadow-none"
                                     data-testid="tab-training-matrix"
                                 >
                                     Training Matrix
                                 </TabsTrigger>
                                 <TabsTrigger 
                                     value="officer-matrix" 
-                                    className="data-[state=active]:bg-[#3b82f6] data-[state=active]:text-white text-sm"
+                                    className="data-[state=active]:bg-[#3b82f6] data-[state=active]:text-white data-[state=inactive]:bg-transparent data-[state=inactive]:text-gray-600 dark:data-[state=inactive]:text-gray-400 text-sm px-4 py-2 rounded-md border-0 shadow-none"
                                     data-testid="tab-officer-matrix"
                                 >
                                     Officer Matrix
                                 </TabsTrigger>
                                 <TabsTrigger 
                                     value="planning" 
-                                    className="data-[state=active]:bg-[#3b82f6] data-[state=active]:text-white text-sm"
+                                    className="data-[state=active]:bg-[#3b82f6] data-[state=active]:text-white data-[state=inactive]:bg-transparent data-[state=inactive]:text-gray-600 dark:data-[state=inactive]:text-gray-400 text-sm px-4 py-2 rounded-md border-0 shadow-none"
                                     data-testid="tab-planning"
                                 >
                                     Planning
