@@ -219,6 +219,15 @@ const AdminModuleInner = (): JSX.Element => {
   });
   
   
+  // Helper function to check if two Sets have the same contents
+  const setsEqual = (a: Set<string>, b: Set<string>): boolean => {
+    if (a.size !== b.size) return false;
+    for (const item of a) {
+      if (!b.has(item)) return false;
+    }
+    return true;
+  };
+  
   // Local state for editing (initialized from shared data)
   const [rankMasterData, setRankMasterData] = useState<RankMasterData[]>([]);
   const [changedRanks, setChangedRanks] = useState<Set<string>>(new Set());
@@ -233,6 +242,8 @@ const AdminModuleInner = (): JSX.Element => {
         return;
       }
       
+      const serverRankIds = new Set(sharedRankMasterData.map(rank => rank.id));
+      
       setRankMasterData(prev => {
         // Preserve any new ranks that haven't been saved yet
         const newUnsavedRanks = prev.filter(rank => 
@@ -246,20 +257,22 @@ const AdminModuleInner = (): JSX.Element => {
       // Only clear tracking for ranks that now exist on server
       // (Keep tracking for new ranks that are still unsaved)
       setChangedRanks(prev => {
-        const serverRankIds = new Set(sharedRankMasterData.map(rank => rank.id));
-        return new Set(Array.from(prev).filter(rankId => !serverRankIds.has(rankId)));
+        const nextChangedRanks = new Set(Array.from(prev).filter(rankId => !serverRankIds.has(rankId)));
+        // Only update if contents changed to prevent infinite loop
+        return setsEqual(prev, nextChangedRanks) ? prev : nextChangedRanks;
       });
       
       // Keep new ranks that haven't been saved to server
       setNewRanks(prev => {
-        const serverRankIds = new Set(sharedRankMasterData.map(rank => rank.id));
-        return new Set(Array.from(prev).filter(rankId => !serverRankIds.has(rankId)));
+        const nextNewRanks = new Set(Array.from(prev).filter(rankId => !serverRankIds.has(rankId)));
+        // Only update if contents changed to prevent infinite loop
+        return setsEqual(prev, nextNewRanks) ? prev : nextNewRanks;
       });
       
       // Keep deleted ranks tracking (only clear when explicitly saved)
       // setDeletedRanks remains unchanged
     }
-  }, [sharedRankMasterData, newRanks]);
+  }, [sharedRankMasterData]);
   
   // Context callback functions for cell renderers
   const handleRankDataChange = (id: string, field: string, value: any) => {
