@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -219,59 +219,54 @@ const AdminModuleInner = (): JSX.Element => {
   });
   
   
-  // Helper function to check if two Sets have the same contents
-  const setsEqual = (a: Set<string>, b: Set<string>): boolean => {
-    if (a.size !== b.size) return false;
-    for (const item of a) {
-      if (!b.has(item)) return false;
-    }
-    return true;
-  };
-  
   // Local state for editing (initialized from shared data)
   const [rankMasterData, setRankMasterData] = useState<RankMasterData[]>([]);
   const [changedRanks, setChangedRanks] = useState<Set<string>>(new Set());
   const [newRanks, setNewRanks] = useState<Set<string>>(new Set());
   const [deletedRanks, setDeletedRanks] = useState<Set<string>>(new Set());
   
+  // Use ref to track previous server data to prevent unnecessary re-syncs
+  const prevServerDataRef = useRef<RankMasterData[] | null>(null);
+  
   // Sync local state with shared data while preserving unsaved changes
   useEffect(() => {
-    if (sharedRankMasterData) {
-      // Don't sync if we're currently editing to avoid losing unsaved changes
-      if (isRankMasterEditing || isCompanyEditing) {
-        return;
-      }
-      
-      const serverRankIds = new Set(sharedRankMasterData.map(rank => rank.id));
-      
-      setRankMasterData(prev => {
-        // Preserve any new ranks that haven't been saved yet
-        const newUnsavedRanks = prev.filter(rank => 
-          rank.id.startsWith('new_') && newRanks.has(rank.id)
-        );
-        
-        // Merge server data with unsaved new ranks
-        return [...sharedRankMasterData, ...newUnsavedRanks];
-      });
-      
-      // Only clear tracking for ranks that now exist on server
-      // (Keep tracking for new ranks that are still unsaved)
-      setChangedRanks(prev => {
-        const nextChangedRanks = new Set(Array.from(prev).filter(rankId => !serverRankIds.has(rankId)));
-        // Only update if contents changed to prevent infinite loop
-        return setsEqual(prev, nextChangedRanks) ? prev : nextChangedRanks;
-      });
-      
-      // Keep new ranks that haven't been saved to server
-      setNewRanks(prev => {
-        const nextNewRanks = new Set(Array.from(prev).filter(rankId => !serverRankIds.has(rankId)));
-        // Only update if contents changed to prevent infinite loop
-        return setsEqual(prev, nextNewRanks) ? prev : nextNewRanks;
-      });
-      
-      // Keep deleted ranks tracking (only clear when explicitly saved)
-      // setDeletedRanks remains unchanged
+    if (!sharedRankMasterData) return;
+    
+    // Don't sync if we're currently editing to avoid losing unsaved changes
+    if (isRankMasterEditing || isCompanyEditing) {
+      return;
     }
+    
+    // Skip if data hasn't actually changed (prevents infinite loop)
+    if (prevServerDataRef.current === sharedRankMasterData) {
+      return;
+    }
+    
+    prevServerDataRef.current = sharedRankMasterData;
+    const serverRankIds = new Set(sharedRankMasterData.map(rank => rank.id));
+    
+    setRankMasterData(prev => {
+      // Preserve any new ranks that haven't been saved yet
+      const currentNewRanks = Array.from(newRanks);
+      const newUnsavedRanks = prev.filter(rank => 
+        rank.id.startsWith('new_') && currentNewRanks.includes(rank.id)
+      );
+      
+      // Merge server data with unsaved new ranks
+      return [...sharedRankMasterData, ...newUnsavedRanks];
+    });
+    
+    // Only clear tracking for ranks that now exist on server
+    setChangedRanks(prev => {
+      const filtered = Array.from(prev).filter(rankId => !serverRankIds.has(rankId));
+      return filtered.length === prev.size ? prev : new Set(filtered);
+    });
+    
+    // Keep new ranks that haven't been saved to server
+    setNewRanks(prev => {
+      const filtered = Array.from(prev).filter(rankId => !serverRankIds.has(rankId));
+      return filtered.length === prev.size ? prev : new Set(filtered);
+    });
   }, [sharedRankMasterData]);
   
   // Context callback functions for cell renderers
