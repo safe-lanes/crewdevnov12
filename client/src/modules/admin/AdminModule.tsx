@@ -3753,8 +3753,8 @@ const AdminModuleInner = (): JSX.Element => {
           <div></div>
         )}
         
-        {/* Desktop/Laptop - Right Grid Cell (Action Buttons) */}
-        {(currentBreakpoint === 'desktop' || currentBreakpoint === 'laptop') && (
+        {/* Desktop/Laptop - Right Grid Cell (Action Buttons) - HIDDEN FOR READ-ONLY MODE */}
+        {/* {(currentBreakpoint === 'desktop' || currentBreakpoint === 'laptop') && (
           <div className="flex justify-end">
             <div className="flex gap-2">
               <Button
@@ -3783,10 +3783,10 @@ const AdminModuleInner = (): JSX.Element => {
               </Button>
             </div>
           </div>
-        )}
+        )} */}
         
-        {/* Tablet/Mobile Action Buttons */}
-        {(currentBreakpoint === 'tablet' || currentBreakpoint === 'mobile') && (
+        {/* Tablet/Mobile Action Buttons - HIDDEN FOR READ-ONLY MODE */}
+        {/* {(currentBreakpoint === 'tablet' || currentBreakpoint === 'mobile') && (
           <div className={`flex ${currentBreakpoint === 'mobile' ? 'justify-center' : 'justify-center'}`}>
             <div className={`flex ${responsive.stackButtons ? 'flex-col space-y-1' : 'gap-2'}`}>
               <Button
@@ -3815,7 +3815,7 @@ const AdminModuleInner = (): JSX.Element => {
               </Button>
             </div>
           </div>
-        )}
+        )} */}
       </div>
 
       {/* Content Area - Uses -mt-8 to match Rank Admin vessel tab spacing */}
