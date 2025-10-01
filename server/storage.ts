@@ -1488,6 +1488,339 @@ export class PersistentFileStorage implements IStorage {
     });
 
     this.currentAppraisalResultId = 5;
+
+    // Initialize sample master data entries
+    let masterEntryId = 100; // Start from 100 to avoid conflicts with existing vessel data
+    
+    // Nationality Master (001) - Sample nationalities
+    this.masterDataEntries.set(String(masterEntryId++), {
+      id: masterEntryId - 1,
+      masterId: "001",
+      entryId: `NAT-001`,
+      name: "Indian",
+      description: "India",
+      isActive: true,
+      isDeleted: false,
+      createdBy: "admin",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
+    
+    this.masterDataEntries.set(String(masterEntryId++), {
+      id: masterEntryId - 1,
+      masterId: "001",
+      entryId: `NAT-002`,
+      name: "Filipino",
+      description: "Philippines",
+      isActive: true,
+      isDeleted: false,
+      createdBy: "admin",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
+    
+    this.masterDataEntries.set(String(masterEntryId++), {
+      id: masterEntryId - 1,
+      masterId: "001",
+      entryId: `NAT-003`,
+      name: "British",
+      description: "United Kingdom",
+      isActive: true,
+      isDeleted: false,
+      createdBy: "admin",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
+    
+    this.masterDataEntries.set(String(masterEntryId++), {
+      id: masterEntryId - 1,
+      masterId: "001",
+      entryId: `NAT-004`,
+      name: "Chinese",
+      description: "China",
+      isActive: true,
+      isDeleted: false,
+      createdBy: "admin",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
+    
+    this.masterDataEntries.set(String(masterEntryId++), {
+      id: masterEntryId - 1,
+      masterId: "001",
+      entryId: `NAT-005`,
+      name: "Ukrainian",
+      description: "Ukraine",
+      isActive: true,
+      isDeleted: false,
+      createdBy: "admin",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
+
+    // Country Master (002) - Sample countries
+    this.masterDataEntries.set(String(masterEntryId++), {
+      id: masterEntryId - 1,
+      masterId: "002",
+      entryId: `CTY-001`,
+      name: "India",
+      description: "IN",
+      isActive: true,
+      isDeleted: false,
+      createdBy: "admin",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
+    
+    this.masterDataEntries.set(String(masterEntryId++), {
+      id: masterEntryId - 1,
+      masterId: "002",
+      entryId: `CTY-002`,
+      name: "Philippines",
+      description: "PH",
+      isActive: true,
+      isDeleted: false,
+      createdBy: "admin",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
+    
+    this.masterDataEntries.set(String(masterEntryId++), {
+      id: masterEntryId - 1,
+      masterId: "002",
+      entryId: `CTY-003`,
+      name: "United Kingdom",
+      description: "UK",
+      isActive: true,
+      isDeleted: false,
+      createdBy: "admin",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
+    
+    this.masterDataEntries.set(String(masterEntryId++), {
+      id: masterEntryId - 1,
+      masterId: "002",
+      entryId: `CTY-004`,
+      name: "China",
+      description: "CN",
+      isActive: true,
+      isDeleted: false,
+      createdBy: "admin",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
+    
+    this.masterDataEntries.set(String(masterEntryId++), {
+      id: masterEntryId - 1,
+      masterId: "002",
+      entryId: `CTY-005`,
+      name: "Ukraine",
+      description: "UA",
+      isActive: true,
+      isDeleted: false,
+      createdBy: "admin",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
+
+    // Language Master (003) - Sample languages
+    this.masterDataEntries.set(String(masterEntryId++), {
+      id: masterEntryId - 1,
+      masterId: "003",
+      entryId: `LNG-001`,
+      name: "English",
+      description: "EN",
+      isActive: true,
+      isDeleted: false,
+      createdBy: "admin",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
+    
+    this.masterDataEntries.set(String(masterEntryId++), {
+      id: masterEntryId - 1,
+      masterId: "003",
+      entryId: `LNG-002`,
+      name: "Mandarin",
+      description: "ZH",
+      isActive: true,
+      isDeleted: false,
+      createdBy: "admin",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
+    
+    this.masterDataEntries.set(String(masterEntryId++), {
+      id: masterEntryId - 1,
+      masterId: "003",
+      entryId: `LNG-003`,
+      name: "Hindi",
+      description: "HI",
+      isActive: true,
+      isDeleted: false,
+      createdBy: "admin",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
+    
+    this.masterDataEntries.set(String(masterEntryId++), {
+      id: masterEntryId - 1,
+      masterId: "003",
+      entryId: `LNG-004`,
+      name: "Spanish",
+      description: "ES",
+      isActive: true,
+      isDeleted: false,
+      createdBy: "admin",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
+    
+    this.masterDataEntries.set(String(masterEntryId++), {
+      id: masterEntryId - 1,
+      masterId: "003",
+      entryId: `LNG-005`,
+      name: "Tagalog",
+      description: "TL",
+      isActive: true,
+      isDeleted: false,
+      createdBy: "admin",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
+
+    // Vessel Type Master (004) - Sample vessel types
+    this.masterDataEntries.set(String(masterEntryId++), {
+      id: masterEntryId - 1,
+      masterId: "004",
+      entryId: `VTP-001`,
+      name: "Oil Tanker",
+      description: "Crude oil and petroleum products",
+      isActive: true,
+      isDeleted: false,
+      createdBy: "admin",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
+    
+    this.masterDataEntries.set(String(masterEntryId++), {
+      id: masterEntryId - 1,
+      masterId: "004",
+      entryId: `VTP-002`,
+      name: "Container",
+      description: "Container cargo vessels",
+      isActive: true,
+      isDeleted: false,
+      createdBy: "admin",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
+    
+    this.masterDataEntries.set(String(masterEntryId++), {
+      id: masterEntryId - 1,
+      masterId: "004",
+      entryId: `VTP-003`,
+      name: "Bulk Carrier",
+      description: "Dry bulk cargo vessels",
+      isActive: true,
+      isDeleted: false,
+      createdBy: "admin",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
+    
+    this.masterDataEntries.set(String(masterEntryId++), {
+      id: masterEntryId - 1,
+      masterId: "004",
+      entryId: `VTP-004`,
+      name: "LPG Tanker",
+      description: "Liquefied petroleum gas carriers",
+      isActive: true,
+      isDeleted: false,
+      createdBy: "admin",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
+    
+    this.masterDataEntries.set(String(masterEntryId++), {
+      id: masterEntryId - 1,
+      masterId: "004",
+      entryId: `VTP-005`,
+      name: "Chemical Tanker",
+      description: "Chemical products carriers",
+      isActive: true,
+      isDeleted: false,
+      createdBy: "admin",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
+
+    // Port Master (018) - Sample ports
+    this.masterDataEntries.set(String(masterEntryId++), {
+      id: masterEntryId - 1,
+      masterId: "018",
+      entryId: `PRT-001`,
+      name: "Singapore",
+      description: "SG",
+      isActive: true,
+      isDeleted: false,
+      createdBy: "admin",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
+    
+    this.masterDataEntries.set(String(masterEntryId++), {
+      id: masterEntryId - 1,
+      masterId: "018",
+      entryId: `PRT-002`,
+      name: "Rotterdam",
+      description: "NL",
+      isActive: true,
+      isDeleted: false,
+      createdBy: "admin",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
+    
+    this.masterDataEntries.set(String(masterEntryId++), {
+      id: masterEntryId - 1,
+      masterId: "018",
+      entryId: `PRT-003`,
+      name: "Shanghai",
+      description: "CN",
+      isActive: true,
+      isDeleted: false,
+      createdBy: "admin",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
+    
+    this.masterDataEntries.set(String(masterEntryId++), {
+      id: masterEntryId - 1,
+      masterId: "018",
+      entryId: `PRT-004`,
+      name: "Mumbai",
+      description: "IN",
+      isActive: true,
+      isDeleted: false,
+      createdBy: "admin",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
+    
+    this.masterDataEntries.set(String(masterEntryId++), {
+      id: masterEntryId - 1,
+      masterId: "018",
+      entryId: `PRT-005`,
+      name: "Manila",
+      description: "PH",
+      isActive: true,
+      isDeleted: false,
+      createdBy: "admin",
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01")
+    });
   }
 
   // User methods (same as MemStorage)
