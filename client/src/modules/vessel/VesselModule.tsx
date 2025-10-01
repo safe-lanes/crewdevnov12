@@ -10,6 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Filter, Edit, ArrowLeft, ChevronDown } from 'lucide-react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Eye } from 'lucide-react';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
 import { ColDef, GridApi } from 'ag-grid-community';
 
@@ -54,6 +57,7 @@ export const VesselModule = (): JSX.Element => {
     // Vessel detail view state
     const [selectedVessel, setSelectedVessel] = useState<any>(null);
     const [activeTab, setActiveTab] = useState("crew-list");
+    const [crewListSubTab, setCrewListSubTab] = useState("imo");
 
     const gridApiRef = useRef<GridApi | null>(null);
 
@@ -246,13 +250,83 @@ export const VesselModule = (): JSX.Element => {
                 <div className="flex-1 overflow-auto">
                     <Tabs value={activeTab} className="w-full h-full">
                         <TabsContent value="crew-list" className="mt-0">
-                            <div className="p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                                    Crew List - {selectedVessel.name}
-                                </h3>
-                                <p className="text-gray-500 dark:text-gray-400">
-                                    Crew list content will be displayed here.
-                                </p>
+                            <div className="space-y-4">
+                                {/* Sub-tabs for IMO Crew List and US Crew List */}
+                                <div className="flex gap-2 border-b border-gray-200">
+                                    <button
+                                        onClick={() => setCrewListSubTab("imo")}
+                                        className={`px-4 py-2 text-sm font-medium transition-colors ${
+                                            crewListSubTab === "imo"
+                                                ? "text-[#16569e] border-b-2 border-[#16569e]"
+                                                : "text-gray-600 hover:text-gray-800"
+                                        }`}
+                                        data-testid="subtab-imo-crew-list"
+                                    >
+                                        IMO Crew List
+                                    </button>
+                                    <button
+                                        onClick={() => setCrewListSubTab("us")}
+                                        className={`px-4 py-2 text-sm font-medium transition-colors ${
+                                            crewListSubTab === "us"
+                                                ? "text-[#16569e] border-b-2 border-[#16569e]"
+                                                : "text-gray-600 hover:text-gray-800"
+                                        }`}
+                                        data-testid="subtab-us-crew-list"
+                                    >
+                                        US Crew List
+                                    </button>
+                                </div>
+
+                                {/* Table Container */}
+                                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                                    <ScrollArea className="h-[500px] w-full">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                                                    <TableHead className="text-white text-xs font-normal w-16 sticky top-0 z-30 bg-[#52baf3] shadow-sm">S. No.</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Rank</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal sticky top-0 z-30 bg-[#52baf3] shadow-sm">Surname, Given Name</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Nationality</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Joined</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Doc Check</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-20 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Famil.</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Relief Date</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Planned S/Off</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-40 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Doc. Expiring (2m)/Expired</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Medical Expiring</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-40 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Vacc. Expiring (2m)/Expired</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Appraisal</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Handover</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-16 sticky top-0 z-30 bg-[#52baf3] shadow-sm"></TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {/* Sample empty row to show structure */}
+                                                <TableRow className="hover:bg-gray-50 border-b border-gray-100">
+                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-sno-1">1.</TableCell>
+                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-rank-1">Master</TableCell>
+                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-name-1">Sabharwal, Alok Nath</TableCell>
+                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-nationality-1">Indian</TableCell>
+                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-joined-1">25 Mar 22, Rotterdam</TableCell>
+                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-doccheck-1"></TableCell>
+                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-famil-1"></TableCell>
+                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-relief-1"></TableCell>
+                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-planned-1"></TableCell>
+                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-docexp-1"></TableCell>
+                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-medical-1"></TableCell>
+                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-vaccexp-1"></TableCell>
+                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-appraisal-1"></TableCell>
+                                                    <TableCell className="text-xs text-gray-700" data-testid="cell-handover-1"></TableCell>
+                                                    <TableCell className="text-xs" data-testid="cell-actions-1">
+                                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                            <Eye className="h-4 w-4 text-gray-500" />
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            </TableBody>
+                                        </Table>
+                                    </ScrollArea>
+                                </div>
                             </div>
                         </TabsContent>
 
