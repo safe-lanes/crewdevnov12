@@ -45,6 +45,7 @@ const useCrewMembers = () => {
 const useVesselRanks = (vesselId: string | null) => {
     return useQuery({
         queryKey: ['/api/vessel-revisions/ranks', vesselId],
+        queryFn: vesselId ? () => fetch(`/api/vessel-revisions/ranks/${vesselId}`).then(res => res.json()) : undefined,
         enabled: !!vesselId,
         select: (data: any[]) => data
     });
@@ -73,8 +74,8 @@ export const VesselModule = (): JSX.Element => {
     const { data: vessels = [], isLoading: vesselsLoading } = useVessels();
     const { data: crewMembers = [], isLoading: crewLoading } = useCrewMembers();
     
-    // Fetch vessel ranks for selected vessel
-    const { data: vesselRanks = [], isLoading: ranksLoading } = useVesselRanks(selectedVessel?.vesselId || null);
+    // Fetch vessel ranks for selected vessel (convert id to string for API)
+    const { data: vesselRanks = [], isLoading: ranksLoading } = useVesselRanks(selectedVessel?.id?.toString() || null);
 
     const handleClearFilters = () => {
         setVesselValue("");
