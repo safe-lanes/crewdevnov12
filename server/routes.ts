@@ -610,6 +610,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Debug endpoint to inspect all revisions for a vessel
+  app.get("/api/vessel-revisions/debug/:vesselId", async (req, res) => {
+    try {
+      const { vesselId } = req.params;
+      console.log(`🔍 [DEBUG API] Fetching revision metadata for vessel: ${vesselId}`);
+      
+      const vesselRevisions = await storage.getVesselRevisionsByVessel(vesselId);
+      
+      if (vesselRevisions.length === 0) {
+        return res.json({ vesselId, message: "No revisions found", revisions: [] });
+      }
+      
+      // Build debug info for each revision
+      const debugInfo = vesselRevisions.map((rev) => {
+        let rankCount = 0;
+        let activeRankCount = 0;
+        
+        try {
+          const rankData = JSON.parse(rev.revisionData);
+          rankCount = rankData.length;
+          activeRankCount = rankData.filter((rank: any) => 
+            rank.actualManningFlag || rank.safeManning || rank.optimumManning || rank.highWorkloadManning
+          ).length;
+        } catch (e) {
+          // Invalid JSON
+        }
+        
+        return {
+          id: rev.id,
+          revision: rev.revision,
+          revisionDate: rev.revisionDate,
+          createdAt: rev.createdAt,
+          totalRanks: rankCount,
+          activeRanks: activeRankCount,
+          hasData: rankCount > 0
+        };
+      });
+      
+      // Sort by creation date to show which would be selected
+      const sorted = [...debugInfo].sort((a, b) => {
+        const aDate = new Date(a.createdAt || 0).getTime();
+        const bDate = new Date(b.createdAt || 0).getTime();
+        return bDate - aDate;
+      });
+      
+      res.json({
+        vesselId,
+        totalRevisions: vesselRevisions.length,
+        selectedRevision: sorted[0],
+        allRevisions: sorted
+      });
+    } catch (error) {
+      console.error("Failed to debug vessel revisions:", error);
+      res.status(500).json({ error: "Failed to debug vessel revisions" });
+    }
+  });
+
   // Get vessel ranks from latest revision (must come before :id route)
   app.get("/api/vessel-revisions/ranks/:vesselId", async (req, res) => {
     try {
@@ -624,22 +681,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]);
       }
       
-      // Sort revisions by revision number to get the latest (R0, R1, R2, etc.)
+      // Sort revisions by creation date (most recent first) to get the truly latest configuration
+      // This handles cases where multiple revisions with the same number exist
       const sortedRevisions = vesselRevisions.sort((a, b) => {
-        const aNum = parseInt(a.revision.replace('R', ''));
-        const bNum = parseInt(b.revision.replace('R', ''));
-        return bNum - aNum;
+        const aDate = new Date(a.createdAt || 0).getTime();
+        const bDate = new Date(b.createdAt || 0).getTime();
+        return bDate - aDate; // Most recent first
       });
       
       const latestRevision = sortedRevisions[0];
-      console.log(`📜 [VESSEL RANKS API] Latest revision for vessel ${vesselId}: ${latestRevision.revision}`);
+      console.log(`📜 [VESSEL RANKS API] Latest revision for vessel ${vesselId}: ${latestRevision.revision} (id: ${latestRevision.id}, created: ${latestRevision.createdAt})`);
       
       // Parse the revisionData JSON to get the ranks
       const rankData = JSON.parse(latestRevision.revisionData);
       
       // Filter ranks that have at least one manning checkbox checked
+      // Check the flag fields, not the array fields
       const activeRanks = rankData.filter((rank: any) => 
-        rank.actualManning || rank.safeManning || rank.optimumManning || rank.highWorkloadManning
+        rank.actualManningFlag || rank.safeManning || rank.optimumManning || rank.highWorkloadManning
       );
       
       console.log(`📜 [VESSEL RANKS API] Found ${activeRanks.length} active ranks for vessel ${vesselId}`);
