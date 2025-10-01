@@ -1099,6 +1099,28 @@ export class PersistentFileStorage implements IStorage {
         this.dataMasters = new Map(data.dataMasters || []);
         this.masterDataEntries = new Map(data.masterDataEntries || []);
         
+        // Initialize dataMasters if empty (for backward compatibility with old test-data.json files)
+        if (this.dataMasters.size === 0) {
+          this.dataMasters.set("001", { id: "001", name: "Nationality Master", description: "Master data for nationalities" });
+          this.dataMasters.set("002", { id: "002", name: "Country Master", description: "Master data for countries" });
+          this.dataMasters.set("003", { id: "003", name: "Language Master", description: "Master data for languages" });
+          this.dataMasters.set("004", { id: "004", name: "Vessel Type Master", description: "Master data for vessel types" });
+          this.dataMasters.set("006", { id: "006", name: "Qualification Master", description: "Master data for qualifications" });
+          this.dataMasters.set("007", { id: "007", name: "Course Master", description: "Master data for courses" });
+          this.dataMasters.set("008", { id: "008", name: "Contract Type Master", description: "Master data for contract types" });
+          this.dataMasters.set("009", { id: "009", name: "Medical Status Master", description: "Master data for medical statuses" });
+          this.dataMasters.set("010", { id: "010", name: "Document Type Master", description: "Master data for document types" });
+          this.dataMasters.set("011", { id: "011", name: "Ship Equipment Master", description: "Master data for ship equipment" });
+          this.dataMasters.set("012", { id: "012", name: "Designation Master", description: "Master data for designations" });
+          this.dataMasters.set("013", { id: "013", name: "User Master", description: "Master data for users" });
+          this.dataMasters.set("014", { id: "014", name: "Vessels Master", description: "Master data for vessels" });
+          this.dataMasters.set("015", { id: "015", name: "Fleet Groups Master", description: "Master data for fleet groups" });
+          this.dataMasters.set("016", { id: "016", name: "Additional Groups Master", description: "Master data for additional groups" });
+          this.dataMasters.set("017", { id: "017", name: "Vessel Owners Master", description: "Master data for vessel owners" });
+          this.dataMasters.set("018", { id: "018", name: "Port Master", description: "Master data for ports" });
+          this.saveToFile(); // Save the initialized dataMasters
+        }
+        
         // Load current counters
         this.currentUserId = data.currentUserId || 1;
         this.currentFormId = data.currentFormId || 2;
