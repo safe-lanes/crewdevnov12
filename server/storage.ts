@@ -1114,23 +1114,12 @@ export class PersistentFileStorage implements IStorage {
         // Initialize vessel group counter
         this.currentVesselGroupId = data.currentVesselGroupId || 1;
         
-        // Initialize vessel drafts and counter
-        // Initialize vesselDrafts Map
-        this.vesselDrafts = new Map();
-        if (data.vesselDrafts) {
-          for (const [id, draft] of Object.entries(data.vesselDrafts)) {
-            this.vesselDrafts.set(Number(id), draft as VesselDraft);
-          }
-        }
+        // Load vessel drafts and counter (same format as other maps)
+        this.vesselDrafts = new Map(data.vesselDrafts || []);
         this.currentVesselDraftId = data.currentVesselDraftId || 1;
         
-        // Initialize vessel revisions and counter
-        this.vesselRevisions = new Map();
-        if (data.vesselRevisions) {
-          for (const [id, revision] of Object.entries(data.vesselRevisions)) {
-            this.vesselRevisions.set(Number(id), revision as VesselRevision);
-          }
-        }
+        // Load vessel revisions and counter (same format as other maps)
+        this.vesselRevisions = new Map(data.vesselRevisions || []);
         this.currentVesselRevisionId = data.currentVesselRevisionId || 1;
         
         console.log("📄 Loaded existing data from test-data.json");
