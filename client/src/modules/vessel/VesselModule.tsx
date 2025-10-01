@@ -106,13 +106,20 @@ export const VesselModule = (): JSX.Element => {
     }, [vessels, crewMembers]);
 
     const ActionsCellRenderer = (props: any) => {
+        const handleClick = (e: React.MouseEvent) => {
+            e.stopPropagation();
+            if (props.context && props.context.handleEditVessel) {
+                props.context.handleEditVessel(props.data);
+            }
+        };
+
         return (
             <div className="flex items-center justify-center h-full">
                 <Button 
                     variant="ghost" 
                     size="sm" 
                     className="h-8 w-8 p-0"
-                    onClick={() => handleEditVessel(props.data)}
+                    onClick={handleClick}
                     data-testid={`button-edit-${props.data.id}`}
                 >
                     <Edit className="h-4 w-4 text-gray-500" />
@@ -428,6 +435,7 @@ export const VesselModule = (): JSX.Element => {
                             rowData={vesselData}
                             columnDefs={columnDefs}
                             onGridReady={onGridReady}
+                            context={{ handleEditVessel }}
                             loading={vesselsLoading || crewLoading}
                             autoHeight={true}
                             maxHeight="500px"
