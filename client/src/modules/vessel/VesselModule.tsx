@@ -7,7 +7,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Filter, Edit, ArrowLeft, ChevronDown } from 'lucide-react';
+import { Filter, Edit, ArrowLeft, ChevronDown, Download } from 'lucide-react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -57,7 +57,6 @@ export const VesselModule = (): JSX.Element => {
     // Vessel detail view state
     const [selectedVessel, setSelectedVessel] = useState<any>(null);
     const [activeTab, setActiveTab] = useState("crew-list");
-    const [crewListSubTab, setCrewListSubTab] = useState("imo");
 
     const gridApiRef = useRef<GridApi | null>(null);
 
@@ -251,30 +250,26 @@ export const VesselModule = (): JSX.Element => {
                     <Tabs value={activeTab} className="w-full h-full">
                         <TabsContent value="crew-list" className="mt-0">
                             <div className="space-y-4">
-                                {/* Sub-tabs for IMO Crew List and US Crew List */}
-                                <div className="flex gap-2 border-b border-gray-200">
-                                    <button
-                                        onClick={() => setCrewListSubTab("imo")}
-                                        className={`px-4 py-2 text-sm font-medium transition-colors ${
-                                            crewListSubTab === "imo"
-                                                ? "text-[#16569e] border-b-2 border-[#16569e]"
-                                                : "text-gray-600 hover:text-gray-800"
-                                        }`}
-                                        data-testid="subtab-imo-crew-list"
+                                {/* Download buttons aligned to the right */}
+                                <div className="flex justify-end gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 gap-2"
+                                        data-testid="button-download-imo"
                                     >
-                                        IMO Crew List
-                                    </button>
-                                    <button
-                                        onClick={() => setCrewListSubTab("us")}
-                                        className={`px-4 py-2 text-sm font-medium transition-colors ${
-                                            crewListSubTab === "us"
-                                                ? "text-[#16569e] border-b-2 border-[#16569e]"
-                                                : "text-gray-600 hover:text-gray-800"
-                                        }`}
-                                        data-testid="subtab-us-crew-list"
+                                        <Download className="h-4 w-4" />
+                                        <span className="text-xs">IMO Crew List</span>
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 gap-2"
+                                        data-testid="button-download-us"
                                     >
-                                        US Crew List
-                                    </button>
+                                        <Download className="h-4 w-4" />
+                                        <span className="text-xs">US Crew List</span>
+                                    </Button>
                                 </div>
 
                                 {/* Table Container */}
