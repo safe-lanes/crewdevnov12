@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import VesselSideBar from './VesselSideBar';
 import MainLayout from '@/components/main/MainLayout';
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
@@ -6,7 +6,10 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Filter } from 'lucide-react';
+import { Filter, Edit } from 'lucide-react';
+import { Card, CardContent } from "@/components/ui/card";
+import AgGridTable from '@/components/AgGrid/AgGridTable';
+import { ColDef, GridApi } from 'ag-grid-community';
 
 export const VesselModule = (): JSX.Element => {
     const [selectedVesselPage, setSelectedVesselPage] = useState("vessel-database");
@@ -21,11 +24,86 @@ export const VesselModule = (): JSX.Element => {
     const [addGroupValue, setAddGroupValue] = useState("");
     const [showFilters, setShowFilters] = useState(true);
 
+    const gridApiRef = useRef<GridApi | null>(null);
+
     const handleClearFilters = () => {
         setVesselValue("");
         setFleetValue("");
         setAddGroupValue("");
         setFilterType("vessel");
+    };
+
+    // Sample vessel data
+    const vesselData = [
+        { id: 1, vessel: 'Vessel 1', type: 'Oil Tanker', crewOnBoard: 21 },
+        { id: 2, vessel: 'Vessel 1', type: 'Oil Tanker', crewOnBoard: 21 },
+        { id: 3, vessel: 'Vessel 1', type: 'Oil Tanker', crewOnBoard: 21 },
+        { id: 4, vessel: 'Vessel 1', type: 'Oil Tanker', crewOnBoard: 21 },
+        { id: 5, vessel: 'Vessel 1', type: 'Oil Tanker', crewOnBoard: 21 },
+        { id: 6, vessel: 'Vessel 1', type: 'Oil Tanker', crewOnBoard: 21 },
+        { id: 7, vessel: 'Vessel 1', type: 'Oil Tanker', crewOnBoard: 21 },
+        { id: 8, vessel: 'Vessel 1', type: 'Oil Tanker', crewOnBoard: 21 },
+    ];
+
+    const ActionsCellRenderer = (props: any) => {
+        return (
+            <div className="flex items-center justify-center h-full">
+                <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-8 w-8 p-0"
+                    data-testid={`button-edit-${props.data.id}`}
+                >
+                    <Edit className="h-4 w-4 text-gray-500" />
+                </Button>
+            </div>
+        );
+    };
+
+    const columnDefs: ColDef[] = useMemo(() => [
+        {
+            headerName: 'Vessel',
+            field: 'vessel',
+            flex: 1,
+            cellStyle: { fontSize: '13px', color: '#4f5863' },
+            filter: 'agTextColumnFilter',
+            sortable: true,
+            resizable: true
+        },
+        {
+            headerName: 'Type',
+            field: 'type',
+            flex: 1,
+            cellStyle: { fontSize: '13px', color: '#4f5863' },
+            filter: 'agSetColumnFilter',
+            sortable: true,
+            resizable: true,
+            enableRowGroup: false
+        },
+        {
+            headerName: 'Crew o/b',
+            field: 'crewOnBoard',
+            flex: 1,
+            cellStyle: { fontSize: '13px', color: '#4f5863' },
+            filter: 'agNumberColumnFilter',
+            sortable: true,
+            resizable: true
+        },
+        {
+            headerName: '',
+            field: 'actions',
+            flex: 0.5,
+            cellRenderer: ActionsCellRenderer,
+            sortable: false,
+            filter: false,
+            cellClass: 'flex items-center justify-center',
+            pinned: 'right',
+            lockPosition: true
+        }
+    ], []);
+
+    const onGridReady = (params: { api: GridApi }) => {
+        gridApiRef.current = params.api;
     };
 
     const renderVesselDatabase = () => {
@@ -149,9 +227,26 @@ export const VesselModule = (): JSX.Element => {
                     </div>
                 )}
 
-                <div className="flex-1 flex items-center justify-center">
-                    <p className="text-gray-500 dark:text-gray-400">Vessel Database content will be displayed here</p>
-                </div>
+                <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
+                    <CardContent className="p-4 pl-0 bg-[#f7fafc]">
+                        <AgGridTable
+                            rowData={vesselData}
+                            columnDefs={columnDefs}
+                            onGridReady={onGridReady}
+                            autoHeight={true}
+                            maxHeight="500px"
+                            minHeight="200px"
+                            width="100%"
+                            enableExport={true}
+                            enableSideBar={true}
+                            enableStatusBar={false}
+                            enableRowGrouping={true}
+                            enablePivoting={true}
+                            enableAdvancedFilter={false}
+                            rowSelection={false}
+                        />
+                    </CardContent>
+                </Card>
             </div>
         );
     };
