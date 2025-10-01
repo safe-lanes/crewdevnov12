@@ -205,51 +205,26 @@ export const VesselModule = (): JSX.Element => {
 
                     {/* Center: Tabs */}
                     <div className="flex-1 flex justify-center">
-                        <div className="inline-flex items-center gap-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full px-1 py-1">
-                            <button
-                                onClick={() => setActiveTab("crew-list")}
-                                className={`px-5 py-2 text-sm font-medium rounded-full transition-all relative ${
-                                    activeTab === "crew-list"
-                                        ? "text-[#16569e] after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-8 after:h-0.5 after:bg-[#16569e] after:rounded-full"
-                                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-                                }`}
-                                data-testid="tab-crew-list"
-                            >
-                                Crew List
-                            </button>
-                            <button
-                                onClick={() => setActiveTab("training-matrix")}
-                                className={`px-5 py-2 text-sm font-medium rounded-full transition-all relative ${
-                                    activeTab === "training-matrix"
-                                        ? "text-[#16569e] after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-8 after:h-0.5 after:bg-[#16569e] after:rounded-full"
-                                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-                                }`}
-                                data-testid="tab-training-matrix"
-                            >
-                                Training Matrix
-                            </button>
-                            <button
-                                onClick={() => setActiveTab("officer-matrix")}
-                                className={`px-5 py-2 text-sm font-medium rounded-full transition-all relative ${
-                                    activeTab === "officer-matrix"
-                                        ? "text-[#16569e] after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-8 after:h-0.5 after:bg-[#16569e] after:rounded-full"
-                                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-                                }`}
-                                data-testid="tab-officer-matrix"
-                            >
-                                Officer Matrix
-                            </button>
-                            <button
-                                onClick={() => setActiveTab("planning")}
-                                className={`px-5 py-2 text-sm font-medium rounded-full transition-all relative ${
-                                    activeTab === "planning"
-                                        ? "text-[#16569e] after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-8 after:h-0.5 after:bg-[#16569e] after:rounded-full"
-                                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-                                }`}
-                                data-testid="tab-planning"
-                            >
-                                Planning
-                            </button>
+                        <div className="flex items-center bg-transparent rounded-full p-1 border border-gray-300 h-8">
+                            {[
+                                { id: "crew-list", label: "Crew List" },
+                                { id: "training-matrix", label: "Training Matrix" },
+                                { id: "officer-matrix", label: "Officer Matrix" },
+                                { id: "planning", label: "Planning" }
+                            ].map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`px-4 text-xs rounded-full transition-all duration-200 h-6 flex items-center ${
+                                        activeTab === tab.id
+                                            ? "text-[#16569e] font-bold underline"
+                                            : "text-gray-600 hover:text-gray-800 font-medium"
+                                    }`}
+                                    data-testid={`tab-${tab.id}`}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
                         </div>
                     </div>
 
