@@ -437,7 +437,7 @@ export const VesselModule = (): JSX.Element => {
                                                     <TableHead className="text-white text-xs font-normal w-28 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Relief Due</TableHead>
                                                     <TableHead className="text-white text-xs font-normal w-28 sticky top-0 z-30 bg-[#52baf3] shadow-sm">S/Off Date</TableHead>
                                                     <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3] shadow-sm">S/Off Port</TableHead>
-                                                    <TableHead className="text-white text-xs font-normal w-28 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Relief Satus</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-28 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Relief Status</TableHead>
                                                     <TableHead className="text-white text-xs font-normal w-16 sticky top-0 z-30 bg-[#52baf3] shadow-sm border-r-2 border-white/40"></TableHead>
                                                     
                                                     {/* Reliever Status columns */}
