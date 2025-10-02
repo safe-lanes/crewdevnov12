@@ -58,6 +58,7 @@ The codebase is organized into feature modules (`crewing`, `admin`, `vessel`, `c
     - `loadedVesselsRef`: Tracks loaded vessels to prevent race conditions where stale sync overwrites API data
   - All refs use JSON.stringify for value comparison to detect actual data changes
   - useMemo for derived vessel data calculations to minimize re-renders
+  - **Storage Performance** (Oct 2025): Optimized `PersistentFileStorage` with async file writes, 300ms debouncing to batch changes, and race condition protection via `needsResave` flag to prevent data loss during rapid operations
 - **Data Storage**: Uses `PersistentFileStorage` (`test-data.json`) for development, with a defined PostgreSQL/Drizzle ORM schema for production readiness.
 
 ## External Dependencies
