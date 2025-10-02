@@ -1049,6 +1049,8 @@ export class PersistentFileStorage implements IStorage {
   private currentVesselDraftId: number;
   private currentVesselRevisionId: number;
   private filePath: string;
+  private saveTimeout: NodeJS.Timeout | null = null;
+  private isSaving: boolean = false;
 
   constructor() {
     // Initialize all properties first
@@ -1169,36 +1171,50 @@ export class PersistentFileStorage implements IStorage {
   }
 
   private saveToFile(): void {
-    try {
-      const data = {
-        users: Array.from(this.users.entries()),
-        forms: Array.from(this.forms.entries()),
-        rankGroups: Array.from(this.rankGroups.entries()),
-        availableRanks: Array.from(this.availableRanks.entries()),
-        companyRanks: Array.from(this.companyRanks.entries()),
-        crewMembers: Array.from(this.crewMembers.entries()),
-        appraisalResults: Array.from(this.appraisalResults.entries()),
-        recruitmentCandidates: Array.from(this.recruitmentCandidates.entries()),
-        vesselGroups: Array.from(this.vesselGroups.entries()),
-        vesselDrafts: Array.from(this.vesselDrafts.entries()),
-        vesselRevisions: Array.from(this.vesselRevisions.entries()),
-        masterDataEntries: Array.from(this.masterDataEntries.entries()),
-        currentUserId: this.currentUserId,
-        currentFormId: this.currentFormId,
-        currentRankGroupId: this.currentRankGroupId,
-        currentAvailableRankId: this.currentAvailableRankId,
-        currentAppraisalResultId: this.currentAppraisalResultId,
-        currentCrewIdCounter: this.currentCrewIdCounter,
-        currentVesselGroupId: this.currentVesselGroupId,
-        currentVesselDraftId: this.currentVesselDraftId,
-        currentVesselRevisionId: this.currentVesselRevisionId
-      };
-      
-      fs.writeFileSync(this.filePath, JSON.stringify(data, null, 2), 'utf8');
-      console.log("💾 Data saved to test-data.json");
-    } catch (error) {
-      console.error("⚠️ Error saving to test-data.json:", error);
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
     }
+    
+    this.saveTimeout = setTimeout(async () => {
+      if (this.isSaving) {
+        this.saveToFile();
+        return;
+      }
+      
+      this.isSaving = true;
+      try {
+        const data = {
+          users: Array.from(this.users.entries()),
+          forms: Array.from(this.forms.entries()),
+          rankGroups: Array.from(this.rankGroups.entries()),
+          availableRanks: Array.from(this.availableRanks.entries()),
+          companyRanks: Array.from(this.companyRanks.entries()),
+          crewMembers: Array.from(this.crewMembers.entries()),
+          appraisalResults: Array.from(this.appraisalResults.entries()),
+          recruitmentCandidates: Array.from(this.recruitmentCandidates.entries()),
+          vesselGroups: Array.from(this.vesselGroups.entries()),
+          vesselDrafts: Array.from(this.vesselDrafts.entries()),
+          vesselRevisions: Array.from(this.vesselRevisions.entries()),
+          masterDataEntries: Array.from(this.masterDataEntries.entries()),
+          currentUserId: this.currentUserId,
+          currentFormId: this.currentFormId,
+          currentRankGroupId: this.currentRankGroupId,
+          currentAvailableRankId: this.currentAvailableRankId,
+          currentAppraisalResultId: this.currentAppraisalResultId,
+          currentCrewIdCounter: this.currentCrewIdCounter,
+          currentVesselGroupId: this.currentVesselGroupId,
+          currentVesselDraftId: this.currentVesselDraftId,
+          currentVesselRevisionId: this.currentVesselRevisionId
+        };
+        
+        await fs.promises.writeFile(this.filePath, JSON.stringify(data), 'utf8');
+        console.log("💾 Data saved to test-data.json");
+      } catch (error) {
+        console.error("⚠️ Error saving to test-data.json:", error);
+      } finally {
+        this.isSaving = false;
+      }
+    }, 300);
   }
 
   private initializeDefaultData(): void {
