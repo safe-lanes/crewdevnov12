@@ -316,9 +316,10 @@ const AdminModuleInner = (): JSX.Element => {
   // Track which vessels have been loaded to prevent duplicate fetches
   const loadedVesselsRef = React.useRef<Set<string>>(new Set());
   
-  // PERFORMANCE FIX: Track previous vesselOptions to prevent infinite loops
-  // Only sync when vesselOptions actually changes (not just reference)
+  // PERFORMANCE FIX: Track previous data to prevent infinite loops
+  // Only sync when data actually changes (not just reference)
   const prevVesselOptionsRef = React.useRef<string>('');
+  const prevCompanyRankSyncRef = React.useRef<string>('');
   
   // PERFORMANCE OPTIMIZATION: Only build lookup for the CURRENT vessel being displayed
   // This avoids rebuilding Maps for all vessels on every checkbox click
@@ -804,6 +805,13 @@ const AdminModuleInner = (): JSX.Element => {
       return;
     }
     
+    // PERFORMANCE FIX: Only sync if data actually changed (prevent infinite loops)
+    const syncKey = JSON.stringify({ allRanks: rankMasterData, savedRanks: savedCompanyRanks });
+    if (prevCompanyRankSyncRef.current === syncKey) {
+      return; // No change, skip sync
+    }
+    prevCompanyRankSyncRef.current = syncKey;
+    
     console.log('🔍 [DEBUG] Syncing company rank data with rank master', {
       allRanksCount: allRanks.length,
       savedCompanyRanksCount: savedCompanyRanks.length,
@@ -941,11 +949,17 @@ const AdminModuleInner = (): JSX.Element => {
       vesselOptions.forEach((vessel: VesselOption) => {
         const existingVesselData = prev.get(vessel.value) || [];
         
-        // CRITICAL: Skip vessels that have been loaded from API to prevent race condition
-        // Check loadedVesselsRef first to avoid overwriting during async load
+        // CRITICAL FIX: Check loadedVesselsRef.current INSIDE the setter to use current state
+        // This prevents stale closures from overwriting freshly loaded API data
         const isLoadedFromAPI = loadedVesselsRef.current.has(vessel.value);
         
-        // Also check if this vessel has loaded data (any checkbox is true)
+        // If vessel has been loaded from API, preserve it completely - never overwrite
+        if (isLoadedFromAPI && existingVesselData.length > 0) {
+          newMap.set(vessel.value, existingVesselData);
+          return;
+        }
+        
+        // Also preserve vessels with client-side edits (any checkbox is true)
         const hasLoadedData = existingVesselData.some(rank => 
           rank.actualManningFlag || 
           rank.safeManning || 
@@ -954,8 +968,7 @@ const AdminModuleInner = (): JSX.Element => {
           rank.actualManning.length > 0
         );
         
-        // If vessel has been loaded from API OR has loaded data, preserve it completely
-        if ((isLoadedFromAPI || hasLoadedData) && existingVesselData.length > 0) {
+        if (hasLoadedData && existingVesselData.length > 0) {
           newMap.set(vessel.value, existingVesselData);
           return;
         }
