@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type CrewDashboardSummary } from "@shared/schema";
+import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type CrewDashboardSummary } from "@shared/schema";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -80,6 +80,12 @@ export interface IStorage {
   getVesselRevision(id: number): Promise<VesselRevision | undefined>;
   getVesselRevisionsByVessel(vesselId: string): Promise<VesselRevision[]>;
   createVesselRevision(vesselRevision: InsertVesselRevision): Promise<VesselRevision>;
+  // Vessel Planning
+  getVesselPlanningByVessel(vesselId: string): Promise<VesselPlanning[]>;
+  getVesselPlanningById(id: number): Promise<VesselPlanning | undefined>;
+  createVesselPlanning(planning: InsertVesselPlanning): Promise<VesselPlanning>;
+  updateVesselPlanning(id: number, planning: Partial<InsertVesselPlanning>): Promise<VesselPlanning | undefined>;
+  deleteVesselPlanning(id: number): Promise<boolean>;
   // Dashboard Summary
   getCrewDashboardSummary(crewId: string): Promise<CrewDashboardSummary | undefined>;
   // ID Generation
@@ -98,6 +104,7 @@ export class MemStorage implements IStorage {
   private vesselGroups: Map<number, VesselGroup>;
   private vesselDrafts: Map<number, VesselDraft>;
   private vesselRevisions: Map<number, VesselRevision>;
+  private vesselPlanning: Map<number, VesselPlanning>;
   private currentUserId: number;
   private currentFormId: number;
   private currentRankGroupId: number;
@@ -107,6 +114,7 @@ export class MemStorage implements IStorage {
   private currentVesselGroupId: number;
   private currentVesselDraftId: number;
   private currentVesselRevisionId: number;
+  private currentVesselPlanningId: number;
 
   constructor() {
     this.users = new Map();
@@ -120,6 +128,7 @@ export class MemStorage implements IStorage {
     this.vesselGroups = new Map();
     this.vesselDrafts = new Map();
     this.vesselRevisions = new Map();
+    this.vesselPlanning = new Map();
     this.currentUserId = 1;
     this.currentFormId = 1;
     this.currentRankGroupId = 1;
@@ -129,6 +138,7 @@ export class MemStorage implements IStorage {
     this.currentVesselGroupId = 1;
     this.currentVesselDraftId = 1;
     this.currentVesselRevisionId = 1;
+    this.currentVesselPlanningId = 1;
     
     this.initializeDefaultData();
 
@@ -883,6 +893,55 @@ export class MemStorage implements IStorage {
     };
     this.vesselRevisions.set(id, vesselRevision);
     return vesselRevision;
+  }
+
+  // Vessel Planning Methods
+  async getVesselPlanningByVessel(vesselId: string): Promise<VesselPlanning[]> {
+    return Array.from(this.vesselPlanning.values()).filter(planning => planning.vesselId === vesselId);
+  }
+
+  async getVesselPlanningById(id: number): Promise<VesselPlanning | undefined> {
+    return this.vesselPlanning.get(id);
+  }
+
+  async createVesselPlanning(insertPlanning: InsertVesselPlanning): Promise<VesselPlanning> {
+    const id = this.currentVesselPlanningId++;
+    const vesselPlanning: VesselPlanning = { 
+      ...insertPlanning,
+      id,
+      onBoardCrewId: insertPlanning.onBoardCrewId || null,
+      onBoardCrewName: insertPlanning.onBoardCrewName || null,
+      reliefDue: insertPlanning.reliefDue || null,
+      signOffDate: insertPlanning.signOffDate || null,
+      signOffPort: insertPlanning.signOffPort || null,
+      reliefStatus: insertPlanning.reliefStatus || null,
+      relieverCrewId: insertPlanning.relieverCrewId || null,
+      relieverCrewName: insertPlanning.relieverCrewName || null,
+      joiningDate: insertPlanning.joiningDate || null,
+      joiningPort: insertPlanning.joiningPort || null,
+      joiningStatus: insertPlanning.joiningStatus || null,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.vesselPlanning.set(id, vesselPlanning);
+    return vesselPlanning;
+  }
+
+  async updateVesselPlanning(id: number, planningData: Partial<InsertVesselPlanning>): Promise<VesselPlanning | undefined> {
+    const existingPlanning = this.vesselPlanning.get(id);
+    if (!existingPlanning) return undefined;
+
+    const updatedPlanning: VesselPlanning = { 
+      ...existingPlanning, 
+      ...planningData,
+      updatedAt: new Date()
+    };
+    this.vesselPlanning.set(id, updatedPlanning);
+    return updatedPlanning;
+  }
+
+  async deleteVesselPlanning(id: number): Promise<boolean> {
+    return this.vesselPlanning.delete(id);
   }
 
   // Appraisal Results Methods
