@@ -53,6 +53,12 @@ The codebase is organized into feature modules (`crewing`, `admin`, `vessel`, `c
     - Auto-populated rank rows from vessel revision system
     - On Board Status section: displays crew name, relief due date, sign-off details, and relief status
     - Reliever Status section: shows reliever crew name, joining date/port, and joining status
+    - **On Board Status Edit Dialog** (Added Oct 2025): Dialog for editing on-board crew member relief details:
+      - Display-only fields: Name, Nationality, Relief Due (auto-populated from crew list)
+      - Editable fields: Sign Off Date (date picker with Popover + Calendar), Sign Off Port (dropdown), Relief Status (dropdown: Proposed, Planned, Confirmed)
+      - Date picker: Uses react-day-picker Calendar component, stores dates as YYYY-MM-DD, displays as dd-MMM-yyyy format
+      - Full React Hook Form + Zod validation integration
+      - Data persistence via PATCH/POST to `/api/vessel-planning/:id`
     - **Relief Status Edit Dialog**: Fully functional form for editing reliever details with proper React Hook Form integration:
       - Form fields: Name (read-only), Nationality (read-only), Joining Status, Contract Period, Contract End Range (Start/End), Joining Date, Joining Port, Deployment Checklist, Applicable Docs
       - Number inputs correctly convert string inputs to numbers using custom onChange handlers

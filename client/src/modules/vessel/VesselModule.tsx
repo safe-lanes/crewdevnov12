@@ -486,6 +486,301 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
     );
 };
 
+// Form schema for On Board Status
+const onBoardStatusFormSchema = z.object({
+    onBoardCrewName: z.string().optional(),
+    onBoardCrewNationality: z.string().optional(),
+    reliefDue: z.string().optional(),
+    signOffDate: z.string().optional(),
+    signOffPort: z.string().optional(),
+    reliefStatus: z.string().optional(),
+});
+
+type OnBoardStatusFormData = z.infer<typeof onBoardStatusFormSchema>;
+
+interface OnBoardStatusEditDialogProps {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    rank: string;
+    vesselId: string;
+    rankId: string;
+    planningData?: any;
+}
+
+const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
+    open,
+    onOpenChange,
+    rank,
+    vesselId,
+    rankId,
+    planningData
+}) => {
+    const { toast } = useToast();
+    const [signOffDateOpen, setSignOffDateOpen] = useState(false);
+    
+    const form = useForm<OnBoardStatusFormData>({
+        resolver: zodResolver(onBoardStatusFormSchema),
+        defaultValues: {
+            onBoardCrewName: '',
+            onBoardCrewNationality: '',
+            reliefDue: '',
+            signOffDate: '',
+            signOffPort: '',
+            reliefStatus: '',
+        }
+    });
+
+    // Reset form when dialog opens or planningData changes
+    React.useEffect(() => {
+        if (open && planningData) {
+            form.reset({
+                onBoardCrewName: planningData.onBoardCrewName || '',
+                onBoardCrewNationality: planningData.onBoardCrewNationality || '',
+                reliefDue: planningData.reliefDue || '',
+                signOffDate: planningData.signOffDate || '',
+                signOffPort: planningData.signOffPort || '',
+                reliefStatus: planningData.reliefStatus || '',
+            });
+        } else if (open && !planningData) {
+            // Reset to empty form for new entry
+            form.reset({
+                onBoardCrewName: '',
+                onBoardCrewNationality: '',
+                reliefDue: '',
+                signOffDate: '',
+                signOffPort: '',
+                reliefStatus: '',
+            });
+        }
+    }, [open, planningData, form]);
+
+    const updatePlanningMutation = useMutation({
+        mutationFn: async (data: OnBoardStatusFormData) => {
+            const payload = {
+                vesselId,
+                rankId,
+                rank,
+                ...planningData,
+                ...data,
+            };
+            
+            if (planningData?.id) {
+                return apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, payload);
+            } else {
+                return apiRequest('POST', '/api/vessel-planning', payload);
+            }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['/api/vessel-planning/vessel', vesselId] });
+            toast({
+                title: "Success",
+                description: "On board status saved successfully",
+            });
+        },
+        onError: () => {
+            toast({
+                title: "Error",
+                description: "Failed to save on board status",
+                variant: "destructive",
+            });
+        }
+    });
+
+    const handleSave = () => {
+        const data = form.getValues();
+        updatePlanningMutation.mutate(data);
+    };
+
+    const handleSubmit = form.handleSubmit((data) => {
+        updatePlanningMutation.mutate(data);
+        onOpenChange(false);
+    });
+
+    // Helper to format date from YYYY-MM-DD to dd-mmm-yyyy
+    const formatDisplayDate = (dateStr: string) => {
+        if (!dateStr) return '';
+        try {
+            const date = new Date(dateStr);
+            return format(date, 'dd-MMM-yyyy');
+        } catch {
+            return dateStr;
+        }
+    };
+
+    // Helper to parse date from dd-mm-yyyy or dd-mmm-yyyy to Date object
+    const parseDate = (dateStr: string): Date | undefined => {
+        if (!dateStr) return undefined;
+        try {
+            // Try to parse YYYY-MM-DD format first
+            if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                return new Date(dateStr);
+            }
+            // Try to parse dd-mm-yyyy format
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+            }
+            return undefined;
+        } catch {
+            return undefined;
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle className="text-lg font-medium text-[#16569e] border-b border-[#16569e] pb-2">
+                        Rank: {rank}
+                    </DialogTitle>
+                </DialogHeader>
+
+                <Form {...form}>
+                    <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+                        {/* Name - Display only */}
+                        <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                            <span className="text-sm text-gray-700">Name:</span>
+                            <span className="text-sm text-gray-900">{planningData?.onBoardCrewName || 'James Wilson'}</span>
+                        </div>
+
+                        {/* Nationality - Display only */}
+                        <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                            <span className="text-sm text-gray-700">Nationality:</span>
+                            <span className="text-sm text-gray-900">{planningData?.onBoardCrewNationality || 'British'}</span>
+                        </div>
+
+                        {/* Relief Due - Display only */}
+                        <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                            <span className="text-sm text-gray-700">Relief Due:</span>
+                            <span className="text-sm text-gray-900">{planningData?.reliefDue ? formatDisplayDate(planningData.reliefDue) : '14-Nov-2025'}</span>
+                        </div>
+
+                        {/* Sign Off Date - Date Picker */}
+                        <FormField
+                            control={form.control}
+                            name="signOffDate"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Sign Off Date</FormLabel>
+                                        <Popover open={signOffDateOpen} onOpenChange={setSignOffDateOpen}>
+                                            <PopoverTrigger asChild>
+                                                <FormControl>
+                                                    <Button
+                                                        variant="outline"
+                                                        className="w-full justify-start text-left font-normal"
+                                                        data-testid="button-sign-off-date"
+                                                    >
+                                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                                        {field.value ? formatDisplayDate(field.value) : <span className="text-gray-400">dd-mm-yyyy</span>}
+                                                    </Button>
+                                                </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar
+                                                    mode="single"
+                                                    selected={field.value ? parseDate(field.value) : undefined}
+                                                    onSelect={(date) => {
+                                                        if (date) {
+                                                            field.onChange(format(date, 'yyyy-MM-dd'));
+                                                            setSignOffDateOpen(false);
+                                                        }
+                                                    }}
+                                                    initialFocus
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+
+                        {/* Sign Off Port */}
+                        <FormField
+                            control={form.control}
+                            name="signOffPort"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Sign Off Port</FormLabel>
+                                        <FormControl>
+                                            <Select 
+                                                onValueChange={field.onChange} 
+                                                value={field.value || undefined} 
+                                                data-testid="select-sign-off-port"
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select Port" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Singapore">Singapore</SelectItem>
+                                                    <SelectItem value="Rotterdam">Rotterdam</SelectItem>
+                                                    <SelectItem value="Dubai">Dubai</SelectItem>
+                                                    <SelectItem value="Hong Kong">Hong Kong</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </FormControl>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+
+                        {/* Relief Status */}
+                        <FormField
+                            control={form.control}
+                            name="reliefStatus"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Relief Status</FormLabel>
+                                        <FormControl>
+                                            <Select 
+                                                onValueChange={field.onChange} 
+                                                value={field.value || undefined} 
+                                                data-testid="select-relief-status"
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select Status" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Proposed">Proposed</SelectItem>
+                                                    <SelectItem value="Planned">Planned</SelectItem>
+                                                    <SelectItem value="Confirmed">Confirmed</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </FormControl>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+
+                        {/* Action Buttons */}
+                        <div className="flex justify-end gap-2 pt-4">
+                            <Button 
+                                type="button" 
+                                onClick={handleSave}
+                                className="bg-[#1e40af] hover:bg-[#1e40af]/90"
+                                disabled={updatePlanningMutation.isPending}
+                                data-testid="button-save-onboard"
+                            >
+                                Save
+                            </Button>
+                            <Button 
+                                type="submit"
+                                className="bg-[#14b8a6] hover:bg-[#14b8a6]/90"
+                                disabled={updatePlanningMutation.isPending}
+                                data-testid="button-submit-onboard"
+                            >
+                                Submit
+                            </Button>
+                        </div>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
 export const VesselModule = (): JSX.Element => {
     const [selectedVesselPage, setSelectedVesselPage] = useState("vessel-database");
     
@@ -506,6 +801,10 @@ export const VesselModule = (): JSX.Element => {
     // Relief Status dialog state
     const [reliefDialogOpen, setReliefDialogOpen] = useState(false);
     const [selectedRankForRelief, setSelectedRankForRelief] = useState<any>(null);
+
+    // On Board Status dialog state
+    const [onBoardDialogOpen, setOnBoardDialogOpen] = useState(false);
+    const [selectedRankForOnBoard, setSelectedRankForOnBoard] = useState<any>(null);
 
     const gridApiRef = useRef<GridApi | null>(null);
 
@@ -922,7 +1221,20 @@ export const VesselModule = (): JSX.Element => {
                                                                     {rankPlanningData?.reliefStatus || ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs border-r-2 border-gray-200" data-testid={`cell-planning-onboard-edit-${index + 1}`}>
-                                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" data-testid={`button-edit-onboard-${index + 1}`}>
+                                                                    <Button 
+                                                                        variant="ghost" 
+                                                                        size="sm" 
+                                                                        className="h-8 w-8 p-0" 
+                                                                        data-testid={`button-edit-onboard-${index + 1}`}
+                                                                        onClick={() => {
+                                                                            setSelectedRankForOnBoard({
+                                                                                rank: rank.rank,
+                                                                                rankId: rank.rankId || rank.id,
+                                                                                planningData: rankPlanningData
+                                                                            });
+                                                                            setOnBoardDialogOpen(true);
+                                                                        }}
+                                                                    >
                                                                         <Edit className="h-4 w-4 text-gray-500" />
                                                                     </Button>
                                                                 </TableCell>
@@ -980,6 +1292,18 @@ export const VesselModule = (): JSX.Element => {
                         vesselId={selectedVessel?.vesselId || ''}
                         rankId={selectedRankForRelief.rankId}
                         planningData={selectedRankForRelief.planningData}
+                    />
+                )}
+
+                {/* On Board Status Edit Dialog */}
+                {selectedRankForOnBoard && (
+                    <OnBoardStatusEditDialog
+                        open={onBoardDialogOpen}
+                        onOpenChange={setOnBoardDialogOpen}
+                        rank={selectedRankForOnBoard.rank}
+                        vesselId={selectedVessel?.vesselId || ''}
+                        rankId={selectedRankForOnBoard.rankId}
+                        planningData={selectedRankForOnBoard.planningData}
                     />
                 )}
             </div>

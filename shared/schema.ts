@@ -365,6 +365,7 @@ export const vesselPlanning = pgTable("vessel_planning", {
   // On Board Status
   onBoardCrewId: text("on_board_crew_id"),
   onBoardCrewName: text("on_board_crew_name"),
+  onBoardCrewNationality: text("on_board_crew_nationality"),
   reliefDue: text("relief_due"),
   signOffDate: text("sign_off_date"),
   signOffPort: text("sign_off_port"),
@@ -723,6 +724,7 @@ export const insertVesselPlanningSchema = createInsertSchema(vesselPlanning).pic
   rank: true,
   onBoardCrewId: true,
   onBoardCrewName: true,
+  onBoardCrewNationality: true,
   reliefDue: true,
   signOffDate: true,
   signOffPort: true,
