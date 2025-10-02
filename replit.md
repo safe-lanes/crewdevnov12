@@ -48,6 +48,7 @@ The codebase is organized into feature modules (`crewing`, `admin`, `vessel`, `c
   - AG Grid table with columns: Vessel name, Type, Crew o/b count, Actions
   - Loading states handled via TanStack Query
   - Integrated with crew management system for accurate on-board counts
+  - **Crew List Display**: Shows ONLY ranks with "Actual Manning" checked, ensuring data consistency with Admin > Rank Admin > Vessel Tab configuration. All manning types (Safe, Optimum, High Workload) remain stored in vessel revisions for future compliance checks and alerts (Oct 2025)
 - **Performance Optimization**: 
   - Map-based O(1) lookups for vessel rank checkboxes to prevent browser freezing
   - TanStack Query for data caching
