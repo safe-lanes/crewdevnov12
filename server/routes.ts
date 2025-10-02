@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError } from "./storage";
-import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema } from "@shared/schema";
+import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema } from "@shared/schema";
 import { z } from "zod";
 import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew } from "@shared/crew-mapping";
 import { 
@@ -858,6 +858,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error(`✅ [SUBMIT ERROR] Submit workflow failed:`, error);
       res.status(500).json({ error: "Failed to submit vessel revision" });
+    }
+  });
+
+  // Vessel Planning API routes
+  app.get("/api/vessel-planning/vessel/:vesselId", async (req, res) => {
+    try {
+      const { vesselId } = req.params;
+      const planning = await storage.getVesselPlanningByVessel(vesselId);
+      res.json(planning);
+    } catch (error) {
+      console.error("Failed to fetch vessel planning:", error);
+      res.status(500).json({ error: "Failed to fetch vessel planning" });
+    }
+  });
+
+  app.get("/api/vessel-planning/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid planning ID - must be a number" });
+      }
+      const planning = await storage.getVesselPlanningById(id);
+      if (!planning) {
+        return res.status(404).json({ error: "Vessel planning not found" });
+      }
+      res.json(planning);
+    } catch (error) {
+      console.error("Failed to fetch vessel planning:", error);
+      res.status(500).json({ error: "Failed to fetch vessel planning" });
+    }
+  });
+
+  app.post("/api/vessel-planning", async (req, res) => {
+    try {
+      const result = insertVesselPlanningSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid vessel planning data", details: result.error.issues });
+      }
+      const planning = await storage.createVesselPlanning(result.data);
+      res.status(201).json(planning);
+    } catch (error) {
+      console.error("Failed to create vessel planning:", error);
+      res.status(500).json({ error: "Failed to create vessel planning" });
+    }
+  });
+
+  app.put("/api/vessel-planning/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid planning ID - must be a number" });
+      }
+      const planning = await storage.updateVesselPlanning(id, req.body);
+      if (!planning) {
+        return res.status(404).json({ error: "Vessel planning not found" });
+      }
+      res.json(planning);
+    } catch (error) {
+      console.error("Failed to update vessel planning:", error);
+      res.status(500).json({ error: "Failed to update vessel planning" });
+    }
+  });
+
+  app.delete("/api/vessel-planning/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid planning ID - must be a number" });
+      }
+      const deleted = await storage.deleteVesselPlanning(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Vessel planning not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete vessel planning:", error);
+      res.status(500).json({ error: "Failed to delete vessel planning" });
     }
   });
 
