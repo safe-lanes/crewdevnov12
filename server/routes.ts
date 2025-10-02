@@ -697,11 +697,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Merge with current company ranks to ensure designation fields are up-to-date
       // This handles legacy data that was saved before designation sync was implemented
-      const companyRanks = await storage.getAllCompanyRanks();
-      const companyRanksMap = new Map(companyRanks.map(cr => [cr.id, cr]));
+      const companyRanks = await storage.getCompanyRanks();
+      const companyRanksMap = new Map(companyRanks.map((cr: any) => [cr.id, cr]));
       
       const mergedRankData = rankData.map((vesselRank: any) => {
-        const companyRank = companyRanksMap.get(vesselRank.id);
+        const companyRank: any = companyRanksMap.get(vesselRank.id);
         
         if (companyRank) {
           return {
@@ -718,11 +718,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             generalRating: companyRank.generalRating ?? vesselRank.generalRating ?? false,
             cateringRating: companyRank.cateringRating ?? vesselRank.cateringRating ?? false,
             // Preserve vessel-specific overrides if they exist
-            safetyOfficer: vesselRank.safetyOfficer ?? companyRank?.safetyOfficer ?? false,
-            sso: vesselRank.sso ?? companyRank?.sso ?? false,
-            medicalOfficer: vesselRank.medicalOfficer ?? companyRank?.medicalOfficer ?? false,
-            navigatingOfficer: vesselRank.navigatingOfficer ?? companyRank?.navigatingOfficer ?? false,
-            emtOfficer: vesselRank.emtOfficer ?? companyRank?.emtOfficer ?? false,
+            safetyOfficer: vesselRank.safetyOfficer ?? companyRank.safetyOfficer ?? false,
+            sso: vesselRank.sso ?? companyRank.sso ?? false,
+            medicalOfficer: vesselRank.medicalOfficer ?? companyRank.medicalOfficer ?? false,
+            navigatingOfficer: vesselRank.navigatingOfficer ?? companyRank.navigatingOfficer ?? false,
+            emtOfficer: vesselRank.emtOfficer ?? companyRank.emtOfficer ?? false,
           };
         }
         return vesselRank;
