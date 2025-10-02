@@ -1131,13 +1131,161 @@ export const VesselModule = (): JSX.Element => {
                         </TabsContent>
 
                         <TabsContent value="officer-matrix" className="mt-0">
-                            <div className="p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                                    Officer Matrix - {selectedVessel.name}
-                                </h3>
-                                <p className="text-gray-500 dark:text-gray-400">
-                                    Officer matrix content will be displayed here.
-                                </p>
+                            <div className="space-y-4">
+                                {/* Check Compliance button aligned to the right */}
+                                <div className="flex justify-end">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 gap-2 border-[#16569e] text-[#16569e] hover:bg-[#16569e] hover:text-white"
+                                        data-testid="button-check-compliance"
+                                    >
+                                        Check Compliance
+                                    </Button>
+                                </div>
+
+                                {/* Table Container */}
+                                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                                    <ScrollArea className="h-[calc(100vh-280px)] w-full">
+                                        <Table>
+                                            <TableHeader>
+                                                {/* First Header Row - Section Headers */}
+                                                <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                                                    {/* Rank column */}
+                                                    <TableHead rowSpan={2} className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3] border-r border-white/20">Rank</TableHead>
+                                                    
+                                                    {/* Rank, Name & Nationality Section */}
+                                                    <TableHead colSpan={2} className="text-white text-xs font-normal text-center sticky top-0 z-30 bg-[#52baf3] border-r-2 border-white/40">Rank, Name & Nationality</TableHead>
+                                                    
+                                                    {/* Certification & Qualification Section */}
+                                                    <TableHead colSpan={6} className="text-white text-xs font-normal text-center sticky top-0 z-30 bg-[#52baf3] border-r-2 border-white/40">Certification & Qualification</TableHead>
+                                                    
+                                                    {/* Years in Service (Today's Date) Section */}
+                                                    <TableHead colSpan={5} className="text-white text-xs font-normal text-center sticky top-0 z-30 bg-[#52baf3] border-r-2 border-white/40">Years in Service (Today's Date)</TableHead>
+                                                    
+                                                    {/* Language Section */}
+                                                    <TableHead rowSpan={2} className="text-white text-xs font-normal text-center w-24 sticky top-0 z-30 bg-[#52baf3]">Language</TableHead>
+                                                    
+                                                    {/* Actions column */}
+                                                    <TableHead rowSpan={2} className="text-white text-xs font-normal w-16 sticky top-0 z-30 bg-[#52baf3]"></TableHead>
+                                                </TableRow>
+                                                
+                                                {/* Second Header Row - Column Headers */}
+                                                <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                                                    {/* Rank, Name & Nationality columns */}
+                                                    <TableHead className="text-white text-xs font-normal sticky top-[41px] z-30 bg-[#52baf3]">Surname, Given Name</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-[41px] z-30 bg-[#52baf3] border-r-2 border-white/40">Nationality</TableHead>
+                                                    
+                                                    {/* Certification & Qualification columns */}
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-[41px] z-30 bg-[#52baf3]">Cert. Comp.</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-28 sticky top-[41px] z-30 bg-[#52baf3]">Issuing Country</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-[41px] z-30 bg-[#52baf3]">Admin Accept</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-[41px] z-30 bg-[#52baf3]">Tanker</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-28 sticky top-[41px] z-30 bg-[#52baf3]">Spl. Tanker (T, I, P, Z)</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-[41px] z-30 bg-[#52baf3] border-r-2 border-white/40">Radio Qual.</TableHead>
+                                                    
+                                                    {/* Years in Service columns */}
+                                                    <TableHead className="text-white text-xs font-normal w-20 sticky top-[41px] z-30 bg-[#52baf3]">Rank</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-[41px] z-30 bg-[#52baf3]">Tanker Type</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-20 sticky top-[41px] z-30 bg-[#52baf3]">All Types</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-20 sticky top-[41px] z-30 bg-[#52baf3]">DOW</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-20 sticky top-[41px] z-30 bg-[#52baf3] border-r-2 border-white/40">Time o/a</TableHead>
+                                                    
+                                                    {/* Language column is rowSpan from first row */}
+                                                    {/* Actions column is rowSpan from first row */}
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {ranksLoading ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={16} className="text-center text-xs text-gray-500 py-8">
+                                                            Loading vessel positions...
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : vesselRanks.length === 0 ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={16} className="text-center text-xs text-gray-500 py-8">
+                                                            No positions configured for this vessel. Please configure positions in Admin &gt; Rank Admin &gt; Vessel.
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : vesselRanks.filter((r: any) => r.officer === true).length === 0 ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={16} className="text-center text-xs text-gray-500 py-8">
+                                                            No officer ranks configured for this vessel.
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : (
+                                                    vesselRanks
+                                                        .filter((rank: any) => rank.officer === true)
+                                                        .map((rank: any, index: number) => (
+                                                            <TableRow key={rank.id || index} className="hover:bg-gray-50 border-b border-gray-100">
+                                                                <TableCell className="text-xs text-gray-700 border-r border-gray-100" data-testid={`cell-officer-rank-${index + 1}`}>
+                                                                    {rank.role || rank.rank}
+                                                                </TableCell>
+                                                                
+                                                                {/* Rank, Name & Nationality */}
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-name-${index + 1}`}>
+                                                                    {/* Will be populated with crew data */}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700 border-r-2 border-gray-200" data-testid={`cell-officer-nationality-${index + 1}`}>
+                                                                    {/* Will be populated with crew data */}
+                                                                </TableCell>
+                                                                
+                                                                {/* Certification & Qualification */}
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-cert-comp-${index + 1}`}>
+                                                                    {/* Will be populated with qualification data */}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-issuing-country-${index + 1}`}>
+                                                                    {/* Will be populated with qualification data */}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-admin-accept-${index + 1}`}>
+                                                                    {/* Will be populated with qualification data */}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-tanker-${index + 1}`}>
+                                                                    {/* Will be populated with qualification data */}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-spl-tanker-${index + 1}`}>
+                                                                    {/* Will be populated with qualification data */}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700 border-r-2 border-gray-200" data-testid={`cell-officer-radio-${index + 1}`}>
+                                                                    {/* Will be populated with qualification data */}
+                                                                </TableCell>
+                                                                
+                                                                {/* Years in Service */}
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-rank-${index + 1}`}>
+                                                                    {/* Will be populated with experience data */}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-tanker-${index + 1}`}>
+                                                                    {/* Will be populated with experience data */}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-all-${index + 1}`}>
+                                                                    {/* Will be populated with experience data */}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-dow-${index + 1}`}>
+                                                                    {/* Will be populated with experience data */}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700 border-r-2 border-gray-200" data-testid={`cell-officer-time-${index + 1}`}>
+                                                                    {/* Will be populated with experience data */}
+                                                                </TableCell>
+                                                                
+                                                                {/* Language */}
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-language-${index + 1}`}>
+                                                                    {/* Will be populated with language proficiency */}
+                                                                </TableCell>
+                                                                
+                                                                {/* Actions */}
+                                                                <TableCell className="text-xs" data-testid={`cell-officer-actions-${index + 1}`}>
+                                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                                        <Eye className="h-4 w-4 text-gray-500" />
+                                                                    </Button>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        ))
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </ScrollArea>
+                                </div>
                             </div>
                         </TabsContent>
 
