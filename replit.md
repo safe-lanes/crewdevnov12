@@ -41,6 +41,11 @@ The codebase is organized into feature modules (`crewing`, `admin`, `vessel`, `c
 
 ### Technical Implementations
 - **Vessel Revision System**: Manages vessel rank assignments with distinct "Save Draft" (temporary, no date) and "Submit" (finalized, mandatory date, auto-sequencing R0→R1→R2) workflows. It includes robust date validation and cleans up drafts upon submission.
+- **Rank Designation Synchronization** (Fixed Oct 2025): Comprehensive two-tier designation system ensuring proper data flow from Company Ranks to Vessel Ranks:
+  - **Company-only fields** (officer, rating, seniorOfficer, deckOfficer, engOfficer, pettyOfficer, deckRating, engineRating, generalRating, cateringRating): Flow down automatically from Company Ranks, always kept in sync, not editable at vessel level
+  - **Vessel-specific override fields** (safetyOfficer, sso, medicalOfficer, navigatingOfficer, emtOfficer): Inherit company defaults but allow vessel-specific customization
+  - Merge logic preserves vessel overrides while updating company-only fields when loading saved data from API
+  - Enables Officer Matrix to correctly display officer ranks based on company designation settings
 - **Vessel Database Module**: Displays all vessels configured in Admin > Rank Admin > Vessel Tab (Master Data ID 014). Features:
   - Real-time vessel data fetching from `/api/masters/014/data`
   - Dynamic crew count calculation by matching crew members to vessels
