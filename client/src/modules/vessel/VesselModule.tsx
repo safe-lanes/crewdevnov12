@@ -441,6 +441,10 @@ export const VesselModule = (): JSX.Element => {
     const [selectedVessel, setSelectedVessel] = useState<any>(null);
     const [activeTab, setActiveTab] = useState("crew-list");
 
+    // Relief Status dialog state
+    const [reliefDialogOpen, setReliefDialogOpen] = useState(false);
+    const [selectedRankForRelief, setSelectedRankForRelief] = useState<any>(null);
+
     const gridApiRef = useRef<GridApi | null>(null);
 
     // Fetch vessels and crew members
@@ -875,7 +879,20 @@ export const VesselModule = (): JSX.Element => {
                                                                     {rankPlanningData?.joiningStatus || ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs" data-testid={`cell-planning-reliever-edit-${index + 1}`}>
-                                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" data-testid={`button-edit-reliever-${index + 1}`}>
+                                                                    <Button 
+                                                                        variant="ghost" 
+                                                                        size="sm" 
+                                                                        className="h-8 w-8 p-0" 
+                                                                        data-testid={`button-edit-reliever-${index + 1}`}
+                                                                        onClick={() => {
+                                                                            setSelectedRankForRelief({
+                                                                                rank: rank.role || rank.rank,
+                                                                                rankId: rank.rankId,
+                                                                                planningData: rankPlanningData
+                                                                            });
+                                                                            setReliefDialogOpen(true);
+                                                                        }}
+                                                                    >
                                                                         <Edit className="h-4 w-4 text-gray-500" />
                                                                     </Button>
                                                                 </TableCell>
@@ -891,6 +908,18 @@ export const VesselModule = (): JSX.Element => {
                         </TabsContent>
                     </Tabs>
                 </div>
+
+                {/* Relief Status Edit Dialog */}
+                {selectedRankForRelief && (
+                    <ReliefStatusEditDialog
+                        open={reliefDialogOpen}
+                        onOpenChange={setReliefDialogOpen}
+                        rank={selectedRankForRelief.rank}
+                        vesselId={selectedVessel?.vesselId || ''}
+                        rankId={selectedRankForRelief.rankId}
+                        planningData={selectedRankForRelief.planningData}
+                    />
+                )}
             </div>
         );
     };
