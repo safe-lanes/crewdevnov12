@@ -1038,10 +1038,21 @@ const AdminModuleInner = (): JSX.Element => {
     });
   }, [companyRankData, vesselOptions]);
 
+  // Track previous company rank data to prevent infinite form sync loops
+  const prevCompanyFormSyncRef = React.useRef<string>('');
+  
   // CRITICAL: Sync React Hook Form with companyRankData changes (Fix dual source of truth)
   React.useEffect(() => {
     // STRATEGIC FIX: Prevent overwrite during editing - critical guard condition
     if (isCompanyEditing || companyRankData.length === 0) return;
+    
+    // PERFORMANCE FIX: Only sync if data actually changed (prevent infinite loops)
+    const syncKey = JSON.stringify(companyRankData);
+    if (prevCompanyFormSyncRef.current === syncKey) {
+      return; // No change, skip sync
+    }
+    prevCompanyFormSyncRef.current = syncKey;
+    
     if (companyRankData.length > 0) {
       const displayRows = companyRankData.filter(rank => {
         if (rank.isRoleRow) return true;
@@ -1068,7 +1079,7 @@ const AdminModuleInner = (): JSX.Element => {
         }))
       });
     }
-  }, [companyRankData, isCompanyEditing]);
+  }, [companyRankData, isCompanyEditing, resetCompany]);
 
   // Load saved vessel data when vessels are selected
   React.useEffect(() => {
