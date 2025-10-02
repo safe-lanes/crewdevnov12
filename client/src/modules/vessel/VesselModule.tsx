@@ -297,29 +297,27 @@ export const VesselModule = (): JSX.Element => {
 
                                 {/* Table Container */}
                                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
-                                                <TableHead className="text-white text-xs font-normal w-16 bg-[#52baf3]">S. No.</TableHead>
-                                                <TableHead className="text-white text-xs font-normal w-24 bg-[#52baf3]">Rank</TableHead>
-                                                <TableHead className="text-white text-xs font-normal bg-[#52baf3]">Surname, Given Name</TableHead>
-                                                <TableHead className="text-white text-xs font-normal w-24 bg-[#52baf3]">Nationality</TableHead>
-                                                <TableHead className="text-white text-xs font-normal w-32 bg-[#52baf3]">Joined</TableHead>
-                                                <TableHead className="text-white text-xs font-normal w-24 bg-[#52baf3]">Doc Check</TableHead>
-                                                <TableHead className="text-white text-xs font-normal w-20 bg-[#52baf3]">Famil.</TableHead>
-                                                <TableHead className="text-white text-xs font-normal w-24 bg-[#52baf3]">Relief Date</TableHead>
-                                                <TableHead className="text-white text-xs font-normal w-32 bg-[#52baf3]">Planned S/Off</TableHead>
-                                                <TableHead className="text-white text-xs font-normal w-40 bg-[#52baf3]">Doc. Expiring (2m)/Expired</TableHead>
-                                                <TableHead className="text-white text-xs font-normal w-32 bg-[#52baf3]">Medical Expiring</TableHead>
-                                                <TableHead className="text-white text-xs font-normal w-40 bg-[#52baf3]">Vacc. Expiring (2m)/Expired</TableHead>
-                                                <TableHead className="text-white text-xs font-normal w-24 bg-[#52baf3]">Appraisal</TableHead>
-                                                <TableHead className="text-white text-xs font-normal w-24 bg-[#52baf3]">Handover</TableHead>
-                                                <TableHead className="text-white text-xs font-normal w-16 bg-[#52baf3]"></TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                    </Table>
                                     <ScrollArea className="h-[calc(100vh-330px)] w-full">
                                         <Table>
+                                            <TableHeader>
+                                                <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                                                    <TableHead className="text-white text-xs font-normal w-16 sticky top-0 z-30 bg-[#52baf3]">S. No.</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Rank</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal sticky top-0 z-30 bg-[#52baf3]">Surname, Given Name</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Nationality</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Joined</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Doc Check</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-20 sticky top-0 z-30 bg-[#52baf3]">Famil.</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Relief Date</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Planned S/Off</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-40 sticky top-0 z-30 bg-[#52baf3]">Doc. Expiring (2m)/Expired</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Medical Expiring</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-40 sticky top-0 z-30 bg-[#52baf3]">Vacc. Expiring (2m)/Expired</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Appraisal</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Handover</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-16 sticky top-0 z-30 bg-[#52baf3]"></TableHead>
+                                                </TableRow>
+                                            </TableHeader>
                                             <TableBody>
                                                 {ranksLoading ? (
                                                     <TableRow>
@@ -419,39 +417,37 @@ export const VesselModule = (): JSX.Element => {
                             <div className="space-y-4">
                                 {/* Table Container */}
                                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
-                                                {/* Common columns */}
-                                                <TableHead rowSpan={2} className="text-white text-xs font-normal w-16 bg-[#52baf3] border-r border-white/20">S.N</TableHead>
-                                                <TableHead rowSpan={2} className="text-white text-xs font-normal w-32 bg-[#52baf3] border-r border-white/20">Rank</TableHead>
-                                                
-                                                {/* On Board Status Section */}
-                                                <TableHead colSpan={6} className="text-white text-xs font-normal text-center bg-[#52baf3] border-r-2 border-white/40">On Board Status</TableHead>
-                                                
-                                                {/* Reliever Status Section */}
-                                                <TableHead colSpan={6} className="text-white text-xs font-normal text-center bg-[#52baf3]">Reliever Status</TableHead>
-                                            </TableRow>
-                                            <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
-                                                {/* On Board Status columns */}
-                                                <TableHead className="text-white text-xs font-normal bg-[#52baf3]">Surname, Given Name</TableHead>
-                                                <TableHead className="text-white text-xs font-normal w-28 bg-[#52baf3]">Relief Due</TableHead>
-                                                <TableHead className="text-white text-xs font-normal w-28 bg-[#52baf3]">S/Off Date</TableHead>
-                                                <TableHead className="text-white text-xs font-normal w-32 bg-[#52baf3]">S/Off Port</TableHead>
-                                                <TableHead className="text-white text-xs font-normal w-28 bg-[#52baf3]">Relief Status</TableHead>
-                                                <TableHead className="text-white text-xs font-normal w-16 bg-[#52baf3] border-r-2 border-white/40"></TableHead>
-                                                
-                                                {/* Reliever Status columns */}
-                                                <TableHead className="text-white text-xs font-normal bg-[#52baf3]">Surname, Given Name</TableHead>
-                                                <TableHead className="text-white text-xs font-normal w-28 bg-[#52baf3]">Joining Date</TableHead>
-                                                <TableHead className="text-white text-xs font-normal w-32 bg-[#52baf3]">Joining Port</TableHead>
-                                                <TableHead className="text-white text-xs font-normal w-28 bg-[#52baf3]">Joining Status</TableHead>
-                                                <TableHead className="text-white text-xs font-normal w-16 bg-[#52baf3]"></TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                    </Table>
-                                    <ScrollArea className="h-[calc(100vh-360px)] w-full">
+                                    <ScrollArea className="h-[calc(100vh-280px)] w-full">
                                         <Table>
+                                            <TableHeader>
+                                                <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                                                    {/* Common columns */}
+                                                    <TableHead rowSpan={2} className="text-white text-xs font-normal w-16 sticky top-0 z-30 bg-[#52baf3] border-r border-white/20">S.N</TableHead>
+                                                    <TableHead rowSpan={2} className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3] border-r border-white/20">Rank</TableHead>
+                                                    
+                                                    {/* On Board Status Section */}
+                                                    <TableHead colSpan={6} className="text-white text-xs font-normal text-center sticky top-0 z-30 bg-[#52baf3] border-r-2 border-white/40">On Board Status</TableHead>
+                                                    
+                                                    {/* Reliever Status Section */}
+                                                    <TableHead colSpan={6} className="text-white text-xs font-normal text-center sticky top-0 z-30 bg-[#52baf3]">Reliever Status</TableHead>
+                                                </TableRow>
+                                                <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                                                    {/* On Board Status columns */}
+                                                    <TableHead className="text-white text-xs font-normal sticky top-[41px] z-30 bg-[#52baf3]">Surname, Given Name</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-28 sticky top-[41px] z-30 bg-[#52baf3]">Relief Due</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-28 sticky top-[41px] z-30 bg-[#52baf3]">S/Off Date</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-32 sticky top-[41px] z-30 bg-[#52baf3]">S/Off Port</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-28 sticky top-[41px] z-30 bg-[#52baf3]">Relief Status</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-16 sticky top-[41px] z-30 bg-[#52baf3] border-r-2 border-white/40"></TableHead>
+                                                    
+                                                    {/* Reliever Status columns */}
+                                                    <TableHead className="text-white text-xs font-normal sticky top-[41px] z-30 bg-[#52baf3]">Surname, Given Name</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-28 sticky top-[41px] z-30 bg-[#52baf3]">Joining Date</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-32 sticky top-[41px] z-30 bg-[#52baf3]">Joining Port</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-28 sticky top-[41px] z-30 bg-[#52baf3]">Joining Status</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-16 sticky top-[41px] z-30 bg-[#52baf3]"></TableHead>
+                                                </TableRow>
+                                            </TableHeader>
                                             <TableBody>
                                                 {ranksLoading ? (
                                                     <TableRow>
