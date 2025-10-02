@@ -921,6 +921,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/vessel-planning/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid planning ID - must be a number" });
+      }
+      const planning = await storage.updateVesselPlanning(id, req.body);
+      if (!planning) {
+        return res.status(404).json({ error: "Vessel planning not found" });
+      }
+      res.json(planning);
+    } catch (error) {
+      console.error("Failed to update vessel planning:", error);
+      res.status(500).json({ error: "Failed to update vessel planning" });
+    }
+  });
+
   app.delete("/api/vessel-planning/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);

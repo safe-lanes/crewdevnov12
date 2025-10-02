@@ -53,9 +53,14 @@ The codebase is organized into feature modules (`crewing`, `admin`, `vessel`, `c
     - Auto-populated rank rows from vessel revision system
     - On Board Status section: displays crew name, relief due date, sign-off details, and relief status
     - Reliever Status section: shows reliever crew name, joining date/port, and joining status
-    - Edit buttons present for both sections (functionality to be implemented later)
+    - **Relief Status Edit Dialog**: Fully functional form for editing reliever details with proper React Hook Form integration:
+      - Form fields: Name (read-only), Nationality (read-only), Joining Status, Contract Period, Contract End Range (Start/End), Joining Date, Joining Port, Deployment Checklist, Applicable Docs
+      - Number inputs correctly convert string inputs to numbers using custom onChange handlers
+      - Select components handle undefined/empty values properly (value={field.value || undefined})
+      - useEffect hook resets form when dialog opens to load saved data from planningData prop
+      - All fields persist correctly on save/submit (Oct 2025 bug fix)
     - Data persisted via vesselPlanning schema in PersistentFileStorage
-    - API endpoints: `/api/vessel-planning/vessel/:vesselId` for CRUD operations
+    - API endpoints: POST `/api/vessel-planning`, PATCH `/api/vessel-planning/:id`, GET `/api/vessel-planning/vessel/:vesselId`
 - **Performance Optimization**: 
   - Map-based O(1) lookups for vessel rank checkboxes to prevent browser freezing
   - TanStack Query for data caching

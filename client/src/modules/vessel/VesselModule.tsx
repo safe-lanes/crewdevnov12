@@ -111,18 +111,50 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
     const form = useForm<ReliefStatusFormData>({
         resolver: zodResolver(reliefStatusFormSchema),
         defaultValues: {
-            relieverCrewName: planningData?.relieverCrewName || '',
-            relieverNationality: planningData?.relieverNationality || '',
-            joiningStatus: planningData?.joiningStatus || '',
-            contractPeriodMonths: planningData?.contractPeriodMonths || undefined,
-            contractEndRangeStartMonths: planningData?.contractEndRangeStartMonths || undefined,
-            contractEndRangeEndMonths: planningData?.contractEndRangeEndMonths || undefined,
-            joiningDate: planningData?.joiningDate || '',
-            joiningPort: planningData?.joiningPort || '',
-            deploymentChecklistCompleted: planningData?.deploymentChecklistCompleted || false,
-            applicableDocsChecked: planningData?.applicableDocsChecked || false,
+            relieverCrewName: '',
+            relieverNationality: '',
+            joiningStatus: '',
+            contractPeriodMonths: undefined,
+            contractEndRangeStartMonths: undefined,
+            contractEndRangeEndMonths: undefined,
+            joiningDate: '',
+            joiningPort: '',
+            deploymentChecklistCompleted: false,
+            applicableDocsChecked: false,
         }
     });
+
+    // Reset form when dialog opens or planningData changes
+    React.useEffect(() => {
+        if (open && planningData) {
+            form.reset({
+                relieverCrewName: planningData.relieverCrewName || '',
+                relieverNationality: planningData.relieverNationality || '',
+                joiningStatus: planningData.joiningStatus || '',
+                contractPeriodMonths: planningData.contractPeriodMonths,
+                contractEndRangeStartMonths: planningData.contractEndRangeStartMonths,
+                contractEndRangeEndMonths: planningData.contractEndRangeEndMonths,
+                joiningDate: planningData.joiningDate || '',
+                joiningPort: planningData.joiningPort || '',
+                deploymentChecklistCompleted: planningData.deploymentChecklistCompleted || false,
+                applicableDocsChecked: planningData.applicableDocsChecked || false,
+            });
+        } else if (open && !planningData) {
+            // Reset to empty form for new entry
+            form.reset({
+                relieverCrewName: '',
+                relieverNationality: '',
+                joiningStatus: '',
+                contractPeriodMonths: undefined,
+                contractEndRangeStartMonths: undefined,
+                contractEndRangeEndMonths: undefined,
+                joiningDate: '',
+                joiningPort: '',
+                deploymentChecklistCompleted: false,
+                applicableDocsChecked: false,
+            });
+        }
+    }, [open, planningData, form]);
 
     const updatePlanningMutation = useMutation({
         mutationFn: async (data: ReliefStatusFormData) => {
@@ -218,7 +250,11 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                                     <div className="grid grid-cols-3 items-center gap-4">
                                         <FormLabel className="text-sm text-gray-700">Joining Status:</FormLabel>
                                         <FormControl>
-                                            <Select onValueChange={field.onChange} value={field.value} data-testid="select-joining-status">
+                                            <Select 
+                                                onValueChange={field.onChange} 
+                                                value={field.value || undefined} 
+                                                data-testid="select-joining-status"
+                                            >
                                                 <SelectTrigger className="col-span-2">
                                                     <SelectValue placeholder="Select Status" />
                                                 </SelectTrigger>
@@ -244,7 +280,14 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                                     <div className="grid grid-cols-3 items-center gap-4">
                                         <FormLabel className="text-sm text-gray-700">Contract Period (Months):</FormLabel>
                                         <FormControl>
-                                            <Input {...field} type="number" className="col-span-2" data-testid="input-contract-period" />
+                                            <Input 
+                                                {...field}
+                                                type="number" 
+                                                className="col-span-2" 
+                                                data-testid="input-contract-period"
+                                                value={field.value ?? ''}
+                                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                            />
                                         </FormControl>
                                     </div>
                                 </FormItem>
@@ -260,7 +303,14 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                                     <div className="grid grid-cols-3 items-center gap-4">
                                         <FormLabel className="text-sm text-gray-700">Contract End - Range Start (Months):</FormLabel>
                                         <FormControl>
-                                            <Input {...field} type="number" className="col-span-2" data-testid="input-contract-range-start" />
+                                            <Input 
+                                                {...field}
+                                                type="number" 
+                                                className="col-span-2" 
+                                                data-testid="input-contract-range-start"
+                                                value={field.value ?? ''}
+                                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                            />
                                         </FormControl>
                                     </div>
                                 </FormItem>
@@ -276,7 +326,14 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                                     <div className="grid grid-cols-3 items-center gap-4">
                                         <FormLabel className="text-sm text-gray-700">Contract End - Range End (Months):</FormLabel>
                                         <FormControl>
-                                            <Input {...field} type="number" className="col-span-2" data-testid="input-contract-range-end" />
+                                            <Input 
+                                                {...field}
+                                                type="number" 
+                                                className="col-span-2" 
+                                                data-testid="input-contract-range-end"
+                                                value={field.value ?? ''}
+                                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                            />
                                         </FormControl>
                                     </div>
                                 </FormItem>
@@ -314,7 +371,11 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                                     <div className="grid grid-cols-3 items-center gap-4">
                                         <FormLabel className="text-sm text-gray-700">Joining Port:</FormLabel>
                                         <FormControl>
-                                            <Select onValueChange={field.onChange} value={field.value} data-testid="select-joining-port">
+                                            <Select 
+                                                onValueChange={field.onChange} 
+                                                value={field.value || undefined} 
+                                                data-testid="select-joining-port"
+                                            >
                                                 <SelectTrigger className="col-span-2">
                                                     <SelectValue placeholder="Select Port" />
                                                 </SelectTrigger>
@@ -322,6 +383,7 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                                                     <SelectItem value="Singapore">Singapore</SelectItem>
                                                     <SelectItem value="Rotterdam">Rotterdam</SelectItem>
                                                     <SelectItem value="Dubai">Dubai</SelectItem>
+                                                    <SelectItem value="Hong Kong">Hong Kong</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </FormControl>
