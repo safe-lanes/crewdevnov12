@@ -695,13 +695,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Parse the revisionData JSON to get the ranks
       const rankData = JSON.parse(latestRevision.revisionData);
       
+      // Merge with current company ranks to ensure designation fields are up-to-date
+      // This handles legacy data that was saved before designation sync was implemented
+      const companyRanks = await storage.getAllCompanyRanks();
+      const companyRanksMap = new Map(companyRanks.map(cr => [cr.id, cr]));
+      
+      const mergedRankData = rankData.map((vesselRank: any) => {
+        const companyRank = companyRanksMap.get(vesselRank.id);
+        
+        if (companyRank) {
+          return {
+            ...vesselRank,
+            // Update company-only designation fields from current company ranks
+            officer: companyRank.officer ?? vesselRank.officer ?? false,
+            rating: companyRank.rating ?? vesselRank.rating ?? false,
+            seniorOfficer: companyRank.seniorOfficer ?? vesselRank.seniorOfficer ?? false,
+            deckOfficer: companyRank.deckOfficer ?? vesselRank.deckOfficer ?? false,
+            engOfficer: companyRank.engOfficer ?? vesselRank.engOfficer ?? false,
+            pettyOfficer: companyRank.pettyOfficer ?? vesselRank.pettyOfficer ?? false,
+            deckRating: companyRank.deckRating ?? vesselRank.deckRating ?? false,
+            engineRating: companyRank.engineRating ?? vesselRank.engineRating ?? false,
+            generalRating: companyRank.generalRating ?? vesselRank.generalRating ?? false,
+            cateringRating: companyRank.cateringRating ?? vesselRank.cateringRating ?? false,
+            // Preserve vessel-specific overrides if they exist
+            safetyOfficer: vesselRank.safetyOfficer ?? companyRank?.safetyOfficer ?? false,
+            sso: vesselRank.sso ?? companyRank?.sso ?? false,
+            medicalOfficer: vesselRank.medicalOfficer ?? companyRank?.medicalOfficer ?? false,
+            navigatingOfficer: vesselRank.navigatingOfficer ?? companyRank?.navigatingOfficer ?? false,
+            emtOfficer: vesselRank.emtOfficer ?? companyRank?.emtOfficer ?? false,
+          };
+        }
+        return vesselRank;
+      });
+      
       // Filter ranks that have "Actual Manning" checked
       // The crew list should only display ranks with actualManningFlag = true
-      const activeRanks = rankData.filter((rank: any) => 
+      const activeRanks = mergedRankData.filter((rank: any) => 
         rank.actualManningFlag
       );
       
-      console.log(`📜 [VESSEL RANKS API] Found ${activeRanks.length} active ranks for vessel ${vesselId}`);
+      console.log(`📜 [VESSEL RANKS API] Found ${activeRanks.length} active ranks for vessel ${vesselId} (merged with company ranks)`);
       res.json(activeRanks);
     } catch (error) {
       console.error("Failed to fetch vessel ranks:", error);
