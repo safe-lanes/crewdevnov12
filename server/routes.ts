@@ -695,10 +695,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Parse the revisionData JSON to get the ranks
       const rankData = JSON.parse(latestRevision.revisionData);
       
-      // Filter ranks that have at least one manning checkbox checked
-      // Check the flag fields, not the array fields
+      // Filter ranks that have "Actual Manning" checked
+      // The crew list should only display ranks with actualManningFlag = true
       const activeRanks = rankData.filter((rank: any) => 
-        rank.actualManningFlag || rank.safeManning || rank.optimumManning || rank.highWorkloadManning
+        rank.actualManningFlag
       );
       
       console.log(`📜 [VESSEL RANKS API] Found ${activeRanks.length} active ranks for vessel ${vesselId}`);
