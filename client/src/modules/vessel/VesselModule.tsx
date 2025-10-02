@@ -297,7 +297,7 @@ export const VesselModule = (): JSX.Element => {
 
                                 {/* Table Container */}
                                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                                    <ScrollArea className="h-[500px] w-full">
+                                    <ScrollArea className="h-[calc(100vh-280px)] w-full">
                                         <Table>
                                             <TableHeader>
                                                 <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
@@ -417,7 +417,7 @@ export const VesselModule = (): JSX.Element => {
                             <div className="space-y-4">
                                 {/* Table Container */}
                                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                                    <ScrollArea className="h-[500px] w-full">
+                                    <ScrollArea className="h-[calc(100vh-280px)] w-full">
                                         <Table>
                                             <TableHeader>
                                                 <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
