@@ -49,6 +49,13 @@ The codebase is organized into feature modules (`crewing`, `admin`, `vessel`, `c
   - Loading states handled via TanStack Query
   - Integrated with crew management system for accurate on-board counts
   - **Crew List Display**: Shows ONLY ranks with "Actual Manning" checked, ensuring data consistency with Admin > Rank Admin > Vessel Tab configuration. All manning types (Safe, Optimum, High Workload) remain stored in vessel revisions for future compliance checks and alerts (Oct 2025)
+  - **Planning Tab** (Added Oct 2025): Crew relief planning interface with dual-section table layout:
+    - Auto-populated rank rows from vessel revision system
+    - On Board Status section: displays crew name, relief due date, sign-off details, and relief status
+    - Reliever Status section: shows reliever crew name, joining date/port, and joining status
+    - Edit buttons present for both sections (functionality to be implemented later)
+    - Data persisted via vesselPlanning schema in PersistentFileStorage
+    - API endpoints: `/api/vessel-planning/vessel/:vesselId` for CRUD operations
 - **Performance Optimization**: 
   - Map-based O(1) lookups for vessel rank checkboxes to prevent browser freezing
   - TanStack Query for data caching
