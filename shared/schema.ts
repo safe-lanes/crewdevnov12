@@ -356,6 +356,31 @@ export const idCounters = pgTable("id_counters", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const vesselPlanning = pgTable("vessel_planning", {
+  id: serial("id").primaryKey(),
+  vesselId: text("vessel_id").notNull(),
+  rankId: text("rank_id").notNull(),
+  rank: text("rank").notNull(),
+  
+  // On Board Status
+  onBoardCrewId: text("on_board_crew_id"),
+  onBoardCrewName: text("on_board_crew_name"),
+  reliefDue: text("relief_due"),
+  signOffDate: text("sign_off_date"),
+  signOffPort: text("sign_off_port"),
+  reliefStatus: text("relief_status"),
+  
+  // Reliever Status
+  relieverCrewId: text("reliever_crew_id"),
+  relieverCrewName: text("reliever_crew_name"),
+  joiningDate: text("joining_date"),
+  joiningPort: text("joining_port"),
+  joiningStatus: text("joining_status"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -686,6 +711,23 @@ export const insertIdCounterSchema = createInsertSchema(idCounters).pick({
   format: true,
 });
 
+export const insertVesselPlanningSchema = createInsertSchema(vesselPlanning).pick({
+  vesselId: true,
+  rankId: true,
+  rank: true,
+  onBoardCrewId: true,
+  onBoardCrewName: true,
+  reliefDue: true,
+  signOffDate: true,
+  signOffPort: true,
+  reliefStatus: true,
+  relieverCrewId: true,
+  relieverCrewName: true,
+  joiningDate: true,
+  joiningPort: true,
+  joiningStatus: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertForm = z.infer<typeof insertFormSchema>;
@@ -723,6 +765,8 @@ export type InsertDataMaster = z.infer<typeof insertDataMasterSchema>;
 export type DataMaster = typeof dataMasters.$inferSelect;
 export type InsertMasterDataEntry = z.infer<typeof insertMasterDataEntrySchema>;
 export type MasterDataEntry = typeof masterDataEntries.$inferSelect;
+export type InsertVesselPlanning = z.infer<typeof insertVesselPlanningSchema>;
+export type VesselPlanning = typeof vesselPlanning.$inferSelect;
 
 // Dashboard Types
 export const dashboardStatusSchema = z.object({
