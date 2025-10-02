@@ -328,6 +328,15 @@ const AdminModuleInner = (): JSX.Element => {
       ? vesselRankDataMap.get(selectedVessels[0]) || []
       : [];
     
+    if (selectedVessels.length > 0) {
+      console.log('🔍 [LOOKUP] Building checkbox lookup for vessel:', {
+        vesselId: selectedVessels[0],
+        dataLength: currentVesselData.length,
+        mapKeys: Array.from(vesselRankDataMap.keys()),
+        sampleRankWithCheckboxes: currentVesselData.find(r => r.actualManningFlag || r.safeManning)
+      });
+    }
+    
     return new Map(currentVesselData.map(rank => [rank.id, rank]));
   }, [vesselRankDataMap, selectedVessels]);
   
@@ -953,8 +962,16 @@ const AdminModuleInner = (): JSX.Element => {
         // This prevents stale closures from overwriting freshly loaded API data
         const isLoadedFromAPI = loadedVesselsRef.current.has(vessel.value);
         
+        console.log(`🔄 [SYNC] Processing vessel ${vessel.value}:`, {
+          isLoadedFromAPI,
+          existingDataLength: existingVesselData.length,
+          loadedVesselsRef: Array.from(loadedVesselsRef.current),
+          sampleData: existingVesselData[0]
+        });
+        
         // If vessel has been loaded from API, preserve it completely - never overwrite
         if (isLoadedFromAPI && existingVesselData.length > 0) {
+          console.log(`✅ [SYNC] Preserving loaded data for vessel ${vessel.value}`);
           newMap.set(vessel.value, existingVesselData);
           return;
         }
@@ -1144,6 +1161,8 @@ const AdminModuleInner = (): JSX.Element => {
                   
                   loadedVesselsRef.current.add(vesselId);
                   console.log(`📥 ✓ Loaded revision ${latestRevision.revision} for vessel ${vesselId} (${loadedData.length} ranks, date: ${latestRevision.revisionDate})`);
+                  console.log(`🔍 [LOAD] Sample rank data:`, loadedData[0]);
+                  console.log(`🏷️ [LOAD] loadedVesselsRef now contains:`, Array.from(loadedVesselsRef.current));
                 } else {
                   console.info(`📥 No revisions found for vessel ${vesselId} - will use company structure`);
                   setFlexDate(''); // Clear date when no revisions exist
