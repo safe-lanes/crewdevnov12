@@ -55,6 +55,17 @@ The codebase is organized into feature modules (`crewing`, `admin`, `vessel`, `c
   - Loading states handled via TanStack Query
   - Integrated with crew management system for accurate on-board counts
   - **Crew List Display**: Shows ONLY ranks with "Actual Manning" checked, ensuring data consistency with Admin > Rank Admin > Vessel Tab configuration. All manning types (Safe, Optimum, High Workload) remain stored in vessel revisions for future compliance checks and alerts (Oct 2025)
+  - **Officer Matrix Tab** (Added Oct 2025): Displays officer qualifications and experience data for compliance checking:
+    - Multi-row header structure with sections for Rank/Name/Nationality, Certification & Qualification, Years in Service, and Language
+    - Filters to show only officer ranks (based on officer designation field)
+    - **Compliance Matrix Dialog** (Added Oct 2025): Check compliance against oil major requirements
+      - Two-table split layout: left table lists oil majors with status indicators (green/yellow/red dots), right table shows requirements for selected oil major
+      - 14 oil majors supported: ADNOC, BHP, BP, Chevron, Conoco, Enel, ENI, Erg, International Energy, Idemitsu, Talisman, Koch, KPI, Lukoil
+      - Status indicators: Green (all criteria compliant), Yellow (uncertain), Red (one or more non-compliant)
+      - Requirements grouped by category: Years with Operator, Years in Rank, Years on All Types of Tankers, Date Joined
+      - Each requirement shows description, required value, matrix value, and compliance status
+      - Click handler to switch between oil majors and dynamically update requirements display
+      - Currently uses mock data (admin configuration to be added later)
   - **Planning Tab** (Added Oct 2025): Crew relief planning interface with dual-section table layout:
     - Auto-populated rank rows from vessel revision system
     - On Board Status section: displays crew name, relief due date, sign-off details, and relief status
