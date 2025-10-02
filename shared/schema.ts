@@ -373,9 +373,15 @@ export const vesselPlanning = pgTable("vessel_planning", {
   // Reliever Status
   relieverCrewId: text("reliever_crew_id"),
   relieverCrewName: text("reliever_crew_name"),
+  relieverNationality: text("reliever_nationality"),
   joiningDate: text("joining_date"),
   joiningPort: text("joining_port"),
   joiningStatus: text("joining_status"),
+  contractPeriodMonths: integer("contract_period_months"),
+  contractEndRangeStartMonths: integer("contract_end_range_start_months"),
+  contractEndRangeEndMonths: integer("contract_end_range_end_months"),
+  deploymentChecklistCompleted: boolean("deployment_checklist_completed"),
+  applicableDocsChecked: boolean("applicable_docs_checked"),
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -723,9 +729,15 @@ export const insertVesselPlanningSchema = createInsertSchema(vesselPlanning).pic
   reliefStatus: true,
   relieverCrewId: true,
   relieverCrewName: true,
+  relieverNationality: true,
   joiningDate: true,
   joiningPort: true,
   joiningStatus: true,
+  contractPeriodMonths: true,
+  contractEndRangeStartMonths: true,
+  contractEndRangeEndMonths: true,
+  deploymentChecklistCompleted: true,
+  applicableDocsChecked: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
