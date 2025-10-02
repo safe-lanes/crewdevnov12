@@ -27,6 +27,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
+import { ComplianceMatrixDialog } from './ComplianceMatrixDialog';
 
 // Hook to fetch vessels from Master Data (ID 014)
 const useVessels = () => {
@@ -805,6 +806,9 @@ export const VesselModule = (): JSX.Element => {
     // On Board Status dialog state
     const [onBoardDialogOpen, setOnBoardDialogOpen] = useState(false);
     const [selectedRankForOnBoard, setSelectedRankForOnBoard] = useState<any>(null);
+    
+    // Compliance Matrix dialog state
+    const [complianceDialogOpen, setComplianceDialogOpen] = useState(false);
 
     const gridApiRef = useRef<GridApi | null>(null);
 
@@ -1138,6 +1142,7 @@ export const VesselModule = (): JSX.Element => {
                                         variant="outline"
                                         size="sm"
                                         className="h-8 gap-2 border-[#16569e] text-[#16569e] hover:bg-[#16569e] hover:text-white"
+                                        onClick={() => setComplianceDialogOpen(true)}
                                         data-testid="button-check-compliance"
                                     >
                                         Check Compliance
@@ -1622,6 +1627,12 @@ export const VesselModule = (): JSX.Element => {
                     selectedVesselPage === "vessel-database" && renderVesselDatabase()
                 )}
             </MainLayout>
+            
+            {/* Compliance Matrix Dialog */}
+            <ComplianceMatrixDialog
+                open={complianceDialogOpen}
+                onOpenChange={setComplianceDialogOpen}
+            />
         </>
     );
 };
