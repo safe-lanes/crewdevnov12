@@ -1014,7 +1014,18 @@ const AdminModuleInner = (): JSX.Element => {
             safeManning: preservedData?.safeManning || false,
             optimumManning: preservedData?.optimumManning || false,
             highWorkloadManning: preservedData?.highWorkloadManning || false,
-            // Officer role overrides (default to Company tab values)
+            // Company-only designation fields (flow down automatically, not editable in vessel)
+            officer: companyRank.officer,
+            rating: companyRank.rating,
+            seniorOfficer: companyRank.seniorOfficer,
+            deckOfficer: companyRank.deckOfficer,
+            engOfficer: companyRank.engOfficer,
+            pettyOfficer: companyRank.pettyOfficer,
+            deckRating: companyRank.deckRating,
+            engineRating: companyRank.engineRating,
+            generalRating: companyRank.generalRating,
+            cateringRating: companyRank.cateringRating,
+            // Vessel-specific override fields (default to Company tab values, but vessel can override)
             safetyOfficer: companyRank.safetyOfficer,
             sso: companyRank.sso,
             medicalOfficer: companyRank.medicalOfficer,
@@ -1136,14 +1147,46 @@ const AdminModuleInner = (): JSX.Element => {
                   const latestDraft = drafts[0];
                   const loadedData: VesselRankData[] = JSON.parse(latestDraft.draftData);
                   
+                  // Merge loaded data with current company ranks to ensure designation fields are up-to-date
+                  const mergedData = loadedData.map(vesselRank => {
+                    const companyRank = companyRankData.find(cr => 
+                      cr.id === vesselRank.id || 
+                      (vesselRank.isRoleRow && cr.id === vesselRank.id && cr.role === vesselRank.role)
+                    );
+                    
+                    if (companyRank) {
+                      return {
+                        ...vesselRank,
+                        // Update company-only fields from current company ranks
+                        officer: companyRank.officer,
+                        rating: companyRank.rating,
+                        seniorOfficer: companyRank.seniorOfficer,
+                        deckOfficer: companyRank.deckOfficer,
+                        engOfficer: companyRank.engOfficer,
+                        pettyOfficer: companyRank.pettyOfficer,
+                        deckRating: companyRank.deckRating,
+                        engineRating: companyRank.engineRating,
+                        generalRating: companyRank.generalRating,
+                        cateringRating: companyRank.cateringRating,
+                        // Preserve vessel-specific overrides if they exist, otherwise use company defaults
+                        safetyOfficer: vesselRank.safetyOfficer ?? companyRank.safetyOfficer,
+                        sso: vesselRank.sso ?? companyRank.sso,
+                        medicalOfficer: vesselRank.medicalOfficer ?? companyRank.medicalOfficer,
+                        navigatingOfficer: vesselRank.navigatingOfficer ?? companyRank.navigatingOfficer,
+                        emtOfficer: vesselRank.emtOfficer ?? companyRank.emtOfficer,
+                      };
+                    }
+                    return vesselRank;
+                  });
+                  
                   setVesselRankDataMap(prev => {
                     const newMap = new Map(prev);
-                    newMap.set(vesselId, loadedData);
+                    newMap.set(vesselId, mergedData);
                     return newMap;
                   });
                   
                   loadedVesselsRef.current.add(vesselId);
-                  console.log(`📥 ✓ Loaded draft for vessel ${vesselId} (${loadedData.length} ranks)`);
+                  console.log(`📥 ✓ Loaded and merged draft for vessel ${vesselId} (${mergedData.length} ranks)`);
                 } else {
                   console.info(`📥 No draft found for vessel ${vesselId} - will start with latest revision or company structure`);
                 }
@@ -1164,9 +1207,41 @@ const AdminModuleInner = (): JSX.Element => {
                   const latestRevision = sortedRevisions[0];
                   const loadedData: VesselRankData[] = JSON.parse(latestRevision.revisionData);
                   
+                  // Merge loaded data with current company ranks to ensure designation fields are up-to-date
+                  const mergedData = loadedData.map(vesselRank => {
+                    const companyRank = companyRankData.find(cr => 
+                      cr.id === vesselRank.id || 
+                      (vesselRank.isRoleRow && cr.id === vesselRank.id && cr.role === vesselRank.role)
+                    );
+                    
+                    if (companyRank) {
+                      return {
+                        ...vesselRank,
+                        // Update company-only fields from current company ranks
+                        officer: companyRank.officer,
+                        rating: companyRank.rating,
+                        seniorOfficer: companyRank.seniorOfficer,
+                        deckOfficer: companyRank.deckOfficer,
+                        engOfficer: companyRank.engOfficer,
+                        pettyOfficer: companyRank.pettyOfficer,
+                        deckRating: companyRank.deckRating,
+                        engineRating: companyRank.engineRating,
+                        generalRating: companyRank.generalRating,
+                        cateringRating: companyRank.cateringRating,
+                        // Preserve vessel-specific overrides if they exist, otherwise use company defaults
+                        safetyOfficer: vesselRank.safetyOfficer ?? companyRank.safetyOfficer,
+                        sso: vesselRank.sso ?? companyRank.sso,
+                        medicalOfficer: vesselRank.medicalOfficer ?? companyRank.medicalOfficer,
+                        navigatingOfficer: vesselRank.navigatingOfficer ?? companyRank.navigatingOfficer,
+                        emtOfficer: vesselRank.emtOfficer ?? companyRank.emtOfficer,
+                      };
+                    }
+                    return vesselRank;
+                  });
+                  
                   setVesselRankDataMap(prev => {
                     const newMap = new Map(prev);
-                    newMap.set(vesselId, loadedData);
+                    newMap.set(vesselId, mergedData);
                     return newMap;
                   });
                   
@@ -1181,7 +1256,7 @@ const AdminModuleInner = (): JSX.Element => {
                   }
                   
                   loadedVesselsRef.current.add(vesselId);
-                  console.log(`📥 ✓ Loaded revision ${latestRevision.revision} for vessel ${vesselId} (${loadedData.length} ranks, date: ${latestRevision.revisionDate})`);
+                  console.log(`📥 ✓ Loaded and merged revision ${latestRevision.revision} for vessel ${vesselId} (${mergedData.length} ranks, date: ${latestRevision.revisionDate})`);
                 } else{
                   console.info(`📥 No revisions found for vessel ${vesselId} - will use company structure`);
                   setFlexDate(''); // Clear date when no revisions exist
