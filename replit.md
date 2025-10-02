@@ -45,6 +45,7 @@ The codebase is organized into feature modules (`crewing`, `admin`, `vessel`, `c
   - **Company-only fields** (officer, rating, seniorOfficer, deckOfficer, engOfficer, pettyOfficer, deckRating, engineRating, generalRating, cateringRating): Flow down automatically from Company Ranks, always kept in sync, not editable at vessel level
   - **Vessel-specific override fields** (safetyOfficer, sso, medicalOfficer, navigatingOfficer, emtOfficer): Inherit company defaults but allow vessel-specific customization
   - Merge logic preserves vessel overrides while updating company-only fields when loading saved data from API
+  - **API Backward Compatibility** (Fixed Oct 2025): GET `/api/vessel-revisions/ranks/:vesselId` endpoint dynamically merges designation fields from current company ranks before returning vessel rank data, ensuring legacy revisions saved before designation sync implementation still display correctly in Officer Matrix
   - Enables Officer Matrix to correctly display officer ranks based on company designation settings
 - **Vessel Database Module**: Displays all vessels configured in Admin > Rank Admin > Vessel Tab (Master Data ID 014). Features:
   - Real-time vessel data fetching from `/api/masters/014/data`
