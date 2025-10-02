@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import VesselSideBar from './VesselSideBar';
 import MainLayout from '@/components/main/MainLayout';
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
@@ -15,6 +15,18 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Eye } from 'lucide-react';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
 import { ColDef, GridApi } from 'ag-grid-community';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { z } from "zod";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
 
 // Hook to fetch vessels from Master Data (ID 014)
 const useVessels = () => {
@@ -59,6 +71,357 @@ const useVesselPlanning = (vesselId: string | null) => {
         enabled: !!vesselId,
         select: (data: any[]) => data
     });
+};
+
+// Form schema for Relief Status
+const reliefStatusFormSchema = z.object({
+    relieverCrewName: z.string().optional(),
+    relieverNationality: z.string().optional(),
+    joiningStatus: z.string().optional(),
+    contractPeriodMonths: z.coerce.number().optional(),
+    contractEndRangeStartMonths: z.coerce.number().optional(),
+    contractEndRangeEndMonths: z.coerce.number().optional(),
+    joiningDate: z.string().optional(),
+    joiningPort: z.string().optional(),
+    deploymentChecklistCompleted: z.boolean().optional(),
+    applicableDocsChecked: z.boolean().optional(),
+});
+
+type ReliefStatusFormData = z.infer<typeof reliefStatusFormSchema>;
+
+interface ReliefStatusEditDialogProps {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    rank: string;
+    vesselId: string;
+    rankId: string;
+    planningData?: any;
+}
+
+const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
+    open,
+    onOpenChange,
+    rank,
+    vesselId,
+    rankId,
+    planningData
+}) => {
+    const { toast } = useToast();
+    
+    const form = useForm<ReliefStatusFormData>({
+        resolver: zodResolver(reliefStatusFormSchema),
+        defaultValues: {
+            relieverCrewName: planningData?.relieverCrewName || '',
+            relieverNationality: planningData?.relieverNationality || '',
+            joiningStatus: planningData?.joiningStatus || '',
+            contractPeriodMonths: planningData?.contractPeriodMonths || undefined,
+            contractEndRangeStartMonths: planningData?.contractEndRangeStartMonths || undefined,
+            contractEndRangeEndMonths: planningData?.contractEndRangeEndMonths || undefined,
+            joiningDate: planningData?.joiningDate || '',
+            joiningPort: planningData?.joiningPort || '',
+            deploymentChecklistCompleted: planningData?.deploymentChecklistCompleted || false,
+            applicableDocsChecked: planningData?.applicableDocsChecked || false,
+        }
+    });
+
+    const updatePlanningMutation = useMutation({
+        mutationFn: async (data: ReliefStatusFormData) => {
+            const payload = {
+                vesselId,
+                rankId,
+                rank,
+                ...planningData,
+                ...data,
+            };
+            
+            if (planningData?.id) {
+                return apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, payload);
+            } else {
+                return apiRequest('POST', '/api/vessel-planning', payload);
+            }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['/api/vessel-planning/vessel', vesselId] });
+            toast({
+                title: "Success",
+                description: "Relief status saved successfully",
+            });
+        },
+        onError: () => {
+            toast({
+                title: "Error",
+                description: "Failed to save relief status",
+                variant: "destructive",
+            });
+        }
+    });
+
+    const handleSave = () => {
+        const data = form.getValues();
+        updatePlanningMutation.mutate(data);
+    };
+
+    const handleSubmit = form.handleSubmit((data) => {
+        updatePlanningMutation.mutate(data);
+        onOpenChange(false);
+    });
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle className="text-lg font-medium text-[#16569e] border-b border-[#16569e] pb-2">
+                        Rank: {rank}
+                    </DialogTitle>
+                </DialogHeader>
+
+                <Form {...form}>
+                    <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+                        {/* Name - Read Only */}
+                        <FormField
+                            control={form.control}
+                            name="relieverCrewName"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-3 items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Name:</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} readOnly className="col-span-2 bg-gray-50" data-testid="input-reliever-name" />
+                                        </FormControl>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+
+                        {/* Nationality - Read Only */}
+                        <FormField
+                            control={form.control}
+                            name="relieverNationality"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-3 items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Nationality:</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} readOnly className="col-span-2 bg-gray-50" data-testid="input-reliever-nationality" />
+                                        </FormControl>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+
+                        {/* Joining Status */}
+                        <FormField
+                            control={form.control}
+                            name="joiningStatus"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-3 items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Joining Status:</FormLabel>
+                                        <FormControl>
+                                            <Select onValueChange={field.onChange} value={field.value} data-testid="select-joining-status">
+                                                <SelectTrigger className="col-span-2">
+                                                    <SelectValue placeholder="Select Status" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Proposed">Proposed</SelectItem>
+                                                    <SelectItem value="Planned">Planned</SelectItem>
+                                                    <SelectItem value="Confirmed">Confirmed</SelectItem>
+                                                    <SelectItem value="In Transit">In Transit</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </FormControl>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+
+                        {/* Contract Period */}
+                        <FormField
+                            control={form.control}
+                            name="contractPeriodMonths"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-3 items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Contract Period (Months):</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} type="number" className="col-span-2" data-testid="input-contract-period" />
+                                        </FormControl>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+
+                        {/* Contract End - Range Start */}
+                        <FormField
+                            control={form.control}
+                            name="contractEndRangeStartMonths"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-3 items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Contract End - Range Start (Months):</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} type="number" className="col-span-2" data-testid="input-contract-range-start" />
+                                        </FormControl>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+
+                        {/* Contract End - Range End */}
+                        <FormField
+                            control={form.control}
+                            name="contractEndRangeEndMonths"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-3 items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Contract End - Range End (Months):</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} type="number" className="col-span-2" data-testid="input-contract-range-end" />
+                                        </FormControl>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+
+                        {/* Joining Date */}
+                        <FormField
+                            control={form.control}
+                            name="joiningDate"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-3 items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Joining Date:</FormLabel>
+                                        <FormControl>
+                                            <Input 
+                                                {...field} 
+                                                type="text" 
+                                                placeholder="dd-mm-yyyy" 
+                                                className="col-span-2" 
+                                                data-testid="input-joining-date"
+                                            />
+                                        </FormControl>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+
+                        {/* Joining Port */}
+                        <FormField
+                            control={form.control}
+                            name="joiningPort"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-3 items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Joining Port:</FormLabel>
+                                        <FormControl>
+                                            <Select onValueChange={field.onChange} value={field.value} data-testid="select-joining-port">
+                                                <SelectTrigger className="col-span-2">
+                                                    <SelectValue placeholder="Select Port" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Singapore">Singapore</SelectItem>
+                                                    <SelectItem value="Rotterdam">Rotterdam</SelectItem>
+                                                    <SelectItem value="Dubai">Dubai</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </FormControl>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+
+                        {/* Deployment Checklist Completed */}
+                        <FormField
+                            control={form.control}
+                            name="deploymentChecklistCompleted"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-3 items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Deployment Checklist Completed ?</FormLabel>
+                                        <FormControl>
+                                            <RadioGroup 
+                                                onValueChange={(value) => field.onChange(value === 'true')} 
+                                                value={field.value ? 'true' : 'false'}
+                                                className="col-span-2"
+                                                data-testid="radio-deployment-checklist"
+                                            >
+                                                <div className="flex items-center space-x-4">
+                                                    <div className="flex items-center space-x-2">
+                                                        <RadioGroupItem value="true" id="deployment-yes" />
+                                                        <Label htmlFor="deployment-yes">Yes</Label>
+                                                    </div>
+                                                    <div className="flex items-center space-x-2">
+                                                        <RadioGroupItem value="false" id="deployment-no" />
+                                                        <Label htmlFor="deployment-no">No</Label>
+                                                    </div>
+                                                </div>
+                                            </RadioGroup>
+                                        </FormControl>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+
+                        {/* Applicable Docs Checked */}
+                        <FormField
+                            control={form.control}
+                            name="applicableDocsChecked"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-3 items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Applicable Docs checked:</FormLabel>
+                                        <FormControl>
+                                            <div className="col-span-2 flex items-center gap-4">
+                                                <RadioGroup 
+                                                    onValueChange={(value) => field.onChange(value === 'true')} 
+                                                    value={field.value ? 'true' : 'false'}
+                                                    className="flex items-center space-x-4"
+                                                    data-testid="radio-applicable-docs"
+                                                >
+                                                    <div className="flex items-center space-x-2">
+                                                        <RadioGroupItem value="true" id="docs-yes" />
+                                                        <Label htmlFor="docs-yes">Yes</Label>
+                                                    </div>
+                                                    <div className="flex items-center space-x-2">
+                                                        <RadioGroupItem value="false" id="docs-no" />
+                                                        <Label htmlFor="docs-no">No</Label>
+                                                    </div>
+                                                </RadioGroup>
+                                                <Button type="button" variant="outline" size="sm" data-testid="button-see-checklist">
+                                                    See Checklist
+                                                </Button>
+                                            </div>
+                                        </FormControl>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+
+                        {/* Action Buttons */}
+                        <div className="flex justify-end gap-2 pt-4">
+                            <Button 
+                                type="button" 
+                                onClick={handleSave}
+                                className="bg-[#1e40af] hover:bg-[#1e40af]/90"
+                                disabled={updatePlanningMutation.isPending}
+                                data-testid="button-save-relief"
+                            >
+                                Save
+                            </Button>
+                            <Button 
+                                type="submit"
+                                className="bg-[#14b8a6] hover:bg-[#14b8a6]/90"
+                                disabled={updatePlanningMutation.isPending}
+                                data-testid="button-submit-relief"
+                            >
+                                Submit
+                            </Button>
+                        </div>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
+    );
 };
 
 export const VesselModule = (): JSX.Element => {
