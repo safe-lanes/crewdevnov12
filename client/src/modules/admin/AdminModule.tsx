@@ -1079,18 +1079,45 @@ const AdminModuleInner = (): JSX.Element => {
         }))
       });
     }
-  }, [companyRankData, isCompanyEditing, resetCompany]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyRankData, isCompanyEditing]);
 
   // Load saved vessel data when vessels are selected
   React.useEffect(() => {
-    if (selectedVessels.length === 0 || companyRankData.length === 0) return;
+    console.log('🔍 [VESSEL LOAD CHECK]', {
+      selectedVesselsLength: selectedVessels.length,
+      companyRankDataLength: companyRankData.length,
+      selectedVessels,
+      loadedVessels: Array.from(loadedVesselsRef.current)
+    });
+    
+    if (selectedVessels.length === 0 || companyRankData.length === 0) {
+      console.log('🔍 [VESSEL LOAD SKIP] Early return - no vessels selected or no company data');
+      return;
+    }
 
     const loadVesselData = async () => {
       // Determine which vessels need to be loaded (haven't been loaded yet)
       const vesselsToLoad = selectedVessels.filter(vesselId => !loadedVesselsRef.current.has(vesselId));
       
+      console.log('🔍 [VESSEL LOAD] Vessels to load:', vesselsToLoad);
+      
       if (vesselsToLoad.length === 0) {
         console.info('📥 All selected vessels already loaded, skipping fetch');
+        // Show what data we have for the current vessel
+        const currentVesselId = selectedVessels[0];
+        const currentData = vesselRankDataMap.get(currentVesselId);
+        console.log(`🔍 [CURRENT DATA] Vessel ${currentVesselId} has ${currentData?.length || 0} ranks`);
+        if (currentData && currentData.length > 0) {
+          const sample = currentData[0];
+          console.log('🔍 [SAMPLE RANK]', {
+            id: sample.id,
+            rank: sample.rank,
+            actualManningFlag: sample.actualManningFlag,
+            safeManning: sample.safeManning,
+            optimumManning: sample.optimumManning
+          });
+        }
         return;
       }
 
