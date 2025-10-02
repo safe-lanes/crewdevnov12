@@ -51,7 +51,12 @@ The codebase is organized into feature modules (`crewing`, `admin`, `vessel`, `c
 - **Performance Optimization**: 
   - Map-based O(1) lookups for vessel rank checkboxes to prevent browser freezing
   - TanStack Query for data caching
-  - useRef pattern in AdminModule to prevent infinite re-render loops when syncing rank master data (uses reference equality checks to avoid redundant state updates)
+  - useRef pattern in AdminModule to prevent infinite re-render loops:
+    - `prevVesselOptionsRef`: Prevents redundant vessel option syncs
+    - `prevCompanyRankSyncRef`: Blocks duplicate company rank data syncs from rank master
+    - `prevCompanyFormSyncRef`: Guards React Hook Form sync to prevent infinite updates (added Oct 2025)
+    - `loadedVesselsRef`: Tracks loaded vessels to prevent race conditions where stale sync overwrites API data
+  - All refs use JSON.stringify for value comparison to detect actual data changes
   - useMemo for derived vessel data calculations to minimize re-renders
 - **Data Storage**: Uses `PersistentFileStorage` (`test-data.json`) for development, with a defined PostgreSQL/Drizzle ORM schema for production readiness.
 
