@@ -87,8 +87,8 @@ export const VesselModule = (): JSX.Element => {
     // Fetch vessel ranks for selected vessel (convert id to string for API)
     const { data: vesselRanks = [], isLoading: ranksLoading } = useVesselRanks(selectedVessel?.id?.toString() || null);
     
-    // Fetch vessel planning for selected vessel
-    const { data: vesselPlanning = [], isLoading: planningLoading } = useVesselPlanning(selectedVessel?.id?.toString() || null);
+    // Fetch vessel planning for selected vessel (use vesselId which is the entry ID)
+    const { data: vesselPlanning = [], isLoading: planningLoading } = useVesselPlanning(selectedVessel?.vesselId || null);
 
     const handleClearFilters = () => {
         setVesselValue("");

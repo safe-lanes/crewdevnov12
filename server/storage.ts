@@ -1098,6 +1098,7 @@ export class PersistentFileStorage implements IStorage {
   private masterDataEntries: Map<string, any>;
   private vesselDrafts: Map<number, VesselDraft>;
   private vesselRevisions: Map<number, VesselRevision>;
+  private vesselPlanning: Map<number, VesselPlanning>;
   private currentUserId: number;
   private currentFormId: number;
   private currentRankGroupId: number;
@@ -1107,6 +1108,7 @@ export class PersistentFileStorage implements IStorage {
   private currentVesselGroupId: number;
   private currentVesselDraftId: number;
   private currentVesselRevisionId: number;
+  private currentVesselPlanningId: number;
   private filePath: string;
   private saveTimeout: NodeJS.Timeout | null = null;
   private isSaving: boolean = false;
@@ -1126,6 +1128,7 @@ export class PersistentFileStorage implements IStorage {
     this.masterDataEntries = new Map();
     this.vesselDrafts = new Map();
     this.vesselRevisions = new Map();
+    this.vesselPlanning = new Map();
     this.currentUserId = 1;
     this.currentFormId = 1;
     this.currentRankGroupId = 1;
@@ -1135,6 +1138,7 @@ export class PersistentFileStorage implements IStorage {
     this.currentVesselGroupId = 1;
     this.currentVesselDraftId = 1;
     this.currentVesselRevisionId = 1;
+    this.currentVesselPlanningId = 1;
     
     this.filePath = path.join(process.cwd(), 'test-data.json');
     this.loadFromFile();
@@ -1217,6 +1221,10 @@ export class PersistentFileStorage implements IStorage {
         this.vesselRevisions = this.loadNestedMapData(data.vesselRevisions || []);
         this.currentVesselRevisionId = data.currentVesselRevisionId || 1;
         
+        // Load vessel planning and counter
+        this.vesselPlanning = new Map(data.vesselPlanning || []);
+        this.currentVesselPlanningId = data.currentVesselPlanningId || 1;
+        
         console.log("📄 Loaded existing data from test-data.json");
       } else {
         console.log("📄 test-data.json not found, initializing with default data");
@@ -1255,6 +1263,7 @@ export class PersistentFileStorage implements IStorage {
           vesselGroups: Array.from(this.vesselGroups.entries()),
           vesselDrafts: Array.from(this.vesselDrafts.entries()),
           vesselRevisions: Array.from(this.vesselRevisions.entries()),
+          vesselPlanning: Array.from(this.vesselPlanning.entries()),
           masterDataEntries: Array.from(this.masterDataEntries.entries()),
           currentUserId: this.currentUserId,
           currentFormId: this.currentFormId,
@@ -1264,7 +1273,8 @@ export class PersistentFileStorage implements IStorage {
           currentCrewIdCounter: this.currentCrewIdCounter,
           currentVesselGroupId: this.currentVesselGroupId,
           currentVesselDraftId: this.currentVesselDraftId,
-          currentVesselRevisionId: this.currentVesselRevisionId
+          currentVesselRevisionId: this.currentVesselRevisionId,
+          currentVesselPlanningId: this.currentVesselPlanningId
         };
         
         await fs.promises.writeFile(this.filePath, JSON.stringify(data), 'utf8');
@@ -2105,6 +2115,59 @@ export class PersistentFileStorage implements IStorage {
 
   async deleteRecruitmentCandidate(id: string): Promise<boolean> {
     const result = this.recruitmentCandidates.delete(id);
+    if (result) this.saveToFile(); // SAVE TO FILE AFTER EVERY DELETE!
+    return result;
+  }
+
+  // Vessel Planning Methods
+  async getVesselPlanningByVessel(vesselId: string): Promise<VesselPlanning[]> {
+    return Array.from(this.vesselPlanning.values()).filter(planning => planning.vesselId === vesselId);
+  }
+
+  async getVesselPlanningById(id: number): Promise<VesselPlanning | undefined> {
+    return this.vesselPlanning.get(id);
+  }
+
+  async createVesselPlanning(insertPlanning: InsertVesselPlanning): Promise<VesselPlanning> {
+    const id = this.currentVesselPlanningId++;
+    const vesselPlanning: VesselPlanning = { 
+      ...insertPlanning,
+      id,
+      onBoardCrewId: insertPlanning.onBoardCrewId || null,
+      onBoardCrewName: insertPlanning.onBoardCrewName || null,
+      reliefDue: insertPlanning.reliefDue || null,
+      signOffDate: insertPlanning.signOffDate || null,
+      signOffPort: insertPlanning.signOffPort || null,
+      reliefStatus: insertPlanning.reliefStatus || null,
+      relieverCrewId: insertPlanning.relieverCrewId || null,
+      relieverCrewName: insertPlanning.relieverCrewName || null,
+      joiningDate: insertPlanning.joiningDate || null,
+      joiningPort: insertPlanning.joiningPort || null,
+      joiningStatus: insertPlanning.joiningStatus || null,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.vesselPlanning.set(id, vesselPlanning);
+    this.saveToFile(); // SAVE TO FILE AFTER EVERY CREATE!
+    return vesselPlanning;
+  }
+
+  async updateVesselPlanning(id: number, planningData: Partial<InsertVesselPlanning>): Promise<VesselPlanning | undefined> {
+    const existingPlanning = this.vesselPlanning.get(id);
+    if (!existingPlanning) return undefined;
+
+    const updatedPlanning: VesselPlanning = { 
+      ...existingPlanning, 
+      ...planningData,
+      updatedAt: new Date()
+    };
+    this.vesselPlanning.set(id, updatedPlanning);
+    this.saveToFile(); // SAVE TO FILE AFTER EVERY UPDATE!
+    return updatedPlanning;
+  }
+
+  async deleteVesselPlanning(id: number): Promise<boolean> {
+    const result = this.vesselPlanning.delete(id);
     if (result) this.saveToFile(); // SAVE TO FILE AFTER EVERY DELETE!
     return result;
   }
