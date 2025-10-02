@@ -1051,6 +1051,7 @@ export class PersistentFileStorage implements IStorage {
   private filePath: string;
   private saveTimeout: NodeJS.Timeout | null = null;
   private isSaving: boolean = false;
+  private needsResave: boolean = false;
 
   constructor() {
     // Initialize all properties first
@@ -1177,7 +1178,7 @@ export class PersistentFileStorage implements IStorage {
     
     this.saveTimeout = setTimeout(async () => {
       if (this.isSaving) {
-        this.saveToFile();
+        this.needsResave = true;
         return;
       }
       
@@ -1213,6 +1214,11 @@ export class PersistentFileStorage implements IStorage {
         console.error("⚠️ Error saving to test-data.json:", error);
       } finally {
         this.isSaving = false;
+        
+        if (this.needsResave) {
+          this.needsResave = false;
+          this.saveToFile();
+        }
       }
     }, 300);
   }
