@@ -51,6 +51,16 @@ const useVesselRanks = (vesselId: string | null) => {
     });
 };
 
+// Hook to fetch vessel planning data
+const useVesselPlanning = (vesselId: string | null) => {
+    return useQuery({
+        queryKey: ['/api/vessel-planning/vessel', vesselId],
+        queryFn: vesselId ? () => fetch(`/api/vessel-planning/vessel/${vesselId}`).then(res => res.json()) : undefined,
+        enabled: !!vesselId,
+        select: (data: any[]) => data
+    });
+};
+
 export const VesselModule = (): JSX.Element => {
     const [selectedVesselPage, setSelectedVesselPage] = useState("vessel-database");
     
@@ -76,6 +86,9 @@ export const VesselModule = (): JSX.Element => {
     
     // Fetch vessel ranks for selected vessel (convert id to string for API)
     const { data: vesselRanks = [], isLoading: ranksLoading } = useVesselRanks(selectedVessel?.id?.toString() || null);
+    
+    // Fetch vessel planning for selected vessel
+    const { data: vesselPlanning = [], isLoading: planningLoading } = useVesselPlanning(selectedVessel?.id?.toString() || null);
 
     const handleClearFilters = () => {
         setVesselValue("");
@@ -401,13 +414,116 @@ export const VesselModule = (): JSX.Element => {
                         </TabsContent>
 
                         <TabsContent value="planning" className="mt-0">
-                            <div className="p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                                    Planning - {selectedVessel.name}
-                                </h3>
-                                <p className="text-gray-500 dark:text-gray-400">
-                                    Planning content will be displayed here.
-                                </p>
+                            <div className="space-y-4">
+                                {/* Table Container */}
+                                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                                    <ScrollArea className="h-[500px] w-full">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                                                    {/* Common columns */}
+                                                    <TableHead rowSpan={2} className="text-white text-xs font-normal w-16 sticky top-0 z-30 bg-[#52baf3] shadow-sm border-r border-white/20">S.N</TableHead>
+                                                    <TableHead rowSpan={2} className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3] shadow-sm border-r border-white/20">Rank</TableHead>
+                                                    
+                                                    {/* On Board Status Section */}
+                                                    <TableHead colSpan={6} className="text-white text-xs font-normal text-center sticky top-0 z-30 bg-[#52baf3] shadow-sm border-r-2 border-white/40">On Board Status</TableHead>
+                                                    
+                                                    {/* Reliever Status Section */}
+                                                    <TableHead colSpan={6} className="text-white text-xs font-normal text-center sticky top-0 z-30 bg-[#52baf3] shadow-sm">Reliever Status</TableHead>
+                                                </TableRow>
+                                                <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                                                    {/* On Board Status columns */}
+                                                    <TableHead className="text-white text-xs font-normal sticky top-0 z-30 bg-[#52baf3] shadow-sm">Surname, Given Name</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-28 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Relief Due</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-28 sticky top-0 z-30 bg-[#52baf3] shadow-sm">S/Off Date</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3] shadow-sm">S/Off Port</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-28 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Relief Satus</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-16 sticky top-0 z-30 bg-[#52baf3] shadow-sm border-r-2 border-white/40"></TableHead>
+                                                    
+                                                    {/* Reliever Status columns */}
+                                                    <TableHead className="text-white text-xs font-normal sticky top-0 z-30 bg-[#52baf3] shadow-sm">Surname, Given Name</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-28 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Joining Date</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Joining Port</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-28 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Joining Status</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-16 sticky top-0 z-30 bg-[#52baf3] shadow-sm"></TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {ranksLoading ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={14} className="text-center text-xs text-gray-500 py-8">
+                                                            Loading vessel positions...
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : vesselRanks.length === 0 ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={14} className="text-center text-xs text-gray-500 py-8">
+                                                            No positions configured for this vessel. Please configure positions in Admin &gt; Rank Admin &gt; Vessel.
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : (
+                                                    vesselRanks.map((rank: any, index: number) => {
+                                                        const rankPlanningData = vesselPlanning.find((p: any) => 
+                                                            p.rankId === rank.rankId || p.rank === (rank.role || rank.rank)
+                                                        );
+                                                        
+                                                        return (
+                                                            <TableRow key={rank.id || index} className="hover:bg-gray-50 border-b border-gray-100">
+                                                                <TableCell className="text-xs text-gray-700 border-r border-gray-100" data-testid={`cell-planning-sno-${index + 1}`}>
+                                                                    {index + 1}.
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700 border-r border-gray-100" data-testid={`cell-planning-rank-${index + 1}`}>
+                                                                    {rank.role || rank.rank}
+                                                                </TableCell>
+                                                                
+                                                                {/* On Board Status cells */}
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-onboard-name-${index + 1}`}>
+                                                                    {rankPlanningData?.onBoardCrewName || ''}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-relief-due-${index + 1}`}>
+                                                                    {rankPlanningData?.reliefDue || ''}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-soff-date-${index + 1}`}>
+                                                                    {rankPlanningData?.signOffDate || ''}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-soff-port-${index + 1}`}>
+                                                                    {rankPlanningData?.signOffPort || ''}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-relief-status-${index + 1}`}>
+                                                                    {rankPlanningData?.reliefStatus || ''}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs border-r-2 border-gray-200" data-testid={`cell-planning-onboard-edit-${index + 1}`}>
+                                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" data-testid={`button-edit-onboard-${index + 1}`}>
+                                                                        <Edit className="h-4 w-4 text-gray-500" />
+                                                                    </Button>
+                                                                </TableCell>
+                                                                
+                                                                {/* Reliever Status cells */}
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-reliever-name-${index + 1}`}>
+                                                                    {rankPlanningData?.relieverCrewName || ''}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-joining-date-${index + 1}`}>
+                                                                    {rankPlanningData?.joiningDate || ''}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-joining-port-${index + 1}`}>
+                                                                    {rankPlanningData?.joiningPort || ''}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-joining-status-${index + 1}`}>
+                                                                    {rankPlanningData?.joiningStatus || ''}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs" data-testid={`cell-planning-reliever-edit-${index + 1}`}>
+                                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" data-testid={`button-edit-reliever-${index + 1}`}>
+                                                                        <Edit className="h-4 w-4 text-gray-500" />
+                                                                    </Button>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        );
+                                                    })
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </ScrollArea>
+                                </div>
                             </div>
                         </TabsContent>
                     </Tabs>
