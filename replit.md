@@ -59,6 +59,7 @@ The codebase is organized into feature modules (`crewing`, `admin`, `vessel`, `c
   - **Officer Matrix Tab** (Added Oct 2025): Displays officer qualifications and experience data for compliance checking:
     - Multi-row header structure with sections for Rank/Name/Nationality, Certification & Qualification, Years in Service, and Language
     - Filters to show only officer ranks (based on officer designation field)
+    - **Crew Data Display** (Fixed Oct 2025): Populates officer crew names and nationalities from vessel planning data using rank matching logic with suffix stripping
     - **Compliance Matrix Dialog** (Added Oct 2025): Check compliance against oil major requirements
       - Two-table split layout: left table lists oil majors with status indicators (green/yellow/red dots), right table shows requirements for selected oil major
       - 14 oil majors supported: ADNOC, BHP, BP, Chevron, Conoco, Enel, ENI, Erg, International Energy, Idemitsu, Talisman, Koch, KPI, Lukoil
@@ -69,8 +70,8 @@ The codebase is organized into feature modules (`crewing`, `admin`, `vessel`, `c
       - Currently uses mock data (admin configuration to be added later)
   - **Planning Tab** (Added Oct 2025): Crew relief planning interface with dual-section table layout:
     - Auto-populated rank rows from vessel revision system
-    - On Board Status section: displays crew name, relief due date, sign-off details, and relief status
-    - Reliever Status section: shows reliever crew name, joining date/port, and joining status
+    - **On Board Status section** (Fixed Oct 2025): displays crew name, relief due date, sign-off details, and relief status using correct field mappings (crewName, reliefDueDate, signOffDate, signOffPort, reliefStatus)
+    - **Reliever Status section** (Fixed Oct 2025): displays reliever crew name, joining date/port, and joining status using correct reliever field mappings (relieverName, relieverJoiningDate, relieverJoiningPort, joiningStatus)
     - **On Board Status Edit Dialog** (Added Oct 2025): Dialog for editing on-board crew member relief details:
       - Display-only fields: Name, Nationality, Relief Due (auto-populated from crew list)
       - Editable fields: Sign Off Date (date picker with Popover + Calendar), Sign Off Port (dropdown), Relief Status (dropdown: Proposed, Planned, Confirmed)
