@@ -9,6 +9,7 @@ import { ElementCrewAppraisals } from "./modules/crewing/ElementCrewAppraisals";
 import { RecruitmentModule } from "./modules/recruitment/RecruitmentModule";
 import { CrewPoolModule } from "./modules/crew-pool/CrewPoolModule";
 import { VesselModule } from "./modules/vessel/VesselModule";
+import { RotationModule } from "./modules/rotation/RotationModule";
 import { DashboardPage } from "./pages/DashboardPage";
 import HeaderComponent from "./components/Navbar/HeaderComponent";
 
@@ -26,6 +27,7 @@ function App() {
               <Route path="/recruitment" component={RecruitmentModule} />
               <Route path="/crew-pool" component={CrewPoolModule} />
               <Route path="/vessel" component={VesselModule} />
+              <Route path="/rotation" component={RotationModule} />
               <Route path="/admin/*" component={AdminModule} />
               <Route path="/admin" component={AdminModule} />
               <Route component={NotFound} />
