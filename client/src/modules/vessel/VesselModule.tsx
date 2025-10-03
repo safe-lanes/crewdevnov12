@@ -1405,7 +1405,14 @@ export const VesselModule = (): JSX.Element => {
                                                 ) : (
                                                     vesselRanks
                                                         .filter((rank: any) => rank.officer === true)
-                                                        .map((rank: any, index: number) => (
+                                                        .map((rank: any, index: number) => {
+                                                            // Strip suffix from rank name (e.g., "3rd Officer_1" -> "3rd Officer")
+                                                            const rankName = (rank.role || rank.rank)?.split('_')[0];
+                                                            const rankPlanningData = vesselPlanning.find((p: any) => 
+                                                                p.rankId === rank.rankId || p.rank === rankName
+                                                            );
+                                                            
+                                                            return (
                                                             <TableRow key={rank.id || index} className="hover:bg-gray-50 border-b border-gray-100">
                                                                 <TableCell className="text-xs text-gray-700 border-r border-gray-100" data-testid={`cell-officer-rank-${index + 1}`}>
                                                                     {rank.role || rank.rank}
@@ -1413,10 +1420,10 @@ export const VesselModule = (): JSX.Element => {
                                                                 
                                                                 {/* Rank, Name & Nationality */}
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-name-${index + 1}`}>
-                                                                    {/* Will be populated with crew data */}
+                                                                    {rankPlanningData?.crewName || ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700 border-r-2 border-gray-200" data-testid={`cell-officer-nationality-${index + 1}`}>
-                                                                    {/* Will be populated with crew data */}
+                                                                    {rankPlanningData?.nationality || ''}
                                                                 </TableCell>
                                                                 
                                                                 {/* Certification & Qualification */}
@@ -1468,7 +1475,8 @@ export const VesselModule = (): JSX.Element => {
                                                                     </Button>
                                                                 </TableCell>
                                                             </TableRow>
-                                                        ))
+                                                            );
+                                                        })
                                                 )}
                                             </TableBody>
                                         </Table>
