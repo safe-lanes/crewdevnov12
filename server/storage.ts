@@ -1113,6 +1113,7 @@ export class PersistentFileStorage implements IStorage {
   private saveTimeout: NodeJS.Timeout | null = null;
   private isSaving: boolean = false;
   private needsResave: boolean = false;
+  private pendingData: any = null;
 
   constructor() {
     // Initialize all properties first
@@ -1239,6 +1240,32 @@ export class PersistentFileStorage implements IStorage {
   }
 
   private saveToFile(): void {
+    this.pendingData = {
+      users: Array.from(this.users.entries()),
+      forms: Array.from(this.forms.entries()),
+      rankGroups: Array.from(this.rankGroups.entries()),
+      availableRanks: Array.from(this.availableRanks.entries()),
+      companyRanks: Array.from(this.companyRanks.entries()),
+      crewMembers: Array.from(this.crewMembers.entries()),
+      appraisalResults: Array.from(this.appraisalResults.entries()),
+      recruitmentCandidates: Array.from(this.recruitmentCandidates.entries()),
+      vesselGroups: Array.from(this.vesselGroups.entries()),
+      vesselDrafts: Array.from(this.vesselDrafts.entries()),
+      vesselRevisions: Array.from(this.vesselRevisions.entries()),
+      vesselPlanning: Array.from(this.vesselPlanning.entries()),
+      masterDataEntries: Array.from(this.masterDataEntries.entries()),
+      currentUserId: this.currentUserId,
+      currentFormId: this.currentFormId,
+      currentRankGroupId: this.currentRankGroupId,
+      currentAvailableRankId: this.currentAvailableRankId,
+      currentAppraisalResultId: this.currentAppraisalResultId,
+      currentCrewIdCounter: this.currentCrewIdCounter,
+      currentVesselGroupId: this.currentVesselGroupId,
+      currentVesselDraftId: this.currentVesselDraftId,
+      currentVesselRevisionId: this.currentVesselRevisionId,
+      currentVesselPlanningId: this.currentVesselPlanningId
+    };
+    
     if (this.saveTimeout) {
       clearTimeout(this.saveTimeout);
     }
@@ -1251,33 +1278,7 @@ export class PersistentFileStorage implements IStorage {
       
       this.isSaving = true;
       try {
-        const data = {
-          users: Array.from(this.users.entries()),
-          forms: Array.from(this.forms.entries()),
-          rankGroups: Array.from(this.rankGroups.entries()),
-          availableRanks: Array.from(this.availableRanks.entries()),
-          companyRanks: Array.from(this.companyRanks.entries()),
-          crewMembers: Array.from(this.crewMembers.entries()),
-          appraisalResults: Array.from(this.appraisalResults.entries()),
-          recruitmentCandidates: Array.from(this.recruitmentCandidates.entries()),
-          vesselGroups: Array.from(this.vesselGroups.entries()),
-          vesselDrafts: Array.from(this.vesselDrafts.entries()),
-          vesselRevisions: Array.from(this.vesselRevisions.entries()),
-          vesselPlanning: Array.from(this.vesselPlanning.entries()),
-          masterDataEntries: Array.from(this.masterDataEntries.entries()),
-          currentUserId: this.currentUserId,
-          currentFormId: this.currentFormId,
-          currentRankGroupId: this.currentRankGroupId,
-          currentAvailableRankId: this.currentAvailableRankId,
-          currentAppraisalResultId: this.currentAppraisalResultId,
-          currentCrewIdCounter: this.currentCrewIdCounter,
-          currentVesselGroupId: this.currentVesselGroupId,
-          currentVesselDraftId: this.currentVesselDraftId,
-          currentVesselRevisionId: this.currentVesselRevisionId,
-          currentVesselPlanningId: this.currentVesselPlanningId
-        };
-        
-        await fs.promises.writeFile(this.filePath, JSON.stringify(data), 'utf8');
+        await fs.promises.writeFile(this.filePath, JSON.stringify(this.pendingData), 'utf8');
         console.log("💾 Data saved to test-data.json");
       } catch (error) {
         console.error("⚠️ Error saving to test-data.json:", error);
