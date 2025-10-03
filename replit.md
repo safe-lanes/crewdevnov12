@@ -84,6 +84,13 @@ The codebase is organized into feature modules (`crewing`, `admin`, `vessel`, `c
       - All fields persist correctly on save/submit (Oct 2025 bug fix)
     - Data persisted via vesselPlanning schema in PersistentFileStorage
     - API endpoints: POST `/api/vessel-planning`, PATCH `/api/vessel-planning/:id`, GET `/api/vessel-planning/vessel/:vesselId`
+  - **Training Matrix Tab** (Added Oct 2025): Displays certification and training requirements for vessel crew members:
+    - Three training categories: Licenses & DOC, Statutory Courses, and Value Add Courses
+    - Visual legend showing mandatory/recommended requirements and compliance status indicators (green/yellow/red)
+    - Dynamic rank columns from vessel configuration
+    - Horizontal scrolling enabled for narrow viewport widths with sticky first two columns (S.No. and List of courses/Certificate)
+    - Implementation uses plain div with `overflow-auto` and `relative` positioning on both scroll container and Table element for proper sticky column behavior
+    - Future: Integrate actual crew training data from admin module configuration
 - **Performance Optimization**: 
   - Map-based O(1) lookups for vessel rank checkboxes to prevent browser freezing
   - TanStack Query for data caching
