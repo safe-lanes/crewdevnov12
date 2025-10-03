@@ -1154,15 +1154,16 @@ export const VesselModule = (): JSX.Element => {
                                 {/* Training Matrix Table */}
                                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                                     <ScrollArea className="h-[calc(100vh-300px)] w-full">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
-                                                    <TableHead className="text-white text-xs font-normal w-64 sticky left-0 z-40 bg-[#52baf3] border-r border-white/20">
-                                                        S.No.
-                                                    </TableHead>
-                                                    <TableHead className="text-white text-xs font-normal w-96 sticky left-16 z-40 bg-[#52baf3] border-r border-white/20">
-                                                        List of courses/ Certificate
-                                                    </TableHead>
+                                        <div className="min-w-max">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                                                        <TableHead className="text-white text-xs font-normal w-16 sticky left-0 z-40 bg-[#52baf3] border-r border-white/20">
+                                                            S.No.
+                                                        </TableHead>
+                                                        <TableHead className="text-white text-xs font-normal w-96 sticky left-16 z-40 bg-[#52baf3] border-r border-white/20">
+                                                            List of courses/ Certificate
+                                                        </TableHead>
                                                     {vesselRanks.length > 0 ? (
                                                         vesselRanks.map((rank: any, index: number) => (
                                                             <TableHead 
@@ -1304,6 +1305,7 @@ export const VesselModule = (): JSX.Element => {
                                                 )}
                                             </TableBody>
                                         </Table>
+                                        </div>
                                     </ScrollArea>
                                 </div>
                             </div>
