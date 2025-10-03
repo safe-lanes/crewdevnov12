@@ -1153,7 +1153,7 @@ export const VesselModule = (): JSX.Element => {
 
                                 {/* Training Matrix Table */}
                                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                                    <ScrollArea className="h-[calc(100vh-300px)] w-full">
+                                    <div className="overflow-auto h-[calc(100vh-300px)] w-full">
                                         <div className="min-w-max">
                                             <Table>
                                                 <TableHeader>
@@ -1306,7 +1306,7 @@ export const VesselModule = (): JSX.Element => {
                                             </TableBody>
                                         </Table>
                                         </div>
-                                    </ScrollArea>
+                                    </div>
                                 </div>
                             </div>
                         </TabsContent>
