@@ -5063,7 +5063,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.662Z"
+        "createdAt": "2025-10-03T08:11:46.662Z",
+        "rank": "Master"
       }
     ],
     [
@@ -5094,7 +5095,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.662Z"
+        "createdAt": "2025-10-03T08:11:46.662Z",
+        "rank": "Chief Officer"
       }
     ],
     [
@@ -5125,7 +5127,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.662Z"
+        "createdAt": "2025-10-03T08:11:46.662Z",
+        "rank": "2nd Officer"
       }
     ],
     [
@@ -5156,7 +5159,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.662Z"
+        "createdAt": "2025-10-03T08:11:46.662Z",
+        "rank": "3rd Officer"
       }
     ],
     [
@@ -5187,7 +5191,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.662Z"
+        "createdAt": "2025-10-03T08:11:46.662Z",
+        "rank": "3rd Officer"
       }
     ],
     [
@@ -5218,7 +5223,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.662Z"
+        "createdAt": "2025-10-03T08:11:46.662Z",
+        "rank": "Chief Engineer"
       }
     ],
     [
@@ -5249,7 +5255,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.662Z"
+        "createdAt": "2025-10-03T08:11:46.662Z",
+        "rank": "2nd Engineer"
       }
     ],
     [
@@ -5280,7 +5287,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.663Z"
+        "createdAt": "2025-10-03T08:11:46.663Z",
+        "rank": "3rd Engineer"
       }
     ],
     [
@@ -5311,7 +5319,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.663Z"
+        "createdAt": "2025-10-03T08:11:46.663Z",
+        "rank": "4th Engineer"
       }
     ],
     [
@@ -5342,7 +5351,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.663Z"
+        "createdAt": "2025-10-03T08:11:46.663Z",
+        "rank": "Electrical Officer"
       }
     ],
     [
@@ -5373,7 +5383,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.663Z"
+        "createdAt": "2025-10-03T08:11:46.663Z",
+        "rank": "Bosun"
       }
     ],
     [
@@ -5403,7 +5414,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.663Z"
+        "createdAt": "2025-10-03T08:11:46.663Z",
+        "rank": "Pumpman"
       }
     ],
     [
@@ -5434,7 +5446,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.663Z"
+        "createdAt": "2025-10-03T08:11:46.663Z",
+        "rank": "AB"
       }
     ],
     [
@@ -5465,7 +5478,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.663Z"
+        "createdAt": "2025-10-03T08:11:46.663Z",
+        "rank": "AB"
       }
     ],
     [
@@ -5496,7 +5510,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.664Z"
+        "createdAt": "2025-10-03T08:11:46.664Z",
+        "rank": "AB"
       }
     ],
     [
@@ -5527,7 +5542,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.664Z"
+        "createdAt": "2025-10-03T08:11:46.664Z",
+        "rank": "OS"
       }
     ],
     [
@@ -5558,7 +5574,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.664Z"
+        "createdAt": "2025-10-03T08:11:46.664Z",
+        "rank": "OS"
       }
     ],
     [
@@ -5589,7 +5606,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.664Z"
+        "createdAt": "2025-10-03T08:11:46.664Z",
+        "rank": "OS"
       }
     ],
     [
@@ -5620,7 +5638,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.664Z"
+        "createdAt": "2025-10-03T08:11:46.664Z",
+        "rank": "Fitter"
       }
     ],
     [
@@ -5651,7 +5670,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.664Z"
+        "createdAt": "2025-10-03T08:11:46.664Z",
+        "rank": "Oiler"
       }
     ],
     [
@@ -5682,7 +5702,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.664Z"
+        "createdAt": "2025-10-03T08:11:46.664Z",
+        "rank": "Oiler"
       }
     ],
     [
@@ -5713,7 +5734,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.664Z"
+        "createdAt": "2025-10-03T08:11:46.664Z",
+        "rank": "Oiler"
       }
     ],
     [
@@ -5744,7 +5766,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.664Z"
+        "createdAt": "2025-10-03T08:11:46.664Z",
+        "rank": "Chief Cook"
       }
     ],
     [
@@ -5775,7 +5798,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.664Z"
+        "createdAt": "2025-10-03T08:11:46.664Z",
+        "rank": "Messman"
       }
     ],
     [
@@ -5806,7 +5830,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.665Z"
+        "createdAt": "2025-10-03T08:11:46.665Z",
+        "rank": "Master"
       }
     ],
     [
@@ -5837,7 +5862,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.665Z"
+        "createdAt": "2025-10-03T08:11:46.665Z",
+        "rank": "Chief Officer"
       }
     ],
     [
@@ -5868,7 +5894,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.665Z"
+        "createdAt": "2025-10-03T08:11:46.665Z",
+        "rank": "2nd Officer"
       }
     ],
     [
@@ -5899,7 +5926,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.665Z"
+        "createdAt": "2025-10-03T08:11:46.665Z",
+        "rank": "3rd Officer"
       }
     ],
     [
@@ -5930,7 +5958,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.665Z"
+        "createdAt": "2025-10-03T08:11:46.665Z",
+        "rank": "3rd Officer"
       }
     ],
     [
@@ -5961,7 +5990,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.665Z"
+        "createdAt": "2025-10-03T08:11:46.665Z",
+        "rank": "Chief Engineer"
       }
     ],
     [
@@ -5992,7 +6022,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.665Z"
+        "createdAt": "2025-10-03T08:11:46.665Z",
+        "rank": "2nd Engineer"
       }
     ],
     [
@@ -6023,7 +6054,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.665Z"
+        "createdAt": "2025-10-03T08:11:46.665Z",
+        "rank": "3rd Engineer"
       }
     ],
     [
@@ -6054,7 +6086,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.665Z"
+        "createdAt": "2025-10-03T08:11:46.665Z",
+        "rank": "4th Engineer"
       }
     ],
     [
@@ -6085,7 +6118,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.666Z"
+        "createdAt": "2025-10-03T08:11:46.666Z",
+        "rank": "Electrical Officer"
       }
     ],
     [
@@ -6116,7 +6150,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.666Z"
+        "createdAt": "2025-10-03T08:11:46.666Z",
+        "rank": "Bosun"
       }
     ],
     [
@@ -6147,7 +6182,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.666Z"
+        "createdAt": "2025-10-03T08:11:46.666Z",
+        "rank": "Pumpman"
       }
     ],
     [
@@ -6178,7 +6214,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.666Z"
+        "createdAt": "2025-10-03T08:11:46.666Z",
+        "rank": "AB"
       }
     ],
     [
@@ -6209,7 +6246,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.666Z"
+        "createdAt": "2025-10-03T08:11:46.666Z",
+        "rank": "AB"
       }
     ],
     [
@@ -6240,7 +6278,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.666Z"
+        "createdAt": "2025-10-03T08:11:46.666Z",
+        "rank": "AB"
       }
     ],
     [
@@ -6271,7 +6310,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.666Z"
+        "createdAt": "2025-10-03T08:11:46.666Z",
+        "rank": "OS"
       }
     ],
     [
@@ -6302,7 +6342,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.666Z"
+        "createdAt": "2025-10-03T08:11:46.666Z",
+        "rank": "OS"
       }
     ],
     [
@@ -6333,7 +6374,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.667Z"
+        "createdAt": "2025-10-03T08:11:46.667Z",
+        "rank": "OS"
       }
     ],
     [
@@ -6364,7 +6406,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.667Z"
+        "createdAt": "2025-10-03T08:11:46.667Z",
+        "rank": "Fitter"
       }
     ],
     [
@@ -6395,7 +6438,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.667Z"
+        "createdAt": "2025-10-03T08:11:46.667Z",
+        "rank": "Oiler"
       }
     ],
     [
@@ -6426,7 +6470,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.667Z"
+        "createdAt": "2025-10-03T08:11:46.667Z",
+        "rank": "Oiler"
       }
     ],
     [
@@ -6457,7 +6502,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.667Z"
+        "createdAt": "2025-10-03T08:11:46.667Z",
+        "rank": "Oiler"
       }
     ],
     [
@@ -6488,7 +6534,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.669Z"
+        "createdAt": "2025-10-03T08:11:46.669Z",
+        "rank": "Chief Cook"
       }
     ],
     [
@@ -6519,7 +6566,8 @@
         "relieverJoiningPort": null,
         "deploymentChecklist": null,
         "applicableDocs": null,
-        "createdAt": "2025-10-03T08:11:46.669Z"
+        "createdAt": "2025-10-03T08:11:46.669Z",
+        "rank": "Messman"
       }
     ]
   ],

@@ -55,6 +55,7 @@ The codebase is organized into feature modules (`crewing`, `admin`, `vessel`, `c
   - Loading states handled via TanStack Query
   - Integrated with crew management system for accurate on-board counts
   - **Crew List Display**: Shows ONLY ranks with "Actual Manning" checked, ensuring data consistency with Admin > Rank Admin > Vessel Tab configuration. All manning types (Safe, Optimum, High Workload) remain stored in vessel revisions for future compliance checks and alerts (Oct 2025)
+    - **Rank Matching Logic** (Fixed Oct 2025): Handles suffixed rank names by normalizing before matching - strips suffix (e.g., "_1", "_2") from vessel rank names before comparing with planning data rank field, enabling "3rd Officer_1" to correctly match planning records with rank "3rd Officer"
   - **Officer Matrix Tab** (Added Oct 2025): Displays officer qualifications and experience data for compliance checking:
     - Multi-row header structure with sections for Rank/Name/Nationality, Certification & Qualification, Years in Service, and Language
     - Filters to show only officer ranks (based on officer designation field)
