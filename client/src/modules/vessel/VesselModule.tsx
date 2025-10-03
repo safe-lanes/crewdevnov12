@@ -1153,9 +1153,8 @@ export const VesselModule = (): JSX.Element => {
 
                                 {/* Training Matrix Table */}
                                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                                    <div className="overflow-auto h-[calc(100vh-300px)] w-full">
-                                        <div className="min-w-max">
-                                            <Table>
+                                    <div className="overflow-auto h-[calc(100vh-300px)] w-full relative">
+                                        <Table className="min-w-max relative">
                                                 <TableHeader>
                                                     <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
                                                         <TableHead className="text-white text-xs font-normal w-16 sticky left-0 z-40 bg-[#52baf3] border-r border-white/20">
@@ -1305,7 +1304,6 @@ export const VesselModule = (): JSX.Element => {
                                                 )}
                                             </TableBody>
                                         </Table>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
