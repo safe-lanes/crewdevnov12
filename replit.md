@@ -110,7 +110,14 @@ The codebase is organized into feature modules (`crewing`, `admin`, `vessel`, `c
   - **Unique IDs**: Auto-generated A000xxx format prevents conflicts
   - **Persistence**: All data stored in test-data.json, survives server restarts
   - **API Integration**: Full CRUD via `/api/crew-members` endpoints
-  - **Vessel Assignment Status** (Oct 2025): All crew members have presentVessel and status fields cleared (set to null) in preparation for systematic vessel assignment through upcoming Crew Rotation sub-module. This allows proper assignment to actual vessels from Master Data (6 vessels) without conflicting pre-populated data.
+  - **Crew Rotation Implementation** (Oct 2025): Systematic crew assignment to vessels based on Org Chart requirements:
+    - **MT Liberty Gas & MT Nordic Star**: 48 crew members assigned (24 per vessel) matching vessel revision rank requirements
+    - **Assignment Data**: Each crew has joining date (randomized past 6 months), contract period (6-9 months), relief due date (joining + contract period)
+    - **Present Vessel & Status**: Updated in crewMembers for display in Crew Database (presentVessel, status = "On Board")
+    - **Vessel Planning Records**: 48 records in vesselPlanning array with On Board Status fields populated (crewName, nationality, joiningDate, contractPeriod, reliefDueDate)
+    - **Blank Fields per Requirements**: signOffDate, signOffPort, reliefStatus left blank for future crew rotation workflow; all Reliever Status fields blank
+    - **Data Flow**: Assignments persist in test-data.json, display correctly across Crew Database, Vessel Crew List, Officer Matrix, and Planning tabs
+    - **Field Mapping**: Uses `presentRank` field (not `rank`) to match crew members to vessel rank requirements
 
 ## External Dependencies
 - **AG Grid Enterprise**: For advanced data table functionalities.
