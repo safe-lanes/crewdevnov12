@@ -1,7 +1,7 @@
 # Seafarer Performance Management System
 
 ## Overview
-A comprehensive seafarer performance management system designed for maritime professionals. It features advanced form configuration, responsive design, and an intuitive user experience. The system currently uses `PersistentFileStorage` for development, with a PostgreSQL schema defined for future production deployment, and employs a module-first architecture for maintainability and scalability. The project aims to streamline seafarer management, including crew and appraisal functionalities, with a robust vessel revision system for managing rank assignments.
+A comprehensive seafarer performance management system designed to streamline seafarer management, including crew and appraisal functionalities, with a robust vessel revision system for managing rank assignments. The system features advanced form configuration, responsive design, and an intuitive user experience, aiming for maintainability and scalability through a module-first architecture.
 
 ## User Preferences
 
@@ -12,7 +12,7 @@ A comprehensive seafarer performance management system designed for maritime pro
 - Implement consistent error handling
 - Follow naming conventions: PascalCase for components, camelCase for functions
 
-### Communication Style  
+### Communication Style
 - Be concise and professional
 - Focus on technical accuracy
 - Provide clear implementation details
@@ -30,104 +30,32 @@ The application is built with a modern web stack, adhering to a module-first arc
 - **Form Management**: React Hook Form + Zod validation
 - **Routing**: Wouter
 
-### Module Structure
-The codebase is organized into feature modules (`crewing`, `admin`, `vessel`, `crew-pool`, `recruitment`) within the `client/src/modules/` directory, alongside shared components, utilities, hooks, and global types. Each module has its own dedicated sidebar for navigation when applicable.
-
 ### UI/UX Decisions
-- **Layout and Alignment**: Content, filter bars, and tables align consistently with screen titles.
-- **SAIL Form Standards**: Standardized input field labels (`text-xs text-gray-500`), subsection headings (`text-base font-medium` with `#16569e`), and subsection containers (`mb-6 border border-[#EAEBEF] rounded-lg p-4`) ensure visual uniformity.
-- **Error Handling**: Global error boundaries and consistent API error handling provide user-friendly feedback.
-- **Loading States**: Consistent loading indicators are implemented for improved user experience.
+- **Layout and Alignment**: Consistent alignment of content, filter bars, and tables.
+- **SAIL Form Standards**: Standardized input field labels, subsection headings, and containers for visual uniformity.
+- **Error Handling**: Global error boundaries and consistent API error handling.
+- **Loading States**: Consistent loading indicators.
 
 ### Technical Implementations
-- **Vessel Revision System**: Manages vessel rank assignments with distinct "Save Draft" (temporary, no date) and "Submit" (finalized, mandatory date, auto-sequencing R0→R1→R2) workflows. It includes robust date validation and cleans up drafts upon submission.
-- **Rank Designation Synchronization** (Fixed Oct 2025): Comprehensive two-tier designation system ensuring proper data flow from Company Ranks to Vessel Ranks:
-  - **Company-only fields** (officer, rating, seniorOfficer, deckOfficer, engOfficer, pettyOfficer, deckRating, engineRating, generalRating, cateringRating): Flow down automatically from Company Ranks, always kept in sync, not editable at vessel level
-  - **Vessel-specific override fields** (safetyOfficer, sso, medicalOfficer, navigatingOfficer, emtOfficer): Inherit company defaults but allow vessel-specific customization
-  - Merge logic preserves vessel overrides while updating company-only fields when loading saved data from API
-  - **API Backward Compatibility** (Fixed Oct 2025): GET `/api/vessel-revisions/ranks/:vesselId` endpoint dynamically merges designation fields from current company ranks before returning vessel rank data, ensuring legacy revisions saved before designation sync implementation still display correctly in Officer Matrix
-  - Enables Officer Matrix to correctly display officer ranks based on company designation settings
-- **Vessel Database Module**: Displays all vessels configured in Admin > Rank Admin > Vessel Tab (Master Data ID 014). Features:
-  - Real-time vessel data fetching from `/api/masters/014/data`
-  - Dynamic crew count calculation by matching crew members to vessels
-  - Filter bar with radio buttons for Vessel, Fleet, and Add Group views
-  - AG Grid table with columns: Vessel name, Type, Crew o/b count, Actions
-  - Loading states handled via TanStack Query
-  - Integrated with crew management system for accurate on-board counts
-  - **Crew List Display**: Shows ONLY ranks with "Actual Manning" checked, ensuring data consistency with Admin > Rank Admin > Vessel Tab configuration. All manning types (Safe, Optimum, High Workload) remain stored in vessel revisions for future compliance checks and alerts (Oct 2025)
-    - **Rank Matching Logic** (Fixed Oct 2025): Handles suffixed rank names by normalizing before matching - strips suffix (e.g., "_1", "_2") from vessel rank names before comparing with planning data rank field, enabling "3rd Officer_1" to correctly match planning records with rank "3rd Officer"
-  - **Officer Matrix Tab** (Added Oct 2025): Displays officer qualifications and experience data for compliance checking:
-    - Multi-row header structure with sections for Rank/Name/Nationality, Certification & Qualification, Years in Service, and Language
-    - Filters to show only officer ranks (based on officer designation field)
-    - **Crew Data Display** (Fixed Oct 2025): Populates officer crew names and nationalities from vessel planning data using rank matching logic with suffix stripping
-    - **Compliance Matrix Dialog** (Added Oct 2025): Check compliance against oil major requirements
-      - Two-table split layout: left table lists oil majors with status indicators (green/yellow/red dots), right table shows requirements for selected oil major
-      - 14 oil majors supported: ADNOC, BHP, BP, Chevron, Conoco, Enel, ENI, Erg, International Energy, Idemitsu, Talisman, Koch, KPI, Lukoil
-      - Status indicators: Green (all criteria compliant), Yellow (uncertain), Red (one or more non-compliant)
-      - Requirements grouped by category: Years with Operator, Years in Rank, Years on All Types of Tankers, Date Joined
-      - Each requirement shows description, required value, matrix value, and compliance status
-      - Click handler to switch between oil majors and dynamically update requirements display
-      - Currently uses mock data (admin configuration to be added later)
-  - **Planning Tab** (Added Oct 2025): Crew relief planning interface with dual-section table layout:
-    - Auto-populated rank rows from vessel revision system
-    - **On Board Status section** (Fixed Oct 2025): displays crew name, relief due date, sign-off details, and relief status using correct field mappings (crewName, reliefDueDate, signOffDate, signOffPort, reliefStatus)
-    - **Reliever Status section** (Fixed Oct 2025): displays reliever crew name, joining date/port, and joining status using correct reliever field mappings (relieverName, relieverJoiningDate, relieverJoiningPort, joiningStatus)
-    - **On Board Status Edit Dialog** (Added Oct 2025): Dialog for editing on-board crew member relief details:
-      - Display-only fields: Name, Nationality, Relief Due (auto-populated from crew list)
-      - Editable fields: Sign Off Date (date picker with Popover + Calendar), Sign Off Port (dropdown), Relief Status (dropdown: Proposed, Planned, Confirmed)
-      - Date picker: Uses react-day-picker Calendar component, stores dates as YYYY-MM-DD, displays as dd-MMM-yyyy format
-      - Full React Hook Form + Zod validation integration
-      - Data persistence via PATCH/POST to `/api/vessel-planning/:id`
-    - **Relief Status Edit Dialog**: Fully functional form for editing reliever details with proper React Hook Form integration:
-      - Form fields: Name (read-only), Nationality (read-only), Joining Status, Contract Period, Contract End Range (Start/End), Joining Date, Joining Port, Deployment Checklist, Applicable Docs
-      - Number inputs correctly convert string inputs to numbers using custom onChange handlers
-      - Select components handle undefined/empty values properly (value={field.value || undefined})
-      - useEffect hook resets form when dialog opens to load saved data from planningData prop
-      - All fields persist correctly on save/submit (Oct 2025 bug fix)
-    - Data persisted via vesselPlanning schema in PersistentFileStorage
-    - API endpoints: POST `/api/vessel-planning`, PATCH `/api/vessel-planning/:id`, GET `/api/vessel-planning/vessel/:vesselId`
-  - **Training Matrix Tab** (Added Oct 2025): Displays certification and training requirements for vessel crew members:
-    - Three training categories: Licenses & DOC, Statutory Courses, and Value Add Courses
-    - Visual legend showing mandatory/recommended requirements and compliance status indicators (green/yellow/red)
-    - Dynamic rank columns from vessel configuration
-    - Horizontal scrolling enabled for narrow viewport widths with sticky first two columns (S.No. and List of courses/Certificate)
-    - Implementation uses plain div with `overflow-auto` and `relative` positioning on both scroll container and Table element for proper sticky column behavior
-    - Future: Integrate actual crew training data from admin module configuration
-- **Performance Optimization**: 
-  - Map-based O(1) lookups for vessel rank checkboxes to prevent browser freezing
-  - TanStack Query for data caching
-  - useRef pattern in AdminModule to prevent infinite re-render loops:
-    - `prevVesselOptionsRef`: Prevents redundant vessel option syncs
-    - `prevCompanyRankSyncRef`: Blocks duplicate company rank data syncs from rank master
-    - `prevCompanyFormSyncRef`: Guards React Hook Form sync to prevent infinite updates (added Oct 2025)
-    - `loadedVesselsRef`: Tracks loaded vessels to prevent race conditions where stale sync overwrites API data
-  - All refs use JSON.stringify for value comparison to detect actual data changes
-  - useMemo for derived vessel data calculations to minimize re-renders
-  - **Storage Performance** (Oct 2025): Optimized `PersistentFileStorage` with async file writes, 300ms debouncing to batch changes, and race condition protection via `needsResave` flag to prevent data loss during rapid operations
-    - **Critical Fix (Oct 2025)**: Resolved race condition in debounced file saves by capturing data snapshots synchronously (via `pendingData` field) before the debounce timer, preventing data loss under rapid POST loads (200+ concurrent requests). Stress tested and verified production-ready.
-- **Data Storage**: Uses `PersistentFileStorage` (`test-data.json`) for development, with a defined PostgreSQL/Drizzle ORM schema for production readiness.
-- **Crew Database Population** (Oct 2025): Seeded with 135 realistic crew members covering all 17 Company Ranks from Rank Admin:
-  - **Distribution**: 15 each for AB/OS/Oiler ranks, 6 each for all other ranks
-  - **Varied Data**: Diverse nationalities (Filipino, Indian, Ukrainian, Polish, Romanian, Chinese, Indonesian, Greek, Norwegian), ages (25-55), vessel types, experience levels
-  - **Unique IDs**: Auto-generated A000xxx format prevents conflicts
-  - **Persistence**: All data stored in test-data.json, survives server restarts
-  - **API Integration**: Full CRUD via `/api/crew-members` endpoints
-  - **Crew Rotation Implementation** (Oct 2025): Systematic crew assignment to vessels based on Org Chart requirements:
-    - **MT Liberty Gas & MT Nordic Star**: 48 crew members assigned (24 per vessel) matching vessel revision rank requirements
-    - **Assignment Data**: Each crew has joining date (randomized past 6 months), contract period (6-9 months), relief due date (joining + contract period)
-    - **Present Vessel & Status**: Updated in crewMembers for display in Crew Database (presentVessel, status = "On Board")
-    - **Vessel Planning Records**: 48 records in vesselPlanning array with On Board Status fields populated (crewName, nationality, joiningDate, contractPeriod, reliefDueDate)
-    - **Blank Fields per Requirements**: signOffDate, signOffPort, reliefStatus left blank for future crew rotation workflow; all Reliever Status fields blank
-    - **Data Flow**: Assignments persist in test-data.json, display correctly across Crew Database, Vessel Crew List, Officer Matrix, and Planning tabs
-    - **Field Mapping**: Uses `presentRank` field (not `rank`) to match crew members to vessel rank requirements
+- **Vessel Revision System**: Manages vessel rank assignments with "Save Draft" and "Submit" workflows, including date validation and draft cleanup.
+- **Rank Designation Synchronization**: Two-tier system for company and vessel rank designations, with inheritance and vessel-specific overrides. Includes API backward compatibility for legacy data.
+- **Vessel Database Module**: Displays vessel data, calculates dynamic crew counts, and features a filter bar and AG Grid table.
+  - **Crew List Display**: Shows only ranks with "Actual Manning" checked, with rank matching logic that normalizes suffixed rank names.
+  - **Officer Matrix Tab**: Displays officer qualifications and experience, with multi-row headers and filters for officer ranks. Includes a "Compliance Matrix Dialog" for checking against oil major requirements.
+  - **Planning Tab**: Crew relief planning interface with auto-populated rank rows, "On Board Status" and "Reliever Status" sections, and editable dialogs for relief and reliever details with full React Hook Form and Zod integration.
+  - **Training Matrix Tab**: Displays certification and training requirements, categorized by Licenses & DOC, Statutory Courses, and Value Add Courses, with visual compliance indicators and dynamic rank columns.
+- **Performance Optimization**: Map-based O(1) lookups, TanStack Query for caching, `useRef` pattern to prevent re-renders, `useMemo` for derived calculations, and optimized `PersistentFileStorage` with async, debounced, and race-condition-protected file writes.
+- **Data Storage**: `PersistentFileStorage` for development; PostgreSQL/Drizzle ORM schema for production.
+- **Crew Database Population**: Seeded with 135 realistic crew members with varied data, unique IDs, and full CRUD API support.
+- **Rotation Module**: Crew rotation planning and management workspace with "Due" section for crew members due/overdue for rotation, including filter bar with time, vessel, fleet, group, and rank filters.
 
 ## External Dependencies
-- **AG Grid Enterprise**: For advanced data table functionalities.
+- **AG Grid Enterprise**: Advanced data tables.
 - **shadcn/ui**: UI component library.
-- **Tailwind CSS**: For styling.
-- **TanStack Query**: For server state management and caching.
-- **React Hook Form**: For form management.
-- **Zod**: For schema validation.
-- **Wouter**: For client-side routing.
+- **Tailwind CSS**: Styling.
+- **TanStack Query**: Server state management and caching.
+- **React Hook Form**: Form management.
+- **Zod**: Schema validation.
+- **Wouter**: Client-side routing.
 - **PostgreSQL**: Planned production database.
 - **Drizzle ORM**: ORM for PostgreSQL.
