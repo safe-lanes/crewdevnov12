@@ -110,6 +110,7 @@ The codebase is organized into feature modules (`crewing`, `admin`, `vessel`, `c
   - **Unique IDs**: Auto-generated A000xxx format prevents conflicts
   - **Persistence**: All data stored in test-data.json, survives server restarts
   - **API Integration**: Full CRUD via `/api/crew-members` endpoints
+  - **Vessel Assignment Status** (Oct 2025): All crew members have presentVessel and status fields cleared (set to null) in preparation for systematic vessel assignment through upcoming Crew Rotation sub-module. This allows proper assignment to actual vessels from Master Data (6 vessels) without conflicting pre-populated data.
 
 ## External Dependencies
 - **AG Grid Enterprise**: For advanced data table functionalities.
