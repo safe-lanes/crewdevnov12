@@ -1552,10 +1552,10 @@ export const VesselModule = (): JSX.Element => {
                                                                 
                                                                 {/* On Board Status cells */}
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-onboard-name-${index + 1}`}>
-                                                                    {rankPlanningData?.onBoardCrewName || ''}
+                                                                    {rankPlanningData?.crewName || ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-relief-due-${index + 1}`}>
-                                                                    {rankPlanningData?.reliefDue || ''}
+                                                                    {rankPlanningData?.reliefDueDate || ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-soff-date-${index + 1}`}>
                                                                     {rankPlanningData?.signOffDate || ''}
@@ -1587,13 +1587,13 @@ export const VesselModule = (): JSX.Element => {
                                                                 
                                                                 {/* Reliever Status cells */}
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-reliever-name-${index + 1}`}>
-                                                                    {rankPlanningData?.relieverCrewName || ''}
+                                                                    {rankPlanningData?.relieverName || ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-joining-date-${index + 1}`}>
-                                                                    {rankPlanningData?.joiningDate || ''}
+                                                                    {rankPlanningData?.relieverJoiningDate || ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-joining-port-${index + 1}`}>
-                                                                    {rankPlanningData?.joiningPort || ''}
+                                                                    {rankPlanningData?.relieverJoiningPort || ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-joining-status-${index + 1}`}>
                                                                     {rankPlanningData?.joiningStatus || ''}
