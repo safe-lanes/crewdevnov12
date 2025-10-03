@@ -1124,13 +1124,188 @@ export const VesselModule = (): JSX.Element => {
                         </TabsContent>
 
                         <TabsContent value="training-matrix" className="mt-0">
-                            <div className="p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                                    Training Matrix - {selectedVessel.name}
-                                </h3>
-                                <p className="text-gray-500 dark:text-gray-400">
-                                    Training matrix content will be displayed here.
-                                </p>
+                            <div className="space-y-4">
+                                {/* Legend */}
+                                <div className="flex items-center gap-6 text-xs">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-20 h-5 bg-gray-100 border border-gray-300 flex items-center justify-center">
+                                            Mandatory
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-24 h-5 bg-blue-50 border border-gray-300 flex items-center justify-center">
+                                            Recommended
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-4 h-4 rounded-full bg-green-500"></div>
+                                        <span>Valid</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-4 h-4 rounded-full bg-yellow-400"></div>
+                                        <span>Expiring in 2 months</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-4 h-4 rounded-full bg-red-500"></div>
+                                        <span>Expired</span>
+                                    </div>
+                                </div>
+
+                                {/* Training Matrix Table */}
+                                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                                    <ScrollArea className="h-[calc(100vh-300px)] w-full">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                                                    <TableHead className="text-white text-xs font-normal w-64 sticky left-0 z-40 bg-[#52baf3] border-r border-white/20">
+                                                        S.No.
+                                                    </TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-96 sticky left-16 z-40 bg-[#52baf3] border-r border-white/20">
+                                                        List of courses/ Certificate
+                                                    </TableHead>
+                                                    {vesselRanks.length > 0 ? (
+                                                        vesselRanks.map((rank: any, index: number) => (
+                                                            <TableHead 
+                                                                key={rank.id || index} 
+                                                                className="text-white text-xs font-normal text-center w-24 sticky top-0 z-30 bg-[#52baf3]"
+                                                                data-testid={`header-rank-${index}`}
+                                                            >
+                                                                {rank.role || rank.rank}
+                                                            </TableHead>
+                                                        ))
+                                                    ) : (
+                                                        <TableHead className="text-white text-xs font-normal text-center">
+                                                            No Ranks
+                                                        </TableHead>
+                                                    )}
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {ranksLoading ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={2 + vesselRanks.length} className="text-center text-xs text-gray-500 py-8">
+                                                            Loading vessel positions...
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : vesselRanks.length === 0 ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={3} className="text-center text-xs text-gray-500 py-8">
+                                                            No positions configured for this vessel. Please configure positions in Admin &gt; Rank Admin &gt; Vessel.
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : (
+                                                    <>
+                                                        {/* Category A: LICENSES & DOC */}
+                                                        <TableRow className="bg-blue-100 hover:bg-blue-100">
+                                                            <TableCell colSpan={2 + vesselRanks.length} className="text-xs font-semibold text-gray-900 sticky left-0 z-20 bg-blue-100">
+                                                                A - LICENSES & DOC
+                                                            </TableCell>
+                                                        </TableRow>
+                                                        <TableRow className="hover:bg-gray-50">
+                                                            <TableCell className="text-xs text-gray-700 sticky left-0 z-20 bg-white border-r border-gray-200" data-testid="cell-row-01">01</TableCell>
+                                                            <TableCell className="text-xs text-gray-700 sticky left-16 z-20 bg-white border-r border-gray-200" data-testid="cell-license-national">National License</TableCell>
+                                                            {vesselRanks.map((rank: any, index: number) => (
+                                                                <TableCell 
+                                                                    key={rank.id || index}
+                                                                    className={`text-xs text-center ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
+                                                                    data-testid={`cell-national-license-${index}`}
+                                                                >
+                                                                    <div className="flex items-center justify-center">
+                                                                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                                                    </div>
+                                                                </TableCell>
+                                                            ))}
+                                                        </TableRow>
+                                                        <TableRow className="hover:bg-gray-50">
+                                                            <TableCell className="text-xs text-gray-700 sticky left-0 z-20 bg-white border-r border-gray-200" data-testid="cell-row-02">02</TableCell>
+                                                            <TableCell className="text-xs text-gray-700 sticky left-16 z-20 bg-white border-r border-gray-200" data-testid="cell-license-gmdss">GMDSS GOC Licence</TableCell>
+                                                            {vesselRanks.map((rank: any, index: number) => (
+                                                                <TableCell 
+                                                                    key={rank.id || index}
+                                                                    className={`text-xs text-center ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
+                                                                    data-testid={`cell-gmdss-license-${index}`}
+                                                                >
+                                                                    <div className="flex items-center justify-center">
+                                                                        {index < 2 ? (
+                                                                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                                                        ) : index < 4 ? (
+                                                                            <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
+                                                                        ) : (
+                                                                            <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                                                                        )}
+                                                                    </div>
+                                                                </TableCell>
+                                                            ))}
+                                                        </TableRow>
+
+                                                        {/* Category B: STATUTORY COURSES */}
+                                                        <TableRow className="bg-blue-100 hover:bg-blue-100">
+                                                            <TableCell colSpan={2 + vesselRanks.length} className="text-xs font-semibold text-gray-900 sticky left-0 z-20 bg-blue-100">
+                                                                B - STATUTORY COURSES
+                                                            </TableCell>
+                                                        </TableRow>
+                                                        <TableRow className="hover:bg-gray-50">
+                                                            <TableCell className="text-xs text-gray-700 sticky left-0 z-20 bg-white border-r border-gray-200" data-testid="cell-row-01-b">01</TableCell>
+                                                            <TableCell className="text-xs text-gray-700 sticky left-16 z-20 bg-white border-r border-gray-200" data-testid="cell-course-fire">Basic Fire Fighting</TableCell>
+                                                            {vesselRanks.map((rank: any, index: number) => (
+                                                                <TableCell 
+                                                                    key={rank.id || index}
+                                                                    className={`text-xs text-center ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
+                                                                    data-testid={`cell-fire-fighting-${index}`}
+                                                                >
+                                                                    <div className="flex items-center justify-center">
+                                                                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                                                    </div>
+                                                                </TableCell>
+                                                            ))}
+                                                        </TableRow>
+                                                        <TableRow className="hover:bg-gray-50">
+                                                            <TableCell className="text-xs text-gray-700 sticky left-0 z-20 bg-white border-r border-gray-200" data-testid="cell-row-02-b">02</TableCell>
+                                                            <TableCell className="text-xs text-gray-700 sticky left-16 z-20 bg-white border-r border-gray-200" data-testid="cell-course-survival">Personal Survival Technique</TableCell>
+                                                            {vesselRanks.map((rank: any, index: number) => (
+                                                                <TableCell 
+                                                                    key={rank.id || index}
+                                                                    className={`text-xs text-center ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
+                                                                    data-testid={`cell-survival-${index}`}
+                                                                >
+                                                                    <div className="flex items-center justify-center">
+                                                                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                                                    </div>
+                                                                </TableCell>
+                                                            ))}
+                                                        </TableRow>
+
+                                                        {/* Category C: VALUE ADD COURSE */}
+                                                        <TableRow className="bg-blue-100 hover:bg-blue-100">
+                                                            <TableCell colSpan={2 + vesselRanks.length} className="text-xs font-semibold text-gray-900 sticky left-0 z-20 bg-blue-100">
+                                                                C - VALUE ADD COURSE
+                                                            </TableCell>
+                                                        </TableRow>
+                                                        <TableRow className="hover:bg-gray-50">
+                                                            <TableCell className="text-xs text-gray-700 sticky left-0 z-20 bg-white border-r border-gray-200" data-testid="cell-row-01-c">01</TableCell>
+                                                            <TableCell className="text-xs text-gray-700 sticky left-16 z-20 bg-white border-r border-gray-200" data-testid="cell-course-risk">Risk Assessment</TableCell>
+                                                            {vesselRanks.map((rank: any, index: number) => (
+                                                                <TableCell 
+                                                                    key={rank.id || index}
+                                                                    className={`text-xs text-center ${index % 2 === 0 ? 'bg-blue-50' : 'bg-white'}`}
+                                                                    data-testid={`cell-risk-assessment-${index}`}
+                                                                >
+                                                                    <div className="flex items-center justify-center">
+                                                                        {index < 3 ? (
+                                                                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                                                        ) : (
+                                                                            <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
+                                                                        )}
+                                                                    </div>
+                                                                </TableCell>
+                                                            ))}
+                                                        </TableRow>
+                                                    </>
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </ScrollArea>
+                                </div>
                             </div>
                         </TabsContent>
 
