@@ -1797,8 +1797,9 @@ export class PersistentFileStorage implements IStorage {
   }
 
   async createCrewMember(insertCrewMember: InsertCrewMember): Promise<CrewMember> {
-    const crewMember: CrewMember = { ...insertCrewMember };
-    this.crewMembers.set(crewMember.id, crewMember);
+    const uniqueId = await this.getNextCrewId();
+    const crewMember: CrewMember = { ...insertCrewMember, id: uniqueId };
+    this.crewMembers.set(uniqueId, crewMember);
     this.saveToFile();
     return crewMember;
   }
