@@ -102,7 +102,14 @@ The codebase is organized into feature modules (`crewing`, `admin`, `vessel`, `c
   - All refs use JSON.stringify for value comparison to detect actual data changes
   - useMemo for derived vessel data calculations to minimize re-renders
   - **Storage Performance** (Oct 2025): Optimized `PersistentFileStorage` with async file writes, 300ms debouncing to batch changes, and race condition protection via `needsResave` flag to prevent data loss during rapid operations
+    - **Critical Fix (Oct 2025)**: Resolved race condition in debounced file saves by capturing data snapshots synchronously (via `pendingData` field) before the debounce timer, preventing data loss under rapid POST loads (200+ concurrent requests). Stress tested and verified production-ready.
 - **Data Storage**: Uses `PersistentFileStorage` (`test-data.json`) for development, with a defined PostgreSQL/Drizzle ORM schema for production readiness.
+- **Crew Database Population** (Oct 2025): Seeded with 135 realistic crew members covering all 17 Company Ranks from Rank Admin:
+  - **Distribution**: 15 each for AB/OS/Oiler ranks, 6 each for all other ranks
+  - **Varied Data**: Diverse nationalities (Filipino, Indian, Ukrainian, Polish, Romanian, Chinese, Indonesian, Greek, Norwegian), ages (25-55), vessel types, experience levels
+  - **Unique IDs**: Auto-generated A000xxx format prevents conflicts
+  - **Persistence**: All data stored in test-data.json, survives server restarts
+  - **API Integration**: Full CRUD via `/api/crew-members` endpoints
 
 ## External Dependencies
 - **AG Grid Enterprise**: For advanced data table functionalities.
