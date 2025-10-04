@@ -240,7 +240,7 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
       width: 180,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       sortable: true,
-      resizable: true,
+      resizable: false,
     },
     {
       headerName: 'Rank',
@@ -248,7 +248,7 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
       width: 120,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       sortable: true,
-      resizable: true,
+      resizable: false,
     },
     {
       headerName: 'Name',
@@ -256,7 +256,7 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
       width: 180,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       sortable: true,
-      resizable: true,
+      resizable: false,
     },
     {
       headerName: 'Relief Due',
@@ -264,7 +264,7 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
       width: 140,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       sortable: true,
-      resizable: true,
+      resizable: false,
       valueFormatter: (params) => {
         if (!params.value) return '';
         try {
@@ -354,6 +354,7 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
             rowHeight: 48,
             headerHeight: 48,
             suppressMovableColumns: true,
+            suppressHorizontalScroll: true,
             getRowId: (params: any) => params.data.id,
           }}
         />
