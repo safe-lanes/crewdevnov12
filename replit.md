@@ -141,7 +141,17 @@ The application is built with a modern web stack, adhering to a module-first arc
       - Assignment tracking via state array: `{ vessel, rank, crewId, crewName, joiningDate, contractPeriod }`
       - Multi-vessel detection using Set to count unique vessels per crewId
       - Auto-select first vessel when vessels are selected
-    - **Planned Features**: Save as Draft and Propose for Approval functionality with persistence
+    - **Save Functionality** (Implemented Oct 2025):
+      - Validates plan has at least one vessel, rank, and assignment before saving
+      - Generates unique draftId using timestamp format: DRAFT-{timestamp}
+      - Calculates planFromDate from earliest crew joining date
+      - Calculates planToDate from latest contract end date (joining + contract period)
+      - Saves to persistent storage via POST /api/rotation-plans endpoint
+      - Sets planStatus to "In Draft" by default
+      - Shows success toast and closes dialog on successful save
+      - Resets form state to prevent stale data
+      - Fixed PersistentFileStorage to properly load and save rotationPlans data
+    - **Planned Features**: Propose for Approval functionality with plan submission workflow
   - **Future Implementation**: Approval section workflow, crew matching algorithms, multi-vessel optimization workspace
 
 ## External Dependencies
