@@ -24,6 +24,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Pencil, Trash2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
+import { NewPlanDialog } from './NewPlanDialog';
 import type { RotationPlan } from '@shared/schema';
 
 export function RotationPlanTable() {
@@ -197,17 +198,11 @@ export function RotationPlanTable() {
         </DialogContent>
       </Dialog>
 
-      {/* New Plan Dialog - placeholder for now, to be implemented in next instructions */}
-      <Dialog open={newPlanDialogOpen} onOpenChange={setNewPlanDialogOpen}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>New Rotation Plan</DialogTitle>
-          </DialogHeader>
-          <div className="p-4 text-gray-600 dark:text-gray-400">
-            Form details will be provided in the next instructions
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* New Plan Dialog */}
+      <NewPlanDialog 
+        open={newPlanDialogOpen} 
+        onOpenChange={setNewPlanDialogOpen}
+      />
     </div>
   );
 }
