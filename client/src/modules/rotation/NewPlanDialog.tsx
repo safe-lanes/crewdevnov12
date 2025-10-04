@@ -6,8 +6,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { ChevronDown } from 'lucide-react';
+import { Calendar } from "@/components/ui/calendar";
+import { Popover as DatePopover, PopoverContent as DatePopoverContent, PopoverTrigger as DatePopoverTrigger } from "@/components/ui/popover";
+import { ChevronDown, Calendar as CalendarIcon } from 'lucide-react';
 import { addMonths, differenceInDays, startOfMonth, endOfMonth, format } from 'date-fns';
+import { cn } from "@/lib/utils";
 
 interface NewPlanDialogProps {
   open: boolean;
@@ -47,10 +50,28 @@ interface Assignment {
 }
 
 // Crew Column Component - displays available crew for a specific rank
-function CrewColumn({ rank }: { rank: string }) {
+function CrewColumn({ 
+  rank, 
+  onCrewSelect, 
+  assignments 
+}: { 
+  rank: string; 
+  onCrewSelect: (crew: { id: string; name: string; rank: string }) => void;
+  assignments: Assignment[];
+}) {
   const { data: crewMembers = [], isLoading } = useQuery<CrewMember[]>({
     queryKey: [`/api/crew-members/by-rank/${rank}`],
   });
+
+  // Check if crew is assigned to multiple vessels
+  const isMultiVesselAssignment = (crewId: string) => {
+    const vesselCount = new Set(
+      assignments
+        .filter(a => a.crewId === crewId)
+        .map(a => a.vessel)
+    ).size;
+    return vesselCount > 1;
+  };
 
   if (isLoading) {
     return (
@@ -74,11 +95,20 @@ function CrewColumn({ rank }: { rank: string }) {
         {crewMembers.map((crew) => (
           <div
             key={crew.id}
-            className="p-3 border-b hover:bg-gray-50 dark:hover:bg-gray-800 flex items-start gap-2"
+            className="p-3 border-b hover:bg-gray-50 dark:hover:bg-gray-800 flex items-start gap-2 cursor-pointer"
+            onClick={() => onCrewSelect({ id: crew.id, name: crew.name, rank: crew.rank })}
           >
-            <Checkbox data-testid={`checkbox-crew-${crew.id}`} />
+            <Checkbox 
+              data-testid={`checkbox-crew-${crew.id}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onCrewSelect({ id: crew.id, name: crew.name, rank: crew.rank });
+              }}
+            />
             <div className="flex-1">
-              <div className="font-medium text-sm">{crew.name.split(' ')[0]} {crew.name.split(' ').slice(-1)[0].charAt(0)}</div>
+              <div className={`font-medium text-sm ${isMultiVesselAssignment(crew.id) ? 'text-red-600' : ''}`}>
+                {crew.name.split(' ')[0]} {crew.name.split(' ').slice(-1)[0].charAt(0)}
+              </div>
               <div className="text-xs text-gray-500 mt-1">
                 {crew.experience.company} / {crew.experience.rank} / {crew.experience.tankers} / {crew.experience.oow} / {crew.experience.endorsements}
               </div>
@@ -87,6 +117,122 @@ function CrewColumn({ rank }: { rank: string }) {
         ))}
       </div>
     </div>
+  );
+}
+
+// Date Period Dialog - for selecting joining date and contract period
+function DatePeriodDialog({
+  open,
+  onOpenChange,
+  onApply,
+  crewName,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onApply: (joiningDate: Date, contractPeriod: number) => void;
+  crewName: string;
+}) {
+  const [joiningDate, setJoiningDate] = useState<Date>();
+  const [contractPeriod, setContractPeriod] = useState<string>('');
+
+  // Reset form when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setJoiningDate(undefined);
+      setContractPeriod('');
+    }
+  }, [open]);
+
+  const handleApply = () => {
+    if (!joiningDate || !contractPeriod) {
+      return;
+    }
+    onApply(joiningDate, parseInt(contractPeriod));
+    onOpenChange(false);
+    // Reset
+    setJoiningDate(undefined);
+    setContractPeriod('');
+  };
+
+  const handleCancel = () => {
+    onOpenChange(false);
+    // Reset
+    setJoiningDate(undefined);
+    setContractPeriod('');
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Assign {crewName}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          {/* Joining Date */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Joining Date</label>
+            <DatePopover>
+              <DatePopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !joiningDate && "text-muted-foreground"
+                  )}
+                  data-testid="button-joining-date"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {joiningDate ? format(joiningDate, "PPP") : "Pick a date"}
+                </Button>
+              </DatePopoverTrigger>
+              <DatePopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={joiningDate}
+                  onSelect={setJoiningDate}
+                  initialFocus
+                  data-testid="calendar-joining-date"
+                />
+              </DatePopoverContent>
+            </DatePopover>
+          </div>
+
+          {/* Contract Period */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Contract Period (Months)</label>
+            <Select value={contractPeriod} onValueChange={setContractPeriod}>
+              <SelectTrigger className="w-full" data-testid="select-contract-period">
+                <SelectValue placeholder="Select period" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="3">3 Months</SelectItem>
+                <SelectItem value="6">6 Months</SelectItem>
+                <SelectItem value="9">9 Months</SelectItem>
+                <SelectItem value="12">12 Months</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            onClick={handleCancel}
+            data-testid="button-cancel-assignment"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleApply}
+            disabled={!joiningDate || !contractPeriod}
+            className="bg-blue-600 hover:bg-blue-700"
+            data-testid="button-apply-assignment"
+          >
+            Apply
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -392,6 +538,8 @@ export function NewPlanDialog({ open, onOpenChange }: NewPlanDialogProps) {
   const [selectedRanks, setSelectedRanks] = useState<string[]>([]);
   const [selectedVessel, setSelectedVessel] = useState<string>('');
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [dateDialogOpen, setDateDialogOpen] = useState(false);
+  const [selectedCrew, setSelectedCrew] = useState<{ id: string; name: string; rank: string } | null>(null);
 
   // Fetch vessels from master data
   const { data: vessels = [], isLoading: vesselsLoading } = useQuery<any[]>({
@@ -425,6 +573,30 @@ export function NewPlanDialog({ open, onOpenChange }: NewPlanDialogProps) {
       setSelectedVessel(selectedVessels[0]);
     }
   }, [selectedVessels, selectedVessel]);
+
+  const handleCrewSelect = (crew: { id: string; name: string; rank: string }) => {
+    if (!selectedVessel) {
+      alert('Please select a vessel first by clicking on a vessel header in the timeline');
+      return;
+    }
+    setSelectedCrew(crew);
+    setDateDialogOpen(true);
+  };
+
+  const handleAssignmentApply = (joiningDate: Date, contractPeriod: number) => {
+    if (!selectedCrew || !selectedVessel) return;
+
+    const newAssignment: Assignment = {
+      vessel: selectedVessel,
+      rank: selectedCrew.rank,
+      crewId: selectedCrew.id,
+      crewName: selectedCrew.name,
+      joiningDate: joiningDate.toISOString(),
+      contractPeriod,
+    };
+
+    setAssignments(prev => [...prev, newAssignment]);
+  };
 
   const handleBack = () => {
     onOpenChange(false);
@@ -571,7 +743,12 @@ export function NewPlanDialog({ open, onOpenChange }: NewPlanDialogProps) {
             ) : (
               <div className="flex gap-4 p-4" style={{ minWidth: `${selectedRanks.length * 280}px` }}>
                 {selectedRanks.map(rank => (
-                  <CrewColumn key={rank} rank={rank} />
+                  <CrewColumn 
+                    key={rank} 
+                    rank={rank} 
+                    onCrewSelect={handleCrewSelect}
+                    assignments={assignments}
+                  />
                 ))}
               </div>
             )}
@@ -599,6 +776,14 @@ export function NewPlanDialog({ open, onOpenChange }: NewPlanDialogProps) {
           </div>
         </div>
       </DialogContent>
+
+      {/* Date Period Dialog for crew assignment */}
+      <DatePeriodDialog
+        open={dateDialogOpen}
+        onOpenChange={setDateDialogOpen}
+        onApply={handleAssignmentApply}
+        crewName={selectedCrew?.name || ''}
+      />
     </Dialog>
   );
 }
