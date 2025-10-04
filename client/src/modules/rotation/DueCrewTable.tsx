@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useEffect, useState } from 'react';
+import React, { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
 import { ColDef } from 'ag-grid-community';
@@ -189,6 +189,7 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
   rankValue,
 }) => {
   const [gridScrollTop, setGridScrollTop] = useState(0);
+  const [displayedRowData, setDisplayedRowData] = useState<CrewMember[]>([]);
   const timelineContainerRef = useRef<HTMLDivElement>(null);
   const gridApiRef = useRef<any>(null);
   
@@ -245,15 +246,57 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
     },
   ], []);
 
-  const handleGridReady = (event: any) => {
+  // Extract displayed rows from AG Grid (after sorting/filtering)
+  const updateDisplayedRows = useCallback(() => {
+    if (!gridApiRef.current) return;
+    
+    const displayedRows: CrewMember[] = [];
+    gridApiRef.current.forEachNodeAfterFilterAndSort((node: any) => {
+      if (node.data) {
+        displayedRows.push(node.data);
+      }
+    });
+    setDisplayedRowData(displayedRows);
+  }, []);
+
+  const handleGridReady = useCallback((event: any) => {
     gridApiRef.current = event.api;
+    
+    // Initial load - set displayed rows
+    updateDisplayedRows();
     
     // Listen to body scroll events
     event.api.addEventListener('bodyScroll', () => {
       const verticalRange = event.api.getVerticalPixelRange();
       setGridScrollTop(verticalRange.top);
     });
-  };
+    
+    // Listen to sort changes
+    event.api.addEventListener('sortChanged', () => {
+      // Use requestAnimationFrame to ensure AG Grid's sort is complete
+      requestAnimationFrame(() => {
+        updateDisplayedRows();
+      });
+    });
+    
+    // Listen to filter changes
+    event.api.addEventListener('filterChanged', () => {
+      requestAnimationFrame(() => {
+        updateDisplayedRows();
+      });
+    });
+  }, [updateDisplayedRows]);
+  
+  // Update displayed rows when source data changes
+  useEffect(() => {
+    if (gridApiRef.current) {
+      // Small delay to ensure AG Grid has processed the data
+      const timeoutId = setTimeout(() => {
+        updateDisplayedRows();
+      }, 0);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [crewData, updateDisplayedRows]);
 
   if (isLoading) {
     return (
@@ -279,6 +322,8 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
           gridOptions={{
             rowHeight: 48,
             headerHeight: 48,
+            suppressMovableColumns: true,
+            getRowId: (params: any) => params.data.id,
           }}
         />
       </div>
@@ -290,7 +335,7 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
         style={{ overflow: 'hidden' }}
       >
         <TimelineView 
-          rowData={crewData} 
+          rowData={displayedRowData} 
           rowHeight={48}
           scrollTop={gridScrollTop}
         />

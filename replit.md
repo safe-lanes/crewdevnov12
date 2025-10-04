@@ -79,6 +79,36 @@ The application is built with a modern web stack, adhering to a module-first arc
     - Fixed Issues (Oct 2025):
       - Resolved double-toggle bug in vessel multi-select checkbox handling
       - Proper state management for radio button group and independent filters
+  - **Due Section Unified Dual-Section Table** (Implemented Oct 2025):
+    - **Architecture**: Hybrid AG Grid + Custom Canvas Timeline rendering
+    - **Left Section (620px fixed width)**: AG Grid Enterprise table with columns: Vessel, Rank, Name, Relief Due
+      - Full sorting support (click column headers for ascending/descending)
+      - Client-side filtering via API integration with filter bar
+      - Row identification via unique `getRowId` using crew member `id` field
+    - **Right Section (flexible width)**: Canvas-rendered 7-month timeline visualization
+      - 2 months before today + today (yellow anchor line) + 5 months after today
+      - Color-coded timeline bars per crew member:
+        - **Green**: Contract period (joining date → relief due date)
+        - **Yellow**: Grace/range period (relief due → range end date)
+        - **Pink**: Overdue period (after range end date)
+      - Month headers displayed at top
+    - **Unified Interface Synchronization**:
+      - Row synchronization: AG Grid's `forEachNodeAfterFilterAndSort()` extracts displayed rows after sort/filter events and updates Timeline state
+      - Scroll synchronization: AG Grid's `bodyScroll` event drives Timeline's vertical scroll position in real-time
+      - Event listeners: `sortChanged` and `filterChanged` use `requestAnimationFrame` to ensure AG Grid completes operations before Timeline updates
+    - **Business Logic** (via `/api/rotation/due-crew`):
+      - Joins crew_members with vesselPlanning data
+      - Calculates `rangeStartDate`/`rangeEndDate` (defaults to 1-month range if no planning data exists)
+      - Returns crew with vessel, rank, contract dates, and range dates
+    - **Performance Optimizations**:
+      - Canvas rendering for timeline (no DOM overhead)
+      - Virtualized row rendering (only visible rows drawn)
+      - Debounced scroll updates via requestAnimationFrame
+      - TanStack Query caching for crew data
+    - **Critical Bug Fixes** (Oct 2025):
+      - Fixed `getRowId` returning undefined (changed from `crewMemberId` to `id` field)
+      - Removed `crewData.length > 0` guard to properly clear timeline when filters return empty results
+      - Fixed "Maximum update depth exceeded" error using setTimeout and requestAnimationFrame timing
   - **Future Implementation**: Plan and Approval sections, crew matching algorithms, multi-vessel optimization workspace
 
 ## External Dependencies
