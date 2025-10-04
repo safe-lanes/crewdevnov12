@@ -347,17 +347,17 @@ function VesselTimelineView({
       ctx.fillStyle = '#52baf3';
       ctx.fillRect(0, yOffset, width, vesselHeaderHeight);
       
-      // Draw vessel name with radio button
-      ctx.fillStyle = 'white';
-      ctx.font = 'bold 14px sans-serif';
-      ctx.fillText(vessel, 40, yOffset + 30);
-      
-      // Draw radio button
+      // Draw radio button (left side)
       ctx.beginPath();
       ctx.arc(20, yOffset + 24, 8, 0, 2 * Math.PI);
       ctx.strokeStyle = 'white';
       ctx.lineWidth = 2;
       ctx.stroke();
+      
+      // Draw vessel name (with adequate spacing after radio button)
+      ctx.fillStyle = 'white';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.fillText(vessel, 50, yOffset + 30);
       
       if (selectedVessel === vessel) {
         ctx.beginPath();

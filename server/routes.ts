@@ -1356,9 +1356,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // TODO: Implement additional group filtering when group master data is available
       }
 
-      // Apply rank filter
+      // Apply rank filter (handle both single rank and multiple ranks)
       if (rank) {
-        filteredCrew = filteredCrew.filter(crew => crew.rank === rank);
+        const rankList = Array.isArray(rank) ? rank.filter(r => r && r.trim()) : [rank];
+        if (rankList.length > 0 && rankList[0]) {
+          filteredCrew = filteredCrew.filter(crew => rankList.includes(crew.rank));
+        }
       }
 
       // Apply dueIn filter
