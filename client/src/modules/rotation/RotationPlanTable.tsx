@@ -30,7 +30,6 @@ import type { RotationPlan } from '@shared/schema';
 export function RotationPlanTable() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [planToDelete, setPlanToDelete] = useState<number | null>(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<RotationPlan | null>(null);
   const [newPlanDialogOpen, setNewPlanDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -76,7 +75,7 @@ export function RotationPlanTable() {
 
   const handleEditClick = (plan: RotationPlan) => {
     setEditingPlan(plan);
-    setEditDialogOpen(true);
+    setNewPlanDialogOpen(true);
   };
 
   const parseVessels = (vesselsJson: string): string => {
@@ -186,22 +185,16 @@ export function RotationPlanTable() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Edit Dialog - placeholder for now, to be implemented in next instructions */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>Edit Rotation Plan</DialogTitle>
-          </DialogHeader>
-          <div className="p-4 text-gray-600 dark:text-gray-400">
-            Form details will be provided in the next instructions
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* New Plan Dialog */}
+      {/* New Plan Dialog - handles both new and edit */}
       <NewPlanDialog 
         open={newPlanDialogOpen} 
-        onOpenChange={setNewPlanDialogOpen}
+        onOpenChange={(open) => {
+          setNewPlanDialogOpen(open);
+          if (!open) {
+            setEditingPlan(null); // Clear editing plan when dialog closes
+          }
+        }}
+        editPlan={editingPlan}
       />
     </div>
   );

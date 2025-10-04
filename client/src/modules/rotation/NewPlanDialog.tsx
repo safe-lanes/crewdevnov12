@@ -24,7 +24,7 @@ interface RotationPlan {
   planToDate: string;
   createdBy: string;
   planStatus: string;
-  assignments: string; // JSON array
+  assignments: string | null; // JSON array
 }
 
 interface NewPlanDialogProps {

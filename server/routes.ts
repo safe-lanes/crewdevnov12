@@ -1365,8 +1365,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Apply rank filter (handle both single rank and multiple ranks)
       if (rank) {
-        const rankList = Array.isArray(rank) ? rank.filter(r => r && r.trim()) : [rank];
-        if (rankList.length > 0 && rankList[0]) {
+        const rankList = Array.isArray(rank) 
+          ? rank.filter(r => typeof r === 'string' && r.trim())
+          : typeof rank === 'string' ? [rank] : [];
+        if (rankList.length > 0) {
           filteredCrew = filteredCrew.filter(crew => rankList.includes(crew.rank));
         }
       }
