@@ -14,9 +14,23 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
+interface RotationPlan {
+  id: number;
+  draftId: string;
+  lastEdited: string;
+  vessels: string; // JSON array
+  crew: string;
+  planFromDate: string;
+  planToDate: string;
+  createdBy: string;
+  planStatus: string;
+  assignments: string; // JSON array
+}
+
 interface NewPlanDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  editPlan?: RotationPlan | null; // Optional plan to edit
 }
 
 interface CrewMember {
@@ -559,7 +573,7 @@ function VesselTimelineView({
   );
 }
 
-export function NewPlanDialog({ open, onOpenChange }: NewPlanDialogProps) {
+export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogProps) {
   const [selectedVessels, setSelectedVessels] = useState<string[]>([]);
   const [selectedRanks, setSelectedRanks] = useState<string[]>([]);
   const [selectedVessel, setSelectedVessel] = useState<string>('');
@@ -578,10 +592,16 @@ export function NewPlanDialog({ open, onOpenChange }: NewPlanDialogProps) {
     queryKey: ['/api/company-ranks'],
   });
 
-  // Save rotation plan mutation
+  // Save rotation plan mutation (handles both create and update)
   const saveRotationPlanMutation = useMutation({
     mutationFn: async (planData: any) => {
-      return await apiRequest('POST', '/api/rotation-plans', planData);
+      if (editPlan) {
+        // Update existing plan using PATCH
+        return await apiRequest('PATCH', `/api/rotation-plans/${editPlan.id}`, planData);
+      } else {
+        // Create new plan using POST
+        return await apiRequest('POST', '/api/rotation-plans', planData);
+      }
     },
     onSuccess: () => {
       // Invalidate and refetch rotation plans to update the table
@@ -589,7 +609,7 @@ export function NewPlanDialog({ open, onOpenChange }: NewPlanDialogProps) {
       
       toast({
         title: "Success",
-        description: "Rotation plan saved as draft successfully",
+        description: editPlan ? "Rotation plan updated successfully" : "Rotation plan saved as draft successfully",
       });
       onOpenChange(false);
       // Reset form
@@ -601,11 +621,43 @@ export function NewPlanDialog({ open, onOpenChange }: NewPlanDialogProps) {
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to save rotation plan",
+        description: error.message || (editPlan ? "Failed to update rotation plan" : "Failed to save rotation plan"),
         variant: "destructive",
       });
     },
   });
+
+  // Pre-populate form when editing an existing plan
+  useEffect(() => {
+    if (editPlan && open) {
+      try {
+        // Parse vessels from JSON
+        const vessels = JSON.parse(editPlan.vessels);
+        setSelectedVessels(Array.isArray(vessels) ? vessels : []);
+        
+        // Parse ranks from crew field (comma-separated)
+        const ranks = editPlan.crew.split(',').map(r => r.trim());
+        setSelectedRanks(ranks);
+        
+        // Parse assignments from JSON
+        const savedAssignments = editPlan.assignments ? JSON.parse(editPlan.assignments) : [];
+        setAssignments(savedAssignments);
+      } catch (error) {
+        console.error('Failed to parse edit plan data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load plan data",
+          variant: "destructive",
+        });
+      }
+    } else if (!editPlan && open) {
+      // Reset form when creating new plan
+      setSelectedVessels([]);
+      setSelectedRanks([]);
+      setSelectedVessel('');
+      setAssignments([]);
+    }
+  }, [editPlan, open, toast]);
 
   const toggleVessel = (vesselName: string) => {
     setSelectedVessels(prev =>
@@ -686,9 +738,6 @@ export function NewPlanDialog({ open, onOpenChange }: NewPlanDialogProps) {
       return;
     }
 
-    // Generate unique draft ID using timestamp
-    const draftId = `DRAFT-${Date.now()}`;
-    
     // Calculate plan date range from assignments
     const joiningDates = assignments.map(a => new Date(a.joiningDate));
     const planFromDate = new Date(Math.min(...joiningDates.map(d => d.getTime())));
@@ -704,17 +753,21 @@ export function NewPlanDialog({ open, onOpenChange }: NewPlanDialogProps) {
     const crewRoles = Array.from(new Set(selectedRanks)).join(', ');
 
     // Prepare plan data
-    const planData = {
-      draftId,
-      lastEdited: new Date().toISOString(),
+    const planData: any = {
       vessels: JSON.stringify(selectedVessels),
       crew: crewRoles,
       planFromDate: format(planFromDate, 'yyyy-MM-dd'),
       planToDate: format(planToDate, 'yyyy-MM-dd'),
-      createdBy: 'Current User', // TODO: Get from auth context
-      planStatus: 'In Draft',
       assignments: JSON.stringify(assignments),
     };
+
+    // Only include these fields when creating a new plan
+    if (!editPlan) {
+      planData.draftId = `DRAFT-${Date.now()}`;
+      planData.lastEdited = new Date().toISOString();
+      planData.createdBy = 'Current User'; // TODO: Get from auth context
+      planData.planStatus = 'In Draft';
+    }
 
     saveRotationPlanMutation.mutate(planData);
   };
@@ -729,7 +782,9 @@ export function NewPlanDialog({ open, onOpenChange }: NewPlanDialogProps) {
       <DialogContent className="max-w-[95vw] h-[90vh] p-0">
         <DialogHeader className="p-6 pb-4">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-2xl font-bold">New Rotation Plan</DialogTitle>
+            <DialogTitle className="text-2xl font-bold">
+              {editPlan ? "Edit Rotation Plan" : "New Rotation Plan"}
+            </DialogTitle>
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -744,7 +799,7 @@ export function NewPlanDialog({ open, onOpenChange }: NewPlanDialogProps) {
                 className="bg-blue-600 hover:bg-blue-700"
                 data-testid="button-save"
               >
-                Save
+                {editPlan ? "Update" : "Save"}
               </Button>
               <Button
                 onClick={handlePropose}
