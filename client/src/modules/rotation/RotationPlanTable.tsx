@@ -23,6 +23,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Pencil, Trash2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
 import type { RotationPlan } from '@shared/schema';
 
 export function RotationPlanTable() {
@@ -92,9 +93,7 @@ export function RotationPlanTable() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header with New Plan button */}
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-semibold text-[#16569e] dark:text-blue-400">Rotation Plan</h2>
+      <SectionTitleComponents title="Rotation Plan">
         <Button
           onClick={() => setNewPlanDialogOpen(true)}
           className="bg-green-600 hover:bg-green-700 text-white h-8 px-4"
@@ -102,7 +101,7 @@ export function RotationPlanTable() {
         >
           + New Plan
         </Button>
-      </div>
+      </SectionTitleComponents>
 
       <div className="border rounded-lg overflow-hidden">
         <Table>
