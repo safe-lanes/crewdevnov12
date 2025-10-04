@@ -398,6 +398,7 @@ export const rotationPlans = pgTable("rotation_plans", {
   planToDate: text("plan_to_date").notNull(),
   createdBy: text("created_by").notNull(),
   planStatus: text("plan_status").notNull().default("In Draft"), // In Draft, Pending Approval, Approved, Archived
+  assignments: text("assignments"), // JSON array: [{vesselName, rank, crewId, crewName, joiningDate, contractPeriod}]
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

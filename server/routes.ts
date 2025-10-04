@@ -1079,6 +1079,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/crew-members/by-rank/:rank", async (req, res) => {
+    try {
+      const { rank } = req.params;
+      const crewMembers = await storage.getCrewMembers();
+      
+      // Filter by rank and add experience data
+      const filteredCrew = crewMembers
+        .filter(crew => crew.presentRank === rank)
+        .map(crew => {
+          // Calculate experience metrics from sea service data
+          // For now, using placeholder data - will be enhanced with real calculations
+          const experience = {
+            company: Math.floor(Math.random() * 10) + 1, // 1-10 years
+            rank: Math.floor(Math.random() * 8) + 1, // 1-8 years
+            tankers: Math.floor(Math.random() * 6) + 1, // 1-6 years
+            oow: Math.floor(Math.random() * 12) + 1, // 1-12 years
+            endorsements: ['OGC', 'IGC', 'STW'][Math.floor(Math.random() * 3)] || 'OGC'
+          };
+          
+          return {
+            id: crew.id,
+            name: `${crew.firstName} ${crew.middleName || ''} ${crew.familyName || ''}`.trim(),
+            rank: crew.presentRank,
+            experience
+          };
+        });
+      
+      res.json(filteredCrew);
+    } catch (error) {
+      console.error("Failed to fetch crew by rank:", error);
+      res.status(500).json({ error: "Failed to fetch crew members by rank" });
+    }
+  });
+
   app.get("/api/crew-members", async (req, res) => {
     try {
       const crewMembers = await storage.getCrewMembers();
