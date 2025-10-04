@@ -109,7 +109,40 @@ The application is built with a modern web stack, adhering to a module-first arc
       - Fixed `getRowId` returning undefined (changed from `crewMemberId` to `id` field)
       - Removed `crewData.length > 0` guard to properly clear timeline when filters return empty results
       - Fixed "Maximum update depth exceeded" error using setTimeout and requestAnimationFrame timing
-  - **Future Implementation**: Plan and Approval sections, crew matching algorithms, multi-vessel optimization workspace
+  - **Plan Section - New Rotation Plan Dialog** (Implemented Oct 2025):
+    - **Purpose**: Create rotation plans by assigning available crew to vessels with joining dates and contract periods
+    - **Dialog Structure**:
+      - **Vessel & Rank Selection**: Multi-select dropdowns at top for vessels (from master data ID 014) and ranks (from company ranks)
+      - **Left Section (1/3 width)**: Crew columns displaying available crew per selected rank
+        - Shows crew name (First Last-Initial format) and experience data: Company Yrs / Rank Yrs / Tankers Yrs / OOW Yrs / Endorsements
+        - **Multi-vessel Assignment Indicator**: Crew names turn RED when assigned to multiple vessels
+        - Horizontal scroll for multiple rank columns
+      - **Right Section (2/3 width)**: Vessel timeline canvas showing existing crew and new assignments
+        - **Vessel Headers**: Blue background with vessel name and radio button for selection
+        - **Month Headers**: Day-based alignment (7-month window: 2 months before + today + 5 months after)
+        - **Existing Crew Bars (top half of rows)**: Green (contract period) → Yellow (grace period) → Red (overdue)
+        - **New Assignment Bars (bottom half of rows)**: Blue bars for crew assignments with joining date and contract period
+        - Click vessel header to select vessel via radio button
+    - **Assignment Workflow**:
+      1. Select vessels and ranks → Timeline displays existing crew from `/api/rotation/due-crew`
+      2. Click vessel header → Selects active vessel (radio button visual feedback)
+      3. Click crew member → Opens DatePeriodDialog for joining date and contract period selection
+      4. Select date (calendar picker) and period (3, 6, 9, 12 months dropdown) → Click Apply
+      5. Assignment created → Blue bar appears on timeline bottom half for that crew/vessel/rank
+      6. Assign same crew to multiple vessels → Crew name turns RED in crew column
+    - **DatePeriodDialog Component**:
+      - Joining Date picker using shadcn Calendar component
+      - Contract Period dropdown (3, 6, 9, 12 months options)
+      - Apply button (disabled until both fields filled)
+      - Auto-resets form on dialog close (via useEffect on open state)
+    - **Technical Implementation**:
+      - Canvas rendering with day-based positioning for timeline bars
+      - Month header clamping to visible range [startDate, endDate] to prevent off-canvas labels
+      - Assignment tracking via state array: `{ vessel, rank, crewId, crewName, joiningDate, contractPeriod }`
+      - Multi-vessel detection using Set to count unique vessels per crewId
+      - Auto-select first vessel when vessels are selected
+    - **Planned Features**: Save as Draft and Propose for Approval functionality with persistence
+  - **Future Implementation**: Approval section workflow, crew matching algorithms, multi-vessel optimization workspace
 
 ## External Dependencies
 - **AG Grid Enterprise**: Advanced data tables.
