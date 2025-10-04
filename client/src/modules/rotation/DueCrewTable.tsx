@@ -91,23 +91,31 @@ const TimelineView: React.FC<{
 
     const width = canvas.width;
     const height = canvas.height;
-    const headerHeight = 40;
+    const headerHeight = 48; // Match AG Grid header height
     
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
     
-    // Draw month headers background
-    ctx.fillStyle = '#3b82f6';
+    // Draw month headers background - match AG Grid neutral styling
+    ctx.fillStyle = '#f9fafb'; // Light gray background
     ctx.fillRect(0, 0, width, headerHeight);
     
+    // Draw header bottom border
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, headerHeight);
+    ctx.lineTo(width, headerHeight);
+    ctx.stroke();
+    
     // Draw month headers
-    ctx.fillStyle = 'white';
-    ctx.font = '12px sans-serif';
+    ctx.fillStyle = '#374151'; // Dark gray text
+    ctx.font = '600 12px sans-serif';
     ctx.textAlign = 'center';
     
     months.forEach((month, idx) => {
       const x = (idx / months.length) * width + (width / months.length / 2);
-      ctx.fillText(month.label, x, 25);
+      ctx.fillText(month.label, x, 30); // Adjusted vertical position for 48px header
     });
     
     // Draw "today" vertical line
@@ -131,6 +139,14 @@ const TimelineView: React.FC<{
       if (!crew) continue;
       
       const y = headerHeight + (i * rowHeight) - scrollTop;
+      
+      // Draw horizontal row divider line
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, y + rowHeight);
+      ctx.lineTo(width, y + rowHeight);
+      ctx.stroke();
       
       // Parse dates
       const contractStart = new Date(crew.contractStartDate);
