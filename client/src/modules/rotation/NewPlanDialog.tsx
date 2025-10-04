@@ -12,7 +12,7 @@ import { ChevronDown, Calendar as CalendarIcon } from 'lucide-react';
 import { addMonths, differenceInDays, startOfMonth, endOfMonth, format } from 'date-fns';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface NewPlanDialogProps {
   open: boolean;
@@ -584,6 +584,9 @@ export function NewPlanDialog({ open, onOpenChange }: NewPlanDialogProps) {
       return await apiRequest('POST', '/api/rotation-plans', planData);
     },
     onSuccess: () => {
+      // Invalidate and refetch rotation plans to update the table
+      queryClient.invalidateQueries({ queryKey: ['/api/rotation-plans'] });
+      
       toast({
         title: "Success",
         description: "Rotation plan saved as draft successfully",
@@ -698,7 +701,7 @@ export function NewPlanDialog({ open, onOpenChange }: NewPlanDialogProps) {
     const planToDate = new Date(Math.max(...contractEndDates.map(d => d.getTime())));
 
     // Format crew roles as comma-separated string
-    const crewRoles = [...new Set(selectedRanks)].join(', ');
+    const crewRoles = Array.from(new Set(selectedRanks)).join(', ');
 
     // Prepare plan data
     const planData = {
