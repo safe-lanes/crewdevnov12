@@ -126,14 +126,8 @@ const TimelineView: React.FC<{
       ctx.fillText(month.label, x, 30); // Adjusted vertical position for 48px header
     });
     
-    // Draw "today" vertical line
+    // Calculate today's X position (will draw the line after all bars)
     const todayX = ((differenceInDays(today, startDate) / totalDays) * width);
-    ctx.strokeStyle = '#fbbf24';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(todayX, headerHeight);
-    ctx.lineTo(todayX, height);
-    ctx.stroke();
     
     // Draw timeline bars for each crew member
     const visibleStartRow = Math.floor(scrollTop / rowHeight);
@@ -195,6 +189,14 @@ const TimelineView: React.FC<{
         }
       }
     }
+    
+    // Draw "today" vertical line on top of all bars
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(todayX, headerHeight);
+    ctx.lineTo(todayX, height);
+    ctx.stroke();
   }, [rowData, scrollTop, rowHeight, months, today, startDate, endDate, totalDays, canvasSize]);
 
   return (
