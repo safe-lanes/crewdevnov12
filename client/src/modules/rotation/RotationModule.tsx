@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { Filter, ChevronDown } from 'lucide-react';
 import { DueCrewTable } from './DueCrewTable';
+import { RotationPlanTable } from './RotationPlanTable';
 
 // Hook to fetch vessels from Master Data (ID 014)
 const useVessels = () => {
@@ -276,12 +277,7 @@ export function RotationModule() {
             case "due":
                 return renderDueContent();
             case "plan":
-                return (
-                    <div className="p-6">
-                        <h2 className="text-2xl font-semibold text-[#16569e] mb-4">Rotation Planning</h2>
-                        <p className="text-gray-600">Rotation planning functionality will be displayed here.</p>
-                    </div>
-                );
+                return <RotationPlanTable />;
             case "approval":
                 return (
                     <div className="p-6">

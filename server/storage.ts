@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type CrewDashboardSummary } from "@shared/schema";
+import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type CrewDashboardSummary } from "@shared/schema";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -90,6 +90,12 @@ export interface IStorage {
   getCrewDashboardSummary(crewId: string): Promise<CrewDashboardSummary | undefined>;
   // ID Generation
   getNextCrewId(): Promise<string>;
+  // Rotation Plans
+  getRotationPlans(): Promise<RotationPlan[]>;
+  getRotationPlan(id: number): Promise<RotationPlan | undefined>;
+  createRotationPlan(plan: InsertRotationPlan): Promise<RotationPlan>;
+  updateRotationPlan(id: number, plan: Partial<InsertRotationPlan>): Promise<RotationPlan | undefined>;
+  deleteRotationPlan(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -105,6 +111,7 @@ export class MemStorage implements IStorage {
   private vesselDrafts: Map<number, VesselDraft>;
   private vesselRevisions: Map<number, VesselRevision>;
   private vesselPlanning: Map<number, VesselPlanning>;
+  private rotationPlans: Map<number, RotationPlan>;
   private currentUserId: number;
   private currentFormId: number;
   private currentRankGroupId: number;
@@ -115,6 +122,7 @@ export class MemStorage implements IStorage {
   private currentVesselDraftId: number;
   private currentVesselRevisionId: number;
   private currentVesselPlanningId: number;
+  private currentRotationPlanId: number;
 
   constructor() {
     this.users = new Map();
@@ -129,6 +137,7 @@ export class MemStorage implements IStorage {
     this.vesselDrafts = new Map();
     this.vesselRevisions = new Map();
     this.vesselPlanning = new Map();
+    this.rotationPlans = new Map();
     this.currentUserId = 1;
     this.currentFormId = 1;
     this.currentRankGroupId = 1;
@@ -139,6 +148,7 @@ export class MemStorage implements IStorage {
     this.currentVesselDraftId = 1;
     this.currentVesselRevisionId = 1;
     this.currentVesselPlanningId = 1;
+    this.currentRotationPlanId = 1;
     
     this.initializeDefaultData();
 
@@ -467,6 +477,51 @@ export class MemStorage implements IStorage {
     });
 
     this.currentAppraisalResultId = 6;
+
+    // Initialize with sample rotation plan data
+    this.rotationPlans.set(1, {
+      id: 1,
+      draftId: "24-01-13",
+      lastEdited: "10 Jan 24",
+      vessels: JSON.stringify(["Vessel 2", "Vessel 4", "Vessel 5", "Vessel 6"]),
+      crew: "Master, Chief Officer",
+      planFromDate: "1 Jan 24",
+      planToDate: "30 Jun 24",
+      createdBy: "ABC, Crew Execution",
+      planStatus: "Pending Approval",
+      createdAt: new Date("2024-01-10"),
+      updatedAt: new Date("2024-01-10")
+    });
+
+    this.rotationPlans.set(2, {
+      id: 2,
+      draftId: "24-02-05",
+      lastEdited: "15 Feb 24",
+      vessels: JSON.stringify(["MT Sail One", "MT Sail Two"]),
+      crew: "Chief Engineer, 2nd Engineer",
+      planFromDate: "1 Mar 24",
+      planToDate: "31 Aug 24",
+      createdBy: "Tech Team",
+      planStatus: "In Draft",
+      createdAt: new Date("2024-02-15"),
+      updatedAt: new Date("2024-02-15")
+    });
+
+    this.rotationPlans.set(3, {
+      id: 3,
+      draftId: "24-03-22",
+      lastEdited: "22 Mar 24",
+      vessels: JSON.stringify(["MT Sail Five", "MT Sail Eight", "MT Sail Ten"]),
+      crew: "Master, Chief Officer, 2nd Officer",
+      planFromDate: "1 Apr 24",
+      planToDate: "30 Sep 24",
+      createdBy: "Operations Team",
+      planStatus: "Approved",
+      createdAt: new Date("2024-03-22"),
+      updatedAt: new Date("2024-03-22")
+    });
+
+    this.currentRotationPlanId = 4;
   }
 
   private initializeDefaultData() {
@@ -942,6 +997,45 @@ export class MemStorage implements IStorage {
 
   async deleteVesselPlanning(id: number): Promise<boolean> {
     return this.vesselPlanning.delete(id);
+  }
+
+  // Rotation Plans Methods
+  async getRotationPlans(): Promise<RotationPlan[]> {
+    return Array.from(this.rotationPlans.values());
+  }
+
+  async getRotationPlan(id: number): Promise<RotationPlan | undefined> {
+    return this.rotationPlans.get(id);
+  }
+
+  async createRotationPlan(insertPlan: InsertRotationPlan): Promise<RotationPlan> {
+    const id = this.currentRotationPlanId++;
+    const rotationPlan: RotationPlan = {
+      ...insertPlan,
+      id,
+      planStatus: insertPlan.planStatus || "In Draft",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.rotationPlans.set(id, rotationPlan);
+    return rotationPlan;
+  }
+
+  async updateRotationPlan(id: number, updateData: Partial<InsertRotationPlan>): Promise<RotationPlan | undefined> {
+    const existingPlan = this.rotationPlans.get(id);
+    if (!existingPlan) return undefined;
+    
+    const updatedPlan: RotationPlan = {
+      ...existingPlan,
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    this.rotationPlans.set(id, updatedPlan);
+    return updatedPlan;
+  }
+
+  async deleteRotationPlan(id: number): Promise<boolean> {
+    return this.rotationPlans.delete(id);
   }
 
   // Appraisal Results Methods
@@ -2170,6 +2264,49 @@ export class PersistentFileStorage implements IStorage {
 
   async deleteVesselPlanning(id: number): Promise<boolean> {
     const result = this.vesselPlanning.delete(id);
+    if (result) this.saveToFile(); // SAVE TO FILE AFTER EVERY DELETE!
+    return result;
+  }
+
+  // Rotation Plans Methods
+  async getRotationPlans(): Promise<RotationPlan[]> {
+    return Array.from(this.rotationPlans.values());
+  }
+
+  async getRotationPlan(id: number): Promise<RotationPlan | undefined> {
+    return this.rotationPlans.get(id);
+  }
+
+  async createRotationPlan(insertPlan: InsertRotationPlan): Promise<RotationPlan> {
+    const id = this.currentRotationPlanId++;
+    const rotationPlan: RotationPlan = {
+      ...insertPlan,
+      id,
+      planStatus: insertPlan.planStatus || "In Draft",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.rotationPlans.set(id, rotationPlan);
+    this.saveToFile(); // SAVE TO FILE AFTER EVERY CREATE!
+    return rotationPlan;
+  }
+
+  async updateRotationPlan(id: number, updateData: Partial<InsertRotationPlan>): Promise<RotationPlan | undefined> {
+    const existingPlan = this.rotationPlans.get(id);
+    if (!existingPlan) return undefined;
+    
+    const updatedPlan: RotationPlan = {
+      ...existingPlan,
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    this.rotationPlans.set(id, updatedPlan);
+    this.saveToFile(); // SAVE TO FILE AFTER EVERY UPDATE!
+    return updatedPlan;
+  }
+
+  async deleteRotationPlan(id: number): Promise<boolean> {
+    const result = this.rotationPlans.delete(id);
     if (result) this.saveToFile(); // SAVE TO FILE AFTER EVERY DELETE!
     return result;
   }

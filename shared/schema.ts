@@ -388,6 +388,20 @@ export const vesselPlanning = pgTable("vessel_planning", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const rotationPlans = pgTable("rotation_plans", {
+  id: serial("id").primaryKey(),
+  draftId: text("draft_id").notNull(),
+  lastEdited: text("last_edited").notNull(),
+  vessels: text("vessels").notNull(), // JSON array of vessel names
+  crew: text("crew").notNull(), // Comma-separated crew roles (e.g., "Master, Chief Officer")
+  planFromDate: text("plan_from_date").notNull(),
+  planToDate: text("plan_to_date").notNull(),
+  createdBy: text("created_by").notNull(),
+  planStatus: text("plan_status").notNull().default("In Draft"), // In Draft, Pending Approval, Approved, Archived
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -742,6 +756,12 @@ export const insertVesselPlanningSchema = createInsertSchema(vesselPlanning).pic
   applicableDocsChecked: true,
 });
 
+export const insertRotationPlanSchema = createInsertSchema(rotationPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertForm = z.infer<typeof insertFormSchema>;
@@ -781,6 +801,8 @@ export type InsertMasterDataEntry = z.infer<typeof insertMasterDataEntrySchema>;
 export type MasterDataEntry = typeof masterDataEntries.$inferSelect;
 export type InsertVesselPlanning = z.infer<typeof insertVesselPlanningSchema>;
 export type VesselPlanning = typeof vesselPlanning.$inferSelect;
+export type InsertRotationPlan = z.infer<typeof insertRotationPlanSchema>;
+export type RotationPlan = typeof rotationPlans.$inferSelect;
 
 // Dashboard Types
 export const dashboardStatusSchema = z.object({

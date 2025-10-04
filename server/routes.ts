@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError } from "./storage";
-import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema } from "@shared/schema";
+import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema } from "@shared/schema";
 import { z } from "zod";
 import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew } from "@shared/crew-mapping";
 import { 
@@ -985,6 +985,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to delete vessel planning:", error);
       res.status(500).json({ error: "Failed to delete vessel planning" });
+    }
+  });
+
+  // Rotation Plans API routes
+  app.get("/api/rotation-plans", async (req, res) => {
+    try {
+      const plans = await storage.getRotationPlans();
+      res.json(plans);
+    } catch (error) {
+      console.error("Failed to fetch rotation plans:", error);
+      res.status(500).json({ error: "Failed to fetch rotation plans" });
+    }
+  });
+
+  app.get("/api/rotation-plans/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid plan ID - must be a number" });
+      }
+      const plan = await storage.getRotationPlan(id);
+      if (!plan) {
+        return res.status(404).json({ error: "Rotation plan not found" });
+      }
+      res.json(plan);
+    } catch (error) {
+      console.error("Failed to fetch rotation plan:", error);
+      res.status(500).json({ error: "Failed to fetch rotation plan" });
+    }
+  });
+
+  app.post("/api/rotation-plans", async (req, res) => {
+    try {
+      const result = insertRotationPlanSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid rotation plan data", details: result.error.issues });
+      }
+      const plan = await storage.createRotationPlan(result.data);
+      res.status(201).json(plan);
+    } catch (error) {
+      console.error("Failed to create rotation plan:", error);
+      res.status(500).json({ error: "Failed to create rotation plan" });
+    }
+  });
+
+  app.patch("/api/rotation-plans/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid plan ID - must be a number" });
+      }
+      const result = insertRotationPlanSchema.partial().safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid rotation plan data", details: result.error.issues });
+      }
+      const plan = await storage.updateRotationPlan(id, result.data);
+      if (!plan) {
+        return res.status(404).json({ error: "Rotation plan not found" });
+      }
+      res.json(plan);
+    } catch (error) {
+      console.error("Failed to update rotation plan:", error);
+      res.status(500).json({ error: "Failed to update rotation plan" });
+    }
+  });
+
+  app.delete("/api/rotation-plans/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid plan ID - must be a number" });
+      }
+      const deleted = await storage.deleteRotationPlan(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Rotation plan not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete rotation plan:", error);
+      res.status(500).json({ error: "Failed to delete rotation plan" });
     }
   });
 
