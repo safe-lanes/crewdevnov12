@@ -557,10 +557,7 @@ export function NewPlanDialog({ open, onOpenChange }: NewPlanDialogProps) {
   // Save rotation plan mutation
   const saveRotationPlanMutation = useMutation({
     mutationFn: async (planData: any) => {
-      return await apiRequest('/api/rotation-plans', {
-        method: 'POST',
-        body: JSON.stringify(planData),
-      });
+      return await apiRequest('POST', '/api/rotation-plans', planData);
     },
     onSuccess: () => {
       toast({
