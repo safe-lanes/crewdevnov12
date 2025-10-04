@@ -332,6 +332,9 @@ function VesselTimelineView({
     const vesselHeaderHeight = 48;
     const monthHeaderHeight = 32;
     const rowHeight = 40;
+    const rankColumnWidth = 100; // Fixed width for rank column
+    const timelineStartX = rankColumnWidth; // Timeline starts after rank column
+    const timelineWidth = width - rankColumnWidth;
     
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
@@ -340,7 +343,7 @@ function VesselTimelineView({
     
     // Draw each vessel section
     vessels.forEach((vessel, vesselIdx) => {
-      // Draw vessel header
+      // Draw vessel header (full width)
       ctx.fillStyle = '#52baf3';
       ctx.fillRect(0, yOffset, width, vesselHeaderHeight);
       
@@ -365,9 +368,18 @@ function VesselTimelineView({
       
       yOffset += vesselHeaderHeight;
       
-      // Draw month headers
+      // Draw header row (rank column + month headers)
+      // Rank column header
       ctx.fillStyle = '#52baf3';
-      ctx.fillRect(0, yOffset, width, monthHeaderHeight);
+      ctx.fillRect(0, yOffset, rankColumnWidth, monthHeaderHeight);
+      ctx.fillStyle = 'white';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Rank', rankColumnWidth / 2, yOffset + 20);
+      
+      // Month headers (in timeline area)
+      ctx.fillStyle = '#52baf3';
+      ctx.fillRect(timelineStartX, yOffset, timelineWidth, monthHeaderHeight);
       
       ctx.fillStyle = 'white';
       ctx.font = '12px sans-serif';
@@ -381,11 +393,11 @@ function VesselTimelineView({
         // Skip months completely outside the visible range
         if (monthEnd < startDate || monthStart > endDate) return;
         
-        const monthStartX = ((differenceInDays(monthStart, startDate) / totalDays) * width);
-        const monthEndX = ((differenceInDays(monthEnd, startDate) / totalDays) * width);
+        const monthStartX = timelineStartX + ((differenceInDays(monthStart, startDate) / totalDays) * timelineWidth);
+        const monthEndX = timelineStartX + ((differenceInDays(monthEnd, startDate) / totalDays) * timelineWidth);
         const x = (monthStartX + monthEndX) / 2; // Center of month within visible range
         
-        if (x >= 0 && x <= width) {
+        if (x >= timelineStartX && x <= width) {
           ctx.fillText(month.label, x, yOffset + 20);
         }
       });
@@ -399,17 +411,29 @@ function VesselTimelineView({
         
         const y = yOffset;
         
-        // Draw row background
+        // Draw row background (full width)
         ctx.fillStyle = rankIdx % 2 === 0 ? '#ffffff' : '#f9fafb';
         ctx.fillRect(0, y, width, rowHeight);
         
-        // Draw rank label (left aligned)
-        ctx.fillStyle = '#4f5863';
-        ctx.font = '13px sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText(rank, 10, y + 25);
+        // Draw rank column background with border
+        ctx.fillStyle = '#f3f4f6';
+        ctx.fillRect(0, y, rankColumnWidth, rowHeight);
         
-        // Draw existing crew bars (top half)
+        // Draw rank label (centered in rank column)
+        ctx.fillStyle = '#1f2937';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(rank, rankColumnWidth / 2, y + 25);
+        
+        // Draw vertical separator line between rank and timeline
+        ctx.strokeStyle = '#d1d5db';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(rankColumnWidth - 0.5, y);
+        ctx.lineTo(rankColumnWidth - 0.5, y + rowHeight);
+        ctx.stroke();
+        
+        // Draw existing crew bars (top half) - in timeline area only
         const topBarY = y + 5;
         const topBarHeight = 15;
         
@@ -418,9 +442,9 @@ function VesselTimelineView({
           const contractEnd = new Date(crew.contractEndDate);
           const rangeEnd = new Date(crew.rangeEndDate);
           
-          const greenStart = Math.max(0, ((differenceInDays(contractStart, startDate) / totalDays) * width));
-          const greenEnd = Math.max(0, ((differenceInDays(contractEnd, startDate) / totalDays) * width));
-          const yellowEnd = Math.max(0, ((differenceInDays(rangeEnd, startDate) / totalDays) * width));
+          const greenStart = Math.max(timelineStartX, timelineStartX + ((differenceInDays(contractStart, startDate) / totalDays) * timelineWidth));
+          const greenEnd = Math.max(timelineStartX, timelineStartX + ((differenceInDays(contractEnd, startDate) / totalDays) * timelineWidth));
+          const yellowEnd = Math.max(timelineStartX, timelineStartX + ((differenceInDays(rangeEnd, startDate) / totalDays) * timelineWidth));
           
           // Draw green bar
           if (greenEnd > greenStart) {
@@ -436,7 +460,7 @@ function VesselTimelineView({
           
           // Draw pink bar (overdue)
           if (rangeEnd < today) {
-            const todayX = ((differenceInDays(today, startDate) / totalDays) * width);
+            const todayX = timelineStartX + ((differenceInDays(today, startDate) / totalDays) * timelineWidth);
             const pinkStart = yellowEnd;
             const pinkEnd = todayX;
             if (pinkEnd > pinkStart) {
@@ -452,7 +476,7 @@ function VesselTimelineView({
           ctx.fillText(crew.name, greenStart + 4, topBarY + 11);
         });
         
-        // Draw new assignment bars (bottom half)
+        // Draw new assignment bars (bottom half) - in timeline area only
         const bottomBarY = y + 20;
         const bottomBarHeight = 15;
         
@@ -460,8 +484,8 @@ function VesselTimelineView({
           const joiningDate = new Date(assignment.joiningDate);
           const contractEndDate = addMonths(joiningDate, assignment.contractPeriod);
           
-          const blueStart = Math.max(0, ((differenceInDays(joiningDate, startDate) / totalDays) * width));
-          const blueEnd = Math.max(0, ((differenceInDays(contractEndDate, startDate) / totalDays) * width));
+          const blueStart = Math.max(timelineStartX, timelineStartX + ((differenceInDays(joiningDate, startDate) / totalDays) * timelineWidth));
+          const blueEnd = Math.max(timelineStartX, timelineStartX + ((differenceInDays(contractEndDate, startDate) / totalDays) * timelineWidth));
           
           if (blueEnd > blueStart) {
             ctx.fillStyle = 'rgba(82, 186, 243, 0.7)';
@@ -487,8 +511,8 @@ function VesselTimelineView({
       });
     });
     
-    // Draw "today" vertical line
-    const todayX = ((differenceInDays(today, startDate) / totalDays) * width);
+    // Draw "today" vertical line (only in timeline area)
+    const todayX = timelineStartX + ((differenceInDays(today, startDate) / totalDays) * timelineWidth);
     ctx.strokeStyle = '#fbbf24';
     ctx.lineWidth = 3;
     ctx.beginPath();
