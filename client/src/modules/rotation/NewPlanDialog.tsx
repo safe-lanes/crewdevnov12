@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,6 +11,8 @@ import { Popover as DatePopover, PopoverContent as DatePopoverContent, PopoverTr
 import { ChevronDown, Calendar as CalendarIcon } from 'lucide-react';
 import { addMonths, differenceInDays, startOfMonth, endOfMonth, format } from 'date-fns';
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 interface NewPlanDialogProps {
   open: boolean;
@@ -540,6 +542,7 @@ export function NewPlanDialog({ open, onOpenChange }: NewPlanDialogProps) {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [dateDialogOpen, setDateDialogOpen] = useState(false);
   const [selectedCrew, setSelectedCrew] = useState<{ id: string; name: string; rank: string } | null>(null);
+  const { toast } = useToast();
 
   // Fetch vessels from master data
   const { data: vessels = [], isLoading: vesselsLoading } = useQuery<any[]>({
@@ -549,6 +552,35 @@ export function NewPlanDialog({ open, onOpenChange }: NewPlanDialogProps) {
   // Fetch company ranks
   const { data: companyRanks = [], isLoading: ranksLoading } = useQuery<any[]>({
     queryKey: ['/api/company-ranks'],
+  });
+
+  // Save rotation plan mutation
+  const saveRotationPlanMutation = useMutation({
+    mutationFn: async (planData: any) => {
+      return await apiRequest('/api/rotation-plans', {
+        method: 'POST',
+        body: JSON.stringify(planData),
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Rotation plan saved as draft successfully",
+      });
+      onOpenChange(false);
+      // Reset form
+      setSelectedVessels([]);
+      setSelectedRanks([]);
+      setSelectedVessel('');
+      setAssignments([]);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save rotation plan",
+        variant: "destructive",
+      });
+    },
   });
 
   const toggleVessel = (vesselName: string) => {
@@ -603,8 +635,64 @@ export function NewPlanDialog({ open, onOpenChange }: NewPlanDialogProps) {
   };
 
   const handleSave = () => {
-    // TODO: Implement save as draft
-    console.log('Save as draft');
+    if (selectedVessels.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please select at least one vessel",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (selectedRanks.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please select at least one rank",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (assignments.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please create at least one crew assignment",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Generate unique draft ID using timestamp
+    const draftId = `DRAFT-${Date.now()}`;
+    
+    // Calculate plan date range from assignments
+    const joiningDates = assignments.map(a => new Date(a.joiningDate));
+    const planFromDate = new Date(Math.min(...joiningDates.map(d => d.getTime())));
+    
+    // Calculate planToDate as the latest contract end date
+    const contractEndDates = assignments.map(a => {
+      const joiningDate = new Date(a.joiningDate);
+      return addMonths(joiningDate, a.contractPeriod);
+    });
+    const planToDate = new Date(Math.max(...contractEndDates.map(d => d.getTime())));
+
+    // Format crew roles as comma-separated string
+    const crewRoles = [...new Set(selectedRanks)].join(', ');
+
+    // Prepare plan data
+    const planData = {
+      draftId,
+      lastEdited: new Date().toISOString(),
+      vessels: JSON.stringify(selectedVessels),
+      crew: crewRoles,
+      planFromDate: format(planFromDate, 'yyyy-MM-dd'),
+      planToDate: format(planToDate, 'yyyy-MM-dd'),
+      createdBy: 'Current User', // TODO: Get from auth context
+      planStatus: 'In Draft',
+      assignments: JSON.stringify(assignments),
+    };
+
+    saveRotationPlanMutation.mutate(planData);
   };
 
   const handlePropose = () => {

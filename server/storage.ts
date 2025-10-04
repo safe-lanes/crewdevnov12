@@ -1320,6 +1320,10 @@ export class PersistentFileStorage implements IStorage {
         this.vesselPlanning = new Map(data.vesselPlanning || []);
         this.currentVesselPlanningId = data.currentVesselPlanningId || 1;
         
+        // Load rotation plans and counter
+        this.rotationPlans = new Map(data.rotationPlans || []);
+        this.currentRotationPlanId = data.currentRotationPlanId || 1;
+        
         console.log("📄 Loaded existing data from test-data.json");
       } else {
         console.log("📄 test-data.json not found, initializing with default data");
@@ -1347,6 +1351,7 @@ export class PersistentFileStorage implements IStorage {
       vesselDrafts: Array.from(this.vesselDrafts.entries()),
       vesselRevisions: Array.from(this.vesselRevisions.entries()),
       vesselPlanning: Array.from(this.vesselPlanning.entries()),
+      rotationPlans: Array.from(this.rotationPlans.entries()),
       masterDataEntries: Array.from(this.masterDataEntries.entries()),
       currentUserId: this.currentUserId,
       currentFormId: this.currentFormId,
@@ -1357,7 +1362,8 @@ export class PersistentFileStorage implements IStorage {
       currentVesselGroupId: this.currentVesselGroupId,
       currentVesselDraftId: this.currentVesselDraftId,
       currentVesselRevisionId: this.currentVesselRevisionId,
-      currentVesselPlanningId: this.currentVesselPlanningId
+      currentVesselPlanningId: this.currentVesselPlanningId,
+      currentRotationPlanId: this.currentRotationPlanId
     };
     
     if (this.saveTimeout) {
