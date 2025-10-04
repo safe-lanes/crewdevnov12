@@ -61,12 +61,28 @@ const TimelineView: React.FC<{
   scrollTop: number;
 }> = ({ rowData, rowHeight, scrollTop }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   
   // Calculate 7-month window (2 months before today + today + 5 months after today)
   const today = useMemo(() => new Date(), []);
   const startDate = useMemo(() => addMonths(today, -2), [today]);
   const endDate = useMemo(() => addMonths(today, 5), [today]);
   const totalDays = useMemo(() => differenceInDays(endDate, startDate), [startDate, endDate]);
+  
+  // Resize canvas to match container
+  useEffect(() => {
+    const updateCanvasSize = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setCanvasSize({ width: rect.width, height: rect.height });
+      }
+    };
+    
+    updateCanvasSize();
+    window.addEventListener('resize', updateCanvasSize);
+    return () => window.removeEventListener('resize', updateCanvasSize);
+  }, []);
   
   // Generate month headers
   const months = useMemo(() => {
@@ -89,28 +105,20 @@ const TimelineView: React.FC<{
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const width = canvas.width;
-    const height = canvas.height;
+    const width = canvasSize.width;
+    const height = canvasSize.height;
     const headerHeight = 48; // Match AG Grid header height
     
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
     
-    // Draw month headers background - match AG Grid neutral styling
-    ctx.fillStyle = '#f9fafb'; // Light gray background
+    // Draw month headers background - match AG Grid blue styling
+    ctx.fillStyle = '#52baf3'; // Blue background matching AG Grid
     ctx.fillRect(0, 0, width, headerHeight);
     
-    // Draw header bottom border
-    ctx.strokeStyle = '#e5e7eb';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, headerHeight);
-    ctx.lineTo(width, headerHeight);
-    ctx.stroke();
-    
     // Draw month headers
-    ctx.fillStyle = '#374151'; // Dark gray text
-    ctx.font = '600 12px sans-serif';
+    ctx.fillStyle = 'white'; // White text
+    ctx.font = '12px sans-serif';
     ctx.textAlign = 'center';
     
     months.forEach((month, idx) => {
@@ -140,12 +148,16 @@ const TimelineView: React.FC<{
       
       const y = headerHeight + (i * rowHeight) - scrollTop;
       
-      // Draw horizontal row divider line
+      // Draw row background (white)
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, y, width, rowHeight);
+      
+      // Draw horizontal row divider line at bottom of row
       ctx.strokeStyle = '#e5e7eb';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(0, y + rowHeight);
-      ctx.lineTo(width, y + rowHeight);
+      ctx.moveTo(0, y + rowHeight - 0.5); // Subtract 0.5 for pixel-perfect alignment
+      ctx.lineTo(width, y + rowHeight - 0.5);
       ctx.stroke();
       
       // Parse dates
@@ -183,16 +195,17 @@ const TimelineView: React.FC<{
         }
       }
     }
-  }, [rowData, scrollTop, rowHeight, months, today, startDate, endDate, totalDays]);
+  }, [rowData, scrollTop, rowHeight, months, today, startDate, endDate, totalDays, canvasSize]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={800}
-      height={600}
-      className="w-full h-full"
-      style={{ display: 'block' }}
-    />
+    <div ref={containerRef} className="w-full h-full">
+      <canvas
+        ref={canvasRef}
+        width={canvasSize.width}
+        height={canvasSize.height}
+        className="block"
+      />
+    </div>
   );
 };
 
@@ -323,7 +336,7 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
   }
 
   return (
-    <div className="flex gap-0 h-[calc(100vh-280px)] bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <div className="flex gap-0 h-[calc(100vh-280px)] bg-white rounded-bl-lg border border-gray-200 overflow-hidden">
       {/* Left section: AG Grid */}
       <div className="flex-none w-[620px] border-r border-gray-200">
         <AgGridTable
