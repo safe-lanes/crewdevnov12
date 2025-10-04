@@ -1040,7 +1040,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!result.success) {
         return res.status(400).json({ error: "Invalid rotation plan data", details: result.error.issues });
       }
-      const plan = await storage.updateRotationPlan(id, result.data);
+      
+      // Update lastEdited timestamp
+      const updateData = {
+        ...result.data,
+        lastEdited: new Date().toISOString(),
+      };
+      
+      const plan = await storage.updateRotationPlan(id, updateData);
       if (!plan) {
         return res.status(404).json({ error: "Rotation plan not found" });
       }
