@@ -1135,6 +1135,160 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Rotation module - Due crew endpoint
+  app.get("/api/rotation/due-crew", async (req, res) => {
+    try {
+      const { filterType, vessels, fleet, addGroup, dueIn, rank } = req.query;
+      
+      // Fetch all crew members and vessel planning data
+      const crewMembers = await storage.getCrewMembers();
+      
+      // Get all vessel planning data (we'll need to join this)
+      const allPlanningPromises = crewMembers.map(async (crew) => {
+        if (!crew.presentVessel) return null;
+        try {
+          const planning = await storage.getVesselPlanningByVessel(crew.presentVessel);
+          return planning;
+        } catch {
+          return [];
+        }
+      });
+      const allPlanning = await Promise.all(allPlanningPromises);
+      const planningMap = new Map<string, any[]>();
+      allPlanning.forEach((planning, idx) => {
+        if (planning && crewMembers[idx]) {
+          const vessel = crewMembers[idx].presentVessel;
+          if (vessel) {
+            planningMap.set(vessel, planning);
+          }
+        }
+      });
+
+      // Process crew members with contract date calculations
+      const processedCrew = crewMembers
+        .filter(crew => crew.joiningDate && crew.reliefDue && crew.presentRank && crew.presentVessel)
+        .map(crew => {
+          const vesselPlanning = planningMap.get(crew.presentVessel || '') || [];
+          
+          // Find matching planning data by rank
+          const matchingPlan = vesselPlanning.find(p => p.rank === crew.presentRank);
+          
+          // Calculate range dates with defaults (1 month if no planning data)
+          const rangeEndMonths = matchingPlan?.contractEndRangeEndMonths ?? 1;
+          const rangeStartMonths = matchingPlan?.contractEndRangeStartMonths ?? 0;
+          
+          // Parse dates (assuming YYYY-MM-DD format or DD-MM-YYYY)
+          const parseDate = (dateStr: string): Date | null => {
+            if (!dateStr) return null;
+            try {
+              // Try YYYY-MM-DD first
+              if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                return new Date(dateStr);
+              }
+              // Try DD-MM-YYYY
+              const parts = dateStr.split('-');
+              if (parts.length === 3) {
+                const [day, month, year] = parts;
+                return new Date(`${year}-${month}-${day}`);
+              }
+              return null;
+            } catch {
+              return null;
+            }
+          };
+
+          const joiningDate = parseDate(crew.joiningDate || '');
+          const reliefDue = parseDate(crew.reliefDue || '');
+          
+          if (!reliefDue) return null;
+
+          // Calculate range dates
+          const rangeStartDate = new Date(reliefDue);
+          rangeStartDate.setMonth(rangeStartDate.getMonth() + rangeStartMonths);
+          
+          const rangeEndDate = new Date(reliefDue);
+          rangeEndDate.setMonth(rangeEndDate.getMonth() + rangeEndMonths);
+
+          return {
+            id: crew.id,
+            vessel: crew.presentVessel,
+            rank: crew.presentRank,
+            name: `${crew.firstName} ${crew.familyName || ''}`.trim(),
+            reliefDue: crew.reliefDue,
+            contractStartDate: crew.joiningDate,
+            contractEndDate: crew.reliefDue,
+            rangeStartDate: rangeStartDate.toISOString().split('T')[0],
+            rangeEndDate: rangeEndDate.toISOString().split('T')[0],
+            nationality: crew.nationality,
+            // Include raw dates for filtering
+            _reliefDueDate: reliefDue,
+            _rangeEndDate: rangeEndDate,
+          };
+        })
+        .filter((crew): crew is NonNullable<typeof crew> => crew !== null);
+
+      // Apply filters
+      let filteredCrew = processedCrew;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Apply vessel/fleet/addGroup filter
+      if (filterType === 'vessel' && vessels) {
+        const vesselList = Array.isArray(vessels) ? vessels : [vessels];
+        filteredCrew = filteredCrew.filter(crew => vesselList.includes(crew.vessel));
+      } else if (filterType === 'fleet' && fleet) {
+        // TODO: Implement fleet filtering when fleet master data is available
+      } else if (filterType === 'addGroup' && addGroup) {
+        // TODO: Implement additional group filtering when group master data is available
+      }
+
+      // Apply rank filter
+      if (rank) {
+        filteredCrew = filteredCrew.filter(crew => crew.rank === rank);
+      }
+
+      // Apply dueIn filter
+      if (dueIn) {
+        const monthsMap: Record<string, number> = {
+          '3m': 3,
+          '2m': 2,
+          '1m': 1,
+        };
+
+        if (dueIn === 'overdue') {
+          // Range End Date is before today
+          filteredCrew = filteredCrew.filter(crew => crew._rangeEndDate < today);
+        } else if (dueIn === 'overdue1m') {
+          // Range End Date is within next month and >= today
+          const oneMonthFromNow = new Date(today);
+          oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
+          filteredCrew = filteredCrew.filter(crew => 
+            crew._rangeEndDate >= today && crew._rangeEndDate <= oneMonthFromNow
+          );
+        } else if (monthsMap[dueIn as string]) {
+          // Relief Due is within X months from today
+          const months = monthsMap[dueIn as string];
+          const targetDate = new Date(today);
+          targetDate.setMonth(targetDate.getMonth() + months);
+          filteredCrew = filteredCrew.filter(crew => 
+            crew._reliefDueDate >= today && crew._reliefDueDate <= targetDate
+          );
+        }
+      }
+
+      // Remove temporary fields before sending
+      const cleanedCrew = filteredCrew.map(crew => {
+        const { _reliefDueDate, _rangeEndDate, ...cleanCrew } = crew as any;
+        return cleanCrew;
+      });
+
+      res.json(cleanedCrew);
+    } catch (error) {
+      console.error("Failed to fetch rotation due crew:", error);
+      res.status(500).json({ error: "Failed to fetch rotation due crew" });
+    }
+  });
+
   // Assign crew IDs to existing crew members who don't have them
   app.post("/api/crew-members/assign-ids", async (req, res) => {
     try {

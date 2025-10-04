@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Filter, ChevronDown } from 'lucide-react';
+import { DueCrewTable } from './DueCrewTable';
 
 // Hook to fetch vessels from Master Data (ID 014)
 const useVessels = () => {
@@ -257,10 +258,15 @@ export function RotationModule() {
                     </div>
                 )}
 
-                {/* Placeholder for table content */}
-                <div className="flex-1 bg-white rounded-lg border border-gray-200 p-6">
-                    <p className="text-gray-500 text-sm">Crew due/overdue table will be displayed here.</p>
-                </div>
+                {/* Due Crew Table */}
+                <DueCrewTable
+                    filterType={filterType}
+                    selectedVessels={selectedVessels}
+                    fleetValue={fleetValue}
+                    addGroupValue={addGroupValue}
+                    dueInValue={dueInValue}
+                    rankValue={rankValue}
+                />
             </div>
         );
     };
