@@ -137,6 +137,7 @@ The application is built with a modern web stack, adhering to a module-first arc
       - Auto-resets form on dialog close (via useEffect on open state)
     - **Technical Implementation**:
       - Canvas rendering with day-based positioning for timeline bars
+      - **Rank Column Layout** (Fixed Oct 2025): 100px dedicated rank column on left with "Rank" header, centered rank labels, light gray background, and vertical separator; all timeline content (month headers, crew bars, today line) shifted to timeline area starting at x=100px
       - Month header clamping to visible range [startDate, endDate] to prevent off-canvas labels
       - Assignment tracking via state array: `{ vessel, rank, crewId, crewName, joiningDate, contractPeriod }`
       - Multi-vessel detection using Set to count unique vessels per crewId
