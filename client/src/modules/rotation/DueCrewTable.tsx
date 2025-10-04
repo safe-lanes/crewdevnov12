@@ -169,13 +169,13 @@ const TimelineView: React.FC<{
       
       // Draw green bar (Contract Start to Contract End)
       if (greenEnd > greenStart) {
-        ctx.fillStyle = '#10b981';
+        ctx.fillStyle = 'rgba(2, 169, 33, 0.5)'; // #02A921 with 50% opacity
         ctx.fillRect(greenStart, barY, greenEnd - greenStart, barHeight);
       }
       
       // Draw yellow bar (Contract End to Range End)
       if (yellowEnd > greenEnd) {
-        ctx.fillStyle = '#fbbf24';
+        ctx.fillStyle = 'rgba(241, 205, 29, 0.5)'; // #F1CD1D with 50% opacity
         ctx.fillRect(greenEnd, barY, yellowEnd - greenEnd, barHeight);
       }
       
@@ -184,7 +184,7 @@ const TimelineView: React.FC<{
         const pinkStart = yellowEnd;
         const pinkEnd = todayX;
         if (pinkEnd > pinkStart) {
-          ctx.fillStyle = '#f472b6';
+          ctx.fillStyle = 'rgba(229, 78, 96, 0.5)'; // #E54E60 with 50% opacity
           ctx.fillRect(pinkStart, barY, pinkEnd - pinkStart, barHeight);
         }
       }
