@@ -47,7 +47,39 @@ The application is built with a modern web stack, adhering to a module-first arc
 - **Performance Optimization**: Map-based O(1) lookups, TanStack Query for caching, `useRef` pattern to prevent re-renders, `useMemo` for derived calculations, and optimized `PersistentFileStorage` with async, debounced, and race-condition-protected file writes.
 - **Data Storage**: `PersistentFileStorage` for development; PostgreSQL/Drizzle ORM schema for production.
 - **Crew Database Population**: Seeded with 135 realistic crew members with varied data, unique IDs, and full CRUD API support.
-- **Rotation Module**: Crew rotation planning and management workspace with "Due" section for crew members due/overdue for rotation, including filter bar with time, vessel, fleet, group, and rank filters.
+- **Rotation Module** (Added Oct 2025): Crew rotation planning and management workspace for crewing executives:
+  - **Module Purpose**: Bridge between Crew Database and Vessel Database to match available crew with vessel requirements and plan optimal crew changes
+  - **Left Sidebar Navigation**: Three dedicated sections:
+    - **Due**: Lists crew members due/overdue for rotation
+    - **Plan**: Rotation planning workspace for matching crew across multiple vessels
+    - **Approval**: Rotation plan approval workflow
+  - **Due Section Filter Bar** (Implemented Oct 2025):
+    - Matches Vessel Database filter pattern with radio button group
+    - **Radio Button Group** (Mutually Exclusive - Vessel-level Filtering):
+      - **Vessel**: Multi-select dropdown (Popover + Checkbox pattern) from vessel master data (ID 014)
+        - Shows "Vessel" when empty, "X selected" when items selected
+        - Users can select multiple vessels for filtering
+      - **Fleet**: Single-select dropdown for fleet group filtering
+        - Options: Fleet Group 1, Fleet Group 2, Fleet Group 3 (to be integrated with admin masters)
+      - **Add Group**: Single-select dropdown for additional group filtering
+        - Options: Additional Group 1, 2, 3 (to be integrated with admin masters)
+    - **Independent Filters** (Combinable with any vessel-level filter):
+      - **Due in**: Time-based filtering with options:
+        - Due in 3M, Due in 2M, Due in 1M (based on Contract End date)
+        - Overdue in 1M, Overdue (based on Range End date)
+      - **Rank**: Single-select from company ranks via `/api/company-ranks`
+    - Clear button resets all filters (radio to "vessel", clears all values)
+    - Filters toggle button to show/hide filter bar
+    - Data sources: `/api/masters/014/data` (vessels), `/api/company-ranks` (ranks)
+    - **State Management**:
+      - Local React state hooks for filter values (filterType, selectedVessels, fleetValue, addGroupValue, dueInValue, rankValue, showFilters)
+      - TanStack Query for data fetching and caching (vessels from `/api/masters/014/data`, ranks from `/api/company-ranks`)
+      - No shared store - filter state isolated to RotationModule component
+      - Future: Query invalidation will trigger when filter-driven table data is implemented
+    - Fixed Issues (Oct 2025):
+      - Resolved double-toggle bug in vessel multi-select checkbox handling
+      - Proper state management for radio button group and independent filters
+  - **Future Implementation**: Plan and Approval sections, crew matching algorithms, multi-vessel optimization workspace
 
 ## External Dependencies
 - **AG Grid Enterprise**: Advanced data tables.
