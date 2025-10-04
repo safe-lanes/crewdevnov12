@@ -152,6 +152,23 @@ The application is built with a modern web stack, adhering to a module-first arc
       - Shows success toast and closes dialog on successful save
       - Resets form state to prevent stale data
       - Fixed PersistentFileStorage to properly load and save rotationPlans data
+      - **Cache Invalidation Fix** (Oct 2025): Added queryClient.invalidateQueries after save to immediately refresh table
+    - **Edit Functionality** (Implemented Oct 2025):
+      - Click Edit button in Rotation Plan table → Opens same NewPlanDialog in edit mode
+      - **Pre-population**: Form fields auto-populate from saved plan data
+        - Vessels parsed from JSON string
+        - Ranks parsed from comma-separated crew field
+        - Assignments parsed from JSON and displayed as blue bars on timeline
+      - **UI Changes in Edit Mode**:
+        - Title: "Edit Rotation Plan" (vs "New Rotation Plan")
+        - Button: "Update" (vs "Save")
+      - **Update Flow**:
+        - Uses PATCH /api/rotation-plans/{id} (vs POST for create)
+        - Backend auto-updates lastEdited timestamp
+        - Only sends modified fields (vessels, crew, planFromDate, planToDate, assignments)
+        - Preserves draftId, createdBy, planStatus from original plan
+      - **Cache Management**: Query invalidation triggers table refresh after update
+      - **State Cleanup**: editingPlan cleared when dialog closes
     - **Planned Features**: Propose for Approval functionality with plan submission workflow
   - **Future Implementation**: Approval section workflow, crew matching algorithms, multi-vessel optimization workspace
 
