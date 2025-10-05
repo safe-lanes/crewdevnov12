@@ -74,10 +74,14 @@ const ApprovalTimelineView: React.FC<{
   rowData: ProposalRow[]; 
   rowHeight: number;
   scrollTop: number;
-}> = ({ rowData, rowHeight, scrollTop }) => {
+  selectedAssignments: Set<string>;
+  onToggleAssignment: (planId: number, assignmentIndex: number) => void;
+}> = ({ rowData, rowHeight, scrollTop, selectedAssignments, onToggleAssignment }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
+  
+  const checkboxColumnWidth = 50; // Minimal width for checkbox
   
   // Calculate 7-month window (2 months before today + today + 5 months after today)
   const today = useMemo(() => new Date(), []);
@@ -85,7 +89,7 @@ const ApprovalTimelineView: React.FC<{
   const endDate = useMemo(() => addMonths(today, 5), [today]);
   const totalDays = useMemo(() => differenceInDays(endDate, startDate), [startDate, endDate]);
   
-  // Resize canvas to match container
+  // Resize canvas to match container (minus checkbox column width)
   useEffect(() => {
     const updateCanvasSize = () => {
       if (containerRef.current) {
@@ -113,6 +117,8 @@ const ApprovalTimelineView: React.FC<{
     return result;
   }, [startDate, endDate]);
 
+  const timelineWidth = canvasSize.width - checkboxColumnWidth;
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -120,7 +126,7 @@ const ApprovalTimelineView: React.FC<{
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const width = canvasSize.width;
+    const width = timelineWidth;
     const height = canvasSize.height;
     const headerHeight = 48;
     
@@ -248,16 +254,57 @@ const ApprovalTimelineView: React.FC<{
     ctx.moveTo(todayX, headerHeight);
     ctx.lineTo(todayX, height);
     ctx.stroke();
-  }, [rowData, scrollTop, rowHeight, months, today, startDate, endDate, totalDays, canvasSize]);
+  }, [rowData, scrollTop, rowHeight, months, today, startDate, endDate, totalDays, canvasSize, timelineWidth]);
 
   return (
-    <div ref={containerRef} className="w-full h-full">
-      <canvas
-        ref={canvasRef}
-        width={canvasSize.width}
-        height={canvasSize.height}
-        className="block"
-      />
+    <div ref={containerRef} className="w-full h-full flex">
+      {/* Timeline Canvas */}
+      <div className="flex-1" style={{ width: timelineWidth }}>
+        <canvas
+          ref={canvasRef}
+          width={timelineWidth}
+          height={canvasSize.height}
+          className="block"
+        />
+      </div>
+      
+      {/* Checkbox Column */}
+      <div className="flex-none bg-white border-l border-gray-200" style={{ width: checkboxColumnWidth }}>
+        {/* Header */}
+        <div className="h-[48px] bg-[#52baf3] border-b border-gray-200"></div>
+        
+        {/* Checkbox rows */}
+        <div className="relative" style={{ height: canvasSize.height - 48 }}>
+          {rowData.map((proposal, index) => {
+            const key = `${proposal.planId}-${proposal.assignmentIndex}`;
+            const y = (index * rowHeight) - scrollTop;
+            
+            // Only render checkboxes that are visible
+            if (y + rowHeight < 0 || y > canvasSize.height - 48) {
+              return null;
+            }
+            
+            return (
+              <div
+                key={key}
+                className="absolute flex items-center justify-center border-b border-gray-200"
+                style={{
+                  top: y,
+                  left: 0,
+                  width: checkboxColumnWidth,
+                  height: rowHeight,
+                }}
+              >
+                <Checkbox
+                  checked={selectedAssignments.has(key)}
+                  onCheckedChange={() => onToggleAssignment(proposal.planId, proposal.assignmentIndex)}
+                  data-testid={`checkbox-assignment-${key}`}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 };
@@ -433,27 +480,7 @@ export function ApprovalTable({ selectedVessels, selectedRanks, draftIdFilter, d
       resizable: false,
       hide: true, // Hidden by default, accessible via horizontal scroll
     },
-    {
-      headerName: '',
-      field: 'checkbox',
-      width: 60,
-      cellRenderer: (params: any) => {
-        const key = `${params.data.planId}-${params.data.assignmentIndex}`;
-        return (
-          <div className="flex items-center justify-center h-full">
-            <Checkbox
-              checked={selectedAssignments.has(key)}
-              onCheckedChange={() => toggleAssignment(params.data.planId, params.data.assignmentIndex)}
-              data-testid={`checkbox-assignment-${key}`}
-            />
-          </div>
-        );
-      },
-      sortable: false,
-      resizable: false,
-      pinned: 'right',
-    },
-  ], [selectedAssignments]);
+  ], []);
 
   // Extract displayed rows from AG Grid (after sorting/filtering)
   const updateDisplayedRows = useCallback(() => {
@@ -565,6 +592,8 @@ export function ApprovalTable({ selectedVessels, selectedRanks, draftIdFilter, d
             rowData={displayedRowData} 
             rowHeight={48}
             scrollTop={gridScrollTop}
+            selectedAssignments={selectedAssignments}
+            onToggleAssignment={toggleAssignment}
           />
         </div>
       </div>
