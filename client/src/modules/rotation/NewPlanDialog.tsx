@@ -959,6 +959,34 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
     },
   });
 
+  // Propose rotation plan mutation
+  const proposePlanMutation = useMutation({
+    mutationFn: async (planId: number) => {
+      return await apiRequest('POST', `/api/rotation-plans/${planId}/propose`, {
+        proposedBy: 'Current User' // Backend will use this value for now
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/rotation-plans'] });
+      toast({
+        title: "Success",
+        description: "Rotation plan proposed for approval successfully",
+      });
+      onOpenChange(false);
+      setSelectedVessels([]);
+      setSelectedRanks([]);
+      setSelectedVessel('');
+      setAssignments([]);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to propose rotation plan",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Pre-populate form when editing an existing plan
   useEffect(() => {
     if (open) {
@@ -1137,8 +1165,18 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
   };
 
   const handlePropose = () => {
-    // TODO: Implement propose (pending approval)
-    console.log('Propose for approval');
+    // Only validate that the plan is saved (has an ID)
+    if (!editPlan?.id) {
+      toast({
+        title: "Validation Error",
+        description: "Please save the plan as draft first before proposing",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Call propose mutation with the plan ID - backend will validate plan content
+    proposePlanMutation.mutate(editPlan.id);
   };
 
   return (
@@ -1168,9 +1206,10 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
               <Button
                 onClick={handlePropose}
                 className="bg-green-600 hover:bg-green-700"
+                disabled={proposePlanMutation.isPending}
                 data-testid="button-propose"
               >
-                Propose
+                {proposePlanMutation.isPending ? "Proposing..." : "Propose"}
               </Button>
             </div>
           </div>
