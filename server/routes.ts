@@ -1075,6 +1075,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Rotation Approval Workflow API routes
+  app.post("/api/rotation-plans/:id/propose", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid plan ID - must be a number" });
+      }
+      const { proposedBy } = req.body;
+      if (!proposedBy) {
+        return res.status(400).json({ error: "proposedBy is required" });
+      }
+      const plan = await storage.proposeRotationPlan(id, proposedBy);
+      if (!plan) {
+        return res.status(404).json({ error: "Rotation plan not found" });
+      }
+      res.json(plan);
+    } catch (error) {
+      console.error("Failed to propose rotation plan:", error);
+      res.status(500).json({ error: "Failed to propose rotation plan" });
+    }
+  });
+
+  app.get("/api/rotation/proposals", async (req, res) => {
+    try {
+      const filters = {
+        vessels: req.query.vessels ? JSON.parse(req.query.vessels as string) : undefined,
+        ranks: req.query.ranks ? JSON.parse(req.query.ranks as string) : undefined,
+        draftId: req.query.draftId as string | undefined,
+        dateFrom: req.query.dateFrom as string | undefined,
+        dateTo: req.query.dateTo as string | undefined,
+      };
+      const proposals = await storage.getProposedAssignments(filters);
+      res.json(proposals);
+    } catch (error) {
+      console.error("Failed to fetch proposals:", error);
+      res.status(500).json({ error: "Failed to fetch proposals" });
+    }
+  });
+
+  app.post("/api/rotation/proposals/deploy", async (req, res) => {
+    try {
+      const { planId, assignmentIndex, deployedBy } = req.body;
+      if (typeof planId !== 'number' || typeof assignmentIndex !== 'number' || !deployedBy) {
+        return res.status(400).json({ error: "planId, assignmentIndex, and deployedBy are required" });
+      }
+      const result = await storage.deployAssignment(planId, assignmentIndex, deployedBy);
+      if (!result.success) {
+        if (result.conflicts && result.conflicts.length > 0) {
+          return res.status(409).json({ error: "Assignment conflicts detected", conflicts: result.conflicts });
+        }
+        return res.status(400).json({ error: "Failed to deploy assignment" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to deploy assignment:", error);
+      res.status(500).json({ error: "Failed to deploy assignment" });
+    }
+  });
+
+  app.post("/api/rotation/proposals/reject", async (req, res) => {
+    try {
+      const { planId, assignmentIndex } = req.body;
+      if (typeof planId !== 'number' || typeof assignmentIndex !== 'number') {
+        return res.status(400).json({ error: "planId and assignmentIndex are required" });
+      }
+      const plan = await storage.rejectAssignment(planId, assignmentIndex);
+      if (!plan) {
+        return res.status(404).json({ error: "Assignment not found" });
+      }
+      res.json(plan);
+    } catch (error) {
+      console.error("Failed to reject assignment:", error);
+      res.status(500).json({ error: "Failed to reject assignment" });
+    }
+  });
+
+  app.get("/api/rotation/proposals/conflicts", async (req, res) => {
+    try {
+      const { crewId, joiningDate, contractPeriod } = req.query;
+      if (!crewId || !joiningDate || !contractPeriod) {
+        return res.status(400).json({ error: "crewId, joiningDate, and contractPeriod are required" });
+      }
+      const conflicts = await storage.checkAssignmentConflicts(
+        crewId as string,
+        joiningDate as string,
+        parseInt(contractPeriod as string)
+      );
+      res.json(conflicts);
+    } catch (error) {
+      console.error("Failed to check conflicts:", error);
+      res.status(500).json({ error: "Failed to check conflicts" });
+    }
+  });
+
   // Crew Members API routes
   app.get("/api/crew-members/next-crew-id", async (req, res) => {
     try {
