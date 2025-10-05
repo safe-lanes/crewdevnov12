@@ -2529,8 +2529,20 @@ export class PersistentFileStorage implements IStorage {
     const plan = this.rotationPlans.get(id);
     if (!plan) return undefined;
 
+    // Reset all assignment proposal statuses to "proposed" when proposing a plan
+    let assignments = plan.assignments;
+    if (assignments) {
+      const parsedAssignments = JSON.parse(assignments);
+      const resetAssignments = parsedAssignments.map((assignment: any) => ({
+        ...assignment,
+        proposalStatus: "proposed", // Reset to proposed status
+      }));
+      assignments = JSON.stringify(resetAssignments);
+    }
+
     const updatedPlan: RotationPlan = {
       ...plan,
+      assignments,
       planStatus: "Proposed",
       proposedBy,
       proposedDate: new Date().toISOString().split('T')[0],

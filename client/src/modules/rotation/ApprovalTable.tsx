@@ -277,11 +277,6 @@ export function ApprovalTable({ selectedVessels, selectedRanks, draftIdFilter, d
     dateTo,
   });
 
-  // Clear selected assignments when proposals data changes
-  useEffect(() => {
-    setSelectedAssignments(new Set());
-  }, [proposals]);
-
   // Deploy mutation
   const deployMutation = useMutation({
     mutationFn: async ({ planId, assignmentIndex }: { planId: number; assignmentIndex: number }) => {
@@ -541,45 +536,38 @@ export function ApprovalTable({ selectedVessels, selectedRanks, draftIdFilter, d
         </Button>
       </div>
 
-      {/* Hybrid Table: AG Grid + Timeline */}
-      {proposals.length > 0 ? (
-        <div className="flex gap-0 h-[calc(100vh-380px)] bg-white rounded-lg border border-gray-200 overflow-hidden">
-          {/* Left section: AG Grid (40%) */}
-          <div className="flex-none w-[40%] border-r border-gray-200">
-            <AgGridTable
-              rowData={proposals}
-              columnDefs={columnDefs}
-              context={{}}
-              onGridReady={handleGridReady}
-              height="100%"
-              enableExport={false}
-              enableSideBar={false}
-              enableStatusBar={false}
-              gridOptions={{
-                rowHeight: 48,
-                headerHeight: 48,
-                suppressMovableColumns: true,
-                getRowId: (params: any) => `${params.data.planId}-${params.data.assignmentIndex}`,
-              }}
-            />
-          </div>
-          
-          {/* Right section: Timeline (60%) */}
-          <div className="flex-1 overflow-hidden">
-            <ApprovalTimelineView 
-              rowData={displayedRowData} 
-              rowHeight={48}
-              scrollTop={gridScrollTop}
-            />
-          </div>
+      {/* Hybrid Table: AG Grid + Timeline - Always visible */}
+      <div className="flex gap-0 h-[calc(100vh-380px)] bg-white rounded-lg border border-gray-200 overflow-hidden">
+        {/* Left section: AG Grid (40%) */}
+        <div className="flex-none w-[40%] border-r border-gray-200">
+          <AgGridTable
+            rowData={proposals}
+            columnDefs={columnDefs}
+            context={{}}
+            onGridReady={handleGridReady}
+            height="100%"
+            enableExport={false}
+            enableSideBar={false}
+            enableStatusBar={false}
+            gridOptions={{
+              rowHeight: 48,
+              headerHeight: 48,
+              suppressMovableColumns: true,
+              getRowId: (params: any) => `${params.data.planId}-${params.data.assignmentIndex}`,
+              overlayNoRowsTemplate: '<span class="text-gray-500 text-sm">No proposed assignments found. Create a rotation plan and propose it for approval.</span>',
+            }}
+          />
         </div>
-      ) : (
-        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-          <p className="text-gray-500 text-sm">
-            No proposed assignments found. Create a rotation plan and propose it for approval.
-          </p>
+        
+        {/* Right section: Timeline (60%) */}
+        <div className="flex-1 overflow-hidden">
+          <ApprovalTimelineView 
+            rowData={displayedRowData} 
+            rowHeight={48}
+            scrollTop={gridScrollTop}
+          />
         </div>
-      )}
+      </div>
     </div>
   );
 }
