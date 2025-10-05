@@ -544,23 +544,18 @@ function VesselTimelineView({
     const rect = canvas.getBoundingClientRect();
     const y = e.clientY - rect.top;
     
-    console.log('Canvas clicked at y:', y);
-    
     const vesselHeaderHeight = 48;
     const monthHeaderHeight = 32;
     const rowHeight = 40;
     
     let yOffset = 0;
     
-    // Use for loop with break instead of forEach with return
+    // Use for loop with break to properly exit when vessel is found
     for (const vessel of vessels) {
       const headerStart = yOffset;
       const headerEnd = yOffset + vesselHeaderHeight;
       
-      console.log(`Checking vessel ${vessel}: y range ${headerStart}-${headerEnd}`);
-      
       if (y >= headerStart && y < headerEnd) {
-        console.log(`Clicked on vessel: ${vessel}`);
         onVesselSelect(vessel);
         break; // Exit the loop after finding the clicked vessel
       }
@@ -699,42 +694,25 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
   useEffect(() => {
     // Skip auto-selection during initial dialog load to preserve manual selections
     if (isInitialLoadRef.current) {
-      console.log('Skipping auto-select during initial load');
       prevSelectedVesselsRef.current = selectedVessels;
       return;
     }
     
     const prevVessels = prevSelectedVesselsRef.current;
     
-    console.log('Auto-select effect triggered:', {
-      selectedVessels,
-      selectedVessel,
-      prevVessels,
-    });
-    
     if (selectedVessels.length > 0) {
       // Check if the currently selected vessel was actually removed
       const wasRemoved = selectedVessel && prevVessels.includes(selectedVessel) && !selectedVessels.includes(selectedVessel);
-      
-      console.log('Check conditions:', {
-        noVesselSelected: !selectedVessel,
-        wasRemoved,
-        willUpdate: !selectedVessel || wasRemoved
-      });
       
       // Only update if:
       // 1. No vessel is currently selected, OR
       // 2. The selected vessel was explicitly removed from the list
       if (!selectedVessel || wasRemoved) {
-        console.log('Setting selectedVessel to first vessel:', selectedVessels[0]);
         setSelectedVessel(selectedVessels[0]);
-      } else {
-        console.log('Preserving manual selection:', selectedVessel);
       }
       // Otherwise, preserve the manual selection even if the array order changes
     } else {
       // If no vessels are selected, clear the selected vessel
-      console.log('Clearing selectedVessel');
       setSelectedVessel('');
     }
     
