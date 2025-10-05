@@ -946,6 +946,71 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
               </div>
             </PopoverContent>
           </Popover>
+
+          {/* Date Range filter */}
+          <Popover open={dateRangeDialogOpen} onOpenChange={setDateRangeDialogOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-64 justify-between"
+                data-testid="select-date-range"
+              >
+                <span className="truncate flex items-center gap-2">
+                  <CalendarIcon className="h-4 w-4" />
+                  {format(dateRange.start, 'MMM dd, yyyy')} - {format(dateRange.end, 'MMM dd, yyyy')}
+                </span>
+                <ChevronDown className="h-4 w-4 opacity-50 ml-2" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-4" align="start">
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Start Date</label>
+                  <Calendar
+                    mode="single"
+                    selected={dateRange.start}
+                    onSelect={(date) => date && setDateRange({ ...dateRange, start: date })}
+                    disabled={(date) => date > dateRange.end}
+                    data-testid="calendar-start-date"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">End Date</label>
+                  <Calendar
+                    mode="single"
+                    selected={dateRange.end}
+                    onSelect={(date) => date && setDateRange({ ...dateRange, end: date })}
+                    disabled={(date) => date < dateRange.start}
+                    data-testid="calendar-end-date"
+                  />
+                </div>
+                <div className="flex gap-2 pt-2 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const today = new Date();
+                      setDateRange({
+                        start: addMonths(today, -2),
+                        end: addMonths(today, 5)
+                      });
+                    }}
+                    data-testid="button-reset-date-range"
+                  >
+                    Reset to Default
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => setDateRangeDialogOpen(false)}
+                    className="bg-blue-600 hover:bg-blue-700"
+                    data-testid="button-apply-date-range"
+                  >
+                    Apply
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* Main content area - split into left (crew) and right (vessels/timeline) sections */}
@@ -986,6 +1051,7 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
                 ranks={selectedRanks}
                 selectedVessel={selectedVessel}
                 onVesselSelect={setSelectedVessel}
+                dateRange={dateRange}
                 assignments={assignments}
               />
             )}
