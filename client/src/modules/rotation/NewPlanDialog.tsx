@@ -8,7 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover as DatePopover, PopoverContent as DatePopoverContent, PopoverTrigger as DatePopoverTrigger } from "@/components/ui/popover";
-import { ChevronDown, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronDown, Calendar as CalendarIcon, Filter } from 'lucide-react';
 import { addMonths, differenceInDays, startOfMonth, endOfMonth, format } from 'date-fns';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -37,6 +37,13 @@ interface CrewMember {
   id: string;
   name: string;
   rank: string;
+  pool?: string;
+  manningAgent?: string;
+  shipType?: string;
+  nationality?: string;
+  travelStatus?: string;
+  higherCert?: string;
+  performance?: string;
   experience: {
     company: number;
     rank: number;
@@ -44,6 +51,19 @@ interface CrewMember {
     oow: number;
     endorsements: string;
   };
+}
+
+interface CrewFilters {
+  pools: string[];
+  manningAgents: string[];
+  shipTypes: string[];
+  nationalities: string[];
+  timeInCompany: string[];
+  timeInRank: string[];
+  timeInTankers: string[];
+  travelStatus: string[];
+  higherCert: string[];
+  performance: string[];
 }
 
 interface ExistingCrew {
@@ -65,6 +85,163 @@ interface Assignment {
   contractPeriod: number;
 }
 
+// Crew Filter Dialog Component
+function CrewFilterDialog({
+  open,
+  onOpenChange,
+  rank,
+  filters,
+  onFiltersChange,
+  availableOptions,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  rank: string;
+  filters: CrewFilters;
+  onFiltersChange: (filters: CrewFilters) => void;
+  availableOptions: {
+    pools: string[];
+    manningAgents: string[];
+    shipTypes: string[];
+    nationalities: string[];
+    timeInCompanyOptions: string[];
+    timeInRankOptions: string[];
+    timeInTankersOptions: string[];
+    travelStatuses: string[];
+    higherCerts: string[];
+    performances: string[];
+  };
+}) {
+  const [localFilters, setLocalFilters] = useState<CrewFilters>(filters);
+
+  useEffect(() => {
+    setLocalFilters(filters);
+  }, [filters, open]);
+
+  const handleApply = () => {
+    onFiltersChange(localFilters);
+    onOpenChange(false);
+  };
+
+  const handleReset = () => {
+    const emptyFilters: CrewFilters = {
+      pools: [],
+      manningAgents: [],
+      shipTypes: [],
+      nationalities: [],
+      timeInCompany: [],
+      timeInRank: [],
+      timeInTankers: [],
+      travelStatus: [],
+      higherCert: [],
+      performance: [],
+    };
+    setLocalFilters(emptyFilters);
+  };
+
+  const toggleFilter = (category: keyof CrewFilters, value: string) => {
+    setLocalFilters(prev => {
+      const current = prev[category];
+      const updated = current.includes(value)
+        ? current.filter(v => v !== value)
+        : [...current, value];
+      return { ...prev, [category]: updated };
+    });
+  };
+
+  const FilterSection = ({ title, options, category }: { title: string; options: string[]; category: keyof CrewFilters }) => (
+    <div className="mb-3">
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className="w-full justify-between text-gray-500"
+            data-testid={`filter-${category}`}
+          >
+            <span>{title}</span>
+            <ChevronDown className="h-4 w-4 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-60 p-2" align="start">
+          <div className="max-h-48 overflow-y-auto">
+            {options.length === 0 ? (
+              <div className="text-sm text-gray-500 text-center py-2">No options available</div>
+            ) : (
+              options.map((option) => (
+                <div
+                  key={option}
+                  className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+                >
+                  <Checkbox
+                    checked={localFilters[category].includes(option)}
+                    onCheckedChange={() => toggleFilter(category, option)}
+                    data-testid={`checkbox-filter-${category}-${option}`}
+                  />
+                  <label
+                    className="text-sm cursor-pointer flex-1"
+                    onClick={() => toggleFilter(category, option)}
+                  >
+                    {option}
+                  </label>
+                </div>
+              ))
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Filter {rank}</DialogTitle>
+        </DialogHeader>
+        
+        <div className="max-h-[60vh] overflow-y-auto pr-2">
+          <FilterSection title="Pool" options={availableOptions.pools} category="pools" />
+          <FilterSection title="Mann. Agent" options={availableOptions.manningAgents} category="manningAgents" />
+          <FilterSection title="Ship Type" options={availableOptions.shipTypes} category="shipTypes" />
+          <FilterSection title="Nationality" options={availableOptions.nationalities} category="nationalities" />
+          <FilterSection title="Time in Company" options={availableOptions.timeInCompanyOptions} category="timeInCompany" />
+          <FilterSection title="Time in Rank" options={availableOptions.timeInRankOptions} category="timeInRank" />
+          <FilterSection title="Time in Tankers" options={availableOptions.timeInTankersOptions} category="timeInTankers" />
+          <FilterSection title="Travel Status" options={availableOptions.travelStatuses} category="travelStatus" />
+          <FilterSection title="Higher Cert." options={availableOptions.higherCerts} category="higherCert" />
+          <FilterSection title="Performance" options={availableOptions.performances} category="performance" />
+        </div>
+
+        <div className="flex justify-between pt-4 border-t">
+          <Button
+            variant="outline"
+            onClick={handleReset}
+            data-testid="button-reset-filters"
+          >
+            Reset
+          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              data-testid="button-cancel-filters"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleApply}
+              className="bg-blue-600 hover:bg-blue-700"
+              data-testid="button-apply-filters"
+            >
+              Apply
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // Crew Column Component - displays available crew for a specific rank
 function CrewColumn({ 
   rank, 
@@ -75,9 +252,120 @@ function CrewColumn({
   onCrewSelect: (crew: { id: string; name: string; rank: string }) => void;
   assignments: Assignment[];
 }) {
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [filters, setFilters] = useState<CrewFilters>({
+    pools: [],
+    manningAgents: [],
+    shipTypes: [],
+    nationalities: [],
+    timeInCompany: [],
+    timeInRank: [],
+    timeInTankers: [],
+    travelStatus: [],
+    higherCert: [],
+    performance: [],
+  });
+
   const { data: crewMembers = [], isLoading } = useQuery<CrewMember[]>({
     queryKey: [`/api/crew-members/by-rank/${rank}`],
   });
+
+  // Extract unique values for filter options
+  const availableOptions = useMemo(() => {
+    const pools = Array.from(new Set(crewMembers.map(c => c.pool).filter(Boolean))).sort() as string[];
+    const manningAgents = Array.from(new Set(crewMembers.map(c => c.manningAgent).filter(Boolean))).sort() as string[];
+    const shipTypes = Array.from(new Set(crewMembers.map(c => c.shipType).filter(Boolean))).sort() as string[];
+    const nationalities = Array.from(new Set(crewMembers.map(c => c.nationality).filter(Boolean))).sort() as string[];
+    const travelStatuses = Array.from(new Set(crewMembers.map(c => c.travelStatus).filter(Boolean))).sort() as string[];
+    const higherCerts = Array.from(new Set(crewMembers.map(c => c.higherCert).filter(Boolean))).sort() as string[];
+    const performances = Array.from(new Set(crewMembers.map(c => c.performance).filter(Boolean))).sort() as string[];
+    
+    // Create time range options
+    const timeInCompanyOptions = ['0-1 years', '1-3 years', '3-5 years', '5-10 years', '10+ years'];
+    const timeInRankOptions = ['0-1 years', '1-3 years', '3-5 years', '5+ years'];
+    const timeInTankersOptions = ['0-1 years', '1-3 years', '3-5 years', '5+ years'];
+    
+    return {
+      pools,
+      manningAgents,
+      shipTypes,
+      nationalities,
+      timeInCompanyOptions,
+      timeInRankOptions,
+      timeInTankersOptions,
+      travelStatuses,
+      higherCerts,
+      performances,
+    };
+  }, [crewMembers]);
+
+  // Apply filters to crew members
+  const filteredCrewMembers = useMemo(() => {
+    return crewMembers.filter(crew => {
+      // Pool filter
+      if (filters.pools.length > 0 && !filters.pools.includes(crew.pool || '')) return false;
+      
+      // Manning agent filter
+      if (filters.manningAgents.length > 0 && !filters.manningAgents.includes(crew.manningAgent || '')) return false;
+      
+      // Ship type filter
+      if (filters.shipTypes.length > 0 && !filters.shipTypes.includes(crew.shipType || '')) return false;
+      
+      // Nationality filter
+      if (filters.nationalities.length > 0 && !filters.nationalities.includes(crew.nationality || '')) return false;
+      
+      // Travel status filter
+      if (filters.travelStatus.length > 0 && !filters.travelStatus.includes(crew.travelStatus || '')) return false;
+      
+      // Higher cert filter
+      if (filters.higherCert.length > 0 && !filters.higherCert.includes(crew.higherCert || '')) return false;
+      
+      // Performance filter
+      if (filters.performance.length > 0 && !filters.performance.includes(crew.performance || '')) return false;
+      
+      // Time in company filter
+      if (filters.timeInCompany.length > 0) {
+        const timeInCompany = crew.experience.company;
+        const matchesRange = filters.timeInCompany.some(range => {
+          if (range === '0-1 years') return timeInCompany >= 0 && timeInCompany <= 1;
+          if (range === '1-3 years') return timeInCompany > 1 && timeInCompany <= 3;
+          if (range === '3-5 years') return timeInCompany > 3 && timeInCompany <= 5;
+          if (range === '5-10 years') return timeInCompany > 5 && timeInCompany <= 10;
+          if (range === '10+ years') return timeInCompany > 10;
+          return false;
+        });
+        if (!matchesRange) return false;
+      }
+      
+      // Time in rank filter
+      if (filters.timeInRank.length > 0) {
+        const timeInRank = crew.experience.rank;
+        const matchesRange = filters.timeInRank.some(range => {
+          if (range === '0-1 years') return timeInRank >= 0 && timeInRank <= 1;
+          if (range === '1-3 years') return timeInRank > 1 && timeInRank <= 3;
+          if (range === '3-5 years') return timeInRank > 3 && timeInRank <= 5;
+          if (range === '5+ years') return timeInRank > 5;
+          return false;
+        });
+        if (!matchesRange) return false;
+      }
+      
+      // Time in tankers filter
+      if (filters.timeInTankers.length > 0) {
+        const timeInTankers = crew.experience.tankers;
+        const matchesRange = filters.timeInTankers.some(range => {
+          if (range === '0-1 years') return timeInTankers >= 0 && timeInTankers <= 1;
+          if (range === '1-3 years') return timeInTankers > 1 && timeInTankers <= 3;
+          if (range === '3-5 years') return timeInTankers > 3 && timeInTankers <= 5;
+          if (range === '5+ years') return timeInTankers > 5;
+          return false;
+        });
+        if (!matchesRange) return false;
+      }
+      
+      return true;
+    });
+  }, [crewMembers, filters]);
 
   // Check if crew is assigned to multiple vessels
   const isMultiVesselAssignment = (crewId: string) => {
@@ -88,6 +376,9 @@ function CrewColumn({
     ).size;
     return vesselCount > 1;
   };
+  
+  // Check if any filters are active
+  const hasActiveFilters = Object.values(filters).some(arr => arr.length > 0);
 
   if (isLoading) {
     return (
@@ -102,37 +393,61 @@ function CrewColumn({
   }
 
   return (
-    <div className="w-64 flex-shrink-0">
-      <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-t font-semibold flex items-center gap-2">
-        <Checkbox data-testid={`checkbox-select-all-${rank}`} />
-        <span>{rank}</span>
-      </div>
-      <div className="border-t">
-        {crewMembers.map((crew) => (
-          <div
-            key={crew.id}
-            className="p-3 border-b hover:bg-gray-50 dark:hover:bg-gray-800 flex items-start gap-2 cursor-pointer"
-            onClick={() => onCrewSelect({ id: crew.id, name: crew.name, rank: crew.rank })}
+    <>
+      <div className="w-64 flex-shrink-0">
+        <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-t font-semibold flex items-center gap-2">
+          <Checkbox data-testid={`checkbox-select-all-${rank}`} />
+          <span className="flex-1">{rank}</span>
+          <button
+            onClick={() => setFilterDialogOpen(true)}
+            className={`p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors ${hasActiveFilters ? 'text-blue-600' : 'text-gray-600'}`}
+            data-testid={`button-filter-${rank}`}
           >
-            <Checkbox 
-              data-testid={`checkbox-crew-${crew.id}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                onCrewSelect({ id: crew.id, name: crew.name, rank: crew.rank });
-              }}
-            />
-            <div className="flex-1">
-              <div className={`font-medium text-sm ${isMultiVesselAssignment(crew.id) ? 'text-red-600' : ''}`}>
-                {crew.name.split(' ')[0]} {crew.name.split(' ').slice(-1)[0].charAt(0)}
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                {crew.experience.company} / {crew.experience.rank} / {crew.experience.tankers} / {crew.experience.oow} / {crew.experience.endorsements}
-              </div>
+            <Filter className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="border-t">
+          {filteredCrewMembers.length === 0 ? (
+            <div className="p-4 text-center text-gray-500 text-sm">
+              {hasActiveFilters ? 'No crew match the filters' : 'No crew available'}
             </div>
-          </div>
-        ))}
+          ) : (
+            filteredCrewMembers.map((crew) => (
+              <div
+                key={crew.id}
+                className="p-3 border-b hover:bg-gray-50 dark:hover:bg-gray-800 flex items-start gap-2 cursor-pointer"
+                onClick={() => onCrewSelect({ id: crew.id, name: crew.name, rank: crew.rank })}
+              >
+                <Checkbox 
+                  data-testid={`checkbox-crew-${crew.id}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCrewSelect({ id: crew.id, name: crew.name, rank: crew.rank });
+                  }}
+                />
+                <div className="flex-1">
+                  <div className={`font-medium text-sm ${isMultiVesselAssignment(crew.id) ? 'text-red-600' : ''}`}>
+                    {crew.name.split(' ')[0]} {crew.name.split(' ').slice(-1)[0].charAt(0)}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {crew.experience.company} / {crew.experience.rank} / {crew.experience.tankers} / {crew.experience.oow} / {crew.experience.endorsements}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
-    </div>
+      
+      <CrewFilterDialog
+        open={filterDialogOpen}
+        onOpenChange={setFilterDialogOpen}
+        rank={rank}
+        filters={filters}
+        onFiltersChange={setFilters}
+        availableOptions={availableOptions}
+      />
+    </>
   );
 }
 
