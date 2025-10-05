@@ -1132,6 +1132,28 @@ export class MemStorage implements IStorage {
     };
     this.rotationPlans.set(planId, updatedPlan);
 
+    // Create vessel planning entry for the deployed crew
+    // Require proper IDs - fail if not available
+    if (!assignment.vesselId || !assignment.rankId) {
+      console.error('Missing vesselId or rankId in assignment:', assignment);
+      return { success: false };
+    }
+
+    const vesselPlanningEntry = {
+      vesselId: assignment.vesselId,
+      rankId: assignment.rankId,
+      rank: assignment.rank,
+      relieverCrewId: assignment.crewId,
+      relieverCrewName: assignment.crewName,
+      joiningDate: assignment.joiningDate,
+      joiningStatus: "Confirmed",
+      contractPeriodMonths: assignment.contractPeriod,
+      deploymentChecklistCompleted: false,
+      applicableDocsChecked: false,
+    };
+
+    await this.createVesselPlanning(vesselPlanningEntry);
+
     return { success: true };
   }
 
@@ -2554,6 +2576,28 @@ export class PersistentFileStorage implements IStorage {
     };
     this.rotationPlans.set(planId, updatedPlan);
     this.saveToFile(); // SAVE TO FILE!
+
+    // Create vessel planning entry for the deployed crew
+    // Require proper IDs - fail if not available
+    if (!assignment.vesselId || !assignment.rankId) {
+      console.error('Missing vesselId or rankId in assignment:', assignment);
+      return { success: false };
+    }
+
+    const vesselPlanningEntry = {
+      vesselId: assignment.vesselId,
+      rankId: assignment.rankId,
+      rank: assignment.rank,
+      relieverCrewId: assignment.crewId,
+      relieverCrewName: assignment.crewName,
+      joiningDate: assignment.joiningDate,
+      joiningStatus: "Confirmed",
+      contractPeriodMonths: assignment.contractPeriod,
+      deploymentChecklistCompleted: false,
+      applicableDocsChecked: false,
+    };
+
+    await this.createVesselPlanning(vesselPlanningEntry);
 
     return { success: true };
   }

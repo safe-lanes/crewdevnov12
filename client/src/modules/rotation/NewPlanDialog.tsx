@@ -78,7 +78,10 @@ interface ExistingCrew {
 
 interface Assignment {
   vessel: string;
+  vesselId?: string;
+  vesselName?: string;
   rank: string;
+  rankId?: string;
   crewId: string;
   crewName: string;
   joiningDate: string;
@@ -1086,9 +1089,29 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
   const handleAssignmentApply = (joiningDate: Date, contractPeriod: number) => {
     if (!selectedCrew || !selectedVessel) return;
 
+    // Find vessel and rank objects to get their IDs
+    const vesselObj = vessels.find((v: any) => v.name === selectedVessel || v.vessel === selectedVessel);
+    const rankObj = companyRanks.find((r: any) => r.rank === selectedCrew.rank);
+
+    // Validate that we have proper IDs - fail if not available
+    const vesselId = vesselObj?.id || vesselObj?.entryId;
+    const rankId = rankObj?.id;
+
+    if (!vesselId || !rankId) {
+      toast({
+        title: "Error",
+        description: `Missing vessel or rank ID. Vessel: ${selectedVessel}, Rank: ${selectedCrew.rank}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const newAssignment: Assignment = {
       vessel: selectedVessel,
+      vesselId: vesselId,
+      vesselName: selectedVessel,
       rank: selectedCrew.rank,
+      rankId: rankId,
       crewId: selectedCrew.id,
       crewName: selectedCrew.name,
       joiningDate: joiningDate.toISOString(),

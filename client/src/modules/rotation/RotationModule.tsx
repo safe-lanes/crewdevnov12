@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Filter, ChevronDown } from 'lucide-react';
 import { DueCrewTable } from './DueCrewTable';
 import { RotationPlanTable } from './RotationPlanTable';
+import { ApprovalTable } from './ApprovalTable';
 
 // Hook to fetch vessels from Master Data (ID 014)
 const useVessels = () => {
@@ -36,6 +37,182 @@ const useCompanyRanks = () => {
         select: (data: any[]) => data
     });
 };
+
+// Approval Screen Component
+function ApprovalScreen() {
+    const [selectedVessels, setSelectedVessels] = useState<string[]>([]);
+    const [selectedRanks, setSelectedRanks] = useState<string[]>([]);
+    const [draftIdFilter, setDraftIdFilter] = useState("");
+    const [dateFrom, setDateFrom] = useState("");
+    const [dateTo, setDateTo] = useState("");
+    const [showFilters, setShowFilters] = useState(true);
+
+    const { data: vessels = [], isLoading: vesselsLoading } = useVessels();
+    const { data: companyRanks = [], isLoading: ranksLoading } = useCompanyRanks();
+
+    const handleClearFilters = () => {
+        setSelectedVessels([]);
+        setSelectedRanks([]);
+        setDraftIdFilter("");
+        setDateFrom("");
+        setDateTo("");
+    };
+
+    const toggleVessel = (vesselName: string) => {
+        setSelectedVessels(prev => 
+            prev.includes(vesselName) 
+                ? prev.filter(v => v !== vesselName)
+                : [...prev, vesselName]
+        );
+    };
+
+    const toggleRank = (rankName: string) => {
+        setSelectedRanks(prev => 
+            prev.includes(rankName) 
+                ? prev.filter(r => r !== rankName)
+                : [...prev, rankName]
+        );
+    };
+
+    return (
+        <div className="p-6">
+            <h2 className="text-2xl font-semibold text-[#16569e] mb-4">Rotation Approval</h2>
+            
+            {/* Filter Toggle Button */}
+            <div className="mb-4">
+                <Button
+                    variant="outline"
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed]"
+                    data-testid="button-toggle-filters"
+                >
+                    <Filter className="w-4 h-4 mr-2" />
+                    Filters
+                </Button>
+            </div>
+
+            {/* Filter Bar */}
+            {showFilters && (
+                <div className="flex gap-2 mb-6 items-center bg-[#f5f8fa] p-3 rounded-md">
+                    {/* Vessel Multi-Select */}
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] justify-between min-w-[140px]"
+                                data-testid="filter-vessel"
+                            >
+                                {selectedVessels.length === 0 ? "Vessel" : `${selectedVessels.length} selected`}
+                                <ChevronDown className="ml-2 h-4 w-4" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-56 p-2" align="start">
+                            <div className="space-y-2">
+                                {vessels.map((vessel: any) => (
+                                    <div key={vessel.name} className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id={`vessel-${vessel.name}`}
+                                            checked={selectedVessels.includes(vessel.name)}
+                                            onCheckedChange={() => toggleVessel(vessel.name)}
+                                            data-testid={`checkbox-vessel-${vessel.name}`}
+                                        />
+                                        <label
+                                            htmlFor={`vessel-${vessel.name}`}
+                                            className="text-sm font-normal cursor-pointer"
+                                        >
+                                            {vessel.name}
+                                        </label>
+                                    </div>
+                                ))}
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+
+                    {/* Rank Multi-Select */}
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] justify-between min-w-[140px]"
+                                data-testid="filter-rank"
+                            >
+                                {selectedRanks.length === 0 ? "Rank" : `${selectedRanks.length} selected`}
+                                <ChevronDown className="ml-2 h-4 w-4" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-56 p-2" align="start">
+                            <div className="space-y-2">
+                                {companyRanks.map((rank: any) => (
+                                    <div key={rank.rank} className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id={`rank-${rank.rank}`}
+                                            checked={selectedRanks.includes(rank.rank)}
+                                            onCheckedChange={() => toggleRank(rank.rank)}
+                                            data-testid={`checkbox-rank-${rank.rank}`}
+                                        />
+                                        <label
+                                            htmlFor={`rank-${rank.rank}`}
+                                            className="text-sm font-normal cursor-pointer"
+                                        >
+                                            {rank.rank}
+                                        </label>
+                                    </div>
+                                ))}
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+
+                    {/* Draft ID Input */}
+                    <input
+                        type="text"
+                        placeholder="Draft ID"
+                        value={draftIdFilter}
+                        onChange={(e) => setDraftIdFilter(e.target.value)}
+                        className="h-8 px-3 text-[11px] border border-[#e1e8ed] rounded-md focus:outline-none focus:ring-2 focus:ring-[#16569e]"
+                        data-testid="input-draft-id"
+                    />
+
+                    {/* Date From */}
+                    <input
+                        type="date"
+                        value={dateFrom}
+                        onChange={(e) => setDateFrom(e.target.value)}
+                        className="h-8 px-3 text-[11px] border border-[#e1e8ed] rounded-md focus:outline-none focus:ring-2 focus:ring-[#16569e]"
+                        data-testid="input-date-from"
+                    />
+
+                    {/* Date To */}
+                    <input
+                        type="date"
+                        value={dateTo}
+                        onChange={(e) => setDateTo(e.target.value)}
+                        className="h-8 px-3 text-[11px] border border-[#e1e8ed] rounded-md focus:outline-none focus:ring-2 focus:ring-[#16569e]"
+                        data-testid="input-date-to"
+                    />
+
+                    {/* Clear Button */}
+                    <Button
+                        variant="outline"
+                        onClick={handleClearFilters}
+                        className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
+                        data-testid="button-clear-filters"
+                    >
+                        Clear
+                    </Button>
+                </div>
+            )}
+
+            {/* Approval Table */}
+            <ApprovalTable
+                selectedVessels={selectedVessels}
+                selectedRanks={selectedRanks}
+                draftIdFilter={draftIdFilter}
+                dateFrom={dateFrom}
+                dateTo={dateTo}
+            />
+        </div>
+    );
+}
 
 export function RotationModule() {
     const [selectedRotationPage, setSelectedRotationPage] = useState<string>("due");
@@ -279,12 +456,7 @@ export function RotationModule() {
             case "plan":
                 return <RotationPlanTable />;
             case "approval":
-                return (
-                    <div className="p-6">
-                        <h2 className="text-2xl font-semibold text-[#16569e] mb-4">Rotation Approval</h2>
-                        <p className="text-gray-600">Rotation approval workflow will be displayed here.</p>
-                    </div>
-                );
+                return <ApprovalScreen />;
             default:
                 return null;
         }

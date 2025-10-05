@@ -1121,12 +1121,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "planId, assignmentIndex, and deployedBy are required" });
       }
       const result = await storage.deployAssignment(planId, assignmentIndex, deployedBy);
+      
+      // Return 409 Conflict status for conflicts - this ensures frontend sees it as an error
+      if (!result.success && result.conflicts && result.conflicts.length > 0) {
+        return res.status(409).json({ error: "Assignment conflicts detected", conflicts: result.conflicts });
+      }
+      
+      // Return 400 Bad Request for other failures
       if (!result.success) {
-        if (result.conflicts && result.conflicts.length > 0) {
-          return res.status(409).json({ error: "Assignment conflicts detected", conflicts: result.conflicts });
-        }
         return res.status(400).json({ error: "Failed to deploy assignment" });
       }
+      
       res.json({ success: true });
     } catch (error) {
       console.error("Failed to deploy assignment:", error);
