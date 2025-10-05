@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import RotationSideBar from './RotationSideBar';
 import MainLayout from '@/components/main/MainLayout';
@@ -9,7 +9,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Filter, ChevronDown } from 'lucide-react';
+import { Calendar } from "@/components/ui/calendar";
+import { Filter, ChevronDown, Calendar as CalendarIcon } from 'lucide-react';
+import { format, addMonths } from 'date-fns';
 import { DueCrewTable } from './DueCrewTable';
 import { RotationPlanTable } from './RotationPlanTable';
 import { ApprovalTable } from './ApprovalTable';
@@ -43,9 +45,15 @@ function ApprovalScreen() {
     const [selectedVessels, setSelectedVessels] = useState<string[]>([]);
     const [selectedRanks, setSelectedRanks] = useState<string[]>([]);
     const [draftIdFilter, setDraftIdFilter] = useState("");
-    const [dateFrom, setDateFrom] = useState("");
-    const [dateTo, setDateTo] = useState("");
     const [showFilters, setShowFilters] = useState(true);
+    
+    // Date range state - default is Today - 2 months to Today + 5 months
+    const today = useMemo(() => new Date(), []);
+    const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>({
+        start: addMonths(today, -2),
+        end: addMonths(today, 5)
+    });
+    const [dateRangeDialogOpen, setDateRangeDialogOpen] = useState(false);
 
     const { data: vessels = [], isLoading: vesselsLoading } = useVessels();
     const { data: companyRanks = [], isLoading: ranksLoading } = useCompanyRanks();
@@ -54,8 +62,10 @@ function ApprovalScreen() {
         setSelectedVessels([]);
         setSelectedRanks([]);
         setDraftIdFilter("");
-        setDateFrom("");
-        setDateTo("");
+        setDateRange({
+            start: addMonths(today, -2),
+            end: addMonths(today, 5)
+        });
     };
 
     const toggleVessel = (vesselName: string) => {
@@ -171,23 +181,70 @@ function ApprovalScreen() {
                         data-testid="input-draft-id"
                     />
 
-                    {/* Date From */}
-                    <input
-                        type="date"
-                        value={dateFrom}
-                        onChange={(e) => setDateFrom(e.target.value)}
-                        className="h-8 px-3 text-[11px] border border-[#e1e8ed] rounded-md focus:outline-none focus:ring-2 focus:ring-[#16569e]"
-                        data-testid="input-date-from"
-                    />
-
-                    {/* Date To */}
-                    <input
-                        type="date"
-                        value={dateTo}
-                        onChange={(e) => setDateTo(e.target.value)}
-                        className="h-8 px-3 text-[11px] border border-[#e1e8ed] rounded-md focus:outline-none focus:ring-2 focus:ring-[#16569e]"
-                        data-testid="input-date-to"
-                    />
+                    {/* Date Range Picker */}
+                    <Popover open={dateRangeDialogOpen} onOpenChange={setDateRangeDialogOpen}>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                className="h-8 w-64 text-[11px] border-[#e1e8ed] justify-between"
+                                data-testid="select-date-range"
+                            >
+                                <span className="truncate flex items-center gap-2">
+                                    <CalendarIcon className="h-4 w-4" />
+                                    {format(dateRange.start, 'MMM dd, yyyy')} - {format(dateRange.end, 'MMM dd, yyyy')}
+                                </span>
+                                <ChevronDown className="h-4 w-4 opacity-50 ml-2" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-4" align="start">
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-sm font-medium mb-2 block">Start Date</label>
+                                    <Calendar
+                                        mode="single"
+                                        selected={dateRange.start}
+                                        onSelect={(date) => date && setDateRange({ ...dateRange, start: date })}
+                                        disabled={(date) => date > dateRange.end}
+                                        data-testid="calendar-start-date"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium mb-2 block">End Date</label>
+                                    <Calendar
+                                        mode="single"
+                                        selected={dateRange.end}
+                                        onSelect={(date) => date && setDateRange({ ...dateRange, end: date })}
+                                        disabled={(date) => date < dateRange.start}
+                                        data-testid="calendar-end-date"
+                                    />
+                                </div>
+                                <div className="flex gap-2 pt-2 border-t">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                            const resetToday = new Date();
+                                            setDateRange({
+                                                start: addMonths(resetToday, -2),
+                                                end: addMonths(resetToday, 5)
+                                            });
+                                        }}
+                                        data-testid="button-reset-date-range"
+                                    >
+                                        Reset to Default
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        onClick={() => setDateRangeDialogOpen(false)}
+                                        className="bg-blue-600 hover:bg-blue-700"
+                                        data-testid="button-apply-date-range"
+                                    >
+                                        Apply
+                                    </Button>
+                                </div>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
 
                     {/* Clear Button */}
                     <Button
@@ -206,8 +263,8 @@ function ApprovalScreen() {
                 selectedVessels={selectedVessels}
                 selectedRanks={selectedRanks}
                 draftIdFilter={draftIdFilter}
-                dateFrom={dateFrom}
-                dateTo={dateTo}
+                dateFrom={format(dateRange.start, 'yyyy-MM-dd')}
+                dateTo={format(dateRange.end, 'yyyy-MM-dd')}
             />
         </div>
     );
