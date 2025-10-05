@@ -96,6 +96,12 @@ export interface IStorage {
   createRotationPlan(plan: InsertRotationPlan): Promise<RotationPlan>;
   updateRotationPlan(id: number, plan: Partial<InsertRotationPlan>): Promise<RotationPlan | undefined>;
   deleteRotationPlan(id: number): Promise<boolean>;
+  // Rotation Approval Workflow
+  proposeRotationPlan(id: number, proposedBy: string): Promise<RotationPlan | undefined>;
+  getProposedAssignments(filters?: { vessels?: string[]; ranks?: string[]; draftId?: string; dateFrom?: string; dateTo?: string }): Promise<any[]>;
+  deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[] }>;
+  rejectAssignment(planId: number, assignmentIndex: number): Promise<RotationPlan | undefined>;
+  checkAssignmentConflicts(crewId: string, joiningDate: string, contractPeriod: number): Promise<any[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -489,6 +495,9 @@ export class MemStorage implements IStorage {
       planToDate: "30 Jun 24",
       createdBy: "ABC, Crew Execution",
       planStatus: "Pending Approval",
+      proposedBy: null,
+      proposedDate: null,
+      assignments: null,
       createdAt: new Date("2024-01-10"),
       updatedAt: new Date("2024-01-10")
     });
@@ -503,6 +512,9 @@ export class MemStorage implements IStorage {
       planToDate: "31 Aug 24",
       createdBy: "Tech Team",
       planStatus: "In Draft",
+      proposedBy: null,
+      proposedDate: null,
+      assignments: null,
       createdAt: new Date("2024-02-15"),
       updatedAt: new Date("2024-02-15")
     });
@@ -517,6 +529,9 @@ export class MemStorage implements IStorage {
       planToDate: "30 Sep 24",
       createdBy: "Operations Team",
       planStatus: "Approved",
+      proposedBy: null,
+      proposedDate: null,
+      assignments: null,
       createdAt: new Date("2024-03-22"),
       updatedAt: new Date("2024-03-22")
     });
@@ -1036,6 +1051,148 @@ export class MemStorage implements IStorage {
 
   async deleteRotationPlan(id: number): Promise<boolean> {
     return this.rotationPlans.delete(id);
+  }
+
+  // Rotation Approval Workflow Methods
+  async proposeRotationPlan(id: number, proposedBy: string): Promise<RotationPlan | undefined> {
+    const plan = this.rotationPlans.get(id);
+    if (!plan) return undefined;
+
+    const updatedPlan: RotationPlan = {
+      ...plan,
+      planStatus: "Proposed",
+      proposedBy,
+      proposedDate: new Date().toISOString().split('T')[0],
+      updatedAt: new Date()
+    };
+    this.rotationPlans.set(id, updatedPlan);
+    return updatedPlan;
+  }
+
+  async getProposedAssignments(filters?: { vessels?: string[]; ranks?: string[]; draftId?: string; dateFrom?: string; dateTo?: string }): Promise<any[]> {
+    const proposedPlans = Array.from(this.rotationPlans.values()).filter(plan => 
+      plan.planStatus === "Proposed" || plan.planStatus === "Partially Approved"
+    );
+
+    const assignments: any[] = [];
+    for (const plan of proposedPlans) {
+      if (plan.assignments) {
+        const planAssignments = JSON.parse(plan.assignments);
+        for (let i = 0; i < planAssignments.length; i++) {
+          const assignment = planAssignments[i];
+          if (!assignment.proposalStatus || assignment.proposalStatus === "proposed") {
+            assignments.push({
+              ...assignment,
+              planId: plan.id,
+              draftId: plan.draftId,
+              proposedBy: plan.proposedBy,
+              proposedDate: plan.proposedDate,
+              assignmentIndex: i
+            });
+          }
+        }
+      }
+    }
+
+    return assignments;
+  }
+
+  async deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[] }> {
+    const plan = this.rotationPlans.get(planId);
+    if (!plan || !plan.assignments) return { success: false };
+
+    const assignments = JSON.parse(plan.assignments);
+    const assignment = assignments[assignmentIndex];
+    if (!assignment) return { success: false };
+
+    // Check for conflicts
+    const conflicts = await this.checkAssignmentConflicts(
+      assignment.crewId,
+      assignment.joiningDate,
+      assignment.contractPeriod
+    );
+
+    if (conflicts.length > 0) {
+      return { success: false, conflicts };
+    }
+
+    // Mark assignment as deployed
+    assignments[assignmentIndex] = {
+      ...assignment,
+      proposalStatus: "deployed",
+      deployedDate: new Date().toISOString().split('T')[0],
+      deployedBy
+    };
+
+    // Update rotation plan
+    const updatedPlan: RotationPlan = {
+      ...plan,
+      assignments: JSON.stringify(assignments),
+      updatedAt: new Date()
+    };
+    this.rotationPlans.set(planId, updatedPlan);
+
+    return { success: true };
+  }
+
+  async rejectAssignment(planId: number, assignmentIndex: number): Promise<RotationPlan | undefined> {
+    const plan = this.rotationPlans.get(planId);
+    if (!plan || !plan.assignments) return undefined;
+
+    const assignments = JSON.parse(plan.assignments);
+    if (!assignments[assignmentIndex]) return undefined;
+
+    // Remove the assignment
+    assignments.splice(assignmentIndex, 1);
+
+    // Update plan status back to Draft if no assignments left
+    const planStatus = assignments.length === 0 ? "In Draft" : plan.planStatus;
+
+    const updatedPlan: RotationPlan = {
+      ...plan,
+      assignments: JSON.stringify(assignments),
+      planStatus,
+      updatedAt: new Date()
+    };
+    this.rotationPlans.set(planId, updatedPlan);
+    return updatedPlan;
+  }
+
+  async checkAssignmentConflicts(crewId: string, joiningDate: string, contractPeriod: number): Promise<any[]> {
+    const conflicts: any[] = [];
+    const joiningDateObj = new Date(joiningDate);
+    const contractEndDate = new Date(joiningDateObj);
+    contractEndDate.setMonth(contractEndDate.getMonth() + contractPeriod);
+
+    // Check all proposed assignments
+    for (const plan of this.rotationPlans.values()) {
+      if (plan.assignments) {
+        const assignments = JSON.parse(plan.assignments);
+        for (const assignment of assignments) {
+          if (assignment.crewId === crewId && assignment.proposalStatus === "proposed") {
+            const assignmentJoiningDate = new Date(assignment.joiningDate);
+            const assignmentEndDate = new Date(assignmentJoiningDate);
+            assignmentEndDate.setMonth(assignmentEndDate.getMonth() + assignment.contractPeriod);
+
+            // Check for overlap
+            if (
+              (joiningDateObj <= assignmentEndDate && contractEndDate >= assignmentJoiningDate)
+            ) {
+              conflicts.push({
+                planId: plan.id,
+                draftId: plan.draftId,
+                vessel: assignment.vesselName,
+                rank: assignment.rank,
+                joiningDate: assignment.joiningDate,
+                contractPeriod: assignment.contractPeriod
+              });
+            }
+          }
+        }
+      }
+    }
+
+    return conflicts;
   }
 
   // Appraisal Results Methods
@@ -2315,6 +2472,151 @@ export class PersistentFileStorage implements IStorage {
     const result = this.rotationPlans.delete(id);
     if (result) this.saveToFile(); // SAVE TO FILE AFTER EVERY DELETE!
     return result;
+  }
+
+  // Rotation Approval Workflow Methods
+  async proposeRotationPlan(id: number, proposedBy: string): Promise<RotationPlan | undefined> {
+    const plan = this.rotationPlans.get(id);
+    if (!plan) return undefined;
+
+    const updatedPlan: RotationPlan = {
+      ...plan,
+      planStatus: "Proposed",
+      proposedBy,
+      proposedDate: new Date().toISOString().split('T')[0],
+      updatedAt: new Date()
+    };
+    this.rotationPlans.set(id, updatedPlan);
+    this.saveToFile(); // SAVE TO FILE!
+    return updatedPlan;
+  }
+
+  async getProposedAssignments(filters?: { vessels?: string[]; ranks?: string[]; draftId?: string; dateFrom?: string; dateTo?: string }): Promise<any[]> {
+    const proposedPlans = Array.from(this.rotationPlans.values()).filter(plan => 
+      plan.planStatus === "Proposed" || plan.planStatus === "Partially Approved"
+    );
+
+    const assignments: any[] = [];
+    for (const plan of proposedPlans) {
+      if (plan.assignments) {
+        const planAssignments = JSON.parse(plan.assignments);
+        for (let i = 0; i < planAssignments.length; i++) {
+          const assignment = planAssignments[i];
+          if (!assignment.proposalStatus || assignment.proposalStatus === "proposed") {
+            assignments.push({
+              ...assignment,
+              planId: plan.id,
+              draftId: plan.draftId,
+              proposedBy: plan.proposedBy,
+              proposedDate: plan.proposedDate,
+              assignmentIndex: i
+            });
+          }
+        }
+      }
+    }
+
+    return assignments;
+  }
+
+  async deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[] }> {
+    const plan = this.rotationPlans.get(planId);
+    if (!plan || !plan.assignments) return { success: false };
+
+    const assignments = JSON.parse(plan.assignments);
+    const assignment = assignments[assignmentIndex];
+    if (!assignment) return { success: false };
+
+    // Check for conflicts
+    const conflicts = await this.checkAssignmentConflicts(
+      assignment.crewId,
+      assignment.joiningDate,
+      assignment.contractPeriod
+    );
+
+    if (conflicts.length > 0) {
+      return { success: false, conflicts };
+    }
+
+    // Mark assignment as deployed
+    assignments[assignmentIndex] = {
+      ...assignment,
+      proposalStatus: "deployed",
+      deployedDate: new Date().toISOString().split('T')[0],
+      deployedBy
+    };
+
+    // Update rotation plan
+    const updatedPlan: RotationPlan = {
+      ...plan,
+      assignments: JSON.stringify(assignments),
+      updatedAt: new Date()
+    };
+    this.rotationPlans.set(planId, updatedPlan);
+    this.saveToFile(); // SAVE TO FILE!
+
+    return { success: true };
+  }
+
+  async rejectAssignment(planId: number, assignmentIndex: number): Promise<RotationPlan | undefined> {
+    const plan = this.rotationPlans.get(planId);
+    if (!plan || !plan.assignments) return undefined;
+
+    const assignments = JSON.parse(plan.assignments);
+    if (!assignments[assignmentIndex]) return undefined;
+
+    // Remove the assignment
+    assignments.splice(assignmentIndex, 1);
+
+    // Update plan status back to Draft if no assignments left
+    const planStatus = assignments.length === 0 ? "In Draft" : plan.planStatus;
+
+    const updatedPlan: RotationPlan = {
+      ...plan,
+      assignments: JSON.stringify(assignments),
+      planStatus,
+      updatedAt: new Date()
+    };
+    this.rotationPlans.set(planId, updatedPlan);
+    this.saveToFile(); // SAVE TO FILE!
+    return updatedPlan;
+  }
+
+  async checkAssignmentConflicts(crewId: string, joiningDate: string, contractPeriod: number): Promise<any[]> {
+    const conflicts: any[] = [];
+    const joiningDateObj = new Date(joiningDate);
+    const contractEndDate = new Date(joiningDateObj);
+    contractEndDate.setMonth(contractEndDate.getMonth() + contractPeriod);
+
+    // Check all proposed assignments
+    for (const plan of this.rotationPlans.values()) {
+      if (plan.assignments) {
+        const assignments = JSON.parse(plan.assignments);
+        for (const assignment of assignments) {
+          if (assignment.crewId === crewId && assignment.proposalStatus === "proposed") {
+            const assignmentJoiningDate = new Date(assignment.joiningDate);
+            const assignmentEndDate = new Date(assignmentJoiningDate);
+            assignmentEndDate.setMonth(assignmentEndDate.getMonth() + assignment.contractPeriod);
+
+            // Check for overlap
+            if (
+              (joiningDateObj <= assignmentEndDate && contractEndDate >= assignmentJoiningDate)
+            ) {
+              conflicts.push({
+                planId: plan.id,
+                draftId: plan.draftId,
+                vessel: assignment.vesselName,
+                rank: assignment.rank,
+                joiningDate: assignment.joiningDate,
+                contractPeriod: assignment.contractPeriod
+              });
+            }
+          }
+        }
+      }
+    }
+
+    return conflicts;
   }
 
   // Data Masters methods (return empty array for frontend compatibility)
