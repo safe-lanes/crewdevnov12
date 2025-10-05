@@ -544,19 +544,28 @@ function VesselTimelineView({
     const rect = canvas.getBoundingClientRect();
     const y = e.clientY - rect.top;
     
+    console.log('Canvas clicked at y:', y);
+    
     const vesselHeaderHeight = 48;
     const monthHeaderHeight = 32;
     const rowHeight = 40;
     
     let yOffset = 0;
     
-    vessels.forEach((vessel) => {
-      if (y >= yOffset && y < yOffset + vesselHeaderHeight) {
+    // Use for loop with break instead of forEach with return
+    for (const vessel of vessels) {
+      const headerStart = yOffset;
+      const headerEnd = yOffset + vesselHeaderHeight;
+      
+      console.log(`Checking vessel ${vessel}: y range ${headerStart}-${headerEnd}`);
+      
+      if (y >= headerStart && y < headerEnd) {
+        console.log(`Clicked on vessel: ${vessel}`);
         onVesselSelect(vessel);
-        return;
+        break; // Exit the loop after finding the clicked vessel
       }
       yOffset += vesselHeaderHeight + monthHeaderHeight + (ranks.length * rowHeight);
-    });
+    }
   };
   
   return (
@@ -581,6 +590,7 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
   const [dateDialogOpen, setDateDialogOpen] = useState(false);
   const [selectedCrew, setSelectedCrew] = useState<{ id: string; name: string; rank: string } | null>(null);
   const prevSelectedVesselsRef = useRef<string[]>([]);
+  const isInitialLoadRef = useRef(false);
   const { toast } = useToast();
 
   // Fetch vessels from master data
@@ -630,33 +640,42 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
 
   // Pre-populate form when editing an existing plan
   useEffect(() => {
-    if (editPlan && open) {
-      try {
-        // Parse vessels from JSON
-        const vessels = JSON.parse(editPlan.vessels);
-        setSelectedVessels(Array.isArray(vessels) ? vessels : []);
-        
-        // Parse ranks from crew field (comma-separated)
-        const ranks = editPlan.crew.split(',').map(r => r.trim());
-        setSelectedRanks(ranks);
-        
-        // Parse assignments from JSON
-        const savedAssignments = editPlan.assignments ? JSON.parse(editPlan.assignments) : [];
-        setAssignments(savedAssignments);
-      } catch (error) {
-        console.error('Failed to parse edit plan data:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load plan data",
-          variant: "destructive",
-        });
+    if (open) {
+      isInitialLoadRef.current = true;
+      
+      if (editPlan) {
+        try {
+          // Parse vessels from JSON
+          const vessels = JSON.parse(editPlan.vessels);
+          setSelectedVessels(Array.isArray(vessels) ? vessels : []);
+          
+          // Parse ranks from crew field (comma-separated)
+          const ranks = editPlan.crew.split(',').map(r => r.trim());
+          setSelectedRanks(ranks);
+          
+          // Parse assignments from JSON
+          const savedAssignments = editPlan.assignments ? JSON.parse(editPlan.assignments) : [];
+          setAssignments(savedAssignments);
+        } catch (error) {
+          console.error('Failed to parse edit plan data:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load plan data",
+            variant: "destructive",
+          });
+        }
+      } else {
+        // Reset form when creating new plan
+        setSelectedVessels([]);
+        setSelectedRanks([]);
+        setSelectedVessel('');
+        setAssignments([]);
       }
-    } else if (!editPlan && open) {
-      // Reset form when creating new plan
-      setSelectedVessels([]);
-      setSelectedRanks([]);
-      setSelectedVessel('');
-      setAssignments([]);
+      
+      // Clear the flag after initial load
+      setTimeout(() => {
+        isInitialLoadRef.current = false;
+      }, 100);
     }
   }, [editPlan, open, toast]);
 
@@ -678,6 +697,13 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
 
   // Auto-select first vessel when vessels are selected or reset if current vessel is deselected
   useEffect(() => {
+    // Skip auto-selection during initial dialog load to preserve manual selections
+    if (isInitialLoadRef.current) {
+      console.log('Skipping auto-select during initial load');
+      prevSelectedVesselsRef.current = selectedVessels;
+      return;
+    }
+    
     const prevVessels = prevSelectedVesselsRef.current;
     
     console.log('Auto-select effect triggered:', {
