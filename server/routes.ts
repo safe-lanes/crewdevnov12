@@ -1105,10 +1105,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
             endorsements: ['OGC', 'IGC', 'STW'][Math.floor(Math.random() * 3)] || 'OGC'
           };
           
+          // Extract pool from status or use placeholder
+          const pools = ['Pool A', 'Pool B', 'Pool C'];
+          const pool = pools[Math.floor(Math.random() * pools.length)];
+          
+          // Get ship type from vesselType or vesselTypes array
+          const shipType = crew.vesselType || (crew.vesselTypes && crew.vesselTypes.length > 0 ? crew.vesselTypes[0] : undefined);
+          
+          // Placeholder data for travel status, higher cert, and performance
+          const travelStatuses = ['Available', 'On Leave', 'Traveling'];
+          const travelStatus = travelStatuses[Math.floor(Math.random() * travelStatuses.length)];
+          
+          const higherCerts = ['Master Unlimited', 'Chief Engineer Unlimited', 'None'];
+          const higherCert = higherCerts[Math.floor(Math.random() * higherCerts.length)];
+          
+          const performances = ['Excellent', 'Good', 'Average'];
+          const performance = performances[Math.floor(Math.random() * performances.length)];
+          
           return {
             id: crew.id,
             name: `${crew.firstName} ${crew.middleName || ''} ${crew.familyName || ''}`.trim(),
             rank: crew.presentRank,
+            pool,
+            manningAgent: crew.manningAgent,
+            shipType,
+            nationality: crew.nationality,
+            travelStatus,
+            higherCert,
+            performance,
             experience
           };
         });
