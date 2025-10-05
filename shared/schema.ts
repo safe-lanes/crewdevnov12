@@ -397,8 +397,10 @@ export const rotationPlans = pgTable("rotation_plans", {
   planFromDate: text("plan_from_date").notNull(),
   planToDate: text("plan_to_date").notNull(),
   createdBy: text("created_by").notNull(),
-  planStatus: text("plan_status").notNull().default("In Draft"), // In Draft, Pending Approval, Approved, Archived
-  assignments: text("assignments"), // JSON array: [{vesselName, rank, crewId, crewName, joiningDate, contractPeriod}]
+  planStatus: text("plan_status").notNull().default("In Draft"), // In Draft, Proposed, Partially Approved, Approved, Rejected, Archived
+  proposedBy: text("proposed_by"), // Who proposed the plan
+  proposedDate: text("proposed_date"), // When it was proposed
+  assignments: text("assignments"), // JSON array: [{vesselName, rank, crewId, crewName, joiningDate, contractPeriod, proposalStatus, proposedBy, proposedDate, deployedDate, deployedBy}]
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
