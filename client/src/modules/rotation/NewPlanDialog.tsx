@@ -698,7 +698,7 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
     
     // Update ref for next render
     prevSelectedVesselsRef.current = selectedVessels;
-  }, [selectedVessels, selectedVessel]);
+  }, [selectedVessels]); // Only depend on selectedVessels to avoid interference with manual radio button selection
 
   const handleCrewSelect = (crew: { id: string; name: string; rank: string }) => {
     if (!selectedVessel) {
