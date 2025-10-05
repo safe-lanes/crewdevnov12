@@ -75,25 +75,24 @@ function ApprovalScreen() {
     };
 
     return (
-        <div className="p-6">
-            <h2 className="text-2xl font-semibold text-[#16569e] mb-4">Rotation Approval</h2>
-            
-            {/* Filter Toggle Button */}
-            <div className="mb-4">
-                <Button
-                    variant="outline"
-                    onClick={() => setShowFilters(!showFilters)}
-                    className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed]"
-                    data-testid="button-toggle-filters"
-                >
-                    <Filter className="w-4 h-4 mr-2" />
-                    Filters
-                </Button>
-            </div>
+        <div className="flex flex-col h-full">
+            <SectionTitleComponents title="Rotation Approval">
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowFilters(!showFilters)}
+                        className="h-8 gap-2 bg-white dark:bg-gray-800 text-[#0f172a] dark:text-white border-gray-300 dark:border-gray-600"
+                        data-testid="button-toggle-filters"
+                    >
+                        <Filter className="h-4 w-4" />
+                        Filters
+                    </Button>
+                </div>
+            </SectionTitleComponents>
 
-            {/* Filter Bar */}
             {showFilters && (
-                <div className="flex gap-2 mb-6 items-center bg-[#f5f8fa] p-3 rounded-md">
+                <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
                     {/* Vessel Multi-Select */}
                     <Popover>
                         <PopoverTrigger asChild>
