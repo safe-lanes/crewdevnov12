@@ -580,6 +580,7 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [dateDialogOpen, setDateDialogOpen] = useState(false);
   const [selectedCrew, setSelectedCrew] = useState<{ id: string; name: string; rank: string } | null>(null);
+  const prevSelectedVesselsRef = useRef<string[]>([]);
   const { toast } = useToast();
 
   // Fetch vessels from master data
@@ -675,11 +676,28 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
     );
   };
 
-  // Auto-select first vessel when vessels are selected
+  // Auto-select first vessel when vessels are selected or reset if current vessel is deselected
   useEffect(() => {
-    if (selectedVessels.length > 0 && !selectedVessels.includes(selectedVessel)) {
-      setSelectedVessel(selectedVessels[0]);
+    const prevVessels = prevSelectedVesselsRef.current;
+    
+    if (selectedVessels.length > 0) {
+      // Check if the currently selected vessel was actually removed
+      const wasRemoved = selectedVessel && prevVessels.includes(selectedVessel) && !selectedVessels.includes(selectedVessel);
+      
+      // Only update if:
+      // 1. No vessel is currently selected, OR
+      // 2. The selected vessel was explicitly removed from the list
+      if (!selectedVessel || wasRemoved) {
+        setSelectedVessel(selectedVessels[0]);
+      }
+      // Otherwise, preserve the manual selection even if the array order changes
+    } else {
+      // If no vessels are selected, clear the selected vessel
+      setSelectedVessel('');
     }
+    
+    // Update ref for next render
+    prevSelectedVesselsRef.current = selectedVessels;
   }, [selectedVessels, selectedVessel]);
 
   const handleCrewSelect = (crew: { id: string; name: string; rank: string }) => {
