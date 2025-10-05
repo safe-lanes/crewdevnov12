@@ -258,22 +258,24 @@ function VesselTimelineView({
   ranks, 
   selectedVessel,
   onVesselSelect,
+  dateRange,
   assignments = []
 }: { 
   vessels: string[]; 
   ranks: string[]; 
   selectedVessel: string;
   onVesselSelect: (vessel: string) => void;
+  dateRange: { start: Date; end: Date };
   assignments?: Assignment[];
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   
-  // Calculate 7-month window (2 months before today + today + 5 months after today)
+  // Use custom date range from props
   const today = useMemo(() => new Date(), []);
-  const startDate = useMemo(() => addMonths(today, -2), [today]);
-  const endDate = useMemo(() => addMonths(today, 5), [today]);
+  const startDate = dateRange.start;
+  const endDate = dateRange.end;
   const totalDays = useMemo(() => differenceInDays(endDate, startDate), [startDate, endDate]);
   
   // Fetch existing crew for selected vessels and ranks
@@ -586,6 +588,15 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
   const [selectedCrew, setSelectedCrew] = useState<{ id: string; name: string; rank: string } | null>(null);
   const prevSelectedVesselsRef = useRef<string[]>([]);
   const isInitialLoadRef = useRef(false);
+  
+  // Date range state - default is Today - 2 months to Today + 5 months
+  const today = useMemo(() => new Date(), []);
+  const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>({
+    start: addMonths(today, -2),
+    end: addMonths(today, 5)
+  });
+  const [dateRangeDialogOpen, setDateRangeDialogOpen] = useState(false);
+  
   const { toast } = useToast();
 
   // Fetch vessels from master data
