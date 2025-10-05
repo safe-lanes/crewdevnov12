@@ -1081,13 +1081,41 @@ export class MemStorage implements IStorage {
         for (let i = 0; i < planAssignments.length; i++) {
           const assignment = planAssignments[i];
           if (!assignment.proposalStatus || assignment.proposalStatus === "proposed") {
+            // Find current crew on board for this vessel/rank
+            let currentCrew = null;
+            if (assignment.vessel && assignment.rank) {
+              // Look for crew members currently on this vessel with this rank
+              const crewOnBoard = Array.from(this.crewMembers.values()).find(crew => 
+                crew.presentVessel === assignment.vessel && crew.presentRank === assignment.rank
+              );
+              
+              if (crewOnBoard) {
+                // Get vessel planning data for this crew member to get contract dates
+                const planning = Array.from(this.vesselPlanning.values()).find(p => 
+                  p.crewMemberId === crewOnBoard.id && p.vesselId === assignment.vessel
+                );
+                
+                if (planning) {
+                  currentCrew = {
+                    id: crewOnBoard.id,
+                    name: `${crewOnBoard.firstName} ${crewOnBoard.lastName}`,
+                    contractStartDate: planning.joiningDate || crewOnBoard.joiningDate,
+                    contractEndDate: planning.reliefDue || '',
+                    rangeStartDate: planning.rangeStartDate || planning.reliefDue,
+                    rangeEndDate: planning.rangeEndDate || planning.reliefDue,
+                  };
+                }
+              }
+            }
+            
             assignments.push({
               ...assignment,
               planId: plan.id,
               draftId: plan.draftId,
               proposedBy: plan.proposedBy,
               proposedDate: plan.proposedDate,
-              assignmentIndex: i
+              assignmentIndex: i,
+              currentCrew, // Add current crew timeline data
             });
           }
         }
@@ -2525,13 +2553,41 @@ export class PersistentFileStorage implements IStorage {
         for (let i = 0; i < planAssignments.length; i++) {
           const assignment = planAssignments[i];
           if (!assignment.proposalStatus || assignment.proposalStatus === "proposed") {
+            // Find current crew on board for this vessel/rank
+            let currentCrew = null;
+            if (assignment.vessel && assignment.rank) {
+              // Look for crew members currently on this vessel with this rank
+              const crewOnBoard = Array.from(this.crewMembers.values()).find(crew => 
+                crew.presentVessel === assignment.vessel && crew.presentRank === assignment.rank
+              );
+              
+              if (crewOnBoard) {
+                // Get vessel planning data for this crew member to get contract dates
+                const planning = Array.from(this.vesselPlanning.values()).find(p => 
+                  p.crewMemberId === crewOnBoard.id && p.vesselId === assignment.vessel
+                );
+                
+                if (planning) {
+                  currentCrew = {
+                    id: crewOnBoard.id,
+                    name: `${crewOnBoard.firstName} ${crewOnBoard.lastName}`,
+                    contractStartDate: planning.joiningDate || crewOnBoard.joiningDate,
+                    contractEndDate: planning.reliefDue || '',
+                    rangeStartDate: planning.rangeStartDate || planning.reliefDue,
+                    rangeEndDate: planning.rangeEndDate || planning.reliefDue,
+                  };
+                }
+              }
+            }
+            
             assignments.push({
               ...assignment,
               planId: plan.id,
               draftId: plan.draftId,
               proposedBy: plan.proposedBy,
               proposedDate: plan.proposedDate,
-              assignmentIndex: i
+              assignmentIndex: i,
+              currentCrew, // Add current crew timeline data
             });
           }
         }
