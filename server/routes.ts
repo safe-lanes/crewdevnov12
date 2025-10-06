@@ -17,6 +17,7 @@ import {
   applyMasterSpecificMapping,
   validateMasterSpecificEntry
 } from "./vesselMasterSafety";
+import { parseFlexibleDate, formatToISO } from "../shared/date-utils";
 
 /**
  * Basic field transformation from snake_case (database) to camelCase (frontend)
@@ -1421,28 +1422,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const rangeEndMonths = matchingPlan?.contractEndRangeEndMonths ?? 1;
           const rangeStartMonths = matchingPlan?.contractEndRangeStartMonths ?? 0;
           
-          // Parse dates (assuming YYYY-MM-DD format or DD-MM-YYYY)
-          const parseDate = (dateStr: string): Date | null => {
-            if (!dateStr) return null;
-            try {
-              // Try YYYY-MM-DD first
-              if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                return new Date(dateStr);
-              }
-              // Try DD-MM-YYYY
-              const parts = dateStr.split('-');
-              if (parts.length === 3) {
-                const [day, month, year] = parts;
-                return new Date(`${year}-${month}-${day}`);
-              }
-              return null;
-            } catch {
-              return null;
-            }
-          };
-
-          const joiningDate = parseDate(crew.joiningDate || '');
-          const reliefDue = parseDate(crew.reliefDue || '');
+          // Parse dates using centralized utility (handles all formats)
+          const joiningDate = parseFlexibleDate(crew.joiningDate || '');
+          const reliefDue = parseFlexibleDate(crew.reliefDue || '');
           
           if (!reliefDue) return null;
 
