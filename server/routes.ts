@@ -1411,31 +1411,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Process crew members with contract date calculations
       const processedCrew = crewMembers
-        .filter(crew => crew.joiningDate && crew.reliefDue && crew.presentRank && crew.presentVessel)
+        .filter(crew => crew.presentRank && crew.presentVessel)
         .map(crew => {
           const vesselPlanning = planningMap.get(crew.presentVessel || '') || [];
           
-          // Find matching planning data by rank
-          const matchingPlan = vesselPlanning.find(p => p.rank === crew.presentRank);
+          // Find matching planning data by rank (including crew member match)
+          const matchingPlan = vesselPlanning.find(p => 
+            p.rank === crew.presentRank && p.crewMemberId === crew.id
+          );
+          
+          // Get dates from vesselPlanning if available, otherwise from crew record
+          const rawJoiningDate = matchingPlan?.joiningDate || crew.joiningDate;
+          const rawReliefDue = matchingPlan?.reliefDueDate || crew.reliefDue;
           
           // Calculate range dates with defaults (1 month if no planning data)
           const rangeEndMonths = matchingPlan?.contractEndRangeEndMonths ?? 1;
           const rangeStartMonths = matchingPlan?.contractEndRangeStartMonths ?? 0;
           
           // Parse dates using centralized utility (handles all formats)
-          const joiningDate = parseFlexibleDate(crew.joiningDate || '');
-          const reliefDue = parseFlexibleDate(crew.reliefDue || '');
+          const joiningDate = parseFlexibleDate(rawJoiningDate || '');
+          const reliefDue = parseFlexibleDate(rawReliefDue || '');
           
-          // Debug logging for problematic ranks
-          if (crew.presentRank === '2nd Officer' || crew.presentRank === 'Electrical Officer') {
-            console.log(`🔍 [DATE DEBUG] ${crew.presentRank} - ${crew.firstName}:`, {
-              rawJoiningDate: crew.joiningDate,
-              rawReliefDue: crew.reliefDue,
-              parsedJoiningDate: joiningDate,
-              parsedReliefDue: reliefDue,
-            });
-          }
-          
+          // Only include crew with valid relief due date
           if (!reliefDue) return null;
 
           // Calculate range dates
@@ -1450,9 +1447,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             vessel: crew.presentVessel,
             rank: crew.presentRank,
             name: `${crew.firstName} ${crew.middleName || ''} ${crew.familyName || ''}`.trim(),
-            reliefDue: crew.reliefDue,
-            contractStartDate: crew.joiningDate,
-            contractEndDate: crew.reliefDue,
+            reliefDue: rawReliefDue,
+            contractStartDate: rawJoiningDate,
+            contractEndDate: rawReliefDue,
             rangeStartDate: rangeStartDate.toISOString().split('T')[0],
             rangeEndDate: rangeEndDate.toISOString().split('T')[0],
             nationality: crew.nationality,
