@@ -77,6 +77,7 @@ interface ExistingCrew {
 }
 
 interface Assignment {
+  id?: string; // Unique identifier for each assignment
   vessel: string;
   vesselId?: string;
   vesselName?: string;
@@ -483,6 +484,7 @@ function DatePeriodDialog({
   vesselName,
   rank,
   assignments = [],
+  initialValues,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -493,6 +495,7 @@ function DatePeriodDialog({
   vesselName: string;
   rank: string;
   assignments?: Assignment[];
+  initialValues?: { joiningDate: string; contractPeriod: number };
 }) {
   const [joiningDate, setJoiningDate] = useState<Date>();
   const [contractPeriod, setContractPeriod] = useState<string>('');
@@ -507,14 +510,18 @@ function DatePeriodDialog({
     );
   }, [assignments, crewId, vesselName, rank]);
 
-  // Reset form when dialog closes
+  // Pre-populate form when editing (initialValues provided)
   useEffect(() => {
-    if (!open) {
+    if (open && initialValues) {
+      setJoiningDate(new Date(initialValues.joiningDate));
+      setContractPeriod(initialValues.contractPeriod.toString());
+    } else if (!open) {
+      // Reset form when dialog closes
       setJoiningDate(undefined);
       setContractPeriod('');
       setUnassignChecked(false);
     }
-  }, [open]);
+  }, [open, initialValues]);
 
   const handleApply = () => {
     // Priority: If unassign is checked, unassign regardless of other fields
@@ -649,6 +656,7 @@ function VesselTimelineView({
   ranks, 
   selectedVessel,
   onVesselSelect,
+  onAssignmentClick,
   dateRange,
   assignments = []
 }: { 
@@ -656,6 +664,7 @@ function VesselTimelineView({
   ranks: string[]; 
   selectedVessel: string;
   onVesselSelect: (vessel: string) => void;
+  onAssignmentClick?: (assignment: Assignment) => void;
   dateRange: { start: Date; end: Date };
   assignments?: Assignment[];
 }) {
@@ -929,30 +938,70 @@ function VesselTimelineView({
     
   }, [vessels, ranks, groupedData, selectedVessel, months, today, startDate, endDate, totalDays, canvasSize]);
   
-  // Handle canvas click for vessel selection
+  // Handle canvas click for vessel selection and assignment editing
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     
     const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
     const vesselHeaderHeight = 48;
     const monthHeaderHeight = 32;
     const rowHeight = 40;
+    const rankColumnWidth = 100;
+    const timelineStartX = rankColumnWidth;
+    const timelineWidth = canvasSize.width - rankColumnWidth;
     
     let yOffset = 0;
     
-    // Use for loop with break to properly exit when vessel is found
+    // Check each vessel section
     for (const vessel of vessels) {
       const headerStart = yOffset;
       const headerEnd = yOffset + vesselHeaderHeight;
       
+      // Check if clicked on vessel header
       if (y >= headerStart && y < headerEnd) {
         onVesselSelect(vessel);
-        break; // Exit the loop after finding the clicked vessel
+        return;
       }
-      yOffset += vesselHeaderHeight + monthHeaderHeight + (ranks.length * rowHeight);
+      
+      yOffset += vesselHeaderHeight + monthHeaderHeight;
+      
+      // Check if clicked on an assignment bar in any rank row
+      for (let rankIdx = 0; rankIdx < ranks.length; rankIdx++) {
+        const rank = ranks[rankIdx];
+        const rowY = yOffset + (rankIdx * rowHeight);
+        const bottomBarY = rowY + 20;
+        const bottomBarHeight = 15;
+        
+        // Check if click is within the assignment bar Y range
+        if (y >= bottomBarY && y <= bottomBarY + bottomBarHeight && x >= timelineStartX) {
+          // Find assignments for this vessel/rank
+          const rowData = groupedData[vessel]?.[rank];
+          if (rowData?.assignments) {
+            // Check each assignment to see if click is within its X range
+            for (const assignment of rowData.assignments) {
+              const joiningDate = new Date(assignment.joiningDate);
+              const contractEndDate = addMonths(joiningDate, assignment.contractPeriod);
+              
+              const blueStart = Math.max(timelineStartX, timelineStartX + ((differenceInDays(joiningDate, startDate) / totalDays) * timelineWidth));
+              const blueEnd = Math.max(timelineStartX, timelineStartX + ((differenceInDays(contractEndDate, startDate) / totalDays) * timelineWidth));
+              
+              if (x >= blueStart && x <= blueEnd) {
+                // Clicked on this assignment bar
+                if (onAssignmentClick) {
+                  onAssignmentClick(assignment);
+                }
+                return;
+              }
+            }
+          }
+        }
+      }
+      
+      yOffset += ranks.length * rowHeight;
     }
   };
   
@@ -977,6 +1026,7 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [dateDialogOpen, setDateDialogOpen] = useState(false);
   const [selectedCrew, setSelectedCrew] = useState<{ id: string; name: string; rank: string } | null>(null);
+  const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
   const prevSelectedVesselsRef = useRef<string[]>([]);
   const isInitialLoadRef = useRef(false);
   
@@ -1098,9 +1148,13 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
           const ranks = editPlan.crew.split(',').map(r => r.trim());
           setSelectedRanks(ranks);
           
-          // Parse assignments from JSON
+          // Parse assignments from JSON and ensure each has a unique ID
           const savedAssignments = editPlan.assignments ? JSON.parse(editPlan.assignments) : [];
-          setAssignments(savedAssignments);
+          const assignmentsWithIds = savedAssignments.map((a: Assignment) => ({
+            ...a,
+            id: a.id || `assignment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+          }));
+          setAssignments(assignmentsWithIds);
         } catch (error) {
           console.error('Failed to parse edit plan data:', error);
           toast({
@@ -1180,6 +1234,22 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
       return;
     }
     setSelectedCrew(crew);
+    setEditingAssignment(null); // Clear editing mode
+    setDateDialogOpen(true);
+  };
+
+  const handleAssignmentClick = (assignment: Assignment) => {
+    // Set the vessel for context
+    setSelectedVessel(assignment.vessel);
+    // Set crew info from the assignment
+    setSelectedCrew({
+      id: assignment.crewId,
+      name: assignment.crewName,
+      rank: assignment.rank
+    });
+    // Set editing mode
+    setEditingAssignment(assignment);
+    // Open the dialog
     setDateDialogOpen(true);
   };
 
@@ -1203,38 +1273,71 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
       return;
     }
 
-    const newAssignment: Assignment = {
-      vessel: selectedVessel,
-      vesselId: vesselId,
-      vesselName: selectedVessel,
-      rank: selectedCrew.rank,
-      rankId: rankId,
-      crewId: selectedCrew.id,
-      crewName: selectedCrew.name,
-      joiningDate: joiningDate.toISOString(),
-      contractPeriod,
-    };
+    if (editingAssignment) {
+      // Update existing assignment using unique ID
+      setAssignments(prev => prev.map(a => {
+        // Match by unique assignment ID to ensure we update the exact assignment
+        if (a.id === editingAssignment.id) {
+          return {
+            ...a,
+            joiningDate: joiningDate.toISOString(),
+            contractPeriod,
+          };
+        }
+        return a;
+      }));
+      
+      toast({
+        title: "Success",
+        description: `Assignment for ${selectedCrew.name} updated successfully`,
+      });
+    } else {
+      // Create new assignment with unique ID
+      const newAssignment: Assignment = {
+        id: `assignment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Unique ID
+        vessel: selectedVessel,
+        vesselId: vesselId,
+        vesselName: selectedVessel,
+        rank: selectedCrew.rank,
+        rankId: rankId,
+        crewId: selectedCrew.id,
+        crewName: selectedCrew.name,
+        joiningDate: joiningDate.toISOString(),
+        contractPeriod,
+      };
 
-    setAssignments(prev => [...prev, newAssignment]);
+      setAssignments(prev => [...prev, newAssignment]);
+    }
+    
+    // Clear editing state
+    setEditingAssignment(null);
   };
 
   const handleUnassign = () => {
     if (!selectedCrew || !selectedVessel) return;
 
-    // Remove assignment matching crew, vessel, and rank
-    setAssignments(prev => 
-      prev.filter(a => !(
-        a.crewId === selectedCrew.id && 
-        a.vessel === selectedVessel && 
-        a.rank === selectedCrew.rank
-      ))
-    );
+    if (editingAssignment) {
+      // Remove specific assignment by ID when editing
+      setAssignments(prev => prev.filter(a => a.id !== editingAssignment.id));
+    } else {
+      // Remove assignment matching crew, vessel, and rank (for backward compatibility)
+      setAssignments(prev => 
+        prev.filter(a => !(
+          a.crewId === selectedCrew.id && 
+          a.vessel === selectedVessel && 
+          a.rank === selectedCrew.rank
+        ))
+      );
+    }
 
     // Show toast confirmation
     toast({
       title: "Success",
       description: `${selectedCrew.name} unassigned from ${selectedVessel}`,
     });
+    
+    // Clear editing state
+    setEditingAssignment(null);
   };
 
   const handleBack = () => {
@@ -1545,6 +1648,7 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
                 ranks={selectedRanks}
                 selectedVessel={selectedVessel}
                 onVesselSelect={setSelectedVessel}
+                onAssignmentClick={handleAssignmentClick}
                 dateRange={dateRange}
                 assignments={assignments}
               />
@@ -1556,7 +1660,13 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
       {/* Date Period Dialog for crew assignment */}
       <DatePeriodDialog
         open={dateDialogOpen}
-        onOpenChange={setDateDialogOpen}
+        onOpenChange={(open) => {
+          setDateDialogOpen(open);
+          if (!open) {
+            // Clear editing state when dialog closes
+            setEditingAssignment(null);
+          }
+        }}
         onApply={handleAssignmentApply}
         onUnassign={handleUnassign}
         crewName={selectedCrew?.name || ''}
@@ -1564,6 +1674,10 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
         vesselName={selectedVessel}
         rank={selectedCrew?.rank || ''}
         assignments={assignments}
+        initialValues={editingAssignment ? {
+          joiningDate: editingAssignment.joiningDate,
+          contractPeriod: editingAssignment.contractPeriod
+        } : undefined}
       />
     </Dialog>
   );
