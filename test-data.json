@@ -5056,7 +5056,7 @@
       1,
       {
         "id": 1,
-        "vesselId": "5",
+        "vesselId": "VSL-005",
         "rankId": "1",
         "crewMemberId": "2025-05-14",
         "crewName": "James Michael Wilson",
@@ -5081,14 +5081,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.662Z",
-        "rank": "Master"
+        "rank": "Master",
+        "vessel": "VSL-005"
       }
     ],
     [
       2,
       {
         "id": 2,
-        "vesselId": "5",
+        "vesselId": "VSL-005",
         "rankId": "2",
         "crewMemberId": "A000278",
         "crewName": "Gheorghe",
@@ -5113,14 +5114,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.662Z",
-        "rank": "Chief Officer"
+        "rank": "Chief Officer",
+        "vessel": "VSL-005"
       }
     ],
     [
       3,
       {
         "id": 3,
-        "vesselId": "5",
+        "vesselId": "VSL-005",
         "rankId": "4",
         "crewMemberId": "A000302",
         "crewName": "Panagiotis",
@@ -5145,7 +5147,8 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.662Z",
-        "rank": "2nd Officer"
+        "rank": "2nd Officer",
+        "vessel": "VSL-005"
       }
     ],
     [
@@ -5177,7 +5180,7 @@
       5,
       {
         "id": 5,
-        "vesselId": "5",
+        "vesselId": "VSL-005",
         "rankId": "5_role_1_1759121177041",
         "crewMemberId": "A000316",
         "crewName": "Bjorn",
@@ -5202,14 +5205,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.662Z",
-        "rank": "3rd Officer_1"
+        "rank": "3rd Officer_1",
+        "vessel": "VSL-005"
       }
     ],
     [
       6,
       {
         "id": 6,
-        "vesselId": "5",
+        "vesselId": "VSL-005",
         "rankId": "3",
         "crewMemberId": "2025-03-12",
         "crewName": "Anna Marie Johnson",
@@ -5234,14 +5238,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.662Z",
-        "rank": "Chief Engineer"
+        "rank": "Chief Engineer",
+        "vessel": "VSL-005"
       }
     ],
     [
       7,
       {
         "id": 7,
-        "vesselId": "5",
+        "vesselId": "VSL-005",
         "rankId": "6",
         "crewMemberId": "A000326",
         "crewName": "Anil",
@@ -5266,14 +5271,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.662Z",
-        "rank": "2nd Engineer"
+        "rank": "2nd Engineer",
+        "vessel": "VSL-005"
       }
     ],
     [
       8,
       {
         "id": 8,
-        "vesselId": "5",
+        "vesselId": "VSL-005",
         "rankId": "7",
         "crewMemberId": "A000338",
         "crewName": "Wang",
@@ -5298,14 +5304,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.663Z",
-        "rank": "3rd Engineer"
+        "rank": "3rd Engineer",
+        "vessel": "VSL-005"
       }
     ],
     [
       9,
       {
         "id": 9,
-        "vesselId": "5",
+        "vesselId": "VSL-005",
         "rankId": "11",
         "crewMemberId": "A000422",
         "crewName": "Jose",
@@ -5330,14 +5337,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.663Z",
-        "rank": "4th Engineer"
+        "rank": "4th Engineer",
+        "vessel": "VSL-005"
       }
     ],
     [
       10,
       {
         "id": 10,
-        "vesselId": "5",
+        "vesselId": "VSL-005",
         "rankId": "16",
         "crewMemberId": "A000500",
         "crewName": "Per",
@@ -5362,14 +5370,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.663Z",
-        "rank": "Electrical Officer"
+        "rank": "Electrical Officer",
+        "vessel": "VSL-005"
       }
     ],
     [
       11,
       {
         "id": 11,
-        "vesselId": "5",
+        "vesselId": "VSL-005",
         "rankId": "8",
         "crewMemberId": "A000350",
         "crewName": "Adrian",
@@ -5394,7 +5403,8 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.663Z",
-        "rank": "Bosun"
+        "rank": "Bosun",
+        "vessel": "VSL-005"
       }
     ],
     [
@@ -5432,7 +5442,7 @@
       13,
       {
         "id": 13,
-        "vesselId": "5",
+        "vesselId": "VSL-005",
         "rankId": "9_role_1_1759121189124",
         "crewMemberId": "A000362",
         "crewName": "Kumar",
@@ -5457,14 +5467,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.663Z",
-        "rank": "AB_1"
+        "rank": "AB_1",
+        "vessel": "VSL-005"
       }
     ],
     [
       14,
       {
         "id": 14,
-        "vesselId": "5",
+        "vesselId": "VSL-005",
         "rankId": "9_role_2_1759121189124",
         "crewMemberId": "A000364",
         "crewName": "Zhang",
@@ -5489,14 +5500,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.663Z",
-        "rank": "AB_2"
+        "rank": "AB_2",
+        "vessel": "VSL-005"
       }
     ],
     [
       15,
       {
         "id": 15,
-        "vesselId": "5",
+        "vesselId": "VSL-005",
         "rankId": "9_role_3_1759121190062",
         "crewMemberId": "A000366",
         "crewName": "Jan",
@@ -5521,14 +5533,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.664Z",
-        "rank": "AB_3"
+        "rank": "AB_3",
+        "vessel": "VSL-005"
       }
     ],
     [
       16,
       {
         "id": 16,
-        "vesselId": "5",
+        "vesselId": "VSL-005",
         "rankId": "10_role_1_1759121194827",
         "crewMemberId": "A000392",
         "crewName": "Ivan",
@@ -5553,14 +5566,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.664Z",
-        "rank": "OS_1"
+        "rank": "OS_1",
+        "vessel": "VSL-005"
       }
     ],
     [
       17,
       {
         "id": 17,
-        "vesselId": "5",
+        "vesselId": "VSL-005",
         "rankId": "10_role_2_1759121194827",
         "crewMemberId": "A000394",
         "crewName": "Andriy",
@@ -5585,14 +5599,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.664Z",
-        "rank": "OS_2"
+        "rank": "OS_2",
+        "vessel": "VSL-005"
       }
     ],
     [
       18,
       {
         "id": 18,
-        "vesselId": "5",
+        "vesselId": "VSL-005",
         "rankId": "10_role_3_1759121195540",
         "crewMemberId": "A000396",
         "crewName": "Piotr",
@@ -5617,14 +5632,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.664Z",
-        "rank": "OS_3"
+        "rank": "OS_3",
+        "vessel": "VSL-005"
       }
     ],
     [
       19,
       {
         "id": 19,
-        "vesselId": "5",
+        "vesselId": "VSL-005",
         "rankId": "12_role_1_1759121198960",
         "crewMemberId": "A000434",
         "crewName": "Kumar",
@@ -5649,14 +5665,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.664Z",
-        "rank": "Fitter_1"
+        "rank": "Fitter_1",
+        "vessel": "VSL-005"
       }
     ],
     [
       20,
       {
         "id": 20,
-        "vesselId": "5",
+        "vesselId": "VSL-005",
         "rankId": "13_role_1_1759121201260",
         "crewMemberId": "A000446",
         "crewName": "Sergiy",
@@ -5681,14 +5698,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.664Z",
-        "rank": "Oiler_1"
+        "rank": "Oiler_1",
+        "vessel": "VSL-005"
       }
     ],
     [
       21,
       {
         "id": 21,
-        "vesselId": "5",
+        "vesselId": "VSL-005",
         "rankId": "13_role_2_1759121201260",
         "crewMemberId": "A000448",
         "crewName": "Pedro",
@@ -5713,14 +5731,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.664Z",
-        "rank": "Oiler_2"
+        "rank": "Oiler_2",
+        "vessel": "VSL-005"
       }
     ],
     [
       22,
       {
         "id": 22,
-        "vesselId": "5",
+        "vesselId": "VSL-005",
         "rankId": "13_role_1_1759121201260",
         "crewMemberId": "A000450",
         "crewName": "Constantin",
@@ -5745,14 +5764,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.664Z",
-        "rank": "Oiler_1"
+        "rank": "Oiler_1",
+        "vessel": "VSL-005"
       }
     ],
     [
       23,
       {
         "id": 23,
-        "vesselId": "5",
+        "vesselId": "VSL-005",
         "rankId": "14",
         "crewMemberId": "A000476",
         "crewName": "Rizky",
@@ -5777,14 +5797,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.664Z",
-        "rank": "Chief Cook"
+        "rank": "Chief Cook",
+        "vessel": "VSL-005"
       }
     ],
     [
       24,
       {
         "id": 24,
-        "vesselId": "5",
+        "vesselId": "VSL-005",
         "rankId": "15",
         "crewMemberId": "A000488",
         "crewName": "Amit",
@@ -5809,14 +5830,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.664Z",
-        "rank": "Messman"
+        "rank": "Messman",
+        "vessel": "VSL-005"
       }
     ],
     [
       25,
       {
         "id": 25,
-        "vesselId": "3",
+        "vesselId": "VSL-003",
         "rankId": "1",
         "crewMemberId": "A000264",
         "crewName": "Test",
@@ -5841,14 +5863,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.665Z",
-        "rank": "Master"
+        "rank": "Master",
+        "vessel": "VSL-003"
       }
     ],
     [
       26,
       {
         "id": 26,
-        "vesselId": "3",
+        "vesselId": "VSL-003",
         "rankId": "2",
         "crewMemberId": "A000280",
         "crewName": "Wang",
@@ -5873,14 +5896,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.665Z",
-        "rank": "Chief Officer"
+        "rank": "Chief Officer",
+        "vessel": "VSL-003"
       }
     ],
     [
       27,
       {
         "id": 27,
-        "vesselId": "3",
+        "vesselId": "VSL-003",
         "rankId": "4",
         "crewMemberId": "A000304",
         "crewName": "Piotr",
@@ -5905,14 +5929,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.665Z",
-        "rank": "2nd Officer"
+        "rank": "2nd Officer",
+        "vessel": "VSL-003"
       }
     ],
     [
       28,
       {
         "id": 28,
-        "vesselId": "3",
+        "vesselId": "VSL-003",
         "rankId": "5_role_1_1759121177041",
         "crewMemberId": "A000318",
         "crewName": "Wang",
@@ -5937,14 +5962,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.665Z",
-        "rank": "3rd Officer_1"
+        "rank": "3rd Officer_1",
+        "vessel": "VSL-003"
       }
     ],
     [
       29,
       {
         "id": 29,
-        "vesselId": "3",
+        "vesselId": "VSL-003",
         "rankId": "5_role_2_1759121177041",
         "crewMemberId": "A000320",
         "crewName": "Pawel",
@@ -5969,14 +5995,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.665Z",
-        "rank": "3rd Officer_2"
+        "rank": "3rd Officer_2",
+        "vessel": "VSL-003"
       }
     ],
     [
       30,
       {
         "id": 30,
-        "vesselId": "3",
+        "vesselId": "VSL-003",
         "rankId": "3",
         "crewMemberId": "A000290",
         "crewName": "Constantin",
@@ -6001,14 +6028,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.665Z",
-        "rank": "Chief Engineer"
+        "rank": "Chief Engineer",
+        "vessel": "VSL-003"
       }
     ],
     [
       31,
       {
         "id": 31,
-        "vesselId": "3",
+        "vesselId": "VSL-003",
         "rankId": "6",
         "crewMemberId": "A000328",
         "crewName": "Georgios",
@@ -6033,14 +6061,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.665Z",
-        "rank": "2nd Engineer"
+        "rank": "2nd Engineer",
+        "vessel": "VSL-003"
       }
     ],
     [
       32,
       {
         "id": 32,
-        "vesselId": "3",
+        "vesselId": "VSL-003",
         "rankId": "7",
         "crewMemberId": "A000340",
         "crewName": "Knut",
@@ -6065,14 +6094,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.665Z",
-        "rank": "3rd Engineer"
+        "rank": "3rd Engineer",
+        "vessel": "VSL-003"
       }
     ],
     [
       33,
       {
         "id": 33,
-        "vesselId": "3",
+        "vesselId": "VSL-003",
         "rankId": "11",
         "crewMemberId": "A000424",
         "crewName": "Zhang",
@@ -6097,14 +6127,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.665Z",
-        "rank": "4th Engineer"
+        "rank": "4th Engineer",
+        "vessel": "VSL-003"
       }
     ],
     [
       34,
       {
         "id": 34,
-        "vesselId": "3",
+        "vesselId": "VSL-003",
         "rankId": "16",
         "crewMemberId": "A000502",
         "crewName": "Oleksandr",
@@ -6129,14 +6160,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.666Z",
-        "rank": "Electrical Officer"
+        "rank": "Electrical Officer",
+        "vessel": "VSL-003"
       }
     ],
     [
       35,
       {
         "id": 35,
-        "vesselId": "3",
+        "vesselId": "VSL-003",
         "rankId": "8",
         "crewMemberId": "A000352",
         "crewName": "Tomasz",
@@ -6161,14 +6193,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.666Z",
-        "rank": "Bosun"
+        "rank": "Bosun",
+        "vessel": "VSL-003"
       }
     ],
     [
       36,
       {
         "id": 36,
-        "vesselId": "3",
+        "vesselId": "VSL-003",
         "rankId": "17",
         "crewMemberId": "A000512",
         "crewName": "Oleksandr",
@@ -6193,14 +6226,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.666Z",
-        "rank": "Pumpman"
+        "rank": "Pumpman",
+        "vessel": "VSL-003"
       }
     ],
     [
       37,
       {
         "id": 37,
-        "vesselId": "3",
+        "vesselId": "VSL-003",
         "rankId": "9_role_1_1759121189124",
         "crewMemberId": "A000368",
         "crewName": "Oleksandr",
@@ -6225,14 +6259,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.666Z",
-        "rank": "AB_1"
+        "rank": "AB_1",
+        "vessel": "VSL-003"
       }
     ],
     [
       38,
       {
         "id": 38,
-        "vesselId": "3",
+        "vesselId": "VSL-003",
         "rankId": "9_role_2_1759121189124",
         "crewMemberId": "A000370",
         "crewName": "Pedro",
@@ -6257,14 +6292,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.666Z",
-        "rank": "AB_2"
+        "rank": "AB_2",
+        "vessel": "VSL-003"
       }
     ],
     [
       39,
       {
         "id": 39,
-        "vesselId": "3",
+        "vesselId": "VSL-003",
         "rankId": "9_role_3_1759121190062",
         "crewMemberId": "A000372",
         "crewName": "Tomasz",
@@ -6289,14 +6325,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.666Z",
-        "rank": "AB_3"
+        "rank": "AB_3",
+        "vessel": "VSL-003"
       }
     ],
     [
       40,
       {
         "id": 40,
-        "vesselId": "3",
+        "vesselId": "VSL-003",
         "rankId": "10_role_1_1759121194827",
         "crewMemberId": "A000398",
         "crewName": "Vasile",
@@ -6321,14 +6358,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.666Z",
-        "rank": "OS_1"
+        "rank": "OS_1",
+        "vessel": "VSL-003"
       }
     ],
     [
       41,
       {
         "id": 41,
-        "vesselId": "3",
+        "vesselId": "VSL-003",
         "rankId": "10_role_2_1759121194827",
         "crewMemberId": "A000400",
         "crewName": "Agus",
@@ -6353,14 +6391,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.666Z",
-        "rank": "OS_2"
+        "rank": "OS_2",
+        "vessel": "VSL-003"
       }
     ],
     [
       42,
       {
         "id": 42,
-        "vesselId": "3",
+        "vesselId": "VSL-003",
         "rankId": "10_role_3_1759121195540",
         "crewMemberId": "A000402",
         "crewName": "Marcin",
@@ -6385,14 +6424,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.667Z",
-        "rank": "OS_3"
+        "rank": "OS_3",
+        "vessel": "VSL-003"
       }
     ],
     [
       43,
       {
         "id": 43,
-        "vesselId": "3",
+        "vesselId": "VSL-003",
         "rankId": "12_role_1_1759121198960",
         "crewMemberId": "A000436",
         "crewName": "Lars",
@@ -6417,14 +6457,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.667Z",
-        "rank": "Fitter_1"
+        "rank": "Fitter_1",
+        "vessel": "VSL-003"
       }
     ],
     [
       44,
       {
         "id": 44,
-        "vesselId": "3",
+        "vesselId": "VSL-003",
         "rankId": "13_role_1_1759121201260",
         "crewMemberId": "A000452",
         "crewName": "Zhang",
@@ -6449,14 +6490,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.667Z",
-        "rank": "Oiler_1"
+        "rank": "Oiler_1",
+        "vessel": "VSL-003"
       }
     ],
     [
       45,
       {
         "id": 45,
-        "vesselId": "3",
+        "vesselId": "VSL-003",
         "rankId": "13_role_2_1759121201260",
         "crewMemberId": "A000454",
         "crewName": "Jose",
@@ -6481,14 +6523,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.667Z",
-        "rank": "Oiler_2"
+        "rank": "Oiler_2",
+        "vessel": "VSL-003"
       }
     ],
     [
       46,
       {
         "id": 46,
-        "vesselId": "3",
+        "vesselId": "VSL-003",
         "rankId": "13_role_1_1759121201260",
         "crewMemberId": "A000456",
         "crewName": "Li",
@@ -6513,14 +6556,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.667Z",
-        "rank": "Oiler_1"
+        "rank": "Oiler_1",
+        "vessel": "VSL-003"
       }
     ],
     [
       47,
       {
         "id": 47,
-        "vesselId": "3",
+        "vesselId": "VSL-003",
         "rankId": "14",
         "crewMemberId": "A000478",
         "crewName": "Tomasz",
@@ -6545,14 +6589,15 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.669Z",
-        "rank": "Chief Cook"
+        "rank": "Chief Cook",
+        "vessel": "VSL-003"
       }
     ],
     [
       48,
       {
         "id": 48,
-        "vesselId": "3",
+        "vesselId": "VSL-003",
         "rankId": "15",
         "crewMemberId": "A000490",
         "crewName": "Wei",
@@ -6577,7 +6622,8 @@
         "deploymentChecklist": null,
         "applicableDocs": null,
         "createdAt": "2025-10-03T08:11:46.669Z",
-        "rank": "Messman"
+        "rank": "Messman",
+        "vessel": "VSL-003"
       }
     ]
   ],
