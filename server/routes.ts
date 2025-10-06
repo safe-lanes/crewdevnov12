@@ -1492,7 +1492,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? rank.filter(r => typeof r === 'string' && r.trim())
           : typeof rank === 'string' ? [rank] : [];
         if (rankList.length > 0) {
-          filteredCrew = filteredCrew.filter(crew => rankList.includes(crew.rank));
+          // Build a set of base ranks from role variants (normalize "_1", "_2" suffixes)
+          const baseRanksFromVariants = new Set<string>();
+          rankList.forEach(r => {
+            if (typeof r === 'string' && r.includes('_')) {
+              const baseRank = r.substring(0, r.lastIndexOf('_'));
+              baseRanksFromVariants.add(baseRank);
+            }
+          });
+          
+          filteredCrew = filteredCrew.filter(crew => {
+            // Direct match (crew rank exactly in query list)
+            if (rankList.includes(crew.rank)) return true;
+            // Base rank match (crew rank is the base of a queried variant)
+            if (baseRanksFromVariants.has(crew.rank)) return true;
+            return false;
+          });
         }
       }
 
