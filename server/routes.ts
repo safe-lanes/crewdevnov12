@@ -1385,6 +1385,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { filterType, vessels, fleet, addGroup, dueIn, rank } = req.query;
       
+      // Fetch vessel master data for ID-to-name translation
+      const vesselMasterData = await storage.getMasterDataEntries("014");
+      const vesselIdToNameMap = new Map<string, string>();
+      if (vesselMasterData) {
+        vesselMasterData.forEach((vessel: any) => {
+          if (vessel.entryId && vessel.name) {
+            vesselIdToNameMap.set(vessel.entryId, vessel.name);
+          }
+        });
+      }
       // Fetch all crew members and vessel planning data
       const crewMembers = await storage.getCrewMembers();
       
@@ -1444,7 +1454,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           return {
             id: crew.id,
-            vessel: crew.presentVessel,
+            vesselId: crew.presentVessel, // Keep ID for filtering
+            vessel: vesselIdToNameMap.get(crew.presentVessel || '') || crew.presentVessel, // Translated name for display
             rank: crew.presentRank,
             name: `${crew.firstName} ${crew.middleName || ''} ${crew.familyName || ''}`.trim(),
             reliefDue: rawReliefDue,
@@ -1468,7 +1479,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Apply vessel/fleet/addGroup filter
       if (filterType === 'vessel' && vessels) {
         const vesselList = Array.isArray(vessels) ? vessels : [vessels];
-        filteredCrew = filteredCrew.filter(crew => vesselList.includes(crew.vessel));
+        filteredCrew = filteredCrew.filter(crew => vesselList.includes(crew.vesselId));
       } else if (filterType === 'fleet' && fleet) {
         // TODO: Implement fleet filtering when fleet master data is available
       } else if (filterType === 'addGroup' && addGroup) {
