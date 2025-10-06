@@ -1172,7 +1172,11 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
 
   const handleCrewSelect = (crew: { id: string; name: string; rank: string }) => {
     if (!selectedVessel) {
-      alert('Please select a vessel first by clicking on a vessel header in the timeline');
+      toast({
+        title: "No vessel selected",
+        description: "Please select a vessel first by clicking on a vessel header in the timeline",
+        variant: "destructive",
+      });
       return;
     }
     setSelectedCrew(crew);
