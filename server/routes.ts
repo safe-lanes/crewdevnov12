@@ -1426,6 +1426,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const joiningDate = parseFlexibleDate(crew.joiningDate || '');
           const reliefDue = parseFlexibleDate(crew.reliefDue || '');
           
+          // Debug logging for problematic ranks
+          if (crew.presentRank === '2nd Officer' || crew.presentRank === 'Electrical Officer') {
+            console.log(`🔍 [DATE DEBUG] ${crew.presentRank} - ${crew.firstName}:`, {
+              rawJoiningDate: crew.joiningDate,
+              rawReliefDue: crew.reliefDue,
+              parsedJoiningDate: joiningDate,
+              parsedReliefDue: reliefDue,
+            });
+          }
+          
           if (!reliefDue) return null;
 
           // Calculate range dates
