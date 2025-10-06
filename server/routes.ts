@@ -1383,7 +1383,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/rotation/due-crew", async (req, res) => {
     try {
       const { filterType, vessels, fleet, addGroup, dueIn, rank } = req.query;
-      console.log('🔍 [ROTATION DUE-CREW] Query params:', { filterType, vessels, rank });
       
       // Fetch all crew members and vessel planning data
       const crewMembers = await storage.getCrewMembers();

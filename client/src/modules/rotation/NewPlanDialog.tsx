@@ -1111,10 +1111,25 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
     const variants: string[] = [];
     const selectedBaseRanks = new Set(selectedRanks);
     
+    // First pass: check if any selected rank has role variants
+    const ranksWithVariants = new Set<string>();
+    companyRanks.forEach((rank: any) => {
+      if (selectedBaseRanks.has(rank.rank) && rank.role && rank.role !== rank.rank) {
+        ranksWithVariants.add(rank.rank);
+      }
+    });
+    
+    // Second pass: add role variants or base rank (only if no variants exist)
     companyRanks.forEach((rank: any) => {
       if (selectedBaseRanks.has(rank.rank)) {
-        // Use role if it exists (e.g., "3rd Officer_1"), otherwise use rank
-        variants.push(rank.role || rank.rank);
+        if (rank.role && rank.role !== rank.rank) {
+          // This is a role variant - add it
+          variants.push(rank.role);
+        } else if (!ranksWithVariants.has(rank.rank)) {
+          // This is a base rank with no variants - add the base rank
+          variants.push(rank.rank);
+        }
+        // Skip base ranks that have variants
       }
     });
     
@@ -1256,9 +1271,26 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
           // Parse role variants from crew field (comma-separated)
           const roleVariants = editPlan.crew.split(',').map(r => r.trim());
           
-          // Derive base ranks from role variants by matching against companyRanks
-          const baseRanksSet = new Set<string>();
+          // Find which base ranks have variants in the saved data
+          const baseRanksWithVariants = new Set<string>();
           roleVariants.forEach((variant: string) => {
+            if (variant.includes('_')) {
+              const baseRank = variant.substring(0, variant.lastIndexOf('_'));
+              baseRanksWithVariants.add(baseRank);
+            }
+          });
+          
+          // Filter out base ranks from roleVariants if their variants exist
+          const filteredRoleVariants = roleVariants.filter((variant: string) => {
+            // Keep if it's a variant (has underscore)
+            if (variant.includes('_')) return true;
+            // Keep base rank only if it has no variants
+            return !baseRanksWithVariants.has(variant);
+          });
+          
+          // Derive base ranks from filtered role variants by matching against companyRanks
+          const baseRanksSet = new Set<string>();
+          filteredRoleVariants.forEach((variant: string) => {
             const matchingRank = companyRanks.find((r: any) => 
               (r.role && r.role === variant) || r.rank === variant
             );
@@ -1268,7 +1300,7 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
           });
           
           setSelectedRanks(Array.from(baseRanksSet));
-          setSelectedRoleVariantsState(roleVariants);
+          setSelectedRoleVariantsState(filteredRoleVariants);
           setHasManualVariants(true); // Mark as manually set from saved data
           
           // Parse assignments from JSON and ensure each has a unique ID
