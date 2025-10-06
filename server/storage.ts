@@ -1083,17 +1083,25 @@ export class MemStorage implements IStorage {
           if (!assignment.proposalStatus || assignment.proposalStatus === "proposed") {
             // Find current crew on board for this vessel/rank
             let currentCrew = null;
-            if (assignment.vessel && assignment.rank) {
+            if (assignment.vesselId && assignment.rank) {
               // Look for crew members currently on this vessel with this rank
+              // Note: crew.presentVessel stores vessel ID format "VSL-003"
+              // assignment.vesselId might be numeric (old format) or full ID (new format)
+              // Normalize to full format for comparison
+              let vesselIdToMatch = String(assignment.vesselId);
+              if (/^\d+$/.test(vesselIdToMatch)) {
+                // Numeric format - convert to VSL-XXX format
+                vesselIdToMatch = `VSL-${vesselIdToMatch.padStart(3, '0')}`;
+              }
               const crewOnBoard = Array.from(this.crewMembers.values()).find(crew => 
-                crew.presentVessel === assignment.vessel && crew.presentRank === assignment.rank
+                crew.presentVessel === vesselIdToMatch && crew.presentRank === assignment.rank
               );
               
               if (crewOnBoard) {
                 // Get vessel planning data for this crew member to get contract dates
-                // vesselPlanning uses vesselId (vessel name) and onBoardCrewId
+                // vesselPlanning.vesselId stores vessel ID
                 const planning = Array.from(this.vesselPlanning.values()).find(p => 
-                  p.onBoardCrewId === crewOnBoard.id && p.vesselId === assignment.vessel && p.rank === assignment.rank
+                  p.onBoardCrewId === crewOnBoard.id && p.vesselId === vesselIdToMatch && p.rank === assignment.rank
                 );
                 
                 if (planning && planning.reliefDue) {
@@ -2593,17 +2601,25 @@ export class PersistentFileStorage implements IStorage {
           if (!assignment.proposalStatus || assignment.proposalStatus === "proposed") {
             // Find current crew on board for this vessel/rank
             let currentCrew = null;
-            if (assignment.vessel && assignment.rank) {
+            if (assignment.vesselId && assignment.rank) {
               // Look for crew members currently on this vessel with this rank
+              // Note: crew.presentVessel stores vessel ID format "VSL-003"
+              // assignment.vesselId might be numeric (old format) or full ID (new format)
+              // Normalize to full format for comparison
+              let vesselIdToMatch = String(assignment.vesselId);
+              if (/^\d+$/.test(vesselIdToMatch)) {
+                // Numeric format - convert to VSL-XXX format
+                vesselIdToMatch = `VSL-${vesselIdToMatch.padStart(3, '0')}`;
+              }
               const crewOnBoard = Array.from(this.crewMembers.values()).find(crew => 
-                crew.presentVessel === assignment.vessel && crew.presentRank === assignment.rank
+                crew.presentVessel === vesselIdToMatch && crew.presentRank === assignment.rank
               );
               
               if (crewOnBoard) {
                 // Get vessel planning data for this crew member to get contract dates
-                // vesselPlanning uses vesselId (vessel name) and onBoardCrewId
+                // vesselPlanning.vesselId stores vessel ID
                 const planning = Array.from(this.vesselPlanning.values()).find(p => 
-                  p.onBoardCrewId === crewOnBoard.id && p.vesselId === assignment.vessel && p.rank === assignment.rank
+                  p.onBoardCrewId === crewOnBoard.id && p.vesselId === vesselIdToMatch && p.rank === assignment.rank
                 );
                 
                 if (planning && planning.reliefDue) {

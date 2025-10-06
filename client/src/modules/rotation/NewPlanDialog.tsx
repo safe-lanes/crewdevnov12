@@ -1434,7 +1434,8 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
     const rankObj = companyRanks.find((r: any) => r.rank === selectedCrew.rank);
 
     // Validate that we have proper IDs - fail if not available
-    const vesselId = vesselObj?.id || vesselObj?.entryId;
+    // Use entryId first as it contains the actual vessel ID (VSL-003), not the numeric entry ID
+    const vesselId = vesselObj?.entryId || vesselObj?.id;
     const rankId = rankObj?.id;
 
     if (!vesselId || !rankId) {
