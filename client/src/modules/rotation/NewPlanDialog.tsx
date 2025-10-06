@@ -1083,6 +1083,28 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
     ? selectedRoleVariantsState 
     : autoSelectedRoleVariants;
 
+  // Filter out base ranks when their role variants exist (for timeline display only)
+  const timelineRoleVariants = useMemo(() => {
+    // Find base ranks that have role variants
+    const baseRanksWithVariants = new Set<string>();
+    
+    selectedRoleVariants.forEach(roleVariant => {
+      // Check if this is a role variant (has underscore suffix like "3rd Officer_1")
+      if (roleVariant.includes('_')) {
+        const baseRank = roleVariant.substring(0, roleVariant.lastIndexOf('_'));
+        baseRanksWithVariants.add(baseRank);
+      }
+    });
+    
+    // Filter out base ranks that have variants
+    return selectedRoleVariants.filter(roleVariant => {
+      // Keep role variants (with underscore)
+      if (roleVariant.includes('_')) return true;
+      // Keep base ranks only if they don't have variants
+      return !baseRanksWithVariants.has(roleVariant);
+    });
+  }, [selectedRoleVariants]);
+
   // Sync selectedRoleVariantsState with autoSelectedRoleVariants when base ranks change (unless manually modified)
   useEffect(() => {
     if (!isInitialLoadRef.current && !hasManualVariants) {
@@ -1733,7 +1755,7 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
             ) : (
               <VesselTimelineView
                 vessels={selectedVessels}
-                ranks={selectedRoleVariants}
+                ranks={timelineRoleVariants}
                 selectedVessel={selectedVessel}
                 onVesselSelect={setSelectedVessel}
                 onAssignmentClick={handleAssignmentClick}
