@@ -675,18 +675,26 @@ function VesselTimelineView({
   const containerRef = useRef<HTMLDivElement>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   
+  // Use vessel lookup hook for translating vessel names to IDs
+  const { getVesselIds } = useVesselLookup();
+  
   // Use custom date range from props
   const today = useMemo(() => new Date(), []);
   const startDate = dateRange.start;
   const endDate = dateRange.end;
   const totalDays = useMemo(() => differenceInDays(endDate, startDate), [startDate, endDate]);
   
-  // Fetch existing crew for selected vessels and ALL ranks (including base ranks)
-  const queryParams = new URLSearchParams();
-  queryParams.append('filterType', 'vessel');
-  vessels.forEach(v => queryParams.append('vessels', v));
-  queryRanks.forEach(r => queryParams.append('rank', r));
+  // Build query params for fetching existing crew - translate vessel names to IDs
+  const queryParams = useMemo(() => {
+    const params = new URLSearchParams();
+    params.append('filterType', 'vessel');
+    const vesselIds = getVesselIds(vessels);
+    vesselIds.forEach(id => params.append('vessels', id));
+    queryRanks.forEach(r => params.append('rank', r));
+    return params;
+  }, [vessels, queryRanks, getVesselIds]);
   
+  // Fetch existing crew for selected vessels and ALL ranks (including base ranks)
   const { data: existingCrew = [] } = useQuery<ExistingCrew[]>({
     queryKey: ['/api/rotation/due-crew', queryParams.toString()],
     queryFn: () => fetch(`/api/rotation/due-crew?${queryParams.toString()}`).then(res => res.json()),
