@@ -249,11 +249,13 @@ function CrewFilterDialog({
 function CrewColumn({ 
   rank, 
   onCrewSelect, 
-  assignments 
+  assignments,
+  currentlyDeployedCrewIds
 }: { 
   rank: string; 
   onCrewSelect: (crew: { id: string; name: string; rank: string }) => void;
   assignments: Assignment[];
+  currentlyDeployedCrewIds: Set<string>;
 }) {
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [filters, setFilters] = useState<CrewFilters>({
@@ -380,11 +382,19 @@ function CrewColumn({
     return vesselCount;
   };
   
-  // Get color based on assignment count
+  // Get color based on deployment status and assignment count
+  // Priority: Red (deployed) > Brown (2+ vessels) > Blue (1 vessel) > Default
   const getCrewNameColor = (crewId: string) => {
+    // First priority: Check if crew is currently deployed on a vessel
+    if (currentlyDeployedCrewIds.has(crewId)) {
+      return 'text-red-600'; // Red for currently deployed crew
+    }
+    
+    // Second priority: Check draft assignments
     const count = getCrewAssignmentCount(crewId);
-    if (count === 1) return 'text-blue-600'; // Blue for 1 vessel
-    if (count >= 2) return 'text-[#814C02]'; // Brown for 2+ vessels
+    if (count >= 2) return 'text-[#814C02]'; // Brown for 2+ vessels in draft
+    if (count === 1) return 'text-blue-600'; // Blue for 1 vessel in draft
+    
     return ''; // Default color for no assignments
   };
   
@@ -935,6 +945,26 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
     queryKey: ['/api/company-ranks'],
   });
 
+  // Fetch existing crew data to identify currently deployed crew
+  const queryParams = useMemo(() => {
+    const params = new URLSearchParams();
+    params.append('filterType', 'vessel');
+    selectedVessels.forEach(v => params.append('vessels', v));
+    selectedRanks.forEach(r => params.append('rank', r));
+    return params;
+  }, [selectedVessels, selectedRanks]);
+
+  const { data: existingCrew = [] } = useQuery<ExistingCrew[]>({
+    queryKey: ['/api/rotation/due-crew', queryParams.toString()],
+    queryFn: () => fetch(`/api/rotation/due-crew?${queryParams.toString()}`).then(res => res.json()),
+    enabled: selectedVessels.length > 0 && selectedRanks.length > 0,
+  });
+
+  // Create Set of currently deployed crew IDs for O(1) lookup
+  const currentlyDeployedCrewIds = useMemo(() => {
+    return new Set(existingCrew.map(crew => crew.id));
+  }, [existingCrew]);
+
   // Save rotation plan mutation (handles both create and update)
   const saveRotationPlanMutation = useMutation({
     mutationFn: async (planData: any) => {
@@ -1414,6 +1444,7 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
                     rank={rank} 
                     onCrewSelect={handleCrewSelect}
                     assignments={assignments}
+                    currentlyDeployedCrewIds={currentlyDeployedCrewIds}
                   />
                 ))}
               </div>
