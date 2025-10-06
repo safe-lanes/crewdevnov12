@@ -1415,6 +1415,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .map(crew => {
           const vesselPlanning = planningMap.get(crew.presentVessel || '') || [];
           
+          // Debug vessel planning data
+          if (crew.id === 'A000304' || crew.id === 'A000502') {
+            console.log(`🔍 [VESSEL PLANNING] ${crew.id} - presentVessel: "${crew.presentVessel}"`, {
+              planningCount: vesselPlanning.length,
+              planningCrewIds: vesselPlanning.map((p: any) => `${p.crewMemberId} (${p.rank})`),
+            });
+          }
+          
           // Find matching planning data by rank (including crew member match)
           const matchingPlan = vesselPlanning.find(p => 
             p.rank === crew.presentRank && p.crewMemberId === crew.id
