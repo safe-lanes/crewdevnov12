@@ -1091,18 +1091,44 @@ export class MemStorage implements IStorage {
               
               if (crewOnBoard) {
                 // Get vessel planning data for this crew member to get contract dates
+                // vesselPlanning uses vesselId (vessel name) and onBoardCrewId
                 const planning = Array.from(this.vesselPlanning.values()).find(p => 
-                  p.crewMemberId === crewOnBoard.id && p.vesselId === assignment.vessel
+                  p.onBoardCrewId === crewOnBoard.id && p.vesselId === assignment.vessel && p.rank === assignment.rank
                 );
                 
-                if (planning) {
+                if (planning && planning.reliefDue) {
+                  // Calculate range dates based on contract end range settings
+                  const reliefDueDate = new Date(planning.reliefDue);
+                  const rangeStartMonths = planning.contractEndRangeStartMonths || 0;
+                  const rangeEndMonths = planning.contractEndRangeEndMonths || 1;
+                  
+                  const rangeStartDate = new Date(reliefDueDate);
+                  rangeStartDate.setMonth(rangeStartDate.getMonth() + rangeStartMonths);
+                  
+                  const rangeEndDate = new Date(reliefDueDate);
+                  rangeEndDate.setMonth(rangeEndDate.getMonth() + rangeEndMonths);
+                  
                   currentCrew = {
                     id: crewOnBoard.id,
-                    name: `${crewOnBoard.firstName} ${crewOnBoard.lastName}`,
-                    contractStartDate: planning.joiningDate || crewOnBoard.joiningDate,
-                    contractEndDate: planning.reliefDue || '',
-                    rangeStartDate: planning.rangeStartDate || planning.reliefDue,
-                    rangeEndDate: planning.rangeEndDate || planning.reliefDue,
+                    name: `${crewOnBoard.firstName} ${crewOnBoard.middleName || ''} ${crewOnBoard.familyName || crewOnBoard.lastName || ''}`.replace(/\s+/g, ' ').trim(),
+                    contractStartDate: planning.joiningDate || crewOnBoard.joiningDate || '',
+                    contractEndDate: planning.reliefDue,
+                    rangeStartDate: rangeStartDate.toISOString().split('T')[0],
+                    rangeEndDate: rangeEndDate.toISOString().split('T')[0],
+                  };
+                } else if (crewOnBoard.joiningDate && crewOnBoard.reliefDue) {
+                  // Fallback to crew member data if no planning data
+                  const reliefDueDate = new Date(crewOnBoard.reliefDue);
+                  const rangeEndDate = new Date(reliefDueDate);
+                  rangeEndDate.setMonth(rangeEndDate.getMonth() + 1); // Default 1 month grace period
+                  
+                  currentCrew = {
+                    id: crewOnBoard.id,
+                    name: `${crewOnBoard.firstName} ${crewOnBoard.middleName || ''} ${crewOnBoard.familyName || crewOnBoard.lastName || ''}`.replace(/\s+/g, ' ').trim(),
+                    contractStartDate: crewOnBoard.joiningDate,
+                    contractEndDate: crewOnBoard.reliefDue,
+                    rangeStartDate: crewOnBoard.reliefDue,
+                    rangeEndDate: rangeEndDate.toISOString().split('T')[0],
                   };
                 }
               }
@@ -2575,18 +2601,44 @@ export class PersistentFileStorage implements IStorage {
               
               if (crewOnBoard) {
                 // Get vessel planning data for this crew member to get contract dates
+                // vesselPlanning uses vesselId (vessel name) and onBoardCrewId
                 const planning = Array.from(this.vesselPlanning.values()).find(p => 
-                  p.crewMemberId === crewOnBoard.id && p.vesselId === assignment.vessel
+                  p.onBoardCrewId === crewOnBoard.id && p.vesselId === assignment.vessel && p.rank === assignment.rank
                 );
                 
-                if (planning) {
+                if (planning && planning.reliefDue) {
+                  // Calculate range dates based on contract end range settings
+                  const reliefDueDate = new Date(planning.reliefDue);
+                  const rangeStartMonths = planning.contractEndRangeStartMonths || 0;
+                  const rangeEndMonths = planning.contractEndRangeEndMonths || 1;
+                  
+                  const rangeStartDate = new Date(reliefDueDate);
+                  rangeStartDate.setMonth(rangeStartDate.getMonth() + rangeStartMonths);
+                  
+                  const rangeEndDate = new Date(reliefDueDate);
+                  rangeEndDate.setMonth(rangeEndDate.getMonth() + rangeEndMonths);
+                  
                   currentCrew = {
                     id: crewOnBoard.id,
-                    name: `${crewOnBoard.firstName} ${crewOnBoard.lastName}`,
-                    contractStartDate: planning.joiningDate || crewOnBoard.joiningDate,
-                    contractEndDate: planning.reliefDue || '',
-                    rangeStartDate: planning.rangeStartDate || planning.reliefDue,
-                    rangeEndDate: planning.rangeEndDate || planning.reliefDue,
+                    name: `${crewOnBoard.firstName} ${crewOnBoard.middleName || ''} ${crewOnBoard.familyName || crewOnBoard.lastName || ''}`.replace(/\s+/g, ' ').trim(),
+                    contractStartDate: planning.joiningDate || crewOnBoard.joiningDate || '',
+                    contractEndDate: planning.reliefDue,
+                    rangeStartDate: rangeStartDate.toISOString().split('T')[0],
+                    rangeEndDate: rangeEndDate.toISOString().split('T')[0],
+                  };
+                } else if (crewOnBoard.joiningDate && crewOnBoard.reliefDue) {
+                  // Fallback to crew member data if no planning data
+                  const reliefDueDate = new Date(crewOnBoard.reliefDue);
+                  const rangeEndDate = new Date(reliefDueDate);
+                  rangeEndDate.setMonth(rangeEndDate.getMonth() + 1); // Default 1 month grace period
+                  
+                  currentCrew = {
+                    id: crewOnBoard.id,
+                    name: `${crewOnBoard.firstName} ${crewOnBoard.middleName || ''} ${crewOnBoard.familyName || crewOnBoard.lastName || ''}`.replace(/\s+/g, ' ').trim(),
+                    contractStartDate: crewOnBoard.joiningDate,
+                    contractEndDate: crewOnBoard.reliefDue,
+                    rangeStartDate: crewOnBoard.reliefDue,
+                    rangeEndDate: rangeEndDate.toISOString().split('T')[0],
                   };
                 }
               }
