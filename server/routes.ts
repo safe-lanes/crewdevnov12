@@ -1415,14 +1415,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .map(crew => {
           const vesselPlanning = planningMap.get(crew.presentVessel || '') || [];
           
-          // Debug vessel planning data
-          if (crew.id === 'A000304' || crew.id === 'A000502') {
-            console.log(`🔍 [VESSEL PLANNING] ${crew.id} - presentVessel: "${crew.presentVessel}"`, {
-              planningCount: vesselPlanning.length,
-              planningCrewIds: vesselPlanning.map((p: any) => `${p.crewMemberId} (${p.rank})`),
-            });
-          }
-          
           // Find matching planning data by rank (including crew member match)
           const matchingPlan = vesselPlanning.find(p => 
             p.rank === crew.presentRank && p.crewMemberId === crew.id
@@ -1431,15 +1423,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Get dates from vesselPlanning if available, otherwise from crew record
           const rawJoiningDate = matchingPlan?.joiningDate || crew.joiningDate;
           const rawReliefDue = matchingPlan?.reliefDueDate || crew.reliefDue;
-          
-          // Debug logging
-          if (crew.id === 'A000304' || crew.id === 'A000502') {
-            console.log(`🔍 [PLANNING DEBUG] ${crew.presentRank} - ${crew.firstName} (${crew.id}):`, {
-              matchingPlan: matchingPlan ? `Found (crewId: ${matchingPlan.crewMemberId})` : 'Not found',
-              rawJoiningDate,
-              rawReliefDue,
-            });
-          }
           
           // Calculate range dates with defaults (1 month if no planning data)
           const rangeEndMonths = matchingPlan?.contractEndRangeEndMonths ?? 1;
