@@ -7,13 +7,17 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useVesselLookup } from '@/hooks/useVesselLookup';
 
 // Hook to fetch proposed assignments
 const useProposals = (filters: any) => {
+  const { getVesselIds } = useVesselLookup();
   const queryParams = new URLSearchParams();
   
   if (filters.selectedVessels && filters.selectedVessels.length > 0) {
-    queryParams.append('vessels', JSON.stringify(filters.selectedVessels));
+    // Translate vessel names to IDs for API call
+    const vesselIds = getVesselIds(filters.selectedVessels);
+    queryParams.append('vessels', JSON.stringify(vesselIds));
   }
   
   if (filters.selectedRanks && filters.selectedRanks.length > 0) {

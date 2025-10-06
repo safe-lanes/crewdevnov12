@@ -13,6 +13,7 @@ import { addMonths, differenceInDays, startOfMonth, endOfMonth, format } from 'd
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useVesselLookup } from '@/hooks/useVesselLookup';
 
 interface RotationPlan {
   id: number;
@@ -1084,6 +1085,9 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
   const [dateRangeDialogOpen, setDateRangeDialogOpen] = useState(false);
   
   const { toast } = useToast();
+  
+  // Vessel lookup hook for name↔ID translation
+  const { getVesselIds } = useVesselLookup();
 
   // Fetch vessels from master data
   const { data: vessels = [], isLoading: vesselsLoading } = useQuery<any[]>({
@@ -1174,10 +1178,12 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
     params.append('filterType', 'vessel');
-    selectedVessels.forEach(v => params.append('vessels', v));
+    // Translate vessel names to IDs for API call
+    const vesselIds = getVesselIds(selectedVessels);
+    vesselIds.forEach(id => params.append('vessels', id));
     selectedRoleVariants.forEach(r => params.append('rank', r));
     return params;
-  }, [selectedVessels, selectedRoleVariants]);
+  }, [selectedVessels, selectedRoleVariants, getVesselIds]);
 
   const { data: existingCrew = [] } = useQuery<ExistingCrew[]>({
     queryKey: ['/api/rotation/due-crew', queryParams.toString()],
