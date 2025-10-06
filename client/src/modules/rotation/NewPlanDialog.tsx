@@ -370,14 +370,22 @@ function CrewColumn({
     });
   }, [crewMembers, filters]);
 
-  // Check if crew is assigned to multiple vessels
-  const isMultiVesselAssignment = (crewId: string) => {
+  // Get count of vessels crew is assigned to
+  const getCrewAssignmentCount = (crewId: string) => {
     const vesselCount = new Set(
       assignments
         .filter(a => a.crewId === crewId)
         .map(a => a.vessel)
     ).size;
-    return vesselCount > 1;
+    return vesselCount;
+  };
+  
+  // Get color based on assignment count
+  const getCrewNameColor = (crewId: string) => {
+    const count = getCrewAssignmentCount(crewId);
+    if (count === 1) return 'text-blue-600'; // Blue for 1 vessel
+    if (count >= 2) return 'text-[#814C02]'; // Brown for 2+ vessels
+    return ''; // Default color for no assignments
   };
   
   // Check if any filters are active
@@ -429,7 +437,7 @@ function CrewColumn({
                   }}
                 />
                 <div className="flex-1">
-                  <div className={`font-medium text-sm ${isMultiVesselAssignment(crew.id) ? 'text-red-600' : ''}`}>
+                  <div className={`font-medium text-sm ${getCrewNameColor(crew.id)}`}>
                     {crew.name.split(' ')[0]} {crew.name.split(' ').slice(-1)[0].charAt(0)}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
