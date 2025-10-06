@@ -1021,7 +1021,9 @@ function VesselTimelineView({
 
 export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogProps) {
   const [selectedVessels, setSelectedVessels] = useState<string[]>([]);
-  const [selectedRanks, setSelectedRanks] = useState<string[]>([]);
+  const [selectedRanks, setSelectedRanks] = useState<string[]>([]); // Base ranks selected in dropdown
+  const [selectedRoleVariantsState, setSelectedRoleVariantsState] = useState<string[]>([]); // Specific role variants selected
+  const [hasManualVariants, setHasManualVariants] = useState(false); // Track if user manually modified variants
   const [selectedVessel, setSelectedVessel] = useState<string>('');
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [dateDialogOpen, setDateDialogOpen] = useState(false);
@@ -1050,14 +1052,52 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
     queryKey: ['/api/company-ranks'],
   });
 
+  // Get deduplicated base ranks for dropdown display
+  const baseRanks = useMemo(() => {
+    const uniqueRanks = new Map<string, any>();
+    companyRanks.forEach((rank: any) => {
+      if (!uniqueRanks.has(rank.rank)) {
+        uniqueRanks.set(rank.rank, rank);
+      }
+    });
+    return Array.from(uniqueRanks.values());
+  }, [companyRanks]);
+
+  // Get all role variants for selected base ranks
+  const autoSelectedRoleVariants = useMemo(() => {
+    const variants: string[] = [];
+    const selectedBaseRanks = new Set(selectedRanks);
+    
+    companyRanks.forEach((rank: any) => {
+      if (selectedBaseRanks.has(rank.rank)) {
+        // Use role if it exists (e.g., "3rd Officer_1"), otherwise use rank
+        variants.push(rank.role || rank.rank);
+      }
+    });
+    
+    return variants;
+  }, [companyRanks, selectedRanks]);
+
+  // Use manually managed state if user has modified it, otherwise use auto-computed variants
+  const selectedRoleVariants = hasManualVariants 
+    ? selectedRoleVariantsState 
+    : autoSelectedRoleVariants;
+
+  // Sync selectedRoleVariantsState with autoSelectedRoleVariants when base ranks change (unless manually modified)
+  useEffect(() => {
+    if (!isInitialLoadRef.current && !hasManualVariants) {
+      setSelectedRoleVariantsState(autoSelectedRoleVariants);
+    }
+  }, [autoSelectedRoleVariants, hasManualVariants]);
+
   // Fetch existing crew data to identify currently deployed crew
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
     params.append('filterType', 'vessel');
     selectedVessels.forEach(v => params.append('vessels', v));
-    selectedRanks.forEach(r => params.append('rank', r));
+    selectedRoleVariants.forEach(r => params.append('rank', r));
     return params;
-  }, [selectedVessels, selectedRanks]);
+  }, [selectedVessels, selectedRoleVariants]);
 
   const { data: existingCrew = [] } = useQuery<ExistingCrew[]>({
     queryKey: ['/api/rotation/due-crew', queryParams.toString()],
@@ -1093,6 +1133,8 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
       // Reset form
       setSelectedVessels([]);
       setSelectedRanks([]);
+      setSelectedRoleVariantsState([]);
+      setHasManualVariants(false);
       setSelectedVessel('');
       setAssignments([]);
     },
@@ -1121,6 +1163,8 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
       onOpenChange(false);
       setSelectedVessels([]);
       setSelectedRanks([]);
+      setSelectedRoleVariantsState([]);
+      setHasManualVariants(false);
       setSelectedVessel('');
       setAssignments([]);
     },
@@ -1144,9 +1188,23 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
           const vessels = JSON.parse(editPlan.vessels);
           setSelectedVessels(Array.isArray(vessels) ? vessels : []);
           
-          // Parse ranks from crew field (comma-separated)
-          const ranks = editPlan.crew.split(',').map(r => r.trim());
-          setSelectedRanks(ranks);
+          // Parse role variants from crew field (comma-separated)
+          const roleVariants = editPlan.crew.split(',').map(r => r.trim());
+          
+          // Derive base ranks from role variants by matching against companyRanks
+          const baseRanksSet = new Set<string>();
+          roleVariants.forEach((variant: string) => {
+            const matchingRank = companyRanks.find((r: any) => 
+              (r.role && r.role === variant) || r.rank === variant
+            );
+            if (matchingRank) {
+              baseRanksSet.add(matchingRank.rank);
+            }
+          });
+          
+          setSelectedRanks(Array.from(baseRanksSet));
+          setSelectedRoleVariantsState(roleVariants);
+          setHasManualVariants(true); // Mark as manually set from saved data
           
           // Parse assignments from JSON and ensure each has a unique ID
           const savedAssignments = editPlan.assignments ? JSON.parse(editPlan.assignments) : [];
@@ -1167,6 +1225,8 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
         // Reset form when creating new plan
         setSelectedVessels([]);
         setSelectedRanks([]);
+        setSelectedRoleVariantsState([]);
+        setHasManualVariants(false);
         setSelectedVessel('');
         setAssignments([]);
       }
@@ -1176,7 +1236,7 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
         isInitialLoadRef.current = false;
       }, 100);
     }
-  }, [editPlan, open, toast]);
+  }, [editPlan, open, toast, companyRanks]);
 
   const toggleVessel = (vesselName: string) => {
     setSelectedVessels(prev =>
@@ -1192,6 +1252,8 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
         ? prev.filter(r => r !== rank)
         : [...prev, rank]
     );
+    // Reset manual override when toggling base ranks
+    setHasManualVariants(false);
   };
 
   // Auto-select first vessel when vessels are selected or reset if current vessel is deselected
@@ -1383,8 +1445,8 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
     });
     const planToDate = new Date(Math.max(...contractEndDates.map(d => d.getTime())));
 
-    // Format crew roles as comma-separated string
-    const crewRoles = Array.from(new Set(selectedRanks)).join(', ');
+    // Format crew roles as comma-separated string (use role variants)
+    const crewRoles = Array.from(new Set(selectedRoleVariants)).join(', ');
 
     // Prepare plan data
     const planData: any = {
@@ -1521,7 +1583,7 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
             </PopoverTrigger>
             <PopoverContent className="w-60 p-2" align="start">
               <div className="max-h-60 overflow-y-auto">
-                {companyRanks.map((rank: any) => (
+                {baseRanks.map((rank: any) => (
                   <div
                     key={rank.id}
                     className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
@@ -1542,6 +1604,32 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
               </div>
             </PopoverContent>
           </Popover>
+
+          {/* Display selected role variants with remove buttons */}
+          {selectedRoleVariants.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap ml-4">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Selected roles:</span>
+              {selectedRoleVariants.map((variant) => (
+                <div
+                  key={variant}
+                  className="flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900 rounded-md text-sm"
+                  data-testid={`chip-role-${variant}`}
+                >
+                  <span>{variant}</span>
+                  <button
+                    onClick={() => {
+                      setSelectedRoleVariantsState(prev => prev.filter(v => v !== variant));
+                      setHasManualVariants(true); // Mark as manually modified
+                    }}
+                    className="ml-1 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                    data-testid={`button-remove-role-${variant}`}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Date Range filter */}
           <Popover open={dateRangeDialogOpen} onOpenChange={setDateRangeDialogOpen}>
@@ -1645,7 +1733,7 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
             ) : (
               <VesselTimelineView
                 vessels={selectedVessels}
-                ranks={selectedRanks}
+                ranks={selectedRoleVariants}
                 selectedVessel={selectedVessel}
                 onVesselSelect={setSelectedVessel}
                 onAssignmentClick={handleAssignmentClick}
