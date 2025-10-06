@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import CrewInfoForm from './CrewInfoForm';
 import { normalizeCrewMemberForTable } from '@shared/crew-mapping';
+import { useVesselLookup } from '@/hooks/useVesselLookup';
 
 export const CrewPoolModule = (): JSX.Element => {
     const [selectedCrewPoolPage, setSelectedCrewPoolPage] = useState("crew-database");
@@ -28,6 +29,9 @@ export const CrewPoolModule = (): JSX.Element => {
     const [selectedCrewMember, setSelectedCrewMember] = useState<any | null>(null);
     const viewport = useViewport();
     const viewportConfig = getViewportConfig(viewport);
+    
+    // Vessel lookup hook for ID to name translation
+    const { getVesselName } = useVesselLookup();
     
     // Define allowed pages for the crew pool module
     const allowedPages = ["crew-database"];
@@ -213,7 +217,11 @@ export const CrewPoolModule = (): JSX.Element => {
                     floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true,
-                    headerClass: 'ag-header-cell-text-wrap'
+                    headerClass: 'ag-header-cell-text-wrap',
+                    valueFormatter: (params: any) => {
+                        if (!params.value) return '';
+                        return getVesselName(params.value) || params.value;
+                    }
                 },
                 {
                     headerName: 'Joining\nDate',
@@ -316,7 +324,7 @@ export const CrewPoolModule = (): JSX.Element => {
             pinned: 'right',
             lockPosition: true
         }
-    ], [ActionsCellRenderer, viewportConfig]);
+    ], [ActionsCellRenderer, viewportConfig, getVesselName]);
 
     // Grid ready handler - responsive logic is handled by AgGridTable component
     const onGridReady = useCallback((params: GridReadyEvent) => {
