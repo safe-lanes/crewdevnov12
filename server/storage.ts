@@ -1080,19 +1080,43 @@ export class MemStorage implements IStorage {
         const planAssignments = JSON.parse(plan.assignments);
         for (let i = 0; i < planAssignments.length; i++) {
           const assignment = planAssignments[i];
+          
           if (!assignment.proposalStatus || assignment.proposalStatus === "proposed") {
             // Find current crew on board for this vessel/rank
             let currentCrew = null;
-            if (assignment.vesselId && assignment.rank) {
-              // Look for crew members currently on this vessel with this rank
-              // Note: crew.presentVessel stores vessel ID format "VSL-003"
-              // assignment.vesselId might be numeric (old format) or full ID (new format)
-              // Normalize to full format for comparison
-              let vesselIdToMatch = String(assignment.vesselId);
+            
+            // Determine vesselId for lookup
+            let vesselIdToMatch: string | null = null;
+            if (assignment.vesselId) {
+              // Use existing vesselId and normalize it
+              vesselIdToMatch = String(assignment.vesselId);
               if (/^\d+$/.test(vesselIdToMatch)) {
                 // Numeric format - convert to VSL-XXX format
                 vesselIdToMatch = `VSL-${vesselIdToMatch.padStart(3, '0')}`;
               }
+            } else if (assignment.vessel || assignment.vesselName) {
+              // Legacy assignment without vesselId
+              const vesselValue = assignment.vessel || assignment.vesselName;
+              
+              // Check if the vessel field already contains a vessel ID (VSL-XXX format)
+              if (/^VSL-\d{3}$/.test(vesselValue)) {
+                // It's already a vessel ID, use it directly
+                vesselIdToMatch = vesselValue;
+              } else {
+                // It's a vessel name, need to look it up in master data (master ID "014")
+                const vesselMasterData = await this.getMasterDataEntries("014");
+                const vessel = vesselMasterData?.find((v: any) => v.name === vesselValue);
+                
+                if (vessel && vessel.entryId) {
+                  // Use the entryId which is in VSL-XXX format
+                  vesselIdToMatch = vessel.entryId;
+                }
+              }
+            }
+            
+            if (vesselIdToMatch && assignment.rank) {
+              // Look for crew members currently on this vessel with this rank
+              // Note: crew.presentVessel stores vessel ID format "VSL-003"
               const crewOnBoard = Array.from(this.crewMembers.values()).find(crew => 
                 crew.presentVessel === vesselIdToMatch && crew.presentRank === assignment.rank
               );
@@ -2598,19 +2622,43 @@ export class PersistentFileStorage implements IStorage {
         const planAssignments = JSON.parse(plan.assignments);
         for (let i = 0; i < planAssignments.length; i++) {
           const assignment = planAssignments[i];
+          
           if (!assignment.proposalStatus || assignment.proposalStatus === "proposed") {
             // Find current crew on board for this vessel/rank
             let currentCrew = null;
-            if (assignment.vesselId && assignment.rank) {
-              // Look for crew members currently on this vessel with this rank
-              // Note: crew.presentVessel stores vessel ID format "VSL-003"
-              // assignment.vesselId might be numeric (old format) or full ID (new format)
-              // Normalize to full format for comparison
-              let vesselIdToMatch = String(assignment.vesselId);
+            
+            // Determine vesselId for lookup
+            let vesselIdToMatch: string | null = null;
+            if (assignment.vesselId) {
+              // Use existing vesselId and normalize it
+              vesselIdToMatch = String(assignment.vesselId);
               if (/^\d+$/.test(vesselIdToMatch)) {
                 // Numeric format - convert to VSL-XXX format
                 vesselIdToMatch = `VSL-${vesselIdToMatch.padStart(3, '0')}`;
               }
+            } else if (assignment.vessel || assignment.vesselName) {
+              // Legacy assignment without vesselId
+              const vesselValue = assignment.vessel || assignment.vesselName;
+              
+              // Check if the vessel field already contains a vessel ID (VSL-XXX format)
+              if (/^VSL-\d{3}$/.test(vesselValue)) {
+                // It's already a vessel ID, use it directly
+                vesselIdToMatch = vesselValue;
+              } else {
+                // It's a vessel name, need to look it up in master data (master ID "014")
+                const vesselMasterData = await this.getMasterDataEntries("014");
+                const vessel = vesselMasterData?.find((v: any) => v.name === vesselValue);
+                
+                if (vessel && vessel.entryId) {
+                  // Use the entryId which is in VSL-XXX format
+                  vesselIdToMatch = vessel.entryId;
+                }
+              }
+            }
+            
+            if (vesselIdToMatch && assignment.rank) {
+              // Look for crew members currently on this vessel with this rank
+              // Note: crew.presentVessel stores vessel ID format "VSL-003"
               const crewOnBoard = Array.from(this.crewMembers.values()).find(crew => 
                 crew.presentVessel === vesselIdToMatch && crew.presentRank === assignment.rank
               );

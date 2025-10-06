@@ -37,14 +37,15 @@ The application is built with a modern web stack, adhering to a module-first arc
 - **Loading States**: Consistent loading indicators.
 
 ### Technical Implementations
-- **Vessel ID/Name Translation Architecture**: Ensures all backend storage uses vessel IDs while the UI consistently displays vessel names, with a dedicated translation layer (`useVesselLookup` hook) for bidirectional conversion.
+- **Vessel ID/Name Translation Architecture**: Ensures all backend storage uses vessel IDs (VSL-XXX format) while the UI consistently displays vessel names, with a dedicated translation layer (`useVesselLookup` hook) for bidirectional conversion. Backend APIs handle legacy assignments by looking up vessel names in Master Data (master ID "014") when vesselId is missing.
+- **Master Data System**: Centralized master data management where vessels (master ID "014") and other reference data are stored as master data entries with `entryId` (e.g., VSL-003) and descriptive fields. The `getMasterDataEntries()` API provides consistent access to master data across the application.
 - **Vessel Revision System**: Manages vessel rank assignments with "Save Draft" and "Submit" workflows, including date validation and draft cleanup.
 - **Rank Designation Synchronization**: A two-tier system for company and vessel rank designations, supporting inheritance and vessel-specific overrides with API backward compatibility.
 - **Vessel Database Module**: Displays vessel data, calculates dynamic crew counts, and includes an Officer Matrix, Planning tab for crew relief, and Training Matrix with compliance indicators.
 - **Rotation Module**: A dedicated workspace for crew rotation planning and management, featuring:
     - **Due Section**: Lists crew members due/overdue for rotation with a unified dual-section table combining AG Grid and a Canvas-rendered 7-month timeline for visual representation. Includes a comprehensive filter bar.
     - **Plan Section**: Allows creation and editing of rotation plans through a dialog that enables assigning available crew to vessels with specified joining dates and contract periods. Features a multi-vessel assignment indicator and a timeline canvas.
-    - **Approval Section**: Planned workflow for rotation plan approval.
+    - **Approval Section**: Displays proposed rotation assignments with canvas-rendered timelines showing current crew contract periods (green), grace periods (yellow), overdue periods (pink), and new assignments (blue). Fully supports all ranks including Master positions with proper vessel ID resolution.
 - **Performance Optimization**: Utilizes map-based lookups, TanStack Query for caching, `useRef` for preventing re-renders, `useMemo` for calculations, and optimized `PersistentFileStorage`.
 - **Data Storage**: `PersistentFileStorage` for development, with PostgreSQL/Drizzle ORM schema for production.
 
