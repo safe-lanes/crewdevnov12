@@ -653,7 +653,8 @@ function DatePeriodDialog({
 // Vessel Timeline Component - shows existing crew (top) and new assignments (bottom)
 function VesselTimelineView({ 
   vessels, 
-  ranks, 
+  queryRanks,
+  displayRanks,
   selectedVessel,
   onVesselSelect,
   onAssignmentClick,
@@ -661,7 +662,8 @@ function VesselTimelineView({
   assignments = []
 }: { 
   vessels: string[]; 
-  ranks: string[]; 
+  queryRanks: string[];
+  displayRanks: string[];
   selectedVessel: string;
   onVesselSelect: (vessel: string) => void;
   onAssignmentClick?: (assignment: Assignment) => void;
@@ -678,34 +680,72 @@ function VesselTimelineView({
   const endDate = dateRange.end;
   const totalDays = useMemo(() => differenceInDays(endDate, startDate), [startDate, endDate]);
   
-  // Fetch existing crew for selected vessels and ranks
+  // Fetch existing crew for selected vessels and ALL ranks (including base ranks)
   const queryParams = new URLSearchParams();
   queryParams.append('filterType', 'vessel');
   vessels.forEach(v => queryParams.append('vessels', v));
-  ranks.forEach(r => queryParams.append('rank', r));
+  queryRanks.forEach(r => queryParams.append('rank', r));
   
   const { data: existingCrew = [] } = useQuery<ExistingCrew[]>({
     queryKey: ['/api/rotation/due-crew', queryParams.toString()],
     queryFn: () => fetch(`/api/rotation/due-crew?${queryParams.toString()}`).then(res => res.json()),
-    enabled: vessels.length > 0 && ranks.length > 0,
+    enabled: vessels.length > 0 && queryRanks.length > 0,
   });
   
-  // Group data by vessel and rank
+  // Build rank mapping: map base ranks to their variants for crew assignment
+  const rankMapping = useMemo(() => {
+    const mapping = new Map<string, string[]>();
+    
+    displayRanks.forEach(rank => {
+      if (rank.includes('_')) {
+        // This is a variant, extract base rank
+        const baseRank = rank.substring(0, rank.lastIndexOf('_'));
+        if (!mapping.has(baseRank)) {
+          mapping.set(baseRank, []);
+        }
+        mapping.get(baseRank)!.push(rank);
+      }
+    });
+    
+    return mapping;
+  }, [displayRanks]);
+  
+  // Group data by vessel and display rank (with smart mapping from base ranks to variants)
   const groupedData = useMemo(() => {
     const groups: { [key: string]: { [key: string]: { existing: ExistingCrew[], assignments: Assignment[] } } } = {};
     
     vessels.forEach(vessel => {
       groups[vessel] = {};
-      ranks.forEach(rank => {
+      displayRanks.forEach(rank => {
         groups[vessel][rank] = {
-          existing: existingCrew.filter(c => c.vessel === vessel && c.rank === rank),
+          existing: [],
           assignments: assignments.filter(a => a.vessel === vessel && a.rank === rank),
         };
       });
     });
     
+    // Distribute existing crew to appropriate display ranks
+    existingCrew.forEach(crew => {
+      const vessel = crew.vessel;
+      const crewRank = crew.rank;
+      
+      // Check if this rank is in displayRanks
+      if (displayRanks.includes(crewRank)) {
+        // Direct match - add to this rank
+        if (groups[vessel]?.[crewRank]) {
+          groups[vessel][crewRank].existing.push(crew);
+        }
+      } else if (rankMapping.has(crewRank)) {
+        // This is a base rank that has variants - distribute to first variant
+        const variants = rankMapping.get(crewRank)!;
+        if (variants.length > 0 && groups[vessel]?.[variants[0]]) {
+          groups[vessel][variants[0]].existing.push(crew);
+        }
+      }
+    });
+    
     return groups;
-  }, [vessels, ranks, existingCrew, assignments]);
+  }, [vessels, displayRanks, existingCrew, assignments, rankMapping]);
   
   // Resize canvas to match container
   useEffect(() => {
@@ -742,6 +782,9 @@ function VesselTimelineView({
     
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    
+    // Safety check: ensure vessels and displayRanks are defined arrays
+    if (!Array.isArray(vessels) || !Array.isArray(displayRanks)) return;
     
     const width = canvasSize.width;
     const height = canvasSize.height;
@@ -821,7 +864,7 @@ function VesselTimelineView({
       yOffset += monthHeaderHeight;
       
       // Draw rank rows
-      ranks.forEach((rank, rankIdx) => {
+      displayRanks.forEach((rank, rankIdx) => {
         const rowData = groupedData[vessel]?.[rank];
         if (!rowData) return;
         
@@ -936,7 +979,7 @@ function VesselTimelineView({
     ctx.lineTo(todayX, yOffset);
     ctx.stroke();
     
-  }, [vessels, ranks, groupedData, selectedVessel, months, today, startDate, endDate, totalDays, canvasSize]);
+  }, [vessels, displayRanks, groupedData, selectedVessel, months, today, startDate, endDate, totalDays, canvasSize]);
   
   // Handle canvas click for vessel selection and assignment editing
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -970,8 +1013,8 @@ function VesselTimelineView({
       yOffset += vesselHeaderHeight + monthHeaderHeight;
       
       // Check if clicked on an assignment bar in any rank row
-      for (let rankIdx = 0; rankIdx < ranks.length; rankIdx++) {
-        const rank = ranks[rankIdx];
+      for (let rankIdx = 0; rankIdx < displayRanks.length; rankIdx++) {
+        const rank = displayRanks[rankIdx];
         const rowY = yOffset + (rankIdx * rowHeight);
         const bottomBarY = rowY + 20;
         const bottomBarHeight = 15;
@@ -1001,7 +1044,7 @@ function VesselTimelineView({
         }
       }
       
-      yOffset += ranks.length * rowHeight;
+      yOffset += displayRanks.length * rowHeight;
     }
   };
   
@@ -1755,7 +1798,8 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
             ) : (
               <VesselTimelineView
                 vessels={selectedVessels}
-                ranks={timelineRoleVariants}
+                queryRanks={selectedRoleVariants}
+                displayRanks={timelineRoleVariants}
                 selectedVessel={selectedVessel}
                 onVesselSelect={setSelectedVessel}
                 onAssignmentClick={handleAssignmentClick}
