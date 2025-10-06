@@ -477,25 +477,58 @@ function DatePeriodDialog({
   open,
   onOpenChange,
   onApply,
+  onUnassign,
   crewName,
+  crewId,
+  vesselName,
+  rank,
+  assignments = [],
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onApply: (joiningDate: Date, contractPeriod: number) => void;
+  onUnassign: () => void;
   crewName: string;
+  crewId: string;
+  vesselName: string;
+  rank: string;
+  assignments?: Assignment[];
 }) {
   const [joiningDate, setJoiningDate] = useState<Date>();
   const [contractPeriod, setContractPeriod] = useState<string>('');
+  const [unassignChecked, setUnassignChecked] = useState(false);
+
+  // Check if crew is already assigned to this vessel and rank
+  const isAlreadyAssigned = useMemo(() => {
+    return assignments.some(a => 
+      a.crewId === crewId && 
+      a.vessel === vesselName && 
+      a.rank === rank
+    );
+  }, [assignments, crewId, vesselName, rank]);
 
   // Reset form when dialog closes
   useEffect(() => {
     if (!open) {
       setJoiningDate(undefined);
       setContractPeriod('');
+      setUnassignChecked(false);
     }
   }, [open]);
 
   const handleApply = () => {
+    // Priority: If unassign is checked, unassign regardless of other fields
+    if (unassignChecked) {
+      onUnassign();
+      onOpenChange(false);
+      // Reset
+      setJoiningDate(undefined);
+      setContractPeriod('');
+      setUnassignChecked(false);
+      return;
+    }
+
+    // Otherwise, validate and create assignment
     if (!joiningDate || !contractPeriod) {
       return;
     }
@@ -504,6 +537,7 @@ function DatePeriodDialog({
     // Reset
     setJoiningDate(undefined);
     setContractPeriod('');
+    setUnassignChecked(false);
   };
 
   const handleCancel = () => {
@@ -511,6 +545,7 @@ function DatePeriodDialog({
     // Reset
     setJoiningDate(undefined);
     setContractPeriod('');
+    setUnassignChecked(false);
   };
 
   return (
@@ -564,6 +599,26 @@ function DatePeriodDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Unassign Checkbox */}
+          <div className="flex items-center gap-2 pt-2">
+            <Checkbox
+              id="unassign-checkbox"
+              checked={unassignChecked}
+              onCheckedChange={(checked) => setUnassignChecked(checked as boolean)}
+              disabled={!isAlreadyAssigned}
+              data-testid="checkbox-unassign"
+            />
+            <label
+              htmlFor="unassign-checkbox"
+              className={cn(
+                "text-sm font-medium cursor-pointer",
+                isAlreadyAssigned ? "text-red-600" : "text-gray-400"
+              )}
+            >
+              Unassign from vessel
+            </label>
+          </div>
         </div>
 
         <div className="flex justify-end gap-2">
@@ -576,7 +631,7 @@ function DatePeriodDialog({
           </Button>
           <Button
             onClick={handleApply}
-            disabled={!joiningDate || !contractPeriod}
+            disabled={!unassignChecked && (!joiningDate || !contractPeriod)}
             className="bg-blue-600 hover:bg-blue-700"
             data-testid="button-apply-assignment"
           >
@@ -1159,6 +1214,25 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
     setAssignments(prev => [...prev, newAssignment]);
   };
 
+  const handleUnassign = () => {
+    if (!selectedCrew || !selectedVessel) return;
+
+    // Remove assignment matching crew, vessel, and rank
+    setAssignments(prev => 
+      prev.filter(a => !(
+        a.crewId === selectedCrew.id && 
+        a.vessel === selectedVessel && 
+        a.rank === selectedCrew.rank
+      ))
+    );
+
+    // Show toast confirmation
+    toast({
+      title: "Success",
+      description: `${selectedCrew.name} unassigned from ${selectedVessel}`,
+    });
+  };
+
   const handleBack = () => {
     onOpenChange(false);
   };
@@ -1480,7 +1554,12 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
         open={dateDialogOpen}
         onOpenChange={setDateDialogOpen}
         onApply={handleAssignmentApply}
+        onUnassign={handleUnassign}
         crewName={selectedCrew?.name || ''}
+        crewId={selectedCrew?.id || ''}
+        vesselName={selectedVessel}
+        rank={selectedCrew?.rank || ''}
+        assignments={assignments}
       />
     </Dialog>
   );
