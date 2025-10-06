@@ -1457,7 +1457,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             id: crew.id,
             vessel: crew.presentVessel,
             rank: crew.presentRank,
-            name: `${crew.firstName} ${crew.familyName || ''}`.trim(),
+            name: `${crew.firstName} ${crew.middleName || ''} ${crew.familyName || ''}`.trim(),
             reliefDue: crew.reliefDue,
             contractStartDate: crew.joiningDate,
             contractEndDate: crew.reliefDue,
