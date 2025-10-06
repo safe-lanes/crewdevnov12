@@ -1424,6 +1424,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const rawJoiningDate = matchingPlan?.joiningDate || crew.joiningDate;
           const rawReliefDue = matchingPlan?.reliefDueDate || crew.reliefDue;
           
+          // Debug logging
+          if (crew.id === 'A000304' || crew.id === 'A000502') {
+            console.log(`🔍 [PLANNING DEBUG] ${crew.presentRank} - ${crew.firstName} (${crew.id}):`, {
+              matchingPlan: matchingPlan ? `Found (crewId: ${matchingPlan.crewMemberId})` : 'Not found',
+              rawJoiningDate,
+              rawReliefDue,
+            });
+          }
+          
           // Calculate range dates with defaults (1 month if no planning data)
           const rangeEndMonths = matchingPlan?.contractEndRangeEndMonths ?? 1;
           const rangeStartMonths = matchingPlan?.contractEndRangeStartMonths ?? 0;
