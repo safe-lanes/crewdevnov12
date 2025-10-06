@@ -448,7 +448,7 @@ function CrewColumn({
                 />
                 <div className="flex-1">
                   <div className={`font-medium text-sm ${getCrewNameColor(crew.id)}`}>
-                    {crew.name.split(' ')[0]} {crew.name.split(' ').slice(-1)[0].charAt(0)}
+                    {crew.name}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
                     {crew.experience.company} / {crew.experience.rank} / {crew.experience.tankers} / {crew.experience.oow} / {crew.experience.endorsements}
