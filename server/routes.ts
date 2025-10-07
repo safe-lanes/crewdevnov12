@@ -1389,10 +1389,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create vessel planning entry
+      const assignedPosition = matchingRank.role || matchingRank.rank;
       const planningData = {
         vesselId: crewMember.presentVessel,
         rankId: matchingRank.id || matchingRank.rankId,
-        rank: matchingRank.role || matchingRank.rank,
+        rank: assignedPosition,
         crewMemberId: crewId,
         reliefDue: crewMember.reliefDue || null,
         createdAt: new Date().toISOString(),
@@ -1400,7 +1401,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const created = await storage.createVesselPlanning(planningData);
-      console.log(`✅ [AUTO-SYNC] Created vessel planning entry for ${crewId}: ${crewRank} on ${crewMember.presentVessel}`);
+      
+      // 🔄 UPDATE CREW MEMBER'S RANK TO MATCH ASSIGNED POSITION
+      // This ensures Crew List shows the same position as Planning/Officer Matrix
+      if (assignedPosition !== crewRank) {
+        await storage.updateCrewMember(crewId, { 
+          presentRank: assignedPosition 
+        });
+        console.log(`✅ [AUTO-SYNC] Updated crew ${crewId} rank: ${crewRank} → ${assignedPosition}`);
+      }
+      
+      console.log(`✅ [AUTO-SYNC] Created vessel planning entry for ${crewId}: ${assignedPosition} on ${crewMember.presentVessel}`);
       return created;
     } catch (error) {
       console.error(`❌ [AUTO-SYNC] Failed to auto-create vessel planning:`, error);
@@ -1458,14 +1469,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
             })[0];
 
             const rankData = JSON.parse(latestRevision.revisionData);
-            const matchingRank = rankData.find((r: any) => {
+            
+            // Find ALL matching positions to handle multiple ranks (AB_1, AB_2, etc.)
+            const matchingRanks = rankData.filter((r: any) => {
               const rankName = (r.role || r.rank)?.split('_')[0];
               return (r.role === newRank || r.rank === newRank || rankName === newRank);
             });
 
-            if (matchingRank) {
+            if (matchingRanks.length > 0) {
+              let matchingRank = matchingRanks[0]; // Default to first match
+              
+              // If multiple positions exist, try to keep the same position or find vacant one
+              if (matchingRanks.length > 1) {
+                // First, try to find the exact position match (crew already has AB_1, keep it)
+                const exactMatch = matchingRanks.find((r: any) => 
+                  (r.role === newRank || r.rank === newRank)
+                );
+                if (exactMatch) {
+                  matchingRank = exactMatch;
+                } else {
+                  // Find first vacant position
+                  for (const rank of matchingRanks) {
+                    const rankId = rank.id || rank.rankId;
+                    const isOccupied = allPlanning.some((p: any) => 
+                      p.rankId === rankId && p.crewMemberId && p.crewMemberId !== crewId
+                    );
+                    if (!isOccupied) {
+                      matchingRank = rank;
+                      break;
+                    }
+                  }
+                }
+              }
+              
+              const assignedPosition = matchingRank.role || matchingRank.rank;
               updateData.rankId = matchingRank.id || matchingRank.rankId;
-              updateData.rank = matchingRank.role || matchingRank.rank;
+              updateData.rank = assignedPosition;
+              
+              // 🔄 UPDATE CREW MEMBER'S RANK TO MATCH ASSIGNED POSITION
+              if (assignedPosition !== newRank) {
+                await storage.updateCrewMember(crewId, { 
+                  presentRank: assignedPosition 
+                });
+                console.log(`✅ [AUTO-SYNC] Updated crew ${crewId} rank: ${newRank} → ${assignedPosition}`);
+              }
             }
           }
         }
