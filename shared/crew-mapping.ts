@@ -232,6 +232,60 @@ function calculateAge(dateOfBirth: string | null): string {
 }
 
 /**
+ * RANK-ROLE MAPPING UTILITIES
+ * 
+ * Purpose: Maintain link between vessel-specific positions (roles) and base ranks
+ * 
+ * - Position/Role: Specific vessel position like "AB_1", "AB_2", "3rd Officer_1"
+ * - Base Rank: The actual rank without suffix like "AB", "3rd Officer"
+ * 
+ * Use cases:
+ * - Display: Show specific positions (AB_1) for crew assignment clarity
+ * - Reports: Extract base ranks (AB) for official crew lists and documents
+ */
+
+/**
+ * Extract base rank from vessel position/role
+ * 
+ * Examples:
+ *   "AB_1" → "AB"
+ *   "AB_2" → "AB"
+ *   "3rd Officer_1" → "3rd Officer"
+ *   "Master" → "Master" (no suffix)
+ * 
+ * @param position - The vessel-specific position (e.g., "AB_1", "3rd Officer_2")
+ * @returns The base rank without numeric suffix
+ */
+export function getBaseRank(position: string | null | undefined): string {
+  if (!position) return '';
+  
+  // Split by underscore and take the base part
+  // Handles: "AB_1" → "AB", "3rd Officer_1" → "3rd Officer", "Master" → "Master"
+  const parts = position.split('_');
+  
+  // If there's a numeric suffix (e.g., _1, _2), remove it
+  if (parts.length > 1 && /^\d+$/.test(parts[parts.length - 1])) {
+    return parts.slice(0, -1).join('_');
+  }
+  
+  // No suffix, return as-is
+  return position;
+}
+
+/**
+ * Check if a position has a numeric suffix
+ * 
+ * @param position - The vessel-specific position
+ * @returns true if position has numeric suffix (e.g., "AB_1"), false otherwise
+ */
+export function hasPositionSuffix(position: string | null | undefined): boolean {
+  if (!position) return false;
+  
+  const parts = position.split('_');
+  return parts.length > 1 && /^\d+$/.test(parts[parts.length - 1]);
+}
+
+/**
  * Convert database CrewMember to frontend DTO
  */
 export function fromStorageCrew(dbCrew: CrewMember): CrewMemberDTO {
