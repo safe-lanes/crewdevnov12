@@ -1368,17 +1368,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const rankName = (r.role || r.rank)?.split('_')[0];
         return (r.role === crewRank || r.rank === crewRank || rankName === crewRank);
       });
+      
+      // 🔧 PRIORITIZE NUMBERED POSITIONS: If both base rank and numbered positions exist,
+      // only use numbered positions (rows with 'role' field like AB_1, AB_2, AB_3)
+      const rolePositions = matchingRanks.filter((r: any) => r.role && r.isRoleRow);
+      const finalMatchingRanks = rolePositions.length > 0 ? rolePositions : matchingRanks;
 
-      if (matchingRanks.length === 0) {
+      if (finalMatchingRanks.length === 0) {
         console.log(`⚡ [AUTO-SYNC] Rank ${crewRank} not found in vessel ${crewMember.presentVessel} revision`);
         return null;
       }
 
       // If multiple positions exist (e.g., AB_1, AB_2, AB_3), find the first VACANT one
       let matchingRank = null;
-      if (matchingRanks.length > 1) {
+      if (finalMatchingRanks.length > 1) {
         // Get existing planning to check which positions are occupied
-        for (const rank of matchingRanks) {
+        for (const rank of finalMatchingRanks) {
           const rankId = rank.id || rank.rankId;
           const isOccupied = allPlanning.some((p: any) => 
             p.rankId === rankId && p.crewMemberId && p.crewMemberId !== crewId
@@ -1396,7 +1401,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } else {
         // Only one position, use it
-        matchingRank = matchingRanks[0];
+        matchingRank = finalMatchingRanks[0];
       }
 
       // Create vessel planning entry
