@@ -927,7 +927,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { vesselId } = req.params;
       const planning = await storage.getVesselPlanningByVessel(vesselId);
-      res.json(planning);
+      
+      // JOIN with crew members to get complete data from single source of truth
+      const crewMembers = await storage.getCrewMembers();
+      const crewMap = new Map(crewMembers.map((c: any) => [c.id || c.employeeId, c]));
+      
+      // Enrich planning data with crew member information
+      const enrichedPlanning = planning.map((p: any) => {
+        if (p.crewMemberId) {
+          const crew: any = crewMap.get(p.crewMemberId);
+          if (crew) {
+            return {
+              ...p,
+              // Override with data from crew members (single source of truth)
+              crewName: `${crew.firstName || ''} ${crew.lastName || ''}`.trim(),
+              nationality: crew.nationality,
+              joiningDate: crew.joiningDate,
+              reliefDue: crew.reliefDue,
+              reliefDate: crew.reliefDue, // Alias for backward compatibility
+              // Keep crew member reference for future use
+              crewMemberData: {
+                id: crew.id,
+                employeeId: crew.employeeId,
+                firstName: crew.firstName,
+                lastName: crew.lastName,
+                nationality: crew.nationality,
+                presentRank: crew.presentRank
+              }
+            };
+          }
+        }
+        return p;
+      });
+      
+      res.json(enrichedPlanning);
     } catch (error) {
       console.error("Failed to fetch vessel planning:", error);
       res.status(500).json({ error: "Failed to fetch vessel planning" });
