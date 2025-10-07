@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import PromotionsSideBar from './PromotionsSideBar';
+import { PromotionsTable } from './PromotionsTable';
 import MainLayout from '@/components/main/MainLayout';
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -157,9 +158,16 @@ export function PromotionsModule() {
                     </div>
                 )}
 
-                {/* Table will be added later */}
-                <div className="flex-1 p-4">
-                    {/* Placeholder for table */}
+                {/* Promotions Table */}
+                <div className="flex-1 px-4">
+                    <PromotionsTable
+                        searchName={searchName}
+                        promotionToRank={promotionToRank}
+                        vesselType={vesselType}
+                        nationality={nationality}
+                        criteria={criteria}
+                        status={status}
+                    />
                 </div>
             </div>
             </MainLayout>
