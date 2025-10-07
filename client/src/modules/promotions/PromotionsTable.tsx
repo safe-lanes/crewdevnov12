@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
 import { Button } from '@/components/ui/button';
 import { Edit } from 'lucide-react';
+import { useVesselLookup } from '@/hooks/useVesselLookup';
 
 // Status indicator cell renderer (green/yellow/gray circles)
 const StatusIndicatorRenderer = (params: ICellRendererParams) => {
@@ -109,6 +110,9 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
   status
 }) => {
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
+  
+  // Vessel lookup for ID to name translation
+  const { getVesselName } = useVesselLookup();
 
   // Fetch crew members from crew pool API
   const { data: crewMembers = [], isLoading } = useQuery({
@@ -120,24 +124,42 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     const members = Array.isArray(crewMembers) ? crewMembers : [];
     if (!members || members.length === 0) return [];
 
-    return members.slice(0, 10).map((crew: any, index: number) => ({
-      crewId: crew.employeeId || crew.id || '-',
-      name: `${crew.firstName || 'Unknown'} ${crew.middleInitial || ''} ${crew.familyName || ''}`.trim(),
-      dob: crew.dob || '1985-01-01',
-      nationality: crew.nationality || 'Unknown',
-      promotionToRank: ['Master', 'Chief Engineer', 'Chief Mate', 'Able Seaman', 'Second Officer', 'Bosun', 'Electrician', 'Third Engineer'][index % 8],
-      vesselLeave: crew.currentVessel || (index % 3 === 0 ? 'On Leave' : `MT Sail ${['One', 'Two', 'Three', 'Five', 'Seven'][index % 5]}`),
-      license: ['met', 'pending', 'met'][index % 3],
-      age: ['met', 'met', 'pending'][index % 3],
-      sea: ['met', 'pending', 'met'][index % 3],
-      reco: ['met', 'pending', 'met'][index % 3],
-      promotionChecklist: [40, 75, 80, 60, 45, 90, 85, 50][index % 8],
-      otherCriteria: ['met', 'pending', 'met'][index % 3],
-      cesIndex: ['met', 'pending', 'not-met'][index % 3],
-      trainDocs: ['met', 'pending', 'not-met'][index % 3],
-      status: ['In Progress', 'For Approval', 'Approved'][index % 3],
-    }));
-  }, [crewMembers]);
+    return members.map((crew: any, index: number) => {
+      // Extract vessel ID from crew data (handle both string and object formats)
+      let vesselId = crew.presentVessel || crew.vessel;
+      if (typeof vesselId === 'object' && vesselId !== null) {
+        vesselId = vesselId.id || vesselId.entryId || '';
+      }
+      
+      // Get actual vessel name from vessel ID
+      const vesselName = vesselId ? getVesselName(vesselId) : null;
+      
+      // Check if crew is on leave (case-insensitive check for various status formats)
+      const status = crew.status || '';
+      const isOnLeave = status.toLowerCase().includes('leave') || 
+                        status.toLowerCase().includes('available') ||
+                        !vesselId;
+      const vesselLeave = isOnLeave ? 'On Leave' : (vesselName || vesselId || '-');
+      
+      return {
+        crewId: crew.employeeId || crew.id || '-',
+        name: `${crew.firstName || 'Unknown'} ${crew.middleInitial || ''} ${crew.familyName || ''}`.trim(),
+        dob: crew.dateOfBirth || crew.dob || '-',
+        nationality: crew.nationality || 'Unknown',
+        promotionToRank: crew.presentRank || crew.rank || '-',
+        vesselLeave: vesselLeave,
+        license: ['met', 'pending', 'met'][index % 3],
+        age: ['met', 'met', 'pending'][index % 3],
+        sea: ['met', 'pending', 'met'][index % 3],
+        reco: ['met', 'pending', 'met'][index % 3],
+        promotionChecklist: [40, 75, 80, 60, 45, 90, 85, 50][index % 8],
+        otherCriteria: ['met', 'pending', 'met'][index % 3],
+        cesIndex: ['met', 'pending', 'not-met'][index % 3],
+        trainDocs: ['met', 'pending', 'not-met'][index % 3],
+        status: ['In Progress', 'For Approval', 'Approved'][index % 3],
+      };
+    });
+  }, [crewMembers, getVesselName]);
 
   // Filter data based on filters
   const filteredData = useMemo(() => {
