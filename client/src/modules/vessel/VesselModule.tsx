@@ -641,13 +641,13 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                         {/* Name - Display only */}
                         <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                             <span className="text-sm text-gray-700">Name:</span>
-                            <span className="text-sm text-gray-900">{planningData?.onBoardCrewName || 'James Wilson'}</span>
+                            <span className="text-sm text-gray-900">{planningData?.crewName || planningData?.onBoardCrewName || 'James Wilson'}</span>
                         </div>
 
                         {/* Nationality - Display only */}
                         <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                             <span className="text-sm text-gray-700">Nationality:</span>
-                            <span className="text-sm text-gray-900">{planningData?.onBoardCrewNationality || 'British'}</span>
+                            <span className="text-sm text-gray-900">{planningData?.nationality || planningData?.onBoardCrewNationality || 'British'}</span>
                         </div>
 
                         {/* Relief Due - Display only */}
