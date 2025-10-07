@@ -101,7 +101,7 @@ export interface IStorage {
   getProposedAssignments(filters?: { vessels?: string[]; ranks?: string[]; draftId?: string; dateFrom?: string; dateTo?: string }): Promise<any[]>;
   deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[] }>;
   rejectAssignment(planId: number, assignmentIndex: number): Promise<RotationPlan | undefined>;
-  checkAssignmentConflicts(crewId: string, joiningDate: string, contractPeriod: number): Promise<any[]>;
+  checkAssignmentConflicts(crewId: string, joiningDate: string, contractPeriod: number, excludePlanId?: number, excludeAssignmentIndex?: number): Promise<any[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -1191,11 +1191,13 @@ export class MemStorage implements IStorage {
     const assignment = assignments[assignmentIndex];
     if (!assignment) return { success: false };
 
-    // Check for conflicts
+    // Check for conflicts, excluding this assignment to avoid self-conflict
     const conflicts = await this.checkAssignmentConflicts(
       assignment.crewId,
       assignment.joiningDate,
-      assignment.contractPeriod
+      assignment.contractPeriod,
+      planId,
+      assignmentIndex
     );
 
     if (conflicts.length > 0) {
@@ -1266,7 +1268,13 @@ export class MemStorage implements IStorage {
     return updatedPlan;
   }
 
-  async checkAssignmentConflicts(crewId: string, joiningDate: string, contractPeriod: number): Promise<any[]> {
+  async checkAssignmentConflicts(
+    crewId: string, 
+    joiningDate: string, 
+    contractPeriod: number,
+    excludePlanId?: number,
+    excludeAssignmentIndex?: number
+  ): Promise<any[]> {
     const conflicts: any[] = [];
     const joiningDateObj = new Date(joiningDate);
     const contractEndDate = new Date(joiningDateObj);
@@ -1276,7 +1284,16 @@ export class MemStorage implements IStorage {
     for (const plan of this.rotationPlans.values()) {
       if (plan.assignments) {
         const assignments = JSON.parse(plan.assignments);
-        for (const assignment of assignments) {
+        for (let i = 0; i < assignments.length; i++) {
+          const assignment = assignments[i];
+          
+          // Skip the assignment being deployed to avoid self-conflict
+          if (excludePlanId !== undefined && excludeAssignmentIndex !== undefined) {
+            if (plan.id === excludePlanId && i === excludeAssignmentIndex) {
+              continue;
+            }
+          }
+          
           if (assignment.crewId === crewId && assignment.proposalStatus === "proposed") {
             const assignmentJoiningDate = new Date(assignment.joiningDate);
             const assignmentEndDate = new Date(assignmentJoiningDate);
@@ -2733,11 +2750,13 @@ export class PersistentFileStorage implements IStorage {
     const assignment = assignments[assignmentIndex];
     if (!assignment) return { success: false };
 
-    // Check for conflicts
+    // Check for conflicts, excluding this assignment to avoid self-conflict
     const conflicts = await this.checkAssignmentConflicts(
       assignment.crewId,
       assignment.joiningDate,
-      assignment.contractPeriod
+      assignment.contractPeriod,
+      planId,
+      assignmentIndex
     );
 
     if (conflicts.length > 0) {
@@ -2810,7 +2829,13 @@ export class PersistentFileStorage implements IStorage {
     return updatedPlan;
   }
 
-  async checkAssignmentConflicts(crewId: string, joiningDate: string, contractPeriod: number): Promise<any[]> {
+  async checkAssignmentConflicts(
+    crewId: string, 
+    joiningDate: string, 
+    contractPeriod: number,
+    excludePlanId?: number,
+    excludeAssignmentIndex?: number
+  ): Promise<any[]> {
     const conflicts: any[] = [];
     const joiningDateObj = new Date(joiningDate);
     const contractEndDate = new Date(joiningDateObj);
@@ -2820,7 +2845,16 @@ export class PersistentFileStorage implements IStorage {
     for (const plan of this.rotationPlans.values()) {
       if (plan.assignments) {
         const assignments = JSON.parse(plan.assignments);
-        for (const assignment of assignments) {
+        for (let i = 0; i < assignments.length; i++) {
+          const assignment = assignments[i];
+          
+          // Skip the assignment being deployed to avoid self-conflict
+          if (excludePlanId !== undefined && excludeAssignmentIndex !== undefined) {
+            if (plan.id === excludePlanId && i === excludeAssignmentIndex) {
+              continue;
+            }
+          }
+          
           if (assignment.crewId === crewId && assignment.proposalStatus === "proposed") {
             const assignmentJoiningDate = new Date(assignment.joiningDate);
             const assignmentEndDate = new Date(assignmentJoiningDate);

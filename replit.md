@@ -45,7 +45,7 @@ The application is built with a modern web stack, adhering to a module-first arc
 - **Rotation Module**: A dedicated workspace for crew rotation planning and management, featuring:
     - **Due Section**: Lists crew members due/overdue for rotation with a unified dual-section table combining AG Grid and a Canvas-rendered 7-month timeline for visual representation. Includes a comprehensive filter bar.
     - **Plan Section**: Allows creation and editing of rotation plans through a dialog that enables assigning available crew to vessels with specified joining dates and contract periods. Features a multi-vessel assignment indicator and a timeline canvas.
-    - **Approval Section**: Displays proposed rotation assignments with canvas-rendered timelines showing current crew contract periods (green), grace periods (yellow), overdue periods (pink), and new assignments (blue). Fully supports all ranks including Master positions with proper vessel ID resolution.
+    - **Approval Section**: Displays proposed rotation assignments with canvas-rendered timelines showing current crew contract periods (green), grace periods (yellow), overdue periods (pink), and new assignments (blue). Fully supports all ranks including Master positions with proper vessel ID resolution. Deployment conflict detection correctly excludes the assignment being deployed to prevent false self-conflict errors.
 - **Performance Optimization**: Utilizes map-based lookups, TanStack Query for caching, `useRef` for preventing re-renders, `useMemo` for calculations, and optimized `PersistentFileStorage`.
 - **Data Storage**: `PersistentFileStorage` for development, with PostgreSQL/Drizzle ORM schema for production.
 
