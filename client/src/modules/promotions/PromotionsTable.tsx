@@ -121,7 +121,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     if (!members || members.length === 0) return [];
 
     return members.slice(0, 10).map((crew: any, index: number) => ({
-      crewId: crew.id || `2025-${String(index + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 20)).padStart(2, '0')}`,
+      crewId: crew.employeeId || crew.id || '-',
       name: `${crew.firstName || 'Unknown'} ${crew.middleInitial || ''} ${crew.familyName || ''}`.trim(),
       dob: crew.dob || '1985-01-01',
       nationality: crew.nationality || 'Unknown',
