@@ -1242,11 +1242,10 @@ export class MemStorage implements IStorage {
         relieverCrewId: assignment.crewId,
         relieverCrewName: assignment.crewName,
         joiningDate: assignment.joiningDate,
-        joiningStatus: "Confirmed",
+        joiningStatus: "Planned",
         contractPeriodMonths: assignment.contractPeriod,
         deploymentChecklistCompleted: false,
         applicableDocsChecked: false,
-        reliefStatus: "Deployed",
       });
     } else {
       // Create new vessel planning entry if none exists
@@ -1257,11 +1256,10 @@ export class MemStorage implements IStorage {
         relieverCrewId: assignment.crewId,
         relieverCrewName: assignment.crewName,
         joiningDate: assignment.joiningDate,
-        joiningStatus: "Confirmed",
+        joiningStatus: "Planned",
         contractPeriodMonths: assignment.contractPeriod,
         deploymentChecklistCompleted: false,
         applicableDocsChecked: false,
-        reliefStatus: "Deployed",
       };
       await this.createVesselPlanning(vesselPlanningEntry);
     }
@@ -2826,11 +2824,10 @@ export class PersistentFileStorage implements IStorage {
         relieverCrewId: assignment.crewId,
         relieverCrewName: assignment.crewName,
         joiningDate: assignment.joiningDate,
-        joiningStatus: "Confirmed",
+        joiningStatus: "Planned",
         contractPeriodMonths: assignment.contractPeriod,
         deploymentChecklistCompleted: false,
         applicableDocsChecked: false,
-        reliefStatus: "Deployed",
       });
     } else {
       // Create new vessel planning entry if none exists
@@ -2841,11 +2838,10 @@ export class PersistentFileStorage implements IStorage {
         relieverCrewId: assignment.crewId,
         relieverCrewName: assignment.crewName,
         joiningDate: assignment.joiningDate,
-        joiningStatus: "Confirmed",
+        joiningStatus: "Planned",
         contractPeriodMonths: assignment.contractPeriod,
         deploymentChecklistCompleted: false,
         applicableDocsChecked: false,
-        reliefStatus: "Deployed",
       };
       await this.createVesselPlanning(vesselPlanningEntry);
     }

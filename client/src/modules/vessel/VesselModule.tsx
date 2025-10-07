@@ -1588,13 +1588,13 @@ export const VesselModule = (): JSX.Element => {
                                                                 
                                                                 {/* Reliever Status cells */}
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-reliever-name-${index + 1}`}>
-                                                                    {rankPlanningData?.relieverName || ''}
+                                                                    {rankPlanningData?.relieverCrewName || ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-joining-date-${index + 1}`}>
-                                                                    {rankPlanningData?.relieverJoiningDate || ''}
+                                                                    {rankPlanningData?.joiningDate || ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-joining-port-${index + 1}`}>
-                                                                    {rankPlanningData?.relieverJoiningPort || ''}
+                                                                    {rankPlanningData?.joiningPort || ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-joining-status-${index + 1}`}>
                                                                     {rankPlanningData?.joiningStatus || ''}
