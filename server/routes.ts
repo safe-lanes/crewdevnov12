@@ -1371,8 +1371,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // 🔧 PRIORITIZE NUMBERED POSITIONS: If both base rank and numbered positions exist,
       // only use numbered positions (rows with 'role' field like AB_1, AB_2, AB_3)
-      const rolePositions = matchingRanks.filter((r: any) => r.role && r.isRoleRow);
+      // Filter to rows that have a role value (excludes base rank rows where role is null)
+      const rolePositions = matchingRanks.filter((r: any) => r.role !== null && r.role !== undefined);
       const finalMatchingRanks = rolePositions.length > 0 ? rolePositions : matchingRanks;
+      
+      console.log(`⚡ [AUTO-SYNC] Matching ranks for ${crewRank}: ${matchingRanks.length}, Role positions: ${rolePositions.length}`);
 
       if (finalMatchingRanks.length === 0) {
         console.log(`⚡ [AUTO-SYNC] Rank ${crewRank} not found in vessel ${crewMember.presentVessel} revision`);
