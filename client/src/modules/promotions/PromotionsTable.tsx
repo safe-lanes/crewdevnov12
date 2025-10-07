@@ -220,34 +220,42 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     {
       headerName: 'License',
       field: 'license',
-      width: 80,
+      width: 85,
       cellRenderer: StatusIndicatorRenderer,
       sortable: true,
-      resizable: false
+      resizable: false,
+      wrapHeaderText: false,
+      autoHeaderHeight: false
     },
     {
       headerName: 'Age',
       field: 'age',
-      width: 70,
+      width: 75,
       cellRenderer: StatusIndicatorRenderer,
       sortable: true,
-      resizable: false
+      resizable: false,
+      wrapHeaderText: false,
+      autoHeaderHeight: false
     },
     {
       headerName: 'Sea',
       field: 'sea',
-      width: 70,
+      width: 75,
       cellRenderer: StatusIndicatorRenderer,
       sortable: true,
-      resizable: false
+      resizable: false,
+      wrapHeaderText: false,
+      autoHeaderHeight: false
     },
     {
       headerName: 'Reco',
       field: 'reco',
-      width: 70,
+      width: 75,
       cellRenderer: StatusIndicatorRenderer,
       sortable: true,
-      resizable: false
+      resizable: false,
+      wrapHeaderText: false,
+      autoHeaderHeight: false
     },
     {
       headerName: 'Promotion Checklist',
