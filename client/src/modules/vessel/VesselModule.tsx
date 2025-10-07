@@ -1410,7 +1410,7 @@ export const VesselModule = (): JSX.Element => {
                                                             // Strip suffix from rank name (e.g., "3rd Officer_1" -> "3rd Officer")
                                                             const rankName = (rank.role || rank.rank)?.split('_')[0];
                                                             const rankPlanningData = vesselPlanning.find((p: any) => 
-                                                                p.rankId === rank.rankId || p.rank === rankName
+                                                                p.rankId === rank.id || p.rankId === rank.rankId || p.rank === rankName
                                                             );
                                                             
                                                             return (
@@ -1539,7 +1539,7 @@ export const VesselModule = (): JSX.Element => {
                                                         // Strip suffix from rank name (e.g., "3rd Officer_1" -> "3rd Officer")
                                                         const rankName = (rank.role || rank.rank)?.split('_')[0];
                                                         const rankPlanningData = vesselPlanning.find((p: any) => 
-                                                            p.rankId === rank.rankId || p.rank === rankName
+                                                            p.rankId === rank.id || p.rankId === rank.rankId || p.rank === rankName
                                                         );
                                                         
                                                         return (
