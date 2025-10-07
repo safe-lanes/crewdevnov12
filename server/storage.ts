@@ -1220,28 +1220,51 @@ export class MemStorage implements IStorage {
     };
     this.rotationPlans.set(planId, updatedPlan);
 
-    // Create vessel planning entry for the deployed crew
+    // Update vessel planning entry for the deployed crew
     // Require proper IDs - fail if not available
     if (!assignment.vesselId || !assignment.rankId) {
       console.error('Missing vesselId or rankId in assignment:', assignment);
       return { success: false };
     }
 
-    const vesselPlanningEntry = {
-      vesselId: assignment.vesselId,
-      rankId: assignment.rankId,
-      rank: assignment.rank,
-      relieverCrewId: assignment.crewId,
-      relieverCrewName: assignment.crewName,
-      joiningDate: assignment.joiningDate,
-      joiningStatus: "Confirmed",
-      contractPeriodMonths: assignment.contractPeriod,
-      deploymentChecklistCompleted: false,
-      applicableDocsChecked: false,
-      reliefStatus: "Deployed", // Set status to indicate this reliever has been deployed
-    };
+    // Find existing vessel planning record for this vessel + rank
+    let existingPlanningId: number | null = null;
+    for (const [id, planning] of this.vesselPlanning.entries()) {
+      if (planning.vesselId === assignment.vesselId && planning.rankId === assignment.rankId) {
+        existingPlanningId = id;
+        break;
+      }
+    }
 
-    await this.createVesselPlanning(vesselPlanningEntry);
+    if (existingPlanningId !== null) {
+      // Update existing record with reliever information
+      await this.updateVesselPlanning(existingPlanningId, {
+        relieverCrewId: assignment.crewId,
+        relieverCrewName: assignment.crewName,
+        joiningDate: assignment.joiningDate,
+        joiningStatus: "Confirmed",
+        contractPeriodMonths: assignment.contractPeriod,
+        deploymentChecklistCompleted: false,
+        applicableDocsChecked: false,
+        reliefStatus: "Deployed",
+      });
+    } else {
+      // Create new vessel planning entry if none exists
+      const vesselPlanningEntry = {
+        vesselId: assignment.vesselId,
+        rankId: assignment.rankId,
+        rank: assignment.rank,
+        relieverCrewId: assignment.crewId,
+        relieverCrewName: assignment.crewName,
+        joiningDate: assignment.joiningDate,
+        joiningStatus: "Confirmed",
+        contractPeriodMonths: assignment.contractPeriod,
+        deploymentChecklistCompleted: false,
+        applicableDocsChecked: false,
+        reliefStatus: "Deployed",
+      };
+      await this.createVesselPlanning(vesselPlanningEntry);
+    }
 
     return { success: true };
   }
@@ -2781,28 +2804,51 @@ export class PersistentFileStorage implements IStorage {
     this.rotationPlans.set(planId, updatedPlan);
     this.saveToFile(); // SAVE TO FILE!
 
-    // Create vessel planning entry for the deployed crew
+    // Update vessel planning entry for the deployed crew
     // Require proper IDs - fail if not available
     if (!assignment.vesselId || !assignment.rankId) {
       console.error('Missing vesselId or rankId in assignment:', assignment);
       return { success: false };
     }
 
-    const vesselPlanningEntry = {
-      vesselId: assignment.vesselId,
-      rankId: assignment.rankId,
-      rank: assignment.rank,
-      relieverCrewId: assignment.crewId,
-      relieverCrewName: assignment.crewName,
-      joiningDate: assignment.joiningDate,
-      joiningStatus: "Confirmed",
-      contractPeriodMonths: assignment.contractPeriod,
-      deploymentChecklistCompleted: false,
-      applicableDocsChecked: false,
-      reliefStatus: "Deployed", // Set status to indicate this reliever has been deployed
-    };
+    // Find existing vessel planning record for this vessel + rank
+    let existingPlanningId: number | null = null;
+    for (const [id, planning] of this.vesselPlanning.entries()) {
+      if (planning.vesselId === assignment.vesselId && planning.rankId === assignment.rankId) {
+        existingPlanningId = id;
+        break;
+      }
+    }
 
-    await this.createVesselPlanning(vesselPlanningEntry);
+    if (existingPlanningId !== null) {
+      // Update existing record with reliever information
+      await this.updateVesselPlanning(existingPlanningId, {
+        relieverCrewId: assignment.crewId,
+        relieverCrewName: assignment.crewName,
+        joiningDate: assignment.joiningDate,
+        joiningStatus: "Confirmed",
+        contractPeriodMonths: assignment.contractPeriod,
+        deploymentChecklistCompleted: false,
+        applicableDocsChecked: false,
+        reliefStatus: "Deployed",
+      });
+    } else {
+      // Create new vessel planning entry if none exists
+      const vesselPlanningEntry = {
+        vesselId: assignment.vesselId,
+        rankId: assignment.rankId,
+        rank: assignment.rank,
+        relieverCrewId: assignment.crewId,
+        relieverCrewName: assignment.crewName,
+        joiningDate: assignment.joiningDate,
+        joiningStatus: "Confirmed",
+        contractPeriodMonths: assignment.contractPeriod,
+        deploymentChecklistCompleted: false,
+        applicableDocsChecked: false,
+        reliefStatus: "Deployed",
+      };
+      await this.createVesselPlanning(vesselPlanningEntry);
+    }
 
     return { success: true };
   }
