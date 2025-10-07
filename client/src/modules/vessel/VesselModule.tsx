@@ -1556,7 +1556,7 @@ export const VesselModule = (): JSX.Element => {
                                                                     {rankPlanningData?.crewName || ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-relief-due-${index + 1}`}>
-                                                                    {rankPlanningData?.reliefDueDate || ''}
+                                                                    {rankPlanningData?.reliefDue || rankPlanningData?.reliefDate || ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-soff-date-${index + 1}`}>
                                                                     {rankPlanningData?.signOffDate || ''}

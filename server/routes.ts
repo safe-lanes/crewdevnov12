@@ -1388,9 +1388,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const vesselChanged = updates.presentVessel && updates.presentVessel !== oldCrew.presentVessel;
       const rankChanged = updates.presentRank && updates.presentRank !== oldCrew.presentRank;
+      const reliefDueChanged = updates.reliefDue !== undefined && updates.reliefDue !== oldCrew.reliefDue;
       
-      if (!vesselChanged && !rankChanged) {
-        return; // No vessel/rank changes, skip sync
+      if (!vesselChanged && !rankChanged && !reliefDueChanged) {
+        return; // No vessel/rank/relief due changes, skip sync
       }
 
       const newVessel = updates.presentVessel || oldCrew.presentVessel;
@@ -1412,7 +1413,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedCrew = { ...oldCrew, ...updates };
 
       if (existingEntry) {
-        // Update existing entry if vessel or rank changed
+        // Update existing entry if vessel, rank, or relief due changed
         const updateData: any = {};
         
         if (vesselChanged) {
@@ -1440,6 +1441,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               updateData.rank = matchingRank.role || matchingRank.rank;
             }
           }
+        }
+
+        // 🔄 Sync Relief Due date if changed
+        if (updates.reliefDue !== undefined && updates.reliefDue !== oldCrew.reliefDue) {
+          updateData.reliefDue = updates.reliefDue;
+          console.log(`⚡ [AUTO-SYNC] Relief Due updated: ${oldCrew.reliefDue} → ${updates.reliefDue}`);
         }
 
         if (Object.keys(updateData).length > 0) {
