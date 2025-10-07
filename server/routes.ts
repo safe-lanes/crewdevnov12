@@ -1323,7 +1323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const crewId = crewMember.id || crewMember.employeeId;
       
       // Check if planning entry already exists for this crew member
-      const allPlanning = await storage.getVesselPlanning();
+      const allPlanning = await storage.getVesselPlanningByVessel(crewMember.presentVessel);
       const existingEntry = allPlanning.find((p: any) => p.crewMemberId === crewId);
       
       if (existingEntry) {
@@ -1399,7 +1399,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`⚡ [AUTO-SYNC] Syncing vessel planning for ${crewId}: vessel=${newVessel}, rank=${newRank}`);
 
       // Find existing planning entry for this crew member
-      const allPlanning = await storage.getVesselPlanning();
+      const allPlanning = await storage.getVesselPlanningByVessel(newVessel);
       const existingEntry = allPlanning.find((p: any) => p.crewMemberId === crewId);
 
       if (!newVessel || !newRank) {
@@ -1549,7 +1549,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // 🔄 AUTOMATIC SYNCHRONIZATION: Sync vessel planning if vessel/rank changed
       const crewId = crewMember.id || crewMember.employeeId;
-      await syncVesselPlanning(crewId, result.data, oldCrew);
+      if (crewId) {
+        await syncVesselPlanning(crewId, result.data, oldCrew);
+      }
       
       // Return normalized data to frontend
       const normalizedCrewMember = fromStorageCrew(crewMember);
@@ -1592,7 +1594,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // 🔄 AUTOMATIC SYNCHRONIZATION: Sync vessel planning if vessel/rank changed
       const crewId = crewMember.id || crewMember.employeeId;
-      await syncVesselPlanning(crewId, result.data, oldCrew);
+      if (crewId) {
+        await syncVesselPlanning(crewId, result.data, oldCrew);
+      }
       
       // Return normalized data to frontend
       const normalizedCrewMember = fromStorageCrew(crewMember);
