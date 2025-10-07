@@ -1238,6 +1238,7 @@ export class MemStorage implements IStorage {
       contractPeriodMonths: assignment.contractPeriod,
       deploymentChecklistCompleted: false,
       applicableDocsChecked: false,
+      reliefStatus: "Deployed", // Set status to indicate this reliever has been deployed
     };
 
     await this.createVesselPlanning(vesselPlanningEntry);
@@ -2798,6 +2799,7 @@ export class PersistentFileStorage implements IStorage {
       contractPeriodMonths: assignment.contractPeriod,
       deploymentChecklistCompleted: false,
       applicableDocsChecked: false,
+      reliefStatus: "Deployed", // Set status to indicate this reliever has been deployed
     };
 
     await this.createVesselPlanning(vesselPlanningEntry);
