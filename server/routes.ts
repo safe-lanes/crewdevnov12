@@ -1328,6 +1328,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (existingEntry) {
         console.log(`⚡ [AUTO-SYNC] Vessel planning already exists for ${crewId}`);
+        
+        // 🔄 UPDATE CREW MEMBER'S RANK TO MATCH EXISTING PLANNING POSITION
+        const assignedPosition = existingEntry.rank;
+        const crewRank = crewMember.presentRank;
+        if (assignedPosition && assignedPosition !== crewRank) {
+          await storage.updateCrewMember(crewId, { 
+            presentRank: assignedPosition 
+          });
+          console.log(`✅ [AUTO-SYNC] Updated crew ${crewId} rank: ${crewRank} → ${assignedPosition}`);
+        }
+        
         return existingEntry;
       }
 
