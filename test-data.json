@@ -6499,6 +6499,54 @@
         "rank": "Messman",
         "vessel": "VSL-003"
       }
+    ],
+    [
+      49,
+      {
+        "vesselId": "VSL-003",
+        "rankId": "16",
+        "rank": "Electrical Officer",
+        "crewMemberId": "A000502",
+        "reliefDue": "2026-05-11",
+        "createdAt": "2025-10-07T10:23:51.741Z",
+        "updatedAt": "2025-10-07T10:23:51.741Z"
+      }
+    ],
+    [
+      50,
+      {
+        "vesselId": "VSL-003",
+        "rankId": "8",
+        "rank": "Bosun",
+        "crewMemberId": "A000352",
+        "reliefDue": "2026-03-05",
+        "createdAt": "2025-10-07T10:23:51.741Z",
+        "updatedAt": "2025-10-07T10:23:51.741Z"
+      }
+    ],
+    [
+      51,
+      {
+        "vesselId": "VSL-003",
+        "rankId": "17",
+        "rank": "Pumpman",
+        "crewMemberId": "A000512",
+        "reliefDue": "2026-03-25",
+        "createdAt": "2025-10-07T10:23:51.742Z",
+        "updatedAt": "2025-10-07T10:23:51.742Z"
+      }
+    ],
+    [
+      52,
+      {
+        "vesselId": "VSL-003",
+        "rankId": "9_role_1_1759121189124",
+        "rank": "AB_1",
+        "crewMemberId": "A000368",
+        "reliefDue": "2026-03-31",
+        "createdAt": "2025-10-07T10:23:51.742Z",
+        "updatedAt": "2025-10-07T10:23:51.742Z"
+      }
     ]
   ],
   "rotationPlans": [
