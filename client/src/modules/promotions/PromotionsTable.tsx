@@ -144,10 +144,21 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     return promotionData.filter(item => {
       const matchesName = !searchName || item.name.toLowerCase().includes(searchName.toLowerCase());
       const matchesRank = !promotionToRank || item.promotionToRank === promotionToRank;
-      const matchesVesselType = !vesselType || true; // Vessel type filtering TBD
       const matchesNationality = !nationality || item.nationality === nationality;
-      const matchesCriteria = !criteria || true; // Criteria filtering TBD
       const matchesStatus = !status || item.status === status;
+      
+      // Vessel type filtering - bypass filtering as we don't have vessel type data in promotion records yet
+      const matchesVesselType = true;
+      
+      // Criteria filtering - check if any criteria indicator matches the selected criteria status
+      const matchesCriteria = !criteria || 
+        item.license === criteria || 
+        item.age === criteria || 
+        item.sea === criteria || 
+        item.reco === criteria || 
+        item.otherCriteria === criteria || 
+        item.cesIndex === criteria || 
+        item.trainDocs === criteria;
 
       return matchesName && matchesRank && matchesVesselType && matchesNationality && matchesCriteria && matchesStatus;
     });

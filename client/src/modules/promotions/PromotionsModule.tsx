@@ -81,14 +81,14 @@ export function PromotionsModule() {
                                 <SelectValue placeholder="Promotion to Rank" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="captain">Captain</SelectItem>
-                                <SelectItem value="chief-officer">Chief Officer</SelectItem>
-                                <SelectItem value="second-officer">Second Officer</SelectItem>
-                                <SelectItem value="third-officer">Third Officer</SelectItem>
-                                <SelectItem value="chief-engineer">Chief Engineer</SelectItem>
-                                <SelectItem value="second-engineer">Second Engineer</SelectItem>
-                                <SelectItem value="third-engineer">Third Engineer</SelectItem>
-                                <SelectItem value="bosun">Bosun</SelectItem>
+                                <SelectItem value="Master">Master</SelectItem>
+                                <SelectItem value="Chief Engineer">Chief Engineer</SelectItem>
+                                <SelectItem value="Chief Mate">Chief Mate</SelectItem>
+                                <SelectItem value="Second Officer">Second Officer</SelectItem>
+                                <SelectItem value="Third Engineer">Third Engineer</SelectItem>
+                                <SelectItem value="Able Seaman">Able Seaman</SelectItem>
+                                <SelectItem value="Bosun">Bosun</SelectItem>
+                                <SelectItem value="Electrician">Electrician</SelectItem>
                             </SelectContent>
                         </Select>
 
@@ -111,12 +111,12 @@ export function PromotionsModule() {
                                 <SelectValue placeholder="Nationality" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="british">British</SelectItem>
-                                <SelectItem value="indian">Indian</SelectItem>
-                                <SelectItem value="philippines">Philippines</SelectItem>
-                                <SelectItem value="ukrainian">Ukrainian</SelectItem>
-                                <SelectItem value="romanian">Romanian</SelectItem>
-                                <SelectItem value="polish">Polish</SelectItem>
+                                <SelectItem value="British">British</SelectItem>
+                                <SelectItem value="Indian">Indian</SelectItem>
+                                <SelectItem value="Philippines">Philippines</SelectItem>
+                                <SelectItem value="Ukrainian">Ukrainian</SelectItem>
+                                <SelectItem value="Romanian">Romanian</SelectItem>
+                                <SelectItem value="Polish">Polish</SelectItem>
                             </SelectContent>
                         </Select>
 
@@ -126,10 +126,9 @@ export function PromotionsModule() {
                                 <SelectValue placeholder="Criteria" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="eligible">Eligible</SelectItem>
-                                <SelectItem value="pending">Pending Review</SelectItem>
-                                <SelectItem value="approved">Approved</SelectItem>
-                                <SelectItem value="not-eligible">Not Eligible</SelectItem>
+                                <SelectItem value="met">All Criteria Met</SelectItem>
+                                <SelectItem value="pending">Pending Criteria</SelectItem>
+                                <SelectItem value="not-met">Criteria Not Met</SelectItem>
                             </SelectContent>
                         </Select>
 
@@ -139,10 +138,9 @@ export function PromotionsModule() {
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="active">Active</SelectItem>
-                                <SelectItem value="promoted">Promoted</SelectItem>
-                                <SelectItem value="in-process">In Process</SelectItem>
-                                <SelectItem value="on-hold">On Hold</SelectItem>
+                                <SelectItem value="In Progress">In Progress</SelectItem>
+                                <SelectItem value="For Approval">For Approval</SelectItem>
+                                <SelectItem value="Approved">Approved</SelectItem>
                             </SelectContent>
                         </Select>
 
