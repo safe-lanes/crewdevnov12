@@ -762,14 +762,15 @@ const AdminModuleInner = (): JSX.Element => {
       // Apply vessel field mapping if the data needs transformation
       const mappedVessel = mapSafeFieldsToVesselData(vessel);
       
-      // Ensure we have a consistent value field for selection
-      const vesselValue = vessel.id || vessel.entry_id || vessel.vuid || `vessel_${vessel.name || mappedVessel.vessel || 'unknown'}`;
+      // CRITICAL FIX: Use canonical vessel ID (entryId/VSL-XXX format) for value
+      // This ensures Rank Admin saves data with the correct vessel identifier
+      const vesselValue = vessel.entryId || vessel.entry_id || `VSL-${String(vessel.id).padStart(3, '0')}`;
       
       // Ensure we have a consistent label field for display
       const vesselLabel = mappedVessel.vessel || vessel.name || vessel.label || `Vessel ${vesselValue}`;
       
       return {
-        value: String(vesselValue), // Ensure it's always a string
+        value: String(vesselValue), // Use canonical vessel ID (VSL-XXX)
         label: `🚢 ${String(vesselLabel)}`, // Individual vessel with ship icon
         type: 'vessel'
       };

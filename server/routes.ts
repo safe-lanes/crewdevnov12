@@ -671,8 +671,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get vessel ranks from latest revision (must come before :id route)
   app.get("/api/vessel-revisions/ranks/:vesselId", async (req, res) => {
     try {
-      const { vesselId } = req.params;
+      let { vesselId } = req.params;
       console.log(`📜 [VESSEL RANKS API] Fetching ranks for vessel: ${vesselId}`);
+      
+      // BACKWARD COMPATIBILITY: If vesselId doesn't start with VSL-, try to translate to canonical ID
+      if (!vesselId.startsWith('VSL-')) {
+        console.log(`📜 [VESSEL RANKS API] vesselId doesn't start with VSL-, attempting translation`);
+        const vessels = await storage.getMasterDataEntries("014"); // Get all vessels
+        
+        // Try matching by name first, then by numeric ID
+        let matchedVessel = vessels.find((v: any) => 
+          v.name === vesselId || v.vessel === vesselId
+        );
+        
+        // If not found by name and vesselId is numeric, try matching by master data entry ID
+        if (!matchedVessel && /^\d+$/.test(vesselId)) {
+          matchedVessel = vessels.find((v: any) => String(v.id) === vesselId);
+          if (matchedVessel) {
+            console.log(`📜 [VESSEL RANKS API] Matched numeric ID "${vesselId}" to vessel entry`);
+          }
+        }
+        
+        if (matchedVessel) {
+          const translatedId = matchedVessel.entryId;
+          console.log(`📜 [VESSEL RANKS API] Translated "${vesselId}" to canonical ID "${translatedId}"`);
+          vesselId = translatedId;
+        } else {
+          console.log(`📜 [VESSEL RANKS API] No vessel found matching "${vesselId}"`);
+        }
+      }
       
       // Get all revisions for this vessel
       const vesselRevisions = await storage.getVesselRevisionsByVessel(vesselId);
