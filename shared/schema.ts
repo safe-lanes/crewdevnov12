@@ -362,10 +362,13 @@ export const vesselPlanning = pgTable("vessel_planning", {
   rankId: text("rank_id").notNull(),
   rank: text("rank").notNull(),
   
+  // Foreign key to crew member - SINGLE SOURCE OF TRUTH
+  crewMemberId: text("crew_member_id"), // References crewMembers.id or employeeId
+  
   // On Board Status
-  onBoardCrewId: text("on_board_crew_id"),
-  onBoardCrewName: text("on_board_crew_name"),
-  onBoardCrewNationality: text("on_board_crew_nationality"),
+  onBoardCrewId: text("on_board_crew_id"), // DEPRECATED - use crewMemberId instead
+  onBoardCrewName: text("on_board_crew_name"), // DEPRECATED - join with crewMembers
+  onBoardCrewNationality: text("on_board_crew_nationality"), // DEPRECATED - join with crewMembers
   reliefDue: text("relief_due"),
   signOffDate: text("sign_off_date"),
   signOffPort: text("sign_off_port"),
@@ -373,8 +376,8 @@ export const vesselPlanning = pgTable("vessel_planning", {
   
   // Reliever Status
   relieverCrewId: text("reliever_crew_id"),
-  relieverCrewName: text("reliever_crew_name"),
-  relieverNationality: text("reliever_nationality"),
+  relieverCrewName: text("reliever_crew_name"), // DEPRECATED - join with crewMembers
+  relieverNationality: text("reliever_nationality"), // DEPRECATED - join with crewMembers
   joiningDate: text("joining_date"),
   joiningPort: text("joining_port"),
   joiningStatus: text("joining_status"),
