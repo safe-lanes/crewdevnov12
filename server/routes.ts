@@ -1304,6 +1304,158 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * AUTOMATIC SYNCHRONIZATION HELPERS
+   * These ensure crew members automatically appear in Planning, Officer Matrix, and Training Matrix
+   */
+  
+  /**
+   * Auto-create vessel planning entry when crew has vessel + rank assigned
+   */
+  async function autoCreateVesselPlanning(crewMember: any) {
+    try {
+      // Only create if crew has both vessel and rank
+      if (!crewMember.presentVessel || !crewMember.presentRank) {
+        console.log(`⚡ [AUTO-SYNC] Skipping vessel planning for ${crewMember.id}: no vessel or rank assigned`);
+        return null;
+      }
+
+      const crewId = crewMember.id || crewMember.employeeId;
+      
+      // Check if planning entry already exists for this crew member
+      const allPlanning = await storage.getVesselPlanning();
+      const existingEntry = allPlanning.find((p: any) => p.crewMemberId === crewId);
+      
+      if (existingEntry) {
+        console.log(`⚡ [AUTO-SYNC] Vessel planning already exists for ${crewId}`);
+        return existingEntry;
+      }
+
+      // Get vessel revisions to find the correct rank ID
+      const vesselRevisions = await storage.getVesselRevisionsByVessel(crewMember.presentVessel);
+      
+      if (vesselRevisions.length === 0) {
+        console.log(`⚡ [AUTO-SYNC] No vessel revisions found for ${crewMember.presentVessel}`);
+        return null;
+      }
+
+      // Get latest revision
+      const latestRevision = vesselRevisions.sort((a, b) => {
+        const aDate = new Date(a.createdAt || 0).getTime();
+        const bDate = new Date(b.createdAt || 0).getTime();
+        return bDate - aDate;
+      })[0];
+
+      const rankData = JSON.parse(latestRevision.revisionData);
+      
+      // Find matching rank in vessel revision
+      // Match by exact role/rank name or by stripping suffix (e.g., "3rd Officer_1" -> "3rd Officer")
+      const crewRank = crewMember.presentRank;
+      const matchingRank = rankData.find((r: any) => {
+        const rankName = (r.role || r.rank)?.split('_')[0];
+        return (r.role === crewRank || r.rank === crewRank || rankName === crewRank);
+      });
+
+      if (!matchingRank) {
+        console.log(`⚡ [AUTO-SYNC] Rank ${crewRank} not found in vessel ${crewMember.presentVessel} revision`);
+        return null;
+      }
+
+      // Create vessel planning entry
+      const planningData = {
+        vesselId: crewMember.presentVessel,
+        rankId: matchingRank.id || matchingRank.rankId,
+        rank: matchingRank.role || matchingRank.rank,
+        crewMemberId: crewId,
+        reliefDue: crewMember.reliefDue || null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      const created = await storage.createVesselPlanning(planningData);
+      console.log(`✅ [AUTO-SYNC] Created vessel planning entry for ${crewId}: ${crewRank} on ${crewMember.presentVessel}`);
+      return created;
+    } catch (error) {
+      console.error(`❌ [AUTO-SYNC] Failed to auto-create vessel planning:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Update or create vessel planning when crew's vessel/rank changes
+   */
+  async function syncVesselPlanning(crewId: string, updates: any, oldCrew: any) {
+    try {
+      const vesselChanged = updates.presentVessel && updates.presentVessel !== oldCrew.presentVessel;
+      const rankChanged = updates.presentRank && updates.presentRank !== oldCrew.presentRank;
+      
+      if (!vesselChanged && !rankChanged) {
+        return; // No vessel/rank changes, skip sync
+      }
+
+      const newVessel = updates.presentVessel || oldCrew.presentVessel;
+      const newRank = updates.presentRank || oldCrew.presentRank;
+
+      console.log(`⚡ [AUTO-SYNC] Syncing vessel planning for ${crewId}: vessel=${newVessel}, rank=${newRank}`);
+
+      // Find existing planning entry for this crew member
+      const allPlanning = await storage.getVesselPlanning();
+      const existingEntry = allPlanning.find((p: any) => p.crewMemberId === crewId);
+
+      if (!newVessel || !newRank) {
+        // Crew unassigned - could delete planning entry, but we'll keep it for history
+        console.log(`⚡ [AUTO-SYNC] Crew ${crewId} unassigned from vessel/rank`);
+        return;
+      }
+
+      // Get the updated crew member data
+      const updatedCrew = { ...oldCrew, ...updates };
+
+      if (existingEntry) {
+        // Update existing entry if vessel or rank changed
+        const updateData: any = {};
+        
+        if (vesselChanged) {
+          updateData.vesselId = newVessel;
+        }
+        
+        if (rankChanged) {
+          // Need to find new rank ID from vessel revision
+          const vesselRevisions = await storage.getVesselRevisionsByVessel(newVessel);
+          if (vesselRevisions.length > 0) {
+            const latestRevision = vesselRevisions.sort((a, b) => {
+              const aDate = new Date(a.createdAt || 0).getTime();
+              const bDate = new Date(b.createdAt || 0).getTime();
+              return bDate - aDate;
+            })[0];
+
+            const rankData = JSON.parse(latestRevision.revisionData);
+            const matchingRank = rankData.find((r: any) => {
+              const rankName = (r.role || r.rank)?.split('_')[0];
+              return (r.role === newRank || r.rank === newRank || rankName === newRank);
+            });
+
+            if (matchingRank) {
+              updateData.rankId = matchingRank.id || matchingRank.rankId;
+              updateData.rank = matchingRank.role || matchingRank.rank;
+            }
+          }
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          updateData.updatedAt = new Date().toISOString();
+          await storage.updateVesselPlanning(existingEntry.id, updateData);
+          console.log(`✅ [AUTO-SYNC] Updated vessel planning for ${crewId}`);
+        }
+      } else {
+        // No existing entry - create new one
+        await autoCreateVesselPlanning(updatedCrew);
+      }
+    } catch (error) {
+      console.error(`❌ [AUTO-SYNC] Failed to sync vessel planning:`, error);
+    }
+  }
+
   app.get("/api/crew-members", async (req, res) => {
     try {
       const crewMembers = await storage.getCrewMembers();
@@ -1354,6 +1506,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const crewMember = await storage.createCrewMember(result.data);
       
+      // 🔄 AUTOMATIC SYNCHRONIZATION: Create vessel planning entry if crew has vessel + rank
+      await autoCreateVesselPlanning(crewMember);
+      
       // Return normalized data to frontend
       const normalizedCrewMember = fromStorageCrew(crewMember);
       res.status(201).json(normalizedCrewMember);
@@ -1365,6 +1520,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/crew-members/:id", async (req, res) => {
     try {
       const id = req.params.id;
+      
+      // Get old crew data before update for sync comparison
+      const oldCrew = await storage.getCrewMember(id);
+      if (!oldCrew) {
+        return res.status(404).json({ error: "Crew member not found" });
+      }
       
       // Check if this is form data from CrewInfoForm (comprehensive)
       // or simple crew member data (basic fields only)
@@ -1385,6 +1546,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!crewMember) {
         return res.status(404).json({ error: "Crew member not found" });
       }
+      
+      // 🔄 AUTOMATIC SYNCHRONIZATION: Sync vessel planning if vessel/rank changed
+      const crewId = crewMember.id || crewMember.employeeId;
+      await syncVesselPlanning(crewId, result.data, oldCrew);
       
       // Return normalized data to frontend
       const normalizedCrewMember = fromStorageCrew(crewMember);
@@ -1399,6 +1564,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = req.params.id;
       
+      // Get old crew data before update for sync comparison
+      const oldCrew = await storage.getCrewMember(id);
+      if (!oldCrew) {
+        return res.status(404).json({ error: "Crew member not found" });
+      }
+      
       // Check if this is form data from CrewInfoForm (comprehensive)
       // or simple crew member data (basic fields only)
       let mappedData;
@@ -1418,6 +1589,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!crewMember) {
         return res.status(404).json({ error: "Crew member not found" });
       }
+      
+      // 🔄 AUTOMATIC SYNCHRONIZATION: Sync vessel planning if vessel/rank changed
+      const crewId = crewMember.id || crewMember.employeeId;
+      await syncVesselPlanning(crewId, result.data, oldCrew);
       
       // Return normalized data to frontend
       const normalizedCrewMember = fromStorageCrew(crewMember);
