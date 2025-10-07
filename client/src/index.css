@@ -18,6 +18,9 @@
 
 .ag-theme-alpine .ag-header-cell-text {
   color: white !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  text-shadow: 0 0 1px rgba(0, 0, 0, 0.3);
 }
 
 /* Filter icons styling */

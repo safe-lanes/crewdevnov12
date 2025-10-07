@@ -225,7 +225,8 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       sortable: true,
       resizable: false,
       wrapHeaderText: false,
-      autoHeaderHeight: false
+      autoHeaderHeight: false,
+      headerClass: 'ag-header-cell-text'
     },
     {
       headerName: 'Age',
@@ -235,7 +236,8 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       sortable: true,
       resizable: false,
       wrapHeaderText: false,
-      autoHeaderHeight: false
+      autoHeaderHeight: false,
+      headerClass: 'ag-header-cell-text'
     },
     {
       headerName: 'Sea',
@@ -245,7 +247,8 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       sortable: true,
       resizable: false,
       wrapHeaderText: false,
-      autoHeaderHeight: false
+      autoHeaderHeight: false,
+      headerClass: 'ag-header-cell-text'
     },
     {
       headerName: 'Reco',
@@ -255,7 +258,8 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       sortable: true,
       resizable: false,
       wrapHeaderText: false,
-      autoHeaderHeight: false
+      autoHeaderHeight: false,
+      headerClass: 'ag-header-cell-text'
     },
     {
       headerName: 'Promotion Checklist',
