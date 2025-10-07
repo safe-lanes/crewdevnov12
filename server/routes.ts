@@ -1351,14 +1351,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Find matching rank in vessel revision
       // Match by exact role/rank name or by stripping suffix (e.g., "3rd Officer_1" -> "3rd Officer")
       const crewRank = crewMember.presentRank;
-      const matchingRank = rankData.find((r: any) => {
+      
+      // Find ALL matching ranks (handles positions with numeric suffixes like AB_1, AB_2, AB_3)
+      const matchingRanks = rankData.filter((r: any) => {
         const rankName = (r.role || r.rank)?.split('_')[0];
         return (r.role === crewRank || r.rank === crewRank || rankName === crewRank);
       });
 
-      if (!matchingRank) {
+      if (matchingRanks.length === 0) {
         console.log(`⚡ [AUTO-SYNC] Rank ${crewRank} not found in vessel ${crewMember.presentVessel} revision`);
         return null;
+      }
+
+      // If multiple positions exist (e.g., AB_1, AB_2, AB_3), find the first VACANT one
+      let matchingRank = null;
+      if (matchingRanks.length > 1) {
+        // Get existing planning to check which positions are occupied
+        for (const rank of matchingRanks) {
+          const rankId = rank.id || rank.rankId;
+          const isOccupied = allPlanning.some((p: any) => 
+            p.rankId === rankId && p.crewMemberId && p.crewMemberId !== crewId
+          );
+          if (!isOccupied) {
+            matchingRank = rank;
+            console.log(`⚡ [AUTO-SYNC] Found vacant position: ${rank.role || rank.rank} for ${crewRank}`);
+            break;
+          }
+        }
+        
+        if (!matchingRank) {
+          console.log(`⚡ [AUTO-SYNC] All ${crewRank} positions are occupied on vessel ${crewMember.presentVessel}`);
+          return null;
+        }
+      } else {
+        // Only one position, use it
+        matchingRank = matchingRanks[0];
       }
 
       // Create vessel planning entry
@@ -1623,6 +1650,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete crew member" });
+    }
+  });
+
+  // Migration/Re-sync endpoint: Create missing vessel planning entries for existing crew
+  app.post("/api/crew-members/resync-planning", async (req, res) => {
+    try {
+      const crewMembers = await storage.getCrewMembers();
+      let created = 0;
+      let skipped = 0;
+      let errors = 0;
+      
+      for (const crew of crewMembers) {
+        const crewId = crew.id || crew.employeeId;
+        if (!crewId || !crew.presentVessel || !crew.presentRank) {
+          skipped++;
+          continue;
+        }
+        
+        try {
+          const result = await autoCreateVesselPlanning(crew);
+          if (result) {
+            created++;
+            console.log(`✅ [RE-SYNC] Created planning for ${crewId}: ${crew.presentRank} on ${crew.presentVessel}`);
+          } else {
+            skipped++;
+          }
+        } catch (error) {
+          errors++;
+          console.error(`❌ [RE-SYNC] Failed for ${crewId}:`, error);
+        }
+      }
+      
+      res.json({ 
+        success: true, 
+        total: crewMembers.length,
+        created, 
+        skipped, 
+        errors,
+        message: `Re-sync completed: ${created} planning entries created, ${skipped} skipped, ${errors} errors`
+      });
+    } catch (error) {
+      console.error("Re-sync failed:", error);
+      res.status(500).json({ error: "Failed to re-sync vessel planning" });
     }
   });
 
