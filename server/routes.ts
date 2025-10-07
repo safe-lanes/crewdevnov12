@@ -942,7 +942,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Override with data from crew members (single source of truth)
               crewName: `${crew.firstName || ''} ${crew.lastName || ''}`.trim(),
               nationality: crew.nationality,
-              joiningDate: crew.joiningDate,
               reliefDue: crew.reliefDue,
               reliefDate: crew.reliefDue, // Alias for backward compatibility
               // Keep crew member reference for future use
