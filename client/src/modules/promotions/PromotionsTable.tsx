@@ -220,7 +220,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     {
       headerName: 'License',
       field: 'license',
-      width: 85,
+      width: 100,
       cellRenderer: StatusIndicatorRenderer,
       sortable: true,
       resizable: false,
@@ -231,7 +231,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     {
       headerName: 'Age',
       field: 'age',
-      width: 75,
+      width: 90,
       cellRenderer: StatusIndicatorRenderer,
       sortable: true,
       resizable: false,
@@ -242,7 +242,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     {
       headerName: 'Sea',
       field: 'sea',
-      width: 75,
+      width: 90,
       cellRenderer: StatusIndicatorRenderer,
       sortable: true,
       resizable: false,
@@ -253,7 +253,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     {
       headerName: 'Reco',
       field: 'reco',
-      width: 75,
+      width: 90,
       cellRenderer: StatusIndicatorRenderer,
       sortable: true,
       resizable: false,
