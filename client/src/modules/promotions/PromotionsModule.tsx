@@ -157,7 +157,7 @@ export function PromotionsModule() {
                 )}
 
                 {/* Promotions Table */}
-                <div className="flex-1 min-h-0 px-4">
+                <div className="flex-1 px-4">
                     <PromotionsTable
                         searchName={searchName}
                         promotionToRank={promotionToRank}
