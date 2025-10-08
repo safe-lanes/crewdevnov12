@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError } from "./storage";
-import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema } from "@shared/schema";
+import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema } from "@shared/schema";
 import { z } from "zod";
 import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew } from "@shared/crew-mapping";
 import { 
@@ -374,6 +374,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("❌ Failed to save company ranks:", error);
       res.status(500).json({ error: "Failed to save company ranks" });
+    }
+  });
+
+  // Promotion Hierarchies endpoints
+  app.get("/api/promotion-hierarchies", async (req, res) => {
+    try {
+      const hierarchies = await storage.getPromotionHierarchies();
+      res.json(hierarchies);
+    } catch (error) {
+      console.error("❌ Failed to fetch promotion hierarchies:", error);
+      res.status(500).json({ error: "Failed to fetch promotion hierarchies" });
+    }
+  });
+
+  app.get("/api/promotion-hierarchies/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const hierarchy = await storage.getPromotionHierarchy(id);
+      if (!hierarchy) {
+        return res.status(404).json({ error: "Promotion hierarchy not found" });
+      }
+      res.json(hierarchy);
+    } catch (error) {
+      console.error("❌ Failed to fetch promotion hierarchy:", error);
+      res.status(500).json({ error: "Failed to fetch promotion hierarchy" });
+    }
+  });
+
+  app.post("/api/promotion-hierarchies", async (req, res) => {
+    try {
+      const result = insertPromotionHierarchySchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid promotion hierarchy data", details: result.error.issues });
+      }
+      const hierarchy = await storage.createPromotionHierarchy(result.data);
+      res.status(201).json(hierarchy);
+    } catch (error) {
+      console.error("❌ Failed to create promotion hierarchy:", error);
+      res.status(500).json({ error: "Failed to create promotion hierarchy" });
+    }
+  });
+
+  app.patch("/api/promotion-hierarchies/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const result = insertPromotionHierarchySchema.partial().safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid promotion hierarchy data", details: result.error.issues });
+      }
+      const hierarchy = await storage.updatePromotionHierarchy(id, result.data);
+      if (!hierarchy) {
+        return res.status(404).json({ error: "Promotion hierarchy not found" });
+      }
+      res.json(hierarchy);
+    } catch (error) {
+      console.error("❌ Failed to update promotion hierarchy:", error);
+      res.status(500).json({ error: "Failed to update promotion hierarchy" });
+    }
+  });
+
+  app.delete("/api/promotion-hierarchies/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deletePromotionHierarchy(id);
+      if (!success) {
+        return res.status(404).json({ error: "Promotion hierarchy not found" });
+      }
+      res.json({ success: true, message: "Promotion hierarchy deleted successfully" });
+    } catch (error) {
+      console.error("❌ Failed to delete promotion hierarchy:", error);
+      res.status(500).json({ error: "Failed to delete promotion hierarchy" });
     }
   });
 
