@@ -419,7 +419,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid promotion hierarchy data", details: result.error.issues });
       }
       const hierarchy = await storage.createPromotionHierarchy(result.data);
-      res.status(201).json(hierarchy);
+      // Parse rankPath JSON string to array for frontend
+      const parsedHierarchy = {
+        ...hierarchy,
+        rankPath: typeof hierarchy.rankPath === 'string' ? JSON.parse(hierarchy.rankPath) : hierarchy.rankPath
+      };
+      res.status(201).json(parsedHierarchy);
     } catch (error) {
       console.error("❌ Failed to create promotion hierarchy:", error);
       res.status(500).json({ error: "Failed to create promotion hierarchy" });
@@ -437,7 +442,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!hierarchy) {
         return res.status(404).json({ error: "Promotion hierarchy not found" });
       }
-      res.json(hierarchy);
+      // Parse rankPath JSON string to array for frontend
+      const parsedHierarchy = {
+        ...hierarchy,
+        rankPath: typeof hierarchy.rankPath === 'string' ? JSON.parse(hierarchy.rankPath) : hierarchy.rankPath
+      };
+      res.json(parsedHierarchy);
     } catch (error) {
       console.error("❌ Failed to update promotion hierarchy:", error);
       res.status(500).json({ error: "Failed to update promotion hierarchy" });
