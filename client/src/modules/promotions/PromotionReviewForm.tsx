@@ -228,12 +228,13 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       {({ activeSection, form }) => (
         <>
           {activeSection === 'a' && (
-            <div className="space-y-6">
-              {/* Header */}
-              <div className="border-b pb-4">
-                <h2 className="text-xl font-semibold text-[#16569e]">Part A Promotion Criteria Review</h2>
-                <p className="text-sm text-gray-500 mt-1">Assess candidate's compliance with minimum promotion criteria</p>
-              </div>
+            <div className="bg-white rounded-lg p-6">
+              <div className="space-y-6">
+                {/* Header */}
+                <div className="border-b pb-4">
+                  <h2 className="text-xl font-semibold text-[#16569e]">Part A Promotion Criteria Review</h2>
+                  <p className="text-sm text-gray-500 mt-1">Assess candidate's compliance with minimum promotion criteria</p>
+                </div>
 
               {/* A1: Seafarer's Information */}
               <div className="border border-[#EAEBEF] rounded-lg p-4">
@@ -650,6 +651,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                   Submit
                 </Button>
               </div>
+            </div>
             </div>
           )}
 
