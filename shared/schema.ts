@@ -274,6 +274,15 @@ export const companyRanks = pgTable("company_ranks", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const promotionHierarchies = pgTable("promotion_hierarchies", {
+  id: serial("id").primaryKey(),
+  groupName: text("group_name").notNull(), // e.g., "Deck Officers", "Engine Officers"
+  rankPath: text("rank_path").notNull(), // JSON array of rank labels in progression order
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const dataMasters = pgTable("data_masters", {
   id: text("id").primaryKey(), // "001", "002", "003", etc.
   name: text("name").notNull(), // "Nationality Master", "Country Master"
@@ -669,6 +678,12 @@ export const insertCompanyRankSchema = createInsertSchema(companyRanks).pick({
   emtOfficer: true,
 });
 
+export const insertPromotionHierarchySchema = createInsertSchema(promotionHierarchies).pick({
+  groupName: true,
+  rankPath: true,
+  isActive: true,
+});
+
 export const insertDataMasterSchema = createInsertSchema(dataMasters).pick({
   id: true,
   name: true,
@@ -799,6 +814,8 @@ export type InsertVesselRank = z.infer<typeof insertVesselRankSchema>;
 export type VesselRank = typeof vesselRanks.$inferSelect;
 export type InsertCompanyRank = z.infer<typeof insertCompanyRankSchema>;
 export type CompanyRank = typeof companyRanks.$inferSelect;
+export type InsertPromotionHierarchy = z.infer<typeof insertPromotionHierarchySchema>;
+export type PromotionHierarchy = typeof promotionHierarchies.$inferSelect;
 export type InsertIdCounter = z.infer<typeof insertIdCounterSchema>;
 export type IdCounter = typeof idCounters.$inferSelect;
 export type InsertDataMaster = z.infer<typeof insertDataMasterSchema>;
