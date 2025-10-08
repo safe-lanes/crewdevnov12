@@ -682,6 +682,17 @@ export const insertPromotionHierarchySchema = createInsertSchema(promotionHierar
   groupName: true,
   rankPath: true,
   isActive: true,
+}).extend({
+  rankPath: z.union([
+    z.string(), // Accept string from database
+    z.array(z.string()) // Accept array from frontend
+  ]).transform((val) => {
+    // Normalize to string for database storage
+    if (Array.isArray(val)) {
+      return JSON.stringify(val);
+    }
+    return val;
+  })
 });
 
 export const insertDataMasterSchema = createInsertSchema(dataMasters).pick({

@@ -381,7 +381,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/promotion-hierarchies", async (req, res) => {
     try {
       const hierarchies = await storage.getPromotionHierarchies();
-      res.json(hierarchies);
+      // Parse rankPath JSON string to array for frontend
+      const parsedHierarchies = hierarchies.map(h => ({
+        ...h,
+        rankPath: typeof h.rankPath === 'string' ? JSON.parse(h.rankPath) : h.rankPath
+      }));
+      res.json(parsedHierarchies);
     } catch (error) {
       console.error("❌ Failed to fetch promotion hierarchies:", error);
       res.status(500).json({ error: "Failed to fetch promotion hierarchies" });
@@ -395,7 +400,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!hierarchy) {
         return res.status(404).json({ error: "Promotion hierarchy not found" });
       }
-      res.json(hierarchy);
+      // Parse rankPath JSON string to array for frontend
+      const parsedHierarchy = {
+        ...hierarchy,
+        rankPath: typeof hierarchy.rankPath === 'string' ? JSON.parse(hierarchy.rankPath) : hierarchy.rankPath
+      };
+      res.json(parsedHierarchy);
     } catch (error) {
       console.error("❌ Failed to fetch promotion hierarchy:", error);
       res.status(500).json({ error: "Failed to fetch promotion hierarchy" });

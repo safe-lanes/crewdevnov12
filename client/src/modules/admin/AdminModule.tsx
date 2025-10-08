@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown, Trash2, ChevronUp, ChevronDown, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UnsavedChangesDialog } from "@/components/dialogs/UnsavedChangesDialog";
+import { PromotionHierarchyDialog } from "@/components/dialogs/PromotionHierarchyDialog";
 import {
   Table,
   TableBody,
@@ -4990,6 +4991,12 @@ const AdminModuleInner = (): JSX.Element => {
           </div>
         </DialogContent>
       </Dialog>
+      
+      {/* Promotion Hierarchy Dialog */}
+      <PromotionHierarchyDialog
+        open={isPromotionHierarchyOpen}
+        onOpenChange={setIsPromotionHierarchyOpen}
+      />
     </>
   );
 };
