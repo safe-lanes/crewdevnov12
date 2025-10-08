@@ -340,13 +340,15 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="h-[calc(100vh-320px)]">
+      <div>
         <AgGridTable
           rowData={filteredData}
           columnDefs={columnDefs}
           onGridReady={handleGridReady}
           loading={isLoading}
-          height="100%"
+          autoHeight={true}
+          maxHeight="600px"
+          minHeight="200px"
           data-testid="promotions-table"
         />
       </div>
