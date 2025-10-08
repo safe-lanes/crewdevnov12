@@ -338,6 +338,9 @@ const AdminModuleInner = (): JSX.Element => {
   // Vessel Group Modal state
   const [isVesselGroupModalOpen, setIsVesselGroupModalOpen] = useState(false);
   
+  // Promotion Hierarchy Dialog state
+  const [isPromotionHierarchyOpen, setIsPromotionHierarchyOpen] = useState(false);
+  
   // Vessel Group Form setup
   const vesselGroupForm = useForm({
     resolver: zodResolver(insertVesselGroupSchema.extend({
@@ -3178,6 +3181,15 @@ const AdminModuleInner = (): JSX.Element => {
                   >
                     {clearAllRanksMutation.isPending ? "Clearing..." : "🗑️ Clear All"}
                   </Button>
+                  <Button
+                    onClick={() => setIsPromotionHierarchyOpen(true)}
+                    variant="outline"
+                    className="h-8 text-xs border-[#e1e8ed] text-[#16569e] hover:bg-[#f3f4f6]"
+                    data-testid="button-promotion-hierarchy-mobile"
+                  >
+                    <Settings className="h-4 w-4 mr-1" />
+                    Promotion Hierarchy
+                  </Button>
                 </div>
               )}
               {selectedRankAdminTab === "vessel" && (
@@ -3274,6 +3286,15 @@ const AdminModuleInner = (): JSX.Element => {
                   data-testid="button-clear-all-ranks"
                 >
                   {clearAllRanksMutation.isPending ? "Clearing..." : "🗑️ Clear All"}
+                </Button>
+                <Button
+                  onClick={() => setIsPromotionHierarchyOpen(true)}
+                  variant="outline"
+                  className="h-8 text-xs border-[#e1e8ed] text-[#16569e] hover:bg-[#f3f4f6]"
+                  data-testid="button-promotion-hierarchy"
+                >
+                  <Settings className="h-4 w-4 mr-1" />
+                  Promotion Hierarchy
                 </Button>
               </div>
             )}
