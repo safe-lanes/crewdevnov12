@@ -5,6 +5,8 @@ import AgGridTable from '@/components/AgGrid/AgGridTable';
 import { Button } from '@/components/ui/button';
 import { Edit } from 'lucide-react';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { findNextPromotionRank, shouldShowInPromotionsTable } from './promotionUtils';
+import { PromotionHierarchy } from '@shared/schema';
 
 // Status indicator cell renderer (green/yellow/gray circles)
 const StatusIndicatorRenderer = (params: ICellRendererParams) => {
@@ -119,47 +121,66 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     queryKey: ['/api/crew-members'],
   });
 
+  // Fetch promotion hierarchies
+  const { data: hierarchies = [], isLoading: isLoadingHierarchies } = useQuery<PromotionHierarchy[]>({
+    queryKey: ['/api/promotion-hierarchies'],
+  });
+
   // Transform crew data to promotion table format with sample indicator data
   const promotionData = useMemo(() => {
     const members = Array.isArray(crewMembers) ? crewMembers : [];
     if (!members || members.length === 0) return [];
 
-    return members.map((crew: any, index: number) => {
-      // Extract vessel ID from crew data (handle both string and object formats)
-      let vesselId = crew.presentVessel || crew.vessel;
-      if (typeof vesselId === 'object' && vesselId !== null) {
-        vesselId = vesselId.id || vesselId.entryId || '';
-      }
-      
-      // Get actual vessel name from vessel ID
-      const vesselName = vesselId ? getVesselName(vesselId) : null;
-      
-      // Check if crew is on leave (case-insensitive check for various status formats)
-      const status = crew.status || '';
-      const isOnLeave = status.toLowerCase().includes('leave') || 
-                        status.toLowerCase().includes('available') ||
-                        !vesselId;
-      const vesselLeave = isOnLeave ? 'On Leave' : (vesselName || vesselId || '-');
-      
-      return {
-        crewId: crew.employeeId || crew.id || '-',
-        name: `${crew.firstName || 'Unknown'} ${crew.middleInitial || ''} ${crew.familyName || ''}`.trim(),
-        dob: crew.dateOfBirth || crew.dob || '-',
-        nationality: crew.nationality || 'Unknown',
-        promotionToRank: crew.presentRank || crew.rank || '-',
-        vesselLeave: vesselLeave,
-        license: ['met', 'pending', 'met'][index % 3],
-        age: ['met', 'met', 'pending'][index % 3],
-        sea: ['met', 'pending', 'met'][index % 3],
-        reco: ['met', 'pending', 'met'][index % 3],
-        promotionChecklist: [40, 75, 80, 60, 45, 90, 85, 50][index % 8],
-        otherCriteria: ['met', 'pending', 'met'][index % 3],
-        cesIndex: ['met', 'pending', 'not-met'][index % 3],
-        trainDocs: ['met', 'pending', 'not-met'][index % 3],
-        status: ['In Progress', 'For Approval', 'Approved'][index % 3],
-      };
-    });
-  }, [crewMembers, getVesselName]);
+    return members
+      .map((crew: any, index: number) => {
+        // Get current rank
+        const currentRank = crew.presentRank || crew.rank || '-';
+        
+        // Check if crew should be shown in promotions table (has next promotion rank)
+        if (!shouldShowInPromotionsTable(currentRank, hierarchies)) {
+          return null; // Filter out crew without promotion path or at senior position
+        }
+
+        // Find next promotion rank
+        const { nextRank } = findNextPromotionRank(currentRank, hierarchies);
+        
+        // Extract vessel ID from crew data (handle both string and object formats)
+        let vesselId = crew.presentVessel || crew.vessel;
+        if (typeof vesselId === 'object' && vesselId !== null) {
+          vesselId = vesselId.id || vesselId.entryId || '';
+        }
+        
+        // Get actual vessel name from vessel ID
+        const vesselName = vesselId ? getVesselName(vesselId) : null;
+        
+        // Check if crew is on leave (case-insensitive check for various status formats)
+        const status = crew.status || '';
+        const isOnLeave = status.toLowerCase().includes('leave') || 
+                          status.toLowerCase().includes('available') ||
+                          !vesselId;
+        const vesselLeave = isOnLeave ? 'On Leave' : (vesselName || vesselId || '-');
+        
+        return {
+          crewId: crew.employeeId || crew.id || '-',
+          name: `${crew.firstName || 'Unknown'} ${crew.middleInitial || ''} ${crew.familyName || ''}`.trim(),
+          dob: crew.dateOfBirth || crew.dob || '-',
+          nationality: crew.nationality || 'Unknown',
+          currentRank: currentRank,
+          promotionToRank: nextRank || '-',
+          vesselLeave: vesselLeave,
+          license: ['met', 'pending', 'met'][index % 3],
+          age: ['met', 'met', 'pending'][index % 3],
+          sea: ['met', 'pending', 'met'][index % 3],
+          reco: ['met', 'pending', 'met'][index % 3],
+          promotionChecklist: [40, 75, 80, 60, 45, 90, 85, 50][index % 8],
+          otherCriteria: ['met', 'pending', 'met'][index % 3],
+          cesIndex: ['met', 'pending', 'not-met'][index % 3],
+          trainDocs: ['met', 'pending', 'not-met'][index % 3],
+          status: ['In Progress', 'For Approval', 'Approved'][index % 3],
+        };
+      })
+      .filter(item => item !== null); // Remove filtered out crew members
+  }, [crewMembers, hierarchies, getVesselName]);
 
   // Filter data based on filters
   const filteredData = useMemo(() => {
@@ -221,9 +242,9 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       resizable: false
     },
     {
-      headerName: 'Promotion To Rank',
+      headerName: 'Next Promotion Rank',
       field: 'promotionToRank',
-      width: 150,
+      width: 170,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       sortable: true,
       resizable: false
@@ -345,7 +366,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
           rowData={filteredData}
           columnDefs={columnDefs}
           onGridReady={handleGridReady}
-          loading={isLoading}
+          loading={isLoading || isLoadingHierarchies}
           autoHeight={true}
           maxHeight="600px"
           minHeight="200px"
