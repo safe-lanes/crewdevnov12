@@ -49,10 +49,12 @@ The application is built with a modern web stack, adhering to a module-first arc
 - **Promotion Hierarchy System**: Configurable promotion paths for different rank groups (Deck Officers, Engine Officers, Ratings) accessible from Rank Master screen. Features:
     - **Hierarchy Configuration**: Create multiple promotion hierarchies with custom group names and rank progression paths
     - **Rank Selection**: Only ranks marked as "Applicable to Company" can be used in hierarchies
-    - **Visual Display**: Ranks displayed senior-to-junior (top-to-bottom) for intuitive reading, while stored junior-to-senior for correct promotion logic
+    - **Visual Display**: Ranks displayed senior-to-junior (top-to-bottom) for intuitive reading, while stored senior-to-junior for correct promotion logic (index 0 = most senior)
     - **Rank Reordering**: Up/down arrow controls to adjust rank positions within the hierarchy
     - **Data Persistence**: RankPath stored as JSON array with automatic parsing/stringifying between frontend and backend
     - **CRUD Operations**: Full create, read, update, delete support with visual indicators for most senior and entry-level positions
+    - **Duplicate Prevention**: Validates that each rank appears in only one hierarchy to avoid conflicts
+    - **Promotions Module Integration**: Automatically filters Promotions table to show only crew members with available promotion paths, excluding those at senior positions or with unmapped ranks. Column "Next Promotion Rank" displays the calculated next rank based on hierarchy configuration.
 - **Performance Optimization**: Utilizes map-based lookups, TanStack Query for caching, `useRef` for preventing re-renders, `useMemo` for calculations, and optimized `PersistentFileStorage`.
 - **Data Storage**: `PersistentFileStorage` for development, with PostgreSQL/Drizzle ORM schema for production.
 
