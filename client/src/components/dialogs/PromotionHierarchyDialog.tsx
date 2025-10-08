@@ -170,7 +170,9 @@ export function PromotionHierarchyDialog({ open, onOpenChange }: PromotionHierar
 
   const handleMoveRank = (index: number, direction: 'up' | 'down') => {
     const newRanks = [...selectedRanks];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    // 'up' means move to more senior (higher index in junior→senior array)
+    // 'down' means move to more junior (lower index in junior→senior array)
+    const targetIndex = direction === 'up' ? index + 1 : index - 1;
     
     if (targetIndex < 0 || targetIndex >= newRanks.length) return;
     
@@ -216,7 +218,7 @@ export function PromotionHierarchyDialog({ open, onOpenChange }: PromotionHierar
             </div>
 
             <div className="space-y-2">
-              <Label>Promotion Path (in order from junior to senior)</Label>
+              <Label>Promotion Path (senior at top → junior at bottom)</Label>
               <div className="flex gap-2">
                 <Select value={rankToAdd} onValueChange={setRankToAdd}>
                   <SelectTrigger className="flex-1" data-testid="select-rank-to-add">
@@ -240,51 +242,60 @@ export function PromotionHierarchyDialog({ open, onOpenChange }: PromotionHierar
               </div>
             </div>
 
-            {/* Rank Path List */}
+            {/* Rank Path List - Display in reverse (senior to junior) */}
             {selectedRanks.length > 0 && (
               <div className="space-y-2">
                 <Label>Current Path ({selectedRanks.length} ranks)</Label>
                 <div className="border rounded-md bg-white divide-y max-h-48 overflow-y-auto">
-                  {selectedRanks.map((rank, index) => (
-                    <div
-                      key={`${rank}-${index}`}
-                      className="flex items-center justify-between p-2 hover:bg-gray-50"
-                      data-testid={`rank-item-${index}`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500 w-6">{index + 1}.</span>
-                        <span className="text-sm">{rank}</span>
+                  {[...selectedRanks].reverse().map((rank, displayIndex) => {
+                    // Calculate the actual index in the original array
+                    const actualIndex = selectedRanks.length - 1 - displayIndex;
+                    return (
+                      <div
+                        key={`${rank}-${actualIndex}`}
+                        className="flex items-center justify-between p-2 hover:bg-gray-50"
+                        data-testid={`rank-item-${displayIndex}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500 w-6">{displayIndex + 1}.</span>
+                          <span className="text-sm">{rank}</span>
+                          <span className="text-xs text-gray-400">
+                            {displayIndex === 0 ? '(Most Senior)' : displayIndex === selectedRanks.length - 1 ? '(Entry Level)' : ''}
+                          </span>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleMoveRank(actualIndex, 'up')}
+                            disabled={actualIndex === selectedRanks.length - 1}
+                            data-testid={`button-move-up-${displayIndex}`}
+                            title="Move to more senior position"
+                          >
+                            <ChevronUp className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleMoveRank(actualIndex, 'down')}
+                            disabled={actualIndex === 0}
+                            data-testid={`button-move-down-${displayIndex}`}
+                            title="Move to more junior position"
+                          >
+                            <ChevronDown className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleRemoveRank(rank)}
+                            data-testid={`button-remove-${displayIndex}`}
+                          >
+                            <Trash2 className="h-3 w-3 text-red-500" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleMoveRank(index, 'up')}
-                          disabled={index === 0}
-                          data-testid={`button-move-up-${index}`}
-                        >
-                          <ChevronUp className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleMoveRank(index, 'down')}
-                          disabled={index === selectedRanks.length - 1}
-                          data-testid={`button-move-down-${index}`}
-                        >
-                          <ChevronDown className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleRemoveRank(rank)}
-                          data-testid={`button-remove-${index}`}
-                        >
-                          <Trash2 className="h-3 w-3 text-red-500" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -356,7 +367,7 @@ export function PromotionHierarchyDialog({ open, onOpenChange }: PromotionHierar
                       </div>
                     </div>
                     <div className="flex items-center gap-1 text-xs text-gray-600 flex-wrap">
-                      {hierarchy.rankPath.map((rank, index) => (
+                      {[...hierarchy.rankPath].reverse().map((rank, index) => (
                         <span key={`${rank}-${index}`} className="inline-flex items-center">
                           {rank}
                           {index < hierarchy.rankPath.length - 1 && (
