@@ -315,6 +315,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                           <TableCell>
                             <div className="flex gap-1">
                               <Button 
+                                type="button"
                                 variant="ghost" 
                                 size="sm" 
                                 className="h-7 w-7 p-0"
@@ -323,6 +324,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                                 <Eye className="h-4 w-4 text-gray-600" />
                               </Button>
                               <Button 
+                                type="button"
                                 variant="ghost" 
                                 size="sm" 
                                 className="h-7 w-7 p-0"
@@ -402,6 +404,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                           <TableCell>
                             <div className="flex gap-1">
                               <Button 
+                                type="button"
                                 variant="ghost" 
                                 size="sm" 
                                 className="h-7 w-7 p-0"
@@ -410,6 +413,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                                 <Info className="h-4 w-4 text-gray-600" />
                               </Button>
                               <Button 
+                                type="button"
                                 variant="ghost" 
                                 size="sm" 
                                 className="h-7 w-7 p-0"
@@ -418,6 +422,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                                 <Edit className="h-4 w-4 text-gray-600" />
                               </Button>
                               <Button 
+                                type="button"
                                 variant="ghost" 
                                 size="sm" 
                                 className="h-7 w-7 p-0"
@@ -434,6 +439,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-2">
                           <Button 
+                            type="button"
                             variant="outline" 
                             size="sm" 
                             onClick={addCesTest}
@@ -456,6 +462,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                   <h3 className="text-base font-medium text-[#16569e]">A3. Identified Training Needs</h3>
                   <div className="flex gap-2">
                     <Button 
+                      type="button"
                       variant="outline" 
                       size="sm" 
                       className="text-xs"
@@ -465,6 +472,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                       Add Training from Database
                     </Button>
                     <Button 
+                      type="button"
                       variant="outline" 
                       size="sm" 
                       className="text-xs" 
@@ -542,6 +550,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                           <TableCell>
                             <div className="flex gap-1">
                               <Button 
+                                type="button"
                                 variant="ghost" 
                                 size="sm" 
                                 className="h-7 w-7 p-0"
@@ -550,6 +559,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                                 <Edit className="h-4 w-4 text-gray-600" />
                               </Button>
                               <Button 
+                                type="button"
                                 variant="ghost" 
                                 size="sm" 
                                 className="h-7 w-7 p-0" 
@@ -579,6 +589,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-base font-medium text-[#16569e]">A4. Comments & Recommendations</h3>
                   <Button 
+                    type="button"
                     variant="outline" 
                     size="sm" 
                     className="text-xs" 
@@ -597,6 +608,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                         <span className="text-sm font-medium text-blue-600" data-testid={`comment-user-${comment.id}`}>{comment.user}</span>
                         <div className="flex gap-1">
                           <Button 
+                            type="button"
                             variant="ghost" 
                             size="sm" 
                             className="h-6 w-6 p-0"
@@ -605,6 +617,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                             <Edit className="h-3 w-3 text-gray-600" />
                           </Button>
                           <Button 
+                            type="button"
                             variant="ghost" 
                             size="sm" 
                             className="h-6 w-6 p-0" 
