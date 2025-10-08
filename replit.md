@@ -55,12 +55,16 @@ The application is built with a modern web stack, adhering to a module-first arc
     - **CRUD Operations**: Full create, read, update, delete support with visual indicators for most senior and entry-level positions
     - **Duplicate Prevention**: Validates that each rank appears in only one hierarchy to avoid conflicts
     - **Promotions Module Integration**: Automatically filters Promotions table to show only crew members with available promotion paths, excluding those at senior positions or with unmapped ranks. Column "Next Promotion Rank" displays the calculated next rank based on hierarchy configuration.
-    - **Promotion Review Form**: Modal-based 3-part form (A: Criteria Review, B: Approval, C: Execution) integrated with PromotionsTable. Part A features:
-        - **A1. Seafarer Information**: Displays crew details including name, DOB/age, current rank, promotion rank, and vessel assignment
-        - **A2. Minimum Promotion Criteria**: Interactive table with tri-state badge logic (Met/Not Met/Pending) supporting numeric ranges, comparisons, and string matching. Includes verification radio buttons (Yes/No/NA), progress bar, and CES/Language test management with controlled inputs
-        - **A3. Training Needs**: Dynamic training table with add/delete functionality, DB selection, category/status dropdowns
-        - **A4. Comments & Recommendations**: Reviewer comments system with add/delete handlers
-        - **Form Interaction**: All action buttons use `type="button"` to prevent unintended form submission, ensuring add/delete operations work correctly
+    - **Promotion Review Form**: Modal-based 3-part form (A: Criteria Review, B: Approval, C: Execution) integrated with PromotionsTable. Features:
+        - **Part A - Criteria Review**:
+            - **A1. Seafarer Information**: Displays crew details including name, DOB/age, current rank, promotion rank, and vessel assignment
+            - **A2. Minimum Promotion Criteria**: Interactive table with tri-state badge logic (Met/Not Met/Pending) supporting numeric ranges, comparisons, and string matching. Includes verification radio buttons (Yes/No/NA), progress bar, and CES/Language test management with controlled inputs
+            - **A3. Training Needs**: Dynamic training table with add/delete functionality, DB selection, category/status dropdowns
+            - **A4. Comments & Recommendations**: Reviewer comments system with add/delete handlers
+        - **Part B - Approval**: Records approval from designated approvers with:
+            - **B1. Approved?**: Dynamic approver management with date, approver selection (Marine Superintendent, Technical Superintendent, Crew Manager, Fleet Manager), status dropdown (Pending/Approved/Rejected), approval radio buttons (Yes/Yes, Conditional/No), and comments display. Add/delete approver functionality with unique ID generation using useRef
+            - **B2. Suitable for**: Multi-select chip displays for vessel types and vessel classes with remove capability. Each chip features light blue background with X button for removal
+        - **Form Interaction**: All action buttons use `type="button"` to prevent unintended form submission, ensuring add/delete operations work correctly. Unique ID generation for dynamic rows uses useRef counters to prevent duplicate key issues
         - **Testing**: Comprehensive data-testid attributes on all interactive elements for e2e testing compatibility
 - **Performance Optimization**: Utilizes map-based lookups, TanStack Query for caching, `useRef` for preventing re-renders, `useMemo` for calculations, and optimized `PersistentFileStorage`.
 - **Data Storage**: `PersistentFileStorage` for development, with PostgreSQL/Drizzle ORM schema for production.
