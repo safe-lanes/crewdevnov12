@@ -7,6 +7,7 @@ import { Edit } from 'lucide-react';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { findNextPromotionRank, shouldShowInPromotionsTable } from './promotionUtils';
 import { PromotionHierarchy } from '@shared/schema';
+import { PromotionReviewForm } from './PromotionReviewForm';
 
 // Status indicator cell renderer (green/yellow/gray circles)
 const StatusIndicatorRenderer = (params: ICellRendererParams) => {
@@ -72,11 +73,12 @@ const StatusBadgeRenderer = (params: ICellRendererParams) => {
   );
 };
 
-// Edit button cell renderer
-const EditButtonRenderer = (params: ICellRendererParams) => {
+// Edit button cell renderer (now accepts onEdit callback)
+const EditButtonRenderer = (params: ICellRendererParams & { onEdit?: (data: any) => void }) => {
   const handleEditClick = () => {
-    console.log('Edit clicked for:', params.data);
-    // Will open promotion form later
+    if (params.onEdit) {
+      params.onEdit(params.data);
+    }
   };
 
   return (
@@ -112,6 +114,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
   status
 }) => {
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
+  const [selectedPromotion, setSelectedPromotion] = useState<any | null>(null);
   
   // Vessel lookup for ID to name translation
   const { getVesselName } = useVesselLookup();
@@ -206,6 +209,10 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       return matchesName && matchesRank && matchesVesselType && matchesNationality && matchesCriteria && matchesStatus;
     });
   }, [promotionData, searchName, promotionToRank, vesselType, nationality, criteria, status]);
+
+  const handleEditPromotion = useCallback((data: any) => {
+    setSelectedPromotion(data);
+  }, []);
 
   const columnDefs: ColDef[] = useMemo(() => [
     {
@@ -349,15 +356,22 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       field: 'edit',
       width: 60,
       cellRenderer: EditButtonRenderer,
+      cellRendererParams: {
+        onEdit: handleEditPromotion
+      },
       sortable: false,
       resizable: false,
       pinned: 'right'
     }
-  ], []);
+  ], [handleEditPromotion]);
 
   const handleGridReady = (event: GridReadyEvent) => {
     setGridApi(event.api);
   };
+
+  const handleCloseForm = useCallback(() => {
+    setSelectedPromotion(null);
+  }, []);
 
   return (
     <div className="flex flex-col h-full">
@@ -383,6 +397,14 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
           Page {filteredData.length > 0 ? '1' : '0'} of {filteredData.length > 0 ? '1' : '0'}
         </div>
       </div>
+
+      {/* Promotion Review Form Dialog */}
+      {selectedPromotion && (
+        <PromotionReviewForm
+          promotionData={selectedPromotion}
+          onClose={handleCloseForm}
+        />
+      )}
     </div>
   );
 };
