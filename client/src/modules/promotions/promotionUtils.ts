@@ -18,15 +18,16 @@ export function findNextPromotionRank(
     return { nextRank: null, hasPath: false };
   }
 
-  // rankPath is stored junior→senior, so find current position
+  // rankPath is stored senior→junior (index 0 = most senior like Master)
+  // So we need to move towards index 0 to get more senior ranks
   const currentIndex = hierarchy.rankPath.indexOf(currentRank);
 
   // Check if there's a next rank (more senior position)
-  if (currentIndex < hierarchy.rankPath.length - 1) {
-    // Next rank exists (one position higher in the array)
-    return { nextRank: hierarchy.rankPath[currentIndex + 1], hasPath: true };
+  if (currentIndex > 0) {
+    // Next rank exists (one position lower index = more senior)
+    return { nextRank: hierarchy.rankPath[currentIndex - 1], hasPath: true };
   } else {
-    // Already at senior position (top of the ladder)
+    // Already at senior position (index 0 = top of the ladder)
     return { nextRank: null, hasPath: true };
   }
 }
