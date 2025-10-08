@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type CrewDashboardSummary } from "@shared/schema";
+import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type CrewDashboardSummary } from "@shared/schema";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -30,6 +30,12 @@ export interface IStorage {
   deleteCompanyRank(id: string): Promise<boolean>;
   clearAllCompanyRanks(): Promise<boolean>;
   saveAllCompanyRanks(ranks: InsertCompanyRank[]): Promise<CompanyRank[]>;
+  // Promotion Hierarchies
+  getPromotionHierarchies(): Promise<PromotionHierarchy[]>;
+  getPromotionHierarchy(id: number): Promise<PromotionHierarchy | undefined>;
+  createPromotionHierarchy(hierarchy: InsertPromotionHierarchy): Promise<PromotionHierarchy>;
+  updatePromotionHierarchy(id: number, hierarchy: Partial<InsertPromotionHierarchy>): Promise<PromotionHierarchy | undefined>;
+  deletePromotionHierarchy(id: number): Promise<boolean>;
   // Crew Members
   getCrewMembers(): Promise<CrewMember[]>;
   getCrewMember(id: string): Promise<CrewMember | undefined>;
@@ -110,6 +116,7 @@ export class MemStorage implements IStorage {
   private rankGroups: Map<number, RankGroup>;
   private availableRanks: Map<number, AvailableRank>;
   private companyRanks: Map<string, CompanyRank>;
+  private promotionHierarchies: Map<number, PromotionHierarchy>;
   private crewMembers: Map<string, CrewMember>;
   private appraisalResults: Map<number, AppraisalResult>;
   private recruitmentCandidates: Map<string, RecruitmentCandidate>;
@@ -122,6 +129,7 @@ export class MemStorage implements IStorage {
   private currentFormId: number;
   private currentRankGroupId: number;
   private currentAvailableRankId: number;
+  private currentPromotionHierarchyId: number;
   private currentAppraisalResultId: number;
   private currentCrewIdCounter: number;
   private currentVesselGroupId: number;
@@ -136,6 +144,7 @@ export class MemStorage implements IStorage {
     this.rankGroups = new Map();
     this.availableRanks = new Map();
     this.companyRanks = new Map();
+    this.promotionHierarchies = new Map();
     this.crewMembers = new Map();
     this.appraisalResults = new Map();
     this.recruitmentCandidates = new Map();
@@ -148,6 +157,7 @@ export class MemStorage implements IStorage {
     this.currentFormId = 1;
     this.currentRankGroupId = 1;
     this.currentAvailableRankId = 1;
+    this.currentPromotionHierarchyId = 1;
     this.currentAppraisalResultId = 1;
     this.currentCrewIdCounter = 1;
     this.currentVesselGroupId = 1;
@@ -741,6 +751,87 @@ export class MemStorage implements IStorage {
       console.error('Failed to update rank orders:', error);
       return false;
     }
+  }
+
+  // Company Ranks Methods
+  async getCompanyRanks(): Promise<CompanyRank[]> {
+    return Array.from(this.companyRanks.values());
+  }
+
+  async getCompanyRank(id: string): Promise<CompanyRank | undefined> {
+    return this.companyRanks.get(id);
+  }
+
+  async createCompanyRank(insertCompanyRank: InsertCompanyRank): Promise<CompanyRank> {
+    const companyRank: CompanyRank = { ...insertCompanyRank };
+    this.companyRanks.set(companyRank.id, companyRank);
+    return companyRank;
+  }
+
+  async updateCompanyRank(id: string, companyRankData: Partial<InsertCompanyRank>): Promise<CompanyRank | undefined> {
+    const existingCompanyRank = this.companyRanks.get(id);
+    if (!existingCompanyRank) return undefined;
+
+    const updatedCompanyRank: CompanyRank = { ...existingCompanyRank, ...companyRankData };
+    this.companyRanks.set(id, updatedCompanyRank);
+    return updatedCompanyRank;
+  }
+
+  async deleteCompanyRank(id: string): Promise<boolean> {
+    return this.companyRanks.delete(id);
+  }
+
+  async clearAllCompanyRanks(): Promise<boolean> {
+    this.companyRanks.clear();
+    return true;
+  }
+
+  async saveAllCompanyRanks(ranks: InsertCompanyRank[]): Promise<CompanyRank[]> {
+    this.companyRanks.clear();
+    const savedRanks: CompanyRank[] = [];
+    
+    for (const rank of ranks) {
+      const companyRank: CompanyRank = { ...rank };
+      this.companyRanks.set(companyRank.id, companyRank);
+      savedRanks.push(companyRank);
+    }
+    
+    return savedRanks;
+  }
+
+  // Promotion Hierarchies Methods
+  async getPromotionHierarchies(): Promise<PromotionHierarchy[]> {
+    return Array.from(this.promotionHierarchies.values());
+  }
+
+  async getPromotionHierarchy(id: number): Promise<PromotionHierarchy | undefined> {
+    return this.promotionHierarchies.get(id);
+  }
+
+  async createPromotionHierarchy(insertPromotionHierarchy: InsertPromotionHierarchy): Promise<PromotionHierarchy> {
+    const id = this.currentPromotionHierarchyId++;
+    const promotionHierarchy: PromotionHierarchy = { 
+      ...insertPromotionHierarchy, 
+      id
+    };
+    this.promotionHierarchies.set(id, promotionHierarchy);
+    return promotionHierarchy;
+  }
+
+  async updatePromotionHierarchy(id: number, promotionHierarchyData: Partial<InsertPromotionHierarchy>): Promise<PromotionHierarchy | undefined> {
+    const existingPromotionHierarchy = this.promotionHierarchies.get(id);
+    if (!existingPromotionHierarchy) return undefined;
+
+    const updatedPromotionHierarchy: PromotionHierarchy = { 
+      ...existingPromotionHierarchy, 
+      ...promotionHierarchyData
+    };
+    this.promotionHierarchies.set(id, updatedPromotionHierarchy);
+    return updatedPromotionHierarchy;
+  }
+
+  async deletePromotionHierarchy(id: number): Promise<boolean> {
+    return this.promotionHierarchies.delete(id);
   }
 
   // Crew Members Methods
@@ -1489,6 +1580,7 @@ export class PersistentFileStorage implements IStorage {
   private rankGroups: Map<number, RankGroup>;
   private availableRanks: Map<number, AvailableRank>;
   private companyRanks: Map<string, CompanyRank>;
+  private promotionHierarchies: Map<number, PromotionHierarchy>;
   private crewMembers: Map<string, CrewMember>;
   private appraisalResults: Map<number, AppraisalResult>;
   private recruitmentCandidates: Map<string, RecruitmentCandidate>;
@@ -1501,6 +1593,7 @@ export class PersistentFileStorage implements IStorage {
   private currentFormId: number;
   private currentRankGroupId: number;
   private currentAvailableRankId: number;
+  private currentPromotionHierarchyId: number;
   private currentAppraisalResultId: number;
   private currentCrewIdCounter: number;
   private currentVesselGroupId: number;
@@ -1520,6 +1613,7 @@ export class PersistentFileStorage implements IStorage {
     this.rankGroups = new Map();
     this.availableRanks = new Map();
     this.companyRanks = new Map();
+    this.promotionHierarchies = new Map();
     this.crewMembers = new Map();
     this.appraisalResults = new Map();
     this.recruitmentCandidates = new Map();
@@ -1532,6 +1626,7 @@ export class PersistentFileStorage implements IStorage {
     this.currentFormId = 1;
     this.currentRankGroupId = 1;
     this.currentAvailableRankId = 1;
+    this.currentPromotionHierarchyId = 1;
     this.currentAppraisalResultId = 1;
     this.currentCrewIdCounter = 1;
     this.currentVesselGroupId = 1;
@@ -1588,6 +1683,7 @@ export class PersistentFileStorage implements IStorage {
         this.rankGroups = new Map(data.rankGroups || []);
         this.availableRanks = new Map(data.availableRanks || []);
         this.companyRanks = new Map(data.companyRanks || []);
+        this.promotionHierarchies = new Map(data.promotionHierarchies || []);
         this.crewMembers = new Map(data.crewMembers || []);
         this.appraisalResults = new Map(data.appraisalResults || []);
         this.recruitmentCandidates = new Map(data.recruitmentCandidates || []);
@@ -1599,6 +1695,7 @@ export class PersistentFileStorage implements IStorage {
         this.currentFormId = data.currentFormId || 2;
         this.currentRankGroupId = data.currentRankGroupId || 1;
         this.currentAvailableRankId = data.currentAvailableRankId || 11;
+        this.currentPromotionHierarchyId = data.currentPromotionHierarchyId || 1;
         this.currentAppraisalResultId = data.currentAppraisalResultId || 1;
         
         // Robust crew ID counter initialization
@@ -1648,6 +1745,7 @@ export class PersistentFileStorage implements IStorage {
       rankGroups: Array.from(this.rankGroups.entries()),
       availableRanks: Array.from(this.availableRanks.entries()),
       companyRanks: Array.from(this.companyRanks.entries()),
+      promotionHierarchies: Array.from(this.promotionHierarchies.entries()),
       crewMembers: Array.from(this.crewMembers.entries()),
       appraisalResults: Array.from(this.appraisalResults.entries()),
       recruitmentCandidates: Array.from(this.recruitmentCandidates.entries()),
@@ -1661,6 +1759,7 @@ export class PersistentFileStorage implements IStorage {
       currentFormId: this.currentFormId,
       currentRankGroupId: this.currentRankGroupId,
       currentAvailableRankId: this.currentAvailableRankId,
+      currentPromotionHierarchyId: this.currentPromotionHierarchyId,
       currentAppraisalResultId: this.currentAppraisalResultId,
       currentCrewIdCounter: this.currentCrewIdCounter,
       currentVesselGroupId: this.currentVesselGroupId,
@@ -2190,6 +2289,47 @@ export class PersistentFileStorage implements IStorage {
     this.saveToFile(); // SAVE TO FILE AFTER BULK SAVE!
     console.log(`💾 [COMPANY-RANK] Bulk saved ${savedRanks.length} company ranks to persistent storage`);
     return savedRanks;
+  }
+
+  // Promotion Hierarchy methods
+  async getPromotionHierarchies(): Promise<PromotionHierarchy[]> {
+    return Array.from(this.promotionHierarchies.values());
+  }
+
+  async getPromotionHierarchy(id: number): Promise<PromotionHierarchy | undefined> {
+    return this.promotionHierarchies.get(id);
+  }
+
+  async createPromotionHierarchy(insertPromotionHierarchy: InsertPromotionHierarchy): Promise<PromotionHierarchy> {
+    const id = this.currentPromotionHierarchyId++;
+    const promotionHierarchy: PromotionHierarchy = { 
+      ...insertPromotionHierarchy, 
+      id
+    };
+    this.promotionHierarchies.set(id, promotionHierarchy);
+    this.saveToFile();
+    return promotionHierarchy;
+  }
+
+  async updatePromotionHierarchy(id: number, promotionHierarchyData: Partial<InsertPromotionHierarchy>): Promise<PromotionHierarchy | undefined> {
+    const existingPromotionHierarchy = this.promotionHierarchies.get(id);
+    if (!existingPromotionHierarchy) return undefined;
+
+    const updatedPromotionHierarchy: PromotionHierarchy = { 
+      ...existingPromotionHierarchy, 
+      ...promotionHierarchyData
+    };
+    this.promotionHierarchies.set(id, updatedPromotionHierarchy);
+    this.saveToFile();
+    return updatedPromotionHierarchy;
+  }
+
+  async deletePromotionHierarchy(id: number): Promise<boolean> {
+    const result = this.promotionHierarchies.delete(id);
+    if (result) {
+      this.saveToFile();
+    }
+    return result;
   }
 
   // Crew Member methods (same as MemStorage)
