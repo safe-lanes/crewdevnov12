@@ -147,6 +147,26 @@ export function PromotionHierarchyDialog({ open, onOpenChange }: PromotionHierar
       return;
     }
 
+    // Check for duplicate ranks in other hierarchies
+    const otherHierarchies = hierarchies.filter(h => h.id !== editingId);
+    const duplicateRanks: string[] = [];
+    
+    selectedRanks.forEach(rank => {
+      const existingHierarchy = otherHierarchies.find(h => h.rankPath.includes(rank));
+      if (existingHierarchy) {
+        duplicateRanks.push(`${rank} (already in "${existingHierarchy.groupName}")`);
+      }
+    });
+
+    if (duplicateRanks.length > 0) {
+      toast({
+        title: "Duplicate Ranks Found",
+        description: `The following ranks are already in other hierarchies: ${duplicateRanks.join(', ')}. Each rank can only belong to one promotion path.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const data = { groupName, rankPath: selectedRanks };
 
     if (editingId !== null) {
