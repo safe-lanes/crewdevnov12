@@ -64,6 +64,12 @@ The application is built with a modern web stack, adhering to a module-first arc
         - **Part B - Approval**: Records approval from designated approvers with:
             - **B1. Approved?**: Dynamic approver management with date, approver selection (Marine Superintendent, Technical Superintendent, Crew Manager, Fleet Manager), status dropdown (Pending/Approved/Rejected), approval radio buttons (Yes/Yes, Conditional/No), and comments display. Add/delete approver functionality with unique ID generation using useRef
             - **B2. Suitable for**: Multi-select chip displays for vessel types and vessel classes with remove capability. Each chip features light blue background with X button for removal
+        - **Part C - Execution**: Records promotion execution details with:
+            - **C.1 Confirmation & Assignment**: Captures promotion confirmation status (Yes/Waitlist/Rejected), vessel assignment dropdown, and promotion date with timing options (Promoted on board/Promoted prior joining)
+            - **B2.1 Promotion confirmed**: Radio button selection with info icon
+            - **B2.2 Vessel Assigned**: Dropdown with vessel options and info icon
+            - **B2.3 Date of Promotion**: Date input with radio buttons for promotion timing and info icon
+            - **Submitted by display**: Shows submitter name with Save and Submit action buttons
         - **Form Interaction**: All action buttons use `type="button"` to prevent unintended form submission, ensuring add/delete operations work correctly. Unique ID generation for dynamic rows uses useRef counters to prevent duplicate key issues
         - **Testing**: Comprehensive data-testid attributes on all interactive elements for e2e testing compatibility
 - **Performance Optimization**: Utilizes map-based lookups, TanStack Query for caching, `useRef` for preventing re-renders, `useMemo` for calculations, and optimized `PersistentFileStorage`.
