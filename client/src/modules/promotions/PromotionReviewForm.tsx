@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { BaseSubmoduleForm, FormSection } from '@/components/BaseSubmoduleForm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -129,6 +129,12 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     },
   ]);
 
+  // Counters for generating unique IDs
+  const nextApproverIdRef = useRef(3);
+  const nextCesTestIdRef = useRef(2);
+  const nextCommentIdRef = useRef(3);
+  const nextTrainingIdRef = useRef(6);
+
   const [vesselTypes, setVesselTypes] = useState<string[]>(['Product Tankers', 'Crude Oil Tankers']);
   const [vesselClasses, setVesselClasses] = useState<string[]>(['MR Class1 Tankers', 'Chemical JP 20']);
 
@@ -181,7 +187,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   };
 
   const addTrainingRow = () => {
-    const newId = (trainingNeeds.length + 1).toString();
+    const newId = nextTrainingIdRef.current.toString();
+    nextTrainingIdRef.current += 1;
     setTrainingNeeds([...trainingNeeds, {
       id: newId,
       training: `Training ${newId}`,
@@ -203,7 +210,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   };
 
   const addCesTest = () => {
-    const newId = (cesTests.length + 1).toString();
+    const newId = nextCesTestIdRef.current.toString();
+    nextCesTestIdRef.current += 1;
     setCesTests([...cesTests, {
       id: newId,
       date: '',
@@ -224,7 +232,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   };
 
   const addComment = () => {
-    const newId = (comments.length + 1).toString();
+    const newId = nextCommentIdRef.current.toString();
+    nextCommentIdRef.current += 1;
     setComments([...comments, {
       id: newId,
       user: 'New User',
@@ -250,7 +259,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
 
   // Part B handlers
   const addApprover = () => {
-    const newId = (approvers.length + 1).toString();
+    const newId = nextApproverIdRef.current.toString();
+    nextApproverIdRef.current += 1;
     setApprovers([...approvers, {
       id: newId,
       date: '',
