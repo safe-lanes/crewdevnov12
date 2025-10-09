@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { BaseSubmoduleForm, FormSection } from '@/components/BaseSubmoduleForm';
+import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,26 +41,10 @@ interface PromotionChecklistFormProps {
   onClose: () => void;
 }
 
-const promotionChecklistSchema = z.object({
-  partANotes: z.string().optional(),
-  partBNotes: z.string().optional(),
-});
-
-type PromotionChecklistFormData = z.infer<typeof promotionChecklistSchema>;
-
 export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
   promotionData,
   onClose,
 }) => {
-  const sections = [
-    { id: 'a', title: 'Part A: General', letter: 'A' },
-    { id: 'b', title: 'Part B: Promotion Checklist', letter: 'B' },
-  ];
-
-  const defaultValues: PromotionChecklistFormData = {
-    partANotes: '',
-    partBNotes: '',
-  };
 
   // Fetch crew member data including sea service
   const { data: crewMember, isLoading: isLoadingCrew, error: crewError } = useQuery<CrewMember>({
@@ -92,13 +76,9 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     }
   }, [crewMember]);
 
-  const handleSubmit = (data: PromotionChecklistFormData) => {
-    console.log('Saving Promotion Checklist...', data);
-    onClose();
-  };
-
-  const handleVerifyAndSubmit = () => {
-    console.log('Verifying and Submitting Promotion Checklist...');
+  const handleSave = () => {
+    console.log('Saving Promotion Checklist...');
+    // Add save logic here
     onClose();
   };
 
@@ -226,35 +206,50 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
   );
 
   return (
-    <BaseSubmoduleForm
-      title="Promotion Checklist"
-      sections={sections}
-      schema={promotionChecklistSchema}
-      defaultValues={defaultValues}
-      onClose={onClose}
-      onSubmit={handleSubmit}
-    >
-      {({ activeSection }) => (
-        <>
-          {activeSection === 'a' && (
-            <FormSection
-              title="Part A: General"
-              description="This section is read only & provides information on the seafarer and summary of progress"
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between z-10">
+          <h2 className="text-xl font-semibold text-gray-900">Promotion Checklist</h2>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={handleSave}
+              className="bg-[#60a5fa] hover:bg-[#3b82f6] text-white"
+              data-testid="button-save-checklist"
             >
-              {renderPartA()}
-            </FormSection>
-          )}
+              Save
+            </Button>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+              data-testid="button-close-checklist"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+        </div>
 
-          {activeSection === 'b' && (
-            <FormSection
-              title="Part B: Promotion Checklist"
-              description="At least 2 verifications are required"
-            >
-              {renderPartB()}
-            </FormSection>
-          )}
-        </>
-      )}
-    </BaseSubmoduleForm>
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto p-6 bg-[#f9fafb] space-y-6">
+          {/* Part A: General */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <div className="border-b pb-4 mb-6">
+              <h3 className="text-lg font-semibold text-[#16569e]">Part A: General</h3>
+              <p className="text-sm text-[#60a5fa] mt-1">This section is read only & provides information on the seafarer and summary of progress</p>
+            </div>
+            {renderPartA()}
+          </div>
+
+          {/* Part B: Promotion Checklist */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <div className="border-b pb-4 mb-6">
+              <h3 className="text-lg font-semibold text-[#16569e]">Part B: Promotion Checklist</h3>
+              <p className="text-sm text-[#60a5fa] mt-1">At least 2 verifications are required</p>
+            </div>
+            {renderPartB()}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
