@@ -9,6 +9,51 @@ import { findNextPromotionRank, shouldShowInPromotionsTable } from './promotionU
 import { PromotionHierarchy } from '@shared/schema';
 import { PromotionReviewForm } from './PromotionReviewForm';
 
+// Helper function to calculate age from DOB
+const calculateAge = (dob: string): number | null => {
+  if (!dob || dob === '-') return null;
+  
+  let birthDate: Date | null = null;
+  
+  // Try parsing different date formats
+  // Format 1: "08-Jul-1991" or "17-Jan-1973"
+  if (dob.includes('-') && isNaN(Number(dob.split('-')[0])) === false && dob.split('-').length === 3) {
+    const parts = dob.split('-');
+    const day = parseInt(parts[0]);
+    const monthMap: { [key: string]: number } = {
+      'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+      'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+    };
+    const month = monthMap[parts[1]];
+    const year = parseInt(parts[2]);
+    
+    if (!isNaN(day) && month !== undefined && !isNaN(year)) {
+      birthDate = new Date(year, month, day);
+    }
+  }
+  
+  // Format 2: ISO format "1973-01-17" or other standard formats
+  if (!birthDate) {
+    birthDate = new Date(dob);
+  }
+  
+  // Check if valid date
+  if (!birthDate || isNaN(birthDate.getTime())) {
+    return null;
+  }
+  
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  
+  // Adjust age if birthday hasn't occurred this year
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  
+  return age;
+};
+
 // Status indicator cell renderer (green/yellow/gray circles)
 const StatusIndicatorRenderer = (params: ICellRendererParams) => {
   const status = params.value; // 'met', 'pending', 'not-met'
@@ -163,16 +208,20 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
                           !vesselId;
         const vesselLeave = isOnLeave ? 'On Leave' : (vesselName || vesselId || '-');
         
+        // Calculate actual age from DOB
+        const dobString = crew.dateOfBirth || crew.dob || '-';
+        const calculatedAge = calculateAge(dobString);
+        
         return {
           crewId: crew.employeeId || crew.id || '-',
           name: `${crew.firstName || 'Unknown'} ${crew.middleInitial || ''} ${crew.familyName || ''}`.trim(),
-          dob: crew.dateOfBirth || crew.dob || '-',
+          dob: dobString,
+          age: calculatedAge !== null ? calculatedAge : '-',
           nationality: crew.nationality || 'Unknown',
           currentRank: currentRank,
           promotionToRank: nextRank || '-',
           vesselLeave: vesselLeave,
           license: ['met', 'pending', 'met'][index % 3],
-          age: ['met', 'met', 'pending'][index % 3],
           sea: ['met', 'pending', 'met'][index % 3],
           reco: ['met', 'pending', 'met'][index % 3],
           promotionChecklist: [40, 75, 80, 60, 45, 90, 85, 50][index % 8],
