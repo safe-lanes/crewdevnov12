@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Eye, Edit, Trash2, Plus, Info, X, MessageSquare } from 'lucide-react';
 import { z } from 'zod';
+import { PromotionChecklistForm } from './PromotionChecklistForm';
 
 interface PromotionReviewFormProps {
   promotionData: any;
@@ -153,6 +154,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   const [vesselAssigned, setVesselAssigned] = useState<string>('');
   const [promotionDate, setPromotionDate] = useState<string>('');
   const [promotionTiming, setPromotionTiming] = useState<string>('on-board'); // on-board, prior-joining
+
+  // Promotion Checklist Form state
+  const [showChecklistForm, setShowChecklistForm] = useState(false);
 
   const defaultValues: PromotionReviewFormData = {
     partANotes: '',
@@ -306,14 +310,15 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   };
 
   return (
-    <BaseSubmoduleForm
-      title="Promotion Review Form"
-      sections={sections}
-      schema={promotionReviewSchema}
-      defaultValues={defaultValues}
-      onClose={onClose}
-      onSubmit={handleSubmit}
-    >
+    <>
+      <BaseSubmoduleForm
+        title="Promotion Review Form"
+        sections={sections}
+        schema={promotionReviewSchema}
+        defaultValues={defaultValues}
+        onClose={onClose}
+        onSubmit={handleSubmit}
+      >
       {({ activeSection, form }) => (
         <>
           {activeSection === 'a' && (
@@ -552,7 +557,12 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                           return (
                             <React.Fragment key={row.id}>
                               {/* A2.5 Progress Bar Row */}
-                              <TableRow key="a2.5-progress">
+                              <TableRow 
+                                key="a2.5-progress" 
+                                className="cursor-pointer hover:bg-gray-50"
+                                onClick={() => setShowChecklistForm(true)}
+                                data-testid="row-promotion-checklist-progress"
+                              >
                                 <TableCell colSpan={2} className="text-sm">A2.5 Promotion Checklist Progress</TableCell>
                                 <TableCell colSpan={4}>
                                   <div className="flex items-center gap-2">
@@ -1267,6 +1277,15 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
           )}
         </>
       )}
-    </BaseSubmoduleForm>
+      </BaseSubmoduleForm>
+
+      {/* Promotion Checklist Form Modal */}
+      {showChecklistForm && (
+        <PromotionChecklistForm 
+          crewMemberId={promotionData?.crewMemberId}
+          onClose={() => setShowChecklistForm(false)}
+        />
+      )}
+    </>
   );
 };
