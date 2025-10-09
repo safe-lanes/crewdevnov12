@@ -370,7 +370,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                             <TableCell className="text-sm">
                               <div className="flex items-center gap-2">
                                 <span className={row.id.includes('.') && row.id.split('.').length > 2 ? 'ml-8' : ''}>{row.criteria}</span>
-                                {row.hasInfo && <Info className="h-4 w-4 text-gray-400 cursor-help" />}
+                                {row.hasInfo && row.id !== 'a2.7' && <Info className="h-4 w-4 text-gray-400 cursor-help" />}
                               </div>
                             </TableCell>
                             <TableCell className="text-sm">{row.required}</TableCell>
@@ -414,6 +414,18 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                                 >
                                   <Edit className="h-4 w-4 text-gray-600" />
                                 </Button>
+                                {row.id === 'a2.7' && (
+                                  <Button 
+                                    type="button"
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-7 w-7 p-0"
+                                    onClick={addCesTest}
+                                    data-testid="button-add-ces-test-inline"
+                                  >
+                                    <Plus className="h-4 w-4 text-gray-600" />
+                                  </Button>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>
@@ -537,25 +549,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                         // Default: render the row as-is
                         return renderCriteriaRow();
                       })}
-                      {/* Add CES Test Button Row */}
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-2">
-                          <Button 
-                            type="button"
-                            variant="outline" 
-                            size="sm" 
-                            onClick={addCesTest}
-                            data-testid="button-add-ces-test"
-                          >
-                            <Plus className="h-3 w-3 mr-1" />
-                            Add CES/Language Test
-                          </Button>
-                        </TableCell>
-                      </TableRow>
                     </TableBody>
                   </Table>
                 </div>
-                <p className="text-xs text-blue-600 italic mt-2">If no, record the identified training needs in next section</p>
               </div>
 
               {/* A3: Identified Training Needs */}
