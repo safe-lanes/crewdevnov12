@@ -42,6 +42,7 @@ interface SeaServiceEntry {
 interface ChecklistComment {
   id: string;
   userName: string;
+  rank: string;
   text: string;
   date: string;
 }
@@ -157,6 +158,7 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
             {
               id: 'c1',
               userName: 'James Smith',
+              rank: 'Master',
               text: 'Officer demonstrated an effective command via the bridge team, communication was effective overall, and the approach - confident.',
               date: '14 Jan 24'
             }
@@ -186,12 +188,14 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
             {
               id: 'c2',
               userName: 'James Smith',
+              rank: 'Master',
               text: 'Officer demonstrated a thorough knowledge of the checks and monitoring of the situation.',
               date: '14 Jan 24'
             },
             {
               id: 'c3',
               userName: 'Wilbur Pace',
+              rank: 'Master',
               text: '',
               date: '17 Aug 24'
             }
@@ -439,6 +443,7 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     const newComment: ChecklistComment = {
       id: `comment-${Date.now()}`,
       userName: currentUser.name,
+      rank: currentUser.rank,
       text: commentText,
       date: new Date().toLocaleDateString()
     };
@@ -472,11 +477,12 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
       date: formattedDate
     };
 
-    // Create verification comment
+    // Create verification comment with the verification text
     const verificationComment: ChecklistComment = {
       id: `vcomment-${Date.now()}`,
       userName: currentUser.name,
-      text: '',
+      rank: currentUser.rank,
+      text: '', // Empty text, will display as "Verified by: [name], [rank], [date]"
       date: formattedDate
     };
 
@@ -656,7 +662,7 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
                             <div className="flex-1">
                               {comment.text ? (
                                 <>
-                                  <span className="font-medium">Verified by:</span> {comment.userName}, {currentUser.rank}, {comment.date}
+                                  <span className="font-medium">Verified by:</span> {comment.userName}, {comment.rank}, {comment.date}
                                   {comment.text && (
                                     <>
                                       <br />
@@ -666,7 +672,7 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
                                 </>
                               ) : (
                                 <>
-                                  <span className="font-medium">Verified by:</span> {comment.userName}, {currentUser.rank}, {comment.date}
+                                  <span className="font-medium">Verified by:</span> {comment.userName}, {comment.rank}, {comment.date}
                                 </>
                               )}
                             </div>
