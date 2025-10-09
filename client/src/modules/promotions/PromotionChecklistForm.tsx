@@ -147,8 +147,6 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
           <div className="text-sm text-gray-500 py-4">Loading sea service data...</div>
         ) : crewError ? (
           <div className="text-sm text-red-500 py-4">Error loading sea service data</div>
-        ) : seaServiceData.length === 0 ? (
-          <div className="text-sm text-gray-500 py-4">No sea service records found</div>
         ) : (
           <div className="overflow-x-auto">
             <Table>
@@ -164,17 +162,25 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {seaServiceData.map((service: SeaServiceEntry, index: number) => (
-                  <TableRow key={service.id || index}>
-                    <TableCell className="text-sm" data-testid={`cell-vessel-name-${service.id || index}`}>{service.vessel || service.vesselName || 'N/A'}</TableCell>
-                    <TableCell className="text-sm" data-testid={`cell-vessel-type-${service.id || index}`}>{service.vesselType || 'N/A'}</TableCell>
-                    <TableCell className="text-sm" data-testid={`cell-deadweight-${service.id || index}`}>{service.deadweight || 'N/A'}</TableCell>
-                    <TableCell className="text-sm" data-testid={`cell-engine-power-${service.id || index}`}>{service.engineType || service.enginePower || 'N/A'}</TableCell>
-                    <TableCell className="text-sm" data-testid={`cell-from-${service.id || index}`}>{service.fromDate || service.from || 'N/A'}</TableCell>
-                    <TableCell className="text-sm" data-testid={`cell-to-${service.id || index}`}>{service.toDate || service.to || 'N/A'}</TableCell>
-                    <TableCell className="text-sm" data-testid={`cell-period-${service.id || index}`}>{service.period || service.duration || 'N/A'}</TableCell>
+                {seaServiceData.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-sm text-gray-500 text-center py-4">
+                      No sea service records found
+                    </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  seaServiceData.map((service: SeaServiceEntry, index: number) => (
+                    <TableRow key={service.id || index}>
+                      <TableCell className="text-sm" data-testid={`cell-vessel-name-${service.id || index}`}>{service.vessel || service.vesselName || 'N/A'}</TableCell>
+                      <TableCell className="text-sm" data-testid={`cell-vessel-type-${service.id || index}`}>{service.vesselType || 'N/A'}</TableCell>
+                      <TableCell className="text-sm" data-testid={`cell-deadweight-${service.id || index}`}>{service.deadweight || 'N/A'}</TableCell>
+                      <TableCell className="text-sm" data-testid={`cell-engine-power-${service.id || index}`}>{service.engineType || service.enginePower || 'N/A'}</TableCell>
+                      <TableCell className="text-sm" data-testid={`cell-from-${service.id || index}`}>{service.fromDate || service.from || 'N/A'}</TableCell>
+                      <TableCell className="text-sm" data-testid={`cell-to-${service.id || index}`}>{service.toDate || service.to || 'N/A'}</TableCell>
+                      <TableCell className="text-sm" data-testid={`cell-period-${service.id || index}`}>{service.period || service.duration || 'N/A'}</TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
