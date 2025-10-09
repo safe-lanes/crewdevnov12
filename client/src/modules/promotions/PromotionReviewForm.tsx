@@ -767,32 +767,96 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                                 type="button"
                                 variant="ghost" 
                                 size="sm" 
-                                className="h-7 w-7 p-0"
-                                data-testid={`button-training-edit-${training.id}`}
-                              >
-                                <Edit className="h-4 w-4 text-gray-600" />
-                              </Button>
-                              <Button 
-                                type="button"
-                                variant="ghost" 
-                                size="sm" 
                                 className="h-7 w-7 p-0" 
                                 onClick={() => deleteTrainingRow(training.id)}
                                 data-testid={`button-training-delete-${training.id}`}
                               >
                                 <Trash2 className="h-4 w-4 text-gray-600" />
                               </Button>
+                              <Button 
+                                type="button"
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-7 w-7 p-0"
+                                onClick={() => setEditingTrainingComment(editingTrainingComment === training.id ? null : training.id)}
+                                data-testid={`button-training-comment-${training.id}`}
+                              >
+                                <MessageSquare className="h-4 w-4 text-gray-600" />
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
-                      ))}
-                      {trainingNeeds.length > 0 && (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-xs text-blue-600 italic">
-                            Comment: The officer will no longer be sent on this type of vessel, so this training is not required
-                          </TableCell>
-                        </TableRow>
-                      )}
+
+                        {/* Comment display for this training row */}
+                        {(editingTrainingComment === training.id || trainingComments[training.id]?.length > 0) && (
+                          <TableRow>
+                            <TableCell colSpan={6} className="bg-gray-50 p-3">
+                              {trainingComments[training.id]?.map((comment) => (
+                                <div key={comment.id} className="mb-2">
+                                  <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                      <div className="text-xs font-medium text-gray-700 mb-1">{comment.user}</div>
+                                      <div 
+                                        className="text-xs text-blue-600 italic cursor-pointer"
+                                        onClick={() => {
+                                          setEditingTrainingComment(training.id);
+                                          setNewTrainingComment(prev => ({ ...prev, [training.id]: comment.text }));
+                                        }}
+                                      >
+                                        Comment: {comment.text}
+                                      </div>
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0"
+                                      onClick={() => {
+                                        setTrainingComments(prev => ({
+                                          ...prev,
+                                          [training.id]: prev[training.id].filter(c => c.id !== comment.id)
+                                        }));
+                                      }}
+                                      data-testid={`button-delete-training-comment-${comment.id}`}
+                                    >
+                                      <Trash2 className="h-3 w-3 text-gray-600" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                              
+                              {editingTrainingComment === training.id && (
+                                <div className="mt-2">
+                                  <div className="text-xs font-medium text-gray-700 mb-1">Roxanne, Crewing Executive</div>
+                                  <textarea
+                                    className="w-full h-20 p-2 border rounded text-xs"
+                                    placeholder="Comment: Add your observations here..."
+                                    value={newTrainingComment[training.id] || ''}
+                                    onChange={(e) => setNewTrainingComment(prev => ({ ...prev, [training.id]: e.target.value }))}
+                                    onBlur={() => {
+                                      const commentText = newTrainingComment[training.id]?.trim();
+                                      if (commentText) {
+                                        const newComment: Comment = {
+                                          id: `training-comment-${Date.now()}`,
+                                          user: 'Roxanne, Crewing Executive',
+                                          text: commentText
+                                        };
+                                        setTrainingComments(prev => ({
+                                          ...prev,
+                                          [training.id]: [...(prev[training.id] || []), newComment]
+                                        }));
+                                      }
+                                      setNewTrainingComment(prev => ({ ...prev, [training.id]: '' }));
+                                      setEditingTrainingComment(null);
+                                    }}
+                                    data-testid={`textarea-training-comment-${training.id}`}
+                                  />
+                                </div>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      ))
                     </TableBody>
                   </Table>
                 </div>
