@@ -1282,7 +1282,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       {/* Promotion Checklist Form Modal */}
       {showChecklistForm && (
         <PromotionChecklistForm 
-          crewMemberId={promotionData?.crewMemberId}
+          promotionData={promotionData}
           onClose={() => setShowChecklistForm(false)}
         />
       )}

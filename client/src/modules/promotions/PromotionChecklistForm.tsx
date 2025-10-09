@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { BaseSubmoduleForm, FormSection } from '@/components/BaseSubmoduleForm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,8 +7,18 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { z } from 'zod';
 
+interface PromotionData {
+  crewMemberId: string;
+  name: string;
+  currentRank: string;
+  promotionToRank: string;
+  vesselLeave: string;
+  dob: string;
+  age: string;
+}
+
 interface PromotionChecklistFormProps {
-  crewMemberId?: string;
+  promotionData: PromotionData;
   onClose: () => void;
 }
 
@@ -19,7 +30,7 @@ const promotionChecklistSchema = z.object({
 type PromotionChecklistFormData = z.infer<typeof promotionChecklistSchema>;
 
 export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
-  crewMemberId,
+  promotionData,
   onClose,
 }) => {
   const sections = [
@@ -32,22 +43,34 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     partBNotes: '',
   };
 
-  // Sample seafarer data (would come from props/API in real implementation)
-  const [seafarerData] = useState({
-    name: 'James Anderson',
-    rank: 'Chief Officer',
-    promotionRank: 'Master',
-    vessel: 'MV Pacific Star',
-    dateOfBirth: '15-Mar-1985',
-    age: '39 Years',
+  // Fetch crew member data including sea service
+  const { data: crewMember, isLoading: isLoadingCrew, error: crewError } = useQuery({
+    queryKey: [`/api/crew-members/${promotionData.crewMemberId}`],
+    enabled: !!promotionData.crewMemberId,
   });
 
-  // Sample sea service data
-  const [seaServiceData] = useState([
-    { id: '1', vessel: 'MV Pacific Star', rank: 'Chief Officer', fromDate: '01-Jan-2023', toDate: '31-Dec-2023', duration: '12 months' },
-    { id: '2', vessel: 'MV Atlantic Queen', rank: 'Chief Officer', fromDate: '01-Jan-2022', toDate: '31-Dec-2022', duration: '12 months' },
-    { id: '3', vessel: 'MV Indian Ocean', rank: '2nd Officer', fromDate: '01-Jun-2020', toDate: '31-Dec-2021', duration: '19 months' },
-  ]);
+  // Use promotion data passed from parent
+  const seafarerData = {
+    name: promotionData?.name || 'N/A',
+    rank: promotionData?.currentRank || 'N/A',
+    promotionRank: promotionData?.promotionToRank || 'N/A',
+    vessel: promotionData?.vesselLeave || 'N/A',
+    dateOfBirth: promotionData?.dob || 'N/A',
+    age: promotionData?.age || 'N/A',
+  };
+
+  // Parse sea service data from crew member
+  const seaServiceData = React.useMemo(() => {
+    if (!crewMember?.currentCompanySeaService) return [];
+    try {
+      const parsed = typeof crewMember.currentCompanySeaService === 'string'
+        ? JSON.parse(crewMember.currentCompanySeaService)
+        : crewMember.currentCompanySeaService;
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }, [crewMember]);
 
   const handleSubmit = (data: PromotionChecklistFormData) => {
     console.log('Saving Promotion Checklist...', data);
@@ -128,30 +151,38 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
         <h3 className="text-base font-medium text-[#16569e] mb-4">A2. Details of Sea Service</h3>
         <p className="text-xs text-gray-500 mb-3">Imported from database</p>
         
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-gray-50">
-                <TableHead className="text-xs font-normal text-gray-600">Vessel</TableHead>
-                <TableHead className="text-xs font-normal text-gray-600">Rank</TableHead>
-                <TableHead className="text-xs font-normal text-gray-600">From Date</TableHead>
-                <TableHead className="text-xs font-normal text-gray-600">To Date</TableHead>
-                <TableHead className="text-xs font-normal text-gray-600">Duration</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {seaServiceData.map((service) => (
-                <TableRow key={service.id}>
-                  <TableCell className="text-sm" data-testid={`cell-vessel-${service.id}`}>{service.vessel}</TableCell>
-                  <TableCell className="text-sm" data-testid={`cell-rank-${service.id}`}>{service.rank}</TableCell>
-                  <TableCell className="text-sm" data-testid={`cell-from-${service.id}`}>{service.fromDate}</TableCell>
-                  <TableCell className="text-sm" data-testid={`cell-to-${service.id}`}>{service.toDate}</TableCell>
-                  <TableCell className="text-sm" data-testid={`cell-duration-${service.id}`}>{service.duration}</TableCell>
+        {isLoadingCrew ? (
+          <div className="text-sm text-gray-500 py-4">Loading sea service data...</div>
+        ) : crewError ? (
+          <div className="text-sm text-red-500 py-4">Error loading sea service data</div>
+        ) : seaServiceData.length === 0 ? (
+          <div className="text-sm text-gray-500 py-4">No sea service records found</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="text-xs font-normal text-gray-600">Vessel</TableHead>
+                  <TableHead className="text-xs font-normal text-gray-600">Rank</TableHead>
+                  <TableHead className="text-xs font-normal text-gray-600">From Date</TableHead>
+                  <TableHead className="text-xs font-normal text-gray-600">To Date</TableHead>
+                  <TableHead className="text-xs font-normal text-gray-600">Duration</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {seaServiceData.map((service: any, index: number) => (
+                  <TableRow key={service.id || index}>
+                    <TableCell className="text-sm" data-testid={`cell-vessel-${service.id || index}`}>{service.vessel || 'N/A'}</TableCell>
+                    <TableCell className="text-sm" data-testid={`cell-rank-${service.id || index}`}>{service.rank || 'N/A'}</TableCell>
+                    <TableCell className="text-sm" data-testid={`cell-from-${service.id || index}`}>{service.fromDate || service.from || 'N/A'}</TableCell>
+                    <TableCell className="text-sm" data-testid={`cell-to-${service.id || index}`}>{service.toDate || service.to || 'N/A'}</TableCell>
+                    <TableCell className="text-sm" data-testid={`cell-duration-${service.id || index}`}>{service.duration || 'N/A'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
 
       {/* A3: Progress of completion of this Checklist */}
