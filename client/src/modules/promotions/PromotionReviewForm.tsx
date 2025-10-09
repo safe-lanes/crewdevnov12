@@ -415,9 +415,13 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                                   variant="ghost" 
                                   size="sm" 
                                   className="h-7 w-7 p-0"
-                                  data-testid={`button-criteria-edit-${row.id}`}
+                                  onClick={() => setNewCriteriaComment(prev => ({
+                                    ...prev,
+                                    [row.id]: ""
+                                  }))}
+                                  data-testid={`button-criteria-comment-${row.id}`}
                                 >
-                                  <Edit className="h-4 w-4 text-gray-600" />
+                                  <MessageSquare className="h-4 w-4 text-gray-400" />
                                 </Button>
                                 {row.id === 'a2.7' && (
                                   <Button 
