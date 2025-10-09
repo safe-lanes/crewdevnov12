@@ -108,6 +108,11 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     { id: '5', training: 'Training 5', correspondingInDB: '', category: '2. Soft Skills', status: 'Completed', completionDate: 'dd-mm-yy' },
   ]);
 
+  // A3 Training Comments state
+  const [trainingComments, setTrainingComments] = useState<Record<string, Comment[]>>({});
+  const [newTrainingComment, setNewTrainingComment] = useState<Record<string, string>>({});
+  const [editingTrainingComment, setEditingTrainingComment] = useState<string | null>(null);
+
   // A4 Comments state
   const [comments, setComments] = useState<Comment[]>([
     { id: '1', user: 'Roxanne, Crewing Executive', text: "Candidate's feedback over conduct was positive. No issues reported" },
