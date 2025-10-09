@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { Eye, Edit, Trash2, Plus, Info, X } from 'lucide-react';
+import { Eye, Edit, Trash2, Plus, Info, X, MessageSquare } from 'lucide-react';
 import { z } from 'zod';
 
 interface PromotionReviewFormProps {
@@ -93,6 +93,11 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   const [cesTests, setCesTests] = useState([
     { id: '1', date: '', subject: '', score: '', result: '' },
   ]);
+
+  // A2 Criteria Comments state
+  const [criteriaComments, setCriteriaComments] = useState<Record<string, Comment[]>>({});
+  const [newCriteriaComment, setNewCriteriaComment] = useState<Record<string, string>>({});
+  const [editingCriteriaComment, setEditingCriteriaComment] = useState<string | null>(null);
 
   // A3 Training Needs state
   const [trainingNeeds, setTrainingNeeds] = useState<TrainingRow[]>([
