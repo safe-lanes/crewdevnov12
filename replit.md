@@ -72,6 +72,13 @@ The application is built with a modern web stack, adhering to a module-first arc
             - **Submitted by display**: Shows submitter name with Save and Submit action buttons
         - **Form Interaction**: All action buttons use `type="button"` to prevent unintended form submission, ensuring add/delete operations work correctly. Unique ID generation for dynamic rows uses useRef counters to prevent duplicate key issues
         - **Testing**: Comprehensive data-testid attributes on all interactive elements for e2e testing compatibility
+    - **Promotion Checklist Form**: Modal-based 2-part form accessible via A2.5 progress bar click in Promotion Review Form. Features:
+        - **Part A - General** (read-only):
+            - **A1. Seafarer's Information**: Displays name, current rank, promotion rank, vessel, DOB, and age from promotionData
+            - **A2. Details of Sea Service**: Dynamically fetches and displays sea service records from crew member API with loading/error states
+            - **A3. Progress of completion**: Shows checklist completion progress with visual indicators
+        - **Part B - Promotion Checklist** (stub): Placeholder for dynamic promotion checklist sections
+        - **Data Integration**: Properly typed PromotionData interface, fetches crew member details via `/api/crew-members/${id}`, parses currentCompanySeaService JSON, handles loading/error/empty states
 - **Performance Optimization**: Utilizes map-based lookups, TanStack Query for caching, `useRef` for preventing re-renders, `useMemo` for calculations, and optimized `PersistentFileStorage`.
 - **Data Storage**: `PersistentFileStorage` for development, with PostgreSQL/Drizzle ORM schema for production.
 
