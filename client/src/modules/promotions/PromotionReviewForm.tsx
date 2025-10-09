@@ -364,8 +364,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                     </TableHeader>
                     <TableBody>
                       {criteriaData.map((row) => {
-                        // Define reusable row component
-                        const CriteriaRow = (
+                        // Helper function to render a criteria row
+                        const renderCriteriaRow = () => (
                           <TableRow key={row.id} className={row.id.includes('.') && row.id.split('.').length > 2 ? 'bg-gray-50' : ''}>
                             <TableCell className="text-sm">
                               <div className="flex items-center gap-2">
@@ -424,7 +424,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                           return (
                             <React.Fragment key={row.id}>
                               {/* A2.5 Progress Bar Row */}
-                              <TableRow>
+                              <TableRow key="a2.5-progress">
                                 <TableCell colSpan={2} className="text-sm">A2.5 Promotion Checklist Progress</TableCell>
                                 <TableCell colSpan={4}>
                                   <div className="flex items-center gap-2">
@@ -435,7 +435,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                                   </div>
                                 </TableCell>
                               </TableRow>
-                              {CriteriaRow}
+                              {renderCriteriaRow()}
                             </React.Fragment>
                           );
                         }
@@ -444,7 +444,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                         if (row.id === 'a2.7') {
                           return (
                             <React.Fragment key={row.id}>
-                              {CriteriaRow}
+                              {renderCriteriaRow()}
                               {/* A2.7a CES/Language Tests Rows */}
                               {cesTests.map((test, index) => (
                                 <TableRow key={`ces-${test.id}`} className="bg-gray-50">
@@ -535,7 +535,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                         }
 
                         // Default: render the row as-is
-                        return CriteriaRow;
+                        return renderCriteriaRow();
                       })}
                       {/* Add CES Test Button Row */}
                       <TableRow>
