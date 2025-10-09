@@ -371,8 +371,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                       {criteriaData.map((row) => {
                         // Helper function to render a criteria row
                         const renderCriteriaRow = () => (
-                          <>
-                            <TableRow key={row.id} className={row.id.includes('.') && row.id.split('.').length > 2 ? 'bg-gray-50' : ''}>
+                          <React.Fragment key={row.id}>
+                            <TableRow className={row.id.includes('.') && row.id.split('.').length > 2 ? 'bg-gray-50' : ''}>
                               <TableCell className="text-sm">
                                 <div className="flex items-center gap-2">
                                   <span className={row.id.includes('.') && row.id.split('.').length > 2 ? 'ml-8' : ''}>{row.criteria}</span>
@@ -539,7 +539,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                                 </TableCell>
                               </TableRow>
                             )}
-                          </>
+                          </React.Fragment>
                         );
 
                         // Insert A2.5 Progress Bar before A2.5a
