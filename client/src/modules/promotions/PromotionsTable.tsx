@@ -331,7 +331,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       headerName: 'Age',
       field: 'age',
       width: 90,
-      cellRenderer: StatusIndicatorRenderer,
+      cellStyle: { fontSize: '13px', color: '#4f5863' },
       sortable: true,
       resizable: false,
       wrapHeaderText: false,
