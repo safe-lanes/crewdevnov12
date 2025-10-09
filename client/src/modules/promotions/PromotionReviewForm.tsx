@@ -371,73 +371,175 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                       {criteriaData.map((row) => {
                         // Helper function to render a criteria row
                         const renderCriteriaRow = () => (
-                          <TableRow key={row.id} className={row.id.includes('.') && row.id.split('.').length > 2 ? 'bg-gray-50' : ''}>
-                            <TableCell className="text-sm">
-                              <div className="flex items-center gap-2">
-                                <span className={row.id.includes('.') && row.id.split('.').length > 2 ? 'ml-8' : ''}>{row.criteria}</span>
-                                {row.hasInfo && row.id !== 'a2.7' && <Info className="h-4 w-4 text-gray-400 cursor-help" />}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-sm">{row.required}</TableCell>
-                            <TableCell className="text-sm">{row.resultFromDb}</TableCell>
-                            <TableCell>
-                              {renderMeetsCriterionBadge(row.required, row.resultFromDb)}
-                            </TableCell>
-                            <TableCell>
-                              <RadioGroup 
-                                value={row.verified} 
-                                onValueChange={(value) => updateCriteriaVerified(row.id, value)}
-                                className="flex gap-4"
-                              >
-                                <div className="flex items-center space-x-2">
-                                  <RadioGroupItem value="yes" id={`${row.id}-yes`} data-testid={`radio-verified-yes-${row.id}`} />
-                                  <Label htmlFor={`${row.id}-yes`} className="text-sm cursor-pointer">Yes</Label>
+                          <>
+                            <TableRow key={row.id} className={row.id.includes('.') && row.id.split('.').length > 2 ? 'bg-gray-50' : ''}>
+                              <TableCell className="text-sm">
+                                <div className="flex items-center gap-2">
+                                  <span className={row.id.includes('.') && row.id.split('.').length > 2 ? 'ml-8' : ''}>{row.criteria}</span>
+                                  {row.hasInfo && row.id !== 'a2.7' && <Info className="h-4 w-4 text-gray-400 cursor-help" />}
                                 </div>
-                                <div className="flex items-center space-x-2">
-                                  <RadioGroupItem value="na" id={`${row.id}-na`} data-testid={`radio-verified-na-${row.id}`} />
-                                  <Label htmlFor={`${row.id}-na`} className="text-sm cursor-pointer">NA</Label>
-                                </div>
-                              </RadioGroup>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex gap-1">
-                                <Button 
-                                  type="button"
-                                  variant="ghost" 
-                                  size="sm" 
-                                  className="h-7 w-7 p-0"
-                                  data-testid={`button-criteria-view-${row.id}`}
+                              </TableCell>
+                              <TableCell className="text-sm">{row.required}</TableCell>
+                              <TableCell className="text-sm">{row.resultFromDb}</TableCell>
+                              <TableCell>
+                                {renderMeetsCriterionBadge(row.required, row.resultFromDb)}
+                              </TableCell>
+                              <TableCell>
+                                <RadioGroup 
+                                  value={row.verified} 
+                                  onValueChange={(value) => updateCriteriaVerified(row.id, value)}
+                                  className="flex gap-4"
                                 >
-                                  <Eye className="h-4 w-4 text-gray-600" />
-                                </Button>
-                                <Button 
-                                  type="button"
-                                  variant="ghost" 
-                                  size="sm" 
-                                  className="h-7 w-7 p-0"
-                                  onClick={() => setNewCriteriaComment(prev => ({
-                                    ...prev,
-                                    [row.id]: ""
-                                  }))}
-                                  data-testid={`button-criteria-comment-${row.id}`}
-                                >
-                                  <MessageSquare className="h-4 w-4 text-gray-400" />
-                                </Button>
-                                {row.id === 'a2.7' && (
+                                  <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="yes" id={`${row.id}-yes`} data-testid={`radio-verified-yes-${row.id}`} />
+                                    <Label htmlFor={`${row.id}-yes`} className="text-sm cursor-pointer">Yes</Label>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="na" id={`${row.id}-na`} data-testid={`radio-verified-na-${row.id}`} />
+                                    <Label htmlFor={`${row.id}-na`} className="text-sm cursor-pointer">NA</Label>
+                                  </div>
+                                </RadioGroup>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex gap-1">
                                   <Button 
                                     type="button"
                                     variant="ghost" 
                                     size="sm" 
                                     className="h-7 w-7 p-0"
-                                    onClick={addCesTest}
-                                    data-testid="button-add-ces-test-inline"
+                                    data-testid={`button-criteria-view-${row.id}`}
                                   >
-                                    <Plus className="h-4 w-4 text-gray-600" />
+                                    <Eye className="h-4 w-4 text-gray-600" />
                                   </Button>
-                                )}
-                              </div>
-                            </TableCell>
-                          </TableRow>
+                                  <Button 
+                                    type="button"
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-7 w-7 p-0"
+                                    onClick={() => setNewCriteriaComment(prev => ({
+                                      ...prev,
+                                      [row.id]: ""
+                                    }))}
+                                    data-testid={`button-criteria-comment-${row.id}`}
+                                  >
+                                    <MessageSquare className="h-4 w-4 text-gray-400" />
+                                  </Button>
+                                  {row.id === 'a2.7' && (
+                                    <Button 
+                                      type="button"
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="h-7 w-7 p-0"
+                                      onClick={addCesTest}
+                                      data-testid="button-add-ces-test-inline"
+                                    >
+                                      <Plus className="h-4 w-4 text-gray-600" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                            
+                            {/* Comments for this criteria row */}
+                            {(criteriaComments[row.id]?.length > 0 || newCriteriaComment[row.id] !== undefined) && (
+                              <TableRow key={`${row.id}-comments`}>
+                                <TableCell colSpan={6} className="py-2 px-4 bg-gray-50">
+                                  <div className="space-y-2">
+                                    {criteriaComments[row.id]?.map((comment) => (
+                                      <div key={comment.id} className="flex justify-between items-start">
+                                        <div className="flex-1">
+                                          <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
+                                          {editingCriteriaComment === comment.id ? (
+                                            <Textarea
+                                              value={comment.text}
+                                              onChange={(e) => {
+                                                setCriteriaComments(prev => ({
+                                                  ...prev,
+                                                  [row.id]: prev[row.id]?.map(c => 
+                                                    c.id === comment.id ? { ...c, text: e.target.value } : c
+                                                  ) || []
+                                                }));
+                                              }}
+                                              onBlur={() => setEditingCriteriaComment(null)}
+                                              autoFocus
+                                              className="min-h-[80px] w-full"
+                                            />
+                                          ) : (
+                                            <div 
+                                              className="text-blue-600 italic text-[13px] p-1 cursor-pointer min-h-[20px] border border-transparent hover:border-gray-200 rounded"
+                                              onClick={() => setEditingCriteriaComment(comment.id)}
+                                            >
+                                              {comment.text}
+                                            </div>
+                                          )}
+                                        </div>
+                                        <div className="ml-2">
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                              setCriteriaComments(prev => ({
+                                                ...prev,
+                                                [row.id]: prev[row.id]?.filter(c => c.id !== comment.id) || []
+                                              }));
+                                              if (editingCriteriaComment === comment.id) {
+                                                setEditingCriteriaComment(null);
+                                              }
+                                            }}
+                                            data-testid={`button-delete-comment-${comment.id}`}
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                    
+                                    {newCriteriaComment[row.id] !== undefined && (
+                                      <div>
+                                        <div className="text-sm font-medium text-gray-600 mb-2">Roxanne, Crewing Executive</div>
+                                        <Textarea
+                                          value={newCriteriaComment[row.id]}
+                                          onChange={(e) => {
+                                            setNewCriteriaComment(prev => ({
+                                              ...prev,
+                                              [row.id]: e.target.value
+                                            }));
+                                          }}
+                                          onBlur={() => {
+                                            if (newCriteriaComment[row.id]?.trim()) {
+                                              const commentId = Date.now().toString();
+                                              setCriteriaComments(prev => ({
+                                                ...prev,
+                                                [row.id]: [
+                                                  ...(prev[row.id] || []),
+                                                  {
+                                                    id: commentId,
+                                                    user: "Roxanne, Crewing Executive",
+                                                    text: newCriteriaComment[row.id]
+                                                  }
+                                                ]
+                                              }));
+                                            }
+                                            setNewCriteriaComment(prev => {
+                                              const newState = { ...prev };
+                                              delete newState[row.id];
+                                              return newState;
+                                            });
+                                          }}
+                                          placeholder="Comment: Add your observations here..."
+                                          className="text-blue-600 italic border-blue-200 text-[13px]"
+                                          rows={2}
+                                          autoFocus
+                                          data-testid={`textarea-new-comment-${row.id}`}
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </>
                         );
 
                         // Insert A2.5 Progress Bar before A2.5a
