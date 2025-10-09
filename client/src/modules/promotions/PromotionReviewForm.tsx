@@ -81,7 +81,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     { id: 'a2.3c', criteria: 'A2.3c  Minimum Company Service in previous rank?', required: '12 Months', resultFromDb: '11 Months', verified: 'yes', hasInfo: false },
     { id: 'a2.3d', criteria: 'A2.3d  Minimum Tanker Experience?', required: '48 Months', resultFromDb: '54 Months', verified: 'yes', hasInfo: false },
     { id: 'a2.4', criteria: 'A2.4 Recommendations Criteria?', required: '2', resultFromDb: '2', verified: 'yes', hasInfo: true },
-    { id: 'a2.5', criteria: 'A2.5 Promotion Checklist Completed?', required: '', resultFromDb: '', verified: 'yes', hasInfo: true },
+    { id: 'a2.5a', criteria: 'A2.5a Promotion Checklist Completed?', required: '', resultFromDb: '', verified: 'yes', hasInfo: true },
     { id: 'a2.6', criteria: 'A2.6 Other Criteria?', required: '', resultFromDb: '', verified: 'yes', hasInfo: true },
     { id: 'a2.6a', criteria: 'A2.6a  Other Criteria 1?', required: 'Sample', resultFromDb: '', verified: 'yes', hasInfo: false },
     { id: 'a2.6b', criteria: 'A2.6b  Other Criteria 2?', required: 'Sample', resultFromDb: '', verified: 'yes', hasInfo: false },
