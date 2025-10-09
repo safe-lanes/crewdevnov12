@@ -1,0 +1,24 @@
+Now I want to create Part B of the form
+1. See the attached image 1, how this Part will finally look like. 
+
+2. However there are some dynamic components & some static. I will explain.
+
+3. The basic unit of this part B will be one section e.g., B1 (See image 2)
+   The form can have any number of sections (B1, B2, B3……B32) as configured in the Admin module for Promotion Checklist (We will create the functionality later)
+
+
+4. Now zooming in to one section  e.g. B1. (See images 3 & 4)
+
+Each section will have the section heading e.g., B1 Practical Training & Ship Handling. 
+The text ‘Practical Training & Ship Handling’ will be configured in the Admin module for Promotion Checklist.
+The Table by default will be visible with the header (S.No/ Assessment Point / Verified / Actions) as shown in image.
+Below it Any number of points can be configured from Admin module for Promotion Checklist e.g., B1.1, B1.2, B1.2 including their text. 
+
+The end user can only interact with the ‘Completed ‘ & ‘Action Buttons’
+Note: The interaction with the promotion checklist will vary depending upon who is accessing the checklist. I have explained basic user identifier below (We can later configure user interactions also)
+
+See details of action button below:
+-	Completed - The user1 (Crewmember) completes a task and clicks on completed checkbox.
+-	Attachment – User1 (Crewmember)  can attach attachments related to the task using this Attachment icon
+-	Comment Box – User1 (Crewmember)  can add a comment describing what he has completed. His name automatically comes on top of this comment box (same component that we have used in ‘Promotion Review form’ also.
+-	Verification Badge – User 2 (Department Head like Master, Chief Engineer) reviews the task (physically or looking at the comments & attachments)  and if satisfied clicks on the ‘Verification Badge’ icon . As soon as he does that the ‘Verified’ column adds ‘1’ meaning it has been verified once. One dept. Head can Verify only once. Even if he clicks the 2nd time, nothing happens. 
