@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { z } from 'zod';
+import type { CrewMember } from '@shared/schema';
 
 interface PromotionData {
   crewMemberId: string;
@@ -15,6 +16,24 @@ interface PromotionData {
   vesselLeave: string;
   dob: string;
   age: string;
+  nationality?: string;
+}
+
+interface SeaServiceEntry {
+  id?: string;
+  vessel?: string;
+  vesselName?: string;
+  vesselType?: string;
+  deadweight?: string | number;
+  engineType?: string;
+  enginePower?: string;
+  fromDate?: string;
+  from?: string;
+  toDate?: string;
+  to?: string;
+  period?: string;
+  duration?: string;
+  rank?: string;
 }
 
 interface PromotionChecklistFormProps {
@@ -44,7 +63,7 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
   };
 
   // Fetch crew member data including sea service
-  const { data: crewMember, isLoading: isLoadingCrew, error: crewError } = useQuery({
+  const { data: crewMember, isLoading: isLoadingCrew, error: crewError } = useQuery<CrewMember>({
     queryKey: [`/api/crew-members/${promotionData.crewMemberId}`],
     enabled: !!promotionData.crewMemberId,
   });
@@ -57,10 +76,11 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     vessel: promotionData?.vesselLeave || 'N/A',
     dateOfBirth: promotionData?.dob || 'N/A',
     age: promotionData?.age || 'N/A',
+    nationality: promotionData?.nationality || 'N/A',
   };
 
   // Parse sea service data from crew member
-  const seaServiceData = React.useMemo(() => {
+  const seaServiceData = React.useMemo<SeaServiceEntry[]>(() => {
     if (!crewMember?.currentCompanySeaService) return [];
     try {
       const parsed = typeof crewMember.currentCompanySeaService === 'string'
@@ -88,68 +108,40 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
       <div className="border border-[#EAEBEF] rounded-lg p-4">
         <h3 className="text-base font-medium text-[#16569e] mb-4">A1. Seafarer's Information</h3>
         
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <Label className="text-xs text-gray-600">Name</Label>
-            <Input 
-              value={seafarerData.name} 
-              disabled 
-              className="mt-1 bg-gray-50" 
-              data-testid="input-seafarer-name"
-            />
+        <div className="space-y-4">
+          {/* Row 1: Name, DOB/Age, Nationality */}
+          <div className="grid grid-cols-3 gap-6">
+            <div>
+              <Label className="text-xs text-gray-500">Name</Label>
+              <div className="text-sm font-medium mt-1" data-testid="text-seafarer-name">{seafarerData.name}</div>
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">DOB / Age</Label>
+              <div className="text-sm font-medium mt-1" data-testid="text-dob-age">{seafarerData.dateOfBirth} / {seafarerData.age}</div>
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">Nationality</Label>
+              <div className="text-sm font-medium mt-1" data-testid="text-nationality">{seafarerData.nationality}</div>
+            </div>
           </div>
-          <div>
-            <Label className="text-xs text-gray-600">Current Rank</Label>
-            <Input 
-              value={seafarerData.rank} 
-              disabled 
-              className="mt-1 bg-gray-50" 
-              data-testid="input-current-rank"
-            />
-          </div>
-          <div>
-            <Label className="text-xs text-gray-600">Promotion Rank</Label>
-            <Input 
-              value={seafarerData.promotionRank} 
-              disabled 
-              className="mt-1 bg-gray-50" 
-              data-testid="input-promotion-rank"
-            />
-          </div>
-          <div>
-            <Label className="text-xs text-gray-600">Current Vessel</Label>
-            <Input 
-              value={seafarerData.vessel} 
-              disabled 
-              className="mt-1 bg-gray-50" 
-              data-testid="input-current-vessel"
-            />
-          </div>
-          <div>
-            <Label className="text-xs text-gray-600">Date of Birth</Label>
-            <Input 
-              value={seafarerData.dateOfBirth} 
-              disabled 
-              className="mt-1 bg-gray-50" 
-              data-testid="input-dob"
-            />
-          </div>
-          <div>
-            <Label className="text-xs text-gray-600">Age</Label>
-            <Input 
-              value={seafarerData.age} 
-              disabled 
-              className="mt-1 bg-gray-50" 
-              data-testid="input-age"
-            />
+          
+          {/* Row 2: Present Rank, Promotion to Rank */}
+          <div className="grid grid-cols-3 gap-6">
+            <div>
+              <Label className="text-xs text-gray-500">Present Rank</Label>
+              <div className="text-sm font-medium mt-1" data-testid="text-present-rank">{seafarerData.rank}</div>
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">Promotion to Rank</Label>
+              <div className="text-sm font-medium mt-1" data-testid="text-promotion-rank">{seafarerData.promotionRank}</div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* A2: Details of Sea Service */}
       <div className="border border-[#EAEBEF] rounded-lg p-4">
-        <h3 className="text-base font-medium text-[#16569e] mb-4">A2. Details of Sea Service</h3>
-        <p className="text-xs text-gray-500 mb-3">Imported from database</p>
+        <h3 className="text-base font-medium text-[#16569e] mb-4">A2. Details of Sea Service (in Current Rank in the Company)</h3>
         
         {isLoadingCrew ? (
           <div className="text-sm text-gray-500 py-4">Loading sea service data...</div>
@@ -162,21 +154,25 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
             <Table>
               <TableHeader>
                 <TableRow className="bg-gray-50">
-                  <TableHead className="text-xs font-normal text-gray-600">Vessel</TableHead>
-                  <TableHead className="text-xs font-normal text-gray-600">Rank</TableHead>
-                  <TableHead className="text-xs font-normal text-gray-600">From Date</TableHead>
-                  <TableHead className="text-xs font-normal text-gray-600">To Date</TableHead>
-                  <TableHead className="text-xs font-normal text-gray-600">Duration</TableHead>
+                  <TableHead className="text-xs font-normal text-gray-500">Vessel Name</TableHead>
+                  <TableHead className="text-xs font-normal text-gray-500">Vessel Type</TableHead>
+                  <TableHead className="text-xs font-normal text-gray-500">Deadweight</TableHead>
+                  <TableHead className="text-xs font-normal text-gray-500">Engine Type/ Power</TableHead>
+                  <TableHead className="text-xs font-normal text-gray-500">From</TableHead>
+                  <TableHead className="text-xs font-normal text-gray-500">To</TableHead>
+                  <TableHead className="text-xs font-normal text-gray-500">Period(M)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {seaServiceData.map((service: any, index: number) => (
+                {seaServiceData.map((service: SeaServiceEntry, index: number) => (
                   <TableRow key={service.id || index}>
-                    <TableCell className="text-sm" data-testid={`cell-vessel-${service.id || index}`}>{service.vessel || 'N/A'}</TableCell>
-                    <TableCell className="text-sm" data-testid={`cell-rank-${service.id || index}`}>{service.rank || 'N/A'}</TableCell>
+                    <TableCell className="text-sm" data-testid={`cell-vessel-name-${service.id || index}`}>{service.vessel || service.vesselName || 'N/A'}</TableCell>
+                    <TableCell className="text-sm" data-testid={`cell-vessel-type-${service.id || index}`}>{service.vesselType || 'N/A'}</TableCell>
+                    <TableCell className="text-sm" data-testid={`cell-deadweight-${service.id || index}`}>{service.deadweight || 'N/A'}</TableCell>
+                    <TableCell className="text-sm" data-testid={`cell-engine-power-${service.id || index}`}>{service.engineType || service.enginePower || 'N/A'}</TableCell>
                     <TableCell className="text-sm" data-testid={`cell-from-${service.id || index}`}>{service.fromDate || service.from || 'N/A'}</TableCell>
                     <TableCell className="text-sm" data-testid={`cell-to-${service.id || index}`}>{service.toDate || service.to || 'N/A'}</TableCell>
-                    <TableCell className="text-sm" data-testid={`cell-duration-${service.id || index}`}>{service.duration || 'N/A'}</TableCell>
+                    <TableCell className="text-sm" data-testid={`cell-period-${service.id || index}`}>{service.period || service.duration || 'N/A'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -185,31 +181,23 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
         )}
       </div>
 
-      {/* A3: Progress of completion of this Checklist */}
+      {/* A3: Checklist Progress */}
       <div className="border border-[#EAEBEF] rounded-lg p-4">
-        <h3 className="text-base font-medium text-[#16569e] mb-4">A3. Progress of completion of this Checklist</h3>
+        <h3 className="text-base font-medium text-[#16569e] mb-4">A3. Checklist Progress</h3>
         
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm">Overall Progress</span>
-            <span className="text-sm font-medium">60%</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-3">
-            <div className="bg-yellow-500 h-3 rounded-full" style={{ width: '60%' }}></div>
+          <div className="text-sm text-gray-600 mb-3">
+            Note: No of verifications required for each question: <span className="text-green-600 font-medium">2</span>
           </div>
           
-          <div className="grid grid-cols-3 gap-4 mt-4">
-            <div className="text-center p-3 bg-green-50 rounded">
-              <div className="text-2xl font-semibold text-green-600">8</div>
-              <div className="text-xs text-gray-600 mt-1">Completed</div>
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <div className="w-full bg-gray-200 rounded-full h-3">
+                <div className="bg-[#EAB308] h-3 rounded-full" style={{ width: '60%' }}></div>
+              </div>
             </div>
-            <div className="text-center p-3 bg-yellow-50 rounded">
-              <div className="text-2xl font-semibold text-yellow-600">3</div>
-              <div className="text-xs text-gray-600 mt-1">In Progress</div>
-            </div>
-            <div className="text-center p-3 bg-red-50 rounded">
-              <div className="text-2xl font-semibold text-red-600">2</div>
-              <div className="text-xs text-gray-600 mt-1">Pending</div>
+            <div className="text-sm font-medium text-gray-700 whitespace-nowrap">
+              60% (44/110 Verifications)
             </div>
           </div>
         </div>
