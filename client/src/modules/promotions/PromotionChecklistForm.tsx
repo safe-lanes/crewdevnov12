@@ -1,10 +1,13 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { X } from 'lucide-react';
+import { X, Paperclip, MessageSquare, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import { z } from 'zod';
 import type { CrewMember } from '@shared/schema';
 
@@ -34,6 +37,44 @@ interface SeaServiceEntry {
   period?: string;
   duration?: string;
   rank?: string;
+}
+
+interface ChecklistComment {
+  id: string;
+  userName: string;
+  text: string;
+  date: string;
+}
+
+interface ChecklistVerification {
+  id: string;
+  verifierName: string;
+  rank: string;
+  date: string;
+}
+
+interface ChecklistAttachment {
+  id: string;
+  fileName: string;
+  fileSize: number;
+  uploadDate: string;
+}
+
+interface AssessmentPoint {
+  id: string;
+  number: string;
+  text: string;
+  completed: boolean;
+  verifications: ChecklistVerification[];
+  comments: ChecklistComment[];
+  attachments: ChecklistAttachment[];
+}
+
+interface ChecklistSection {
+  id: string;
+  number: string;
+  title: string;
+  assessmentPoints: AssessmentPoint[];
 }
 
 interface PromotionChecklistFormProps {
@@ -76,10 +117,401 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     }
   }, [crewMember]);
 
+  // Mock current user (for testing)
+  const currentUser = {
+    name: 'Current User',
+    rank: 'Chief Officer',
+    role: 'Department Head' // or 'Crewmember'
+  };
+
+  // Mock checklist sections data
+  const [checklistSections, setChecklistSections] = React.useState<ChecklistSection[]>([
+    {
+      id: 'B1',
+      number: 'B1',
+      title: 'Practical Training & Ship Handling',
+      assessmentPoints: [
+        {
+          id: 'B1.1',
+          number: 'B1.1',
+          text: 'Preparations before anchoring (Master & Officer on Bridge, Officer in charge on forecastle, bosun, crew)',
+          completed: false,
+          verifications: [],
+          comments: [],
+          attachments: []
+        },
+        {
+          id: 'B1.2',
+          number: 'B1.2',
+          text: 'Anchoring - approaching anchorage / speed reducing stopping engine etc astern when to drop anchor. Effective management of traffic around the anchor position.',
+          completed: true,
+          verifications: [
+            {
+              id: 'v1',
+              verifierName: 'James Smith',
+              rank: 'Master',
+              date: '14 Jan 24'
+            }
+          ],
+          comments: [
+            {
+              id: 'c1',
+              userName: 'James Smith',
+              text: 'Officer demonstrated an effective command via the bridge team, communication was effective overall, and the approach - confident.',
+              date: '14 Jan 24'
+            }
+          ],
+          attachments: []
+        },
+        {
+          id: 'B1.3',
+          number: 'B1.3',
+          text: 'Vessel at Anchor, frequent position checks, weather report, current / tide check and etc',
+          completed: true,
+          verifications: [
+            {
+              id: 'v2',
+              verifierName: 'James Smith',
+              rank: 'Master',
+              date: '14 Jan 24'
+            },
+            {
+              id: 'v3',
+              verifierName: 'Wilbur Pace',
+              rank: 'Master',
+              date: '17 Aug 24'
+            }
+          ],
+          comments: [
+            {
+              id: 'c2',
+              userName: 'James Smith',
+              text: 'Officer demonstrated a thorough knowledge of the checks and monitoring of the situation.',
+              date: '14 Jan 24'
+            },
+            {
+              id: 'c3',
+              userName: 'Wilbur Pace',
+              text: '',
+              date: '17 Aug 24'
+            }
+          ],
+          attachments: []
+        }
+      ]
+    },
+    {
+      id: 'B2',
+      number: 'B2',
+      title: 'Pilotage',
+      assessmentPoints: [
+        {
+          id: 'B2.1',
+          number: 'B2.1',
+          text: 'Preparations before embarking Master & Officer on Bridge, Officer in charge on forecaslte, bosun, crew',
+          completed: false,
+          verifications: [],
+          comments: [],
+          attachments: []
+        },
+        {
+          id: 'B2.2',
+          number: 'B2.2',
+          text: 'Anchoring - approaching anchorage / speed reducing stopping engine etc astern when to drop anchor. Effective management of traffic around the anchor position.',
+          completed: true,
+          verifications: [
+            {
+              id: 'v4',
+              verifierName: 'John Doe',
+              rank: 'Master',
+              date: '20 Feb 24'
+            }
+          ],
+          comments: [],
+          attachments: []
+        },
+        {
+          id: 'B2.3',
+          number: 'B2.3',
+          text: 'Arrival at Anchor, frequent position checks, weather report, current / tide check and etc',
+          completed: true,
+          verifications: [
+            {
+              id: 'v5',
+              verifierName: 'James Smith',
+              rank: 'Master',
+              date: '14 Jan 24'
+            },
+            {
+              id: 'v6',
+              verifierName: 'Wilbur Pace',
+              rank: 'Master',
+              date: '17 Aug 24'
+            }
+          ],
+          comments: [],
+          attachments: []
+        }
+      ]
+    },
+    {
+      id: 'B3',
+      number: 'B3',
+      title: 'Anchoring / Berthing',
+      assessmentPoints: [
+        {
+          id: 'B3.1',
+          number: 'B3.1',
+          text: 'Preparations before anchoring (Master & Officer on Bridge, Officer in charge on forecastle, bosun, crew)',
+          completed: false,
+          verifications: [],
+          comments: [],
+          attachments: []
+        },
+        {
+          id: 'B3.2',
+          number: 'B3.2',
+          text: 'Anchoring - approaching anchorage / speed reducing stopping engine etc astern when to drop anchor. Effective management of traffic around the anchor position.',
+          completed: true,
+          verifications: [
+            {
+              id: 'v7',
+              verifierName: 'James Smith',
+              rank: 'Master',
+              date: '14 Jan 24'
+            }
+          ],
+          comments: [],
+          attachments: []
+        },
+        {
+          id: 'B3.3',
+          number: 'B3.3',
+          text: 'Arrival at Anchor, frequent position checks, weather report, current / tide check and etc',
+          completed: true,
+          verifications: [
+            {
+              id: 'v8',
+              verifierName: 'James Smith',
+              rank: 'Master',
+              date: '14 Jan 24'
+            },
+            {
+              id: 'v9',
+              verifierName: 'Wilbur Pace',
+              rank: 'Master',
+              date: '17 Aug 24'
+            }
+          ],
+          comments: [],
+          attachments: []
+        }
+      ]
+    },
+    {
+      id: 'B4',
+      number: 'B4',
+      title: 'Advance Navigation',
+      assessmentPoints: [
+        {
+          id: 'B4.1',
+          number: 'B4.1',
+          text: 'Advance Point 1',
+          completed: false,
+          verifications: [],
+          comments: [],
+          attachments: []
+        },
+        {
+          id: 'B4.2',
+          number: 'B4.2',
+          text: 'Advance Point 2',
+          completed: true,
+          verifications: [
+            {
+              id: 'v10',
+              verifierName: 'James Smith',
+              rank: 'Master',
+              date: '14 Jan 24'
+            }
+          ],
+          comments: [],
+          attachments: []
+        },
+        {
+          id: 'B4.3',
+          number: 'B4.3',
+          text: 'Advance Point 3',
+          completed: true,
+          verifications: [
+            {
+              id: 'v11',
+              verifierName: 'James Smith',
+              rank: 'Master',
+              date: '14 Jan 24'
+            },
+            {
+              id: 'v12',
+              verifierName: 'Wilbur Pace',
+              rank: 'Master',
+              date: '17 Aug 24'
+            }
+          ],
+          comments: [],
+          attachments: []
+        }
+      ]
+    }
+  ]);
+
+  // State for managing UI interactions
+  const [activeCommentBox, setActiveCommentBox] = React.useState<string | null>(null);
+  const [commentText, setCommentText] = React.useState<string>('');
+
   const handleSave = () => {
     console.log('Saving Promotion Checklist...');
+    console.log('Checklist Data:', checklistSections);
     // Add save logic here
     onClose();
+  };
+
+  // Handler for toggling completion checkbox
+  const handleToggleComplete = (sectionId: string, pointId: string) => {
+    setChecklistSections(prev => prev.map(section => 
+      section.id === sectionId 
+        ? {
+            ...section,
+            assessmentPoints: section.assessmentPoints.map(point =>
+              point.id === pointId
+                ? { ...point, completed: !point.completed }
+                : point
+            )
+          }
+        : section
+    ));
+  };
+
+  // Handler for adding attachment
+  const handleAddAttachment = (sectionId: string, pointId: string) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.onchange = (e: Event) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        const newAttachment: ChecklistAttachment = {
+          id: `att-${Date.now()}`,
+          fileName: file.name,
+          fileSize: file.size,
+          uploadDate: new Date().toLocaleDateString()
+        };
+        setChecklistSections(prev => prev.map(section =>
+          section.id === sectionId
+            ? {
+                ...section,
+                assessmentPoints: section.assessmentPoints.map(point =>
+                  point.id === pointId
+                    ? { ...point, attachments: [...point.attachments, newAttachment] }
+                    : point
+                )
+              }
+            : section
+        ));
+      }
+    };
+    input.click();
+  };
+
+  // Handler for toggling comment box
+  const handleToggleCommentBox = (pointId: string) => {
+    if (activeCommentBox === pointId) {
+      setActiveCommentBox(null);
+      setCommentText('');
+    } else {
+      setActiveCommentBox(pointId);
+      setCommentText('');
+    }
+  };
+
+  // Handler for adding comment
+  const handleAddComment = (sectionId: string, pointId: string) => {
+    if (!commentText.trim()) return;
+
+    const newComment: ChecklistComment = {
+      id: `comment-${Date.now()}`,
+      userName: currentUser.name,
+      text: commentText,
+      date: new Date().toLocaleDateString()
+    };
+
+    setChecklistSections(prev => prev.map(section =>
+      section.id === sectionId
+        ? {
+            ...section,
+            assessmentPoints: section.assessmentPoints.map(point =>
+              point.id === pointId
+                ? { ...point, comments: [...point.comments, newComment] }
+                : point
+            )
+          }
+        : section
+    ));
+
+    setCommentText('');
+    setActiveCommentBox(null);
+  };
+
+  // Handler for verification badge click
+  const handleVerify = (sectionId: string, pointId: string) => {
+    const now = new Date();
+    const formattedDate = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }).replace(/ /g, ' ');
+
+    const newVerification: ChecklistVerification = {
+      id: `verify-${Date.now()}`,
+      verifierName: currentUser.name,
+      rank: currentUser.rank,
+      date: formattedDate
+    };
+
+    // Create verification comment
+    const verificationComment: ChecklistComment = {
+      id: `vcomment-${Date.now()}`,
+      userName: currentUser.name,
+      text: '',
+      date: formattedDate
+    };
+
+    setChecklistSections(prev => prev.map(section =>
+      section.id === sectionId
+        ? {
+            ...section,
+            assessmentPoints: section.assessmentPoints.map(point =>
+              point.id === pointId
+                ? {
+                    ...point,
+                    verifications: [...point.verifications, newVerification],
+                    comments: [...point.comments, verificationComment]
+                  }
+                : point
+            )
+          }
+        : section
+    ));
+  };
+
+  // Handler for deleting comment
+  const handleDeleteComment = (sectionId: string, pointId: string, commentId: string) => {
+    setChecklistSections(prev => prev.map(section =>
+      section.id === sectionId
+        ? {
+            ...section,
+            assessmentPoints: section.assessmentPoints.map(point =>
+              point.id === pointId
+                ? { ...point, comments: point.comments.filter(c => c.id !== commentId) }
+                : point
+            )
+          }
+        : section
+    ));
   };
 
   const renderPartA = () => (
@@ -192,16 +624,175 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
   );
 
   const renderPartB = () => (
-    <div className="space-y-4">
-      <div className="border border-[#EAEBEF] rounded-lg p-4">
-        <h3 className="text-base font-medium text-[#16569e] mb-4">Promotion Checklist Tasks</h3>
-        <p className="text-sm text-gray-500">Dynamic sections will be added here based on promotion requirements.</p>
-        
-        {/* Placeholder for dynamic checklist sections */}
-        <div className="mt-4 p-6 bg-gray-50 rounded text-center">
-          <p className="text-sm text-gray-400">Checklist sections will be dynamically loaded here</p>
+    <div className="space-y-6">
+      {checklistSections.map((section) => (
+        <div key={section.id} className="border border-[#EAEBEF] rounded-lg p-4">
+          <h3 className="text-base font-medium text-[#16569e] mb-4" data-testid={`section-title-${section.id}`}>
+            {section.number}. {section.title}
+          </h3>
+
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-16">S.No</TableHead>
+                <TableHead>Assessment Point</TableHead>
+                <TableHead className="w-24 text-center">Completed</TableHead>
+                <TableHead className="w-32 text-center">Verified<br/>(No of times)</TableHead>
+                <TableHead className="w-24 text-center">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {section.assessmentPoints.map((point) => (
+                <React.Fragment key={point.id}>
+                  <TableRow>
+                    <TableCell className="font-medium">{point.number}</TableCell>
+                    <TableCell>
+                      <div className="space-y-2">
+                        <div>{point.text}</div>
+                        
+                        {/* Display existing comments */}
+                        {point.comments.map((comment) => (
+                          <div key={comment.id} className="text-sm text-blue-600 italic flex items-start gap-2">
+                            <div className="flex-1">
+                              {comment.text ? (
+                                <>
+                                  <span className="font-medium">Verified by:</span> {comment.userName}, {currentUser.rank}, {comment.date}
+                                  {comment.text && (
+                                    <>
+                                      <br />
+                                      <span className="font-medium">Comment:</span> {comment.text}
+                                    </>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  <span className="font-medium">Verified by:</span> {comment.userName}, {currentUser.rank}, {comment.date}
+                                </>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleDeleteComment(section.id, point.id, comment.id)}
+                              className="text-gray-400 hover:text-red-600"
+                              data-testid={`button-delete-comment-${comment.id}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Checkbox
+                        checked={point.completed}
+                        onCheckedChange={() => handleToggleComplete(section.id, point.id)}
+                        data-testid={`checkbox-completed-${point.id}`}
+                      />
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge
+                        className={`${
+                          point.verifications.length === 0
+                            ? 'bg-gray-200 text-gray-700'
+                            : point.verifications.length === 1
+                            ? 'bg-yellow-200 text-yellow-800'
+                            : 'bg-green-200 text-green-800'
+                        }`}
+                        data-testid={`badge-verified-${point.id}`}
+                      >
+                        {point.verifications.length}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => handleAddAttachment(section.id, point.id)}
+                          className="text-gray-500 hover:text-blue-600"
+                          title="Add Attachment"
+                          data-testid={`button-attachment-${point.id}`}
+                        >
+                          <Paperclip className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleToggleCommentBox(point.id)}
+                          className="text-gray-500 hover:text-blue-600"
+                          title="Add Comment"
+                          data-testid={`button-comment-${point.id}`}
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleVerify(section.id, point.id)}
+                          className="text-gray-500 hover:text-green-600"
+                          title="Verify"
+                          data-testid={`button-verify-${point.id}`}
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  
+                  {/* Comment box row */}
+                  {activeCommentBox === point.id && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="bg-gray-50">
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium text-gray-700">{currentUser.name}</div>
+                          <Textarea
+                            value={commentText}
+                            onChange={(e) => setCommentText(e.target.value)}
+                            placeholder="Add your comment..."
+                            className="w-full"
+                            rows={3}
+                            data-testid={`textarea-comment-${point.id}`}
+                          />
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setActiveCommentBox(null);
+                                setCommentText('');
+                              }}
+                              data-testid={`button-cancel-comment-${point.id}`}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => handleAddComment(section.id, point.id)}
+                              data-testid={`button-submit-comment-${point.id}`}
+                            >
+                              Add Comment
+                            </Button>
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Attachments display */}
+                  {point.attachments.length > 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="bg-blue-50">
+                        <div className="text-sm">
+                          <span className="font-medium">Attachments: </span>
+                          {point.attachments.map((att, idx) => (
+                            <span key={att.id}>
+                              {att.fileName}
+                              {idx < point.attachments.length - 1 && ', '}
+                            </span>
+                          ))}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </React.Fragment>
+              ))}
+            </TableBody>
+          </Table>
         </div>
-      </div>
+      ))}
     </div>
   );
 
