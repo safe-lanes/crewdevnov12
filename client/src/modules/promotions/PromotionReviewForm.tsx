@@ -363,158 +363,180 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {criteriaData.map((row) => (
-                        <TableRow key={row.id} className={row.id.includes('.') && row.id.split('.').length > 2 ? 'bg-gray-50' : ''}>
-                          <TableCell className="text-sm">
-                            <div className="flex items-center gap-2">
-                              <span className={row.id.includes('.') && row.id.split('.').length > 2 ? 'ml-8' : ''}>{row.criteria}</span>
-                              {row.hasInfo && <Info className="h-4 w-4 text-gray-400 cursor-help" />}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm">{row.required}</TableCell>
-                          <TableCell className="text-sm">{row.resultFromDb}</TableCell>
-                          <TableCell>
-                            {renderMeetsCriterionBadge(row.required, row.resultFromDb)}
-                          </TableCell>
-                          <TableCell>
-                            <RadioGroup 
-                              value={row.verified} 
-                              onValueChange={(value) => updateCriteriaVerified(row.id, value)}
-                              className="flex gap-4"
-                            >
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="yes" id={`${row.id}-yes`} data-testid={`radio-verified-yes-${row.id}`} />
-                                <Label htmlFor={`${row.id}-yes`} className="text-sm cursor-pointer">Yes</Label>
+                      {criteriaData.map((row) => {
+                        // Define reusable row component
+                        const CriteriaRow = (
+                          <TableRow key={row.id} className={row.id.includes('.') && row.id.split('.').length > 2 ? 'bg-gray-50' : ''}>
+                            <TableCell className="text-sm">
+                              <div className="flex items-center gap-2">
+                                <span className={row.id.includes('.') && row.id.split('.').length > 2 ? 'ml-8' : ''}>{row.criteria}</span>
+                                {row.hasInfo && <Info className="h-4 w-4 text-gray-400 cursor-help" />}
                               </div>
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="na" id={`${row.id}-na`} data-testid={`radio-verified-na-${row.id}`} />
-                                <Label htmlFor={`${row.id}-na`} className="text-sm cursor-pointer">NA</Label>
+                            </TableCell>
+                            <TableCell className="text-sm">{row.required}</TableCell>
+                            <TableCell className="text-sm">{row.resultFromDb}</TableCell>
+                            <TableCell>
+                              {renderMeetsCriterionBadge(row.required, row.resultFromDb)}
+                            </TableCell>
+                            <TableCell>
+                              <RadioGroup 
+                                value={row.verified} 
+                                onValueChange={(value) => updateCriteriaVerified(row.id, value)}
+                                className="flex gap-4"
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="yes" id={`${row.id}-yes`} data-testid={`radio-verified-yes-${row.id}`} />
+                                  <Label htmlFor={`${row.id}-yes`} className="text-sm cursor-pointer">Yes</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="na" id={`${row.id}-na`} data-testid={`radio-verified-na-${row.id}`} />
+                                  <Label htmlFor={`${row.id}-na`} className="text-sm cursor-pointer">NA</Label>
+                                </div>
+                              </RadioGroup>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                <Button 
+                                  type="button"
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="h-7 w-7 p-0"
+                                  data-testid={`button-criteria-view-${row.id}`}
+                                >
+                                  <Eye className="h-4 w-4 text-gray-600" />
+                                </Button>
+                                <Button 
+                                  type="button"
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="h-7 w-7 p-0"
+                                  data-testid={`button-criteria-edit-${row.id}`}
+                                >
+                                  <Edit className="h-4 w-4 text-gray-600" />
+                                </Button>
                               </div>
-                            </RadioGroup>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
-                              <Button 
-                                type="button"
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-7 w-7 p-0"
-                                data-testid={`button-criteria-view-${row.id}`}
-                              >
-                                <Eye className="h-4 w-4 text-gray-600" />
-                              </Button>
-                              <Button 
-                                type="button"
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-7 w-7 p-0"
-                                data-testid={`button-criteria-edit-${row.id}`}
-                              >
-                                <Edit className="h-4 w-4 text-gray-600" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      
-                      {/* A2.5 Progress Bar Row */}
-                      <TableRow>
-                        <TableCell colSpan={2} className="text-sm">A2.5 Promotion Checklist Progress</TableCell>
-                        <TableCell colSpan={4}>
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 bg-gray-200 rounded-full h-2">
-                              <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '60%' }}></div>
-                            </div>
-                            <span className="text-sm text-gray-600">60%</span>
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                            </TableCell>
+                          </TableRow>
+                        );
 
-                      {/* A2.7 CES/Language Tests Rows */}
-                      {cesTests.map((test, index) => (
-                        <TableRow key={`ces-${test.id}`} className="bg-gray-50">
-                          <TableCell className="text-sm">A2.7{String.fromCharCode(97 + index)}</TableCell>
-                          <TableCell>
-                            <Input 
-                              type="date" 
-                              className="h-8 text-xs" 
-                              placeholder="Date"
-                              value={test.date}
-                              onChange={(e) => updateCesTest(test.id, 'date', e.target.value)}
-                              data-testid={`input-ces-date-${test.id}`}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Select 
-                              value={test.subject}
-                              onValueChange={(value) => updateCesTest(test.id, 'subject', value)}
-                            >
-                              <SelectTrigger className="h-8 text-xs" data-testid={`select-ces-subject-${test.id}`}>
-                                <SelectValue placeholder="Subject" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="english">English</SelectItem>
-                                <SelectItem value="ces">CES</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
-                            <Input 
-                              className="h-8 text-xs" 
-                              placeholder="Score"
-                              value={test.score}
-                              onChange={(e) => updateCesTest(test.id, 'score', e.target.value)}
-                              data-testid={`input-ces-score-${test.id}`}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Select 
-                              value={test.result}
-                              onValueChange={(value) => updateCesTest(test.id, 'result', value)}
-                            >
-                              <SelectTrigger className="h-8 text-xs" data-testid={`select-ces-result-${test.id}`}>
-                                <SelectValue placeholder="Result" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="pass">Pass</SelectItem>
-                                <SelectItem value="fail">Fail</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
-                              <Button 
-                                type="button"
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-7 w-7 p-0"
-                                data-testid={`button-ces-info-${test.id}`}
-                              >
-                                <Info className="h-4 w-4 text-gray-600" />
-                              </Button>
-                              <Button 
-                                type="button"
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-7 w-7 p-0"
-                                data-testid={`button-ces-edit-${test.id}`}
-                              >
-                                <Edit className="h-4 w-4 text-gray-600" />
-                              </Button>
-                              <Button 
-                                type="button"
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-7 w-7 p-0"
-                                onClick={() => deleteCesTest(test.id)}
-                                data-testid={`button-ces-delete-${test.id}`}
-                              >
-                                <Trash2 className="h-4 w-4 text-gray-600" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                        // Insert A2.5 Progress Bar before A2.5a
+                        if (row.id === 'a2.5a') {
+                          return (
+                            <React.Fragment key={row.id}>
+                              {/* A2.5 Progress Bar Row */}
+                              <TableRow>
+                                <TableCell colSpan={2} className="text-sm">A2.5 Promotion Checklist Progress</TableCell>
+                                <TableCell colSpan={4}>
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                      <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '60%' }}></div>
+                                    </div>
+                                    <span className="text-sm text-gray-600">60%</span>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                              {CriteriaRow}
+                            </React.Fragment>
+                          );
+                        }
+
+                        // Insert A2.7a CES tests after A2.7
+                        if (row.id === 'a2.7') {
+                          return (
+                            <React.Fragment key={row.id}>
+                              {CriteriaRow}
+                              {/* A2.7a CES/Language Tests Rows */}
+                              {cesTests.map((test, index) => (
+                                <TableRow key={`ces-${test.id}`} className="bg-gray-50">
+                                  <TableCell className="text-sm">A2.7{String.fromCharCode(97 + index)}</TableCell>
+                                  <TableCell>
+                                    <Input 
+                                      type="date" 
+                                      className="h-8 text-xs" 
+                                      placeholder="Date"
+                                      value={test.date}
+                                      onChange={(e) => updateCesTest(test.id, 'date', e.target.value)}
+                                      data-testid={`input-ces-date-${test.id}`}
+                                    />
+                                  </TableCell>
+                                  <TableCell>
+                                    <Select 
+                                      value={test.subject}
+                                      onValueChange={(value) => updateCesTest(test.id, 'subject', value)}
+                                    >
+                                      <SelectTrigger className="h-8 text-xs" data-testid={`select-ces-subject-${test.id}`}>
+                                        <SelectValue placeholder="Subject" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="english">English</SelectItem>
+                                        <SelectItem value="ces">CES</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Input 
+                                      className="h-8 text-xs" 
+                                      placeholder="Score"
+                                      value={test.score}
+                                      onChange={(e) => updateCesTest(test.id, 'score', e.target.value)}
+                                      data-testid={`input-ces-score-${test.id}`}
+                                    />
+                                  </TableCell>
+                                  <TableCell>
+                                    <Select 
+                                      value={test.result}
+                                      onValueChange={(value) => updateCesTest(test.id, 'result', value)}
+                                    >
+                                      <SelectTrigger className="h-8 text-xs" data-testid={`select-ces-result-${test.id}`}>
+                                        <SelectValue placeholder="Result" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="pass">Pass</SelectItem>
+                                        <SelectItem value="fail">Fail</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex gap-1">
+                                      <Button 
+                                        type="button"
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="h-7 w-7 p-0"
+                                        data-testid={`button-ces-info-${test.id}`}
+                                      >
+                                        <Info className="h-4 w-4 text-gray-600" />
+                                      </Button>
+                                      <Button 
+                                        type="button"
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="h-7 w-7 p-0"
+                                        data-testid={`button-ces-edit-${test.id}`}
+                                      >
+                                        <Edit className="h-4 w-4 text-gray-600" />
+                                      </Button>
+                                      <Button 
+                                        type="button"
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="h-7 w-7 p-0"
+                                        onClick={() => deleteCesTest(test.id)}
+                                        data-testid={`button-ces-delete-${test.id}`}
+                                      >
+                                        <Trash2 className="h-4 w-4 text-gray-600" />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </React.Fragment>
+                          );
+                        }
+
+                        // Default: render the row as-is
+                        return CriteriaRow;
+                      })}
                       {/* Add CES Test Button Row */}
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-2">
