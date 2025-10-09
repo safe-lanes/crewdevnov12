@@ -712,151 +712,155 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {trainingNeeds.map((training, index) => (
-                        <TableRow key={training.id}>
-                          <TableCell className="text-sm" data-testid={`cell-training-sno-${training.id}`}>{index + 1}</TableCell>
-                          <TableCell className="text-sm" data-testid={`cell-training-name-${training.id}`}>{training.training}</TableCell>
-                          <TableCell>
-                            <Select 
-                              value={training.correspondingInDB}
-                              onValueChange={(value) => updateTraining(training.id, 'correspondingInDB', value)}
-                            >
-                              <SelectTrigger className="h-8 text-xs" data-testid={`select-training-db-${training.id}`}>
-                                <SelectValue placeholder="Select Training from DB" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="training1">Training 1</SelectItem>
-                                <SelectItem value="training2">Training 2</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
-                            <Select 
-                              value={training.category}
-                              onValueChange={(value) => updateTraining(training.id, 'category', value)}
-                            >
-                              <SelectTrigger className="h-8 text-xs" data-testid={`select-training-category-${training.id}`}>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="1. Competence">1. Competence</SelectItem>
-                                <SelectItem value="2. Soft Skills">2. Soft Skills</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
-                            <Select 
-                              value={training.status}
-                              onValueChange={(value) => updateTraining(training.id, 'status', value)}
-                            >
-                              <SelectTrigger className="h-8 text-xs" data-testid={`select-training-status-${training.id}`}>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Proposed">Proposed</SelectItem>
-                                <SelectItem value="Approved">Approved</SelectItem>
-                                <SelectItem value="Planned">Planned</SelectItem>
-                                <SelectItem value="Declined">Declined</SelectItem>
-                                <SelectItem value="Completed">Completed</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
-                              <Button 
-                                type="button"
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-7 w-7 p-0" 
-                                onClick={() => deleteTrainingRow(training.id)}
-                                data-testid={`button-training-delete-${training.id}`}
+                      {trainingNeeds.map((training, index) => {
+                        return (
+                          <React.Fragment key={training.id}>
+                            <TableRow>
+                            <TableCell className="text-sm" data-testid={`cell-training-sno-${training.id}`}>{index + 1}</TableCell>
+                            <TableCell className="text-sm" data-testid={`cell-training-name-${training.id}`}>{training.training}</TableCell>
+                            <TableCell>
+                              <Select 
+                                value={training.correspondingInDB}
+                                onValueChange={(value) => updateTraining(training.id, 'correspondingInDB', value)}
                               >
-                                <Trash2 className="h-4 w-4 text-gray-600" />
-                              </Button>
-                              <Button 
-                                type="button"
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-7 w-7 p-0"
-                                onClick={() => setEditingTrainingComment(editingTrainingComment === training.id ? null : training.id)}
-                                data-testid={`button-training-comment-${training.id}`}
+                                <SelectTrigger className="h-8 text-xs" data-testid={`select-training-db-${training.id}`}>
+                                  <SelectValue placeholder="Select Training from DB" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="training1">Training 1</SelectItem>
+                                  <SelectItem value="training2">Training 2</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
+                              <Select 
+                                value={training.category}
+                                onValueChange={(value) => updateTraining(training.id, 'category', value)}
                               >
-                                <MessageSquare className="h-4 w-4 text-gray-600" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-
-                        {/* Comment display for this training row */}
-                        {(editingTrainingComment === training.id || trainingComments[training.id]?.length > 0) && (
-                          <TableRow>
-                            <TableCell colSpan={6} className="bg-gray-50 p-3">
-                              {trainingComments[training.id]?.map((comment) => (
-                                <div key={comment.id} className="mb-2">
-                                  <div className="flex justify-between items-start">
-                                    <div className="flex-1">
-                                      <div className="text-xs font-medium text-gray-700 mb-1">{comment.user}</div>
-                                      <div 
-                                        className="text-xs text-blue-600 italic cursor-pointer"
-                                        onClick={() => {
-                                          setEditingTrainingComment(training.id);
-                                          setNewTrainingComment(prev => ({ ...prev, [training.id]: comment.text }));
-                                        }}
-                                      >
-                                        Comment: {comment.text}
-                                      </div>
-                                    </div>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 w-6 p-0"
-                                      onClick={() => {
-                                        setTrainingComments(prev => ({
-                                          ...prev,
-                                          [training.id]: prev[training.id].filter(c => c.id !== comment.id)
-                                        }));
-                                      }}
-                                      data-testid={`button-delete-training-comment-${comment.id}`}
-                                    >
-                                      <Trash2 className="h-3 w-3 text-gray-600" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              ))}
-                              
-                              {editingTrainingComment === training.id && (
-                                <div className="mt-2">
-                                  <div className="text-xs font-medium text-gray-700 mb-1">Roxanne, Crewing Executive</div>
-                                  <textarea
-                                    className="w-full h-20 p-2 border rounded text-xs"
-                                    placeholder="Comment: Add your observations here..."
-                                    value={newTrainingComment[training.id] || ''}
-                                    onChange={(e) => setNewTrainingComment(prev => ({ ...prev, [training.id]: e.target.value }))}
-                                    onBlur={() => {
-                                      const commentText = newTrainingComment[training.id]?.trim();
-                                      if (commentText) {
-                                        const newComment: Comment = {
-                                          id: `training-comment-${Date.now()}`,
-                                          user: 'Roxanne, Crewing Executive',
-                                          text: commentText
-                                        };
-                                        setTrainingComments(prev => ({
-                                          ...prev,
-                                          [training.id]: [...(prev[training.id] || []), newComment]
-                                        }));
-                                      }
-                                      setNewTrainingComment(prev => ({ ...prev, [training.id]: '' }));
-                                      setEditingTrainingComment(null);
-                                    }}
-                                    data-testid={`textarea-training-comment-${training.id}`}
-                                  />
-                                </div>
-                              )}
+                                <SelectTrigger className="h-8 text-xs" data-testid={`select-training-category-${training.id}`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="1. Competence">1. Competence</SelectItem>
+                                  <SelectItem value="2. Soft Skills">2. Soft Skills</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
+                              <Select 
+                                value={training.status}
+                                onValueChange={(value) => updateTraining(training.id, 'status', value)}
+                              >
+                                <SelectTrigger className="h-8 text-xs" data-testid={`select-training-status-${training.id}`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Proposed">Proposed</SelectItem>
+                                  <SelectItem value="Approved">Approved</SelectItem>
+                                  <SelectItem value="Planned">Planned</SelectItem>
+                                  <SelectItem value="Declined">Declined</SelectItem>
+                                  <SelectItem value="Completed">Completed</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                <Button 
+                                  type="button"
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="h-7 w-7 p-0" 
+                                  onClick={() => deleteTrainingRow(training.id)}
+                                  data-testid={`button-training-delete-${training.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4 text-gray-600" />
+                                </Button>
+                                <Button 
+                                  type="button"
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="h-7 w-7 p-0"
+                                  onClick={() => setEditingTrainingComment(editingTrainingComment === training.id ? null : training.id)}
+                                  data-testid={`button-training-comment-${training.id}`}
+                                >
+                                  <MessageSquare className="h-4 w-4 text-gray-600" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
-                        )}
-                      ))
+
+                          {/* Comment display for this training row */}
+                          {(editingTrainingComment === training.id || trainingComments[training.id]?.length > 0) && (
+                            <TableRow>
+                              <TableCell colSpan={6} className="bg-gray-50 p-3">
+                                {trainingComments[training.id]?.map((comment) => (
+                                  <div key={comment.id} className="mb-2">
+                                    <div className="flex justify-between items-start">
+                                      <div className="flex-1">
+                                        <div className="text-xs font-medium text-gray-700 mb-1">{comment.user}</div>
+                                        <div 
+                                          className="text-xs text-blue-600 italic cursor-pointer"
+                                          onClick={() => {
+                                            setEditingTrainingComment(training.id);
+                                            setNewTrainingComment(prev => ({ ...prev, [training.id]: comment.text }));
+                                          }}
+                                        >
+                                          Comment: {comment.text}
+                                        </div>
+                                      </div>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 w-6 p-0"
+                                        onClick={() => {
+                                          setTrainingComments(prev => ({
+                                            ...prev,
+                                            [training.id]: prev[training.id].filter(c => c.id !== comment.id)
+                                          }));
+                                        }}
+                                        data-testid={`button-delete-training-comment-${comment.id}`}
+                                      >
+                                        <Trash2 className="h-3 w-3 text-gray-600" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ))}
+                                
+                                {editingTrainingComment === training.id && (
+                                  <div className="mt-2">
+                                    <div className="text-xs font-medium text-gray-700 mb-1">Roxanne, Crewing Executive</div>
+                                    <textarea
+                                      className="w-full h-20 p-2 border rounded text-xs"
+                                      placeholder="Comment: Add your observations here..."
+                                      value={newTrainingComment[training.id] || ''}
+                                      onChange={(e) => setNewTrainingComment(prev => ({ ...prev, [training.id]: e.target.value }))}
+                                      onBlur={() => {
+                                        const commentText = newTrainingComment[training.id]?.trim();
+                                        if (commentText) {
+                                          const newComment: Comment = {
+                                            id: `training-comment-${Date.now()}`,
+                                            user: 'Roxanne, Crewing Executive',
+                                            text: commentText
+                                          };
+                                          setTrainingComments(prev => ({
+                                            ...prev,
+                                            [training.id]: [...(prev[training.id] || []), newComment]
+                                          }));
+                                        }
+                                        setNewTrainingComment(prev => ({ ...prev, [training.id]: '' }));
+                                        setEditingTrainingComment(null);
+                                      }}
+                                      data-testid={`textarea-training-comment-${training.id}`}
+                                    />
+                                  </div>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          )}
+                          </React.Fragment>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
