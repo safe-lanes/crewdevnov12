@@ -26,6 +26,7 @@ import { fromStorageCrew, CrewMemberDTO } from "@shared/crew-mapping";
 import SectionTitleComponents from "@/components/Section/SectionTitleComponents";
 import SideBarComponent from "@/components/Navbar/SideBarComponent";
 import MainLayout from "@/components/main/MainLayout";
+import { useVesselLookup } from "@/hooks/useVesselLookup";
 
 // Interface for combined crew member and appraisal data
 interface CrewAppraisalData {
@@ -121,6 +122,9 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     rating: ""
   });
 
+  // Vessel lookup for ID to name translation
+  const { getVesselName } = useVesselLookup();
+
   // Fetch crew members and appraisal results
   const { data: crewMembers = [], isLoading: isLoadingCrew } = useQuery<CrewMember[]>({
     queryKey: ["/api/crew-members"],
@@ -171,6 +175,9 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       const crewDTO = fromStorageCrew(crewMember);
       const appraisal = appraisalResults.find(ar => ar.crewMemberId === crewMember.id);
 
+      // Extract vessel ID and translate to vessel name
+      const vesselId = crewDTO.vessel || crewDTO.presentVessel || "";
+      const vesselName = vesselId ? getVesselName(vesselId) : "";
 
       return {
         id: crewDTO.id,
@@ -183,7 +190,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
         rank: crewDTO.rank || crewDTO.presentRank || "",
         nationality: crewDTO.nationality || "",
         age: crewDTO.ageInYears || crewDTO.age || "",
-        vessel: crewDTO.vessel || crewDTO.presentVessel || "",
+        vessel: vesselName || vesselId || "",
         vesselType: crewDTO.vesselType || "",
         signOn: crewDTO.signOnDate || crewDTO.joiningDate || "",
         appraisalType: appraisal?.appraisalType || "Not Started",
@@ -202,7 +209,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
         },
         appraisalId: appraisal?.id,
       };
-    }), [crewMembers, appraisalResults, getRatingColor]);
+    }), [crewMembers, appraisalResults, getRatingColor, getVesselName]);
 
   // Filter crew data based on filter state
   const crewData = useMemo(() =>
