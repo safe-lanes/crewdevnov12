@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Save, Send, Plus, MessageSquare, Edit2, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +16,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { useVesselLookup } from "@/hooks/useVesselLookup";
 
 // Comprehensive list of world nationalities
 const NATIONALITIES = [
@@ -221,6 +223,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
     title: "",
     description: "",
     onConfirm: () => {}
+  });
+
+  // Fetch vessels and ranks from persistent storage
+  const { vessels } = useVesselLookup();
+  const { data: availableRanks = [] } = useQuery<Array<{ id: number; name: string; category: string }>>({
+    queryKey: ['/api/available-ranks'],
   });
 
   const form = useForm<AppraisalFormData>({
@@ -947,9 +955,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="master">Master</SelectItem>
-                            <SelectItem value="chief-engineer">Chief Engineer</SelectItem>
-                            <SelectItem value="chief-mate">Chief Mate</SelectItem>
+                            {availableRanks.map((rank) => (
+                              <SelectItem key={rank.id} value={rank.name}>
+                                {rank.name}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -985,16 +995,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="mt-sail-one">MT Sail One</SelectItem>
-                            <SelectItem value="mt-sail-two">MT Sail Two</SelectItem>
-                            <SelectItem value="mt-sail-three">MT Sail Three</SelectItem>
-                            <SelectItem value="mt-sail-four">MT Sail Four</SelectItem>
-                            <SelectItem value="mt-sail-five">MT Sail Five</SelectItem>
-                            <SelectItem value="mt-sail-ten">MT Sail Ten</SelectItem>
-                            <SelectItem value="mt-sail-eight">MT Sail Eight</SelectItem>
-                            <SelectItem value="mt-sail-eleven">MT Sail Eleven</SelectItem>
-                            <SelectItem value="mt-sail-thirteen">MT Sail Thirteen</SelectItem>
-                            <SelectItem value="mv-sail-seven">MV Sail Seven</SelectItem>
+                            {vessels.map((vessel) => (
+                              <SelectItem key={vessel.entryId} value={vessel.name}>
+                                {vessel.name}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
