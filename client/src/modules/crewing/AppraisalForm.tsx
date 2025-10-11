@@ -163,6 +163,9 @@ interface AppraisalFormProps {
     name: { first: string; middle: string; last: string };
     rank: string;
     vessel: string;
+    nationality?: string;
+    signOn?: string;
+    vesselType?: string;
   };
   onClose: () => void;
 }
@@ -224,12 +227,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
     resolver: zodResolver(appraisalSchema),
     defaultValues: {
       seafarersName: crewMember ? `${crewMember.name.first} ${crewMember.name.middle} ${crewMember.name.last}`.trim() : "",
-      seafarersRank: "",
-      nationality: "",
-      vessel: "",
-      signOn: "",
+      seafarersRank: crewMember?.rank || "",
+      nationality: crewMember?.nationality || "",
+      vessel: crewMember?.vessel || "",
+      signOn: crewMember?.signOn || "",
       appraisalType: "",
-      appraisalPeriodFrom: "",
+      appraisalPeriodFrom: crewMember?.signOn || "",
       appraisalPeriodTo: "",
       personalityIndexCategory: "",
       primaryAppraiser: "",
