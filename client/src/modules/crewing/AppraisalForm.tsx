@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -784,7 +784,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
   );
 
   // Canonical sections array with proper Part IDs and refs
-  const sections = [
+  const sections = useMemo(() => [
     { id: "A", title: "Part A: Seafarer's Information", type: "continuous1", number: "A", ref: partARef },
     { id: "B", title: "Part B: Information at Start of Appraisal Period", type: "continuous1", number: "B", ref: partBRef },
     { id: "C", title: "Part C: Competence Assessment (Professional Knowledge & Skills)", type: "continuous2", number: "C", ref: partCRef },
@@ -792,7 +792,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
     { id: "E", title: "Part E: Training Needs & Development", type: "continuous2", number: "E", ref: partERef },
     { id: "F", title: "Part F: Summary & Recommendations", type: "continuous2", number: "F", ref: partFRef },
     { id: "G", title: "Part G: Office Review & Followup", type: "stepper", number: "G", ref: partGRef },
-  ];
+  ], []); // Empty deps since refs are stable
 
   // Intersection Observer for continuous group 1 (A&B)
   useEffect(() => {
