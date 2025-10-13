@@ -97,6 +97,15 @@ The application is built with a modern web stack, adhering to a module-first arc
         - **Rank Group Association**: AddRankGroupDialog correctly resolves form ID from form name to prevent rank groups from being added to wrong forms
         - **Error Handling**: Explicit error handling when form lookup fails, preventing silent fallback to incorrect form association
         - **Table Display**: Forms without rank groups are automatically filtered out from the table display to maintain clean UI and prevent empty form rows. Each form name appears once with rowSpan covering all its rank group rows
+    - **Promotion Form Builder**: PromotionFormEditor component provides comprehensive configuration interface for promotion forms. Features:
+        - **Three-Part Structure**: Mirrors Promotion Review Form structure (A: Criteria Review, B: Approval, C: Execution)
+        - **Part A Configuration**: Toggle visibility/configurability for seafarer info fields, criteria items, training needs, and comments sections
+        - **Part B Configuration**: Manage approvers with add/remove controls, configure vessel types and classes toggles
+        - **Part C Configuration**: Display execution fields (confirmation, vessel assignment, promotion date, timing)
+        - **Configuration Persistence**: JSON serialization/deserialization via form.configuration field, saved through PUT /api/forms/:id endpoint
+        - **Form ID Resolution**: Handles expanded forms data synthetic IDs (form.id * 1000 + index) by using originalFormId property for API calls
+        - **Dynamic Form Loading**: PromotionFormEditor registered in FormEditorFactory for "promotion" category forms
+        - **Data Flow**: Load (JSON.parse → form.reset() → hydrate controls) → Edit → Save (JSON.stringify → mutation → cache invalidation)
 - **Performance Optimization**: Utilizes map-based lookups, TanStack Query for caching, `useRef` for preventing re-renders, `useMemo` for calculations, and optimized `PersistentFileStorage`. Fixed infinite render loop in AppraisalForm by memoizing the sections array.
 - **Data Storage**: `PersistentFileStorage` for development, with PostgreSQL/Drizzle ORM schema for production.
 
