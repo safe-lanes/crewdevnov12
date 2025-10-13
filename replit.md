@@ -81,11 +81,13 @@ The application is built with a modern web stack, adhering to a module-first arc
         - **Part B - Promotion Checklist** (stub): Placeholder for dynamic promotion checklist sections
         - **Data Integration**: Properly typed PromotionData interface, fetches crew member details via `/api/crew-members/${id}`, parses currentCompanySeaService JSON, handles loading/error/empty states
         - **Save Behavior**: handleSave closes modal after submission for consistent user experience
-- **Forms Configuration - Company Rank Integration**: The Forms Configuration module (Admin > Forms Configuration) uses company-specific rank labels for rank group creation. Key features:
+- **Forms Configuration - Company Rank Integration**: The Forms Configuration module (Admin > Forms Configuration) uses company-specific rank labels for rank group creation and connects to the Appraisal Form. Key features:
     - **Company-Applicable Ranks Only**: The "Add Rank Group" dialog displays only ranks where `applicableToCompany` is checked in Rank Administration > Company tab
     - **Company Label Usage**: Uses company-specific rank labels (from `rank.label` field) instead of master rank names, ensuring consistency with company terminology (e.g., "2nd Officer" vs "Second Officer")
-    - **Form Selection Logic**: When creating appraisals, the system matches crew member ranks against rank groups using company labels to determine which form configuration to use
+    - **Form Selection Logic**: When creating appraisals, the system automatically matches crew member ranks against rank groups using company labels to determine which form configuration to use
     - **Data Persistence**: Rank groups store company labels in JSON format in persistent storage, maintaining consistency across the system
+    - **Dynamic Form Loading**: AppraisalForm component automatically fetches the correct form configuration via `GET /api/forms/for-rank/:rankLabel` endpoint when opening an appraisal, ensuring the configured form template is used for each rank
+    - **Backend Matching**: `getFormForRank()` storage method iterates through rank groups to find which form is configured for a given rank, providing seamless integration between Admin configuration and Appraisal execution
 - **Performance Optimization**: Utilizes map-based lookups, TanStack Query for caching, `useRef` for preventing re-renders, `useMemo` for calculations, and optimized `PersistentFileStorage`. Fixed infinite render loop in AppraisalForm by memoizing the sections array.
 - **Data Storage**: `PersistentFileStorage` for development, with PostgreSQL/Drizzle ORM schema for production.
 
