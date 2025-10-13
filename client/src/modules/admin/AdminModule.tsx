@@ -177,6 +177,7 @@ const AdminModuleInner = (): JSX.Element => {
   const [selectedFormForRankGroup, setSelectedFormForRankGroup] = useState<string | null>(null);
   const [showCreateFormDialog, setShowCreateFormDialog] = useState(false);
   const [newFormName, setNewFormName] = useState("");
+  const [newFormCategory, setNewFormCategory] = useState<"appraisal" | "promotion">("appraisal");
   const [createFormType, setCreateFormType] = useState<"template" | "blank">("template");
   const [selectedTemplate, setSelectedTemplate] = useState("");
   
@@ -2488,39 +2489,56 @@ const AdminModuleInner = (): JSX.Element => {
   const expandedFormsData = useMemo(() => {
     if (!formsData) return [];
     
+    // Group forms by category first
+    const formsByCategory = formsData.reduce((acc, form) => {
+      const category = form.category || 'appraisal';
+      if (!acc[category]) acc[category] = [];
+      acc[category].push(form);
+      return acc;
+    }, {} as Record<string, Form[]>);
+    
     const expanded: Array<Form & { 
       expandedRankGroup: string; 
       originalFormId: number; 
       isFirstInGroup: boolean; 
-      groupSize: number 
+      groupSize: number;
+      category: string;
     }> = [];
     
-    formsData.forEach((form) => {
-      if (form.rankGroup && form.rankGroup.trim()) {
-        // Split the concatenated rank groups and create separate rows
-        const rankGroups = form.rankGroup.split(',').map(rg => rg.trim()).filter(rg => rg.length > 0);
-        
-        rankGroups.forEach((rankGroup, index) => {
+    // Process each category in order (appraisal first, then promotion)
+    const categoryOrder = ['appraisal', 'promotion'];
+    categoryOrder.forEach(category => {
+      const categoryForms = formsByCategory[category] || [];
+      
+      categoryForms.forEach((form) => {
+        if (form.rankGroup && form.rankGroup.trim()) {
+          // Split the concatenated rank groups and create separate rows
+          const rankGroups = form.rankGroup.split(',').map(rg => rg.trim()).filter(rg => rg.length > 0);
+          
+          rankGroups.forEach((rankGroup, index) => {
+            expanded.push({
+              ...form,
+              id: form.id * 1000 + index, // Create unique numeric ID for each expanded row
+              originalFormId: form.id, // Keep reference to original form ID
+              expandedRankGroup: rankGroup,
+              rankGroup: rankGroup, // Override the concatenated rankGroup with individual group
+              isFirstInGroup: index === 0, // Mark first row in each group
+              groupSize: rankGroups.length, // Track how many rows this form spans
+              category: form.category || 'appraisal'
+            });
+          });
+        } else {
+          // If no rank group, add as-is
           expanded.push({
             ...form,
-            id: form.id * 1000 + index, // Create unique numeric ID for each expanded row
-            originalFormId: form.id, // Keep reference to original form ID
-            expandedRankGroup: rankGroup,
-            rankGroup: rankGroup, // Override the concatenated rankGroup with individual group
-            isFirstInGroup: index === 0, // Mark first row in each group
-            groupSize: rankGroups.length // Track how many rows this form spans
+            originalFormId: form.id,
+            expandedRankGroup: form.rankGroup || '',
+            isFirstInGroup: true,
+            groupSize: 1,
+            category: form.category || 'appraisal'
           });
-        });
-      } else {
-        // If no rank group, add as-is
-        expanded.push({
-          ...form,
-          originalFormId: form.id,
-          expandedRankGroup: form.rankGroup || '',
-          isFirstInGroup: true,
-          groupSize: 1
-        });
-      }
+        }
+      });
     });
     
     return expanded;
@@ -2549,13 +2567,14 @@ const AdminModuleInner = (): JSX.Element => {
   });
 
   const createFormMutation = useMutation({
-    mutationFn: async (data: { name: string; versionNo: string; versionDate: string }) => {
+    mutationFn: async (data: { name: string; category: string; versionNo: string; versionDate: string }) => {
       return await apiRequest("POST", "/api/forms", data);
     },
     onSuccess: () => {
       rq.invalidateQueries({ queryKey: ["/api/forms"] });
       setShowCreateFormDialog(false);
       setNewFormName("");
+      setNewFormCategory("appraisal");
       setSelectedTemplate("");
     },
   });
@@ -2649,6 +2668,7 @@ const AdminModuleInner = (): JSX.Element => {
 
     const formData = {
       name: newFormName.trim(),
+      category: newFormCategory,
       versionNo: "00",
       versionDate: new Date().toLocaleDateString('en-GB', {
         day: '2-digit',
@@ -4877,6 +4897,19 @@ const AdminModuleInner = (): JSX.Element => {
                 onChange={(e) => setNewFormName(e.target.value)}
                 placeholder="Enter form name"
               />
+            </div>
+
+            <div className="space-y-2">
+              <FormLabel>Form Category</FormLabel>
+              <Select value={newFormCategory} onValueChange={(value: "appraisal" | "promotion") => setNewFormCategory(value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="appraisal">Appraisal Form</SelectItem>
+                  <SelectItem value="promotion">Promotion Form</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
