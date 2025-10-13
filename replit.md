@@ -88,6 +88,14 @@ The application is built with a modern web stack, adhering to a module-first arc
     - **Data Persistence**: Rank groups store company labels in JSON format in persistent storage, maintaining consistency across the system
     - **Dynamic Form Loading**: AppraisalForm component automatically fetches the correct form configuration via `GET /api/forms/for-rank/:rankLabel` endpoint when opening an appraisal, ensuring the configured form template is used for each rank
     - **Backend Matching**: `getFormForRank()` storage method iterates through rank groups to find which form is configured for a given rank, providing seamless integration between Admin configuration and Appraisal execution
+    - **Multi-Category Form Support**: Forms support independent categories (Appraisal and Promotion) with category-specific rank group mappings:
+        - **Schema**: Forms table includes `category` field (default: "appraisal")
+        - **Category Filtering**: `getFormForRank(rankLabel, category?)` supports optional category filtering
+        - **API**: GET /api/forms/for-rank/:rankLabel accepts optional `?category=` query parameter
+        - **UI Grouping**: Forms Configuration table groups forms by category with appraisal forms displayed first, then promotion forms
+        - **Create Dialog**: Category dropdown in Create Form dialog allows selecting "Appraisal Form" or "Promotion Form"
+        - **Rank Group Association**: AddRankGroupDialog correctly resolves form ID from form name to prevent rank groups from being added to wrong forms
+        - **Error Handling**: Explicit error handling when form lookup fails, preventing silent fallback to incorrect form association
 - **Performance Optimization**: Utilizes map-based lookups, TanStack Query for caching, `useRef` for preventing re-renders, `useMemo` for calculations, and optimized `PersistentFileStorage`. Fixed infinite render loop in AppraisalForm by memoizing the sections array.
 - **Data Storage**: `PersistentFileStorage` for development, with PostgreSQL/Drizzle ORM schema for production.
 

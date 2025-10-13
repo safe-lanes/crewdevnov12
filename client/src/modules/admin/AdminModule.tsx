@@ -2567,7 +2567,7 @@ const AdminModuleInner = (): JSX.Element => {
   });
 
   const createFormMutation = useMutation({
-    mutationFn: async (data: { name: string; category: string; versionNo: string; versionDate: string }) => {
+    mutationFn: async (data: { name: string; category: string; rankGroup: string; versionNo: string; versionDate: string }) => {
       return await apiRequest("POST", "/api/forms", data);
     },
     onSuccess: () => {
@@ -2669,6 +2669,7 @@ const AdminModuleInner = (): JSX.Element => {
     const formData = {
       name: newFormName.trim(),
       category: newFormCategory,
+      rankGroup: "", // Empty string for forms without rank groups
       versionNo: "00",
       versionDate: new Date().toLocaleDateString('en-GB', {
         day: '2-digit',
@@ -4780,6 +4781,7 @@ const AdminModuleInner = (): JSX.Element => {
         selectedFormForRankGroup={selectedFormForRankGroup}
         availableRanks={availableRanks}
         createRankGroupMutation={createRankGroupMutation}
+        forms={formsData || []}
       />
 
       {/* Vessel Group Modal */}
@@ -4891,7 +4893,7 @@ const AdminModuleInner = (): JSX.Element => {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <FormLabel>Form Name</FormLabel>
+              <label className="text-sm font-medium">Form Name</label>
               <Input
                 value={newFormName}
                 onChange={(e) => setNewFormName(e.target.value)}
@@ -4900,7 +4902,7 @@ const AdminModuleInner = (): JSX.Element => {
             </div>
 
             <div className="space-y-2">
-              <FormLabel>Form Category</FormLabel>
+              <label className="text-sm font-medium">Form Category</label>
               <Select value={newFormCategory} onValueChange={(value: "appraisal" | "promotion") => setNewFormCategory(value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
@@ -4913,7 +4915,7 @@ const AdminModuleInner = (): JSX.Element => {
             </div>
 
             <div className="space-y-2">
-              <FormLabel>Creation Type</FormLabel>
+              <label className="text-sm font-medium">Creation Type</label>
               <div className="flex gap-4">
                 <label className="flex items-center gap-2">
                   <input
@@ -4938,7 +4940,7 @@ const AdminModuleInner = (): JSX.Element => {
 
             {createFormType === "template" && (
               <div className="space-y-2">
-                <FormLabel>Select Template</FormLabel>
+                <label className="text-sm font-medium">Select Template</label>
                 <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
                   <SelectTrigger>
                     <SelectValue placeholder="Choose a template" />
@@ -5040,13 +5042,15 @@ const AddRankGroupDialog = ({
   onOpenChange, 
   selectedFormForRankGroup, 
   availableRanks, 
-  createRankGroupMutation 
+  createRankGroupMutation,
+  forms
 }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   selectedFormForRankGroup: string | null;
   availableRanks: AvailableRank[];
   createRankGroupMutation: any;
+  forms: Form[];
 }) => {
   const form = useForm({
     resolver: zodResolver(rankGroupSchema),
@@ -5062,9 +5066,16 @@ const AddRankGroupDialog = ({
   const onSubmit = (data: { name: string; ranks: string[] }) => {
     if (selectedFormForRankGroup) {
       // Find the form ID based on the form name
-      const formId = 1; // For now, assume all rank groups belong to form ID 1
+      const selectedForm = forms.find(f => f.name === selectedFormForRankGroup);
+      if (!selectedForm) {
+        form.setError("root", {
+          type: "manual",
+          message: `Unable to find form "${selectedFormForRankGroup}". Please refresh and try again.`
+        });
+        return;
+      }
       createRankGroupMutation.mutate({
-        formId,
+        formId: selectedForm.id,
         name: data.name,
         ranks: JSON.stringify(data.ranks), // Convert array to JSON string as expected by schema
       });
@@ -5129,6 +5140,12 @@ const AddRankGroupDialog = ({
                 </FormItem>
               )}
             />
+
+            {form.formState.errors.root && (
+              <div className="text-sm text-red-500 mt-2">
+                {form.formState.errors.root.message}
+              </div>
+            )}
 
             <div className="flex justify-end space-x-2">
               <Button
