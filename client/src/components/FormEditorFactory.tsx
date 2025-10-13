@@ -1,12 +1,14 @@
 
 import React from 'react';
 import { FormEditor } from '@/components/FormEditor';
+import { PromotionFormEditor } from '@/components/PromotionFormEditor';
 import { Form } from '@shared/schema';
 
 // Dynamic form editor mapping
 const formEditors: Record<string, React.ComponentType<any>> = {
   'Crew Appraisal Form': FormEditor,
-  // Add more form editors as they are created
+  'Promotion Review Form': PromotionFormEditor,
+  'New Promotion Form': PromotionFormEditor,
 };
 
 interface FormEditorFactoryProps {

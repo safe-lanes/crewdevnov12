@@ -2705,10 +2705,35 @@ const AdminModuleInner = (): JSX.Element => {
     }
   };
 
+  const updateFormMutation = useMutation({
+    mutationFn: async ({formId, configuration}: {formId: number; configuration: string}) => {
+      return apiRequest('PUT', `/api/forms/${formId}`, { configuration });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/forms'] });
+      toast({
+        title: "Success",
+        description: "Form configuration saved successfully",
+      });
+      setEditingForm(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: `Failed to save form configuration: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleFormSave = (formData: any) => {
     console.log("Saving form configuration:", formData);
-    // TODO: Implement form configuration save logic
-    setEditingForm(null);
+    if (formData.formId && formData.configuration) {
+      updateFormMutation.mutate({
+        formId: formData.formId,
+        configuration: formData.configuration,
+      });
+    }
   };
 
   const handleCloseEditor = () => {
