@@ -12,6 +12,7 @@ export const users = pgTable("users", {
 export const forms = pgTable("forms", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
+  category: text("category").notNull().default("appraisal"), // 'appraisal' or 'promotion'
   rankGroup: text("rank_group").notNull(),
   versionNo: text("version_no").notNull(),
   versionDate: text("version_date").notNull(),
@@ -424,6 +425,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
 
 export const insertFormSchema = createInsertSchema(forms).pick({
   name: true,
+  category: true,
   rankGroup: true,
   versionNo: true,
   versionDate: true,
