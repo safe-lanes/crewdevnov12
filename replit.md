@@ -96,6 +96,7 @@ The application is built with a modern web stack, adhering to a module-first arc
         - **Create Dialog**: Category dropdown in Create Form dialog allows selecting "Appraisal Form" or "Promotion Form"
         - **Rank Group Association**: AddRankGroupDialog correctly resolves form ID from form name to prevent rank groups from being added to wrong forms
         - **Error Handling**: Explicit error handling when form lookup fails, preventing silent fallback to incorrect form association
+        - **Table Display**: Forms without rank groups are automatically filtered out from the table display to maintain clean UI and prevent empty form rows. Each form name appears once with rowSpan covering all its rank group rows
 - **Performance Optimization**: Utilizes map-based lookups, TanStack Query for caching, `useRef` for preventing re-renders, `useMemo` for calculations, and optimized `PersistentFileStorage`. Fixed infinite render loop in AppraisalForm by memoizing the sections array.
 - **Data Storage**: `PersistentFileStorage` for development, with PostgreSQL/Drizzle ORM schema for production.
 

@@ -2485,7 +2485,7 @@ const AdminModuleInner = (): JSX.Element => {
     },
   });
 
-  // Transform forms data to create separate rows for each rank group with merge info
+  // Transform forms data to create separate rows for each rank group with category grouping
   const expandedFormsData = useMemo(() => {
     if (!formsData) return [];
     
@@ -2503,6 +2503,9 @@ const AdminModuleInner = (): JSX.Element => {
       isFirstInGroup: boolean; 
       groupSize: number;
       category: string;
+      isCategoryHeader?: boolean;
+      categoryRowSpan?: number;
+      isFirstInCategory?: boolean;
     }> = [];
     
     // Process each category in order (appraisal first, then promotion)
@@ -2510,34 +2513,45 @@ const AdminModuleInner = (): JSX.Element => {
     categoryOrder.forEach(category => {
       const categoryForms = formsByCategory[category] || [];
       
+      // Calculate total row count for this category
+      let totalCategoryRows = 0;
+      categoryForms.forEach(form => {
+        if (form.rankGroup && form.rankGroup.trim()) {
+          const rankGroups = form.rankGroup.split(',').map(rg => rg.trim()).filter(rg => rg.length > 0);
+          totalCategoryRows += rankGroups.length;
+        } else {
+          totalCategoryRows += 1;
+        }
+      });
+      
+      // Track if this is the first row in the category
+      let isFirstRowInCategory = true;
+      
       categoryForms.forEach((form) => {
         if (form.rankGroup && form.rankGroup.trim()) {
           // Split the concatenated rank groups and create separate rows
           const rankGroups = form.rankGroup.split(',').map(rg => rg.trim()).filter(rg => rg.length > 0);
           
-          rankGroups.forEach((rankGroup, index) => {
-            expanded.push({
-              ...form,
-              id: form.id * 1000 + index, // Create unique numeric ID for each expanded row
-              originalFormId: form.id, // Keep reference to original form ID
-              expandedRankGroup: rankGroup,
-              rankGroup: rankGroup, // Override the concatenated rankGroup with individual group
-              isFirstInGroup: index === 0, // Mark first row in each group
-              groupSize: rankGroups.length, // Track how many rows this form spans
-              category: form.category || 'appraisal'
+          if (rankGroups.length > 0) {
+            // Only add forms that have at least one rank group
+            rankGroups.forEach((rankGroup, index) => {
+              expanded.push({
+                ...form,
+                id: form.id * 1000 + index, // Create unique numeric ID for each expanded row
+                originalFormId: form.id, // Keep reference to original form ID
+                expandedRankGroup: rankGroup,
+                rankGroup: rankGroup, // Override the concatenated rankGroup with individual group
+                isFirstInGroup: index === 0, // Mark first row for this form
+                groupSize: rankGroups.length, // Track how many rows this form spans
+                category: form.category || 'appraisal',
+                isFirstInCategory: isFirstRowInCategory,
+                categoryRowSpan: totalCategoryRows
+              });
+              isFirstRowInCategory = false;
             });
-          });
-        } else {
-          // If no rank group, add as-is
-          expanded.push({
-            ...form,
-            originalFormId: form.id,
-            expandedRankGroup: form.rankGroup || '',
-            isFirstInGroup: true,
-            groupSize: 1,
-            category: form.category || 'appraisal'
-          });
+          }
         }
+        // Skip forms without rank groups - they won't be displayed in the table
       });
     });
     
