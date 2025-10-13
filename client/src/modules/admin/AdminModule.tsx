@@ -5023,6 +5023,9 @@ const AddRankGroupDialog = ({
     },
   });
 
+  // Filter to only show ranks applicable to company, using company labels
+  const companyApplicableRanks = availableRanks.filter(rank => rank.applicableToCompany);
+
   const onSubmit = (data: { name: string; ranks: string[] }) => {
     if (selectedFormForRankGroup) {
       // Find the form ID based on the form name
@@ -5067,22 +5070,24 @@ const AddRankGroupDialog = ({
                 <FormItem>
                   <FormLabel>Select Ranks</FormLabel>
                   <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-                    {availableRanks.map((rank) => (
+                    {companyApplicableRanks.map((rank) => (
                       <div key={rank.id} className="flex items-center space-x-2">
                         <Checkbox
                           id={`rank-${rank.id}`}
-                          checked={(field.value as string[])?.includes(rank.name) || false}
+                          checked={(field.value as string[])?.includes(rank.label || rank.name) || false}
                           onCheckedChange={(checked) => {
                             const currentValue = field.value || [];
+                            const rankLabel = rank.label || rank.name; // Use company label if available
                             if (checked) {
-                              field.onChange([...currentValue, rank.name]);
+                              field.onChange([...currentValue, rankLabel]);
                             } else {
-                              field.onChange(currentValue.filter((r: string) => r !== rank.name));
+                              field.onChange(currentValue.filter((r: string) => r !== rankLabel));
                             }
                           }}
+                          data-testid={`checkbox-rank-${rank.id}`}
                         />
                         <label htmlFor={`rank-${rank.id}`} className="text-sm">
-                          {rank.name}
+                          {rank.label || rank.name}
                         </label>
                       </div>
                     ))}
@@ -5097,10 +5102,11 @@ const AddRankGroupDialog = ({
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
+                data-testid="button-cancel-rank-group"
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={createRankGroupMutation.isPending}>
+              <Button type="submit" disabled={createRankGroupMutation.isPending} data-testid="button-add-rank-group">
                 {createRankGroupMutation.isPending ? "Adding..." : "Add Rank Group"}
               </Button>
             </div>
