@@ -231,6 +231,19 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
     queryKey: ['/api/available-ranks'],
   });
 
+  // Fetch form configuration based on crew member's rank
+  const { data: formConfig, isLoading: isLoadingFormConfig } = useQuery({
+    queryKey: ['/api/forms/for-rank', crewMember?.rank],
+    enabled: !!crewMember?.rank,
+  });
+
+  // Log form configuration for debugging
+  useEffect(() => {
+    if (formConfig) {
+      console.log('✅ Form configuration loaded for rank:', crewMember?.rank, formConfig);
+    }
+  }, [formConfig, crewMember?.rank]);
+
   const form = useForm<AppraisalFormData>({
     resolver: zodResolver(appraisalSchema),
     defaultValues: {
