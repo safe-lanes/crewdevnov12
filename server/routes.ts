@@ -191,6 +191,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/forms/for-rank/:rankLabel", async (req, res) => {
+    try {
+      const rankLabel = req.params.rankLabel;
+      const form = await storage.getFormForRank(rankLabel);
+      if (!form) {
+        return res.status(404).json({ error: "No form configured for this rank" });
+      }
+      res.json(form);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch form for rank" });
+    }
+  });
+
   // Cleanup duplicate forms (admin endpoint)
   app.post("/api/forms/cleanup-duplicates", async (req, res) => {
     try {

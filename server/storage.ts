@@ -16,6 +16,7 @@ export interface IStorage {
   createRankGroup(rankGroup: InsertRankGroup): Promise<RankGroup>;
   updateRankGroup(id: number, rankGroup: Partial<InsertRankGroup>): Promise<RankGroup | undefined>;
   deleteRankGroup(id: number): Promise<boolean>;
+  getFormForRank(rankLabel: string): Promise<Form | undefined>;
   getAvailableRanks(): Promise<AvailableRank[]>;
   createAvailableRank(rank: InsertAvailableRank): Promise<AvailableRank>;
   updateAvailableRank(id: number, rank: Partial<InsertAvailableRank>): Promise<AvailableRank | undefined>;
@@ -689,6 +690,20 @@ export class MemStorage implements IStorage {
     }
     
     return result;
+  }
+
+  async getFormForRank(rankLabel: string): Promise<Form | undefined> {
+    for (const rankGroup of this.rankGroups.values()) {
+      try {
+        const ranks = JSON.parse(rankGroup.ranks);
+        if (Array.isArray(ranks) && ranks.includes(rankLabel)) {
+          return this.forms.get(rankGroup.formId);
+        }
+      } catch (e) {
+        console.error(`Error parsing ranks for rank group ${rankGroup.id}:`, e);
+      }
+    }
+    return undefined;
   }
 
   async getAvailableRanks(): Promise<AvailableRank[]> {
@@ -2164,6 +2179,20 @@ export class PersistentFileStorage implements IStorage {
     }
     
     return result;
+  }
+
+  async getFormForRank(rankLabel: string): Promise<Form | undefined> {
+    for (const rankGroup of this.rankGroups.values()) {
+      try {
+        const ranks = JSON.parse(rankGroup.ranks);
+        if (Array.isArray(ranks) && ranks.includes(rankLabel)) {
+          return this.forms.get(rankGroup.formId);
+        }
+      } catch (e) {
+        console.error(`Error parsing ranks for rank group ${rankGroup.id}:`, e);
+      }
+    }
+    return undefined;
   }
 
   // Available Rank methods (same as MemStorage)
