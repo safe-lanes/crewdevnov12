@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
 
 // Types for edit session management
 export interface PendingChange {
@@ -116,18 +116,27 @@ export function EditSessionProvider({
     }));
   }, []);
 
+  // PERFORMANCE FIX: Use empty dependency array and functional setState to prevent infinite loop
   const stopEdit = useCallback(() => {
-    if (import.meta.env.DEV) {
-      console.log('🛑 [EDIT_SESSION] Stopping edit session');
-      console.log('🛑 [EDIT_SESSION] Previous state - isDirty:', state.isDirty, 'pendingChanges:', state.pendingChanges.size);
-    }
-    
-    setState(initialState);
-    
-    if (import.meta.env.DEV) {
-      console.log('🛑 [EDIT_SESSION] Edit session stopped - state reset to initial');
-    }
-  }, [state.isDirty, state.pendingChanges]);
+    setState(prev => {
+      if (import.meta.env.DEV) {
+        console.log('🛑 [EDIT_SESSION] Stopping edit session');
+        console.log('🛑 [EDIT_SESSION] Previous state - isDirty:', prev.isDirty, 'pendingChanges:', prev.pendingChanges.size);
+      }
+      
+      const newState = {
+        ...initialState,
+        pendingChanges: new Map(),
+        baseline: new Map(),
+      };
+      
+      if (import.meta.env.DEV) {
+        console.log('🛑 [EDIT_SESSION] Edit session stopped - state reset to initial');
+      }
+      
+      return newState;
+    });
+  }, []); // Empty dependency array - no state dependencies!
 
   const markDirty = useCallback((entryId: string | number, fieldName: string, value: any) => {
     if (import.meta.env.DEV) {
@@ -216,54 +225,38 @@ export function EditSessionProvider({
     }));
   }, []);
 
-  const resolvePendingNavigation = useCallback(async (action: 'save' | 'discard' | 'cancel') => {
-    if (import.meta.env.DEV) {
-      console.log(`🎯 [EDIT_SESSION] Resolving pending navigation with action: ${action}`);
-    }
-
-    try {
-      if (action === 'save') {
-        await commitSave();
-      } else if (action === 'discard') {
-        discardChanges();
-      }
-
-      // For save and discard, proceed with navigation
-      if (action !== 'cancel' && state.pendingTarget && onNavigate) {
-        onNavigate(state.pendingTarget);
-      }
-
-      // Clear pending target
-      setState(prev => ({ ...prev, pendingTarget: null }));
-      
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error('❌ [EDIT_SESSION] Failed to resolve pending navigation:', error);
-      }
-      // Don't clear pendingTarget on error - user can retry
-      throw error;
-    }
-  }, [state.pendingTarget, onNavigate]);
-
+  // PERFORMANCE FIX: Use functional setState to avoid Map dependencies
   const commitSave = useCallback(async () => {
-    if (!state.activeMasterId || state.pendingChanges.size === 0) {
-      if (import.meta.env.DEV) {
-        console.log('💾 [EDIT_SESSION] No changes to save - activeMasterId:', state.activeMasterId, 'pendingChanges size:', state.pendingChanges.size);
+    // Use let to capture current state for async operation
+    let masterId: string = '';
+    let changes: Map<string | number, Record<string, any>> = new Map();
+    
+    setState(prev => {
+      if (!prev.activeMasterId || prev.pendingChanges.size === 0) {
+        if (import.meta.env.DEV) {
+          console.log('💾 [EDIT_SESSION] No changes to save - activeMasterId:', prev.activeMasterId, 'pendingChanges size:', prev.pendingChanges.size);
+        }
+        return prev; // No changes
       }
-      return;
-    }
+      
+      // Capture values for async operation
+      masterId = prev.activeMasterId;
+      changes = prev.pendingChanges;
+      
+      return { ...prev, saving: true };
+    });
 
-    setState(prev => ({ ...prev, saving: true }));
+    if (!masterId || changes.size === 0) return; // Early exit if no changes
 
     try {
       if (import.meta.env.DEV) {
-        console.log(`💾 [EDIT_SESSION] Committing ${state.pendingChanges.size} changes for master ${state.activeMasterId}`);
-        console.log(`💾 [EDIT_SESSION] Changes to commit:`, Array.from(state.pendingChanges.entries()));
+        console.log(`💾 [EDIT_SESSION] Committing ${changes.size} changes for master ${masterId}`);
+        console.log(`💾 [EDIT_SESSION] Changes to commit:`, Array.from(changes.entries()));
       }
 
       // Call the provided save handler
       if (onSave) {
-        await onSave(state.activeMasterId, state.pendingChanges);
+        await onSave(masterId, changes);
       } else {
         if (import.meta.env.DEV) {
           console.warn('⚠️ [EDIT_SESSION] No onSave handler provided');
@@ -313,7 +306,7 @@ export function EditSessionProvider({
       }
       throw error;
     }
-  }, [state.activeMasterId, state.pendingChanges, onSave]);
+  }, [onSave]); // Only onSave dependency - no state Maps!
 
   const discardChanges = useCallback(() => {
     if (import.meta.env.DEV) {
@@ -323,6 +316,40 @@ export function EditSessionProvider({
     resetDirty();
   }, [resetDirty]);
 
+  // PERFORMANCE FIX: Use functional setState to avoid state dependencies
+  const resolvePendingNavigation = useCallback(async (action: 'save' | 'discard' | 'cancel') => {
+    if (import.meta.env.DEV) {
+      console.log(`🎯 [EDIT_SESSION] Resolving pending navigation with action: ${action}`);
+    }
+
+    try {
+      if (action === 'save') {
+        await commitSave();
+      } else if (action === 'discard') {
+        discardChanges();
+      }
+
+      // Capture pending target from state and proceed with navigation
+      let targetToNavigate: string | null = null;
+      setState(prev => {
+        targetToNavigate = prev.pendingTarget;
+        return { ...prev, pendingTarget: null };
+      });
+
+      // For save and discard, proceed with navigation
+      if (action !== 'cancel' && targetToNavigate && onNavigate) {
+        onNavigate(targetToNavigate);
+      }
+      
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('❌ [EDIT_SESSION] Failed to resolve pending navigation:', error);
+      }
+      // Don't clear pendingTarget on error - user can retry
+      throw error;
+    }
+  }, [commitSave, discardChanges, onNavigate]);
+
   const hasUnsavedChanges = useCallback(() => {
     return state.isDirty && state.pendingChanges.size > 0;
   }, [state.isDirty, state.pendingChanges.size]);
@@ -331,11 +358,19 @@ export function EditSessionProvider({
     return state.isEditing && state.activeMasterId === masterId;
   }, [state.isEditing, state.activeMasterId]);
 
+  // PERFORMANCE FIX: Use functional approach to avoid Map dependency
   const getBaselineFor = useCallback((entryId: string | number) => {
-    return state.baseline.get(entryId);
-  }, [state.baseline]);
+    let result: Record<string, any> | undefined;
+    setState(prev => {
+      result = prev.baseline.get(entryId);
+      return prev; // No state change
+    });
+    return result;
+  }, []); // Empty dependency array!
 
-  const contextValue: EditSessionContextValue = {
+  // PERFORMANCE FIX: Memoize context value to prevent infinite re-renders
+  // Use Map sizes instead of Maps themselves to avoid reference changes causing re-memoization
+  const contextValue: EditSessionContextValue = useMemo(() => ({
     // Reactive state
     activeMasterId: state.activeMasterId,
     isEditing: state.isEditing,
@@ -357,7 +392,26 @@ export function EditSessionProvider({
     hasUnsavedChanges,
     isEditingMaster,
     getBaselineFor,
-  };
+  }), [
+    state.activeMasterId,
+    state.isEditing,
+    state.isDirty,
+    state.saving,
+    state.pendingTarget,
+    state.pendingChanges.size, // Use size instead of Map reference
+    state.baseline.size, // Use size instead of Map reference
+    startEdit,
+    stopEdit,
+    markDirty,
+    resetDirty,
+    setPendingTarget,
+    resolvePendingNavigation,
+    commitSave,
+    discardChanges,
+    hasUnsavedChanges,
+    isEditingMaster,
+    getBaselineFor,
+  ]);
 
   return (
     <EditSessionContext.Provider value={contextValue}>

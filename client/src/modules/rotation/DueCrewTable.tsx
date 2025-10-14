@@ -355,7 +355,11 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
             headerHeight: 48,
             suppressMovableColumns: true,
             suppressHorizontalScroll: true,
-            getRowId: (params: any) => params.data.id,
+            getRowId: (params: any) => {
+              if (params.data?.id) return params.data.id.toString();
+              if (params.node?.rowIndex !== undefined) return `row-${params.node.rowIndex}`;
+              return `fallback-${Math.random().toString(36).substring(7)}`;
+            },
           }}
         />
       </div>

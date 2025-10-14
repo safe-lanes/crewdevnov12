@@ -56,7 +56,7 @@ const mapAvailableRankToRankMasterData = (availableRank: AvailableRank): RankMas
 };
 
 // Hook to get all rank master data from database
-export const useRankMasterData = () => {
+export const useRankMasterData = (options?: { enabled?: boolean }) => {
   const query = useQuery<AvailableRank[]>({
     queryKey: ["/api/available-ranks"],
     queryFn: async () => {
@@ -72,6 +72,7 @@ export const useRankMasterData = () => {
     refetchOnMount: false, // Use cache if available
     refetchOnWindowFocus: false, // Don't refetch on focus
     refetchOnReconnect: true, // Refetch on reconnect is fine
+    enabled: options?.enabled ?? true, // Allow conditional fetching
   });
 
   const mappedData = query.data?.map(mapAvailableRankToRankMasterData) || [];
@@ -100,7 +101,7 @@ export const useCompanyRanks = () => {
 };
 
 // Hook to fetch saved company rank data (including role variants)
-export const useFetchCompanyRanks = () => {
+export const useFetchCompanyRanks = (options?: { enabled?: boolean }) => {
   return useQuery<any[]>({
     queryKey: ["/api/company-ranks"],
     queryFn: async () => {
@@ -115,6 +116,7 @@ export const useFetchCompanyRanks = () => {
     refetchOnMount: true,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
+    enabled: options?.enabled ?? true, // Allow conditional fetching
   });
 };
 

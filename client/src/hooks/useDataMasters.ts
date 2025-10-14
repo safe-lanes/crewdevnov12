@@ -3,7 +3,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { DataMaster, MasterDataEntry, InsertDataMaster, InsertMasterDataEntry } from "@shared/schema";
 
 // Master Categories API hooks
-export function useDataMasters() {
+export function useDataMasters(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['/api/masters'],
     queryFn: async () => {
@@ -13,6 +13,7 @@ export function useDataMasters() {
       }
       return response.json();
     },
+    enabled: options?.enabled ?? true, // Allow conditional fetching
   });
 }
 
@@ -67,7 +68,7 @@ export function useDeleteDataMaster() {
 }
 
 // Master Data Entries API hooks
-export function useMasterDataEntries(masterId: string) {
+export function useMasterDataEntries(masterId: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: [`/api/masters/${masterId}/data`],
     queryFn: async () => {
@@ -77,7 +78,7 @@ export function useMasterDataEntries(masterId: string) {
       }
       return response.json();
     },
-    enabled: !!masterId,
+    enabled: options?.enabled !== undefined ? (!!masterId && options.enabled) : !!masterId,
   });
 }
 

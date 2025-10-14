@@ -584,7 +584,15 @@ export function ApprovalTable({ selectedVessels, selectedRanks, draftIdFilter, d
               rowHeight: 48,
               headerHeight: 48,
               suppressMovableColumns: true,
-              getRowId: (params: any) => `${params.data.planId}-${params.data.assignmentIndex}`,
+              getRowId: (params: any) => {
+                if (params.data?.planId && params.data?.assignmentIndex !== undefined) {
+                  return `${params.data.planId}-${params.data.assignmentIndex}`;
+                }
+                if (params.node?.rowIndex !== undefined) {
+                  return `row-${params.node.rowIndex}`;
+                }
+                return `fallback-${Math.random().toString(36).substring(7)}`;
+              },
               overlayNoRowsTemplate: '<span class="text-gray-500 text-sm">No proposed assignments found. Create a rotation plan and propose it for approval.</span>',
             }}
           />

@@ -182,10 +182,16 @@ const AdminModuleInner = (): JSX.Element => {
   const [selectedTemplate, setSelectedTemplate] = useState("");
   
   // Rank Master data from shared hook (for initialization)
-  const { data: sharedRankMasterData, isLoading: rankMasterLoading, error: rankMasterError } = useRankMasterData();
+  // PERFORMANCE: Only fetch when on rank-admin tab
+  const { data: sharedRankMasterData, isLoading: rankMasterLoading, error: rankMasterError } = useRankMasterData({ 
+    enabled: selectedAdminPage === "rank-admin" 
+  });
   // Fetch saved company rank data (including role variants)
   // STRATEGIC FIX: Use controlled refetch to prevent overwrites during editing
-  const { data: savedCompanyRanks = [], isLoading: isCompanyRanksLoading, refetch: refetchCompanyRanks } = useFetchCompanyRanks();
+  // PERFORMANCE: Only fetch when on rank-admin tab
+  const { data: savedCompanyRanks = [], isLoading: isCompanyRanksLoading, refetch: refetchCompanyRanks } = useFetchCompanyRanks({ 
+    enabled: selectedAdminPage === "rank-admin" 
+  });
   
   // Mutation hooks for rank management
   const createRankMutation = useCreateRank();
@@ -529,20 +535,12 @@ const AdminModuleInner = (): JSX.Element => {
   
 
   // Data Masters API hooks
-  const { data: mastersList = [], isLoading: mastersLoading, error: mastersError } = useDataMasters();
+  // PERFORMANCE: Only fetch when on masters tab
+  const { data: mastersList = [], isLoading: mastersLoading, error: mastersError } = useDataMasters({ 
+    enabled: selectedAdminPage === "masters" 
+  });
   
-  // Debug logging for masters list
-  useEffect(() => {
-    console.log('🔍 [MASTERS DEBUG] mastersList:', mastersList);
-    console.log('🔍 [MASTERS DEBUG] mastersList length:', mastersList.length);
-    console.log('🔍 [MASTERS DEBUG] selectedMaster:', selectedMaster);
-    console.log('🔍 [MASTERS DEBUG] mastersLoading:', mastersLoading);
-    console.log('🔍 [MASTERS DEBUG] mastersError:', mastersError);
-    
-    // Check if Port Master (018) is in the list
-    const portMaster = (mastersList as any[]).find((m: any) => m.id === '018');
-    console.log('🔍 [MASTERS DEBUG] Port Master (018) found:', portMaster);
-  }, [mastersList, selectedMaster, mastersLoading, mastersError]);
+  // PERFORMANCE: Removed debug logging to avoid re-renders on every masters change
   
   // Function to force refresh masters data
   const refreshMastersData = () => {
@@ -565,7 +563,9 @@ const AdminModuleInner = (): JSX.Element => {
   const { data: rawMasterData = [], isLoading: masterDataLoading, error: masterDataError } = useMasterDataEntries(selectedMaster);
   
   // Apply vessel/port master field mapping if needed
+  // PERFORMANCE: Only transform when on masters tab to avoid expensive map operations on every render
   const masterData = useMemo(() => {
+    if (selectedAdminPage !== "masters") return [];
     if (isVesselMaster(selectedMaster)) {
       return rawMasterData.map((item: any) => mapSafeFieldsToVesselData(item));
     }
@@ -573,20 +573,31 @@ const AdminModuleInner = (): JSX.Element => {
       return rawMasterData.map((item: any) => mapSafeFieldsToPortData(item));
     }
     return rawMasterData;
-  }, [rawMasterData, selectedMaster]);
+  }, [rawMasterData, selectedMaster, selectedAdminPage]);
   
   // Vessel Type Master Data (for vessel master dropdown)
-  const { data: vesselTypeData = [], isLoading: vesselTypeLoading } = useMasterDataEntries('004');
+  // PERFORMANCE: Only fetch when on masters tab
+  const { data: vesselTypeData = [], isLoading: vesselTypeLoading } = useMasterDataEntries('004', { 
+    enabled: selectedAdminPage === "masters" 
+  });
   
   // Designation Master Data (for users master dropdown)
-  const { data: designationData = [], isLoading: designationLoading } = useMasterDataEntries('012');
+  // PERFORMANCE: Only fetch when on masters tab
+  const { data: designationData = [], isLoading: designationLoading } = useMasterDataEntries('012', { 
+    enabled: selectedAdminPage === "masters" 
+  });
   
   // Vessels Master Data (for vessel selection dropdown - ID 014)
-  const { data: vesselMasterData = [], isLoading: vesselMasterLoading } = useMasterDataEntries('014');
+  // PERFORMANCE: Only fetch when on masters tab
+  const { data: vesselMasterData = [], isLoading: vesselMasterLoading } = useMasterDataEntries('014', { 
+    enabled: selectedAdminPage === "masters" 
+  });
   
   // Vessel Groups Data (for vessel group selection)
+  // PERFORMANCE: Only fetch when on masters tab
   const { data: vesselGroupsData = [], isLoading: vesselGroupsLoading } = useQuery({
-    queryKey: ['/api/vessel-groups']
+    queryKey: ['/api/vessel-groups'],
+    enabled: selectedAdminPage === "masters"
   });
   
   // Mutations for Data Masters
@@ -3111,11 +3122,7 @@ const AdminModuleInner = (): JSX.Element => {
     </>
   );
 
-  // Debug log the forms data to understand duplication issue
-  if (import.meta.env.DEV) {
-    console.log('📋 [FORMS DEBUG] Raw forms data from backend:', formsData);
-    console.log('📋 [FORMS DEBUG] Forms count:', formsData.length);
-  }
+  // PERFORMANCE: Removed debug logging to avoid re-render console noise
 
   const renderRankAdminModule = () => (
     <div>
