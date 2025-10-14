@@ -823,7 +823,12 @@ const AdminModuleInner = (): JSX.Element => {
     }
     
     // PERFORMANCE FIX: Only sync if data actually changed (prevent infinite loops)
-    const syncKey = JSON.stringify({ allRanks: rankMasterData, savedRanks: savedCompanyRanks });
+    // Include companyRankData length to detect when we've already processed this combination
+    const syncKey = JSON.stringify({ 
+      allRanks: rankMasterData, 
+      savedRanks: savedCompanyRanks,
+      currentLength: companyRankData.length 
+    });
     if (prevCompanyRankSyncRef.current === syncKey) {
       return; // No change, skip sync
     }
@@ -946,7 +951,7 @@ const AdminModuleInner = (): JSX.Element => {
       console.log('🔍 [DEBUG] Updating company rank data with role variants preserved');
       setCompanyRankData(finalCompanyRanks);
     }
-  }, [rankMasterData, savedCompanyRanks, isCompanyEditing, isCompanyRanksLoading, rankMasterLoading]);
+  }, [rankMasterData, savedCompanyRanks, isCompanyEditing, isCompanyRanksLoading, rankMasterLoading, isRankMasterEditing, companyRankData.length]);
 
   // Sync vessel rank data with company rank data changes for all vessels
   React.useEffect(() => {
