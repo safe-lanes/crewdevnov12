@@ -78,14 +78,27 @@ const HistoryHeaderComponent = (props: any) => {
   );
 };
 
-const ViolationsCellRenderer = (params: ICellRendererParams) => {
-  const violations = params.value || 0;
-  const text = violations === 1 ? '1 Violation' : `${violations} Violation${violations !== 1 ? 's' : ''}`;
-  const color = violations > 0 ? '#E54E60' : '#4f5863';
+const TestHistoryCellRenderer = (params: ICellRendererParams) => {
+  const testData = params.value as TestRecord | undefined;
+  
+  if (!testData || !testData.date) {
+    return <div className="flex items-center h-full text-gray-400 text-xs">No data</div>;
+  }
+
+  const violations = testData.violations || 0;
+  const violationText = violations === 1 ? '1 Violation' : `${violations} Violation`;
+  const violationColor = violations > 0 ? '#E54E60' : '#22C55E';
 
   return (
-    <div className="flex items-center h-full">
-      <span style={{ color, fontSize: '12px' }}>{text}</span>
+    <div className="flex flex-col justify-center h-full py-1 px-2">
+      <div className="text-xs text-gray-700 font-medium">{testData.date}</div>
+      <div className="text-xs text-gray-600 mt-0.5">{testData.port}</div>
+      <div 
+        className="text-xs font-medium mt-0.5" 
+        style={{ color: violationColor }}
+      >
+        {violationText}
+      </div>
     </div>
   );
 };
@@ -250,93 +263,33 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
       }
     ];
 
-    const historyColumns: ColDef[] = [];
-
-    const lastTest = {
-      headerName: 'Last',
-      children: [
-        {
-          headerName: 'Date',
-          field: 'testHistory[0].date',
-          width: 120,
-          cellStyle: { fontSize: '12px', color: '#4f5863' },
-          valueGetter: (params: any) => params.data?.testHistory?.[0]?.date || '',
-        },
-        {
-          headerName: 'Port',
-          field: 'testHistory[0].port',
-          width: 120,
-          cellStyle: { fontSize: '12px', color: '#4f5863' },
-          valueGetter: (params: any) => params.data?.testHistory?.[0]?.port || '',
-        },
-        {
-          headerName: 'Violations',
-          field: 'testHistory[0].violations',
-          width: 100,
-          cellRenderer: ViolationsCellRenderer,
-          valueGetter: (params: any) => params.data?.testHistory?.[0]?.violations ?? 0,
-        },
-      ],
-    };
-
-    historyColumns.push(lastTest);
+    const historyColumns: ColDef[] = [
+      {
+        headerName: 'Last',
+        field: 'testHistory[0]',
+        width: 150,
+        cellRenderer: TestHistoryCellRenderer,
+        valueGetter: (params: any) => params.data?.testHistory?.[0],
+      }
+    ];
 
     if (showAllHistory) {
-      const secondTest = {
-        headerName: '2nd',
-        children: [
-          {
-            headerName: 'Date',
-            field: 'testHistory[1].date',
-            width: 120,
-            cellStyle: { fontSize: '12px', color: '#4f5863' },
-            valueGetter: (params: any) => params.data?.testHistory?.[1]?.date || '',
-          },
-          {
-            headerName: 'Port',
-            field: 'testHistory[1].port',
-            width: 120,
-            cellStyle: { fontSize: '12px', color: '#4f5863' },
-            valueGetter: (params: any) => params.data?.testHistory?.[1]?.port || '',
-          },
-          {
-            headerName: 'Violations',
-            field: 'testHistory[1].violations',
-            width: 100,
-            cellRenderer: ViolationsCellRenderer,
-            valueGetter: (params: any) => params.data?.testHistory?.[1]?.violations ?? 0,
-          },
-        ],
-      };
-
-      const thirdTest = {
-        headerName: '3rd',
-        children: [
-          {
-            headerName: 'Date',
-            field: 'testHistory[2].date',
-            width: 120,
-            cellStyle: { fontSize: '12px', color: '#4f5863' },
-            valueGetter: (params: any) => params.data?.testHistory?.[2]?.date || '',
-          },
-          {
-            headerName: 'Port',
-            field: 'testHistory[2].port',
-            width: 120,
-            cellStyle: { fontSize: '12px', color: '#4f5863' },
-            valueGetter: (params: any) => params.data?.testHistory?.[2]?.port || '',
-          },
-          {
-            headerName: 'Violations',
-            field: 'testHistory[2].violations',
-            width: 100,
-            cellRenderer: ViolationsCellRenderer,
-            valueGetter: (params: any) => params.data?.testHistory?.[2]?.violations ?? 0,
-          },
-        ],
-      };
-
-      historyColumns.push(secondTest, thirdTest);
+      historyColumns.push(
+        {
+          headerName: '2nd Last',
+          field: 'testHistory[1]',
+          width: 150,
+          cellRenderer: TestHistoryCellRenderer,
+          valueGetter: (params: any) => params.data?.testHistory?.[1],
+        },
+        {
+          headerName: '3rd Last',
+          field: 'testHistory[2]',
+          width: 150,
+          cellRenderer: TestHistoryCellRenderer,
+          valueGetter: (params: any) => params.data?.testHistory?.[2],
+        }
+      );
     }
 
     columns.push({
@@ -427,7 +380,7 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
         rowSelection={false}
         gridOptions={{
           headerHeight: 48,
-          rowHeight: 40,
+          rowHeight: 70,
           suppressHorizontalScroll: false,
           getRowStyle: () => ({ backgroundColor: 'white' }),
         }}
