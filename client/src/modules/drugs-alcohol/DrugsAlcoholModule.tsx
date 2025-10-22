@@ -212,7 +212,7 @@ export function DrugsAlcoholModule() {
                 );
             case "periodic":
                 return (
-                    <div className="p-6">
+                    <div className="bg-white rounded-lg shadow p-6">
                         <h2 className="text-2xl font-semibold mb-4" style={{ color: '#16569e' }}>
                             Periodic Tests
                         </h2>
@@ -223,7 +223,7 @@ export function DrugsAlcoholModule() {
                 );
             case "monthly":
                 return (
-                    <div className="p-6">
+                    <div className="bg-white rounded-lg shadow p-6">
                         <h2 className="text-2xl font-semibold mb-4" style={{ color: '#16569e' }}>
                             Monthly Tests
                         </h2>
@@ -234,7 +234,7 @@ export function DrugsAlcoholModule() {
                 );
             case "post-incident":
                 return (
-                    <div className="p-6">
+                    <div className="bg-white rounded-lg shadow p-6">
                         <h2 className="text-2xl font-semibold mb-4" style={{ color: '#16569e' }}>
                             Post Incident Tests
                         </h2>
@@ -245,7 +245,7 @@ export function DrugsAlcoholModule() {
                 );
             case "others":
                 return (
-                    <div className="p-6">
+                    <div className="bg-white rounded-lg shadow p-6">
                         <h2 className="text-2xl font-semibold mb-4" style={{ color: '#16569e' }}>
                             Other Tests
                         </h2>
@@ -256,7 +256,7 @@ export function DrugsAlcoholModule() {
                 );
             case "summary":
                 return (
-                    <div className="p-6">
+                    <div className="bg-white rounded-lg shadow p-6">
                         <h2 className="text-2xl font-semibold mb-4" style={{ color: '#16569e' }}>
                             Summary
                         </h2>
@@ -267,7 +267,7 @@ export function DrugsAlcoholModule() {
                 );
             default:
                 return (
-                    <div className="p-6">
+                    <div className="bg-white rounded-lg shadow p-6">
                         <h2 className="text-2xl font-semibold mb-4" style={{ color: '#16569e' }}>
                             Drugs & Alcohol Testing
                         </h2>
@@ -287,9 +287,7 @@ export function DrugsAlcoholModule() {
                 allowedPages={allowedPages}
             />
             <MainLayout>
-                <div className="bg-white rounded-lg shadow">
-                    {renderContent()}
-                </div>
+                {renderContent()}
             </MainLayout>
         </>
     );
