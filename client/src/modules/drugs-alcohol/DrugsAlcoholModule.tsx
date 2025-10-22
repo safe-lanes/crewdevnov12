@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Filter, ChevronDown } from 'lucide-react';
+import { AnnualTestTable } from './AnnualTestTable';
 
 // Hook to fetch vessels from Master Data (ID 014)
 const useVessels = () => {
@@ -275,6 +276,12 @@ export function DrugsAlcoholModule() {
                             </div>
                         </SectionTitleComponents>
                         {renderFullFilterBar()}
+                        <AnnualTestTable
+                            filterType={filterType}
+                            selectedVessels={selectedVessels}
+                            fleetValue={fleetValue}
+                            addGroupValue={addGroupValue}
+                        />
                     </div>
                 );
             case "periodic":

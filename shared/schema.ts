@@ -418,6 +418,27 @@ export const rotationPlans = pgTable("rotation_plans", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const drugAlcoholTestRecords = pgTable("drug_alcohol_test_records", {
+  id: serial("id").primaryKey(),
+  vesselId: text("vessel_id").notNull(), // VSL-XXX format from master data
+  testType: text("test_type").notNull(), // 'annual', 'periodic', 'monthly', 'post-incident', 'others'
+  
+  // Test history as JSON array: [{ date, port, violations }, ...]
+  // Stores up to last 3 test records
+  testHistory: text("test_history"), // JSON: [{date: "31 May 2023", port: "Punta Gorda", violations: 0}, ...]
+  
+  // Frequency (in months) - 12 for annual, 3 for periodic, 1 for monthly
+  frequencyMonths: integer("frequency_months").notNull().default(12),
+  
+  // Planned test information (from Plan popup)
+  plannedPort: text("planned_port"),
+  plannedDate: text("planned_date"),
+  plannedComments: text("planned_comments"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -796,6 +817,12 @@ export const insertRotationPlanSchema = createInsertSchema(rotationPlans).omit({
   updatedAt: true,
 });
 
+export const insertDrugAlcoholTestRecordSchema = createInsertSchema(drugAlcoholTestRecords).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertForm = z.infer<typeof insertFormSchema>;
@@ -839,6 +866,8 @@ export type InsertVesselPlanning = z.infer<typeof insertVesselPlanningSchema>;
 export type VesselPlanning = typeof vesselPlanning.$inferSelect;
 export type InsertRotationPlan = z.infer<typeof insertRotationPlanSchema>;
 export type RotationPlan = typeof rotationPlans.$inferSelect;
+export type InsertDrugAlcoholTestRecord = z.infer<typeof insertDrugAlcoholTestRecordSchema>;
+export type DrugAlcoholTestRecord = typeof drugAlcoholTestRecords.$inferSelect;
 
 // Dashboard Types
 export const dashboardStatusSchema = z.object({

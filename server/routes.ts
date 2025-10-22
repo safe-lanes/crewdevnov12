@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError } from "./storage";
-import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema } from "@shared/schema";
+import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema } from "@shared/schema";
 import { z } from "zod";
 import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew } from "@shared/crew-mapping";
 import { 
@@ -1336,6 +1336,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to check conflicts:", error);
       res.status(500).json({ error: "Failed to check conflicts" });
+    }
+  });
+
+  // Drug/Alcohol Test Records API routes
+  app.get("/api/drug-alcohol-tests", async (req, res) => {
+    try {
+      const records = await storage.getDrugAlcoholTestRecords();
+      res.json(records);
+    } catch (error) {
+      console.error("Failed to fetch drug/alcohol test records:", error);
+      res.status(500).json({ error: "Failed to fetch drug/alcohol test records" });
+    }
+  });
+
+  app.get("/api/drug-alcohol-tests/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid record ID - must be a number" });
+      }
+      const record = await storage.getDrugAlcoholTestRecord(id);
+      if (!record) {
+        return res.status(404).json({ error: "Drug/alcohol test record not found" });
+      }
+      res.json(record);
+    } catch (error) {
+      console.error("Failed to fetch drug/alcohol test record:", error);
+      res.status(500).json({ error: "Failed to fetch drug/alcohol test record" });
+    }
+  });
+
+  app.get("/api/drug-alcohol-tests/vessel/:vesselId", async (req, res) => {
+    try {
+      const { vesselId } = req.params;
+      const { testType } = req.query;
+      const records = await storage.getDrugAlcoholTestRecordsByVessel(
+        vesselId,
+        testType as string | undefined
+      );
+      res.json(records);
+    } catch (error) {
+      console.error("Failed to fetch drug/alcohol test records by vessel:", error);
+      res.status(500).json({ error: "Failed to fetch drug/alcohol test records by vessel" });
+    }
+  });
+
+  app.post("/api/drug-alcohol-tests", async (req, res) => {
+    try {
+      const result = insertDrugAlcoholTestRecordSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid drug/alcohol test record data", details: result.error.issues });
+      }
+      const record = await storage.createDrugAlcoholTestRecord(result.data);
+      res.status(201).json(record);
+    } catch (error) {
+      console.error("Failed to create drug/alcohol test record:", error);
+      res.status(500).json({ error: "Failed to create drug/alcohol test record" });
+    }
+  });
+
+  app.put("/api/drug-alcohol-tests/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid record ID - must be a number" });
+      }
+      const result = insertDrugAlcoholTestRecordSchema.partial().safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid drug/alcohol test record data", details: result.error.issues });
+      }
+      const record = await storage.updateDrugAlcoholTestRecord(id, result.data);
+      if (!record) {
+        return res.status(404).json({ error: "Drug/alcohol test record not found" });
+      }
+      res.json(record);
+    } catch (error) {
+      console.error("Failed to update drug/alcohol test record:", error);
+      res.status(500).json({ error: "Failed to update drug/alcohol test record" });
+    }
+  });
+
+  app.delete("/api/drug-alcohol-tests/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid record ID - must be a number" });
+      }
+      const deleted = await storage.deleteDrugAlcoholTestRecord(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Drug/alcohol test record not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete drug/alcohol test record:", error);
+      res.status(500).json({ error: "Failed to delete drug/alcohol test record" });
     }
   });
 

@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type CrewDashboardSummary } from "@shared/schema";
+import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type DrugAlcoholTestRecord, type InsertDrugAlcoholTestRecord, type CrewDashboardSummary } from "@shared/schema";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -109,6 +109,13 @@ export interface IStorage {
   deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[] }>;
   rejectAssignment(planId: number, assignmentIndex: number): Promise<RotationPlan | undefined>;
   checkAssignmentConflicts(crewId: string, joiningDate: string, contractPeriod: number, excludePlanId?: number, excludeAssignmentIndex?: number): Promise<any[]>;
+  // Drug/Alcohol Test Records
+  getDrugAlcoholTestRecords(): Promise<DrugAlcoholTestRecord[]>;
+  getDrugAlcoholTestRecord(id: number): Promise<DrugAlcoholTestRecord | undefined>;
+  getDrugAlcoholTestRecordsByVessel(vesselId: string, testType?: string): Promise<DrugAlcoholTestRecord[]>;
+  createDrugAlcoholTestRecord(record: InsertDrugAlcoholTestRecord): Promise<DrugAlcoholTestRecord>;
+  updateDrugAlcoholTestRecord(id: number, record: Partial<InsertDrugAlcoholTestRecord>): Promise<DrugAlcoholTestRecord | undefined>;
+  deleteDrugAlcoholTestRecord(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -126,6 +133,7 @@ export class MemStorage implements IStorage {
   private vesselRevisions: Map<number, VesselRevision>;
   private vesselPlanning: Map<number, VesselPlanning>;
   private rotationPlans: Map<number, RotationPlan>;
+  private drugAlcoholTestRecords: Map<number, DrugAlcoholTestRecord>;
   private currentUserId: number;
   private currentFormId: number;
   private currentRankGroupId: number;
@@ -138,6 +146,7 @@ export class MemStorage implements IStorage {
   private currentVesselRevisionId: number;
   private currentVesselPlanningId: number;
   private currentRotationPlanId: number;
+  private currentDrugAlcoholTestRecordId: number;
 
   constructor() {
     this.users = new Map();
@@ -154,6 +163,7 @@ export class MemStorage implements IStorage {
     this.vesselRevisions = new Map();
     this.vesselPlanning = new Map();
     this.rotationPlans = new Map();
+    this.drugAlcoholTestRecords = new Map();
     this.currentUserId = 1;
     this.currentFormId = 1;
     this.currentRankGroupId = 1;
@@ -166,6 +176,7 @@ export class MemStorage implements IStorage {
     this.currentVesselRevisionId = 1;
     this.currentVesselPlanningId = 1;
     this.currentRotationPlanId = 1;
+    this.currentDrugAlcoholTestRecordId = 1;
     
     this.initializeDefaultData();
 
@@ -1452,6 +1463,56 @@ export class MemStorage implements IStorage {
     return conflicts;
   }
 
+  // Drug/Alcohol Test Records Methods
+  async getDrugAlcoholTestRecords(): Promise<DrugAlcoholTestRecord[]> {
+    return Array.from(this.drugAlcoholTestRecords.values());
+  }
+
+  async getDrugAlcoholTestRecord(id: number): Promise<DrugAlcoholTestRecord | undefined> {
+    return this.drugAlcoholTestRecords.get(id);
+  }
+
+  async getDrugAlcoholTestRecordsByVessel(vesselId: string, testType?: string): Promise<DrugAlcoholTestRecord[]> {
+    const records = Array.from(this.drugAlcoholTestRecords.values()).filter(
+      record => record.vesselId === vesselId
+    );
+    
+    if (testType) {
+      return records.filter(record => record.testType === testType);
+    }
+    
+    return records;
+  }
+
+  async createDrugAlcoholTestRecord(insertRecord: InsertDrugAlcoholTestRecord): Promise<DrugAlcoholTestRecord> {
+    const id = this.currentDrugAlcoholTestRecordId++;
+    const record: DrugAlcoholTestRecord = {
+      ...insertRecord,
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.drugAlcoholTestRecords.set(id, record);
+    return record;
+  }
+
+  async updateDrugAlcoholTestRecord(id: number, updateData: Partial<InsertDrugAlcoholTestRecord>): Promise<DrugAlcoholTestRecord | undefined> {
+    const existingRecord = this.drugAlcoholTestRecords.get(id);
+    if (!existingRecord) return undefined;
+    
+    const updatedRecord: DrugAlcoholTestRecord = {
+      ...existingRecord,
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    this.drugAlcoholTestRecords.set(id, updatedRecord);
+    return updatedRecord;
+  }
+
+  async deleteDrugAlcoholTestRecord(id: number): Promise<boolean> {
+    return this.drugAlcoholTestRecords.delete(id);
+  }
+
   // Appraisal Results Methods
   async getAppraisalResults(): Promise<AppraisalResult[]> {
     return Array.from(this.appraisalResults.values());
@@ -1608,6 +1669,8 @@ export class PersistentFileStorage implements IStorage {
   private vesselDrafts: Map<number, VesselDraft>;
   private vesselRevisions: Map<number, VesselRevision>;
   private vesselPlanning: Map<number, VesselPlanning>;
+  private rotationPlans: Map<number, RotationPlan>;
+  private drugAlcoholTestRecords: Map<number, DrugAlcoholTestRecord>;
   private currentUserId: number;
   private currentFormId: number;
   private currentRankGroupId: number;
@@ -1619,6 +1682,8 @@ export class PersistentFileStorage implements IStorage {
   private currentVesselDraftId: number;
   private currentVesselRevisionId: number;
   private currentVesselPlanningId: number;
+  private currentRotationPlanId: number;
+  private currentDrugAlcoholTestRecordId: number;
   private filePath: string;
   private saveTimeout: NodeJS.Timeout | null = null;
   private isSaving: boolean = false;
@@ -1641,6 +1706,8 @@ export class PersistentFileStorage implements IStorage {
     this.vesselDrafts = new Map();
     this.vesselRevisions = new Map();
     this.vesselPlanning = new Map();
+    this.rotationPlans = new Map();
+    this.drugAlcoholTestRecords = new Map();
     this.currentUserId = 1;
     this.currentFormId = 1;
     this.currentRankGroupId = 1;
@@ -1652,6 +1719,8 @@ export class PersistentFileStorage implements IStorage {
     this.currentVesselDraftId = 1;
     this.currentVesselRevisionId = 1;
     this.currentVesselPlanningId = 1;
+    this.currentRotationPlanId = 1;
+    this.currentDrugAlcoholTestRecordId = 1;
     
     this.filePath = path.join(process.cwd(), 'test-data.json');
     this.loadFromFile();
@@ -1744,6 +1813,10 @@ export class PersistentFileStorage implements IStorage {
         this.rotationPlans = new Map(data.rotationPlans || []);
         this.currentRotationPlanId = data.currentRotationPlanId || 1;
         
+        // Load drug/alcohol test records and counter
+        this.drugAlcoholTestRecords = new Map(data.drugAlcoholTestRecords || []);
+        this.currentDrugAlcoholTestRecordId = data.currentDrugAlcoholTestRecordId || 1;
+        
         console.log("📄 Loaded existing data from test-data.json");
       } else {
         console.log("📄 test-data.json not found, initializing with default data");
@@ -1773,6 +1846,7 @@ export class PersistentFileStorage implements IStorage {
       vesselRevisions: Array.from(this.vesselRevisions.entries()),
       vesselPlanning: Array.from(this.vesselPlanning.entries()),
       rotationPlans: Array.from(this.rotationPlans.entries()),
+      drugAlcoholTestRecords: Array.from(this.drugAlcoholTestRecords.entries()),
       masterDataEntries: Array.from(this.masterDataEntries.entries()),
       currentUserId: this.currentUserId,
       currentFormId: this.currentFormId,
@@ -1785,7 +1859,8 @@ export class PersistentFileStorage implements IStorage {
       currentVesselDraftId: this.currentVesselDraftId,
       currentVesselRevisionId: this.currentVesselRevisionId,
       currentVesselPlanningId: this.currentVesselPlanningId,
-      currentRotationPlanId: this.currentRotationPlanId
+      currentRotationPlanId: this.currentRotationPlanId,
+      currentDrugAlcoholTestRecordId: this.currentDrugAlcoholTestRecordId
     };
     
     if (this.saveTimeout) {
@@ -3100,6 +3175,60 @@ export class PersistentFileStorage implements IStorage {
     }
 
     return conflicts;
+  }
+
+  // Drug/Alcohol Test Records Methods
+  async getDrugAlcoholTestRecords(): Promise<DrugAlcoholTestRecord[]> {
+    return Array.from(this.drugAlcoholTestRecords.values());
+  }
+
+  async getDrugAlcoholTestRecord(id: number): Promise<DrugAlcoholTestRecord | undefined> {
+    return this.drugAlcoholTestRecords.get(id);
+  }
+
+  async getDrugAlcoholTestRecordsByVessel(vesselId: string, testType?: string): Promise<DrugAlcoholTestRecord[]> {
+    const records = Array.from(this.drugAlcoholTestRecords.values()).filter(
+      record => record.vesselId === vesselId
+    );
+    
+    if (testType) {
+      return records.filter(record => record.testType === testType);
+    }
+    
+    return records;
+  }
+
+  async createDrugAlcoholTestRecord(insertRecord: InsertDrugAlcoholTestRecord): Promise<DrugAlcoholTestRecord> {
+    const id = this.currentDrugAlcoholTestRecordId++;
+    const record: DrugAlcoholTestRecord = {
+      ...insertRecord,
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.drugAlcoholTestRecords.set(id, record);
+    this.saveToFile(); // SAVE TO FILE AFTER EVERY CREATE!
+    return record;
+  }
+
+  async updateDrugAlcoholTestRecord(id: number, updateData: Partial<InsertDrugAlcoholTestRecord>): Promise<DrugAlcoholTestRecord | undefined> {
+    const existingRecord = this.drugAlcoholTestRecords.get(id);
+    if (!existingRecord) return undefined;
+    
+    const updatedRecord: DrugAlcoholTestRecord = {
+      ...existingRecord,
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    this.drugAlcoholTestRecords.set(id, updatedRecord);
+    this.saveToFile(); // SAVE TO FILE AFTER EVERY UPDATE!
+    return updatedRecord;
+  }
+
+  async deleteDrugAlcoholTestRecord(id: number): Promise<boolean> {
+    const result = this.drugAlcoholTestRecords.delete(id);
+    if (result) this.saveToFile(); // SAVE TO FILE AFTER EVERY DELETE!
+    return result;
   }
 
   // Data Masters methods (return empty array for frontend compatibility)
