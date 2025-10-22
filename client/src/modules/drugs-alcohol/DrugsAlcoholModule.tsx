@@ -208,13 +208,6 @@ export function DrugsAlcoholModule() {
                                 </Button>
                             </div>
                         )}
-
-                        {/* Placeholder for test data table */}
-                        <div className="p-6">
-                            <p className="text-gray-600">
-                                Annual drug and alcohol testing records will be displayed here.
-                            </p>
-                        </div>
                     </div>
                 );
             case "periodic":
