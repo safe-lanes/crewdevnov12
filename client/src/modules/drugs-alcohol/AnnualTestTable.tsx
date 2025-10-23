@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ColDef, ColGroupDef, ICellRendererParams, GridApi } from 'ag-grid-community';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
@@ -241,6 +241,31 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
   const [vesselFrequencies, setVesselFrequencies] = useState<Record<string, number>>({});
   const gridApiRef = useRef<GridApi | null>(null);
 
+  // Auto-size columns to fit content
+  const autoSizeContentColumns = useCallback(() => {
+    if (gridApiRef.current) {
+      const columnsToAutoSize = [
+        'testHistory[0]',
+        'testHistory[1]',
+        'testHistory[2]',
+        'nextDue',
+        'frequencyMonths',
+        'plannedPort',
+        'plannedDate',
+        'actions'
+      ];
+      
+      setTimeout(() => {
+        gridApiRef.current?.autoSizeColumns(columnsToAutoSize, false);
+      }, 50);
+    }
+  }, []);
+
+  // Re-size columns when history toggle changes
+  useEffect(() => {
+    autoSizeContentColumns();
+  }, [showAllHistory, autoSizeContentColumns]);
+
   // Callback to set vessel-specific frequency
   const setVesselFrequency = useCallback((vesselId: string, frequency: number) => {
     setVesselFrequencies(prev => ({
@@ -351,7 +376,6 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
       {
         headerName: 'Last',
         field: 'testHistory[0]',
-        width: 150,
         cellRenderer: TestHistoryCellRenderer,
         valueGetter: (params: any) => params.data?.testHistory?.[0],
       }
@@ -362,14 +386,12 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
         {
           headerName: '2nd Last',
           field: 'testHistory[1]',
-          width: 150,
           cellRenderer: TestHistoryCellRenderer,
           valueGetter: (params: any) => params.data?.testHistory?.[1],
         },
         {
           headerName: '3rd Last',
           field: 'testHistory[2]',
-          width: 150,
           cellRenderer: TestHistoryCellRenderer,
           valueGetter: (params: any) => params.data?.testHistory?.[2],
         }
@@ -385,14 +407,12 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
       {
         headerName: 'Next Due',
         field: 'nextDue',
-        width: 180,
         cellRenderer: NextDueCellRenderer,
         cellStyle: { fontSize: '12px' },
       },
       {
         headerComponent: FrequencyHeaderComponent,
         field: 'frequencyMonths',
-        width: 130,
         cellRenderer: FrequencyCellRenderer,
       }
     );
@@ -403,28 +423,25 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
         {
           headerName: 'Port',
           field: 'plannedPort',
-          width: 120,
           cellStyle: { fontSize: '12px', color: '#4f5863' },
           editable: true,
         },
         {
           headerName: 'Date',
           field: 'plannedDate',
-          width: 120,
           cellStyle: { fontSize: '12px', color: '#4f5863' },
           editable: true,
         },
         {
           headerName: 'Comments',
           field: 'plannedComments',
-          width: 150,
+          flex: 1,
           cellStyle: { fontSize: '12px', color: '#4f5863' },
           editable: true,
         },
         {
           headerName: 'Actions',
           field: 'actions',
-          width: 100,
           cellRenderer: ActionsCellRenderer,
           cellStyle: { padding: 0 },
         },
@@ -472,6 +489,9 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
           getRowStyle: () => ({ backgroundColor: 'white' }),
           onGridReady: (params) => {
             gridApiRef.current = params.api;
+          },
+          onFirstDataRendered: () => {
+            autoSizeContentColumns();
           },
         }}
       />
