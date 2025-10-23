@@ -66,7 +66,7 @@ const HistoryHeaderComponent = (props: any) => {
   const { showAllHistory, setShowAllHistory } = props.context;
 
   return (
-    <div 
+    <div
       className="flex items-center justify-center h-full cursor-pointer hover:opacity-80"
       onClick={() => setShowAllHistory(!showAllHistory)}
       data-testid="button-history-toggle"
@@ -114,7 +114,7 @@ const FrequencyHeaderComponent = (params: any) => {
 
 const TestHistoryCellRenderer = (params: ICellRendererParams) => {
   const testData = params.value as TestRecord | undefined;
-  
+
   if (!testData || !testData.date) {
     return <div className="flex items-center h-full text-gray-400 text-xs">No data</div>;
   }
@@ -127,8 +127,8 @@ const TestHistoryCellRenderer = (params: ICellRendererParams) => {
     <div className="flex flex-col justify-center h-full py-1 px-2">
       <div className="text-xs text-gray-700 font-medium">{testData.date}</div>
       <div className="text-xs text-gray-600 mt-0.5">{testData.port}</div>
-      <div 
-        className="text-xs font-medium mt-0.5" 
+      <div
+        className="text-xs font-medium mt-0.5"
         style={{ color: violationColor }}
       >
         {violationText}
@@ -138,11 +138,22 @@ const TestHistoryCellRenderer = (params: ICellRendererParams) => {
 };
 
 const NextDueCellRenderer = (params: ICellRendererParams) => {
+  const { globalFrequency, vesselFrequencies } = params.context;
+  const vesselId = params.data?.vesselId;
+
+  // Use vessel-specific frequency if set, otherwise use global
+  const currentFrequency = vesselFrequencies[vesselId] || globalFrequency;
+
   if (!params.value) return null;
 
   try {
-    const date = new Date(params.value);
-    const formattedDate = format(date, 'dd MMM yyyy');
+    const lastTestDate = params.data?.testHistory?.[0]?.date;
+    if (!lastTestDate) {
+      return null; // Or some placeholder if no last test date
+    }
+
+    const calculatedNextDue = addMonths(new Date(lastTestDate), currentFrequency);
+    const formattedDate = format(calculatedNextDue, 'dd MMM yyyy');
 
     return (
       <div className="flex items-center h-full">
@@ -162,7 +173,7 @@ const NextDueCellRenderer = (params: ICellRendererParams) => {
 const FrequencyCellRenderer = (params: ICellRendererParams) => {
   const { globalFrequency, vesselFrequencies, setVesselFrequency } = params.context;
   const vesselId = params.data?.vesselId;
-  
+
   // Use vessel-specific frequency if set, otherwise use global
   const currentFrequency = vesselFrequencies[vesselId] || globalFrequency;
 
@@ -237,9 +248,17 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
   addGroupValue,
 }) => {
   const [showAllHistory, setShowAllHistory] = useState(false);
-  const [globalFrequency, setGlobalFrequency] = useState(12);
+  const [globalFrequency, setGlobalFrequency] = useState<number>(12);
+  const [gridApi, setGridApi] = useState<GridApi | null>(null);
   const [vesselFrequencies, setVesselFrequencies] = useState<Record<string, number>>({});
   const gridApiRef = useRef<GridApi | null>(null);
+
+  // Refresh cells when frequency changes to recalculate Next Due dates
+  useEffect(() => {
+    if (gridApi) {
+      gridApi.refreshCells({ columns: ['nextDue'], force: true });
+    }
+  }, [globalFrequency, gridApi]);
 
   // Auto-size columns to fit content
   const autoSizeContentColumns = useCallback(() => {
@@ -254,7 +273,7 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
         'plannedDate',
         'actions'
       ];
-      
+
       setTimeout(() => {
         gridApiRef.current?.autoSizeColumns(columnsToAutoSize, false);
       }, 50);
@@ -288,7 +307,7 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
       });
       return updated;
     });
-    
+
     // Refresh the frequency column to update dropdowns
     if (gridApiRef.current) {
       setTimeout(() => {
@@ -315,7 +334,7 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
     // Apply vessel filtering based on filterType
     const filteredTests = annualTests.filter((record: any) => {
       const vesselName = vesselLookup[record.vesselId] || record.vesselId;
-      
+
       if (filterType === 'vessel') {
         // If no vessels selected, show all
         if (selectedVessels.length === 0) return true;
@@ -328,7 +347,7 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
         // Additional group filtering (placeholder - would need group data)
         return true;
       }
-      
+
       return true;
     });
 
@@ -340,9 +359,11 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
         testHistory = [];
       }
 
+      // Calculate initial nextDue based on current frequency (global or vessel-specific)
       const lastTest = testHistory[0];
-      const nextDue = lastTest?.date 
-        ? format(addMonths(new Date(lastTest.date), record.frequencyMonths || 12), 'yyyy-MM-dd')
+      const currentFrequency = vesselFrequencies[record.vesselId] || record.frequencyMonths || globalFrequency;
+      const nextDue = lastTest?.date
+        ? format(addMonths(new Date(lastTest.date), currentFrequency), 'yyyy-MM-dd')
         : '';
 
       return {
@@ -350,14 +371,14 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
         vesselId: record.vesselId,
         vesselName: vesselLookup[record.vesselId] || record.vesselId,
         testHistory: testHistory.slice(0, 3),
-        frequencyMonths: record.frequencyMonths || 12,
-        nextDue,
+        frequencyMonths: record.frequencyMonths || 12, // This might be the default from backend
+        nextDue, // This will be recalculated by NextDueCellRenderer
         plannedPort: record.plannedPort || '',
         plannedDate: record.plannedDate || '',
         plannedComments: record.plannedComments || '',
       };
     });
-  }, [testRecords, vesselLookup, filterType, selectedVessels, fleetValue, addGroupValue]);
+  }, [testRecords, vesselLookup, filterType, selectedVessels, fleetValue, addGroupValue, globalFrequency, vesselFrequencies]); // Added globalFrequency and vesselFrequencies
 
   const columnDefs: (ColDef | ColGroupDef)[] = useMemo(() => {
     const columns: (ColDef | ColGroupDef)[] = [
@@ -411,9 +432,10 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
         cellStyle: { fontSize: '12px' },
       },
       {
-        headerComponent: FrequencyHeaderComponent,
-        field: 'frequencyMonths',
+        headerName: 'Frequency', // Changed from 'frequencyMonths' to 'Frequency' for clarity
+        field: 'frequencyMonths', // Still use frequencyMonths for data binding
         cellRenderer: FrequencyCellRenderer,
+        headerComponent: FrequencyHeaderComponent, // Moved header component here
       }
     );
 
@@ -489,6 +511,7 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
           getRowStyle: () => ({ backgroundColor: 'white' }),
           onGridReady: (params) => {
             gridApiRef.current = params.api;
+            setGridApi(params.api); // Set gridApi here
           },
           onFirstDataRendered: () => {
             autoSizeContentColumns();
@@ -502,7 +525,7 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
           color: white !important;
           font-weight: 600 !important;
         }
-        
+
         .ag-header-cell-label {
           justify-content: center !important;
         }
