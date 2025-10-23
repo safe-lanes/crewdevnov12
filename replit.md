@@ -50,6 +50,7 @@ The application employs a modern web stack with a module-first architecture for 
     - **Multi-Category Form Support**: Supports independent categories (Appraisal, Promotion) with category-specific rank group mappings and filtering.
     - **Promotion Form Builder**: Provides a comprehensive configuration interface for promotion forms, mirroring the three-part structure of the Promotion Review Form.
 - **Drugs & Alcohol Testing Module**: Tracks drug and alcohol testing with six test types, comprehensive filtering, and AG Grid tables for data display.
+    - **Summary View**: Vessel-centric consolidated view showing all 5 test types in a single table with aggregated history, due-in badges, frequency configuration, and planning fields. Supports single-vessel selection with auto-selection.
 - **Performance Optimization**: Utilizes map-based lookups, TanStack Query for caching, `useRef`, `useMemo`, and optimized `PersistentFileStorage`.
 - **Data Storage**: `PersistentFileStorage` for development, with PostgreSQL/Drizzle ORM for production.
 
