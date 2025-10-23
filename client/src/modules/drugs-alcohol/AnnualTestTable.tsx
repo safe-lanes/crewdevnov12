@@ -99,7 +99,9 @@ const FrequencyHeaderComponent = (params: any) => {
       <div className="text-white font-semibold mb-1 text-xs">Next Due Interval</div>
       <Select value={globalFrequency.toString()} onValueChange={handleChange}>
         <SelectTrigger className="h-7 w-24 text-xs bg-white border-white">
-          <SelectValue placeholder={getLabel(globalFrequency)} />
+          <SelectValue>
+            {getLabel(globalFrequency)}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="12">(+12) M</SelectItem>
