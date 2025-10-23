@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import MainLayout from '@/components/main/MainLayout';
 import DrugsAlcoholSideBar from './DrugsAlcoholSideBar';
@@ -15,6 +15,7 @@ import { PeriodicTestTable } from './PeriodicTestTable';
 import { MonthlyTestTable } from './MonthlyTestTable';
 import { PostIncidentTestTable } from './PostIncidentTestTable';
 import { OtherTestsTable } from './OtherTestsTable';
+import { SummaryTable } from './SummaryTable';
 
 // Hook to fetch vessels from Master Data (ID 014)
 const useVessels = () => {
@@ -42,9 +43,19 @@ export function DrugsAlcoholModule() {
     const [fleetValue, setFleetValue] = useState("");
     const [addGroupValue, setAddGroupValue] = useState("");
     const [showFilters, setShowFilters] = useState(true);
+    
+    // Summary page state - single vessel selection
+    const [summarySelectedVessel, setSummarySelectedVessel] = useState<string>("");
 
     // Fetch vessels
     const { data: vessels = [], isLoading: vesselsLoading } = useVessels();
+    
+    // Auto-select first vessel for summary page
+    useEffect(() => {
+        if (vessels.length > 0 && !summarySelectedVessel) {
+            setSummarySelectedVessel(vessels[0].vesselId);
+        }
+    }, [vessels, summarySelectedVessel]);
 
     const handleClearFilters = () => {
         setFilterType("vessel");
@@ -205,52 +216,39 @@ export function DrugsAlcoholModule() {
                     <Label className="text-xs font-normal text-[#4f5863] dark:text-neutral-300">
                         Vessel
                     </Label>
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button
-                                variant="outline"
-                                className="h-8 w-40 ml-2 text-xs text-[#0f172a] justify-between bg-transparent dark:bg-neutral-900 border-input"
-                                disabled={vesselsLoading}
-                                data-testid="select-vessel-multi"
-                            >
-                                <span className="truncate">
-                                    {selectedVessels.length > 0 
-                                        ? `${selectedVessels.length} selected` 
-                                        : vesselsLoading ? "Loading..." : "Vessel"
-                                    }
-                                </span>
-                                <ChevronDown className="h-4 w-4 opacity-50 ml-2" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-60 p-2" align="start">
-                            <div className="max-h-60 overflow-y-auto">
-                                {vessels.map((vessel: any) => (
-                                    <div 
-                                        key={vessel.id} 
-                                        className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
-                                    >
-                                        <Checkbox 
-                                            checked={selectedVessels.includes(vessel.name)}
-                                            onCheckedChange={() => toggleVessel(vessel.name)}
-                                            data-testid={`checkbox-vessel-${vessel.id}`}
-                                        />
-                                        <label 
-                                            className="text-sm cursor-pointer flex-1"
-                                            onClick={() => toggleVessel(vessel.name)}
-                                        >
-                                            {vessel.name}
-                                        </label>
-                                    </div>
-                                ))}
-                            </div>
-                        </PopoverContent>
-                    </Popover>
+                    <Select 
+                        value={summarySelectedVessel} 
+                        onValueChange={setSummarySelectedVessel}
+                        disabled={vesselsLoading}
+                    >
+                        <SelectTrigger 
+                            className="h-8 w-48 ml-2 text-xs bg-white dark:bg-neutral-900 border-input"
+                            data-testid="select-vessel-summary"
+                        >
+                            <SelectValue placeholder={vesselsLoading ? "Loading..." : "Select Vessel"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {vessels.map((vessel: any) => (
+                                <SelectItem 
+                                    key={vessel.id} 
+                                    value={vessel.vesselId}
+                                    data-testid={`option-vessel-${vessel.id}`}
+                                >
+                                    {vessel.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
 
                 {/* Clear Button */}
                 <Button
                     variant="outline"
-                    onClick={handleClearFilters}
+                    onClick={() => {
+                        if (vessels.length > 0) {
+                            setSummarySelectedVessel(vessels[0].vesselId);
+                        }
+                    }}
                     className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
                     data-testid="button-clear-filters"
                 >
@@ -396,20 +394,12 @@ export function DrugsAlcoholModule() {
                 return (
                     <div className="flex flex-col h-full">
                         <SectionTitleComponents title="Summary">
-                            <div className="flex gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setShowFilters(!showFilters)}
-                                    className="h-8 gap-2 bg-white dark:bg-gray-800 text-[#0f172a] dark:text-white border-gray-300 dark:border-gray-600"
-                                    data-testid="button-toggle-filters"
-                                >
-                                    <Filter className="h-4 w-4" />
-                                    Filters
-                                </Button>
-                            </div>
+                            <div />
                         </SectionTitleComponents>
                         {renderVesselOnlyFilterBar()}
+                        {summarySelectedVessel && (
+                            <SummaryTable selectedVessel={summarySelectedVessel} />
+                        )}
                     </div>
                 );
             default:
