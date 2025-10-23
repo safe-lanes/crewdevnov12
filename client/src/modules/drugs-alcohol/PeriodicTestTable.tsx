@@ -5,7 +5,7 @@ import AgGridTable from '@/components/AgGrid/AgGridTable';
 import { Edit, Plus, ChevronRight, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { format, addMonths } from 'date-fns';
+import { format, addMonths, differenceInMonths, differenceInDays, parse } from 'date-fns';
 
 interface TestRecord {
   date: string;
@@ -59,6 +59,33 @@ const useVessels = () => {
         }, {});
     }
   });
+};
+
+// Calculate "Due In" status and color
+const calculateDueInStatus = (nextDueDate: string | undefined): { label: string; color: string; textColor: string } | null => {
+  if (!nextDueDate) return null;
+  
+  try {
+    // Parse the date string safely using date-fns parse (format: "dd MMM yyyy")
+    const dueDate = parse(nextDueDate, 'dd MMM yyyy', new Date());
+    const today = new Date();
+    const daysUntilDue = differenceInDays(dueDate, today);
+    const monthsUntilDue = differenceInMonths(dueDate, today);
+    
+    if (daysUntilDue < 0) {
+      return { label: 'O/D', color: '#D50A0D', textColor: '#FFFFFF' }; // Red - Overdue
+    } else if (monthsUntilDue < 1) {
+      return { label: '1M', color: '#F9ECEF', textColor: '#000000' }; // Light pink/cream
+    } else if (monthsUntilDue < 2) {
+      return { label: '2M', color: '#FFCC00', textColor: '#000000' }; // Yellow
+    } else if (monthsUntilDue < 3) {
+      return { label: '3M', color: '#FFEEAA', textColor: '#000000' }; // Light yellow/cream
+    }
+    
+    return null; // More than 3 months - no badge needed
+  } catch {
+    return null;
+  }
 };
 
 const HistoryHeaderComponent = (props: any) => {
@@ -154,12 +181,27 @@ const NextDueCellRenderer = (params: ICellRendererParams) => {
     const calculatedNextDue = addMonths(new Date(lastTestDate), currentFrequency);
     const formattedDate = format(calculatedNextDue, 'dd MMM yyyy');
 
+    // Calculate color based on urgency
+    const status = calculateDueInStatus(formattedDate);
+    
+    // Only apply color coding if date falls within urgency period (<3 months or overdue)
+    if (status) {
+      return (
+        <div className="flex items-center h-full">
+          <span
+            className="px-3 py-1 rounded text-xs font-medium"
+            style={{ backgroundColor: status.color, color: status.textColor }}
+          >
+            {formattedDate}
+          </span>
+        </div>
+      );
+    }
+    
+    // No color coding for dates >3 months away
     return (
       <div className="flex items-center h-full">
-        <span
-          className="px-3 py-1 rounded text-xs font-medium"
-          style={{ backgroundColor: '#F1CD1D', color: '#000' }}
-        >
+        <span className="text-xs font-medium text-gray-700">
           {formattedDate}
         </span>
       </div>
@@ -478,9 +520,32 @@ export const PeriodicTestTable: React.FC<PeriodicTestTableProps> = ({
     );
   }
 
+  // Static legend for "Due in:" labels
+  const staticLegend = [
+    { label: '3M', color: '#FFEEAA', textColor: '#000000' },
+    { label: '2M', color: '#FFCC00', textColor: '#000000' },
+    { label: '1M', color: '#F9ECEF', textColor: '#000000' },
+    { label: 'O/D', color: '#D50A0D', textColor: '#FFFFFF' },
+  ];
+
   return (
-    <div className="w-full" style={{ height: 'calc(100vh - 250px)' }}>
-      <AgGridTable
+    <div className="w-full flex flex-col" style={{ height: 'calc(100vh - 250px)' }}>
+      {/* Static Due In Legend */}
+      <div className="flex gap-2 items-center mb-4">
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Due in:</span>
+        {staticLegend.map((item, index) => (
+          <div
+            key={index}
+            className="px-3 py-1 rounded text-sm font-semibold"
+            style={{ backgroundColor: item.color, color: item.textColor }}
+          >
+            {item.label}
+          </div>
+        ))}
+      </div>
+      
+      <div className="flex-1">
+        <AgGridTable
         rowData={tableData}
         columnDefs={columnDefs}
         context={context}
@@ -515,6 +580,7 @@ export const PeriodicTestTable: React.FC<PeriodicTestTableProps> = ({
           justify-content: center !important;
         }
       `}</style>
+      </div>
     </div>
   );
 };
