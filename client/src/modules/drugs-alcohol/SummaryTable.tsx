@@ -378,7 +378,8 @@ export function SummaryTable({ selectedVessel }: SummaryTableProps) {
       {
         headerName: 'Comments',
         field: 'plannedComments',
-        width: 200,
+        flex: 1,
+        minWidth: 200,
         cellClass: 'flex items-center text-[13px]',
         editable: (params) => params.data?.hasPlanning || false,
       },
