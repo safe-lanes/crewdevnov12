@@ -5,7 +5,7 @@ import { ColDef, ICellRendererParams } from 'ag-grid-community';
 import { Edit, Trash2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { format, addMonths, differenceInMonths, differenceInDays } from 'date-fns';
+import { format, addMonths, differenceInMonths, differenceInDays, parse } from 'date-fns';
 
 // History Header Component (matches Annual table)
 const HistoryHeaderComponent = (props: any) => {
@@ -53,19 +53,20 @@ const calculateDueInStatus = (nextDueDate: string | undefined): { label: string;
   if (!nextDueDate) return null;
   
   try {
-    const dueDate = new Date(nextDueDate);
+    // Parse the date string safely using date-fns parse (format: "dd MMM yyyy")
+    const dueDate = parse(nextDueDate, 'dd MMM yyyy', new Date());
     const today = new Date();
     const daysUntilDue = differenceInDays(dueDate, today);
     const monthsUntilDue = differenceInMonths(dueDate, today);
     
     if (daysUntilDue < 0) {
-      return { label: 'O/D', color: '#E54E60', textColor: '#FFFFFF' }; // Red - Overdue
+      return { label: 'O/D', color: '#D50A0D', textColor: '#FFFFFF' }; // Red - Overdue
     } else if (monthsUntilDue < 1) {
-      return { label: '1M', color: '#FEF3C7', textColor: '#B91C1C' }; // Light red with dark red text
+      return { label: '1M', color: '#F9ECEF', textColor: '#000000' }; // Light pink/cream
     } else if (monthsUntilDue < 2) {
-      return { label: '2M', color: '#FDE68A', textColor: '#92400E' }; // Yellow
+      return { label: '2M', color: '#FFCC00', textColor: '#000000' }; // Yellow
     } else if (monthsUntilDue < 3) {
-      return { label: '3M', color: '#FCD34D', textColor: '#78350F' }; // Darker yellow
+      return { label: '3M', color: '#FFEEAA', textColor: '#000000' }; // Light yellow/cream
     }
     
     return null; // More than 3 months - no badge needed
@@ -277,14 +278,24 @@ export function SummaryTable({ selectedVessel }: SummaryTableProps) {
     });
   }, [testRecords, selectedVessel]);
 
-  // Calculate due in badges
+  // Calculate due in badges (deduplicated by label)
   const dueInBadges = useMemo(() => {
     const badges = summaryData
       .filter(row => row.hasPlanning && row.nextDueDate)
       .map(row => calculateDueInStatus(row.nextDueDate))
       .filter(badge => badge !== null);
 
-    return badges as Array<{ label: string; color: string; textColor: string }>;
+    // Deduplicate badges by label (show each time category once)
+    const uniqueBadges = badges.reduce((acc, badge) => {
+      if (badge && !acc.find(b => b.label === badge.label)) {
+        acc.push(badge);
+      }
+      return acc;
+    }, [] as Array<{ label: string; color: string; textColor: string }>);
+
+    // Sort badges by severity: O/D, 1M, 2M, 3M
+    const order = { 'O/D': 0, '1M': 1, '2M': 2, '3M': 3 };
+    return uniqueBadges.sort((a, b) => (order[a.label as keyof typeof order] || 99) - (order[b.label as keyof typeof order] || 99));
   }, [summaryData]);
 
   // Column definitions
@@ -324,6 +335,20 @@ export function SummaryTable({ selectedVessel }: SummaryTableProps) {
     }
 
     baseCols.push(
+      {
+        headerName: 'Next Due',
+        field: 'nextDueDate',
+        width: 120,
+        cellClass: 'flex items-center justify-center',
+        cellRenderer: (params: ICellRendererParams) => {
+          if (!params.value) return null;
+          return (
+            <div className="bg-yellow-400 text-black text-xs font-semibold px-2 py-1 rounded">
+              {params.value}
+            </div>
+          );
+        },
+      },
       {
         headerName: 'Next Due Interval',
         field: 'frequencyMonths',
