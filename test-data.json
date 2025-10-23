@@ -6864,6 +6864,51 @@
         "createdAt": "2025-10-23T06:00:00.000Z",
         "updatedAt": "2025-10-23T06:00:00.000Z"
       }
+    ],
+    [
+      7,
+      {
+        "vesselId": "VSL-001",
+        "testType": "monthly",
+        "testHistory": "[{\"date\":\"2024-11-01\",\"port\":\"Singapore\",\"violations\":0},{\"date\":\"2024-10-01\",\"port\":\"Dubai\",\"violations\":0},{\"date\":\"2024-09-01\",\"port\":\"Mumbai\",\"violations\":0}]",
+        "frequencyMonths": 1,
+        "plannedPort": "",
+        "plannedDate": "2024-12-01",
+        "plannedComments": "Regular monthly alcohol test",
+        "id": 7,
+        "createdAt": "2025-10-23T06:30:00.000Z",
+        "updatedAt": "2025-10-23T06:30:00.000Z"
+      }
+    ],
+    [
+      8,
+      {
+        "vesselId": "VSL-002",
+        "testType": "monthly",
+        "testHistory": "[{\"date\":\"2024-11-05\",\"port\":\"Hong Kong\",\"violations\":0},{\"date\":\"2024-10-05\",\"port\":\"Shanghai\",\"violations\":0},{\"date\":\"2024-09-05\",\"port\":\"Busan\",\"violations\":0}]",
+        "frequencyMonths": 1,
+        "plannedPort": "",
+        "plannedDate": "2024-12-05",
+        "plannedComments": "Routine monthly check",
+        "id": 8,
+        "createdAt": "2025-10-23T06:30:00.000Z",
+        "updatedAt": "2025-10-23T06:30:00.000Z"
+      }
+    ],
+    [
+      9,
+      {
+        "vesselId": "VSL-003",
+        "testType": "monthly",
+        "testHistory": "[{\"date\":\"2024-11-12\",\"port\":\"Tokyo\",\"violations\":1},{\"date\":\"2024-10-12\",\"port\":\"Yokohama\",\"violations\":0},{\"date\":\"2024-09-12\",\"port\":\"Kobe\",\"violations\":0}]",
+        "frequencyMonths": 1,
+        "plannedPort": "",
+        "plannedDate": "2024-12-12",
+        "plannedComments": "Monthly test with follow-up",
+        "id": 9,
+        "createdAt": "2025-10-23T06:30:00.000Z",
+        "updatedAt": "2025-10-23T06:30:00.000Z"
+      }
     ]
   ],
   "masterDataEntries": [
@@ -6980,5 +7025,5 @@
   "currentVesselRevisionId": 23,
   "currentVesselPlanningId": 58,
   "currentRotationPlanId": 7,
-  "currentDrugAlcoholTestRecordId": 7
+  "currentDrugAlcoholTestRecordId": 10
 }

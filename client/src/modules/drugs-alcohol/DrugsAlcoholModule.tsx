@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Filter, ChevronDown } from 'lucide-react';
 import { AnnualTestTable } from './AnnualTestTable';
 import { PeriodicTestTable } from './PeriodicTestTable';
+import { MonthlyTestTable } from './MonthlyTestTable';
 
 // Hook to fetch vessels from Master Data (ID 014)
 const useVessels = () => {
@@ -329,6 +330,12 @@ export function DrugsAlcoholModule() {
                             </div>
                         </SectionTitleComponents>
                         {renderFullFilterBar()}
+                        <MonthlyTestTable
+                            filterType={filterType}
+                            selectedVessels={selectedVessels}
+                            fleetValue={fleetValue}
+                            addGroupValue={addGroupValue}
+                        />
                     </div>
                 );
             case "post-incident":
