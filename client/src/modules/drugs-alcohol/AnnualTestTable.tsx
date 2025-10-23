@@ -2,10 +2,9 @@ import { useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ColDef, ColGroupDef, ICellRendererParams } from 'ag-grid-community';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
-import { Edit, Plus } from 'lucide-react';
+import { Edit, Plus, ChevronRight, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { format, addMonths } from 'date-fns';
 
 interface TestRecord {
@@ -67,13 +66,14 @@ const HistoryHeaderComponent = (props: any) => {
   const { showAllHistory, setShowAllHistory } = props.context;
 
   return (
-    <div className="flex items-center justify-center gap-2 h-full">
-      <Checkbox
-        checked={showAllHistory}
-        onCheckedChange={setShowAllHistory}
-        className="h-4 w-4"
-      />
-      <span className="text-white font-semibold">History +</span>
+    <div 
+      className="flex items-center justify-center h-full cursor-pointer hover:opacity-80"
+      onClick={() => setShowAllHistory(!showAllHistory)}
+      data-testid="button-history-toggle"
+    >
+      <span className="text-white font-semibold">
+        {showAllHistory ? 'History <' : 'History >'}
+      </span>
     </div>
   );
 };
