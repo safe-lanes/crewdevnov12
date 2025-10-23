@@ -108,7 +108,7 @@ const NextDueCellRenderer = (params: ICellRendererParams) => {
 
   try {
     const date = new Date(params.value);
-    const formattedDate = format(date, 'dd MMMM yyyy');
+    const formattedDate = format(date, 'dd MMM yyyy');
 
     return (
       <div className="flex items-center h-full">
