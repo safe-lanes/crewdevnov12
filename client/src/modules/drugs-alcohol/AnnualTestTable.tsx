@@ -1,6 +1,6 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ColDef, ColGroupDef, ICellRendererParams } from 'ag-grid-community';
+import { ColDef, ColGroupDef, ICellRendererParams, GridApi } from 'ag-grid-community';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
 import { Edit, Plus, ChevronRight, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -78,6 +78,36 @@ const HistoryHeaderComponent = (props: any) => {
   );
 };
 
+const FrequencyHeaderComponent = (params: any) => {
+  const context = params.context || {};
+  const globalFrequency = context.globalFrequency || 12;
+  const setGlobalFrequency = context.setGlobalFrequency;
+
+  const handleChange = (value: string) => {
+    const months = parseInt(value);
+    if (setGlobalFrequency) {
+      setGlobalFrequency(months);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center h-full px-2">
+      <div className="text-white font-semibold mb-1 text-xs">Next Due Interval</div>
+      <Select value={globalFrequency.toString()} onValueChange={handleChange}>
+        <SelectTrigger className="h-7 w-32 text-xs bg-white border-white">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="12">(+12) Months</SelectItem>
+          <SelectItem value="6">(+6) Months</SelectItem>
+          <SelectItem value="3">(+3) Months</SelectItem>
+          <SelectItem value="1">(+1) Month</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+};
+
 const TestHistoryCellRenderer = (params: ICellRendererParams) => {
   const testData = params.value as TestRecord | undefined;
   
@@ -126,24 +156,37 @@ const NextDueCellRenderer = (params: ICellRendererParams) => {
 };
 
 const FrequencyCellRenderer = (params: ICellRendererParams) => {
-  const [frequency, setFrequency] = useState(params.value || 12);
+  const { globalFrequency, vesselFrequencies, setVesselFrequency } = params.context;
+  const vesselId = params.data?.vesselId;
+  
+  // Use vessel-specific frequency if set, otherwise use global
+  const currentFrequency = vesselFrequencies[vesselId] || globalFrequency;
 
   const handleChange = (value: string) => {
     const months = parseInt(value);
-    setFrequency(months);
+    setVesselFrequency(vesselId, months);
   };
+
+  // Generate options that are <= global frequency
+  const availableOptions = [
+    { value: 12, label: '(+12) Months' },
+    { value: 6, label: '(+6) Months' },
+    { value: 3, label: '(+3) Months' },
+    { value: 1, label: '(+1) Month' },
+  ].filter(option => option.value <= globalFrequency);
 
   return (
     <div className="flex items-center h-full">
-      <Select value={frequency.toString()} onValueChange={handleChange}>
+      <Select value={currentFrequency.toString()} onValueChange={handleChange}>
         <SelectTrigger className="h-8 w-32 text-xs">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="12">(+12) Months</SelectItem>
-          <SelectItem value="6">(+6) Months</SelectItem>
-          <SelectItem value="3">(+3) Months</SelectItem>
-          <SelectItem value="1">(+1) Month</SelectItem>
+          {availableOptions.map(option => (
+            <SelectItem key={option.value} value={option.value.toString()}>
+              {option.label}
+            </SelectItem>
+          ))}
         </SelectContent>
       </Select>
     </div>
@@ -190,6 +233,43 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
   addGroupValue,
 }) => {
   const [showAllHistory, setShowAllHistory] = useState(false);
+  const [globalFrequency, setGlobalFrequency] = useState(12);
+  const [vesselFrequencies, setVesselFrequencies] = useState<Record<string, number>>({});
+  const gridApiRef = useRef<GridApi | null>(null);
+
+  // Callback to set vessel-specific frequency
+  const setVesselFrequency = useCallback((vesselId: string, frequency: number) => {
+    setVesselFrequencies(prev => ({
+      ...prev,
+      [vesselId]: frequency
+    }));
+  }, []);
+
+  // When global frequency changes, reset any vessel frequencies that are now invalid (> global)
+  const handleGlobalFrequencyChange = useCallback((newGlobal: number) => {
+    setGlobalFrequency(newGlobal);
+    setVesselFrequencies(prev => {
+      const updated: Record<string, number> = {};
+      Object.entries(prev).forEach(([vesselId, freq]) => {
+        // Only keep vessel overrides that are <= new global
+        if (freq <= newGlobal) {
+          updated[vesselId] = freq;
+        }
+        // If freq > newGlobal, it will be removed (defaults back to global)
+      });
+      return updated;
+    });
+    
+    // Refresh the frequency column to update dropdowns
+    if (gridApiRef.current) {
+      setTimeout(() => {
+        gridApiRef.current?.refreshCells({
+          columns: ['frequencyMonths'],
+          force: true
+        });
+      }, 0);
+    }
+  }, []);
 
   const { data: testRecords = [], isLoading: testsLoading } = useDrugAlcoholTests({
     filterType,
@@ -306,9 +386,9 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
         cellStyle: { fontSize: '12px' },
       },
       {
-        headerName: 'Frequency',
+        headerComponent: FrequencyHeaderComponent,
         field: 'frequencyMonths',
-        width: 150,
+        width: 180,
         cellRenderer: FrequencyCellRenderer,
       }
     );
@@ -354,8 +434,12 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
     () => ({
       showAllHistory,
       setShowAllHistory,
+      globalFrequency,
+      setGlobalFrequency: handleGlobalFrequencyChange,
+      vesselFrequencies,
+      setVesselFrequency,
     }),
-    [showAllHistory]
+    [showAllHistory, globalFrequency, vesselFrequencies, handleGlobalFrequencyChange, setVesselFrequency]
   );
 
   if (testsLoading || vesselsLoading) {
@@ -382,6 +466,9 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
           rowHeight: 70,
           suppressHorizontalScroll: false,
           getRowStyle: () => ({ backgroundColor: 'white' }),
+          onGridReady: (params) => {
+            gridApiRef.current = params.api;
+          },
         }}
       />
       <style>{`
