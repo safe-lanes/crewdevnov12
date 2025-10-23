@@ -520,10 +520,8 @@ export const MonthlyTestTable: React.FC<MonthlyTestTableProps> = ({
     );
   }
 
-  // Static legend for "Due in:" labels
+  // Static legend for "Due in:" labels (monthly tests only show 1M and O/D)
   const staticLegend = [
-    { label: '3M', color: '#FFEEAA', textColor: '#000000' },
-    { label: '2M', color: '#FFCC00', textColor: '#000000' },
     { label: '1M', color: '#F9ECEF', textColor: '#000000' },
     { label: 'O/D', color: '#D50A0D', textColor: '#FFFFFF' },
   ];
