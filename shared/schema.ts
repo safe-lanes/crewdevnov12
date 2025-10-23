@@ -435,6 +435,13 @@ export const drugAlcoholTestRecords = pgTable("drug_alcohol_test_records", {
   plannedDate: text("planned_date"),
   plannedComments: text("planned_comments"),
   
+  // Post-incident specific fields
+  incidentTitle: text("incident_title"),
+  incidentDateTime: text("incident_date_time"), // Format: "31 May 2023 - 1010 Hours"
+  alcoholTestDateTime: text("alcohol_test_date_time"),
+  drugTestDateTime: text("drug_test_date_time"),
+  violations: integer("violations").default(0), // Number of violations found during test
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

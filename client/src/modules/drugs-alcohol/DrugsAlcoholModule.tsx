@@ -13,6 +13,7 @@ import { Filter, ChevronDown } from 'lucide-react';
 import { AnnualTestTable } from './AnnualTestTable';
 import { PeriodicTestTable } from './PeriodicTestTable';
 import { MonthlyTestTable } from './MonthlyTestTable';
+import { PostIncidentTestTable } from './PostIncidentTestTable';
 
 // Hook to fetch vessels from Master Data (ID 014)
 const useVessels = () => {
@@ -356,6 +357,12 @@ export function DrugsAlcoholModule() {
                             </div>
                         </SectionTitleComponents>
                         {renderFullFilterBar()}
+                        <PostIncidentTestTable
+                            filterType={filterType}
+                            selectedVessels={selectedVessels}
+                            fleetValue={fleetValue}
+                            addGroupValue={addGroupValue}
+                        />
                     </div>
                 );
             case "others":
