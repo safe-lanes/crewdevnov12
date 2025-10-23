@@ -90,18 +90,22 @@ const FrequencyHeaderComponent = (params: any) => {
     }
   };
 
+  const getLabel = (months: number) => {
+    return `(+${months}) M`;
+  };
+
   return (
     <div className="flex flex-col items-center justify-center h-full px-2">
       <div className="text-white font-semibold mb-1 text-xs">Next Due Interval</div>
       <Select value={globalFrequency.toString()} onValueChange={handleChange}>
-        <SelectTrigger className="h-7 w-32 text-xs bg-white border-white">
-          <SelectValue />
+        <SelectTrigger className="h-7 w-24 text-xs bg-white border-white">
+          <SelectValue placeholder={getLabel(globalFrequency)} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="12">(+12) Months</SelectItem>
-          <SelectItem value="6">(+6) Months</SelectItem>
-          <SelectItem value="3">(+3) Months</SelectItem>
-          <SelectItem value="1">(+1) Month</SelectItem>
+          <SelectItem value="12">(+12) M</SelectItem>
+          <SelectItem value="6">(+6) M</SelectItem>
+          <SelectItem value="3">(+3) M</SelectItem>
+          <SelectItem value="1">(+1) M</SelectItem>
         </SelectContent>
       </Select>
     </div>
@@ -169,17 +173,17 @@ const FrequencyCellRenderer = (params: ICellRendererParams) => {
 
   // Generate options that are <= global frequency
   const availableOptions = [
-    { value: 12, label: '(+12) Months' },
-    { value: 6, label: '(+6) Months' },
-    { value: 3, label: '(+3) Months' },
-    { value: 1, label: '(+1) Month' },
+    { value: 12, label: '(+12) M' },
+    { value: 6, label: '(+6) M' },
+    { value: 3, label: '(+3) M' },
+    { value: 1, label: '(+1) M' },
   ].filter(option => option.value <= globalFrequency);
 
   return (
     <div className="flex items-center h-full">
       <Select value={currentFrequency.toString()} onValueChange={handleChange}>
-        <SelectTrigger className="h-8 w-32 text-xs">
-          <SelectValue />
+        <SelectTrigger className="h-8 w-24 text-xs">
+          <SelectValue placeholder={`(+${currentFrequency}) M`} />
         </SelectTrigger>
         <SelectContent>
           {availableOptions.map(option => (
@@ -388,7 +392,7 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
       {
         headerComponent: FrequencyHeaderComponent,
         field: 'frequencyMonths',
-        width: 180,
+        width: 130,
         cellRenderer: FrequencyCellRenderer,
       }
     );
