@@ -6973,6 +6973,74 @@
         "createdAt": "2025-10-23T07:00:00.000Z",
         "updatedAt": "2025-10-23T07:00:00.000Z"
       }
+    ],
+    [
+      14,
+      {
+        "vesselId": "VSL-001",
+        "testType": "others",
+        "testDateTime": "31 May 2023 - 1010 Hours",
+        "otherTestType": "Alcohol",
+        "reasonForTesting": "Reasonable Doubt",
+        "description": "Crew returning from shore leave",
+        "initiatedBy": "Vessel - Master",
+        "violations": 0,
+        "frequencyMonths": 12,
+        "id": 14,
+        "createdAt": "2025-10-23T07:30:00.000Z",
+        "updatedAt": "2025-10-23T07:30:00.000Z"
+      }
+    ],
+    [
+      15,
+      {
+        "vesselId": "VSL-002",
+        "testType": "others",
+        "testDateTime": "31 May 2023 - 1010 Hours",
+        "otherTestType": "Drug",
+        "reasonForTesting": "Requested by Office",
+        "description": "Personnel involved in cargo operations",
+        "initiatedBy": "Office - HSQ Dept.",
+        "violations": 1,
+        "frequencyMonths": 12,
+        "id": 15,
+        "createdAt": "2025-10-23T07:30:00.000Z",
+        "updatedAt": "2025-10-23T07:30:00.000Z"
+      }
+    ],
+    [
+      16,
+      {
+        "vesselId": "VSL-003",
+        "testType": "others",
+        "testDateTime": "31 May 2023 - 1010 Hours",
+        "otherTestType": "Alcohol",
+        "reasonForTesting": "",
+        "description": "",
+        "initiatedBy": "",
+        "violations": 2,
+        "frequencyMonths": 12,
+        "id": 16,
+        "createdAt": "2025-10-23T07:30:00.000Z",
+        "updatedAt": "2025-10-23T07:30:00.000Z"
+      }
+    ],
+    [
+      17,
+      {
+        "vesselId": "VSL-006",
+        "testType": "others",
+        "testDateTime": "31 May 2023 - 1010 Hours",
+        "otherTestType": "Alcohol",
+        "reasonForTesting": "",
+        "description": "",
+        "initiatedBy": "",
+        "violations": 0,
+        "frequencyMonths": 12,
+        "id": 17,
+        "createdAt": "2025-10-23T07:30:00.000Z",
+        "updatedAt": "2025-10-23T07:30:00.000Z"
+      }
     ]
   ],
   "masterDataEntries": [
@@ -7089,5 +7157,5 @@
   "currentVesselRevisionId": 23,
   "currentVesselPlanningId": 58,
   "currentRotationPlanId": 7,
-  "currentDrugAlcoholTestRecordId": 14
+  "currentDrugAlcoholTestRecordId": 18
 }

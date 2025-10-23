@@ -442,6 +442,13 @@ export const drugAlcoholTestRecords = pgTable("drug_alcohol_test_records", {
   drugTestDateTime: text("drug_test_date_time"),
   violations: integer("violations").default(0), // Number of violations found during test
   
+  // Other tests specific fields
+  testDateTime: text("test_date_time"), // Format: "31 May 2023 - 1010 Hours"
+  otherTestType: text("other_test_type"), // "Alcohol" or "Drug" for other tests
+  reasonForTesting: text("reason_for_testing"),
+  description: text("description"),
+  initiatedBy: text("initiated_by"), // Free text e.g., "Vessel - Master", "Office - HSQ Dept."
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
