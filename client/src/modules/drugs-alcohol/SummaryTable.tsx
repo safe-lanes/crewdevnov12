@@ -278,25 +278,13 @@ export function SummaryTable({ selectedVessel }: SummaryTableProps) {
     });
   }, [testRecords, selectedVessel]);
 
-  // Calculate due in badges (deduplicated by label)
-  const dueInBadges = useMemo(() => {
-    const badges = summaryData
-      .filter(row => row.hasPlanning && row.nextDueDate)
-      .map(row => calculateDueInStatus(row.nextDueDate))
-      .filter(badge => badge !== null);
-
-    // Deduplicate badges by label (show each time category once)
-    const uniqueBadges = badges.reduce((acc, badge) => {
-      if (badge && !acc.find(b => b.label === badge.label)) {
-        acc.push(badge);
-      }
-      return acc;
-    }, [] as Array<{ label: string; color: string; textColor: string }>);
-
-    // Sort badges by severity: O/D, 1M, 2M, 3M
-    const order = { 'O/D': 0, '1M': 1, '2M': 2, '3M': 3 };
-    return uniqueBadges.sort((a, b) => (order[a.label as keyof typeof order] || 99) - (order[b.label as keyof typeof order] || 99));
-  }, [summaryData]);
+  // Static legend for "Due in:" labels (always shows all 4 in descending order)
+  const staticLegend = [
+    { label: '3M', color: '#FFEEAA', textColor: '#000000' },
+    { label: '2M', color: '#FFCC00', textColor: '#000000' },
+    { label: '1M', color: '#F9ECEF', textColor: '#000000' },
+    { label: 'O/D', color: '#D50A0D', textColor: '#FFFFFF' },
+  ];
 
   // Column definitions
   const columnDefs = useMemo<ColDef<SummaryRowData>[]>(() => {
@@ -342,8 +330,26 @@ export function SummaryTable({ selectedVessel }: SummaryTableProps) {
         cellClass: 'flex items-center justify-center',
         cellRenderer: (params: ICellRendererParams) => {
           if (!params.value) return null;
+          
+          // Calculate color based on urgency
+          const status = calculateDueInStatus(params.value);
+          
+          // Only apply color coding if date falls within urgency period (<3 months or overdue)
+          // Dates >3 months away have no background color
+          if (status) {
+            return (
+              <div 
+                className="text-xs font-semibold px-2 py-1 rounded"
+                style={{ backgroundColor: status.color, color: status.textColor }}
+              >
+                {params.value}
+              </div>
+            );
+          }
+          
+          // No color coding for dates >3 months away
           return (
-            <div className="bg-yellow-400 text-black text-xs font-semibold px-2 py-1 rounded">
+            <div className="text-xs font-semibold text-gray-700">
               {params.value}
             </div>
           );
@@ -390,21 +396,19 @@ export function SummaryTable({ selectedVessel }: SummaryTableProps) {
 
   return (
     <div className="flex flex-col flex-1 gap-4">
-      {/* Due In Badges */}
-      {dueInBadges.length > 0 && (
-        <div className="flex gap-2 items-center">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Due in:</span>
-          {dueInBadges.map((badge, index) => (
-            <div
-              key={index}
-              className="px-3 py-1 rounded text-sm font-semibold"
-              style={{ backgroundColor: badge.color, color: badge.textColor }}
-            >
-              {badge.label}
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Static Due In Legend */}
+      <div className="flex gap-2 items-center">
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Due in:</span>
+        {staticLegend.map((item, index) => (
+          <div
+            key={index}
+            className="px-3 py-1 rounded text-sm font-semibold"
+            style={{ backgroundColor: item.color, color: item.textColor }}
+          >
+            {item.label}
+          </div>
+        ))}
+      </div>
 
       {/* AG Grid Table */}
       <div className="flex-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden">
