@@ -293,7 +293,7 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
     }
 
     columns.push({
-      headerComponent: HistoryHeaderComponent,
+      headerGroupComponent: HistoryHeaderComponent,
       children: historyColumns,
     });
 
