@@ -7,6 +7,23 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, addMonths, differenceInMonths, differenceInDays } from 'date-fns';
 
+// History Header Component (matches Annual table)
+const HistoryHeaderComponent = (props: any) => {
+  const { showAllHistory, setShowAllHistory } = props.context;
+
+  return (
+    <div
+      className="flex items-center justify-center h-full cursor-pointer hover:opacity-80"
+      onClick={() => setShowAllHistory(!showAllHistory)}
+      data-testid="button-history-toggle"
+    >
+      <span className="text-white font-semibold">
+        {showAllHistory ? 'History <' : 'History >'}
+      </span>
+    </div>
+  );
+};
+
 interface TestRecord {
   date: string;
   port: string;
@@ -162,11 +179,11 @@ const ActionsCellRenderer = (params: ICellRendererParams) => {
       <Button
         variant="ghost"
         size="sm"
-        className="h-8 w-8 p-0 bg-green-500 hover:bg-green-600"
+        className="h-7 w-7 p-0 hover:bg-green-100"
         onClick={handleAdd}
         data-testid={`button-add-${params.data?.testType}`}
       >
-        <Plus className="h-4 w-4 text-white" />
+        <Plus className="h-4 w-4 text-green-600" />
       </Button>
     </div>
   );
@@ -285,6 +302,7 @@ export function SummaryTable({ selectedVessel }: SummaryTableProps) {
         field: 'lastTest',
         width: 140,
         cellRenderer: TestHistoryCellRenderer,
+        headerComponent: HistoryHeaderComponent,
       },
     ];
 
@@ -363,19 +381,6 @@ export function SummaryTable({ selectedVessel }: SummaryTableProps) {
         </div>
       )}
 
-      {/* History Toggle Button */}
-      <div className="flex justify-start">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowAllHistory(!showAllHistory)}
-          className="h-8 gap-2"
-          data-testid="button-history-toggle"
-        >
-          {showAllHistory ? 'History <' : 'History >'}
-        </Button>
-      </div>
-
       {/* AG Grid Table */}
       <div className="flex-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden">
         <div className="ag-theme-alpine dark:ag-theme-alpine-dark h-full">
@@ -389,6 +394,10 @@ export function SummaryTable({ selectedVessel }: SummaryTableProps) {
             suppressCellFocus={true}
             suppressRowHoverHighlight={false}
             enableCellTextSelection={true}
+            context={{
+              showAllHistory,
+              setShowAllHistory,
+            }}
             data-testid="grid-summary"
           />
         </div>
