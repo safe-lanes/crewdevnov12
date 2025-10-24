@@ -54,8 +54,12 @@ The application employs a modern web stack with a module-first architecture for 
     - **D&A Test Form**: Modal form for creating/editing test records with Part A (Basic Information) and Part B (Personnel Details).
         - **Part A - B1. General**: 13 fields including vessel, location, test type, multi-select alcohol/drug type (checkboxes), date/time, incident linking, reason, description, and external results date (conditional).
         - **Part A - B2. Testing Equipment**: Dynamic equipment section with N/A checkbox, multiple equipment entries (Equipment ID dropdown with auto-populate for Make/Model and Serial No from master data), last calibrated dates, and add/remove functionality.
+        - **Part B - B1. Personnel Tested**: Dynamic table pre-populated with vessel crew roster, featuring columns for rank, name, alcohol/drug test checkboxes with date/time, results (BAC levels), violation flags, and witness selection. Supports "+ Add Other" button for manual personnel entries. Table dynamically refreshes when vessel selection changes in the form, clearing/updating crew roster while preserving draft data.
+        - **Part B - Comments**: Textarea for additional testing notes and observations.
+        - **Part B - Master/Deputy Confirmation**: Digital signature section with confirmation checkbox, name field, date selector, and attachment file upload displaying filename on selection.
         - **Field Visibility Logic**: Post-incident fields (Incident Title, Date & Time of Incident, Alcohol/Drug Test Date & Times) show only for post-incident type; Other test fields (Initiated By, Reason for Testing, Description) show only for others type; External Results Date visible for annual, post-incident, and others types only.
-        - **Data Structure**: alcoholDrugType stored as array for true multi-select support, testingEquipment as JSON array for multiple entries, integrated with PersistentFileStorage.
+        - **Dynamic Crew Filtering**: Form watches vessel selection changes and automatically refreshes personnel table with current vessel's crew using useEffect with vessel change detection. Handles empty crew scenarios by clearing personnel rows when switching to vessels without crew.
+        - **Data Structure**: alcoholDrugType stored as array for true multi-select support, testingEquipment as JSON array for multiple entries, personnelTested as JSON array with nested test objects, masterDeputySignature as JSON object, all integrated with PersistentFileStorage.
 - **Performance Optimization**: Utilizes map-based lookups, TanStack Query for caching, `useRef`, `useMemo`, and optimized `PersistentFileStorage`.
 - **Data Storage**: `PersistentFileStorage` for development, with PostgreSQL/Drizzle ORM for production.
 
