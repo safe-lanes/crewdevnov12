@@ -461,6 +461,12 @@ export const drugAlcoholTestRecords = pgTable("drug_alcohol_test_records", {
   description: text("description"),
   initiatedBy: text("initiated_by"), // Free text e.g., "Vessel - Master", "Office - HSQ Dept."
   
+  // Part B - Personnel Details
+  personnelTested: text("personnel_tested"), // JSON array: [{id, rank, name, alcoholTest: {checked, date, time}, alcoholResults, alcoholViolation, drugTest: {checked, date, time}, drugResults, drugViolation, witness}]
+  comments: text("comments"), // Comments section
+  masterDeputySignature: text("master_deputy_signature"), // JSON: {confirmed: boolean, name: string, date: string}
+  attachmentFile: text("attachment_file"), // Filename for uploaded document
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

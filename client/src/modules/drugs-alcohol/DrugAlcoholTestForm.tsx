@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Save, Send, Plus, Link as LinkIcon, Trash2, Calendar } from 'lucide-react';
+import { ArrowLeft, Save, Send, Plus, Link as LinkIcon, Trash2, Calendar, Upload, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -47,7 +47,34 @@ const drugAlcoholTestFormSchema = z.object({
   equipmentNotApplicable: z.boolean().optional(),
   testingEquipment: z.array(equipmentEntrySchema).optional(),
   
-  // Part B - Personnel Details (to be added later)
+  // Part B - Personnel Details
+  personnelTested: z.array(z.object({
+    id: z.string(),
+    rank: z.string(),
+    name: z.string(),
+    alcoholTest: z.object({
+      checked: z.boolean(),
+      date: z.string().optional(),
+      time: z.string().optional(),
+    }).optional(),
+    alcoholResults: z.string().optional(),
+    alcoholViolation: z.boolean().optional(),
+    drugTest: z.object({
+      checked: z.boolean(),
+      date: z.string().optional(),
+      time: z.string().optional(),
+    }).optional(),
+    drugResults: z.string().optional(),
+    drugViolation: z.boolean().optional(),
+    witness: z.string().optional(),
+  })).optional(),
+  comments: z.string().optional(),
+  masterDeputySignature: z.object({
+    confirmed: z.boolean(),
+    name: z.string().optional(),
+    date: z.string().optional(),
+  }).optional(),
+  attachmentFile: z.string().optional(),
 });
 
 type DrugAlcoholTestFormData = z.infer<typeof drugAlcoholTestFormSchema>;
@@ -89,6 +116,11 @@ export function DrugAlcoholTestForm({
   // Vessel lookup hook
   const { getVesselName } = useVesselLookup();
 
+  // Fetch crew members for the vessel
+  const { data: allCrewMembers = [] } = useQuery<any[]>({
+    queryKey: ['/api/crew-members'],
+  });
+
   const form = useForm<DrugAlcoholTestFormData>({
     resolver: zodResolver(drugAlcoholTestFormSchema),
     defaultValues: draftData || {
@@ -110,8 +142,40 @@ export function DrugAlcoholTestForm({
       testingEquipment: [
         { id: `eq-${Date.now()}`, equipmentId: '', makeModel: '', serialNo: '', lastCalibrated: '' }
       ],
+      personnelTested: [],
+      comments: '',
+      masterDeputySignature: {
+        confirmed: false,
+        name: '',
+        date: '',
+      },
+      attachmentFile: '',
     },
   });
+
+  // Watch the vessel ID from form to filter crew dynamically
+  const formVesselId = form.watch('vesselId');
+  
+  // Filter crew by vessel and map to personnel tested format
+  const vesselCrewPersonnel = useMemo(() => {
+    const activeVesselId = formVesselId || vesselId;
+    if (!activeVesselId) return [];
+    
+    return allCrewMembers
+      .filter((crew: any) => crew.presentVessel === activeVesselId)
+      .map((crew: any) => ({
+        id: crew.id || `crew-${Date.now()}-${Math.random()}`,
+        rank: crew.presentRank || '',
+        name: `${crew.firstName || ''} ${crew.familyName || ''}`.trim(),
+        alcoholTest: { checked: false, date: '', time: '' },
+        alcoholResults: '',
+        alcoholViolation: false,
+        drugTest: { checked: false, date: '', time: '' },
+        drugResults: '',
+        drugViolation: false,
+        witness: '',
+      }));
+  }, [allCrewMembers, formVesselId, vesselId]);
 
   // Sections definition
   const sections = useMemo(() => [
@@ -157,6 +221,26 @@ export function DrugAlcoholTestForm({
       observer.disconnect();
     };
   }, [activeContinuousSection, sections]);
+
+  // Populate personnelTested when crew members are loaded or vessel changes
+  useEffect(() => {
+    if (!draftData && formVesselId) {
+      const currentPersonnel = form.getValues('personnelTested');
+      
+      // Check if we should update personnel:
+      // 1. Currently empty and we have crew to populate
+      // 2. Vessel changed (compare first crew ID)
+      // 3. Vessel changed to one with no crew (should clear)
+      const shouldUpdate = !currentPersonnel || currentPersonnel.length === 0 || 
+        (currentPersonnel.length > 0 && vesselCrewPersonnel.length > 0 &&
+         vesselCrewPersonnel[0].id !== currentPersonnel[0]?.id) ||
+        (currentPersonnel.length > 0 && vesselCrewPersonnel.length === 0);
+      
+      if (shouldUpdate) {
+        form.setValue('personnelTested', vesselCrewPersonnel);
+      }
+    }
+  }, [vesselCrewPersonnel, formVesselId, draftData, form]);
 
   const scrollToSection = (ref: React.RefObject<HTMLDivElement>) => {
     if (ref.current) {
@@ -675,9 +759,380 @@ export function DrugAlcoholTestForm({
                 <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
               </div>
               
-              <div className="space-y-4">
-                {/* Placeholder for Part B fields - will be added based on user's detailed instructions */}
-                <p className="text-gray-500 text-sm">Personnel details fields will be added here</p>
+              <div className="space-y-6">
+                {/* B1. Personnel Tested Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-md font-semibold" style={{ color: '#16569e' }}>
+                      B1. Personnel Tested
+                    </h4>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const current = form.watch('personnelTested') || [];
+                        form.setValue('personnelTested', [
+                          ...current,
+                          {
+                            id: `other-${Date.now()}`,
+                            rank: '',
+                            name: '',
+                            alcoholTest: { checked: false, date: '', time: '' },
+                            alcoholResults: '',
+                            alcoholViolation: false,
+                            drugTest: { checked: false, date: '', time: '' },
+                            drugResults: '',
+                            drugViolation: false,
+                            witness: '',
+                          }
+                        ]);
+                      }}
+                      className="flex items-center gap-1"
+                      data-testid="button-add-other-personnel"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Other
+                    </Button>
+                  </div>
+
+                  {/* Personnel Table */}
+                  <div className="space-y-4">
+                    {(form.watch('personnelTested') || []).map((person, index) => (
+                      <div key={person.id} className="bg-white border rounded-lg p-4 space-y-4">
+                        {/* Row 1: Rank and Name */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <FormLabel className="text-xs text-gray-500 tracking-wide">Rank</FormLabel>
+                            <div className="mt-1 p-2 bg-gray-50 rounded border text-sm">
+                              {person.rank || 'N/A'}
+                            </div>
+                          </div>
+                          <div>
+                            <FormLabel className="text-xs text-gray-500 tracking-wide">Name</FormLabel>
+                            <div className="mt-1 p-2 bg-gray-50 rounded border text-sm">
+                              {person.name || 'N/A'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Row 2: Alcohol Test */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                          <div className="lg:col-span-4 space-y-2">
+                            <FormLabel className="text-xs text-gray-500 tracking-wide">Alcohol Test</FormLabel>
+                            <div className="flex flex-col sm:flex-row gap-2">
+                              <FormField
+                                control={form.control}
+                                name={`personnelTested.${index}.alcoholTest.checked`}
+                                render={({ field }) => (
+                                  <FormItem className="flex items-center space-x-2">
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                        data-testid={`checkbox-alcohol-test-${index}`}
+                                      />
+                                    </FormControl>
+                                    <FormLabel className="text-xs !mt-0 cursor-pointer">Test</FormLabel>
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name={`personnelTested.${index}.alcoholTest.date`}
+                                render={({ field }) => (
+                                  <FormItem className="flex-1">
+                                    <FormControl>
+                                      <Input
+                                        {...field}
+                                        type="date"
+                                        placeholder="Date"
+                                        className="bg-white text-xs"
+                                        data-testid={`input-alcohol-date-${index}`}
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name={`personnelTested.${index}.alcoholTest.time`}
+                                render={({ field }) => (
+                                  <FormItem className="flex-1">
+                                    <FormControl>
+                                      <Input
+                                        {...field}
+                                        type="time"
+                                        placeholder="Time"
+                                        className="bg-white text-xs"
+                                        data-testid={`input-alcohol-time-${index}`}
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="lg:col-span-3">
+                            <FormField
+                              control={form.control}
+                              name={`personnelTested.${index}.alcoholResults`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-xs text-gray-500 tracking-wide">Results</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      {...field}
+                                      placeholder="Results"
+                                      className="bg-white"
+                                      data-testid={`input-alcohol-results-${index}`}
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          <div className="lg:col-span-2">
+                            <FormField
+                              control={form.control}
+                              name={`personnelTested.${index}.alcoholViolation`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-xs text-gray-500 tracking-wide">Violation</FormLabel>
+                                  <div className="flex items-center space-x-2 mt-1">
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                        data-testid={`checkbox-alcohol-violation-${index}`}
+                                      />
+                                    </FormControl>
+                                  </div>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Row 3: Drug Test */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                          <div className="lg:col-span-4 space-y-2">
+                            <FormLabel className="text-xs text-gray-500 tracking-wide">Drug Test</FormLabel>
+                            <div className="flex flex-col sm:flex-row gap-2">
+                              <FormField
+                                control={form.control}
+                                name={`personnelTested.${index}.drugTest.checked`}
+                                render={({ field }) => (
+                                  <FormItem className="flex items-center space-x-2">
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                        data-testid={`checkbox-drug-test-${index}`}
+                                      />
+                                    </FormControl>
+                                    <FormLabel className="text-xs !mt-0 cursor-pointer">Test</FormLabel>
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name={`personnelTested.${index}.drugTest.date`}
+                                render={({ field }) => (
+                                  <FormItem className="flex-1">
+                                    <FormControl>
+                                      <Input
+                                        {...field}
+                                        type="date"
+                                        placeholder="Date"
+                                        className="bg-white text-xs"
+                                        data-testid={`input-drug-date-${index}`}
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name={`personnelTested.${index}.drugTest.time`}
+                                render={({ field }) => (
+                                  <FormItem className="flex-1">
+                                    <FormControl>
+                                      <Input
+                                        {...field}
+                                        type="time"
+                                        placeholder="Time"
+                                        className="bg-white text-xs"
+                                        data-testid={`input-drug-time-${index}`}
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="lg:col-span-3">
+                            <FormField
+                              control={form.control}
+                              name={`personnelTested.${index}.drugResults`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-xs text-gray-500 tracking-wide">Results</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      {...field}
+                                      placeholder="Results"
+                                      className="bg-white"
+                                      data-testid={`input-drug-results-${index}`}
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          <div className="lg:col-span-2">
+                            <FormField
+                              control={form.control}
+                              name={`personnelTested.${index}.drugViolation`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-xs text-gray-500 tracking-wide">Violation</FormLabel>
+                                  <div className="flex items-center space-x-2 mt-1">
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                        data-testid={`checkbox-drug-violation-${index}`}
+                                      />
+                                    </FormControl>
+                                  </div>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          <div className="lg:col-span-3">
+                            <FormField
+                              control={form.control}
+                              name={`personnelTested.${index}.witness`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-xs text-gray-500 tracking-wide">Witness</FormLabel>
+                                  <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                      <SelectTrigger className="bg-white" data-testid={`select-witness-${index}`}>
+                                        <SelectValue placeholder="Select Witness" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {allCrewMembers
+                                        .filter(crew => crew.presentVessel === vesselId)
+                                        .map(crew => (
+                                          <SelectItem 
+                                            key={crew.id} 
+                                            value={`${crew.firstName || ''} ${crew.familyName || ''}`.trim()}
+                                          >
+                                            {`${crew.firstName || ''} ${crew.familyName || ''}`.trim()}
+                                          </SelectItem>
+                                        ))
+                                      }
+                                    </SelectContent>
+                                  </Select>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Comments Section */}
+                <div>
+                  <FormField
+                    control={form.control}
+                    name="comments"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-gray-500 tracking-wide">Comments</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            {...field}
+                            placeholder="Enter comments..."
+                            className="bg-white min-h-[100px]"
+                            data-testid="textarea-comments"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Master/Deputy Section */}
+                <div className="space-y-4">
+                  <h4 className="text-md font-semibold" style={{ color: '#16569e' }}>
+                    Master/ Deputy:
+                  </h4>
+                  
+                  <div className="space-y-4">
+                    {/* Digital Confirmation */}
+                    <FormField
+                      control={form.control}
+                      name="masterDeputySignature.confirmed"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center space-x-2">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-digital-confirmation"
+                            />
+                          </FormControl>
+                          <FormLabel className="text-sm !mt-0 cursor-pointer">
+                            Digital Confirmation
+                          </FormLabel>
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Signatory Display */}
+                    {form.watch('masterDeputySignature.confirmed') && (
+                      <div className="p-3 bg-gray-50 border rounded-md">
+                        <p className="text-sm text-gray-700">
+                          {form.watch('masterDeputySignature.name') || 'John Adams'}, Master, {form.watch('masterDeputySignature.date') || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Upload Section */}
+                    <div className="space-y-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-2"
+                        data-testid="button-upload-attachment"
+                      >
+                        <Upload className="h-4 w-4" />
+                        Upload Attachment
+                      </Button>
+
+                      {/* Show filename if exists */}
+                      {form.watch('attachmentFile') && (
+                        <div className="flex items-center gap-2 p-2 bg-gray-50 border rounded-md">
+                          <FileText className="h-4 w-4 text-gray-500" />
+                          <span className="text-sm text-gray-700">{form.watch('attachmentFile')}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
