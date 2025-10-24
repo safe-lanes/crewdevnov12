@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AgGridReact } from "ag-grid-react";
 import { ColDef, ICellRendererParams } from "ag-grid-community";
 import { useMemo, useRef } from "react";
-import { Paperclip, Eye, Pencil, Trash2 } from "lucide-react";
+import { Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface PostIncidentTestData {
@@ -79,14 +79,6 @@ const ViolationsCellRenderer = (props: ICellRendererParams) => {
 
 // Actions cell renderer
 const ActionsCellRenderer = (props: ICellRendererParams) => {
-  const handleAttach = () => {
-    console.log("Attach clicked for row:", props.data.id);
-  };
-  
-  const handleView = () => {
-    console.log("View clicked for row:", props.data.id);
-  };
-  
   const handleEdit = () => {
     console.log("Edit clicked for row:", props.data.id);
   };
@@ -96,42 +88,24 @@ const ActionsCellRenderer = (props: ICellRendererParams) => {
   };
   
   return (
-    <div className="flex gap-1 items-center h-full">
+    <div className="flex gap-2 items-center justify-center h-full">
       <Button
         variant="ghost"
         size="sm"
-        className="h-8 w-8 p-0"
-        onClick={handleAttach}
-        data-testid={`button-attach-${props.data.id}`}
-      >
-        <Paperclip className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-8 w-8 p-0"
-        onClick={handleView}
-        data-testid={`button-view-${props.data.id}`}
-      >
-        <Eye className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-8 w-8 p-0"
+        className="h-7 w-7 p-0 hover:bg-gray-100"
         onClick={handleEdit}
         data-testid={`button-edit-${props.data.id}`}
       >
-        <Pencil className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+        <Edit className="h-4 w-4 text-gray-600" />
       </Button>
       <Button
         variant="ghost"
         size="sm"
-        className="h-8 w-8 p-0"
+        className="h-7 w-7 p-0 hover:bg-red-100"
         onClick={handleDelete}
         data-testid={`button-delete-${props.data.id}`}
       >
-        <Trash2 className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+        <Trash2 className="h-4 w-4 text-red-600" />
       </Button>
     </div>
   );

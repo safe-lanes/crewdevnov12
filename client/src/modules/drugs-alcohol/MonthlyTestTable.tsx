@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ColDef, ColGroupDef, ICellRendererParams, GridApi, CellValueChangedEvent } from 'ag-grid-community';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
-import { Edit, Plus, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Plus, ChevronRight, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, addMonths, differenceInMonths, differenceInDays, parse } from 'date-fns';
@@ -251,25 +251,12 @@ const FrequencyCellRenderer = (params: ICellRendererParams) => {
 };
 
 const ActionsCellRenderer = (params: ICellRendererParams) => {
-  const handleEdit = () => {
-    console.log('Edit test record:', params.data);
-  };
-
   const handleAdd = () => {
-    console.log('Add test plan:', params.data);
+    console.log('Add new D&A record:', params.data);
   };
 
   return (
-    <div className="flex items-center justify-center gap-2 h-full">
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-7 w-7 p-0 hover:bg-gray-100"
-        onClick={handleEdit}
-        data-testid={`button-edit-${params.data.id}`}
-      >
-        <Edit className="h-4 w-4 text-gray-600" />
-      </Button>
+    <div className="flex items-center justify-center h-full">
       <Button
         variant="ghost"
         size="sm"

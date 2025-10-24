@@ -2,7 +2,7 @@ import { useState, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AgGridReact } from 'ag-grid-react';
 import { ColDef, ICellRendererParams, CellValueChangedEvent } from 'ag-grid-community';
-import { Edit, Trash2, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, addMonths, differenceInMonths, differenceInDays, parse } from 'date-fns';
@@ -143,42 +143,12 @@ const FrequencyCellRenderer = (params: ICellRendererParams) => {
 
 // Actions Cell Renderer
 const ActionsCellRenderer = (params: ICellRendererParams) => {
-  const hasPlanning = params.data?.hasPlanning;
-
-  const handleEdit = () => {
-    console.log('Edit clicked for', params.data?.testType);
-  };
-
-  const handleDelete = () => {
-    console.log('Delete clicked for', params.data?.testType);
-  };
-
   const handleAdd = () => {
-    console.log('Add clicked for', params.data?.testType);
+    console.log('Add new D&A record for', params.data?.testType);
   };
 
   return (
-    <div className="flex gap-1 items-center justify-center h-full">
-      {hasPlanning && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0"
-          onClick={handleEdit}
-          data-testid={`button-edit-${params.data?.testType}`}
-        >
-          <Edit className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-        </Button>
-      )}
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-8 w-8 p-0"
-        onClick={handleDelete}
-        data-testid={`button-delete-${params.data?.testType}`}
-      >
-        <Trash2 className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-      </Button>
+    <div className="flex items-center justify-center h-full">
       <Button
         variant="ghost"
         size="sm"
