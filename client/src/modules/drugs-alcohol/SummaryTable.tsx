@@ -1,11 +1,12 @@
 import { useState, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AgGridReact } from 'ag-grid-react';
-import { ColDef, ICellRendererParams } from 'ag-grid-community';
+import { ColDef, ICellRendererParams, CellValueChangedEvent } from 'ag-grid-community';
 import { Edit, Trash2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, addMonths, differenceInMonths, differenceInDays, parse } from 'date-fns';
+import { queryClient, apiRequest } from '@/lib/queryClient';
 
 // History Header Component (matches Annual table)
 const HistoryHeaderComponent = (props: any) => {
@@ -31,6 +32,7 @@ interface TestRecord {
 }
 
 interface SummaryRowData {
+  id?: number;
   testType: string;
   testTypeLabel: string;
   lastTest?: TestRecord;
@@ -263,6 +265,7 @@ export function SummaryTable({ selectedVessel }: SummaryTableProps) {
       }
 
       return {
+        id: record.id,
         testType: type,
         testTypeLabel: label,
         lastTest,
@@ -427,6 +430,28 @@ export function SummaryTable({ selectedVessel }: SummaryTableProps) {
             context={{
               showAllHistory,
               setShowAllHistory,
+            }}
+            onCellValueChanged={async (event: CellValueChangedEvent) => {
+              // Only handle changes to plannedComments, plannedPort, or plannedDate
+              const field = event.colDef.field;
+              if (field === 'plannedComments' || field === 'plannedPort' || field === 'plannedDate') {
+                try {
+                  const recordId = event.data.id;
+                  if (!recordId) {
+                    console.error('No record ID found for update');
+                    return;
+                  }
+                  const updateData = { [field]: event.newValue };
+                  
+                  await apiRequest('PUT', `/api/drug-alcohol-tests/${recordId}`, updateData);
+                  
+                  // Invalidate cache to refresh data
+                  queryClient.invalidateQueries({ queryKey: ['/api/drug-alcohol-tests'] });
+                } catch (error) {
+                  console.error('Failed to update test record:', error);
+                  // Optionally show error toast to user
+                }
+              }
             }}
             data-testid="grid-summary"
           />
