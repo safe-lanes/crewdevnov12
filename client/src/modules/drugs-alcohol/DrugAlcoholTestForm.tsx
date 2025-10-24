@@ -571,7 +571,7 @@ export function DrugAlcoholTestForm({
                   </div>
                   
                   {!form.watch('equipmentNotApplicable') && form.watch('testingEquipment')?.map((equipment, index) => (
-                    <div key={equipment.id} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 p-4 border rounded-lg bg-gray-50">
+                    <div key={equipment.id} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 p-4 border rounded-lg bg-gray-50" data-testid={`equipment-entry-${index}`}>
                       <FormField
                         control={form.control}
                         name={`testingEquipment.${index}.equipmentId` as any}
