@@ -318,33 +318,31 @@ export function DrugAlcoholTestForm({
                         )}
                       />
                       
-                      {showOtherTestsFields && (
-                        <FormField
-                          control={form.control}
-                          name="initiatedBy"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs text-gray-500 tracking-wide">Initiated By</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                  <SelectTrigger className="bg-[#ffffff]" data-testid="select-initiatedBy">
-                                    <SelectValue placeholder="Initiated By" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="Vessel - Master">Vessel - Master</SelectItem>
-                                  <SelectItem value="Vessel - Chief Engineer">Vessel - Chief Engineer</SelectItem>
-                                  <SelectItem value="Office - HSQ Dept.">Office - HSQ Dept.</SelectItem>
-                                  <SelectItem value="Office - Operations">Office - Operations</SelectItem>
-                                  <SelectItem value="Port Authority">Port Authority</SelectItem>
-                                  <SelectItem value="External Agency">External Agency</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      )}
+                      <FormField
+                        control={form.control}
+                        name="initiatedBy"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs text-gray-500 tracking-wide">Initiated By</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger className="bg-[#ffffff]" data-testid="select-initiatedBy">
+                                  <SelectValue placeholder="Initiated By" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="Vessel - Master">Vessel - Master</SelectItem>
+                                <SelectItem value="Vessel - Chief Engineer">Vessel - Chief Engineer</SelectItem>
+                                <SelectItem value="Office - HSQ Dept.">Office - HSQ Dept.</SelectItem>
+                                <SelectItem value="Office - Operations">Office - Operations</SelectItem>
+                                <SelectItem value="Port Authority">Port Authority</SelectItem>
+                                <SelectItem value="External Agency">External Agency</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       
                       <FormField
                         control={form.control}
