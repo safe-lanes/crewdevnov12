@@ -107,7 +107,9 @@ export function DrugAlcoholTestForm({
       description: '',
       externalTestResultsDate: '',
       equipmentNotApplicable: false,
-      testingEquipment: [],
+      testingEquipment: [
+        { id: `eq-${Date.now()}`, equipmentId: '', makeModel: '', serialNo: '', lastCalibrated: '' }
+      ],
     },
   });
 
