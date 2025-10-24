@@ -16,6 +16,7 @@ import { MonthlyTestTable } from './MonthlyTestTable';
 import { PostIncidentTestTable } from './PostIncidentTestTable';
 import { OtherTestsTable } from './OtherTestsTable';
 import { SummaryTable } from './SummaryTable';
+import { DrugAlcoholTestForm } from './DrugAlcoholTestForm';
 
 // Hook to fetch vessels from Master Data (ID 014)
 const useVessels = () => {
@@ -46,6 +47,11 @@ export function DrugsAlcoholModule() {
     
     // Summary page state - single vessel selection
     const [summarySelectedVessel, setSummarySelectedVessel] = useState<string>("");
+    
+    // Form state
+    const [showForm, setShowForm] = useState(false);
+    const [formTestType, setFormTestType] = useState<'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others'>();
+    const [formVesselId, setFormVesselId] = useState<string>();
 
     // Fetch vessels
     const { data: vessels = [], isLoading: vesselsLoading } = useVessels();
@@ -70,6 +76,30 @@ export function DrugsAlcoholModule() {
                 ? prev.filter(v => v !== vesselName)
                 : [...prev, vesselName]
         );
+    };
+
+    // Form handlers
+    const handleOpenForm = (testType: 'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others', vesselId?: string) => {
+        setFormTestType(testType);
+        setFormVesselId(vesselId);
+        setShowForm(true);
+    };
+
+    const handleCloseForm = () => {
+        setShowForm(false);
+        setFormTestType(undefined);
+        setFormVesselId(undefined);
+    };
+
+    const handleSaveForm = (data: any) => {
+        console.log('Save draft:', data);
+        // TODO: Implement draft saving logic
+    };
+
+    const handleSubmitForm = (data: any) => {
+        console.log('Submit form:', data);
+        // TODO: Implement form submission logic
+        handleCloseForm();
     };
 
     // Reusable filter bar with radio buttons (for Annual, Periodic, Monthly, Post Incident, Others)
@@ -283,6 +313,7 @@ export function DrugsAlcoholModule() {
                             selectedVessels={selectedVessels}
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
+                            onAdd={() => handleOpenForm('annual')}
                         />
                     </div>
                 );
@@ -309,6 +340,7 @@ export function DrugsAlcoholModule() {
                             selectedVessels={selectedVessels}
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
+                            onAdd={() => handleOpenForm('periodic')}
                         />
                     </div>
                 );
@@ -335,6 +367,7 @@ export function DrugsAlcoholModule() {
                             selectedVessels={selectedVessels}
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
+                            onAdd={() => handleOpenForm('monthly')}
                         />
                     </div>
                 );
@@ -361,6 +394,7 @@ export function DrugsAlcoholModule() {
                             selectedVessels={selectedVessels}
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
+                            onAdd={() => handleOpenForm('post-incident')}
                         />
                     </div>
                 );
@@ -387,6 +421,7 @@ export function DrugsAlcoholModule() {
                             selectedVessels={selectedVessels}
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
+                            onAdd={() => handleOpenForm('others')}
                         />
                     </div>
                 );
@@ -398,7 +433,10 @@ export function DrugsAlcoholModule() {
                         </SectionTitleComponents>
                         {renderVesselOnlyFilterBar()}
                         {summarySelectedVessel && (
-                            <SummaryTable selectedVessel={summarySelectedVessel} />
+                            <SummaryTable 
+                                selectedVessel={summarySelectedVessel}
+                                onAdd={(testType) => handleOpenForm(testType, summarySelectedVessel)}
+                            />
                         )}
                     </div>
                 );
@@ -426,6 +464,17 @@ export function DrugsAlcoholModule() {
             <MainLayout>
                 {renderContent()}
             </MainLayout>
+            
+            {/* Drug & Alcohol Test Form */}
+            {showForm && (
+                <DrugAlcoholTestForm
+                    testType={formTestType}
+                    vesselId={formVesselId}
+                    onClose={handleCloseForm}
+                    onSave={handleSaveForm}
+                    onSubmit={handleSubmitForm}
+                />
+            )}
         </>
     );
 }

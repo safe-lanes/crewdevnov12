@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AgGridReact } from "ag-grid-react";
 import { ColDef, ICellRendererParams } from "ag-grid-community";
 import { useMemo, useRef } from "react";
-import { Edit, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface OtherTestData {
@@ -22,6 +22,7 @@ interface OtherTestsTableProps {
   selectedVessels: string[];
   fleetValue: string;
   addGroupValue: string;
+  onAdd?: () => void;
 }
 
 // Violations cell renderer with color coding
@@ -44,33 +45,24 @@ const ViolationsCellRenderer = (props: ICellRendererParams) => {
 
 // Actions cell renderer
 const ActionsCellRenderer = (props: ICellRendererParams) => {
-  const handleEdit = () => {
-    console.log("Edit clicked for row:", props.data.id);
-  };
+  const { onAdd } = props.context || {};
   
-  const handleDelete = () => {
-    console.log("Delete clicked for row:", props.data.id);
+  const handleAdd = () => {
+    if (onAdd) {
+      onAdd();
+    }
   };
   
   return (
-    <div className="flex gap-2 items-center justify-center h-full">
+    <div className="flex items-center justify-center h-full">
       <Button
         variant="ghost"
         size="sm"
-        className="h-7 w-7 p-0 hover:bg-gray-100"
-        onClick={handleEdit}
-        data-testid={`button-edit-${props.data.id}`}
+        className="h-7 w-7 p-0 hover:bg-green-100"
+        onClick={handleAdd}
+        data-testid={`button-add-${props.data.id}`}
       >
-        <Edit className="h-4 w-4 text-gray-600" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-7 w-7 p-0 hover:bg-red-100"
-        onClick={handleDelete}
-        data-testid={`button-delete-${props.data.id}`}
-      >
-        <Trash2 className="h-4 w-4 text-red-600" />
+        <Plus className="h-4 w-4 text-green-600" />
       </Button>
     </div>
   );
@@ -81,6 +73,7 @@ export function OtherTestsTable({
   selectedVessels,
   fleetValue,
   addGroupValue,
+  onAdd,
 }: OtherTestsTableProps) {
   const gridRef = useRef<AgGridReact>(null);
   
@@ -223,6 +216,7 @@ export function OtherTestsTable({
           suppressCellFocus={true}
           suppressRowHoverHighlight={false}
           enableCellTextSelection={true}
+          context={{ onAdd }}
           data-testid="grid-other-tests"
         />
       </div>

@@ -48,6 +48,7 @@ interface SummaryRowData {
 
 interface SummaryTableProps {
   selectedVessel: string;
+  onAdd?: (testType: 'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others') => void;
 }
 
 // Calculate "Due In" status and color
@@ -143,8 +144,12 @@ const FrequencyCellRenderer = (params: ICellRendererParams) => {
 
 // Actions Cell Renderer
 const ActionsCellRenderer = (params: ICellRendererParams) => {
+  const { onAdd } = params.context || {};
+  
   const handleAdd = () => {
-    console.log('Add new D&A record for', params.data?.testType);
+    if (onAdd && params.data?.testType) {
+      onAdd(params.data.testType);
+    }
   };
 
   return (
@@ -162,7 +167,7 @@ const ActionsCellRenderer = (params: ICellRendererParams) => {
   );
 };
 
-export function SummaryTable({ selectedVessel }: SummaryTableProps) {
+export function SummaryTable({ selectedVessel, onAdd }: SummaryTableProps) {
   const gridRef = useRef<AgGridReact>(null);
   const [showAllHistory, setShowAllHistory] = useState(false);
 
@@ -400,6 +405,7 @@ export function SummaryTable({ selectedVessel }: SummaryTableProps) {
             context={{
               showAllHistory,
               setShowAllHistory,
+              onAdd,
             }}
             onCellValueChanged={async (event: CellValueChangedEvent) => {
               // Only handle changes to plannedComments, plannedPort, or plannedDate

@@ -30,6 +30,7 @@ interface MonthlyTestTableProps {
   selectedVessels: string[];
   fleetValue: string;
   addGroupValue: string;
+  onAdd?: () => void;
 }
 
 const useDrugAlcoholTests = (filters: any) => {
@@ -251,8 +252,12 @@ const FrequencyCellRenderer = (params: ICellRendererParams) => {
 };
 
 const ActionsCellRenderer = (params: ICellRendererParams) => {
+  const { onAdd } = params.context || {};
+  
   const handleAdd = () => {
-    console.log('Add new D&A record:', params.data);
+    if (onAdd) {
+      onAdd();
+    }
   };
 
   return (
@@ -275,6 +280,7 @@ export const MonthlyTestTable: React.FC<MonthlyTestTableProps> = ({
   selectedVessels,
   fleetValue,
   addGroupValue,
+  onAdd,
 }) => {
   const [showAllHistory, setShowAllHistory] = useState(false);
   const [globalFrequency, setGlobalFrequency] = useState<number>(1);
@@ -496,8 +502,9 @@ export const MonthlyTestTable: React.FC<MonthlyTestTableProps> = ({
       setGlobalFrequency: handleGlobalFrequencyChange,
       vesselFrequencies,
       setVesselFrequency,
+      onAdd,
     }),
-    [showAllHistory, globalFrequency, vesselFrequencies, handleGlobalFrequencyChange, setVesselFrequency]
+    [showAllHistory, globalFrequency, vesselFrequencies, handleGlobalFrequencyChange, setVesselFrequency, onAdd]
   );
 
   if (testsLoading || vesselsLoading) {
