@@ -922,9 +922,19 @@ export function DrugAlcoholTestForm({
                                         <FormControl>
                                           <Input
                                             {...field}
-                                            type="time"
+                                            type="text"
+                                            placeholder="HH:MM"
+                                            maxLength={5}
+                                            pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]"
                                             className="bg-white text-xs h-8"
                                             data-testid={`input-alcohol-time-${index}`}
+                                            onChange={(e) => {
+                                              let value = e.target.value.replace(/[^\d:]/g, '');
+                                              if (value.length === 2 && !value.includes(':')) {
+                                                value = value + ':';
+                                              }
+                                              field.onChange(value);
+                                            }}
                                           />
                                         </FormControl>
                                       </FormItem>
@@ -1015,9 +1025,19 @@ export function DrugAlcoholTestForm({
                                         <FormControl>
                                           <Input
                                             {...field}
-                                            type="time"
+                                            type="text"
+                                            placeholder="HH:MM"
+                                            maxLength={5}
+                                            pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]"
                                             className="bg-white text-xs h-8"
                                             data-testid={`input-drug-time-${index}`}
+                                            onChange={(e) => {
+                                              let value = e.target.value.replace(/[^\d:]/g, '');
+                                              if (value.length === 2 && !value.includes(':')) {
+                                                value = value + ':';
+                                              }
+                                              field.onChange(value);
+                                            }}
                                           />
                                         </FormControl>
                                       </FormItem>
