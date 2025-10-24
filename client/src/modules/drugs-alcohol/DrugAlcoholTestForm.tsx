@@ -344,19 +344,21 @@ export function DrugAlcoholTestForm({
                         )}
                       />
                       
-                      <FormField
-                        control={form.control}
-                        name="dateTimeTestCompleted"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs text-gray-500 tracking-wide">Date & Time Test completed</FormLabel>
-                            <FormControl>
-                              <Input {...field} type="datetime-local" className="bg-[#ffffff]" data-testid="input-dateTimeTestCompleted" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      {!showPostIncidentFields && (
+                        <FormField
+                          control={form.control}
+                          name="dateTimeTestCompleted"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs text-gray-500 tracking-wide">Date & Time Test completed</FormLabel>
+                              <FormControl>
+                                <Input {...field} type="datetime-local" className="bg-[#ffffff]" data-testid="input-dateTimeTestCompleted" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
                     </div>
 
                     {/* Row 3: Incident fields (conditional for post-incident) */}
