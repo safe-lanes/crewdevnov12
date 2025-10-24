@@ -102,6 +102,12 @@ export function DrugsAlcoholModule() {
         handleCloseForm();
     };
 
+    const handleDeleteForm = () => {
+        console.log('Delete form');
+        // TODO: Implement form deletion logic
+        handleCloseForm();
+    };
+
     // Reusable filter bar with radio buttons (for Annual, Periodic, Monthly, Post Incident, Others)
     const renderFullFilterBar = () => (
         showFilters && (
@@ -473,6 +479,7 @@ export function DrugsAlcoholModule() {
                     onClose={handleCloseForm}
                     onSave={handleSaveForm}
                     onSubmit={handleSubmitForm}
+                    onDelete={handleDeleteForm}
                 />
             )}
         </>

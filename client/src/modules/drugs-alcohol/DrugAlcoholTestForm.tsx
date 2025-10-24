@@ -86,6 +86,7 @@ interface DrugAlcoholTestFormProps {
   onClose: () => void;
   onSave: (data: any) => void;
   onSubmit: (data: any) => void;
+  onDelete?: () => void;
 }
 
 export function DrugAlcoholTestForm({
@@ -94,7 +95,8 @@ export function DrugAlcoholTestForm({
   draftData,
   onClose,
   onSave,
-  onSubmit
+  onSubmit,
+  onDelete
 }: DrugAlcoholTestFormProps) {
   const [activeSection, setActiveSection] = useState<'A' | 'B'>('A');
   const [activeContinuousSection, setActiveContinuousSection] = useState<'A' | 'B'>('A');
@@ -268,6 +270,12 @@ export function DrugAlcoholTestForm({
 
   const handleFormSubmit = (data: DrugAlcoholTestFormData) => {
     onSubmit(data);
+  };
+
+  const handleDelete = () => {
+    if (onDelete) {
+      onDelete();
+    }
   };
 
   // Watch testType to conditionally show fields
@@ -1203,6 +1211,35 @@ export function DrugAlcoholTestForm({
               </div>
             </CardContent>
           </Card>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-3 mt-6">
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700 text-white px-6"
+              data-testid="button-delete-form"
+            >
+              Delete
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSaveDraft}
+              className="bg-[#5fa5fa] hover:bg-[#5fa5fa]/90 text-white border-0 px-6"
+              data-testid="button-save-form"
+            >
+              Save
+            </Button>
+            <Button
+              type="submit"
+              className="bg-green-600 hover:bg-green-700 text-white px-6"
+              data-testid="button-submit-form"
+            >
+              Submit
+            </Button>
+          </div>
         </div>
       </div>
     );
