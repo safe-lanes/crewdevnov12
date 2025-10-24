@@ -423,6 +423,18 @@ export const drugAlcoholTestRecords = pgTable("drug_alcohol_test_records", {
   vesselId: text("vessel_id").notNull(), // VSL-XXX format from master data
   testType: text("test_type").notNull(), // 'annual', 'periodic', 'monthly', 'post-incident', 'others'
   
+  // Part A - General Information
+  alcoholDrugType: text("alcohol_drug_type"), // JSON array: ["Alcohol"] or ["Drug"] or ["Alcohol", "Drug"]
+  placeLocation: text("place_location"), // Test location/port
+  dateTimeTestCompleted: text("date_time_test_completed"), // Format: "31 May 2023 - 1010 Hours"
+  externalTestResultsDate: text("external_test_results_date"), // Date external lab results received
+  incidentId: text("incident_id"), // For linking to Incident Module
+  
+  // Part B2 - Testing Equipment (stored as JSON for simplicity during development)
+  // Will be normalized to separate table in production
+  testingEquipment: text("testing_equipment"), // JSON array of equipment entries
+  equipmentNotApplicable: boolean("equipment_not_applicable").default(false), // N/A checkbox
+  
   // Test history as JSON array: [{ date, port, violations }, ...]
   // Stores up to last 3 test records
   testHistory: text("test_history"), // JSON: [{date: "31 May 2023", port: "Punta Gorda", violations: 0}, ...]
