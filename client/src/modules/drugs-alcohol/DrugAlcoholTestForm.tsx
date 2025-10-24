@@ -831,10 +831,10 @@ export function DrugAlcoholTestForm({
                               <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wide min-w-[120px]">
                                 Date
                               </th>
-                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wide min-w-[100px]">
+                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wide min-w-[70px]">
                                 Time
                               </th>
-                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wide min-w-[120px]">
+                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wide min-w-[85px]">
                                 Results (BAC)
                               </th>
                               <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wide min-w-[100px]">
@@ -850,10 +850,10 @@ export function DrugAlcoholTestForm({
                               <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wide min-w-[120px]">
                                 Date
                               </th>
-                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wide min-w-[100px]">
+                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wide min-w-[70px]">
                                 Time
                               </th>
-                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wide min-w-[120px]">
+                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wide min-w-[85px]">
                                 Results
                               </th>
                               <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wide min-w-[100px]">
