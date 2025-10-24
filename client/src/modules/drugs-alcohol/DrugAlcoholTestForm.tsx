@@ -275,7 +275,7 @@ export function DrugAlcoholTestForm({
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-xs text-gray-500 tracking-wide">Alcohol/ Drug*</FormLabel>
-                            <div className="flex flex-col gap-2 bg-[#ffffff] border rounded-md p-3">
+                            <div className="flex flex-row gap-4 bg-[#ffffff] border rounded-md p-3">
                               <div className="flex items-center space-x-2">
                                 <Checkbox
                                   id="alcohol-checkbox"
