@@ -114,7 +114,7 @@ export function DrugAlcoholTestForm({
   };
 
   // Vessel lookup hook
-  const { getVesselName } = useVesselLookup();
+  const { getVesselName, vessels } = useVesselLookup();
 
   // Fetch crew members for the vessel
   const { data: allCrewMembers = [] } = useQuery<any[]>({
@@ -305,9 +305,20 @@ export function DrugAlcoholTestForm({
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-xs text-gray-500 tracking-wide">Vessel*</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="Vessel" className="bg-[#ffffff]" data-testid="input-vesselId" />
-                            </FormControl>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger className="bg-[#ffffff]" data-testid="select-vesselId">
+                                  <SelectValue placeholder="Select Vessel" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {vessels.map((vessel) => (
+                                  <SelectItem key={vessel.entryId} value={vessel.entryId}>
+                                    {vessel.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}
