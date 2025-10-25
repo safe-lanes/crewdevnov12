@@ -28,7 +28,7 @@ const drugAlcoholTestFormSchema = z.object({
   // Type selection
   testType: z.string().min(1, 'Test type is required'),
   
-  // B1. General Information
+  // A1. General Information
   vesselId: z.string().optional(),
   placeLocation: z.string().optional(),
   alcoholDrugType: z.array(z.string()).optional(), // Multi-select: ["Alcohol"], ["Drug"], or both
@@ -43,7 +43,7 @@ const drugAlcoholTestFormSchema = z.object({
   description: z.string().optional(),
   externalTestResultsDate: z.string().optional(),
   
-  // B2. Testing Equipment Details
+  // A2. Testing Equipment Details
   equipmentNotApplicable: z.boolean().optional(),
   testingEquipment: z.array(equipmentEntrySchema).optional(),
   
@@ -303,10 +303,10 @@ export function DrugAlcoholTestForm({
               </div>
               
               <div className="space-y-6">
-                {/* B1. General Section */}
+                {/* A1. General Section */}
                 <div>
                   <h4 className="text-md font-semibold mb-4" style={{ color: '#16569e' }}>
-                    B1. General
+                    A1. General
                   </h4>
                   
                   <div className="space-y-4">
@@ -634,11 +634,11 @@ export function DrugAlcoholTestForm({
                   </div>
                 </div>
 
-                {/* B2. Testing Equipment Details */}
+                {/* A2. Testing Equipment Details */}
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="text-md font-semibold" style={{ color: '#16569e' }}>
-                      B2. Testing Equipment Details (e.g. Alcohol Meter)
+                      A2. Testing Equipment Details (e.g. Alcohol Meter)
                     </h4>
                     <div className="flex items-center gap-4">
                       <FormField
