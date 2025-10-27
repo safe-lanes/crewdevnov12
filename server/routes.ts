@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError } from "./storage";
-import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema } from "@shared/schema";
+import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema } from "@shared/schema";
 import { z } from "zod";
 import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew } from "@shared/crew-mapping";
 import { 
@@ -1431,6 +1431,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to delete drug/alcohol test record:", error);
       res.status(500).json({ error: "Failed to delete drug/alcohol test record" });
+    }
+  });
+
+  // Rest Hours Vessel Records API routes
+  app.get("/api/rest-hours-vessel-records", async (req, res) => {
+    try {
+      const { vesselIds, monthValue } = req.query;
+      
+      const filters: { vesselIds?: string[]; monthValue?: string } = {};
+      if (vesselIds) {
+        filters.vesselIds = typeof vesselIds === 'string' ? [vesselIds] : vesselIds as string[];
+      }
+      if (monthValue) {
+        filters.monthValue = monthValue as string;
+      }
+      
+      const records = Object.keys(filters).length > 0
+        ? await storage.getRestHoursVesselRecordsByFilters(filters)
+        : await storage.getRestHoursVesselRecords();
+      res.json(records);
+    } catch (error) {
+      console.error("Failed to fetch rest hours vessel records:", error);
+      res.status(500).json({ error: "Failed to fetch rest hours vessel records" });
+    }
+  });
+
+  app.get("/api/rest-hours-vessel-records/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid record ID - must be a number" });
+      }
+      const record = await storage.getRestHoursVesselRecord(id);
+      if (!record) {
+        return res.status(404).json({ error: "Rest hours vessel record not found" });
+      }
+      res.json(record);
+    } catch (error) {
+      console.error("Failed to fetch rest hours vessel record:", error);
+      res.status(500).json({ error: "Failed to fetch rest hours vessel record" });
+    }
+  });
+
+  app.post("/api/rest-hours-vessel-records", async (req, res) => {
+    try {
+      const result = insertRestHoursVesselRecordSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid rest hours vessel record data", details: result.error.issues });
+      }
+      const record = await storage.createRestHoursVesselRecord(result.data);
+      res.status(201).json(record);
+    } catch (error) {
+      console.error("Failed to create rest hours vessel record:", error);
+      res.status(500).json({ error: "Failed to create rest hours vessel record" });
+    }
+  });
+
+  app.put("/api/rest-hours-vessel-records/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid record ID - must be a number" });
+      }
+      const result = insertRestHoursVesselRecordSchema.partial().safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid rest hours vessel record data", details: result.error.issues });
+      }
+      const record = await storage.updateRestHoursVesselRecord(id, result.data);
+      if (!record) {
+        return res.status(404).json({ error: "Rest hours vessel record not found" });
+      }
+      res.json(record);
+    } catch (error) {
+      console.error("Failed to update rest hours vessel record:", error);
+      res.status(500).json({ error: "Failed to update rest hours vessel record" });
+    }
+  });
+
+  app.delete("/api/rest-hours-vessel-records/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid record ID - must be a number" });
+      }
+      const deleted = await storage.deleteRestHoursVesselRecord(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Rest hours vessel record not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete rest hours vessel record:", error);
+      res.status(500).json({ error: "Failed to delete rest hours vessel record" });
     }
   });
 

@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { RHRecordsTable } from './RHRecordsTable';
 
 export const RestHoursRecord = (): JSX.Element => {
   // Generate last 12 months for period dropdown
@@ -222,11 +223,12 @@ export const RestHoursRecord = (): JSX.Element => {
         </div>
       )}
 
-      {/* Content Area - To be implemented */}
-      <div className="p-6">
-        <div className="text-gray-600">
-          Rest Hours records table will be implemented here.
-        </div>
+      {/* RH Records Table */}
+      <div className="px-4 pb-4">
+        <RHRecordsTable 
+          selectedVessels={filterType === 'vessel' ? selectedVessels : []}
+          selectedMonth={periodValue}
+        />
       </div>
     </div>
   );

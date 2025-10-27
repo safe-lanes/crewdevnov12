@@ -471,6 +471,29 @@ export const drugAlcoholTestRecords = pgTable("drug_alcohol_test_records", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const restHoursVesselRecords = pgTable("rest_hours_vessel_records", {
+  id: serial("id").primaryKey(),
+  vesselId: text("vessel_id").notNull(), // Vessel ID from master data
+  vesselName: text("vessel_name").notNull(), // Vessel name
+  month: text("month").notNull(), // Format: "Feb-2025" (MMM-YYYY)
+  monthValue: text("month_value").notNull(), // Format: "2025-02" (YYYY-MM) for filtering/sorting
+  
+  // Aggregated data from crew records
+  totalCrew: integer("total_crew").notNull().default(0),
+  recordingStatusPercent: integer("recording_status_percent").notNull().default(0), // 0-100
+  activityConflicting: boolean("activity_conflicting").notNull().default(false), // Yes/No
+  totalViolations: integer("total_violations").notNull().default(0),
+  crewWithViolations: integer("crew_with_violations").notNull().default(0),
+  totalNCs: integer("total_ncs").notNull().default(0), // Non-conformities
+  crewWithNCs: integer("crew_with_ncs").notNull().default(0),
+  predictedViolations: integer("predicted_violations").notNull().default(0),
+  predictedNCs: integer("predicted_ncs").notNull().default(0),
+  officeReviewStatus: text("office_review_status").notNull().default("Due"), // "Completed", "Due", "Overdue"
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -855,6 +878,12 @@ export const insertDrugAlcoholTestRecordSchema = createInsertSchema(drugAlcoholT
   updatedAt: true,
 });
 
+export const insertRestHoursVesselRecordSchema = createInsertSchema(restHoursVesselRecords).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertForm = z.infer<typeof insertFormSchema>;
@@ -900,6 +929,8 @@ export type InsertRotationPlan = z.infer<typeof insertRotationPlanSchema>;
 export type RotationPlan = typeof rotationPlans.$inferSelect;
 export type InsertDrugAlcoholTestRecord = z.infer<typeof insertDrugAlcoholTestRecordSchema>;
 export type DrugAlcoholTestRecord = typeof drugAlcoholTestRecords.$inferSelect;
+export type InsertRestHoursVesselRecord = z.infer<typeof insertRestHoursVesselRecordSchema>;
+export type RestHoursVesselRecord = typeof restHoursVesselRecords.$inferSelect;
 
 // Dashboard Types
 export const dashboardStatusSchema = z.object({
