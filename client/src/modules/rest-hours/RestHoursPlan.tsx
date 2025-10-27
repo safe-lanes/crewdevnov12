@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import { Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 
 export const RestHoursPlan = (): JSX.Element => {
@@ -48,8 +47,15 @@ export const RestHoursPlan = (): JSX.Element => {
 
   return (
     <div className="flex flex-col h-full">
-      <SectionTitleComponents title={title}>
-        <div className="flex items-center gap-4">
+      {/* Custom header with 3-column layout */}
+      <div className="mb-4 grid grid-cols-3 items-center">
+        {/* Left: Title */}
+        <div>
+          <h1 className="text-2xl font-bold text-black">{title}</h1>
+        </div>
+        
+        {/* Center: Period Display + Module Switcher */}
+        <div className="flex justify-center items-center gap-4">
           {/* Period Display */}
           <div className="text-sm font-medium text-[#16569e] bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded">
             {displayPeriod}
@@ -75,8 +81,10 @@ export const RestHoursPlan = (): JSX.Element => {
               </button>
             ))}
           </div>
+        </div>
 
-          {/* Filters Button */}
+        {/* Right: Filters Button */}
+        <div className="flex justify-end">
           <Button
             variant="outline"
             size="sm"
@@ -88,7 +96,7 @@ export const RestHoursPlan = (): JSX.Element => {
             Filters
           </Button>
         </div>
-      </SectionTitleComponents>
+      </div>
 
       {showFilters && (
         <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
