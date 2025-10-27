@@ -12,6 +12,7 @@ import { VesselModule } from "./modules/vessel/VesselModule";
 import { RotationModule } from "./modules/rotation/RotationModule";
 import { PromotionsModule } from "./modules/promotions/PromotionsModule";
 import { DrugsAlcoholModule } from "./modules/drugs-alcohol/DrugsAlcoholModule";
+import { RestHoursModule } from "./modules/rest-hours/RestHoursModule";
 import { DashboardPage } from "./pages/DashboardPage";
 import HeaderComponent from "./components/Navbar/HeaderComponent";
 
@@ -32,6 +33,7 @@ function App() {
               <Route path="/rotation" component={RotationModule} />
               <Route path="/promotions" component={PromotionsModule} />
               <Route path="/drugs-alcohol" component={DrugsAlcoholModule} />
+              <Route path="/rest-hours" component={RestHoursModule} />
               <Route path="/admin/*" component={AdminModule} />
               <Route path="/admin" component={AdminModule} />
               <Route component={NotFound} />
