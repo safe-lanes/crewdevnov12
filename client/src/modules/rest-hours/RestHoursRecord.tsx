@@ -10,15 +10,6 @@ import SectionTitleComponents from '@/components/Section/SectionTitleComponents'
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 
 export const RestHoursRecord = (): JSX.Element => {
-  const [showFilters, setShowFilters] = useState(true);
-  const [filterType, setFilterType] = useState<"vessel" | "fleet" | "addGroup">("vessel");
-  const [selectedVessels, setSelectedVessels] = useState<string[]>([]);
-  const [fleetValue, setFleetValue] = useState("");
-  const [addGroupValue, setAddGroupValue] = useState("");
-  const [periodValue, setPeriodValue] = useState("");
-
-  const { vessels, isLoading: vesselsLoading } = useVesselLookup();
-
   // Generate last 12 months for period dropdown
   const periodOptions = useMemo(() => {
     const options = [];
@@ -26,13 +17,24 @@ export const RestHoursRecord = (): JSX.Element => {
     
     for (let i = 0; i < 12; i++) {
       const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-      const monthYear = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const month = date.toLocaleDateString('en-US', { month: 'short' });
+      const year = date.getFullYear();
+      const monthYear = `${month}-${year}`;
+      const value = `${year}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       options.push({ label: monthYear, value });
     }
     
     return options;
   }, []);
+
+  const [showFilters, setShowFilters] = useState(true);
+  const [filterType, setFilterType] = useState<"vessel" | "fleet" | "addGroup">("vessel");
+  const [selectedVessels, setSelectedVessels] = useState<string[]>([]);
+  const [fleetValue, setFleetValue] = useState("");
+  const [addGroupValue, setAddGroupValue] = useState("");
+  const [periodValue, setPeriodValue] = useState(periodOptions[0]?.value || "");
+
+  const { vessels, isLoading: vesselsLoading } = useVesselLookup();
 
   const toggleVessel = (vesselName: string) => {
     setSelectedVessels(prev => 
@@ -47,7 +49,7 @@ export const RestHoursRecord = (): JSX.Element => {
     setSelectedVessels([]);
     setFleetValue("");
     setAddGroupValue("");
-    setPeriodValue("");
+    setPeriodValue(periodOptions[0]?.value || "");
   };
 
   return (
