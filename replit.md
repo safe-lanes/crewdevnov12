@@ -60,6 +60,10 @@ The application employs a modern web stack with a module-first architecture for 
         - **Field Visibility Logic**: Post-incident fields (Incident Title, Date & Time of Incident, Alcohol/Drug Test Date & Times) show only for post-incident type; Other test fields (Initiated By, Reason for Testing, Description) show only for others type; External Results Date visible for annual, post-incident, and others types only.
         - **Dynamic Crew Filtering**: Form watches vessel selection changes and automatically refreshes personnel table with current vessel's crew using useEffect with vessel change detection. Handles empty crew scenarios by clearing personnel rows when switching to vessels without crew.
         - **Data Structure**: alcoholDrugType stored as array for true multi-select support, testingEquipment as JSON array for multiple entries, personnelTested as JSON array with nested test objects, masterDeputySignature as JSON object, all integrated with PersistentFileStorage.
+- **Rest Hours Module**: Manages seafarer work and rest hours in compliance with maritime regulations (ILO, MLC, US-OPA 90).
+    - **Dashboard**: Provides fleet-wide overview of recordkeeping status, compliance, violations, non-conformities, and statistics (to be implemented).
+    - **Record**: Manages recordkeeping of work and rest hours for seafarers (to be implemented).
+    - **Plan**: Handles work planning, fixed working hours, and variable tasks affecting groups of seafarers (to be implemented).
 - **Performance Optimization**: Utilizes map-based lookups, TanStack Query for caching, `useRef`, `useMemo`, and optimized `PersistentFileStorage`.
 - **Data Storage**: `PersistentFileStorage` for development, with PostgreSQL/Drizzle ORM for production.
 
