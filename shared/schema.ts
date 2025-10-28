@@ -519,6 +519,41 @@ export const restHoursCrewRecords = pgTable("rest_hours_crew_records", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const restHoursDailyRecords = pgTable("rest_hours_daily_records", {
+  id: serial("id").primaryKey(),
+  crewMemberId: text("crew_member_id").notNull(), // Reference to crew member
+  vesselId: text("vessel_id").notNull(), // Vessel ID from master data
+  rank: text("rank").notNull(), // Rank at time of recording
+  name: text("name").notNull(), // Full name for display
+  monthYear: text("month_year").notNull(), // Format: "2024-03" (YYYY-MM)
+  
+  // Daily records stored as JSON
+  // Structure: [{
+  //   day: 1-31, 
+  //   dayOfWeek: "Mon"|"Tue"|"Wed"|"Thu"|"Fri"|"Sat"|"Sun",
+  //   hours: ["w"|"d"|"a"|"", ...], // 24 entries for hours 00-23, blank string = rest
+  //   isPlan: boolean, // True if this is planned hours (grey), false if recorded
+  //   comments: string,
+  //   violations: [1,2,3,...], // array of violation code numbers
+  //   hoursOfRest24hr: number, // Auto-calculated hours of rest in 24hr period
+  //   hoursOfWork24hr: number, // Auto-calculated hours of work in 24hr period  
+  //   hoursOfRest48hr: number, // Rolling 48hr window
+  //   hoursOfWork48hr: number,
+  //   hoursOfRest7day: number, // Rolling 7-day window
+  //   hoursOfWork7day: number,
+  //   hoursOfRest96hr: number, // Rolling 96hr window (4 days)
+  //   hoursOfWork96hr: number
+  // }]
+  dailyRecords: text("daily_records").notNull(), // JSON array of daily records
+  
+  // Form settings
+  showPlanning: boolean("show_planning").default(false),
+  opaMode: boolean("opa_mode").default(false),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -915,6 +950,12 @@ export const insertRestHoursCrewRecordSchema = createInsertSchema(restHoursCrewR
   updatedAt: true,
 });
 
+export const insertRestHoursDailyRecordSchema = createInsertSchema(restHoursDailyRecords).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertForm = z.infer<typeof insertFormSchema>;
@@ -964,6 +1005,8 @@ export type InsertRestHoursVesselRecord = z.infer<typeof insertRestHoursVesselRe
 export type RestHoursVesselRecord = typeof restHoursVesselRecords.$inferSelect;
 export type InsertRestHoursCrewRecord = z.infer<typeof insertRestHoursCrewRecordSchema>;
 export type RestHoursCrewRecord = typeof restHoursCrewRecords.$inferSelect;
+export type InsertRestHoursDailyRecord = z.infer<typeof insertRestHoursDailyRecordSchema>;
+export type RestHoursDailyRecord = typeof restHoursDailyRecords.$inferSelect;
 
 // Dashboard Types
 export const dashboardStatusSchema = z.object({

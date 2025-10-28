@@ -1,10 +1,11 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AgGridReact } from 'ag-grid-react';
 import { ColDef, ICellRendererParams } from 'ag-grid-community';
 import { Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { RestHoursCrewRecord } from '@shared/schema';
+import { RHRecordingForm } from './RHRecordingForm';
 
 interface RHCrewRecordsTableProps {
   vesselId?: string;
@@ -68,7 +69,9 @@ const BadgeRenderer = (params: ICellRendererParams) => {
 
 const ActionsRenderer = (params: ICellRendererParams) => {
   const handleEdit = () => {
-    console.log('Edit clicked for crew record:', params.data);
+    if (params.context && params.context.onEditRecord) {
+      params.context.onEditRecord(params.data);
+    }
   };
 
   return (
@@ -88,6 +91,14 @@ const ActionsRenderer = (params: ICellRendererParams) => {
 
 export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, searchText }: RHCrewRecordsTableProps) {
   const gridRef = useRef<AgGridReact>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<RestHoursCrewRecord | null>(null);
+
+  // Handler for opening the recording form
+  const handleEditRecord = (record: RestHoursCrewRecord) => {
+    setSelectedRecord(record);
+    setFormOpen(true);
+  };
 
   // Build query params
   const queryParams = new URLSearchParams();
@@ -200,19 +211,35 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
   }
 
   return (
-    <div className="ag-theme-alpine w-full" style={{ height: '600px' }}>
-      <AgGridReact
-        ref={gridRef}
-        rowData={records}
-        columnDefs={columnDefs}
-        defaultColDef={defaultColDef}
-        animateRows={true}
-        rowSelection="single"
-        pagination={true}
-        paginationPageSize={20}
-        domLayout="normal"
-        rowHeight={56}
-      />
-    </div>
+    <>
+      <div className="ag-theme-alpine w-full" style={{ height: '600px' }}>
+        <AgGridReact
+          ref={gridRef}
+          rowData={records}
+          columnDefs={columnDefs}
+          defaultColDef={defaultColDef}
+          context={{ onEditRecord: handleEditRecord }}
+          animateRows={true}
+          rowSelection="single"
+          pagination={true}
+          paginationPageSize={20}
+          domLayout="normal"
+          rowHeight={56}
+        />
+      </div>
+
+      {selectedRecord && (
+        <RHRecordingForm
+          key={`${selectedRecord.crewMemberId}-${selectedRecord.vesselId}-${selectedRecord.monthValue}`}
+          open={formOpen}
+          onOpenChange={setFormOpen}
+          crewMemberId={selectedRecord.crewMemberId}
+          crewMemberName={selectedRecord.name}
+          vesselId={selectedRecord.vesselId}
+          rank={selectedRecord.rank}
+          monthValue={selectedRecord.monthValue}
+        />
+      )}
+    </>
   );
 }

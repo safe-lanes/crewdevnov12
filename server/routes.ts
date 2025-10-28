@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError } from "./storage";
-import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema } from "@shared/schema";
+import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema } from "@shared/schema";
 import { z } from "zod";
 import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew } from "@shared/crew-mapping";
 import { 
@@ -1783,6 +1783,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to delete rest hours crew record:", error);
       res.status(500).json({ error: "Failed to delete rest hours crew record" });
+    }
+  });
+
+  // Rest Hours Daily Records API routes
+  app.get("/api/rest-hours-daily-records", async (req, res) => {
+    try {
+      const records = await storage.getRestHoursDailyRecords();
+      res.json(records);
+    } catch (error) {
+      console.error("Failed to get rest hours daily records:", error);
+      res.status(500).json({ error: "Failed to get rest hours daily records" });
+    }
+  });
+
+  app.get("/api/rest-hours-daily-records/by-key/:crewMemberId/:vesselId/:monthYear", async (req, res) => {
+    try {
+      const { crewMemberId, vesselId, monthYear } = req.params;
+      const record = await storage.getRestHoursDailyRecordByKey(crewMemberId, vesselId, monthYear);
+      if (!record) {
+        return res.status(404).json({ error: "Rest hours daily record not found" });
+      }
+      res.json(record);
+    } catch (error) {
+      console.error("Failed to get rest hours daily record by key:", error);
+      res.status(500).json({ error: "Failed to get rest hours daily record by key" });
+    }
+  });
+
+  app.get("/api/rest-hours-daily-records/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid record ID - must be a number" });
+      }
+      const record = await storage.getRestHoursDailyRecord(id);
+      if (!record) {
+        return res.status(404).json({ error: "Rest hours daily record not found" });
+      }
+      res.json(record);
+    } catch (error) {
+      console.error("Failed to get rest hours daily record:", error);
+      res.status(500).json({ error: "Failed to get rest hours daily record" });
+    }
+  });
+
+  app.post("/api/rest-hours-daily-records", async (req, res) => {
+    try {
+      const result = insertRestHoursDailyRecordSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid rest hours daily record data", details: result.error.issues });
+      }
+      const record = await storage.createRestHoursDailyRecord(result.data);
+      res.status(201).json(record);
+    } catch (error) {
+      console.error("Failed to create rest hours daily record:", error);
+      res.status(500).json({ error: "Failed to create rest hours daily record" });
+    }
+  });
+
+  app.put("/api/rest-hours-daily-records/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid record ID - must be a number" });
+      }
+      const result = insertRestHoursDailyRecordSchema.partial().safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid rest hours daily record data", details: result.error.issues });
+      }
+      const record = await storage.updateRestHoursDailyRecord(id, result.data);
+      if (!record) {
+        return res.status(404).json({ error: "Rest hours daily record not found" });
+      }
+      res.json(record);
+    } catch (error) {
+      console.error("Failed to update rest hours daily record:", error);
+      res.status(500).json({ error: "Failed to update rest hours daily record" });
+    }
+  });
+
+  app.delete("/api/rest-hours-daily-records/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid record ID - must be a number" });
+      }
+      const deleted = await storage.deleteRestHoursDailyRecord(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Rest hours daily record not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete rest hours daily record:", error);
+      res.status(500).json({ error: "Failed to delete rest hours daily record" });
     }
   });
 

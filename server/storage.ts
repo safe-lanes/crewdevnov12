@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type DrugAlcoholTestRecord, type InsertDrugAlcoholTestRecord, type RestHoursVesselRecord, type InsertRestHoursVesselRecord, type RestHoursCrewRecord, type InsertRestHoursCrewRecord, type CrewDashboardSummary } from "@shared/schema";
+import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type DrugAlcoholTestRecord, type InsertDrugAlcoholTestRecord, type RestHoursVesselRecord, type InsertRestHoursVesselRecord, type RestHoursCrewRecord, type InsertRestHoursCrewRecord, type RestHoursDailyRecord, type InsertRestHoursDailyRecord, type CrewDashboardSummary } from "@shared/schema";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -130,6 +130,13 @@ export interface IStorage {
   createRestHoursCrewRecord(record: InsertRestHoursCrewRecord): Promise<RestHoursCrewRecord>;
   updateRestHoursCrewRecord(id: number, record: Partial<InsertRestHoursCrewRecord>): Promise<RestHoursCrewRecord | undefined>;
   deleteRestHoursCrewRecord(id: number): Promise<boolean>;
+  // Rest Hours Daily Records
+  getRestHoursDailyRecords(): Promise<RestHoursDailyRecord[]>;
+  getRestHoursDailyRecord(id: number): Promise<RestHoursDailyRecord | undefined>;
+  getRestHoursDailyRecordByKey(crewMemberId: string, vesselId: string, monthYear: string): Promise<RestHoursDailyRecord | undefined>;
+  createRestHoursDailyRecord(record: InsertRestHoursDailyRecord): Promise<RestHoursDailyRecord>;
+  updateRestHoursDailyRecord(id: number, record: Partial<InsertRestHoursDailyRecord>): Promise<RestHoursDailyRecord | undefined>;
+  deleteRestHoursDailyRecord(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -150,6 +157,7 @@ export class MemStorage implements IStorage {
   private drugAlcoholTestRecords: Map<number, DrugAlcoholTestRecord>;
   private restHoursVesselRecords: Map<number, RestHoursVesselRecord>;
   private restHoursCrewRecords: Map<number, RestHoursCrewRecord>;
+  private restHoursDailyRecords: Map<number, RestHoursDailyRecord>;
   private currentUserId: number;
   private currentFormId: number;
   private currentRankGroupId: number;
@@ -165,6 +173,7 @@ export class MemStorage implements IStorage {
   private currentDrugAlcoholTestRecordId: number;
   private currentRestHoursVesselRecordId: number;
   private currentRestHoursCrewRecordId: number;
+  private currentRestHoursDailyRecordId: number;
 
   constructor() {
     this.users = new Map();
@@ -184,6 +193,7 @@ export class MemStorage implements IStorage {
     this.drugAlcoholTestRecords = new Map();
     this.restHoursVesselRecords = new Map();
     this.restHoursCrewRecords = new Map();
+    this.restHoursDailyRecords = new Map();
     this.currentUserId = 1;
     this.currentFormId = 1;
     this.currentRankGroupId = 1;
@@ -199,6 +209,7 @@ export class MemStorage implements IStorage {
     this.currentDrugAlcoholTestRecordId = 1;
     this.currentRestHoursVesselRecordId = 1;
     this.currentRestHoursCrewRecordId = 1;
+    this.currentRestHoursDailyRecordId = 1;
     
     this.initializeDefaultData();
 
@@ -1789,6 +1800,53 @@ export class MemStorage implements IStorage {
   async deleteRestHoursCrewRecord(id: number): Promise<boolean> {
     return this.restHoursCrewRecords.delete(id);
   }
+
+  // Rest Hours Daily Records Methods
+  async getRestHoursDailyRecords(): Promise<RestHoursDailyRecord[]> {
+    return Array.from(this.restHoursDailyRecords.values());
+  }
+
+  async getRestHoursDailyRecord(id: number): Promise<RestHoursDailyRecord | undefined> {
+    return this.restHoursDailyRecords.get(id);
+  }
+
+  async getRestHoursDailyRecordByKey(crewMemberId: string, vesselId: string, monthYear: string): Promise<RestHoursDailyRecord | undefined> {
+    const records = Array.from(this.restHoursDailyRecords.values());
+    return records.find(record => 
+      record.crewMemberId === crewMemberId && 
+      record.vesselId === vesselId && 
+      record.monthYear === monthYear
+    );
+  }
+
+  async createRestHoursDailyRecord(insertRecord: InsertRestHoursDailyRecord): Promise<RestHoursDailyRecord> {
+    const id = this.currentRestHoursDailyRecordId++;
+    const record: RestHoursDailyRecord = {
+      ...insertRecord,
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.restHoursDailyRecords.set(id, record);
+    return record;
+  }
+
+  async updateRestHoursDailyRecord(id: number, updateData: Partial<InsertRestHoursDailyRecord>): Promise<RestHoursDailyRecord | undefined> {
+    const existingRecord = this.restHoursDailyRecords.get(id);
+    if (!existingRecord) return undefined;
+    
+    const updatedRecord: RestHoursDailyRecord = {
+      ...existingRecord,
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    this.restHoursDailyRecords.set(id, updatedRecord);
+    return updatedRecord;
+  }
+
+  async deleteRestHoursDailyRecord(id: number): Promise<boolean> {
+    return this.restHoursDailyRecords.delete(id);
+  }
 }
 
 // PersistentFileStorage class - saves data to JSON file for persistence across restarts
@@ -1811,6 +1869,7 @@ export class PersistentFileStorage implements IStorage {
   private drugAlcoholTestRecords: Map<number, DrugAlcoholTestRecord>;
   private restHoursVesselRecords: Map<number, RestHoursVesselRecord>;
   private restHoursCrewRecords: Map<number, RestHoursCrewRecord>;
+  private restHoursDailyRecords: Map<number, RestHoursDailyRecord>;
   private currentUserId: number;
   private currentFormId: number;
   private currentRankGroupId: number;
@@ -1826,6 +1885,7 @@ export class PersistentFileStorage implements IStorage {
   private currentDrugAlcoholTestRecordId: number;
   private currentRestHoursVesselRecordId: number;
   private currentRestHoursCrewRecordId: number;
+  private currentRestHoursDailyRecordId: number;
   private filePath: string;
   private saveTimeout: NodeJS.Timeout | null = null;
   private isSaving: boolean = false;
@@ -1852,6 +1912,7 @@ export class PersistentFileStorage implements IStorage {
     this.drugAlcoholTestRecords = new Map();
     this.restHoursVesselRecords = new Map();
     this.restHoursCrewRecords = new Map();
+    this.restHoursDailyRecords = new Map();
     this.currentUserId = 1;
     this.currentFormId = 1;
     this.currentRankGroupId = 1;
@@ -1867,6 +1928,7 @@ export class PersistentFileStorage implements IStorage {
     this.currentDrugAlcoholTestRecordId = 1;
     this.currentRestHoursVesselRecordId = 1;
     this.currentRestHoursCrewRecordId = 1;
+    this.currentRestHoursDailyRecordId = 1;
     
     this.filePath = path.join(process.cwd(), 'test-data.json');
     this.loadFromFile();
@@ -1971,6 +2033,10 @@ export class PersistentFileStorage implements IStorage {
         this.restHoursCrewRecords = new Map(data.restHoursCrewRecords || []);
         this.currentRestHoursCrewRecordId = data.currentRestHoursCrewRecordId || 1;
         
+        // Load rest hours daily records and counter
+        this.restHoursDailyRecords = new Map(data.restHoursDailyRecords || []);
+        this.currentRestHoursDailyRecordId = data.currentRestHoursDailyRecordId || 1;
+        
         console.log("📄 Loaded existing data from test-data.json");
         
         // Initialize rest hours sample data if empty
@@ -2010,6 +2076,7 @@ export class PersistentFileStorage implements IStorage {
       drugAlcoholTestRecords: Array.from(this.drugAlcoholTestRecords.entries()),
       restHoursVesselRecords: Array.from(this.restHoursVesselRecords.entries()),
       restHoursCrewRecords: Array.from(this.restHoursCrewRecords.entries()),
+      restHoursDailyRecords: Array.from(this.restHoursDailyRecords.entries()),
       masterDataEntries: Array.from(this.masterDataEntries.entries()),
       currentUserId: this.currentUserId,
       currentFormId: this.currentFormId,
@@ -2025,7 +2092,8 @@ export class PersistentFileStorage implements IStorage {
       currentRotationPlanId: this.currentRotationPlanId,
       currentDrugAlcoholTestRecordId: this.currentDrugAlcoholTestRecordId,
       currentRestHoursVesselRecordId: this.currentRestHoursVesselRecordId,
-      currentRestHoursCrewRecordId: this.currentRestHoursCrewRecordId
+      currentRestHoursCrewRecordId: this.currentRestHoursCrewRecordId,
+      currentRestHoursDailyRecordId: this.currentRestHoursDailyRecordId
     };
     
     if (this.saveTimeout) {
@@ -3636,6 +3704,57 @@ export class PersistentFileStorage implements IStorage {
 
   async deleteRestHoursCrewRecord(id: number): Promise<boolean> {
     const result = this.restHoursCrewRecords.delete(id);
+    if (result) this.saveToFile(); // SAVE TO FILE AFTER EVERY DELETE!
+    return result;
+  }
+
+  // Rest Hours Daily Records Methods
+  async getRestHoursDailyRecords(): Promise<RestHoursDailyRecord[]> {
+    return Array.from(this.restHoursDailyRecords.values());
+  }
+
+  async getRestHoursDailyRecord(id: number): Promise<RestHoursDailyRecord | undefined> {
+    return this.restHoursDailyRecords.get(id);
+  }
+
+  async getRestHoursDailyRecordByKey(crewMemberId: string, vesselId: string, monthYear: string): Promise<RestHoursDailyRecord | undefined> {
+    const records = Array.from(this.restHoursDailyRecords.values());
+    return records.find(record => 
+      record.crewMemberId === crewMemberId && 
+      record.vesselId === vesselId && 
+      record.monthYear === monthYear
+    );
+  }
+
+  async createRestHoursDailyRecord(insertRecord: InsertRestHoursDailyRecord): Promise<RestHoursDailyRecord> {
+    const id = this.currentRestHoursDailyRecordId++;
+    const record: RestHoursDailyRecord = {
+      ...insertRecord,
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.restHoursDailyRecords.set(id, record);
+    this.saveToFile(); // SAVE TO FILE AFTER EVERY CREATE!
+    return record;
+  }
+
+  async updateRestHoursDailyRecord(id: number, updateData: Partial<InsertRestHoursDailyRecord>): Promise<RestHoursDailyRecord | undefined> {
+    const existingRecord = this.restHoursDailyRecords.get(id);
+    if (!existingRecord) return undefined;
+    
+    const updatedRecord: RestHoursDailyRecord = {
+      ...existingRecord,
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    this.restHoursDailyRecords.set(id, updatedRecord);
+    this.saveToFile(); // SAVE TO FILE AFTER EVERY UPDATE!
+    return updatedRecord;
+  }
+
+  async deleteRestHoursDailyRecord(id: number): Promise<boolean> {
+    const result = this.restHoursDailyRecords.delete(id);
     if (result) this.saveToFile(); // SAVE TO FILE AFTER EVERY DELETE!
     return result;
   }
