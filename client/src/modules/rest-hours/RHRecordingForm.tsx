@@ -24,7 +24,7 @@ interface RHRecordingFormProps {
 interface DailyRecord {
   day: number;
   dayOfWeek: string;
-  hours: string[]; // 24 entries for hours 00-23, values: "w", "d", "a", "" (blank = rest)
+  hours: string[]; // 48 entries (2 per hour for 00:00-23:30), values: "w", "d", "a", "" (blank = rest)
   isPlan: boolean;
   comments: string;
   violations: number[];
@@ -88,7 +88,7 @@ export const RHRecordingForm = ({
       records.push({
         day,
         dayOfWeek,
-        hours: Array(24).fill(''), // Initialize with empty strings (rest)
+        hours: Array(48).fill(''), // Initialize with empty strings (rest) - 2 cells per hour
         isPlan: false,
         comments: '',
         violations: [],
@@ -204,7 +204,7 @@ export const RHRecordingForm = ({
       records.push({
         day,
         dayOfWeek,
-        hours: Array(24).fill(''),
+        hours: Array(48).fill(''), // 2 cells per hour for half-hour divisions
         isPlan: false,
         comments: '',
         violations: [],
@@ -494,7 +494,7 @@ export const RHRecordingForm = ({
                   Day
                 </th>
                 {Array.from({ length: 24 }, (_, i) => (
-                  <th key={i} className="border border-gray-300 p-0.5 min-w-[30px]" style={{ padding: '2px' }}>
+                  <th key={i} colSpan={2} className="border border-gray-300 p-0.5 min-w-[40px]" style={{ padding: '2px' }}>
                     {i.toString().padStart(2, '0')}
                   </th>
                 ))}
@@ -533,43 +533,51 @@ export const RHRecordingForm = ({
                     {record.dayOfWeek}
                   </td>
                   
-                  {/* 24 Hour Columns */}
-                  {record.hours.map((hour, hourIndex) => (
-                    <td
-                      key={hourIndex}
-                      className="border border-gray-300 text-center"
-                      style={{
-                        padding: '2px',
-                        backgroundColor: getCellColor(record.isPlan, hour),
-                      }}
-                    >
-                      <div
-                        contentEditable
-                        suppressContentEditableWarning
-                        onBlur={(e) => {
-                          const value = e.currentTarget.textContent || '';
-                          handleHourCellEdit(dayIndex, hourIndex, value);
+                  {/* 48 Half-Hour Columns (2 cells per hour) */}
+                  {record.hours.map((hour, hourIndex) => {
+                    const isSecondHalf = hourIndex % 2 === 1;
+                    const borderRight = isSecondHalf ? 'border-gray-300' : 'border-gray-200';
+                    
+                    return (
+                      <td
+                        key={hourIndex}
+                        className={`border-t border-b border-l text-center ${isSecondHalf ? 'border-r' : ''}`}
+                        style={{
+                          padding: '2px',
+                          backgroundColor: getCellColor(record.isPlan, hour),
+                          borderRightWidth: isSecondHalf ? '1px' : '0.5px',
+                          borderRightColor: isSecondHalf ? '#d1d5db' : '#e5e7eb',
+                          borderRightStyle: 'solid',
                         }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            e.currentTarget.blur();
-                          }
-                          // Allow only w, d, a, backspace, delete
-                          if (
-                            e.key.length === 1 &&
-                            !['w', 'd', 'a', 'W', 'D', 'A'].includes(e.key)
-                          ) {
-                            e.preventDefault();
-                          }
-                        }}
-                        className="outline-none cursor-text min-h-[20px]"
-                        data-testid={`cell-hour-${dayIndex}-${hourIndex}`}
                       >
-                        {hour}
-                      </div>
-                    </td>
-                  ))}
+                        <div
+                          contentEditable
+                          suppressContentEditableWarning
+                          onBlur={(e) => {
+                            const value = e.currentTarget.textContent || '';
+                            handleHourCellEdit(dayIndex, hourIndex, value);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              e.currentTarget.blur();
+                            }
+                            // Allow only w, d, a, backspace, delete
+                            if (
+                              e.key.length === 1 &&
+                              !['w', 'd', 'a', 'W', 'D', 'A'].includes(e.key)
+                            ) {
+                              e.preventDefault();
+                            }
+                          }}
+                          className="outline-none cursor-text min-h-[20px]"
+                          data-testid={`cell-hour-${dayIndex}-${hourIndex}`}
+                        >
+                          {hour}
+                        </div>
+                      </td>
+                    );
+                  })}
                   
                   {/* Hours of Rest */}
                   <td className="border border-gray-300 text-center" style={{ padding: '2px' }}>
