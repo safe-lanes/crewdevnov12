@@ -531,7 +531,7 @@ export const restHoursDailyRecords = pgTable("rest_hours_daily_records", {
   // Structure: [{
   //   day: 1-31, 
   //   dayOfWeek: "Mon"|"Tue"|"Wed"|"Thu"|"Fri"|"Sat"|"Sun",
-  //   hours: ["w"|"d"|"a"|"", ...], // 24 entries for hours 00-23, blank string = rest
+  //   hours: ["w"|"d"|"a"|"", ...], // 48 entries (2 per hour for 00:00-23:30), blank string = rest
   //   isPlan: boolean, // True if this is planned hours (grey), false if recorded
   //   comments: string,
   //   violations: [1,2,3,...], // array of violation code numbers
