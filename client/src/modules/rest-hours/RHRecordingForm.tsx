@@ -109,6 +109,16 @@ export const RHRecordingForm = ({
   // Fetch existing record if available
   const { data: existingRecord, isError } = useQuery<RestHoursDailyRecord>({
     queryKey: ['/api/rest-hours-daily-records/by-key', crewMemberId, vesselId, monthValue],
+    queryFn: async () => {
+      const response = await fetch(`/api/rest-hours-daily-records/by-key/${crewMemberId}/${vesselId}/${monthValue}`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null; // No existing record found
+        }
+        throw new Error('Failed to fetch rest hours record');
+      }
+      return response.json();
+    },
     enabled: open && !!crewMemberId && !!vesselId && !!monthValue,
     retry: false,
     gcTime: 0, // Don't cache - each crew's data must be fresh to prevent data leakage
@@ -142,9 +152,9 @@ export const RHRecordingForm = ({
   const saveMutation = useMutation<RestHoursDailyRecord, Error, any>({
     mutationFn: async (data: any) => {
       if (formId) {
-        return apiRequest(`/api/rest-hours-daily-records/${formId}`, 'PUT', data);
+        return apiRequest('PUT', `/api/rest-hours-daily-records/${formId}`, data);
       } else {
-        return apiRequest('/api/rest-hours-daily-records', 'POST', data);
+        return apiRequest('POST', '/api/rest-hours-daily-records', data);
       }
     },
     onSuccess: (data) => {
