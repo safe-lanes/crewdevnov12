@@ -20,8 +20,8 @@ const ProgressBarRenderer = (params: ICellRendererParams) => {
     <div className="flex items-center h-full w-full px-3 py-2">
       <div className="w-full bg-gray-200 rounded-full h-6 dark:bg-gray-700">
         <div
-          className="h-6 rounded-full flex items-center justify-center text-xs font-medium text-white"
-          style={{ width: `${percent}%`, backgroundColor: bgColor }}
+          className="h-6 rounded-full flex items-center justify-center font-medium text-white"
+          style={{ width: `${percent}%`, backgroundColor: bgColor, fontSize: '13px' }}
         >
           {percent > 10 && `${percent}%`}
         </div>
@@ -37,11 +37,11 @@ const YesNoRenderer = (params: ICellRendererParams) => {
   const isYes = value === true || value === 'Yes';
   return (
     <div className="flex items-center justify-center h-full py-2">
-      <span className={`px-3 py-1.5 rounded text-sm font-medium ${
+      <span className={`px-3 py-1.5 rounded font-medium ${
         isYes 
           ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
           : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-      }`}>
+      }`} style={{ fontSize: '13px' }}>
         {isYes ? 'Yes' : 'No'}
       </span>
     </div>
@@ -56,10 +56,10 @@ const ViolationsRenderer = (params: ICellRendererParams) => {
 
   return (
     <div className="flex items-center justify-center gap-3 h-full py-2">
-      <span className="px-3 py-1.5 rounded text-sm font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center">
+      <span className="px-3 py-1.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
         {violations}
       </span>
-      <span className="px-3 py-1.5 rounded text-sm font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center">
+      <span className="px-3 py-1.5 rounded font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
         {crewCount}
       </span>
     </div>
@@ -74,10 +74,10 @@ const NCsRenderer = (params: ICellRendererParams) => {
 
   return (
     <div className="flex items-center justify-center gap-3 h-full py-2">
-      <span className="px-3 py-1.5 rounded text-sm font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center">
+      <span className="px-3 py-1.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
         {ncs}
       </span>
-      <span className="px-3 py-1.5 rounded text-sm font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center">
+      <span className="px-3 py-1.5 rounded font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
         {crewCount}
       </span>
     </div>
@@ -102,7 +102,7 @@ const OfficeReviewRenderer = (params: ICellRendererParams) => {
 
   return (
     <div className="flex items-center justify-center h-full py-2">
-      <span className={`px-4 py-1.5 rounded text-sm font-medium ${getStatusStyles()}`}>
+      <span className={`px-4 py-1.5 rounded font-medium ${getStatusStyles()}`} style={{ fontSize: '13px' }}>
         {status}
       </span>
     </div>
