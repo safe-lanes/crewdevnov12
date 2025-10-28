@@ -229,6 +229,7 @@ export function RHRecordsTable({ selectedVessels, selectedMonth }: RHRecordsTabl
     filter: true,
     resizable: true,
     wrapHeaderText: true,
+    autoHeaderHeight: true,
   }), []);
 
   if (isLoading) {
@@ -252,7 +253,6 @@ export function RHRecordsTable({ selectedVessels, selectedMonth }: RHRecordsTabl
         paginationPageSize={20}
         domLayout="normal"
         rowHeight={56}
-        autoHeaderHeight={true}
       />
     </div>
   );
