@@ -17,13 +17,13 @@ const ProgressBarRenderer = (params: ICellRendererParams) => {
   const bgColor = isComplete ? '#22C55E' : '#EAB308';
   
   return (
-    <div className="flex items-center h-full w-full px-2">
-      <div className="w-full bg-gray-200 rounded-full h-4 dark:bg-gray-700">
+    <div className="flex items-center h-full w-full px-3 py-2">
+      <div className="w-full bg-gray-200 rounded-full h-6 dark:bg-gray-700">
         <div
-          className="h-4 rounded-full flex items-center justify-center text-[10px] font-medium text-white"
+          className="h-6 rounded-full flex items-center justify-center text-xs font-medium text-white"
           style={{ width: `${percent}%`, backgroundColor: bgColor }}
         >
-          {percent > 15 && `${percent}%`}
+          {percent > 10 && `${percent}%`}
         </div>
       </div>
     </div>
@@ -36,8 +36,8 @@ const YesNoRenderer = (params: ICellRendererParams) => {
 
   const isYes = value === true || value === 'Yes';
   return (
-    <div className="flex items-center justify-center h-full">
-      <span className={`px-3 py-1 rounded text-xs font-medium ${
+    <div className="flex items-center justify-center h-full py-2">
+      <span className={`px-3 py-1.5 rounded text-sm font-medium ${
         isYes 
           ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
           : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
@@ -55,11 +55,11 @@ const ViolationsRenderer = (params: ICellRendererParams) => {
   if (violations === 0) return null;
 
   return (
-    <div className="flex items-center justify-center gap-2 h-full">
-      <span className="px-2 py-1 rounded text-xs font-semibold bg-pink-100 text-red-600">
+    <div className="flex items-center justify-center gap-3 h-full py-2">
+      <span className="px-3 py-1.5 rounded text-sm font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center">
         {violations}
       </span>
-      <span className="px-2 py-1 rounded text-xs font-medium bg-gray-200 text-gray-700">
+      <span className="px-3 py-1.5 rounded text-sm font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center">
         {crewCount}
       </span>
     </div>
@@ -73,11 +73,11 @@ const NCsRenderer = (params: ICellRendererParams) => {
   if (ncs === 0) return null;
 
   return (
-    <div className="flex items-center justify-center gap-2 h-full">
-      <span className="px-2 py-1 rounded text-xs font-semibold bg-pink-100 text-red-600">
+    <div className="flex items-center justify-center gap-3 h-full py-2">
+      <span className="px-3 py-1.5 rounded text-sm font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center">
         {ncs}
       </span>
-      <span className="px-2 py-1 rounded text-xs font-medium bg-gray-200 text-gray-700">
+      <span className="px-3 py-1.5 rounded text-sm font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center">
         {crewCount}
       </span>
     </div>
@@ -101,8 +101,8 @@ const OfficeReviewRenderer = (params: ICellRendererParams) => {
   };
 
   return (
-    <div className="flex items-center justify-center h-full">
-      <span className={`px-3 py-1 rounded text-xs font-medium ${getStatusStyles()}`}>
+    <div className="flex items-center justify-center h-full py-2">
+      <span className={`px-4 py-1.5 rounded text-sm font-medium ${getStatusStyles()}`}>
         {status}
       </span>
     </div>
@@ -155,62 +155,63 @@ export function RHRecordsTable({ selectedVessels, selectedMonth }: RHRecordsTabl
     {
       headerName: 'Vessel',
       field: 'vesselName',
-      width: 150,
+      width: 170,
       pinned: 'left',
-      cellStyle: { fontWeight: 500 }
+      cellStyle: { fontWeight: 500, fontSize: '13px' }
     },
     {
       headerName: 'Month',
       field: 'month',
-      width: 120,
+      width: 130,
+      cellStyle: { fontSize: '13px' }
     },
     {
       headerName: 'Total Crew',
       field: 'totalCrew',
-      width: 110,
-      cellStyle: { textAlign: 'center' }
+      width: 120,
+      cellStyle: { textAlign: 'center', fontSize: '13px' }
     },
     {
       headerName: 'Recording Status',
       field: 'recordingStatusPercent',
-      width: 180,
+      width: 200,
       cellRenderer: ProgressBarRenderer,
     },
     {
       headerName: 'Activity conflicting with actual recording',
       field: 'activityConflicting',
-      width: 180,
+      width: 190,
       cellRenderer: YesNoRenderer,
       headerTooltip: 'Indicates conflicts between recorded hours and variable tasks'
     },
     {
       headerName: 'Total violations/ No. of crew involved',
-      width: 200,
+      width: 230,
       cellRenderer: ViolationsRenderer,
       valueGetter: (params) => params.data?.totalViolations,
     },
     {
       headerName: 'Total NCs/ No. of crew involved',
-      width: 200,
+      width: 230,
       cellRenderer: NCsRenderer,
       valueGetter: (params) => params.data?.totalNCs,
     },
     {
       headerName: 'Predicted Violations',
       field: 'predictedViolations',
-      width: 140,
-      cellStyle: { textAlign: 'center' }
+      width: 150,
+      cellStyle: { textAlign: 'center', fontSize: '13px' }
     },
     {
       headerName: 'Predicted NCs',
       field: 'predictedNCs',
-      width: 130,
-      cellStyle: { textAlign: 'center' }
+      width: 140,
+      cellStyle: { textAlign: 'center', fontSize: '13px' }
     },
     {
       headerName: 'Office Review',
       field: 'officeReviewStatus',
-      width: 140,
+      width: 150,
       cellRenderer: OfficeReviewRenderer,
     },
     {
@@ -249,6 +250,8 @@ export function RHRecordsTable({ selectedVessels, selectedMonth }: RHRecordsTabl
         pagination={true}
         paginationPageSize={20}
         domLayout="normal"
+        rowHeight={56}
+        headerHeight={44}
       />
     </div>
   );
