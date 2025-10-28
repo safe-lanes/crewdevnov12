@@ -1836,6 +1836,13 @@ export class PersistentFileStorage implements IStorage {
         this.currentRestHoursVesselRecordId = data.currentRestHoursVesselRecordId || 1;
         
         console.log("📄 Loaded existing data from test-data.json");
+        
+        // Initialize rest hours sample data if empty
+        if (this.restHoursVesselRecords.size === 0) {
+          console.log("📊 Initializing rest hours sample data for testing");
+          this.initializeRestHoursSampleData();
+          this.saveToFile();
+        }
       } else {
         console.log("📄 test-data.json not found, initializing with default data");
         this.initializeDefaultData();
@@ -2627,6 +2634,67 @@ export class PersistentFileStorage implements IStorage {
     };
 
     return summary;
+  }
+
+  private initializeRestHoursSampleData(): void {
+    // Initialize with sample rest hours vessel records
+    const currentDate = new Date();
+    // Use the 6 vessels from master data (vessel master ID: 014)
+    const vessels = [
+      { id: "VSL-AP-001", name: "MV Atlantic Pioneer" },
+      { id: "VSL-OE-002", name: "MV Ocean Explorer" },
+      { id: "VSL-NS-003", name: "MT Nordic Star" },
+      { id: "VSL-PV-004", name: "MV Pacific Voyager" },
+      { id: "VSL-LG-005", name: "MT Liberty Gas" },
+      { id: "VSL-GT-006", name: "MV Global Trader" }
+    ];
+
+    let rhRecordId = this.currentRestHoursVesselRecordId;
+    // Generate records for last 2 months (current month + 1 previous month)
+    for (let monthOffset = 0; monthOffset < 2; monthOffset++) {
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - monthOffset, 1);
+      const monthLabel = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      const monthValue = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+      vessels.forEach((vessel, idx) => {
+        const totalCrew = 20 + Math.floor(Math.random() * 5);
+        const recordingPercent = monthOffset === 0 ? Math.floor(Math.random() * 101) : 100;
+        const activityConflicting = Math.random() > 0.7;
+        const totalViolations = Math.floor(Math.random() * 7);
+        const crewWithViolations = totalViolations > 0 ? Math.min(totalViolations, Math.floor(Math.random() * 4) + 1) : 0;
+        const totalNCs = Math.floor(Math.random() * 4);
+        const crewWithNCs = totalNCs > 0 ? Math.min(totalNCs, Math.floor(Math.random() * 3) + 1) : 0;
+        const predictedViolations = Math.floor(Math.random() * 2);
+        const predictedNCs = Math.floor(Math.random() * 2);
+        
+        let officeReviewStatus = "Completed";
+        if (monthOffset === 0 && idx < 3) {
+          officeReviewStatus = idx === 0 ? "Completed" : idx === 1 ? "Due" : "Overdue";
+        }
+
+        this.restHoursVesselRecords.set(rhRecordId, {
+          id: rhRecordId,
+          vesselId: vessel.id,
+          vesselName: vessel.name,
+          month: monthLabel.replace(' ', '-'),
+          monthValue: monthValue,
+          totalCrew,
+          recordingStatusPercent: recordingPercent,
+          activityConflicting,
+          totalViolations,
+          crewWithViolations,
+          totalNCs,
+          crewWithNCs,
+          predictedViolations,
+          predictedNCs,
+          officeReviewStatus,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+        rhRecordId++;
+      });
+    }
+    this.currentRestHoursVesselRecordId = rhRecordId;
   }
 
   // ID Generation Methods
