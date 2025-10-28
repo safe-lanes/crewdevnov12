@@ -2175,23 +2175,19 @@ export class PersistentFileStorage implements IStorage {
 
     // Initialize with sample rest hours vessel records
     const currentDate = new Date();
+    // Use the 6 vessels from master data (vessel master ID: 014)
     const vessels = [
-      { id: "VSL-001", name: "MT Sail One" },
-      { id: "VSL-002", name: "MT Sail Ten" },
-      { id: "VSL-003", name: "MT Sail Two" },
-      { id: "VSL-004", name: "MT Sail Five" },
-      { id: "VSL-005", name: "MT Sail Eight" },
-      { id: "VSL-006", name: "MT Sail Three" },
-      { id: "VSL-007", name: "MT Sail Eleven" },
-      { id: "VSL-008", name: "MT Sail Four" },
-      { id: "VSL-009", name: "MV Sail Seven" },
-      { id: "VSL-010", name: "MT Sail Thirteen" },
-      { id: "VSL-011", name: "MT Sail Fourteen" }
+      { id: "VSL-AP-001", name: "MV Atlantic Pioneer" },
+      { id: "VSL-OE-002", name: "MV Ocean Explorer" },
+      { id: "VSL-NS-003", name: "MT Nordic Star" },
+      { id: "VSL-PV-004", name: "MV Pacific Voyager" },
+      { id: "VSL-LG-005", name: "MT Liberty Gas" },
+      { id: "VSL-GT-006", name: "MV Global Trader" }
     ];
 
     let rhRecordId = 1;
-    // Generate records for last 3 months (current month + 2 previous months)
-    for (let monthOffset = 0; monthOffset < 3; monthOffset++) {
+    // Generate records for last 2 months (current month + 1 previous month)
+    for (let monthOffset = 0; monthOffset < 2; monthOffset++) {
       const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - monthOffset, 1);
       const monthLabel = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
       const monthValue = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
