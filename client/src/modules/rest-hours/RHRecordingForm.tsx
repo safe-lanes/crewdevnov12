@@ -373,31 +373,32 @@ export const RHRecordingForm = ({
   };
 
   // Helper: Detect violations
+  // NOTE: Using "any period" values for regulatory compliance as per ILO/MLC requirements
   const detectViolations = (record: DailyRecord, isOpaMode: boolean): number[] => {
     const violations: number[] = [];
     
-    // Rule [1]: Minimum 10 hours rest in any 24hr
-    if (record.hoursOfRest24hr < 10) {
+    // Rule [1]: Minimum 10 hours rest in ANY 24hr period
+    if (record.anyPeriodRest24hr < 10) {
       violations.push(1);
     }
     
-    // Rule [2]: Minimum 77 hours rest in 7 days
-    if (record.hoursOfRest7day < 77) {
+    // Rule [2]: Minimum 77 hours rest in ANY 7-day period
+    if (record.anyPeriodRest7day < 77) {
       violations.push(2);
     }
     
-    // Rule [5]: Maximum 14 hours work in 24hr
-    if (record.hoursOfWork24hr > 14) {
+    // Rule [5]: Maximum 14 hours work in ANY 24hr period
+    if (record.anyPeriodWork24hr > 14) {
       violations.push(5);
     }
     
-    // Rule [6]: Maximum 72 hours work in 7 days
-    if (record.hoursOfWork7day > 72) {
+    // Rule [6]: Maximum 72 hours work in ANY 7-day period
+    if (record.anyPeriodWork7day > 72) {
       violations.push(6);
     }
     
-    // Rule [7] (OPA only): Maximum 15 hours work in 24hr
-    if (isOpaMode && record.hoursOfWork24hr > 15) {
+    // Rule [7] (OPA only): Maximum 15 hours work in ANY 24hr period
+    if (isOpaMode && record.anyPeriodWork24hr > 15) {
       violations.push(7);
     }
     
