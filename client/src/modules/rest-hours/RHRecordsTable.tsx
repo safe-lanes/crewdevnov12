@@ -17,14 +17,17 @@ const ProgressBarRenderer = (params: ICellRendererParams) => {
   const bgColor = isComplete ? '#22C55E' : '#EAB308';
   
   return (
-    <div className="flex items-center h-full w-full px-3 py-2">
-      <div className="w-full bg-gray-200 rounded-full h-6 dark:bg-gray-700">
+    <div className="flex items-center h-full w-full px-3 py-2 group relative">
+      <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 -translate-y-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+        <span className="bg-gray-900 text-white px-2 py-1 rounded text-xs font-medium whitespace-nowrap">
+          {percent}%
+        </span>
+      </div>
+      <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
         <div
-          className="h-6 rounded-full flex items-center justify-center font-medium text-white"
-          style={{ width: `${percent}%`, backgroundColor: bgColor, fontSize: '13px' }}
-        >
-          {percent > 10 && `${percent}%`}
-        </div>
+          className="h-2 rounded-full transition-all duration-300"
+          style={{ width: `${percent}%`, backgroundColor: bgColor }}
+        />
       </div>
     </div>
   );
