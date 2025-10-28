@@ -28,7 +28,7 @@ interface DailyRecord {
   isPlan: boolean;
   comments: string;
   violations: number[];
-  hoursOfRest24hr: number;
+  hoursOfRest24hr: number; // Calendar day: 00:00-24:00
   hoursOfWork24hr: number;
   hoursOfRest48hr: number;
   hoursOfWork48hr: number;
@@ -36,6 +36,11 @@ interface DailyRecord {
   hoursOfWork7day: number;
   hoursOfRest96hr: number;
   hoursOfWork96hr: number;
+  // "Any period" rolling window calculations (for regulatory compliance)
+  anyPeriodRest24hr: number;  // Minimum rest hours in ANY 24-hour window
+  anyPeriodRest7day: number;  // Minimum rest hours in ANY 7-day window
+  anyPeriodWork24hr: number;  // Maximum work hours in ANY 24-hour window
+  anyPeriodWork7day: number;  // Maximum work hours in ANY 7-day window
 }
 
 export const RHRecordingForm = ({
@@ -100,6 +105,10 @@ export const RHRecordingForm = ({
         hoursOfWork7day: 0,
         hoursOfRest96hr: 96,
         hoursOfWork96hr: 0,
+        anyPeriodRest24hr: 24,
+        anyPeriodRest7day: 168,
+        anyPeriodWork24hr: 0,
+        anyPeriodWork7day: 0,
       });
     }
     
@@ -282,6 +291,80 @@ export const RHRecordingForm = ({
       hoursOfWork7day,
       hoursOfRest96hr,
       hoursOfWork96hr,
+    };
+  };
+
+  // Helper: Calculate "any period" 24-hour window metrics (rolling window starting at each half-hour)
+  const calculateAnyPeriod24hr = (records: DailyRecord[], dayIndex: number) => {
+    // Build a continuous array of all cells from previous day + current day
+    // This gives us 96 cells to work with (48 from previous day + 48 from current day)
+    const allCells: string[] = [];
+    
+    // Add previous day's cells (or assume rest if no previous day)
+    if (dayIndex > 0) {
+      allCells.push(...records[dayIndex - 1].hours);
+    } else {
+      // Before the first recorded day, assume all rest
+      allCells.push(...Array(48).fill(''));
+    }
+    
+    // Add current day's cells
+    allCells.push(...records[dayIndex].hours);
+    
+    // Check all 48 possible 24-hour windows (each starting at a different half-hour)
+    let minRest = 24;  // Minimum rest hours found
+    let maxWork = 0;   // Maximum work hours found
+    
+    for (let startCell = 0; startCell < 48; startCell++) {
+      // Window is 48 cells (24 hours) starting from startCell
+      const windowCells = allCells.slice(startCell, startCell + 48);
+      
+      // Count rest cells in this window
+      const restCells = windowCells.filter(c => c === '').length;
+      const restHours = restCells / 2; // Each cell = 0.5 hours
+      const workHours = 24 - restHours;
+      
+      minRest = Math.min(minRest, restHours);
+      maxWork = Math.max(maxWork, workHours);
+    }
+    
+    return {
+      anyPeriodRest24hr: minRest,
+      anyPeriodWork24hr: maxWork,
+    };
+  };
+
+  // Helper: Calculate "any period" 7-day window metrics
+  const calculateAnyPeriod7day = (records: DailyRecord[], dayIndex: number) => {
+    // We need to check all possible 7-day windows ending at or before the current day
+    // For simplicity, we'll check windows ending at the current day starting from different days
+    
+    let minRest = 168;  // Minimum rest hours in any 7-day period
+    let maxWork = 0;    // Maximum work hours in any 7-day period
+    
+    // Check windows of different starting points (up to 7 days back)
+    for (let windowStart = Math.max(0, dayIndex - 6); windowStart <= dayIndex; windowStart++) {
+      const windowEnd = Math.min(windowStart + 6, dayIndex);
+      const windowDays = windowEnd - windowStart + 1;
+      
+      let restHours = 0;
+      for (let i = windowStart; i <= windowEnd; i++) {
+        restHours += calculateHoursOfRest24hr(records[i].hours);
+      }
+      
+      // If window is less than 7 days (early in the month), assume rest for missing days
+      const missingDays = 7 - windowDays;
+      restHours += missingDays * 24;
+      
+      const workHours = (windowDays * 24) - restHours + (missingDays * 0); // Missing days count as 0 work
+      
+      minRest = Math.min(minRest, restHours);
+      maxWork = Math.max(maxWork, workHours);
+    }
+    
+    return {
+      anyPeriodRest7day: minRest,
+      anyPeriodWork7day: maxWork,
     };
   };
 
