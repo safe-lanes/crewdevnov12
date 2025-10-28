@@ -1,22 +1,28 @@
-import { Route, Switch, useLocation } from 'wouter';
+import { useLocation } from 'wouter';
+import { useState, useEffect } from 'react';
 import MainLayout from '@/components/main/MainLayout';
 import RestHoursSideBar from './RestHoursSideBar';
 import { RestHoursDashboard } from './RestHoursDashboard';
 import { RestHoursRecord } from './RestHoursRecord';
 import { RestHoursPlan } from './RestHoursPlan';
-import { RestHoursVesselOverview } from './RestHoursVesselOverview';
 
 export const RestHoursModule = (): JSX.Element => {
   const [location, setLocation] = useLocation();
   
   // Determine selected page based on route
-  const selectedRestHoursPage = location.includes('/rest-hours/dashboard') 
-    ? 'dashboard' 
-    : location.includes('/rest-hours/plan') 
-    ? 'plan' 
-    : location.includes('/rest-hours/record') 
-    ? 'record'
-    : 'dashboard';
+  const getPageFromLocation = () => {
+    if (location.includes('/rest-hours/dashboard')) return 'dashboard';
+    if (location.includes('/rest-hours/record')) return 'record';
+    if (location.includes('/rest-hours/plan')) return 'plan';
+    return 'dashboard';
+  };
+  
+  const [selectedRestHoursPage, setSelectedRestHoursPageState] = useState(getPageFromLocation());
+  
+  // Update selected page when location changes
+  useEffect(() => {
+    setSelectedRestHoursPageState(getPageFromLocation());
+  }, [location]);
   
   const allowedPages = ["dashboard", "record", "plan"];
 
@@ -35,6 +41,19 @@ export const RestHoursModule = (): JSX.Element => {
     }
   };
 
+  const renderContent = () => {
+    switch (selectedRestHoursPage) {
+      case 'dashboard':
+        return <RestHoursDashboard />;
+      case 'record':
+        return <RestHoursRecord />;
+      case 'plan':
+        return <RestHoursPlan />;
+      default:
+        return <RestHoursDashboard />;
+    }
+  };
+
   return (
     <>
       <RestHoursSideBar 
@@ -43,13 +62,7 @@ export const RestHoursModule = (): JSX.Element => {
         allowedPages={allowedPages}
       />
       <MainLayout>
-        <Switch>
-          <Route path="/rest-hours/dashboard" component={RestHoursDashboard} />
-          <Route path="/rest-hours/record" component={RestHoursRecord} />
-          <Route path="/rest-hours/plan" component={RestHoursPlan} />
-          <Route path="/rest-hours/vessel/:vesselId/:month" component={RestHoursVesselOverview} />
-          <Route path="/rest-hours" component={RestHoursDashboard} />
-        </Switch>
+        {renderContent()}
       </MainLayout>
     </>
   );
