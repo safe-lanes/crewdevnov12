@@ -7048,7 +7048,7 @@
       1,
       {
         "id": 1,
-        "vesselId": "VSL-AP-001",
+        "vesselId": "VSL-001",
         "vesselName": "MV Atlantic Pioneer",
         "month": "Oct-2025",
         "monthValue": "2025-10",
@@ -7070,7 +7070,7 @@
       2,
       {
         "id": 2,
-        "vesselId": "VSL-OE-002",
+        "vesselId": "VSL-002",
         "vesselName": "MV Ocean Explorer",
         "month": "Oct-2025",
         "monthValue": "2025-10",
@@ -7092,7 +7092,7 @@
       3,
       {
         "id": 3,
-        "vesselId": "VSL-NS-003",
+        "vesselId": "VSL-003",
         "vesselName": "MT Nordic Star",
         "month": "Oct-2025",
         "monthValue": "2025-10",
@@ -7114,7 +7114,7 @@
       4,
       {
         "id": 4,
-        "vesselId": "VSL-PV-004",
+        "vesselId": "VSL-004",
         "vesselName": "MV Pacific Voyager",
         "month": "Oct-2025",
         "monthValue": "2025-10",
@@ -7136,7 +7136,7 @@
       5,
       {
         "id": 5,
-        "vesselId": "VSL-LG-005",
+        "vesselId": "VSL-005",
         "vesselName": "MT Liberty Gas",
         "month": "Oct-2025",
         "monthValue": "2025-10",
@@ -7158,7 +7158,7 @@
       6,
       {
         "id": 6,
-        "vesselId": "VSL-GT-006",
+        "vesselId": "VSL-006",
         "vesselName": "MV Global Trader",
         "month": "Oct-2025",
         "monthValue": "2025-10",
@@ -7180,7 +7180,7 @@
       7,
       {
         "id": 7,
-        "vesselId": "VSL-AP-001",
+        "vesselId": "VSL-001",
         "vesselName": "MV Atlantic Pioneer",
         "month": "Sep-2025",
         "monthValue": "2025-09",
@@ -7202,7 +7202,7 @@
       8,
       {
         "id": 8,
-        "vesselId": "VSL-OE-002",
+        "vesselId": "VSL-002",
         "vesselName": "MV Ocean Explorer",
         "month": "Sep-2025",
         "monthValue": "2025-09",
@@ -7224,7 +7224,7 @@
       9,
       {
         "id": 9,
-        "vesselId": "VSL-NS-003",
+        "vesselId": "VSL-003",
         "vesselName": "MT Nordic Star",
         "month": "Sep-2025",
         "monthValue": "2025-09",
@@ -7246,7 +7246,7 @@
       10,
       {
         "id": 10,
-        "vesselId": "VSL-PV-004",
+        "vesselId": "VSL-004",
         "vesselName": "MV Pacific Voyager",
         "month": "Sep-2025",
         "monthValue": "2025-09",
@@ -7268,7 +7268,7 @@
       11,
       {
         "id": 11,
-        "vesselId": "VSL-LG-005",
+        "vesselId": "VSL-005",
         "vesselName": "MT Liberty Gas",
         "month": "Sep-2025",
         "monthValue": "2025-09",
@@ -7290,7 +7290,7 @@
       12,
       {
         "id": 12,
-        "vesselId": "VSL-GT-006",
+        "vesselId": "VSL-006",
         "vesselName": "MV Global Trader",
         "month": "Sep-2025",
         "monthValue": "2025-09",
@@ -7430,7 +7430,7 @@
       1,
       {
         "id": 1,
-        "vesselId": "VSL-AP-001",
+        "vesselId": "VSL-001",
         "vesselName": "MV Atlantic Pioneer",
         "crewMemberId": "CM-001",
         "rank": "Master",
@@ -7452,7 +7452,7 @@
       2,
       {
         "id": 2,
-        "vesselId": "VSL-AP-001",
+        "vesselId": "VSL-001",
         "vesselName": "MV Atlantic Pioneer",
         "crewMemberId": "CM-002",
         "rank": "Chief Officer",
@@ -7474,7 +7474,7 @@
       3,
       {
         "id": 3,
-        "vesselId": "VSL-AP-001",
+        "vesselId": "VSL-001",
         "vesselName": "MV Atlantic Pioneer",
         "crewMemberId": "CM-003",
         "rank": "Chief Engineer",
@@ -7496,7 +7496,7 @@
       4,
       {
         "id": 4,
-        "vesselId": "VSL-AP-001",
+        "vesselId": "VSL-001",
         "vesselName": "MV Atlantic Pioneer",
         "crewMemberId": "CM-004",
         "rank": "2nd Officer",
@@ -7518,7 +7518,7 @@
       5,
       {
         "id": 5,
-        "vesselId": "VSL-AP-001",
+        "vesselId": "VSL-001",
         "vesselName": "MV Atlantic Pioneer",
         "crewMemberId": "CM-005",
         "rank": "3rd Officer",
@@ -7540,7 +7540,7 @@
       6,
       {
         "id": 6,
-        "vesselId": "VSL-AP-001",
+        "vesselId": "VSL-001",
         "vesselName": "MV Atlantic Pioneer",
         "crewMemberId": "CM-006",
         "rank": "2nd Engineer",
@@ -7562,7 +7562,7 @@
       7,
       {
         "id": 7,
-        "vesselId": "VSL-AP-001",
+        "vesselId": "VSL-001",
         "vesselName": "MV Atlantic Pioneer",
         "crewMemberId": "CM-007",
         "rank": "3rd Engineer",
@@ -7584,7 +7584,7 @@
       8,
       {
         "id": 8,
-        "vesselId": "VSL-AP-001",
+        "vesselId": "VSL-001",
         "vesselName": "MV Atlantic Pioneer",
         "crewMemberId": "CM-008",
         "rank": "Oiler",
@@ -7606,7 +7606,7 @@
       9,
       {
         "id": 9,
-        "vesselId": "VSL-AP-001",
+        "vesselId": "VSL-001",
         "vesselName": "MV Atlantic Pioneer",
         "crewMemberId": "CM-009",
         "rank": "Pumpman",
@@ -7628,7 +7628,7 @@
       10,
       {
         "id": 10,
-        "vesselId": "VSL-AP-001",
+        "vesselId": "VSL-001",
         "vesselName": "MV Atlantic Pioneer",
         "crewMemberId": "CM-010",
         "rank": "Chief Cook",
@@ -7650,7 +7650,7 @@
       11,
       {
         "id": 11,
-        "vesselId": "VSL-NS-003",
+        "vesselId": "VSL-003",
         "vesselName": "MT Nordic Star",
         "crewMemberId": "CM-011",
         "rank": "Master",
@@ -7672,7 +7672,7 @@
       12,
       {
         "id": 12,
-        "vesselId": "VSL-NS-003",
+        "vesselId": "VSL-003",
         "vesselName": "MT Nordic Star",
         "crewMemberId": "CM-012",
         "rank": "Chief Officer",
@@ -7694,7 +7694,7 @@
       13,
       {
         "id": 13,
-        "vesselId": "VSL-NS-003",
+        "vesselId": "VSL-003",
         "vesselName": "MT Nordic Star",
         "crewMemberId": "CM-013",
         "rank": "Chief Engineer",
@@ -7716,7 +7716,7 @@
       14,
       {
         "id": 14,
-        "vesselId": "VSL-NS-003",
+        "vesselId": "VSL-003",
         "vesselName": "MT Nordic Star",
         "crewMemberId": "CM-014",
         "rank": "2nd Officer",
@@ -7738,7 +7738,7 @@
       15,
       {
         "id": 15,
-        "vesselId": "VSL-NS-003",
+        "vesselId": "VSL-003",
         "vesselName": "MT Nordic Star",
         "crewMemberId": "CM-015",
         "rank": "3rd Officer",
@@ -7760,7 +7760,7 @@
       16,
       {
         "id": 16,
-        "vesselId": "VSL-NS-003",
+        "vesselId": "VSL-003",
         "vesselName": "MT Nordic Star",
         "crewMemberId": "CM-016",
         "rank": "2nd Engineer",
@@ -7782,7 +7782,7 @@
       17,
       {
         "id": 17,
-        "vesselId": "VSL-NS-003",
+        "vesselId": "VSL-003",
         "vesselName": "MT Nordic Star",
         "crewMemberId": "CM-017",
         "rank": "3rd Engineer",
@@ -7804,7 +7804,7 @@
       18,
       {
         "id": 18,
-        "vesselId": "VSL-NS-003",
+        "vesselId": "VSL-003",
         "vesselName": "MT Nordic Star",
         "crewMemberId": "CM-018",
         "rank": "Bosun",
@@ -7826,7 +7826,7 @@
       19,
       {
         "id": 19,
-        "vesselId": "VSL-NS-003",
+        "vesselId": "VSL-003",
         "vesselName": "MT Nordic Star",
         "crewMemberId": "CM-019",
         "rank": "Chief Cook",
@@ -7848,7 +7848,7 @@
       20,
       {
         "id": 20,
-        "vesselId": "VSL-NS-003",
+        "vesselId": "VSL-003",
         "vesselName": "MT Nordic Star",
         "crewMemberId": "CM-020",
         "rank": "Fitter",
@@ -7870,7 +7870,7 @@
       21,
       {
         "id": 21,
-        "vesselId": "VSL-NS-003",
+        "vesselId": "VSL-003",
         "vesselName": "MT Nordic Star",
         "crewMemberId": "CM-021",
         "rank": "Ordinary Seaman",
@@ -7892,7 +7892,7 @@
       22,
       {
         "id": 22,
-        "vesselId": "VSL-NS-003",
+        "vesselId": "VSL-003",
         "vesselName": "MT Nordic Star",
         "crewMemberId": "CM-022",
         "rank": "Pumpman",
@@ -7914,7 +7914,7 @@
       23,
       {
         "id": 23,
-        "vesselId": "VSL-LG-005",
+        "vesselId": "VSL-005",
         "vesselName": "MT Liberty Gas",
         "crewMemberId": "CM-023",
         "rank": "Master",
@@ -7936,7 +7936,7 @@
       24,
       {
         "id": 24,
-        "vesselId": "VSL-LG-005",
+        "vesselId": "VSL-005",
         "vesselName": "MT Liberty Gas",
         "crewMemberId": "CM-024",
         "rank": "Chief Officer",
@@ -7958,7 +7958,7 @@
       25,
       {
         "id": 25,
-        "vesselId": "VSL-LG-005",
+        "vesselId": "VSL-005",
         "vesselName": "MT Liberty Gas",
         "crewMemberId": "CM-025",
         "rank": "Chief Engineer",
@@ -7980,7 +7980,7 @@
       26,
       {
         "id": 26,
-        "vesselId": "VSL-LG-005",
+        "vesselId": "VSL-005",
         "vesselName": "MT Liberty Gas",
         "crewMemberId": "CM-026",
         "rank": "2nd Officer",
@@ -8002,7 +8002,7 @@
       27,
       {
         "id": 27,
-        "vesselId": "VSL-LG-005",
+        "vesselId": "VSL-005",
         "vesselName": "MT Liberty Gas",
         "crewMemberId": "CM-027",
         "rank": "3rd Officer",
@@ -8024,7 +8024,7 @@
       28,
       {
         "id": 28,
-        "vesselId": "VSL-LG-005",
+        "vesselId": "VSL-005",
         "vesselName": "MT Liberty Gas",
         "crewMemberId": "CM-028",
         "rank": "2nd Engineer",
@@ -8046,7 +8046,7 @@
       29,
       {
         "id": 29,
-        "vesselId": "VSL-LG-005",
+        "vesselId": "VSL-005",
         "vesselName": "MT Liberty Gas",
         "crewMemberId": "CM-029",
         "rank": "3rd Engineer",
@@ -8068,7 +8068,7 @@
       30,
       {
         "id": 30,
-        "vesselId": "VSL-LG-005",
+        "vesselId": "VSL-005",
         "vesselName": "MT Liberty Gas",
         "crewMemberId": "CM-030",
         "rank": "Bosun",
@@ -8090,7 +8090,7 @@
       31,
       {
         "id": 31,
-        "vesselId": "VSL-LG-005",
+        "vesselId": "VSL-005",
         "vesselName": "MT Liberty Gas",
         "crewMemberId": "CM-031",
         "rank": "Able Seaman",

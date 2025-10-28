@@ -43,7 +43,7 @@ export const RestHoursVesselOverview = (): JSX.Element => {
 
   // Get vessel name for title
   const vesselName = useMemo(() => {
-    const vessel = vessels.find(v => v.id === selectedVessel);
+    const vessel = vessels.find(v => v.entryId === selectedVessel);
     return vessel?.name || 'Unknown Vessel';
   }, [vessels, selectedVessel]);
 
@@ -139,7 +139,7 @@ export const RestHoursVesselOverview = (): JSX.Element => {
             </SelectTrigger>
             <SelectContent>
               {vessels.map((vessel: any) => (
-                <SelectItem key={vessel.id} value={vessel.id}>
+                <SelectItem key={vessel.entryId} value={vessel.entryId}>
                   {vessel.name}
                 </SelectItem>
               ))}
