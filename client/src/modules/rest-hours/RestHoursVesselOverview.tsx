@@ -88,11 +88,26 @@ export const RestHoursVesselOverview = (): JSX.Element => {
     if (urlMonthValue) setPeriodValue(urlMonthValue);
   }, [urlVesselId, urlMonthValue]);
 
+  // Handle sidebar navigation
+  const setSelectedRestHoursPage = (page: string) => {
+    switch (page) {
+      case 'dashboard':
+        setLocation('/rest-hours/dashboard');
+        break;
+      case 'record':
+        setLocation('/rest-hours/record');
+        break;
+      case 'plan':
+        setLocation('/rest-hours/plan');
+        break;
+    }
+  };
+
   return (
     <>
       <RestHoursSideBar 
         selectedRestHoursPage="record"
-        setSelectedRestHoursPage={() => {}}
+        setSelectedRestHoursPage={setSelectedRestHoursPage}
         allowedPages={["dashboard", "record", "plan"]}
       />
       <MainLayout>
