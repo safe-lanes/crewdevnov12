@@ -225,6 +225,10 @@ export const RHRecordingForm = ({
         hoursOfWork7day: 0,
         hoursOfRest96hr: 96,
         hoursOfWork96hr: 0,
+        anyPeriodRest24hr: 24,
+        anyPeriodRest7day: 168,
+        anyPeriodWork24hr: 0,
+        anyPeriodWork7day: 0,
       });
     }
     
@@ -442,9 +446,14 @@ export const RHRecordingForm = ({
         // Recalculate rolling metrics for all affected days
         for (let i = dayIndex; i < newRecords.length && i < dayIndex + 7; i++) {
           const metrics = calculateRollingMetrics(newRecords, i);
+          const anyPeriod24hr = calculateAnyPeriod24hr(newRecords, i);
+          const anyPeriod7day = calculateAnyPeriod7day(newRecords, i);
+          
           newRecords[i] = {
             ...newRecords[i],
             ...metrics,
+            ...anyPeriod24hr,
+            ...anyPeriod7day,
           };
           
           // Detect violations
@@ -588,6 +597,18 @@ export const RHRecordingForm = ({
                 <th className="border border-gray-300 p-0.5 min-w-[80px]" style={{ padding: '2px' }}>
                   Violations
                 </th>
+                <th className="border border-gray-300 p-0.5 min-w-[70px] bg-blue-50" style={{ padding: '2px' }}>
+                  Hours of Rest in any 24 Hr Period
+                </th>
+                <th className="border border-gray-300 p-0.5 min-w-[60px] bg-blue-50" style={{ padding: '2px' }}>
+                  7 day
+                </th>
+                <th className="border border-gray-300 p-0.5 min-w-[60px] bg-blue-50" style={{ padding: '2px' }}>
+                  Hours of Work in 24 Hr Period
+                </th>
+                <th className="border border-gray-300 p-0.5 min-w-[60px] bg-blue-50" style={{ padding: '2px' }}>
+                  7 day Period
+                </th>
                 <th className="border border-gray-300 p-0.5 min-w-[150px]" style={{ padding: '2px' }}>
                   Comments
                 </th>
@@ -663,7 +684,7 @@ export const RHRecordingForm = ({
                     );
                   })}
                   
-                  {/* Hours of Rest */}
+                  {/* Hours of Rest (Calendar Day) */}
                   <td className="border border-gray-300 text-center" style={{ padding: '2px' }}>
                     {record.hoursOfRest24hr}
                   </td>
@@ -671,6 +692,54 @@ export const RHRecordingForm = ({
                   {/* Violations */}
                   <td className="border border-gray-300 text-center text-red-600 font-semibold" style={{ padding: '2px' }}>
                     {record.violations.length > 0 ? `[${record.violations.join(', ')}]` : ''}
+                  </td>
+                  
+                  {/* Any Period: Rest in 24hr */}
+                  <td 
+                    className="border border-gray-300 text-center bg-blue-50" 
+                    style={{ 
+                      padding: '2px',
+                      color: record.anyPeriodRest24hr < 10 ? 'red' : 'inherit',
+                      fontWeight: record.anyPeriodRest24hr < 10 ? 'bold' : 'normal'
+                    }}
+                  >
+                    {record.anyPeriodRest24hr.toFixed(1)}
+                  </td>
+                  
+                  {/* Any Period: Rest in 7 days */}
+                  <td 
+                    className="border border-gray-300 text-center bg-blue-50" 
+                    style={{ 
+                      padding: '2px',
+                      color: record.anyPeriodRest7day < 77 ? 'red' : 'inherit',
+                      fontWeight: record.anyPeriodRest7day < 77 ? 'bold' : 'normal'
+                    }}
+                  >
+                    {record.anyPeriodRest7day.toFixed(1)}
+                  </td>
+                  
+                  {/* Any Period: Work in 24hr */}
+                  <td 
+                    className="border border-gray-300 text-center bg-blue-50" 
+                    style={{ 
+                      padding: '2px',
+                      color: record.anyPeriodWork24hr > 14 ? 'red' : 'inherit',
+                      fontWeight: record.anyPeriodWork24hr > 14 ? 'bold' : 'normal'
+                    }}
+                  >
+                    {record.anyPeriodWork24hr.toFixed(1)}
+                  </td>
+                  
+                  {/* Any Period: Work in 7 days */}
+                  <td 
+                    className="border border-gray-300 text-center bg-blue-50" 
+                    style={{ 
+                      padding: '2px',
+                      color: record.anyPeriodWork7day > 72 ? 'red' : 'inherit',
+                      fontWeight: record.anyPeriodWork7day > 72 ? 'bold' : 'normal'
+                    }}
+                  >
+                    {record.anyPeriodWork7day.toFixed(1)}
                   </td>
                   
                   {/* Comments */}
