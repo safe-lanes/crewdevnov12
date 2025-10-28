@@ -601,6 +601,9 @@ export const RHRecordingForm = ({
                 <th className="border border-gray-300 p-0.5 min-w-[80px]" style={{ padding: '2px' }}>
                   Violations
                 </th>
+                <th className="border border-gray-300 p-0.5 min-w-[150px]" style={{ padding: '2px' }}>
+                  Comments
+                </th>
                 <th className="border border-gray-300 p-0.5 min-w-[70px] bg-blue-50" style={{ padding: '2px' }}>
                   Hours of Rest in any 24 Hr Period
                 </th>
@@ -612,9 +615,6 @@ export const RHRecordingForm = ({
                 </th>
                 <th className="border border-gray-300 p-0.5 min-w-[60px] bg-blue-50" style={{ padding: '2px' }}>
                   7 day Period
-                </th>
-                <th className="border border-gray-300 p-0.5 min-w-[150px]" style={{ padding: '2px' }}>
-                  Comments
                 </th>
               </tr>
             </thead>
@@ -698,6 +698,17 @@ export const RHRecordingForm = ({
                     {record.violations.length > 0 ? `[${record.violations.join(', ')}]` : ''}
                   </td>
                   
+                  {/* Comments */}
+                  <td className="border border-gray-300" style={{ padding: '2px' }}>
+                    <input
+                      type="text"
+                      value={record.comments}
+                      onChange={(e) => handleCommentsChange(dayIndex, e.target.value)}
+                      className="w-full outline-none bg-transparent px-1"
+                      data-testid={`input-comments-${dayIndex}`}
+                    />
+                  </td>
+                  
                   {/* Any Period: Rest in 24hr */}
                   <td 
                     className="border border-gray-300 text-center bg-blue-50" 
@@ -744,17 +755,6 @@ export const RHRecordingForm = ({
                     }}
                   >
                     {record.anyPeriodWork7day.toFixed(1)}
-                  </td>
-                  
-                  {/* Comments */}
-                  <td className="border border-gray-300" style={{ padding: '2px' }}>
-                    <input
-                      type="text"
-                      value={record.comments}
-                      onChange={(e) => handleCommentsChange(dayIndex, e.target.value)}
-                      className="w-full outline-none bg-transparent px-1"
-                      data-testid={`input-comments-${dayIndex}`}
-                    />
                   </td>
                 </tr>
               ))}
