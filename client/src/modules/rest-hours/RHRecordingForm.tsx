@@ -315,11 +315,12 @@ export const RHRecordingForm = ({
     // Add current day's cells
     allCells.push(...records[dayIndex].hours);
     
-    // Check all 48 possible 24-hour windows (each starting at a different half-hour)
+    // Check all 49 possible 24-hour windows (including the exact current-day window 00:00-24:00)
+    // Windows start from cell 0 to cell 48 (inclusive)
     let minRest = 24;  // Minimum rest hours found
     let maxWork = 0;   // Maximum work hours found
     
-    for (let startCell = 0; startCell < 48; startCell++) {
+    for (let startCell = 0; startCell <= 48; startCell++) {
       // Window is 48 cells (24 hours) starting from startCell
       const windowCells = allCells.slice(startCell, startCell + 48);
       
@@ -360,7 +361,9 @@ export const RHRecordingForm = ({
       const missingDays = 7 - windowDays;
       restHours += missingDays * 24;
       
-      const workHours = (windowDays * 24) - restHours + (missingDays * 0); // Missing days count as 0 work
+      // Work hours = Total 7-day hours (168) minus rest hours
+      // This ensures correct calculation even when padding with rest for missing days
+      const workHours = 168 - restHours;
       
       minRest = Math.min(minRest, restHours);
       maxWork = Math.max(maxWork, workHours);
