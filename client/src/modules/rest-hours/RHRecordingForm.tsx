@@ -225,8 +225,9 @@ export const RHRecordingForm = ({
   };
 
   // Helper: Calculate hours of rest in 24hr period
+  // Note: Each cell represents 30 minutes (0.5 hours), so divide count by 2
   const calculateHoursOfRest24hr = (hours: string[]): number => {
-    return hours.filter(h => h === '').length;
+    return hours.filter(h => h === '').length / 2;
   };
 
   // Helper: Calculate hours of work in 24hr period
