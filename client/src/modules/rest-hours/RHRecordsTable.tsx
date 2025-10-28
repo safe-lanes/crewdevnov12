@@ -1,5 +1,6 @@
 import { useRef, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 import { AgGridReact } from 'ag-grid-react';
 import { ColDef, ICellRendererParams } from 'ag-grid-community';
 import { Edit } from 'lucide-react';
@@ -112,28 +113,10 @@ const OfficeReviewRenderer = (params: ICellRendererParams) => {
   );
 };
 
-const ActionsRenderer = (params: ICellRendererParams) => {
-  const handleEdit = () => {
-    console.log('Edit clicked for record:', params.data);
-  };
-
-  return (
-    <div className="flex items-center justify-center gap-2 h-full">
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-7 w-7 p-0 hover:bg-gray-100"
-        onClick={handleEdit}
-        data-testid={`button-edit-${params.data?.id}`}
-      >
-        <Edit className="h-4 w-4 text-gray-600" />
-      </Button>
-    </div>
-  );
-};
 
 export function RHRecordsTable({ selectedVessels, selectedMonth }: RHRecordsTableProps) {
   const gridRef = useRef<AgGridReact>(null);
+  const [, setLocation] = useLocation();
 
   const { data: records = [], isLoading } = useQuery<RestHoursVesselRecord[]>({
     queryKey: ['/api/rest-hours-vessel-records'],
@@ -153,6 +136,35 @@ export function RHRecordsTable({ selectedVessels, selectedMonth }: RHRecordsTabl
 
     return filtered;
   }, [records, selectedVessels, selectedMonth]);
+
+  // Handle navigation to vessel overview
+  const handleEditRecord = (record: RestHoursVesselRecord) => {
+    setLocation(`/rest-hours/vessel/${record.vesselId}/${record.monthValue}`);
+  };
+
+  // Actions renderer that uses callback instead of hooks
+  const ActionsRenderer = (params: ICellRendererParams) => {
+    const handleClick = () => {
+      const record = params.data as RestHoursVesselRecord;
+      if (record) {
+        handleEditRecord(record);
+      }
+    };
+
+    return (
+      <div className="flex items-center justify-center gap-2 h-full">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0 hover:bg-gray-100"
+          onClick={handleClick}
+          data-testid={`button-edit-${params.data?.id}`}
+        >
+          <Edit className="h-4 w-4 text-gray-600" />
+        </Button>
+      </div>
+    );
+  };
 
   const columnDefs: ColDef[] = useMemo(() => [
     {

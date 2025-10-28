@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError } from "./storage";
-import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema } from "@shared/schema";
+import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema } from "@shared/schema";
 import { z } from "zod";
 import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew } from "@shared/crew-mapping";
 import { 
@@ -1523,6 +1523,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to delete rest hours vessel record:", error);
       res.status(500).json({ error: "Failed to delete rest hours vessel record" });
+    }
+  });
+
+  // Rest Hours Crew Records API routes
+  app.get("/api/rest-hours-crew-records", async (req, res) => {
+    try {
+      const { vesselIds, monthValue, ranks, search } = req.query;
+      
+      const filters: { vesselIds?: string[]; monthValue?: string; ranks?: string[]; search?: string } = {};
+      if (vesselIds) {
+        filters.vesselIds = typeof vesselIds === 'string' ? [vesselIds] : vesselIds as string[];
+      }
+      if (monthValue) {
+        filters.monthValue = monthValue as string;
+      }
+      if (ranks) {
+        filters.ranks = typeof ranks === 'string' ? [ranks] : ranks as string[];
+      }
+      if (search) {
+        filters.search = search as string;
+      }
+      
+      const records = Object.keys(filters).length > 0
+        ? await storage.getRestHoursCrewRecordsByFilters(filters)
+        : await storage.getRestHoursCrewRecords();
+      res.json(records);
+    } catch (error) {
+      console.error("Failed to fetch rest hours crew records:", error);
+      res.status(500).json({ error: "Failed to fetch rest hours crew records" });
+    }
+  });
+
+  app.get("/api/rest-hours-crew-records/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid record ID - must be a number" });
+      }
+      const record = await storage.getRestHoursCrewRecord(id);
+      if (!record) {
+        return res.status(404).json({ error: "Rest hours crew record not found" });
+      }
+      res.json(record);
+    } catch (error) {
+      console.error("Failed to fetch rest hours crew record:", error);
+      res.status(500).json({ error: "Failed to fetch rest hours crew record" });
+    }
+  });
+
+  app.post("/api/rest-hours-crew-records", async (req, res) => {
+    try {
+      const result = insertRestHoursCrewRecordSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid rest hours crew record data", details: result.error.issues });
+      }
+      const record = await storage.createRestHoursCrewRecord(result.data);
+      res.status(201).json(record);
+    } catch (error) {
+      console.error("Failed to create rest hours crew record:", error);
+      res.status(500).json({ error: "Failed to create rest hours crew record" });
+    }
+  });
+
+  app.put("/api/rest-hours-crew-records/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid record ID - must be a number" });
+      }
+      const result = insertRestHoursCrewRecordSchema.partial().safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid rest hours crew record data", details: result.error.issues });
+      }
+      const record = await storage.updateRestHoursCrewRecord(id, result.data);
+      if (!record) {
+        return res.status(404).json({ error: "Rest hours crew record not found" });
+      }
+      res.json(record);
+    } catch (error) {
+      console.error("Failed to update rest hours crew record:", error);
+      res.status(500).json({ error: "Failed to update rest hours crew record" });
+    }
+  });
+
+  app.delete("/api/rest-hours-crew-records/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid record ID - must be a number" });
+      }
+      const deleted = await storage.deleteRestHoursCrewRecord(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Rest hours crew record not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete rest hours crew record:", error);
+      res.status(500).json({ error: "Failed to delete rest hours crew record" });
     }
   });
 
