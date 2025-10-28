@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { RHCrewRecordsTable } from './RHCrewRecordsTable';
+import RestHoursSideBar from './RestHoursSideBar';
+import MainLayout from '@/components/main/MainLayout';
 
 export const RestHoursVesselOverview = (): JSX.Element => {
   const params = useParams();
@@ -87,8 +89,15 @@ export const RestHoursVesselOverview = (): JSX.Element => {
   }, [urlVesselId, urlMonthValue]);
 
   return (
-    <div className="flex flex-col h-full">
-      <SectionTitleComponents title={`RH Records - ${vesselName} - ${monthDisplay}`}>
+    <>
+      <RestHoursSideBar 
+        selectedRestHoursPage="record"
+        setSelectedRestHoursPage={() => {}}
+        allowedPages={["dashboard", "record", "plan"]}
+      />
+      <MainLayout>
+        <div className="flex flex-col h-full">
+          <SectionTitleComponents title={`RH Records - ${vesselName} - ${monthDisplay}`}>
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -204,6 +213,8 @@ export const RestHoursVesselOverview = (): JSX.Element => {
           searchText={searchText}
         />
       </div>
-    </div>
+        </div>
+      </MainLayout>
+    </>
   );
 };
