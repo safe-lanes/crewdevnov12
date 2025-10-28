@@ -2,7 +2,7 @@ import { useRef, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AgGridReact } from 'ag-grid-react';
 import { ColDef, ICellRendererParams } from 'ag-grid-community';
-import { Pencil } from 'lucide-react';
+import { Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { RestHoursVesselRecord } from '@shared/schema';
 
@@ -119,11 +119,11 @@ const ActionsRenderer = (params: ICellRendererParams) => {
       <Button
         variant="ghost"
         size="sm"
-        className="h-7 w-7 p-0 hover:bg-blue-100"
+        className="h-7 w-7 p-0 hover:bg-gray-100"
         onClick={handleEdit}
         data-testid={`button-edit-${params.data?.id}`}
       >
-        <Pencil className="h-4 w-4 text-blue-600" />
+        <Edit className="h-4 w-4 text-gray-600" />
       </Button>
     </div>
   );
