@@ -1653,8 +1653,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const rank = crew.presentRank || crew.rank || 'Unknown';
           const fullName = `${crew.firstName || ''} ${crew.familyName || crew.lastName || ''}`.trim();
           
-          // Generate deterministic variation based on crew ID for consistent results
-          const hash = hashCode(crew.id);
+          // Generate a unique identifier for the crew member (use id or create from name+rank+vessel)
+          const crewIdentifier = crew.id || `${fullName}-${rank}-${vesselId}`;
+          
+          // Generate deterministic variation based on crew identifier for consistent results
+          const hash = hashCode(crewIdentifier);
           const recordingStatusPercent = [50, 75, 85, 95, 100][hash % 5];
           const hasViolations = hash % 4 === 0;
           const hasNCs = hash % 5 === 0;
