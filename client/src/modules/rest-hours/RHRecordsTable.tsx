@@ -180,19 +180,19 @@ export function RHRecordsTable({ selectedVessels, selectedMonth }: RHRecordsTabl
     {
       headerName: 'Activity conflicting with actual recording',
       field: 'activityConflicting',
-      width: 190,
+      width: 140,
       cellRenderer: YesNoRenderer,
       headerTooltip: 'Indicates conflicts between recorded hours and variable tasks'
     },
     {
       headerName: 'Total violations/ No. of crew involved',
-      width: 230,
+      width: 160,
       cellRenderer: ViolationsRenderer,
       valueGetter: (params) => params.data?.totalViolations,
     },
     {
       headerName: 'Total NCs/ No. of crew involved',
-      width: 230,
+      width: 140,
       cellRenderer: NCsRenderer,
       valueGetter: (params) => params.data?.totalNCs,
     },
@@ -228,6 +228,7 @@ export function RHRecordsTable({ selectedVessels, selectedMonth }: RHRecordsTabl
     sortable: true,
     filter: true,
     resizable: true,
+    wrapHeaderText: true,
   }), []);
 
   if (isLoading) {
@@ -251,7 +252,7 @@ export function RHRecordsTable({ selectedVessels, selectedMonth }: RHRecordsTabl
         paginationPageSize={20}
         domLayout="normal"
         rowHeight={56}
-        headerHeight={44}
+        autoHeaderHeight={true}
       />
     </div>
   );
