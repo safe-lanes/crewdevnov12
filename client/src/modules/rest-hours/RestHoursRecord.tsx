@@ -224,7 +224,7 @@ export const RestHoursRecord = (): JSX.Element => {
       )}
 
       {/* RH Records Table */}
-      <div className="px-4 pb-4">
+      <div className="pr-4 pb-4">
         <RHRecordsTable 
           selectedVessels={filterType === 'vessel' ? selectedVessels : []}
           selectedMonth={periodValue}
