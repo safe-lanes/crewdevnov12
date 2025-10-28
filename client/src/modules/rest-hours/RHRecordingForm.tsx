@@ -146,7 +146,22 @@ export const RHRecordingForm = ({
       
       try {
         const parsedRecords = JSON.parse(existingRecord.dailyRecords);
-        setDailyRecords(parsedRecords);
+        // Ensure all records have the any-period fields (for backward compatibility)
+        // and recalculate them to ensure accuracy
+        const updatedRecords = parsedRecords.map((record: DailyRecord, index: number) => {
+          // Calculate any-period metrics for this record
+          const anyPeriod24 = calculateAnyPeriod24hr(parsedRecords, index);
+          const anyPeriod7day = calculateAnyPeriod7day(parsedRecords, index);
+          
+          return {
+            ...record,
+            anyPeriodRest24hr: anyPeriod24.anyPeriodRest24hr,
+            anyPeriodRest7day: anyPeriod7day.anyPeriodRest7day,
+            anyPeriodWork24hr: anyPeriod24.anyPeriodWork24hr,
+            anyPeriodWork7day: anyPeriod7day.anyPeriodWork7day,
+          };
+        });
+        setDailyRecords(updatedRecords);
       } catch (error) {
         console.error('Failed to parse daily records:', error);
       }
