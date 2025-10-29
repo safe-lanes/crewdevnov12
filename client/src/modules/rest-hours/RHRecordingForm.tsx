@@ -456,9 +456,71 @@ export const RHRecordingForm = ({
     };
   };
 
+  // Helper: Check if any 24-hour window violates Code 3 (rest period distribution)
+  // Code 3: Rest periods must be no more than 2, and at least one must be ≥6 hours
+  const checkViolationCode3 = (records: DailyRecord[], dayIndex: number): boolean => {
+    // Build a continuous array of all cells from previous day + current day
+    const allCells: string[] = [];
+    
+    // Add previous day's cells (or assume rest if no previous day)
+    if (dayIndex > 0) {
+      allCells.push(...records[dayIndex - 1].hours);
+    } else {
+      allCells.push(...Array(48).fill(''));
+    }
+    
+    // Add current day's cells
+    allCells.push(...records[dayIndex].hours);
+    
+    // Check all 49 possible 24-hour windows
+    for (let startCell = 0; startCell <= 48; startCell++) {
+      const windowCells = allCells.slice(startCell, startCell + 48);
+      
+      // Identify continuous rest periods in this window
+      const restPeriods: number[] = []; // Each element is the length of a rest period in cells
+      let currentPeriodLength = 0;
+      
+      for (let i = 0; i < windowCells.length; i++) {
+        if (windowCells[i] === '') {
+          // Rest cell - extend current period
+          currentPeriodLength++;
+        } else {
+          // Work cell - end current period if it exists
+          if (currentPeriodLength > 0) {
+            restPeriods.push(currentPeriodLength);
+            currentPeriodLength = 0;
+          }
+        }
+      }
+      
+      // Don't forget the last period if window ends with rest
+      if (currentPeriodLength > 0) {
+        restPeriods.push(currentPeriodLength);
+      }
+      
+      // Check violation conditions
+      if (restPeriods.length > 2) {
+        // More than 2 rest periods - violation!
+        return true;
+      }
+      
+      if (restPeriods.length === 2) {
+        // Exactly 2 periods - check if at least one is ≥6 hours (12 cells)
+        const hasLongPeriod = restPeriods.some(period => period >= 12);
+        if (!hasLongPeriod) {
+          // Neither period is ≥6 hours - violation!
+          return true;
+        }
+      }
+    }
+    
+    // No violation found in any window
+    return false;
+  };
+
   // Helper: Detect violations
   // NOTE: Using "any period" values for regulatory compliance as per ILO/MLC requirements
-  const detectViolations = (record: DailyRecord, isOpaMode: boolean): number[] => {
+  const detectViolations = (record: DailyRecord, isOpaMode: boolean, records: DailyRecord[], dayIndex: number): number[] => {
     const violations: number[] = [];
     
     // Rule [1]: Minimum 10 hours rest in ANY 24hr period
@@ -469,6 +531,11 @@ export const RHRecordingForm = ({
     // Rule [2]: Minimum 77 hours rest in ANY 7-day period
     if (record.anyPeriodRest7day < 77) {
       violations.push(2);
+    }
+    
+    // Rule [3]: Rest periods must be no more than 2, and at least one must be ≥6 hours
+    if (checkViolationCode3(records, dayIndex)) {
+      violations.push(3);
     }
     
     // Rule [5]: Maximum 14 hours work in ANY 24hr period
@@ -542,7 +609,7 @@ export const RHRecordingForm = ({
           };
           
           // Detect violations
-          newRecords[i].violations = detectViolations(newRecords[i], opaMode);
+          newRecords[i].violations = detectViolations(newRecords[i], opaMode, newRecords, i);
         }
       }
       
