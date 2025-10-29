@@ -268,6 +268,11 @@ export function RHRecordsTable({ selectedVessels, selectedMonth }: RHRecordsTabl
         paginationPageSize={20}
         domLayout="normal"
         rowHeight={56}
+        onRowClicked={(event) => {
+          if (event.data) {
+            handleEditRecord(event.data);
+          }
+        }}
       />
     </div>
   );
