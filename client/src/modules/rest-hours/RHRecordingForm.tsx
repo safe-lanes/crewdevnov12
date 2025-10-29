@@ -780,18 +780,28 @@ export const RHRecordingForm = ({
       // Sort rest periods by duration (descending - largest first)
       const sortedPeriods = [...restPeriods].sort((a, b) => b - a);
       
-      // Take the two largest periods
-      const largest = sortedPeriods[0];
-      const secondLargest = sortedPeriods.length > 1 ? sortedPeriods[1] : 0;
-      
-      // Check if the two largest periods satisfy the requirements
-      const sumOfTopTwo = largest + secondLargest;
-      const hasLongPeriod = largest >= 12 || secondLargest >= 12;
-      
-      if (sumOfTopTwo < 20 || !hasLongPeriod) {
-        // Violation: Either the top 2 periods don't sum to ≥10 hours (20 cells)
-        // OR neither of the top 2 is ≥6 hours (12 cells)
-        return true;
+      if (restPeriods.length === 1) {
+        // Single rest period - it must be ≥10 hours (20 cells) to satisfy the requirement
+        // (since the sum of top 2 would be just this period + 0)
+        const singlePeriod = sortedPeriods[0];
+        if (singlePeriod < 20) {
+          // Single period is less than 10 hours - violation!
+          return true;
+        }
+      } else {
+        // Multiple rest periods - check the two largest
+        const largest = sortedPeriods[0];
+        const secondLargest = sortedPeriods[1];
+        
+        // Check if the two largest periods satisfy the requirements
+        const sumOfTopTwo = largest + secondLargest;
+        const hasLongPeriod = largest >= 12 || secondLargest >= 12;
+        
+        if (sumOfTopTwo < 20 || !hasLongPeriod) {
+          // Violation: Either the top 2 periods don't sum to ≥10 hours (20 cells)
+          // OR neither of the top 2 is ≥6 hours (12 cells)
+          return true;
+        }
       }
     }
     
