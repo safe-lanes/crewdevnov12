@@ -1040,49 +1040,67 @@ export const RHRecordingForm = ({
   // Helper: Determine if a cell should be highlighted based on hovered violation
   const shouldHighlightCell = (dayIndex: number, cellIndex: number): boolean => {
     if (!hoveredViolation) return false;
-    if (hoveredViolation.dayIndex !== dayIndex) return false;
     
     const record = dailyRecords[dayIndex];
-    if (!record.violationDiagnostics) return false;
+    if (!record) return false;
     
-    // Find the diagnostic for the hovered violation code
-    const diagnostic = record.violationDiagnostics.find(d => d.code === hoveredViolation.code);
-    if (!diagnostic) return false;
-    
-    // Parse the window start time from the diagnostic
-    // Format examples: "Oct 5, 18:30", "Various windows"
-    if (diagnostic.windowStart === 'Various windows') {
-      // For "Various windows", we'd need to recalculate which specific window had the violation
-      // For now, don't highlight these since we don't have a specific window
-      return false;
+    // Check if this is the row with the hovered violation
+    if (hoveredViolation.dayIndex === dayIndex) {
+      if (!record.violationDiagnostics) return false;
+      
+      const diagnostic = record.violationDiagnostics.find(d => d.code === hoveredViolation.code);
+      if (!diagnostic) return false;
+      
+      if (diagnostic.windowStart === 'Various windows') return false;
+      
+      const match = diagnostic.windowStart.match(/(\w+)\s+(\d+),\s+(\d+):(\d+)/);
+      if (!match) return false;
+      
+      const [, , windowStartDay, windowStartHour, windowStartMin] = match;
+      const startDay = parseInt(windowStartDay);
+      const startHour = parseInt(windowStartHour);
+      const startMin = parseInt(windowStartMin);
+      const startCellInDay = startHour * 2 + (startMin === 30 ? 1 : 0);
+      
+      const currentDay = record.day;
+      
+      if (startDay === currentDay) {
+        // Window starts on current day - highlight from start cell to end of day
+        return cellIndex >= startCellInDay;
+      } else {
+        // Window starts on previous day - highlight from beginning to end of 24hr window
+        return cellIndex <= startCellInDay;
+      }
     }
     
-    // Parse the window start to determine which cells to highlight
-    // Example: "Oct 5, 18:30" or "Sep 30, 23:30"
-    const match = diagnostic.windowStart.match(/(\w+)\s+(\d+),\s+(\d+):(\d+)/);
-    if (!match) return false;
-    
-    const [, , windowStartDay, windowStartHour, windowStartMin] = match;
-    const startDay = parseInt(windowStartDay);
-    const startHour = parseInt(windowStartHour);
-    const startMin = parseInt(windowStartMin);
-    
-    // Calculate start cell index (0-47 for half-hours in a day)
-    const startCellInDay = startHour * 2 + (startMin === 30 ? 1 : 0);
-    
-    // Check if this window starts on current day or previous day
-    const currentDay = record.day;
-    
-    if (startDay === currentDay) {
-      // Window starts on current day
-      // Highlight 48 cells starting from startCellInDay
-      // This includes cells from current day and potentially wraps to next day
-      return cellIndex >= startCellInDay;
-    } else {
-      // Window starts on previous day - highlight cells from beginning of current day
-      // up to and including the point where the 24-hour window ends
-      return cellIndex <= startCellInDay;
+    // Also check if this is the previous day of the hovered violation (for cross-day windows)
+    if (hoveredViolation.dayIndex - 1 === dayIndex) {
+      const hoveredRecord = dailyRecords[hoveredViolation.dayIndex];
+      if (!hoveredRecord?.violationDiagnostics) return false;
+      
+      const diagnostic = hoveredRecord.violationDiagnostics.find(d => d.code === hoveredViolation.code);
+      if (!diagnostic) return false;
+      
+      if (diagnostic.windowStart === 'Various windows') return false;
+      
+      const match = diagnostic.windowStart.match(/(\w+)\s+(\d+),\s+(\d+):(\d+)/);
+      if (!match) return false;
+      
+      const [, , windowStartDay, windowStartHour, windowStartMin] = match;
+      const startDay = parseInt(windowStartDay);
+      const startHour = parseInt(windowStartHour);
+      const startMin = parseInt(windowStartMin);
+      const startCellInDay = startHour * 2 + (startMin === 30 ? 1 : 0);
+      
+      const currentDay = record.day;
+      
+      // If the window starts on this previous day, highlight from start cell to end of day
+      if (startDay === currentDay) {
+        return cellIndex >= startCellInDay;
+      }
     }
+    
+    return false;
   };
 
   return (
