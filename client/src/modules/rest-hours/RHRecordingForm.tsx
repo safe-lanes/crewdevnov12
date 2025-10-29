@@ -1327,7 +1327,7 @@ export const RHRecordingForm = ({
                   Day
                 </th>
                 {Array.from({ length: 24 }, (_, i) => (
-                  <th key={i} rowSpan={2} colSpan={2} className="border border-gray-300 p-0.5 min-w-[40px]" style={{ padding: '2px' }}>
+                  <th key={i} rowSpan={2} colSpan={2} className="border border-gray-300 p-0.5 min-w-[40px] text-left" style={{ padding: '2px' }}>
                     {i.toString().padStart(2, '0')}
                   </th>
                 ))}
