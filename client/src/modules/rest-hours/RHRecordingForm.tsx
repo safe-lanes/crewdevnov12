@@ -785,10 +785,57 @@ export const RHRecordingForm = ({
                             handleHourCellEdit(dayIndex, hourIndex, value);
                           }}
                           onKeyDown={(e) => {
+                            // Handle Enter key
                             if (e.key === 'Enter') {
                               e.preventDefault();
                               e.currentTarget.blur();
+                              return;
                             }
+                            
+                            // Handle arrow key navigation
+                            if (['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                              e.preventDefault();
+                              
+                              let targetDay = dayIndex;
+                              let targetHour = hourIndex;
+                              
+                              if (e.key === 'ArrowRight') {
+                                targetHour++;
+                                if (targetHour >= 48) {
+                                  targetHour = 0;
+                                  targetDay++;
+                                }
+                              } else if (e.key === 'ArrowLeft') {
+                                targetHour--;
+                                if (targetHour < 0) {
+                                  targetHour = 47;
+                                  targetDay--;
+                                }
+                              } else if (e.key === 'ArrowDown') {
+                                targetDay++;
+                              } else if (e.key === 'ArrowUp') {
+                                targetDay--;
+                              }
+                              
+                              // Check if target is valid
+                              if (targetDay >= 0 && targetDay < dailyRecords.length) {
+                                const targetCell = document.querySelector(
+                                  `[data-testid="cell-hour-${targetDay}-${targetHour}"]`
+                                ) as HTMLElement;
+                                
+                                if (targetCell) {
+                                  targetCell.focus();
+                                  // Select all text in the cell for easy overwriting
+                                  const selection = window.getSelection();
+                                  const range = document.createRange();
+                                  range.selectNodeContents(targetCell);
+                                  selection?.removeAllRanges();
+                                  selection?.addRange(range);
+                                }
+                              }
+                              return;
+                            }
+                            
                             // Allow only w, d, a, backspace, delete
                             if (
                               e.key.length === 1 &&
