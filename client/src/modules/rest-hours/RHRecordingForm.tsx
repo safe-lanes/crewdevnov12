@@ -231,7 +231,7 @@ export const RHRecordingForm = ({
         // Recalculate violations for all records to ensure new rules are applied
         const recordsWithViolations = updatedRecords.map((record: DailyRecord, index: number) => ({
           ...record,
-          violations: detectViolations(record, existingRecord.opaMode || false, updatedRecords, index),
+          violations: detectViolations(record, updatedRecords, index),
         }));
         setDailyRecords(recordsWithViolations);
       } catch (error) {
@@ -245,7 +245,7 @@ export const RHRecordingForm = ({
   }, [existingRecord, isError, open]);
 
   // Save mutation
-  const saveMutation = useMutation<RestHoursDailyRecord, Error, any>({
+  const saveMutation = useMutation({
     mutationFn: async (data: any) => {
       if (formId) {
         return apiRequest('PUT', `/api/rest-hours-daily-records/${formId}`, data);
@@ -253,7 +253,7 @@ export const RHRecordingForm = ({
         return apiRequest('POST', '/api/rest-hours-daily-records', data);
       }
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       setFormId(data.id);
       queryClient.invalidateQueries({ queryKey: ['/api/rest-hours-daily-records'] });
       queryClient.invalidateQueries({ queryKey: ['/api/rest-hours-crew-records'] });
@@ -659,7 +659,8 @@ export const RHRecordingForm = ({
 
   // Helper: Detect violations
   // NOTE: Using "any period" values for regulatory compliance as per ILO/MLC requirements
-  const detectViolations = (record: DailyRecord, isOpaMode: boolean, records: DailyRecord[], dayIndex: number): number[] => {
+  // NOTE: All 8 violation codes are ALWAYS calculated. Codes 7 & 8 (OPA-specific) are filtered in the UI display.
+  const detectViolations = (record: DailyRecord, records: DailyRecord[], dayIndex: number): number[] => {
     const violations: number[] = [];
     
     // Rule [1]: Minimum 10 hours rest in ANY 24hr period
@@ -692,18 +693,15 @@ export const RHRecordingForm = ({
       violations.push(6);
     }
     
-    // OPA-specific violations (only check when OPA mode is enabled)
-    if (isOpaMode) {
-      // Rule [7]: Maximum 15 hours work in ANY 24hr period
-      if (record.anyPeriodWork24hr > 15) {
-        violations.push(7);
-      }
-      
-      // Rule [8]: Maximum 36 hours work in ANY 72hr period
-      const maxWork72hr = calculateAnyPeriod72hr(records, dayIndex);
-      if (maxWork72hr > 36) {
-        violations.push(8);
-      }
+    // Rule [7]: Maximum 15 hours work in ANY 24hr period (OPA-specific, filtered in UI)
+    if (record.anyPeriodWork24hr > 15) {
+      violations.push(7);
+    }
+    
+    // Rule [8]: Maximum 36 hours work in ANY 72hr period (OPA-specific, filtered in UI)
+    const maxWork72hr = calculateAnyPeriod72hr(records, dayIndex);
+    if (maxWork72hr > 36) {
+      violations.push(8);
     }
     
     return violations;
@@ -757,13 +755,13 @@ export const RHRecordingForm = ({
           };
           
           // Detect violations
-          newRecords[i].violations = detectViolations(newRecords[i], opaMode, newRecords, i);
+          newRecords[i].violations = detectViolations(newRecords[i], newRecords, i);
         }
       }
       
       return newRecords;
     });
-  }, [opaMode]);
+  }, []);
 
   // Handler: Edit comments
   const handleCommentsChange = useCallback((dayIndex: number, comments: string) => {
@@ -1079,7 +1077,10 @@ export const RHRecordingForm = ({
                   
                   {/* Violations */}
                   <td className="border border-gray-300 text-center text-red-600 font-semibold" style={{ padding: '2px' }}>
-                    {record.violations.length > 0 ? `[${record.violations.join(', ')}]` : ''}
+                    {(() => {
+                      const visibleViolations = record.violations.filter(v => opaMode || (v !== 7 && v !== 8));
+                      return visibleViolations.length > 0 ? `[${visibleViolations.join(', ')}]` : '';
+                    })()}
                   </td>
                   
                   {/* Comments */}
