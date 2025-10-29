@@ -775,8 +775,8 @@ export const RHRecordingForm = ({
                           borderRightWidth: isSecondHalf ? '1px' : '0.5px',
                           borderRightColor: isSecondHalf ? '#d1d5db' : '#e5e7eb',
                           borderRightStyle: 'solid',
-                          minWidth: '20px',
-                          width: '20px',
+                          minWidth: '15px',
+                          width: '15px',
                         }}
                       >
                         <div
@@ -847,7 +847,7 @@ export const RHRecordingForm = ({
                             }
                           }}
                           className="outline-none cursor-text min-h-[20px]"
-                          style={{ width: '100%', minWidth: '20px' }}
+                          style={{ width: '100%', minWidth: '15px' }}
                           data-testid={`cell-hour-${dayIndex}-${hourIndex}`}
                         >
                           {hour}
