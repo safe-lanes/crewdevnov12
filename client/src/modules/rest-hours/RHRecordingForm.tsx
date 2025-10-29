@@ -462,6 +462,67 @@ export const RHRecordingForm = ({
     };
   };
 
+  // Helper: Calculate "any period" 72-hour window metrics (for OPA Code 8)
+  const calculateAnyPeriod72hr = (records: DailyRecord[], dayIndex: number) => {
+    // Build a continuous array of cells from previous 3 days + current day + next 3 days
+    // This gives us 336 cells to work with (48 × 7 days)
+    // We need 3 future days to check windows starting late in current day that extend 72 hours forward
+    const allCells: string[] = [];
+    
+    // Add previous 3 days' cells (or assume rest if days don't exist)
+    for (let i = 3; i >= 1; i--) {
+      const index = dayIndex - i;
+      if (index >= 0) {
+        allCells.push(...records[index].hours);
+      } else {
+        // Days before the start of the month = assume rest
+        allCells.push(...Array(48).fill(''));
+      }
+    }
+    
+    // Add current day's cells
+    allCells.push(...records[dayIndex].hours);
+    
+    // Add next 3 days' cells (or assume rest if they don't exist)
+    // We need 3 future days to check windows starting late in current day
+    for (let i = 1; i <= 3; i++) {
+      const futureIndex = dayIndex + i;
+      if (futureIndex < records.length) {
+        allCells.push(...records[futureIndex].hours);
+      } else {
+        // Days after the end of the month = assume rest
+        allCells.push(...Array(48).fill(''));
+      }
+    }
+    
+    // Check all 72-hour windows (144 cells = 72 hours) that OVERLAP the current day
+    // Current day occupies cells 144-191 (after 3 prior days)
+    // A window starting at cell S (ending at S+143) overlaps current day if:
+    //   - It ends at or after cell 144: S + 143 >= 144, so S >= 1
+    //   - It starts at or before cell 191: S <= 191
+    // Therefore, check windows starting from cell 1 to cell 191
+    let maxWork = 0;  // Maximum work hours found in any overlapping 72-hour window
+    
+    const currentDayStart = 144;  // Current day starts at cell 144 (after 3 days × 48 cells)
+    const currentDayEnd = 191;    // Current day ends at cell 191
+    
+    for (let startCell = 1; startCell <= currentDayEnd; startCell++) {
+      // Window is 144 cells (72 hours) starting from startCell
+      const windowCells = allCells.slice(startCell, startCell + 144);
+      
+      // Only process if we have a full 144-cell window
+      if (windowCells.length === 144) {
+        // Count work cells in this window
+        const workCells = windowCells.filter(c => c !== '').length;
+        const workHours = workCells / 2; // Each cell = 0.5 hours
+        
+        maxWork = Math.max(maxWork, workHours);
+      }
+    }
+    
+    return maxWork;
+  };
+
   // Helper: Check if any 24-hour window violates Code 4 (interval between rest periods)
   // Code 4: Interval between rest periods must not exceed 14 hours
   const checkViolationCode4 = (records: DailyRecord[], dayIndex: number): boolean => {
@@ -631,14 +692,18 @@ export const RHRecordingForm = ({
       violations.push(6);
     }
     
-    // Rule [7] (OPA only): Maximum 15 hours work in ANY 24hr period
-    if (isOpaMode && record.anyPeriodWork24hr > 15) {
-      violations.push(7);
-    }
-    
-    // Rule [8] (OPA only): Maximum 36 hours work in 72hr
-    if (isOpaMode && record.hoursOfWork96hr > 36) {
-      violations.push(8);
+    // OPA-specific violations (only check when OPA mode is enabled)
+    if (isOpaMode) {
+      // Rule [7]: Maximum 15 hours work in ANY 24hr period
+      if (record.anyPeriodWork24hr > 15) {
+        violations.push(7);
+      }
+      
+      // Rule [8]: Maximum 36 hours work in ANY 72hr period
+      const maxWork72hr = calculateAnyPeriod72hr(records, dayIndex);
+      if (maxWork72hr > 36) {
+        violations.push(8);
+      }
     }
     
     return violations;
