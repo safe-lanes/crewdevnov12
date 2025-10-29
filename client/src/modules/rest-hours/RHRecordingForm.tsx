@@ -264,7 +264,7 @@ export const RHRecordingForm = ({
         // and recalculate them to ensure accuracy
         const updatedRecords = parsedRecords.map((record: DailyRecord, index: number) => {
           // Calculate any-period metrics for this record
-          const anyPeriod24 = calculateAnyPeriod24hr(parsedRecords, index);
+          const anyPeriod24 = calculateAnyPeriod24hr(parsedRecords, index, previousMonthRecords);
           const anyPeriod7day = calculateAnyPeriod7day(parsedRecords, index, previousMonthRecords);
           
           return {
@@ -291,6 +291,38 @@ export const RHRecordingForm = ({
       console.log('No existing record found - using clean initialized state');
     }
   }, [existingRecord, isError, open, previousMonthRecords]);
+
+  // Recalculate all metrics when previousMonthRecords changes
+  // This handles both new forms and existing forms when cross-month data loads
+  useEffect(() => {
+    if (!open || !previousMonthRecords || previousMonthRecords.length === 0) return;
+    
+    // Only recalculate if we have dailyRecords already set
+    // (either from initialization or from loading existing record)
+    if (dailyRecords.length === 0) return;
+    
+    setDailyRecords(prevRecords => {
+      // Recalculate all any-period metrics and violations for all days
+      const updatedRecords = prevRecords.map((record, index) => {
+        const anyPeriod24 = calculateAnyPeriod24hr(prevRecords, index, previousMonthRecords);
+        const anyPeriod7day = calculateAnyPeriod7day(prevRecords, index, previousMonthRecords);
+        
+        return {
+          ...record,
+          anyPeriodRest24hr: anyPeriod24.anyPeriodRest24hr,
+          anyPeriodRest7day: anyPeriod7day.anyPeriodRest7day,
+          anyPeriodWork24hr: anyPeriod24.anyPeriodWork24hr,
+          anyPeriodWork7day: anyPeriod7day.anyPeriodWork7day,
+        };
+      });
+      
+      // Recalculate violations with updated metrics
+      return updatedRecords.map((record, index) => ({
+        ...record,
+        violations: detectViolations(record, updatedRecords, index, previousMonthRecords),
+      }));
+    });
+  }, [previousMonthRecords, open]);
 
   // Save mutation
   const saveMutation = useMutation({
@@ -858,7 +890,7 @@ export const RHRecordingForm = ({
         // Recalculate rolling metrics for all affected days
         for (let i = dayIndex; i < newRecords.length && i < dayIndex + 7; i++) {
           const metrics = calculateRollingMetrics(newRecords, i);
-          const anyPeriod24hr = calculateAnyPeriod24hr(newRecords, i);
+          const anyPeriod24hr = calculateAnyPeriod24hr(newRecords, i, previousMonthRecords);
           const anyPeriod7day = calculateAnyPeriod7day(newRecords, i, previousMonthRecords);
           
           newRecords[i] = {
