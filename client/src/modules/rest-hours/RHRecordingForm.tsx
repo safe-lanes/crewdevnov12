@@ -688,41 +688,51 @@ export const RHRecordingForm = ({
         <div className="mt-4 overflow-auto max-h-[60vh] border rounded-md">
           <table className="w-full border-collapse" style={{ fontSize: '13px' }}>
             <thead className="sticky top-0 bg-gray-100 z-10">
+              {/* Header Row 1 */}
               <tr>
-                <th className="border border-gray-300 p-0.5 min-w-[60px]" style={{ padding: '2px' }}>
+                <th rowSpan={2} className="border border-gray-300 p-0.5 min-w-[60px]" style={{ padding: '2px' }}>
                   Plan/Rec
                 </th>
-                <th className="border border-gray-300 p-0.5 min-w-[50px]" style={{ padding: '2px' }}>
+                <th rowSpan={2} className="border border-gray-300 p-0.5 min-w-[50px]" style={{ padding: '2px' }}>
                   Date
                 </th>
-                <th className="border border-gray-300 p-0.5 min-w-[50px]" style={{ padding: '2px' }}>
+                <th rowSpan={2} className="border border-gray-300 p-0.5 min-w-[50px]" style={{ padding: '2px' }}>
                   Day
                 </th>
                 {Array.from({ length: 24 }, (_, i) => (
-                  <th key={i} colSpan={2} className="border border-gray-300 p-0.5 min-w-[40px]" style={{ padding: '2px' }}>
+                  <th key={i} rowSpan={2} colSpan={2} className="border border-gray-300 p-0.5 min-w-[40px]" style={{ padding: '2px' }}>
                     {i.toString().padStart(2, '0')}
                   </th>
                 ))}
-                <th className="border border-gray-300 p-0.5 min-w-[80px]" style={{ padding: '2px' }}>
+                <th rowSpan={2} className="border border-gray-300 p-0.5 min-w-[80px]" style={{ padding: '2px' }}>
                   Hours of Rest in 24hr period
                 </th>
-                <th className="border border-gray-300 p-0.5 min-w-[80px]" style={{ padding: '2px' }}>
+                <th rowSpan={2} className="border border-gray-300 p-0.5 min-w-[80px]" style={{ padding: '2px' }}>
                   Violations
                 </th>
-                <th className="border border-gray-300 p-0.5 min-w-[150px]" style={{ padding: '2px' }}>
+                <th rowSpan={2} className="border border-gray-300 p-0.5 min-w-[150px]" style={{ padding: '2px' }}>
                   Comments
                 </th>
+                <th colSpan={2} className="border border-gray-300 p-0.5 bg-blue-50" style={{ padding: '2px' }}>
+                  Hours of Rest in any
+                </th>
+                <th colSpan={2} className="border border-gray-300 p-0.5 bg-blue-50" style={{ padding: '2px' }}>
+                  Hours of Work in any
+                </th>
+              </tr>
+              {/* Header Row 2 */}
+              <tr>
                 <th className="border border-gray-300 p-0.5 min-w-[70px] bg-blue-50" style={{ padding: '2px' }}>
-                  Hours of Rest in any 24 Hr Period
+                  24 Hr Period
                 </th>
                 <th className="border border-gray-300 p-0.5 min-w-[60px] bg-blue-50" style={{ padding: '2px' }}>
-                  7 day
+                  7 days
                 </th>
                 <th className="border border-gray-300 p-0.5 min-w-[60px] bg-blue-50" style={{ padding: '2px' }}>
-                  Hours of Work in 24 Hr Period
+                  24 Hr Period
                 </th>
                 <th className="border border-gray-300 p-0.5 min-w-[60px] bg-blue-50" style={{ padding: '2px' }}>
-                  7 day Period
+                  7 days
                 </th>
               </tr>
             </thead>
