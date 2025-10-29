@@ -227,7 +227,13 @@ export const RHRecordingForm = ({
             anyPeriodWork7day: anyPeriod7day.anyPeriodWork7day,
           };
         });
-        setDailyRecords(updatedRecords);
+        
+        // Recalculate violations for all records to ensure new rules are applied
+        const recordsWithViolations = updatedRecords.map((record: DailyRecord, index: number) => ({
+          ...record,
+          violations: detectViolations(record, existingRecord.opaMode || false, updatedRecords, index),
+        }));
+        setDailyRecords(recordsWithViolations);
       } catch (error) {
         console.error('Failed to parse daily records:', error);
       }
