@@ -24,8 +24,9 @@ interface RHRecordingFormProps {
 
 interface ViolationDiagnostic {
   code: number;
-  windowStart: string; // e.g., "Oct 4, 18:00 → Oct 5, 18:00"
+  windowStart: string; // e.g., "Oct 4, 18:00" or "Multiple windows" (for backward compatibility)
   reason: string; // e.g., "Rest periods: 6h, 3h, 2h. Top 2 (6h + 3h = 9h) < 10h required"
+  violatingRanges?: Array<{ startCell: number; endCell: number; startDay: number; monthName?: string }>; // For multi-range violations
 }
 
 interface DailyRecord {
@@ -275,7 +276,7 @@ export const RHRecordingForm = ({
         // and recalculate them to ensure accuracy
         const updatedRecords = parsedRecords.map((record: DailyRecord, index: number) => {
           // Calculate any-period metrics for this record
-          const anyPeriod24 = calculateAnyPeriod24hr(parsedRecords, index, previousMonthRecords);
+          const anyPeriod24 = calculateAnyPeriod24hr(parsedRecords, index, selectedPeriod, previousMonthRecords);
           const anyPeriod7day = calculateAnyPeriod7day(parsedRecords, index, previousMonthRecords);
           
           return {
@@ -319,7 +320,7 @@ export const RHRecordingForm = ({
     setDailyRecords(prevRecords => {
       // Recalculate all any-period metrics and violations for all days
       const updatedRecords = prevRecords.map((record, index) => {
-        const anyPeriod24 = calculateAnyPeriod24hr(prevRecords, index, previousMonthRecords);
+        const anyPeriod24 = calculateAnyPeriod24hr(prevRecords, index, selectedPeriod, previousMonthRecords);
         const anyPeriod7day = calculateAnyPeriod7day(prevRecords, index, previousMonthRecords);
         
         return {
@@ -486,20 +487,32 @@ export const RHRecordingForm = ({
 
   // Helper: Calculate "any period" 24-hour window metrics (backward-looking windows only)
   // For each half-hour in the current day, check the 24-hour window ending at that point
-  const calculateAnyPeriod24hr = (records: DailyRecord[], dayIndex: number, prevMonthRecords: DailyRecord[] = []) => {
+  const calculateAnyPeriod24hr = (records: DailyRecord[], dayIndex: number, monthYear: string, prevMonthRecords: DailyRecord[] = []) => {
     // Build a continuous array of cells from previous day + current day
     // This gives us 96 cells to work with (48 × 2 days)
     const allCells: string[] = [];
+    
+    // Track previous day info for window start calculations
+    let prevDayNumber = 0;
+    let prevMonthName = '';
     
     // Add previous day's cells
     if (dayIndex > 0) {
       // Previous day exists in current month
       allCells.push(...records[dayIndex - 1].hours);
+      prevDayNumber = records[dayIndex - 1].day;
     } else {
       // Current day is the first day of the month - use previous month's last day
       if (prevMonthRecords.length > 0) {
         const lastDayOfPrevMonth = prevMonthRecords[prevMonthRecords.length - 1];
         allCells.push(...lastDayOfPrevMonth.hours);
+        prevDayNumber = lastDayOfPrevMonth.day;
+        // Calculate previous month name from monthYear parameter
+        const [year, month] = monthYear.split('-');
+        const currentMonth = parseInt(month);
+        const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+        const prevYear = currentMonth === 1 ? parseInt(year) - 1 : parseInt(year);
+        prevMonthName = new Date(prevYear, prevMonth - 1).toLocaleString('en-US', { month: 'short' });
       } else {
         // No previous month data - assume rest
         allCells.push(...Array(48).fill(''));
@@ -514,6 +527,8 @@ export const RHRecordingForm = ({
     // Window ending at cell E starts at cell E-47 (48 cells total including E)
     let minRest = 24;  // Minimum rest hours found
     let maxWork = 0;   // Maximum work hours found
+    const violatingRestWindows: { startCell: number; restHours: number }[] = [];
+    const violatingWorkWindows: { startCell: number; workHours: number }[] = [];
     
     for (let endCell = 48; endCell <= 95; endCell++) {
       // Window ends at endCell and starts 47 cells before (48 cells total)
@@ -527,6 +542,14 @@ export const RHRecordingForm = ({
         const restHours = restCells / 2; // Each cell = 0.5 hours
         const workHours = 24 - restHours;
         
+        // Track violating windows
+        if (restHours < 10) {
+          violatingRestWindows.push({ startCell, restHours });
+        }
+        if (workHours > 14) {
+          violatingWorkWindows.push({ startCell, workHours });
+        }
+        
         minRest = Math.min(minRest, restHours);
         maxWork = Math.max(maxWork, workHours);
       }
@@ -535,6 +558,10 @@ export const RHRecordingForm = ({
     return {
       anyPeriodRest24hr: minRest,
       anyPeriodWork24hr: maxWork,
+      violatingRestWindows,
+      violatingWorkWindows,
+      prevDayNumber,
+      prevMonthName,
     };
   };
 
@@ -863,6 +890,16 @@ export const RHRecordingForm = ({
     return null;
   };
 
+  // Helper: Format window start string from violating range
+  const formatWindowStart = (range: { startCell: number; startDay: number; monthName?: string }, record: DailyRecord, monthYear: string): string => {
+    const hour = Math.floor(range.startCell / 2);
+    const minute = (range.startCell % 2) * 30;
+    
+    const monthName = range.monthName || new Date(parseInt(monthYear.split('-')[0]), parseInt(monthYear.split('-')[1]) - 1).toLocaleString('en-US', { month: 'short' });
+    
+    return `${monthName} ${range.startDay}, ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+  };
+
   // Helper: Detect violations
   // NOTE: Using "any period" values for regulatory compliance as per ILO/MLC requirements
   // NOTE: All 8 violation codes are ALWAYS calculated. Codes 7 & 8 (OPA-specific) are filtered in the UI display.
@@ -870,13 +907,35 @@ export const RHRecordingForm = ({
     const violations: number[] = [];
     const diagnostics: ViolationDiagnostic[] = [];
     
+    // Get 24hr calculation with violating windows
+    const anyPeriod24Data = calculateAnyPeriod24hr(records, dayIndex, selectedPeriod, prevMonthRecords);
+    
     // Rule [1]: Minimum 10 hours rest in ANY 24hr period
-    if (record.anyPeriodRest24hr < 10) {
+    if (record.anyPeriodRest24hr < 10 && anyPeriod24Data.violatingRestWindows.length > 0) {
       violations.push(1);
+      
+      // Convert violating windows to ranges
+      const violatingRanges = anyPeriod24Data.violatingRestWindows.map(w => {
+        // startCell is in the combined array (0-95), need to convert to day context
+        // Cells 0-47 are from previous day, 48-95 are from current day
+        const isStartInPrevDay = w.startCell < 48;
+        const endCell = w.startCell + 47; // 24-hour window
+        
+        return {
+          startCell: isStartInPrevDay ? w.startCell : w.startCell - 48,
+          endCell: endCell >= 48 ? endCell - 48 : 47,
+          startDay: isStartInPrevDay ? anyPeriod24Data.prevDayNumber : record.day,
+          monthName: isStartInPrevDay ? anyPeriod24Data.prevMonthName : undefined,
+        };
+      });
+      
       diagnostics.push({
         code: 1,
-        windowStart: 'Various windows',
-        reason: `Minimum rest in any 24hr period: ${record.anyPeriodRest24hr.toFixed(1)}h (< 10h required)`
+        windowStart: violatingRanges.length === 1 
+          ? formatWindowStart(violatingRanges[0], record, selectedPeriod)
+          : 'Multiple windows',
+        reason: `Minimum rest in any 24hr period: ${record.anyPeriodRest24hr.toFixed(1)}h (< 10h required)`,
+        violatingRanges,
       });
     }
     
@@ -908,12 +967,29 @@ export const RHRecordingForm = ({
     }
     
     // Rule [5]: Maximum 14 hours work in ANY 24hr period
-    if (record.anyPeriodWork24hr > 14) {
+    if (record.anyPeriodWork24hr > 14 && anyPeriod24Data.violatingWorkWindows.length > 0) {
       violations.push(5);
+      
+      // Convert violating windows to ranges
+      const violatingRanges = anyPeriod24Data.violatingWorkWindows.map(w => {
+        const isStartInPrevDay = w.startCell < 48;
+        const endCell = w.startCell + 47;
+        
+        return {
+          startCell: isStartInPrevDay ? w.startCell : w.startCell - 48,
+          endCell: endCell >= 48 ? endCell - 48 : 47,
+          startDay: isStartInPrevDay ? anyPeriod24Data.prevDayNumber : record.day,
+          monthName: isStartInPrevDay ? anyPeriod24Data.prevMonthName : undefined,
+        };
+      });
+      
       diagnostics.push({
         code: 5,
-        windowStart: 'Various windows',
-        reason: `Maximum work in any 24hr period: ${record.anyPeriodWork24hr.toFixed(1)}h (> 14h limit)`
+        windowStart: violatingRanges.length === 1 
+          ? formatWindowStart(violatingRanges[0], record, selectedPeriod)
+          : 'Multiple windows',
+        reason: `Maximum work in any 24hr period: ${record.anyPeriodWork24hr.toFixed(1)}h (> 14h limit)`,
+        violatingRanges,
       });
     }
     
@@ -930,11 +1006,38 @@ export const RHRecordingForm = ({
     // Rule [7]: Maximum 15 hours work in ANY 24hr period (OPA-specific, filtered in UI)
     if (record.anyPeriodWork24hr > 15) {
       violations.push(7);
-      diagnostics.push({
-        code: 7,
-        windowStart: 'Various windows',
-        reason: `Maximum work in any 24hr period: ${record.anyPeriodWork24hr.toFixed(1)}h (> 15h OPA limit)`
-      });
+      
+      // Find all windows that violate the 15-hour OPA limit
+      const violating15hrWindows = anyPeriod24Data.violatingWorkWindows.filter(w => w.workHours > 15);
+      
+      if (violating15hrWindows.length > 0) {
+        const violatingRanges = violating15hrWindows.map(w => {
+          const isStartInPrevDay = w.startCell < 48;
+          const endCell = w.startCell + 47;
+          
+          return {
+            startCell: isStartInPrevDay ? w.startCell : w.startCell - 48,
+            endCell: endCell >= 48 ? endCell - 48 : 47,
+            startDay: isStartInPrevDay ? anyPeriod24Data.prevDayNumber : record.day,
+            monthName: isStartInPrevDay ? anyPeriod24Data.prevMonthName : undefined,
+          };
+        });
+        
+        diagnostics.push({
+          code: 7,
+          windowStart: violatingRanges.length === 1 
+            ? formatWindowStart(violatingRanges[0], record, selectedPeriod)
+            : 'Multiple windows',
+          reason: `Maximum work in any 24hr period: ${record.anyPeriodWork24hr.toFixed(1)}h (> 15h OPA limit)`,
+          violatingRanges,
+        });
+      } else {
+        diagnostics.push({
+          code: 7,
+          windowStart: 'Various windows',
+          reason: `Maximum work in any 24hr period: ${record.anyPeriodWork24hr.toFixed(1)}h (> 15h OPA limit)`
+        });
+      }
     }
     
     // Rule [8]: Maximum 36 hours work in ANY 72hr period (OPA-specific, filtered in UI)
@@ -988,7 +1091,7 @@ export const RHRecordingForm = ({
         // Recalculate rolling metrics for all affected days
         for (let i = dayIndex; i < newRecords.length && i < dayIndex + 7; i++) {
           const metrics = calculateRollingMetrics(newRecords, i);
-          const anyPeriod24hr = calculateAnyPeriod24hr(newRecords, i, previousMonthRecords);
+          const anyPeriod24hr = calculateAnyPeriod24hr(newRecords, i, selectedPeriod, previousMonthRecords);
           const anyPeriod7day = calculateAnyPeriod7day(newRecords, i, previousMonthRecords);
           
           newRecords[i] = {
@@ -1044,26 +1147,43 @@ export const RHRecordingForm = ({
     const record = dailyRecords[dayIndex];
     if (!record) return false;
     
+    // Get the diagnostic for the hovered violation from the hovered row
+    const hoveredRecord = dailyRecords[hoveredViolation.dayIndex];
+    if (!hoveredRecord?.violationDiagnostics) return false;
+    
+    const diagnostic = hoveredRecord.violationDiagnostics.find(d => d.code === hoveredViolation.code);
+    if (!diagnostic) return false;
+    
+    // If there are specific violating ranges, use them
+    if (diagnostic.violatingRanges && diagnostic.violatingRanges.length > 0) {
+      // Check if any range applies to this cell
+      return diagnostic.violatingRanges.some(range => {
+        // Check if this range is for the current day
+        if (range.startDay === record.day) {
+          // Check if cell is within this range
+          return cellIndex >= range.startCell && cellIndex <= range.endCell;
+        }
+        return false;
+      });
+    }
+    
+    // Fallback to old logic for Code 3 and other violations without violatingRanges
+    if (diagnostic.windowStart === 'Various windows' || diagnostic.windowStart === 'Multiple windows') return false;
+    
+    // Parse the windowStart for backward compatibility
+    const match = diagnostic.windowStart.match(/(\w+)\s+(\d+),\s+(\d+):(\d+)/);
+    if (!match) return false;
+    
+    const [, , windowStartDay, windowStartHour, windowStartMin] = match;
+    const startDay = parseInt(windowStartDay);
+    const startHour = parseInt(windowStartHour);
+    const startMin = parseInt(windowStartMin);
+    const startCellInDay = startHour * 2 + (startMin === 30 ? 1 : 0);
+    
+    const currentDay = record.day;
+    
     // Check if this is the row with the hovered violation
     if (hoveredViolation.dayIndex === dayIndex) {
-      if (!record.violationDiagnostics) return false;
-      
-      const diagnostic = record.violationDiagnostics.find(d => d.code === hoveredViolation.code);
-      if (!diagnostic) return false;
-      
-      if (diagnostic.windowStart === 'Various windows') return false;
-      
-      const match = diagnostic.windowStart.match(/(\w+)\s+(\d+),\s+(\d+):(\d+)/);
-      if (!match) return false;
-      
-      const [, , windowStartDay, windowStartHour, windowStartMin] = match;
-      const startDay = parseInt(windowStartDay);
-      const startHour = parseInt(windowStartHour);
-      const startMin = parseInt(windowStartMin);
-      const startCellInDay = startHour * 2 + (startMin === 30 ? 1 : 0);
-      
-      const currentDay = record.day;
-      
       if (startDay === currentDay) {
         // Window starts on current day - highlight from start cell to end of day
         return cellIndex >= startCellInDay;
@@ -1075,25 +1195,6 @@ export const RHRecordingForm = ({
     
     // Also check if this is the previous day of the hovered violation (for cross-day windows)
     if (hoveredViolation.dayIndex - 1 === dayIndex) {
-      const hoveredRecord = dailyRecords[hoveredViolation.dayIndex];
-      if (!hoveredRecord?.violationDiagnostics) return false;
-      
-      const diagnostic = hoveredRecord.violationDiagnostics.find(d => d.code === hoveredViolation.code);
-      if (!diagnostic) return false;
-      
-      if (diagnostic.windowStart === 'Various windows') return false;
-      
-      const match = diagnostic.windowStart.match(/(\w+)\s+(\d+),\s+(\d+):(\d+)/);
-      if (!match) return false;
-      
-      const [, , windowStartDay, windowStartHour, windowStartMin] = match;
-      const startDay = parseInt(windowStartDay);
-      const startHour = parseInt(windowStartHour);
-      const startMin = parseInt(windowStartMin);
-      const startCellInDay = startHour * 2 + (startMin === 30 ? 1 : 0);
-      
-      const currentDay = record.day;
-      
       // If the window starts on this previous day, highlight from start cell to end of day
       if (startDay === currentDay) {
         return cellIndex >= startCellInDay;
@@ -1431,7 +1532,18 @@ export const RHRecordingForm = ({
                                   <TooltipContent className="max-w-md">
                                     <div className="text-sm">
                                       <div className="font-semibold">Code {diagnostic.code}</div>
-                                      <div className="text-xs text-gray-600">Window: {diagnostic.windowStart}</div>
+                                      {diagnostic.violatingRanges && diagnostic.violatingRanges.length > 1 ? (
+                                        <>
+                                          <div className="text-xs text-gray-600 mt-1">
+                                            {diagnostic.violatingRanges.length} violating windows detected
+                                          </div>
+                                          <div className="text-xs text-gray-600 italic">
+                                            (Hover highlights all ranges)
+                                          </div>
+                                        </>
+                                      ) : (
+                                        <div className="text-xs text-gray-600">Window: {diagnostic.windowStart}</div>
+                                      )}
                                       <div className="mt-1">{diagnostic.reason}</div>
                                     </div>
                                   </TooltipContent>
