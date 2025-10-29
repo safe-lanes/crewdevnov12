@@ -90,14 +90,20 @@ export const RHRecordingForm = ({
     return options;
   }, []);
   
+  // Filter crew members by selected vessel
+  const filteredCrewMembers = useMemo(() => {
+    if (!selectedVesselId) return allCrewMembers;
+    return allCrewMembers.filter((cm: any) => cm.presentVessel === selectedVesselId);
+  }, [allCrewMembers, selectedVesselId]);
+  
   // Get selected crew member details
   const selectedCrewMember = useMemo(() => {
-    return allCrewMembers.find((cm: any) => cm.id === selectedCrewMemberId);
-  }, [allCrewMembers, selectedCrewMemberId]);
+    return filteredCrewMembers.find((cm: any) => cm.id === selectedCrewMemberId);
+  }, [filteredCrewMembers, selectedCrewMemberId]);
   
   // Derived values from selections
-  const crewMemberName = selectedCrewMember?.firstName + (selectedCrewMember?.middleName ? ' ' + selectedCrewMember.middleName : '') + ' ' + selectedCrewMember?.lastName || initialCrewMemberName;
-  const rank = selectedCrewMember?.rank || initialRank;
+  const crewMemberName = selectedCrewMember?.firstName + (selectedCrewMember?.middleName ? ' ' + selectedCrewMember.middleName : '') + ' ' + selectedCrewMember?.familyName || initialCrewMemberName;
+  const rank = selectedCrewMember?.presentRank || initialRank;
   const vesselName = getVesselName(selectedVesselId);
 
   // Format month for display (e.g., "2024, Mar")
@@ -117,6 +123,21 @@ export const RHRecordingForm = ({
       setSelectedCrewMemberId(initialCrewMemberId);
     }
   }, [open, initialMonthValue, initialVesselId, initialCrewMemberId]);
+  
+  // Reset crew member selection when vessel changes (to first crew on that vessel)
+  useEffect(() => {
+    if (!open) return;
+    
+    // Skip if this is the initial load
+    if (selectedVesselId === initialVesselId && selectedCrewMemberId === initialCrewMemberId) {
+      return;
+    }
+    
+    // When vessel changes, select the first crew member on that vessel
+    if (filteredCrewMembers.length > 0) {
+      setSelectedCrewMemberId(filteredCrewMembers[0].id);
+    }
+  }, [selectedVesselId, filteredCrewMembers, open]);
 
   // Initialize daily records for the month - reset when crew/vessel/month changes or modal opens
   useEffect(() => {
@@ -629,9 +650,9 @@ export const RHRecordingForm = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {allCrewMembers.map((cm: any) => (
+                {filteredCrewMembers.map((cm: any) => (
                   <SelectItem key={cm.id} value={cm.id}>
-                    {cm.rank}, {cm.firstName}{cm.middleName ? ' ' + cm.middleName : ''} {cm.lastName}
+                    {cm.presentRank}, {cm.firstName}{cm.middleName ? ' ' + cm.middleName : ''} {cm.familyName}
                   </SelectItem>
                 ))}
               </SelectContent>
