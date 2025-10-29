@@ -64,7 +64,19 @@ export const RHRecordingForm = ({
   const [showPlanning, setShowPlanning] = useState(false);
   const [opaMode, setOpaMode] = useState(false);
   const [dailyRecords, setDailyRecords] = useState<DailyRecord[]>([]);
+  const [previousMonthRecords, setPreviousMonthRecords] = useState<DailyRecord[]>([]);
   const [formId, setFormId] = useState<number | null>(null);
+  
+  // Calculate previous month period string
+  const previousMonthPeriod = useMemo(() => {
+    if (!selectedPeriod) return null;
+    const [year, month] = selectedPeriod.split('-').map(Number);
+    const date = new Date(year, month - 1, 1); // Current month
+    date.setMonth(date.getMonth() - 1); // Go back 1 month
+    const prevYear = date.getFullYear();
+    const prevMonth = (date.getMonth() + 1).toString().padStart(2, '0');
+    return `${prevYear}-${prevMonth}`;
+  }, [selectedPeriod]);
   
   // Fetch crew members for dropdown
   const { data: allCrewMembers = [] } = useQuery<any[]>({
@@ -200,6 +212,42 @@ export const RHRecordingForm = ({
     staleTime: 0, // Always fetch fresh data
   });
 
+  // Fetch previous month's record for cross-month rolling window calculations
+  const { data: previousMonthRecord } = useQuery<RestHoursDailyRecord>({
+    queryKey: ['/api/rest-hours-daily-records/by-key', selectedCrewMemberId, selectedVesselId, previousMonthPeriod],
+    queryFn: async () => {
+      if (!previousMonthPeriod) return null;
+      const response = await fetch(`/api/rest-hours-daily-records/by-key/${selectedCrewMemberId}/${selectedVesselId}/${previousMonthPeriod}`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null; // No previous month record found
+        }
+        throw new Error('Failed to fetch previous month record');
+      }
+      return response.json();
+    },
+    enabled: open && !!selectedCrewMemberId && !!selectedVesselId && !!previousMonthPeriod,
+    retry: false,
+    gcTime: 0,
+    staleTime: 0,
+  });
+
+  // Load previous month's records for cross-month calculations
+  useEffect(() => {
+    if (!open || !previousMonthRecord) {
+      setPreviousMonthRecords([]);
+      return;
+    }
+    
+    try {
+      const parsedRecords = JSON.parse(previousMonthRecord.dailyRecords);
+      setPreviousMonthRecords(parsedRecords);
+    } catch (error) {
+      console.error('Failed to parse previous month records:', error);
+      setPreviousMonthRecords([]);
+    }
+  }, [previousMonthRecord, open]);
+
   // Load existing record data or explicitly maintain clean state
   useEffect(() => {
     if (!open) return; // Skip if modal is closed
@@ -217,7 +265,7 @@ export const RHRecordingForm = ({
         const updatedRecords = parsedRecords.map((record: DailyRecord, index: number) => {
           // Calculate any-period metrics for this record
           const anyPeriod24 = calculateAnyPeriod24hr(parsedRecords, index);
-          const anyPeriod7day = calculateAnyPeriod7day(parsedRecords, index);
+          const anyPeriod7day = calculateAnyPeriod7day(parsedRecords, index, previousMonthRecords);
           
           return {
             ...record,
@@ -231,7 +279,7 @@ export const RHRecordingForm = ({
         // Recalculate violations for all records to ensure new rules are applied
         const recordsWithViolations = updatedRecords.map((record: DailyRecord, index: number) => ({
           ...record,
-          violations: detectViolations(record, updatedRecords, index),
+          violations: detectViolations(record, updatedRecords, index, previousMonthRecords),
         }));
         setDailyRecords(recordsWithViolations);
       } catch (error) {
@@ -242,7 +290,7 @@ export const RHRecordingForm = ({
       // This explicitly ensures no stale data leaks between crew members
       console.log('No existing record found - using clean initialized state');
     }
-  }, [existingRecord, isError, open]);
+  }, [existingRecord, isError, open, previousMonthRecords]);
 
   // Save mutation
   const saveMutation = useMutation({
@@ -427,29 +475,64 @@ export const RHRecordingForm = ({
   };
 
   // Helper: Calculate "any period" 7-day window metrics
-  const calculateAnyPeriod7day = (records: DailyRecord[], dayIndex: number) => {
-    // We need to check all possible 7-day windows ending at or before the current day
-    // For simplicity, we'll check windows ending at the current day starting from different days
+  const calculateAnyPeriod7day = (records: DailyRecord[], dayIndex: number, prevMonthRecords: DailyRecord[] = []) => {
+    // We need to check all possible 7-day windows that include the current day
+    // This includes windows that may span across month boundaries
     
     let minRest = 168;  // Minimum rest hours in any 7-day period
     let maxWork = 0;    // Maximum work hours in any 7-day period
     
-    // Check windows of different starting points (up to 7 days back)
-    for (let windowStart = Math.max(0, dayIndex - 6); windowStart <= dayIndex; windowStart++) {
-      const windowEnd = Math.min(windowStart + 6, dayIndex);
-      const windowDays = windowEnd - windowStart + 1;
+    // Check all possible 7-day windows ending on or after the current day
+    // Window can start up to 6 days before current day
+    const daysNeededBefore = 6;
+    const daysAvailableInCurrentMonth = dayIndex; // days 0 to dayIndex-1
+    const daysNeededFromPrevMonth = Math.max(0, daysNeededBefore - daysAvailableInCurrentMonth);
+    
+    // For each possible 7-day window that includes current day
+    for (let offset = 0; offset <= 6; offset++) {
+      // Window ends at dayIndex + offset (if exists)
+      const windowEnd = dayIndex + offset;
+      if (windowEnd >= records.length) continue; // Window would extend beyond current month
+      
+      // Window starts 6 days before window end
+      const windowStart = windowEnd - 6;
       
       let restHours = 0;
-      for (let i = windowStart; i <= windowEnd; i++) {
-        restHours += calculateHoursOfRest24hr(records[i].hours);
+      let missingDays = 0;
+      
+      // Collect data from previous month if window extends before current month
+      if (windowStart < 0) {
+        const daysFromPrevMonth = Math.abs(windowStart);
+        if (prevMonthRecords.length > 0) {
+          // Get the last N days from previous month
+          for (let i = 0; i < daysFromPrevMonth; i++) {
+            const prevMonthIndex = prevMonthRecords.length - daysFromPrevMonth + i;
+            if (prevMonthIndex >= 0 && prevMonthIndex < prevMonthRecords.length) {
+              restHours += calculateHoursOfRest24hr(prevMonthRecords[prevMonthIndex].hours);
+            } else {
+              missingDays++;
+            }
+          }
+        } else {
+          // No previous month data - assume rest
+          missingDays += daysFromPrevMonth;
+        }
+        
+        // Add days from current month (starting from day 0)
+        for (let i = 0; i <= windowEnd; i++) {
+          restHours += calculateHoursOfRest24hr(records[i].hours);
+        }
+      } else {
+        // Window is entirely within current month
+        for (let i = windowStart; i <= windowEnd; i++) {
+          restHours += calculateHoursOfRest24hr(records[i].hours);
+        }
       }
       
-      // If window is less than 7 days (early in the month), assume rest for missing days
-      const missingDays = 7 - windowDays;
+      // If we have missing days (no data available), assume rest
       restHours += missingDays * 24;
       
       // Work hours = Total 7-day hours (168) minus rest hours
-      // This ensures correct calculation even when padding with rest for missing days
       const workHours = 168 - restHours;
       
       minRest = Math.min(minRest, restHours);
@@ -463,20 +546,26 @@ export const RHRecordingForm = ({
   };
 
   // Helper: Calculate "any period" 72-hour window metrics (for OPA Code 8)
-  const calculateAnyPeriod72hr = (records: DailyRecord[], dayIndex: number) => {
+  const calculateAnyPeriod72hr = (records: DailyRecord[], dayIndex: number, prevMonthRecords: DailyRecord[] = []) => {
     // Build a continuous array of cells from previous 3 days + current day + next 3 days
     // This gives us 336 cells to work with (48 × 7 days)
     // We need 3 future days to check windows starting late in current day that extend 72 hours forward
     const allCells: string[] = [];
     
-    // Add previous 3 days' cells (or assume rest if days don't exist)
+    // Add previous 3 days' cells (or use previous month data if days don't exist in current month)
     for (let i = 3; i >= 1; i--) {
       const index = dayIndex - i;
       if (index >= 0) {
         allCells.push(...records[index].hours);
       } else {
-        // Days before the start of the month = assume rest
-        allCells.push(...Array(48).fill(''));
+        // Day is before current month start - try to get from previous month
+        const prevMonthIndex = prevMonthRecords.length + index; // index is negative, so this calculates correctly
+        if (prevMonthRecords.length > 0 && prevMonthIndex >= 0 && prevMonthIndex < prevMonthRecords.length) {
+          allCells.push(...prevMonthRecords[prevMonthIndex].hours);
+        } else {
+          // No previous month data available - assume rest
+          allCells.push(...Array(48).fill(''));
+        }
       }
     }
     
@@ -660,7 +749,7 @@ export const RHRecordingForm = ({
   // Helper: Detect violations
   // NOTE: Using "any period" values for regulatory compliance as per ILO/MLC requirements
   // NOTE: All 8 violation codes are ALWAYS calculated. Codes 7 & 8 (OPA-specific) are filtered in the UI display.
-  const detectViolations = (record: DailyRecord, records: DailyRecord[], dayIndex: number): number[] => {
+  const detectViolations = (record: DailyRecord, records: DailyRecord[], dayIndex: number, prevMonthRecords: DailyRecord[] = []): number[] => {
     const violations: number[] = [];
     
     // Rule [1]: Minimum 10 hours rest in ANY 24hr period
@@ -699,7 +788,7 @@ export const RHRecordingForm = ({
     }
     
     // Rule [8]: Maximum 36 hours work in ANY 72hr period (OPA-specific, filtered in UI)
-    const maxWork72hr = calculateAnyPeriod72hr(records, dayIndex);
+    const maxWork72hr = calculateAnyPeriod72hr(records, dayIndex, prevMonthRecords);
     if (maxWork72hr > 36) {
       violations.push(8);
     }
@@ -745,7 +834,7 @@ export const RHRecordingForm = ({
         for (let i = dayIndex; i < newRecords.length && i < dayIndex + 7; i++) {
           const metrics = calculateRollingMetrics(newRecords, i);
           const anyPeriod24hr = calculateAnyPeriod24hr(newRecords, i);
-          const anyPeriod7day = calculateAnyPeriod7day(newRecords, i);
+          const anyPeriod7day = calculateAnyPeriod7day(newRecords, i, previousMonthRecords);
           
           newRecords[i] = {
             ...newRecords[i],
@@ -755,13 +844,13 @@ export const RHRecordingForm = ({
           };
           
           // Detect violations
-          newRecords[i].violations = detectViolations(newRecords[i], newRecords, i);
+          newRecords[i].violations = detectViolations(newRecords[i], newRecords, i, previousMonthRecords);
         }
       }
       
       return newRecords;
     });
-  }, []);
+  }, [previousMonthRecords]);
 
   // Handler: Edit comments
   const handleCommentsChange = useCallback((dayIndex: number, comments: string) => {
