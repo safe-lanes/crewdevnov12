@@ -456,6 +456,63 @@ export const RHRecordingForm = ({
     };
   };
 
+  // Helper: Check if any 24-hour window violates Code 4 (interval between rest periods)
+  // Code 4: Interval between rest periods must not exceed 14 hours
+  const checkViolationCode4 = (records: DailyRecord[], dayIndex: number): boolean => {
+    // Build a continuous array of all cells from previous day + current day
+    const allCells: string[] = [];
+    
+    // Add previous day's cells (or assume rest if no previous day)
+    if (dayIndex > 0) {
+      allCells.push(...records[dayIndex - 1].hours);
+    } else {
+      allCells.push(...Array(48).fill(''));
+    }
+    
+    // Add current day's cells
+    allCells.push(...records[dayIndex].hours);
+    
+    // Check all 49 possible 24-hour windows
+    for (let startCell = 0; startCell <= 48; startCell++) {
+      const windowCells = allCells.slice(startCell, startCell + 48);
+      
+      // Find all rest periods and the gaps between them
+      let currentWorkGap = 0;
+      let inRestPeriod = false;
+      
+      for (let i = 0; i < windowCells.length; i++) {
+        const isRest = windowCells[i] === '';
+        
+        if (isRest) {
+          // Currently in rest
+          if (!inRestPeriod) {
+            // Just entered a rest period - check if previous work gap exceeded 14 hours
+            if (currentWorkGap > 28) { // 28 cells = 14 hours
+              return true; // Violation found!
+            }
+            currentWorkGap = 0;
+            inRestPeriod = true;
+          }
+        } else {
+          // Currently working (w, d, or a)
+          if (inRestPeriod) {
+            // Just exited a rest period
+            inRestPeriod = false;
+          }
+          currentWorkGap++;
+        }
+      }
+      
+      // Check if window ended with a work gap that exceeded 14 hours
+      if (currentWorkGap > 28) {
+        return true; // Violation found!
+      }
+    }
+    
+    // No violation found in any window
+    return false;
+  };
+
   // Helper: Check if any 24-hour window violates Code 3 (rest period distribution)
   // Code 3: Rest periods must be no more than 2, and at least one must be ≥6 hours
   const checkViolationCode3 = (records: DailyRecord[], dayIndex: number): boolean => {
@@ -536,6 +593,11 @@ export const RHRecordingForm = ({
     // Rule [3]: Rest periods must be no more than 2, and at least one must be ≥6 hours
     if (checkViolationCode3(records, dayIndex)) {
       violations.push(3);
+    }
+    
+    // Rule [4]: Interval between rest periods must not exceed 14 hours
+    if (checkViolationCode4(records, dayIndex)) {
+      violations.push(4);
     }
     
     // Rule [5]: Maximum 14 hours work in ANY 24hr period
