@@ -562,9 +562,19 @@ export const RHRecordingForm = ({
       }
       
       // Check violation conditions
-      if (restPeriods.length > 2) {
-        // More than 2 rest periods - violation!
+      // The rule requires at least one rest period ≥6 hours (12 cells)
+      
+      if (restPeriods.length === 0) {
+        // No rest periods at all - violation!
         return true;
+      }
+      
+      if (restPeriods.length === 1) {
+        // Only 1 rest period - check if it's ≥6 hours (12 cells)
+        if (restPeriods[0] < 12) {
+          // Single rest period is too short - violation!
+          return true;
+        }
       }
       
       if (restPeriods.length === 2) {
@@ -574,6 +584,11 @@ export const RHRecordingForm = ({
           // Neither period is ≥6 hours - violation!
           return true;
         }
+      }
+      
+      if (restPeriods.length > 2) {
+        // More than 2 rest periods - violation!
+        return true;
       }
     }
     
