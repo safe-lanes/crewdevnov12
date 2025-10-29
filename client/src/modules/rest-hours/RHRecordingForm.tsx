@@ -434,38 +434,63 @@ export const RHRecordingForm = ({
   };
 
   // Helper: Calculate "any period" 24-hour window metrics (rolling window starting at each half-hour)
-  const calculateAnyPeriod24hr = (records: DailyRecord[], dayIndex: number) => {
-    // Build a continuous array of all cells from previous day + current day
-    // This gives us 96 cells to work with (48 from previous day + 48 from current day)
+  const calculateAnyPeriod24hr = (records: DailyRecord[], dayIndex: number, prevMonthRecords: DailyRecord[] = []) => {
+    // Build a continuous array of all cells from previous day + current day + next day
+    // This gives us 144 cells to work with (48 × 3 days)
+    // We need next day to check windows starting late in current day that extend 24 hours forward
     const allCells: string[] = [];
     
-    // Add previous day's cells (or assume rest if no previous day)
+    // Add previous day's cells
     if (dayIndex > 0) {
+      // Previous day exists in current month
       allCells.push(...records[dayIndex - 1].hours);
     } else {
-      // Before the first recorded day, assume all rest
-      allCells.push(...Array(48).fill(''));
+      // Current day is the first day of the month - use previous month's last day
+      if (prevMonthRecords.length > 0) {
+        const lastDayOfPrevMonth = prevMonthRecords[prevMonthRecords.length - 1];
+        allCells.push(...lastDayOfPrevMonth.hours);
+      } else {
+        // No previous month data - assume rest
+        allCells.push(...Array(48).fill(''));
+      }
     }
     
     // Add current day's cells
     allCells.push(...records[dayIndex].hours);
     
-    // Check all 49 possible 24-hour windows (including the exact current-day window 00:00-24:00)
-    // Windows start from cell 0 to cell 48 (inclusive)
+    // Add next day's cells
+    if (dayIndex + 1 < records.length) {
+      // Next day exists in current month
+      allCells.push(...records[dayIndex + 1].hours);
+    } else {
+      // Current day is the last day of the month - assume rest for next day
+      // (we don't fetch next month's data for forward-looking windows)
+      allCells.push(...Array(48).fill(''));
+    }
+    
+    // Current day occupies cells 48-95 (after previous day's 48 cells)
+    // Check all 24-hour windows that overlap with the current day
+    // A window starting at cell S overlaps current day if:
+    //   - It ends at or after cell 48: S + 47 >= 48, so S >= 1
+    //   - It starts at or before cell 95: S <= 95
+    // Therefore, check windows starting from cell 1 to cell 95
     let minRest = 24;  // Minimum rest hours found
     let maxWork = 0;   // Maximum work hours found
     
-    for (let startCell = 0; startCell <= 48; startCell++) {
+    for (let startCell = 1; startCell <= 95; startCell++) {
       // Window is 48 cells (24 hours) starting from startCell
       const windowCells = allCells.slice(startCell, startCell + 48);
       
-      // Count rest cells in this window
-      const restCells = windowCells.filter(c => c === '').length;
-      const restHours = restCells / 2; // Each cell = 0.5 hours
-      const workHours = 24 - restHours;
-      
-      minRest = Math.min(minRest, restHours);
-      maxWork = Math.max(maxWork, workHours);
+      // Only process if we have a full 48-cell window
+      if (windowCells.length === 48) {
+        // Count rest cells in this window
+        const restCells = windowCells.filter(c => c === '').length;
+        const restHours = restCells / 2; // Each cell = 0.5 hours
+        const workHours = 24 - restHours;
+        
+        minRest = Math.min(minRest, restHours);
+        maxWork = Math.max(maxWork, workHours);
+      }
     }
     
     return {
