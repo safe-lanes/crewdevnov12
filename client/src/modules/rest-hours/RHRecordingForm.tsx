@@ -75,6 +75,9 @@ export const RHRecordingForm = ({
   const [previousMonthRecords, setPreviousMonthRecords] = useState<DailyRecord[]>([]);
   const [formId, setFormId] = useState<number | null>(null);
   
+  // Violation highlighting state
+  const [hoveredViolation, setHoveredViolation] = useState<{ dayIndex: number; code: number } | null>(null);
+  
   // Calculate previous month period string
   const previousMonthPeriod = useMemo(() => {
     if (!selectedPeriod) return null;
@@ -1033,6 +1036,54 @@ export const RHRecordingForm = ({
     }
     return 'white'; // Rest (blank)
   };
+  
+  // Helper: Determine if a cell should be highlighted based on hovered violation
+  const shouldHighlightCell = (dayIndex: number, cellIndex: number): boolean => {
+    if (!hoveredViolation) return false;
+    if (hoveredViolation.dayIndex !== dayIndex) return false;
+    
+    const record = dailyRecords[dayIndex];
+    if (!record.violationDiagnostics) return false;
+    
+    // Find the diagnostic for the hovered violation code
+    const diagnostic = record.violationDiagnostics.find(d => d.code === hoveredViolation.code);
+    if (!diagnostic) return false;
+    
+    // Parse the window start time from the diagnostic
+    // Format examples: "Oct 5, 18:30", "Various windows"
+    if (diagnostic.windowStart === 'Various windows') {
+      // For "Various windows", we'd need to recalculate which specific window had the violation
+      // For now, don't highlight these since we don't have a specific window
+      return false;
+    }
+    
+    // Parse the window start to determine which cells to highlight
+    // Example: "Oct 5, 18:30" or "Sep 30, 23:30"
+    const match = diagnostic.windowStart.match(/(\w+)\s+(\d+),\s+(\d+):(\d+)/);
+    if (!match) return false;
+    
+    const [, , windowStartDay, windowStartHour, windowStartMin] = match;
+    const startDay = parseInt(windowStartDay);
+    const startHour = parseInt(windowStartHour);
+    const startMin = parseInt(windowStartMin);
+    
+    // Calculate start cell index (0-47 for half-hours in a day)
+    const startCellInDay = startHour * 2 + (startMin === 30 ? 1 : 0);
+    
+    // Check if this window starts on current day or previous day
+    const currentDay = record.day;
+    
+    if (startDay === currentDay) {
+      // Window starts on current day
+      // Highlight 48 cells starting from startCellInDay
+      // This includes cells from current day and potentially wraps to next day
+      return cellIndex >= startCellInDay;
+    } else {
+      // Window starts on previous day - highlight cells from beginning of current day
+      // up to the point where the 24-hour window ends
+      return cellIndex < startCellInDay;
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1221,6 +1272,7 @@ export const RHRecordingForm = ({
                   {record.hours.map((hour, hourIndex) => {
                     const isSecondHalf = hourIndex % 2 === 1;
                     const borderRight = isSecondHalf ? 'border-gray-300' : 'border-gray-200';
+                    const isHighlighted = shouldHighlightCell(dayIndex, hourIndex);
                     
                     return (
                       <td
@@ -1234,6 +1286,10 @@ export const RHRecordingForm = ({
                           borderRightStyle: 'solid',
                           minWidth: '15px',
                           width: '15px',
+                          outline: isHighlighted ? '2px solid #ef4444' : 'none',
+                          outlineOffset: '-2px',
+                          zIndex: isHighlighted ? 10 : 'auto',
+                          position: 'relative',
                         }}
                       >
                         <div
@@ -1326,33 +1382,47 @@ export const RHRecordingForm = ({
                       
                       if (visibleViolations.length === 0) return '';
                       
-                      const violationText = `[${visibleViolations.join(', ')}]`;
-                      
                       // If no diagnostics available, just show the codes
                       if (visibleDiagnostics.length === 0) {
-                        return violationText;
+                        return `[${visibleViolations.join(', ')}]`;
                       }
                       
-                      // Show codes with tooltip containing detailed diagnostics
+                      // Show individual codes with hover functionality for highlighting
                       return (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="cursor-help underline decoration-dotted">{violationText}</span>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-md">
-                              <div className="text-sm">
-                                {visibleDiagnostics.map((diag, idx) => (
-                                  <div key={idx} className="mb-2 last:mb-0">
-                                    <div className="font-semibold">Code {diag.code}</div>
-                                    <div className="text-xs text-gray-600">Window: {diag.windowStart}</div>
-                                    <div className="mt-1">{diag.reason}</div>
-                                  </div>
-                                ))}
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                        <span className="flex flex-wrap gap-0.5 justify-center">
+                          [
+                          {visibleViolations.map((code, idx) => {
+                            const diagnostic = visibleDiagnostics.find(d => d.code === code);
+                            
+                            if (!diagnostic) {
+                              return <span key={code}>{code}{idx < visibleViolations.length - 1 ? ', ' : ''}</span>;
+                            }
+                            
+                            return (
+                              <TooltipProvider key={code}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span
+                                      className="cursor-help underline decoration-dotted hover:bg-red-100 px-0.5 rounded"
+                                      onMouseEnter={() => setHoveredViolation({ dayIndex, code })}
+                                      onMouseLeave={() => setHoveredViolation(null)}
+                                    >
+                                      {code}{idx < visibleViolations.length - 1 ? ', ' : ''}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-md">
+                                    <div className="text-sm">
+                                      <div className="font-semibold">Code {diagnostic.code}</div>
+                                      <div className="text-xs text-gray-600">Window: {diagnostic.windowStart}</div>
+                                      <div className="mt-1">{diagnostic.reason}</div>
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            );
+                          })}
+                          ]
+                        </span>
                       );
                     })()}
                   </td>
