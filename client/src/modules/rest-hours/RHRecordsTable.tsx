@@ -166,12 +166,12 @@ export function RHRecordsTable({ selectedVessels, selectedMonth }: RHRecordsTabl
     );
   };
 
-  const columnDefs: ColDef[] = useMemo(() => [
+  const columnDefs = useMemo<ColDef[]>(() => [
     {
       headerName: 'Vessel',
       field: 'vesselName',
       width: 170,
-      pinned: 'left',
+      pinned: 'left' as const,
       cellStyle: { fontWeight: 500, fontSize: '13px', display: 'flex', alignItems: 'center' }
     },
     {
@@ -184,7 +184,7 @@ export function RHRecordsTable({ selectedVessels, selectedMonth }: RHRecordsTabl
       headerName: 'Total Crew',
       field: 'totalCrew',
       width: 120,
-      cellStyle: { textAlign: 'center', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }
+      cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }
     },
     {
       headerName: 'Recording Status',
@@ -215,13 +215,13 @@ export function RHRecordsTable({ selectedVessels, selectedMonth }: RHRecordsTabl
       headerName: 'Predicted Violations',
       field: 'predictedViolations',
       width: 150,
-      cellStyle: { textAlign: 'center', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }
+      cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }
     },
     {
       headerName: 'Predicted NCs',
       field: 'predictedNCs',
       width: 140,
-      cellStyle: { textAlign: 'center', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }
+      cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }
     },
     {
       headerName: 'Office Review',
