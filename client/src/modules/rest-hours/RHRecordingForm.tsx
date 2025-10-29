@@ -66,23 +66,6 @@ export const RHRecordingForm = ({
   const [dailyRecords, setDailyRecords] = useState<DailyRecord[]>([]);
   const [formId, setFormId] = useState<number | null>(null);
   
-  // Use selected values instead of props
-  const crewMemberId = selectedCrewMemberId;
-  const vesselId = selectedVesselId;
-  const monthValue = selectedPeriod;
-
-  // Format month for display (e.g., "2024, Mar")
-  const monthDisplay = useMemo(() => {
-    if (!monthValue) return '';
-    const [year, month] = monthValue.split('-');
-    const date = new Date(parseInt(year), parseInt(month) - 1);
-    const monthName = date.toLocaleString('en-US', { month: 'short' });
-    return `${year}, ${monthName}`;
-  }, [monthValue]);
-
-  // Get vessel name
-  const vesselName = getVesselName(vesselId);
-  
   // Fetch crew members for dropdown
   const { data: allCrewMembers = [] } = useQuery<any[]>({
     queryKey: ['/api/crew-members'],
@@ -112,8 +95,19 @@ export const RHRecordingForm = ({
     return allCrewMembers.find((cm: any) => cm.id === selectedCrewMemberId);
   }, [allCrewMembers, selectedCrewMemberId]);
   
+  // Derived values from selections
   const crewMemberName = selectedCrewMember?.firstName + (selectedCrewMember?.middleName ? ' ' + selectedCrewMember.middleName : '') + ' ' + selectedCrewMember?.lastName || initialCrewMemberName;
   const rank = selectedCrewMember?.rank || initialRank;
+  const vesselName = getVesselName(selectedVesselId);
+
+  // Format month for display (e.g., "2024, Mar")
+  const monthDisplay = useMemo(() => {
+    if (!selectedPeriod) return '';
+    const [year, month] = selectedPeriod.split('-');
+    const date = new Date(parseInt(year), parseInt(month) - 1);
+    const monthName = date.toLocaleString('en-US', { month: 'short' });
+    return `${year}, ${monthName}`;
+  }, [selectedPeriod]);
   
   // Update selections when initial props change (when modal opens with new values)
   useEffect(() => {
@@ -126,14 +120,14 @@ export const RHRecordingForm = ({
 
   // Initialize daily records for the month - reset when crew/vessel/month changes or modal opens
   useEffect(() => {
-    if (!monthValue || !open) return;
+    if (!selectedPeriod || !open) return;
     
     // Reset all form state to clean slate
     setFormId(null);
     setShowPlanning(false);
     setOpaMode(false);
     
-    const [year, month] = monthValue.split('-');
+    const [year, month] = selectedPeriod.split('-');
     const daysInMonth = new Date(parseInt(year), parseInt(month), 0).getDate();
     
     const records: DailyRecord[] = [];
@@ -164,13 +158,13 @@ export const RHRecordingForm = ({
     }
     
     setDailyRecords(records);
-  }, [monthValue, crewMemberId, vesselId, open]);
+  }, [selectedPeriod, selectedCrewMemberId, selectedVesselId, open]);
 
   // Fetch existing record if available
   const { data: existingRecord, isError } = useQuery<RestHoursDailyRecord>({
-    queryKey: ['/api/rest-hours-daily-records/by-key', crewMemberId, vesselId, monthValue],
+    queryKey: ['/api/rest-hours-daily-records/by-key', selectedCrewMemberId, selectedVesselId, selectedPeriod],
     queryFn: async () => {
-      const response = await fetch(`/api/rest-hours-daily-records/by-key/${crewMemberId}/${vesselId}/${monthValue}`);
+      const response = await fetch(`/api/rest-hours-daily-records/by-key/${selectedCrewMemberId}/${selectedVesselId}/${selectedPeriod}`);
       if (!response.ok) {
         if (response.status === 404) {
           return null; // No existing record found
@@ -179,7 +173,7 @@ export const RHRecordingForm = ({
       }
       return response.json();
     },
-    enabled: open && !!crewMemberId && !!vesselId && !!monthValue,
+    enabled: open && !!selectedCrewMemberId && !!selectedVesselId && !!selectedPeriod,
     retry: false,
     gcTime: 0, // Don't cache - each crew's data must be fresh to prevent data leakage
     staleTime: 0, // Always fetch fresh data
@@ -253,11 +247,11 @@ export const RHRecordingForm = ({
 
   const handleSave = () => {
     const payload = {
-      crewMemberId,
-      vesselId,
+      crewMemberId: selectedCrewMemberId,
+      vesselId: selectedVesselId,
       rank,
       name: crewMemberName,
-      monthYear: monthValue,
+      monthYear: selectedPeriod,
       dailyRecords: JSON.stringify(dailyRecords),
       showPlanning,
       opaMode,
@@ -268,7 +262,7 @@ export const RHRecordingForm = ({
 
   const handleClear = () => {
     // Reset to initial state
-    const [year, month] = monthValue.split('-');
+    const [year, month] = selectedPeriod.split('-');
     const daysInMonth = new Date(parseInt(year), parseInt(month), 0).getDate();
     
     const records: DailyRecord[] = [];
