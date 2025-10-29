@@ -6,6 +6,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent } from '@/components/ui/card';
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 
@@ -222,10 +223,50 @@ export const RestHoursDashboard = (): JSX.Element => {
         </div>
       )}
 
-      {/* Content Area - To be implemented */}
-      <div className="p-6">
-        <div className="text-gray-600">
-          Dashboard content will be implemented here.
+      {/* Dashboard Grid - 3x2 layout */}
+      <div className="px-4 pb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Card 1 */}
+          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700" data-testid="dashboard-card-1">
+            <CardContent className="p-6 h-64">
+              {/* Chart placeholder - will be implemented later */}
+            </CardContent>
+          </Card>
+
+          {/* Card 2 */}
+          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700" data-testid="dashboard-card-2">
+            <CardContent className="p-6 h-64">
+              {/* Chart placeholder - will be implemented later */}
+            </CardContent>
+          </Card>
+
+          {/* Card 3 */}
+          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700" data-testid="dashboard-card-3">
+            <CardContent className="p-6 h-64">
+              {/* Chart placeholder - will be implemented later */}
+            </CardContent>
+          </Card>
+
+          {/* Card 4 */}
+          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700" data-testid="dashboard-card-4">
+            <CardContent className="p-6 h-64">
+              {/* Chart placeholder - will be implemented later */}
+            </CardContent>
+          </Card>
+
+          {/* Card 5 */}
+          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700" data-testid="dashboard-card-5">
+            <CardContent className="p-6 h-64">
+              {/* Chart placeholder - will be implemented later */}
+            </CardContent>
+          </Card>
+
+          {/* Card 6 */}
+          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700" data-testid="dashboard-card-6">
+            <CardContent className="p-6 h-64">
+              {/* Chart placeholder - will be implemented later */}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
