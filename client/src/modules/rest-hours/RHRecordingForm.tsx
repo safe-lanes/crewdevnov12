@@ -727,7 +727,7 @@ export const RHRecordingForm = ({
   };
 
   // Helper: Check if any 24-hour window violates Code 3 (rest period distribution)
-  // Code 3: Rest periods must be no more than 2, and at least one must be ≥6 hours
+  // Code 3: The two largest rest periods must sum to ≥10 hours, and at least one must be ≥6 hours
   const checkViolationCode3 = (records: DailyRecord[], dayIndex: number): boolean => {
     // Build a continuous array of all cells from previous day + current day
     const allCells: string[] = [];
@@ -769,32 +769,28 @@ export const RHRecordingForm = ({
       }
       
       // Check violation conditions
-      // The rule requires at least one rest period ≥6 hours (12 cells)
+      // The rule: The two largest rest periods must sum to ≥10 hours (20 cells)
+      // AND at least one of those two must be ≥6 hours (12 cells)
       
       if (restPeriods.length === 0) {
         // No rest periods at all - violation!
         return true;
       }
       
-      if (restPeriods.length === 1) {
-        // Only 1 rest period - check if it's ≥6 hours (12 cells)
-        if (restPeriods[0] < 12) {
-          // Single rest period is too short - violation!
-          return true;
-        }
-      }
+      // Sort rest periods by duration (descending - largest first)
+      const sortedPeriods = [...restPeriods].sort((a, b) => b - a);
       
-      if (restPeriods.length === 2) {
-        // Exactly 2 periods - check if at least one is ≥6 hours (12 cells)
-        const hasLongPeriod = restPeriods.some(period => period >= 12);
-        if (!hasLongPeriod) {
-          // Neither period is ≥6 hours - violation!
-          return true;
-        }
-      }
+      // Take the two largest periods
+      const largest = sortedPeriods[0];
+      const secondLargest = sortedPeriods.length > 1 ? sortedPeriods[1] : 0;
       
-      if (restPeriods.length > 2) {
-        // More than 2 rest periods - violation!
+      // Check if the two largest periods satisfy the requirements
+      const sumOfTopTwo = largest + secondLargest;
+      const hasLongPeriod = largest >= 12 || secondLargest >= 12;
+      
+      if (sumOfTopTwo < 20 || !hasLongPeriod) {
+        // Violation: Either the top 2 periods don't sum to ≥10 hours (20 cells)
+        // OR neither of the top 2 is ≥6 hours (12 cells)
         return true;
       }
     }
@@ -819,7 +815,7 @@ export const RHRecordingForm = ({
       violations.push(2);
     }
     
-    // Rule [3]: Rest periods must be no more than 2, and at least one must be ≥6 hours
+    // Rule [3]: The two largest rest periods must sum to ≥10 hours, and at least one must be ≥6 hours
     if (checkViolationCode3(records, dayIndex)) {
       violations.push(3);
     }
