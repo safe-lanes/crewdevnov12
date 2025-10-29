@@ -46,20 +46,30 @@ interface DailyRecord {
 export const RHRecordingForm = ({
   open,
   onOpenChange,
-  crewMemberId,
-  crewMemberName,
-  vesselId,
-  rank,
-  monthValue,
+  crewMemberId: initialCrewMemberId,
+  crewMemberName: initialCrewMemberName,
+  vesselId: initialVesselId,
+  rank: initialRank,
+  monthValue: initialMonthValue,
 }: RHRecordingFormProps): JSX.Element => {
   const { toast } = useToast();
-  const { getVesselName } = useVesselLookup();
+  const { vessels, getVesselName } = useVesselLookup();
+  
+  // Dropdown selections state
+  const [selectedPeriod, setSelectedPeriod] = useState(initialMonthValue);
+  const [selectedVesselId, setSelectedVesselId] = useState(initialVesselId);
+  const [selectedCrewMemberId, setSelectedCrewMemberId] = useState(initialCrewMemberId);
   
   // Form state
   const [showPlanning, setShowPlanning] = useState(false);
   const [opaMode, setOpaMode] = useState(false);
   const [dailyRecords, setDailyRecords] = useState<DailyRecord[]>([]);
   const [formId, setFormId] = useState<number | null>(null);
+  
+  // Use selected values instead of props
+  const crewMemberId = selectedCrewMemberId;
+  const vesselId = selectedVesselId;
+  const monthValue = selectedPeriod;
 
   // Format month for display (e.g., "2024, Mar")
   const monthDisplay = useMemo(() => {
@@ -72,6 +82,47 @@ export const RHRecordingForm = ({
 
   // Get vessel name
   const vesselName = getVesselName(vesselId);
+  
+  // Fetch crew members for dropdown
+  const { data: allCrewMembers = [] } = useQuery<any[]>({
+    queryKey: ['/api/crew-members'],
+    enabled: open,
+  });
+  
+  // Generate period options (last 12 months)
+  const periodOptions = useMemo(() => {
+    const options: { value: string; label: string }[] = [];
+    const today = new Date();
+    
+    for (let i = 0; i < 12; i++) {
+      const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const year = date.getFullYear();
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const value = `${year}-${month}`;
+      const monthName = date.toLocaleString('en-US', { month: 'short' });
+      const label = `${year}, ${monthName}`;
+      options.push({ value, label });
+    }
+    
+    return options;
+  }, []);
+  
+  // Get selected crew member details
+  const selectedCrewMember = useMemo(() => {
+    return allCrewMembers.find((cm: any) => cm.id === selectedCrewMemberId);
+  }, [allCrewMembers, selectedCrewMemberId]);
+  
+  const crewMemberName = selectedCrewMember?.firstName + (selectedCrewMember?.middleName ? ' ' + selectedCrewMember.middleName : '') + ' ' + selectedCrewMember?.lastName || initialCrewMemberName;
+  const rank = selectedCrewMember?.rank || initialRank;
+  
+  // Update selections when initial props change (when modal opens with new values)
+  useEffect(() => {
+    if (open) {
+      setSelectedPeriod(initialMonthValue);
+      setSelectedVesselId(initialVesselId);
+      setSelectedCrewMemberId(initialCrewMemberId);
+    }
+  }, [open, initialMonthValue, initialVesselId, initialCrewMemberId]);
 
   // Initialize daily records for the month - reset when crew/vessel/month changes or modal opens
   useEffect(() => {
@@ -538,32 +589,59 @@ export const RHRecordingForm = ({
         <div className="flex items-center gap-4 py-3 border-b">
           <div className="flex flex-col gap-1">
             <Label className="text-xs text-[#4f5863]">Period</Label>
-            <Input
-              value={monthDisplay}
-              readOnly
-              className="h-8 w-32 text-xs bg-gray-50"
-              data-testid="input-period"
-            />
+            <Select
+              value={selectedPeriod}
+              onValueChange={setSelectedPeriod}
+            >
+              <SelectTrigger className="h-8 w-32 text-xs" data-testid="select-period">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {periodOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex flex-col gap-1">
             <Label className="text-xs text-[#4f5863]">Vessel</Label>
-            <Input
-              value={vesselName}
-              readOnly
-              className="h-8 w-48 text-xs bg-gray-50"
-              data-testid="input-vessel"
-            />
+            <Select
+              value={selectedVesselId}
+              onValueChange={setSelectedVesselId}
+            >
+              <SelectTrigger className="h-8 w-48 text-xs" data-testid="select-vessel">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {vessels.map((vessel: any) => (
+                  <SelectItem key={vessel.entryId} value={vessel.entryId}>
+                    {vessel.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex flex-col gap-1">
             <Label className="text-xs text-[#4f5863]">Rank, Name</Label>
-            <Input
-              value={`${rank}, ${crewMemberName}`}
-              readOnly
-              className="h-8 w-64 text-xs bg-gray-50"
-              data-testid="input-rank-name"
-            />
+            <Select
+              value={selectedCrewMemberId}
+              onValueChange={setSelectedCrewMemberId}
+            >
+              <SelectTrigger className="h-8 w-64 text-xs" data-testid="select-crew-member">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {allCrewMembers.map((cm: any) => (
+                  <SelectItem key={cm.id} value={cm.id}>
+                    {cm.rank}, {cm.firstName}{cm.middleName ? ' ' + cm.middleName : ''} {cm.lastName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
