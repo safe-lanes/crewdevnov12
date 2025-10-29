@@ -798,10 +798,11 @@ export const RHRecordingForm = ({
       <DialogContent className="max-w-[95vw] max-h-[95vh] overflow-auto">
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-lg font-semibold">
+            <div className="flex-1"></div>
+            <DialogTitle className="text-lg font-semibold text-center flex-1">
               RH Recording Form
             </DialogTitle>
-            <div className="flex items-center gap-4">
+            <div className="flex-1 flex items-center justify-end gap-4">
               <span className="text-base font-medium text-[#4a90e2]">{monthDisplay}</span>
               <Button
                 variant="outline"
