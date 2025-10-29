@@ -1080,8 +1080,8 @@ export const RHRecordingForm = ({
       return cellIndex >= startCellInDay;
     } else {
       // Window starts on previous day - highlight cells from beginning of current day
-      // up to the point where the 24-hour window ends
-      return cellIndex < startCellInDay;
+      // up to and including the point where the 24-hour window ends
+      return cellIndex <= startCellInDay;
     }
   };
 
