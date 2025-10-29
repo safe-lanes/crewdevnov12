@@ -5,6 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -21,6 +22,12 @@ interface RHRecordingFormProps {
   monthValue: string; // Format: "2025-10" (YYYY-MM)
 }
 
+interface ViolationDiagnostic {
+  code: number;
+  windowStart: string; // e.g., "Oct 4, 18:00 → Oct 5, 18:00"
+  reason: string; // e.g., "Rest periods: 6h, 3h, 2h. Top 2 (6h + 3h = 9h) < 10h required"
+}
+
 interface DailyRecord {
   day: number;
   dayOfWeek: string;
@@ -28,6 +35,7 @@ interface DailyRecord {
   isPlan: boolean;
   comments: string;
   violations: number[];
+  violationDiagnostics?: ViolationDiagnostic[]; // Detailed info about why violations occurred
   hoursOfRest24hr: number; // Calendar day: 00:00-24:00
   hoursOfWork24hr: number;
   hoursOfRest48hr: number;
@@ -277,10 +285,14 @@ export const RHRecordingForm = ({
         });
         
         // Recalculate violations for all records to ensure new rules are applied
-        const recordsWithViolations = updatedRecords.map((record: DailyRecord, index: number) => ({
-          ...record,
-          violations: detectViolations(record, updatedRecords, index, previousMonthRecords),
-        }));
+        const recordsWithViolations = updatedRecords.map((record: DailyRecord, index: number) => {
+          const { violations, diagnostics } = detectViolations(record, updatedRecords, index, previousMonthRecords);
+          return {
+            ...record,
+            violations,
+            violationDiagnostics: diagnostics,
+          };
+        });
         setDailyRecords(recordsWithViolations);
       } catch (error) {
         console.error('Failed to parse daily records:', error);
@@ -317,10 +329,14 @@ export const RHRecordingForm = ({
       });
       
       // Recalculate violations with updated metrics
-      return updatedRecords.map((record, index) => ({
-        ...record,
-        violations: detectViolations(record, updatedRecords, index, previousMonthRecords),
-      }));
+      return updatedRecords.map((record, index) => {
+        const { violations, diagnostics } = detectViolations(record, updatedRecords, index, previousMonthRecords);
+        return {
+          ...record,
+          violations,
+          violationDiagnostics: diagnostics,
+        };
+      });
     });
   }, [previousMonthRecords, open]);
 
@@ -728,9 +744,11 @@ export const RHRecordingForm = ({
 
   // Helper: Check if any 24-hour window violates Code 3 (rest period distribution)
   // Code 3: The two largest rest periods must sum to ≥10 hours, and at least one must be ≥6 hours
-  const checkViolationCode3 = (records: DailyRecord[], dayIndex: number): boolean => {
+  // Returns diagnostic info if violation found, null otherwise
+  const checkViolationCode3 = (records: DailyRecord[], dayIndex: number, selectedPeriod: string, prevMonthRecords: DailyRecord[] = []): ViolationDiagnostic | null => {
     // Build a continuous array of all cells from previous day + current day
     const allCells: string[] = [];
+    const currentDay = records[dayIndex].day;
     
     // Add previous day's cells (or assume rest if no previous day)
     if (dayIndex > 0) {
@@ -768,25 +786,75 @@ export const RHRecordingForm = ({
         restPeriods.push(currentPeriodLength);
       }
       
+      // Calculate window start time
+      // allCells = [prev day 48 cells (0-47)] + [current day 48 cells (48-95)]
+      // If startCell < 48, window starts in previous day
+      // If startCell >= 48, window starts in current day
+      const [year, month] = selectedPeriod.split('-').map(Number);
+      
+      let windowStart: string;
+      let windowStartHour: number;
+      let windowStartMin: number;
+      
+      if (startCell < 48) {
+        // Window starts in previous day
+        windowStartHour = Math.floor(startCell / 2);
+        windowStartMin = (startCell % 2) * 30;
+        
+        if (dayIndex > 0) {
+          // Previous day is in the same month
+          const prevDay = records[dayIndex - 1].day;
+          const monthName = new Date(year, month - 1).toLocaleString('en-US', { month: 'short' });
+          windowStart = `${monthName} ${prevDay}, ${String(windowStartHour).padStart(2, '0')}:${String(windowStartMin).padStart(2, '0')}`;
+        } else {
+          // Previous day is in the previous month - use prevMonthRecords
+          if (prevMonthRecords.length > 0) {
+            const lastDayOfPrevMonth = prevMonthRecords[prevMonthRecords.length - 1].day;
+            // Calculate previous month name
+            const prevMonthDate = new Date(year, month - 2); // month-2 because month is 1-indexed
+            const prevMonthName = prevMonthDate.toLocaleString('en-US', { month: 'short' });
+            windowStart = `${prevMonthName} ${lastDayOfPrevMonth}, ${String(windowStartHour).padStart(2, '0')}:${String(windowStartMin).padStart(2, '0')}`;
+          } else {
+            // Fallback: show as "Previous month"
+            windowStart = `Previous month, ${String(windowStartHour).padStart(2, '0')}:${String(windowStartMin).padStart(2, '0')}`;
+          }
+        }
+      } else {
+        // Window starts in current day
+        const currentDayCell = startCell - 48;
+        windowStartHour = Math.floor(currentDayCell / 2);
+        windowStartMin = (currentDayCell % 2) * 30;
+        const monthName = new Date(year, month - 1).toLocaleString('en-US', { month: 'short' });
+        windowStart = `${monthName} ${currentDay}, ${String(windowStartHour).padStart(2, '0')}:${String(windowStartMin).padStart(2, '0')}`;
+      }
+      
       // Check violation conditions
       // The rule: The two largest rest periods must sum to ≥10 hours (20 cells)
       // AND at least one of those two must be ≥6 hours (12 cells)
       
       if (restPeriods.length === 0) {
         // No rest periods at all - violation!
-        return true;
+        return {
+          code: 3,
+          windowStart,
+          reason: `No rest periods found in this 24-hour window`
+        };
       }
       
       // Sort rest periods by duration (descending - largest first)
       const sortedPeriods = [...restPeriods].sort((a, b) => b - a);
+      const periodsInHours = sortedPeriods.map(p => (p / 2).toFixed(1));
       
       if (restPeriods.length === 1) {
         // Single rest period - it must be ≥10 hours (20 cells) to satisfy the requirement
-        // (since the sum of top 2 would be just this period + 0)
         const singlePeriod = sortedPeriods[0];
         if (singlePeriod < 20) {
           // Single period is less than 10 hours - violation!
-          return true;
+          return {
+            code: 3,
+            windowStart,
+            reason: `Single rest period: ${periodsInHours[0]}h (< 10h required)`
+          };
         }
       } else {
         // Multiple rest periods - check the two largest
@@ -800,63 +868,115 @@ export const RHRecordingForm = ({
         if (sumOfTopTwo < 20 || !hasLongPeriod) {
           // Violation: Either the top 2 periods don't sum to ≥10 hours (20 cells)
           // OR neither of the top 2 is ≥6 hours (12 cells)
-          return true;
+          const sumHours = (sumOfTopTwo / 2).toFixed(1);
+          const topTwoHours = [periodsInHours[0], periodsInHours[1]].join('h + ') + 'h';
+          
+          let reason = `Rest periods: ${periodsInHours.join('h, ')}h. Top 2: ${topTwoHours} = ${sumHours}h`;
+          if (sumOfTopTwo < 20) {
+            reason += ' (< 10h required)';
+          } else {
+            reason += ' (neither ≥ 6h required)';
+          }
+          
+          return {
+            code: 3,
+            windowStart,
+            reason
+          };
         }
       }
     }
     
     // No violation found in any window
-    return false;
+    return null;
   };
 
   // Helper: Detect violations
   // NOTE: Using "any period" values for regulatory compliance as per ILO/MLC requirements
   // NOTE: All 8 violation codes are ALWAYS calculated. Codes 7 & 8 (OPA-specific) are filtered in the UI display.
-  const detectViolations = (record: DailyRecord, records: DailyRecord[], dayIndex: number, prevMonthRecords: DailyRecord[] = []): number[] => {
+  const detectViolations = (record: DailyRecord, records: DailyRecord[], dayIndex: number, prevMonthRecords: DailyRecord[] = []): { violations: number[]; diagnostics: ViolationDiagnostic[] } => {
     const violations: number[] = [];
+    const diagnostics: ViolationDiagnostic[] = [];
     
     // Rule [1]: Minimum 10 hours rest in ANY 24hr period
     if (record.anyPeriodRest24hr < 10) {
       violations.push(1);
+      diagnostics.push({
+        code: 1,
+        windowStart: 'Various windows',
+        reason: `Minimum rest in any 24hr period: ${record.anyPeriodRest24hr.toFixed(1)}h (< 10h required)`
+      });
     }
     
     // Rule [2]: Minimum 77 hours rest in ANY 7-day period
     if (record.anyPeriodRest7day < 77) {
       violations.push(2);
+      diagnostics.push({
+        code: 2,
+        windowStart: 'Various windows',
+        reason: `Minimum rest in any 7-day period: ${record.anyPeriodRest7day.toFixed(1)}h (< 77h required)`
+      });
     }
     
     // Rule [3]: The two largest rest periods must sum to ≥10 hours, and at least one must be ≥6 hours
-    if (checkViolationCode3(records, dayIndex)) {
+    const code3Diagnostic = checkViolationCode3(records, dayIndex, selectedPeriod, prevMonthRecords);
+    if (code3Diagnostic) {
       violations.push(3);
+      diagnostics.push(code3Diagnostic);
     }
     
     // Rule [4]: Interval between rest periods must not exceed 14 hours
     if (checkViolationCode4(records, dayIndex)) {
       violations.push(4);
+      diagnostics.push({
+        code: 4,
+        windowStart: 'Various windows',
+        reason: 'Work interval between rest periods exceeds 14 hours'
+      });
     }
     
     // Rule [5]: Maximum 14 hours work in ANY 24hr period
     if (record.anyPeriodWork24hr > 14) {
       violations.push(5);
+      diagnostics.push({
+        code: 5,
+        windowStart: 'Various windows',
+        reason: `Maximum work in any 24hr period: ${record.anyPeriodWork24hr.toFixed(1)}h (> 14h limit)`
+      });
     }
     
     // Rule [6]: Maximum 72 hours work in ANY 7-day period
     if (record.anyPeriodWork7day > 72) {
       violations.push(6);
+      diagnostics.push({
+        code: 6,
+        windowStart: 'Various windows',
+        reason: `Maximum work in any 7-day period: ${record.anyPeriodWork7day.toFixed(1)}h (> 72h limit)`
+      });
     }
     
     // Rule [7]: Maximum 15 hours work in ANY 24hr period (OPA-specific, filtered in UI)
     if (record.anyPeriodWork24hr > 15) {
       violations.push(7);
+      diagnostics.push({
+        code: 7,
+        windowStart: 'Various windows',
+        reason: `Maximum work in any 24hr period: ${record.anyPeriodWork24hr.toFixed(1)}h (> 15h OPA limit)`
+      });
     }
     
     // Rule [8]: Maximum 36 hours work in ANY 72hr period (OPA-specific, filtered in UI)
     const maxWork72hr = calculateAnyPeriod72hr(records, dayIndex, prevMonthRecords);
     if (maxWork72hr > 36) {
       violations.push(8);
+      diagnostics.push({
+        code: 8,
+        windowStart: 'Various windows',
+        reason: `Maximum work in any 72hr period: ${maxWork72hr.toFixed(1)}h (> 36h OPA limit)`
+      });
     }
     
-    return violations;
+    return { violations, diagnostics };
   };
 
   // Handler: Toggle Plan/Rec
@@ -907,7 +1027,9 @@ export const RHRecordingForm = ({
           };
           
           // Detect violations
-          newRecords[i].violations = detectViolations(newRecords[i], newRecords, i, previousMonthRecords);
+          const { violations, diagnostics } = detectViolations(newRecords[i], newRecords, i, previousMonthRecords);
+          newRecords[i].violations = violations;
+          newRecords[i].violationDiagnostics = diagnostics;
         }
       }
       
@@ -1231,7 +1353,38 @@ export const RHRecordingForm = ({
                   <td className="border border-gray-300 text-center text-red-600 font-semibold" style={{ padding: '2px' }}>
                     {(() => {
                       const visibleViolations = record.violations.filter(v => opaMode || (v !== 7 && v !== 8));
-                      return visibleViolations.length > 0 ? `[${visibleViolations.join(', ')}]` : '';
+                      const visibleDiagnostics = record.violationDiagnostics?.filter(d => visibleViolations.includes(d.code)) || [];
+                      
+                      if (visibleViolations.length === 0) return '';
+                      
+                      const violationText = `[${visibleViolations.join(', ')}]`;
+                      
+                      // If no diagnostics available, just show the codes
+                      if (visibleDiagnostics.length === 0) {
+                        return violationText;
+                      }
+                      
+                      // Show codes with tooltip containing detailed diagnostics
+                      return (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-help underline decoration-dotted">{violationText}</span>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-md">
+                              <div className="text-sm">
+                                {visibleDiagnostics.map((diag, idx) => (
+                                  <div key={idx} className="mb-2 last:mb-0">
+                                    <div className="font-semibold">Code {diag.code}</div>
+                                    <div className="text-xs text-gray-600">Window: {diag.windowStart}</div>
+                                    <div className="mt-1">{diag.reason}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      );
                     })()}
                   </td>
                   
