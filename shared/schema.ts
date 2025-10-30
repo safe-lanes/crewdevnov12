@@ -1082,6 +1082,8 @@ export const variableTasks = pgTable("variable_tasks", {
   id: serial("id").primaryKey(),
   startDateTime: text("start_date_time").notNull(),
   finishDateTime: text("finish_date_time").notNull(),
+  startDateTimeSort: text("start_date_time_sort").notNull(), // ISO format for sorting
+  finishDateTimeSort: text("finish_date_time_sort").notNull(), // ISO format for sorting
   task: text("task").notNull(),
   status: text("status").notNull(), // 'Planned' or 'Completed'
   crewInvolved: integer("crew_involved").notNull(),

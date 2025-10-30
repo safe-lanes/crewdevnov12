@@ -17,6 +17,8 @@ const mockVariableTasks: VariableTask[] = [
     id: 1,
     startDateTime: '09-Jan-2025 / 14:00',
     finishDateTime: '09-Jan-2025 / 16:00',
+    startDateTimeSort: '2025-01-09T14:00:00',
+    finishDateTimeSort: '2025-01-09T16:00:00',
     task: 'Hot work',
     status: 'Planned',
     crewInvolved: 5,
@@ -28,6 +30,8 @@ const mockVariableTasks: VariableTask[] = [
     id: 2,
     startDateTime: '08-Jan-2025 / 18:00',
     finishDateTime: '09-Jan-2025 / 21:00',
+    startDateTimeSort: '2025-01-08T18:00:00',
+    finishDateTimeSort: '2025-01-09T21:00:00',
     task: 'Departure Port',
     status: 'Completed',
     crewInvolved: 20,
@@ -39,6 +43,8 @@ const mockVariableTasks: VariableTask[] = [
     id: 3,
     startDateTime: '10-Jan-2025 / 08:00',
     finishDateTime: '10-Jan-2025 / 12:00',
+    startDateTimeSort: '2025-01-10T08:00:00',
+    finishDateTimeSort: '2025-01-10T12:00:00',
     task: 'Safety Drill',
     status: 'Planned',
     crewInvolved: 15,
@@ -50,6 +56,8 @@ const mockVariableTasks: VariableTask[] = [
     id: 4,
     startDateTime: '11-Jan-2025 / 10:00',
     finishDateTime: '11-Jan-2025 / 14:00',
+    startDateTimeSort: '2025-01-11T10:00:00',
+    finishDateTimeSort: '2025-01-11T14:00:00',
     task: 'Maintenance',
     status: 'Planned',
     crewInvolved: 8,
@@ -61,6 +69,8 @@ const mockVariableTasks: VariableTask[] = [
     id: 5,
     startDateTime: '12-Jan-2025 / 15:00',
     finishDateTime: '12-Jan-2025 / 18:00',
+    startDateTimeSort: '2025-01-12T15:00:00',
+    finishDateTimeSort: '2025-01-12T18:00:00',
     task: 'Cargo Operations',
     status: 'Completed',
     crewInvolved: 12,
@@ -109,8 +119,20 @@ export const VariableTasksTable = () => {
     if (!sortColumn) return tasks;
 
     return [...tasks].sort((a, b) => {
-      const aValue = a[sortColumn];
-      const bValue = b[sortColumn];
+      let aValue: any;
+      let bValue: any;
+
+      // Use sortable ISO timestamps for date/time columns
+      if (sortColumn === 'startDateTime') {
+        aValue = a.startDateTimeSort;
+        bValue = b.startDateTimeSort;
+      } else if (sortColumn === 'finishDateTime') {
+        aValue = a.finishDateTimeSort;
+        bValue = b.finishDateTimeSort;
+      } else {
+        aValue = a[sortColumn];
+        bValue = b[sortColumn];
+      }
 
       if (aValue === null || aValue === undefined) return 1;
       if (bValue === null || bValue === undefined) return -1;
