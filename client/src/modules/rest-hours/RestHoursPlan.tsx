@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { VariableTasksTable } from './VariableTasksTable';
+import { FixedTasksTable } from './FixedTasksTable';
 
 export const RestHoursPlan = (): JSX.Element => {
   // Generate last 12 months for period dropdown
@@ -152,9 +153,7 @@ export const RestHoursPlan = (): JSX.Element => {
       {/* Content Area */}
       <div className="px-0 pb-6">
         {selectedTab === "fixed" ? (
-          <div className="text-gray-600 p-6">
-            Fixed Tasks content will be implemented here.
-          </div>
+          <FixedTasksTable vesselId={selectedVessel} monthYear={periodValue} />
         ) : (
           <VariableTasksTable vesselId={selectedVessel} periodValue={periodValue} />
         )}
