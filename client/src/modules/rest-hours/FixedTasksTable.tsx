@@ -24,14 +24,6 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
   const { toast } = useToast();
   const [isEditMode, setIsEditMode] = useState(false);
   const [crewTasks, setCrewTasks] = useState<CrewTaskData[]>([]);
-  const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set());
-
-  // Calculate days in month
-  const daysInMonth = useMemo(() => {
-    if (!monthYear) return 31;
-    const [year, month] = monthYear.split('-').map(Number);
-    return new Date(year, month, 0).getDate();
-  }, [monthYear]);
 
   // Fetch crew members assigned to this vessel
   const { data: allCrewMembers = [] } = useQuery<any[]>({
@@ -139,17 +131,14 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
       const current = updated[crewIndex];
       const hours = type === 'sea' ? [...current.seaHours] : [...current.portHours];
       
-      // cellIndex is 0-47 for the daily template
-      const templateIndex = cellIndex % 48;
-      
       // Cycle through: '' -> 'w' -> 'd' -> ''
-      const currentValue = hours[templateIndex];
+      const currentValue = hours[cellIndex];
       if (currentValue === '') {
-        hours[templateIndex] = 'w';
+        hours[cellIndex] = 'w';
       } else if (currentValue === 'w') {
-        hours[templateIndex] = 'd';
+        hours[cellIndex] = 'd';
       } else {
-        hours[templateIndex] = '';
+        hours[cellIndex] = '';
       }
 
       if (type === 'sea') {
@@ -159,18 +148,6 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
       }
 
       return updated;
-    });
-  };
-
-  const toggleDayExpansion = (day: number) => {
-    setExpandedDays((prev) => {
-      const next = new Set(prev);
-      if (next.has(day)) {
-        next.delete(day);
-      } else {
-        next.add(day);
-      }
-      return next;
     });
   };
 
@@ -294,26 +271,33 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
         )}
       </div>
 
-      {/* Simplified view - showing total rest hours per day */}
+      {/* Hourly view - showing 24 hours with 2 half-hour cells each */}
       <div className="overflow-x-auto border rounded-lg">
         <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="bg-gray-100 dark:bg-gray-800">
               <th className="border px-2 py-1 text-left sticky left-0 bg-gray-100 dark:bg-gray-800 z-10">
-                Crew Member
+                Rank
               </th>
-              <th className="border px-2 py-1 text-left">Rank</th>
-              <th className="border px-2 py-1 text-left">Condition</th>
-              {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => (
+              <th className="border px-2 py-1 text-left sticky left-[60px] bg-gray-100 dark:bg-gray-800 z-10">
+                Name
+              </th>
+              <th className="border px-2 py-1 text-center">
+                Watch/<br/>Duty
+              </th>
+              {/* Hours 00-23 */}
+              {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
                 <th 
-                  key={day} 
-                  className="border px-1 py-1 text-center cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700"
-                  onClick={() => toggleDayExpansion(day)}
-                  data-testid={`header-day-${day}`}
+                  key={hour} 
+                  className="border px-1 py-1 text-center"
+                  data-testid={`header-hour-${hour}`}
                 >
-                  {day}
+                  {String(hour).padStart(2, '0')}
                 </th>
               ))}
+              <th className="border px-2 py-1 text-center">
+                Total<br/>Rest Hrs
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -322,77 +306,88 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
                 {/* Sea row */}
                 <tr key={`${crew.crewMemberId}-sea`} className="hover:bg-gray-50 dark:hover:bg-gray-900">
                   <td 
-                    className="border px-2 py-1 sticky left-0 bg-white dark:bg-gray-950 font-medium"
+                    className="border px-2 py-1 sticky left-0 bg-white dark:bg-gray-950"
+                    rowSpan={2}
+                  >
+                    {crew.rank}
+                  </td>
+                  <td 
+                    className="border px-2 py-1 sticky left-[60px] bg-white dark:bg-gray-950 font-medium"
                     rowSpan={2}
                   >
                     {crew.crewName}
                   </td>
-                  <td className="border px-2 py-1" rowSpan={2}>
-                    {crew.rank}
-                  </td>
-                  <td className="border px-2 py-1 text-blue-600 font-semibold">Sea</td>
-                  {Array.from({ length: daysInMonth }, (_, dayIdx) => {
-                    const dayNum = dayIdx + 1;
-                    const restHours = calculateRestHours(crew.seaHours);
-                    const isExpanded = expandedDays.has(dayNum);
+                  <td className="border px-2 py-1 text-center text-blue-600 font-semibold">Sea</td>
+                  {/* Display 2 cells per hour (48 cells total) */}
+                  {Array.from({ length: 24 }, (_, hour) => {
+                    const cell1Index = hour * 2;
+                    const cell2Index = hour * 2 + 1;
+                    const cell1Value = crew.seaHours[cell1Index] || '';
+                    const cell2Value = crew.seaHours[cell2Index] || '';
 
                     return (
                       <td 
-                        key={dayNum} 
-                        className="border px-1 py-1 text-center"
-                        data-testid={`cell-sea-${crewIndex}-day-${dayNum}`}
+                        key={hour} 
+                        className="border p-0"
+                        data-testid={`cell-sea-${crewIndex}-hour-${hour}`}
                       >
-                        {!isExpanded ? (
-                          <div className="text-xs">{restHours.toFixed(1)}h</div>
-                        ) : (
-                          <div className="grid grid-cols-4 gap-0.5">
-                            {crew.seaHours.map((hour, cellIdx) => (
-                              <div
-                                key={cellIdx}
-                                className={`w-3 h-3 border ${getCellColor(hour)} ${isEditMode ? 'cursor-pointer hover:opacity-70' : ''}`}
-                                onClick={() => handleCellClick(crewIndex, 'sea', cellIdx)}
-                                title={`${Math.floor(cellIdx / 2)}:${cellIdx % 2 === 0 ? '00' : '30'}`}
-                                data-testid={`cell-sea-${crewIndex}-day-${dayNum}-hour-${cellIdx}`}
-                              />
-                            ))}
-                          </div>
-                        )}
+                        <div className="flex">
+                          <div
+                            className={`w-3 h-6 border-r ${getCellColor(cell1Value)} ${isEditMode ? 'cursor-pointer hover:opacity-70' : ''}`}
+                            onClick={() => handleCellClick(crewIndex, 'sea', cell1Index)}
+                            title={`${String(hour).padStart(2, '0')}:00`}
+                            data-testid={`cell-sea-${crewIndex}-hour-${hour}-first`}
+                          />
+                          <div
+                            className={`w-3 h-6 ${getCellColor(cell2Value)} ${isEditMode ? 'cursor-pointer hover:opacity-70' : ''}`}
+                            onClick={() => handleCellClick(crewIndex, 'sea', cell2Index)}
+                            title={`${String(hour).padStart(2, '0')}:30`}
+                            data-testid={`cell-sea-${crewIndex}-hour-${hour}-second`}
+                          />
+                        </div>
                       </td>
                     );
                   })}
+                  <td className="border px-2 py-1 text-center font-medium">
+                    {calculateRestHours(crew.seaHours).toFixed(1)}
+                  </td>
                 </tr>
                 {/* Port row */}
                 <tr key={`${crew.crewMemberId}-port`} className="hover:bg-gray-50 dark:hover:bg-gray-900">
-                  <td className="border px-2 py-1 text-green-600 font-semibold">Port</td>
-                  {Array.from({ length: daysInMonth }, (_, dayIdx) => {
-                    const dayNum = dayIdx + 1;
-                    const restHours = calculateRestHours(crew.portHours);
-                    const isExpanded = expandedDays.has(dayNum);
+                  <td className="border px-2 py-1 text-center text-green-600 font-semibold">Port</td>
+                  {/* Display 2 cells per hour (48 cells total) */}
+                  {Array.from({ length: 24 }, (_, hour) => {
+                    const cell1Index = hour * 2;
+                    const cell2Index = hour * 2 + 1;
+                    const cell1Value = crew.portHours[cell1Index] || '';
+                    const cell2Value = crew.portHours[cell2Index] || '';
 
                     return (
                       <td 
-                        key={dayNum} 
-                        className="border px-1 py-1 text-center"
-                        data-testid={`cell-port-${crewIndex}-day-${dayNum}`}
+                        key={hour} 
+                        className="border p-0"
+                        data-testid={`cell-port-${crewIndex}-hour-${hour}`}
                       >
-                        {!isExpanded ? (
-                          <div className="text-xs">{restHours.toFixed(1)}h</div>
-                        ) : (
-                          <div className="grid grid-cols-4 gap-0.5">
-                            {crew.portHours.map((hour, cellIdx) => (
-                              <div
-                                key={cellIdx}
-                                className={`w-3 h-3 border ${getCellColor(hour)} ${isEditMode ? 'cursor-pointer hover:opacity-70' : ''}`}
-                                onClick={() => handleCellClick(crewIndex, 'port', cellIdx)}
-                                title={`${Math.floor(cellIdx / 2)}:${cellIdx % 2 === 0 ? '00' : '30'}`}
-                                data-testid={`cell-port-${crewIndex}-day-${dayNum}-hour-${cellIdx}`}
-                              />
-                            ))}
-                          </div>
-                        )}
+                        <div className="flex">
+                          <div
+                            className={`w-3 h-6 border-r ${getCellColor(cell1Value)} ${isEditMode ? 'cursor-pointer hover:opacity-70' : ''}`}
+                            onClick={() => handleCellClick(crewIndex, 'port', cell1Index)}
+                            title={`${String(hour).padStart(2, '0')}:00`}
+                            data-testid={`cell-port-${crewIndex}-hour-${hour}-first`}
+                          />
+                          <div
+                            className={`w-3 h-6 ${getCellColor(cell2Value)} ${isEditMode ? 'cursor-pointer hover:opacity-70' : ''}`}
+                            onClick={() => handleCellClick(crewIndex, 'port', cell2Index)}
+                            title={`${String(hour).padStart(2, '0')}:30`}
+                            data-testid={`cell-port-${crewIndex}-hour-${hour}-second`}
+                          />
+                        </div>
                       </td>
                     );
                   })}
+                  <td className="border px-2 py-1 text-center font-medium">
+                    {calculateRestHours(crew.portHours).toFixed(1)}
+                  </td>
                 </tr>
               </>
             ))}
@@ -415,7 +410,7 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
           <span>Rest</span>
         </div>
         <div className="ml-4 text-gray-500">
-          Click day header to expand/collapse | Click cells in edit mode to cycle: Rest → Watch → Duty
+          This daily template applies to all days in the month | Click cells in edit mode to cycle: Rest → Watch → Duty
         </div>
       </div>
     </div>
