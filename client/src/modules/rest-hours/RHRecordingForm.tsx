@@ -10,7 +10,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
-import type { RestHoursDailyRecord } from '@shared/schema';
+import type { RestHoursDailyRecord, FixedTask } from '@shared/schema';
 
 interface RHRecordingFormProps {
   open: boolean;
@@ -244,6 +244,25 @@ export const RHRecordingForm = ({
     staleTime: 0,
   });
 
+  // Fetch fixed tasks for this crew member to auto-populate plan data
+  const { data: fixedTask } = useQuery<FixedTask>({
+    queryKey: ['/api/fixed-tasks/by-key', selectedCrewMemberId, selectedVesselId, selectedPeriod],
+    queryFn: async () => {
+      const response = await fetch(`/api/fixed-tasks/by-key/${selectedCrewMemberId}/${selectedVesselId}/${selectedPeriod}`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null; // No fixed tasks found
+        }
+        throw new Error('Failed to fetch fixed tasks');
+      }
+      return response.json();
+    },
+    enabled: open && !!selectedCrewMemberId && !!selectedVesselId && !!selectedPeriod,
+    retry: false,
+    gcTime: 0,
+    staleTime: 0,
+  });
+
   // Load previous month's records for cross-month calculations
   useEffect(() => {
     if (!open || !previousMonthRecord) {
@@ -259,6 +278,26 @@ export const RHRecordingForm = ({
       setPreviousMonthRecords([]);
     }
   }, [previousMonthRecord, open]);
+
+  // Apply fixed tasks template to daily records when available (for new forms)
+  useEffect(() => {
+    if (!open || !fixedTask || existingRecord) return;
+    
+    // Only apply fixed tasks if there's no existing record
+    // Use seaHours as the template (assuming vessel is at sea by default)
+    // TODO: Add vessel condition state to switch between seaHours/portHours
+    const template = fixedTask.seaHours;
+    
+    if (!Array.isArray(template) || template.length !== 48) return;
+    
+    setDailyRecords(prevRecords => {
+      return prevRecords.map(record => ({
+        ...record,
+        hours: [...template], // Apply the fixed task template
+        isPlan: true, // Mark as plan data
+      }));
+    });
+  }, [fixedTask, open, existingRecord]);
 
   // Load existing record data or explicitly maintain clean state
   useEffect(() => {
