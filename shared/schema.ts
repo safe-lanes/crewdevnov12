@@ -554,6 +554,24 @@ export const restHoursDailyRecords = pgTable("rest_hours_daily_records", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const fixedTasks = pgTable("fixed_tasks", {
+  id: serial("id").primaryKey(),
+  crewMemberId: text("crew_member_id").notNull(), // Reference to crew member
+  vesselId: text("vessel_id").notNull(), // Vessel ID from master data
+  rank: text("rank").notNull(), // Rank at time of recording
+  name: text("name").notNull(), // Full name for display
+  monthYear: text("month_year").notNull(), // Format: "2025-10" (YYYY-MM)
+  
+  // Fixed task hours for Sea and Port (48 entries each)
+  // Each entry is a 30-minute slot: ["w"|"d"|"", ...]
+  // "w" = watch duty, "d" = day work, "" = rest
+  seaHours: text("sea_hours").notNull(), // JSON array of 48 entries
+  portHours: text("port_hours").notNull(), // JSON array of 48 entries
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -956,6 +974,12 @@ export const insertRestHoursDailyRecordSchema = createInsertSchema(restHoursDail
   updatedAt: true,
 });
 
+export const insertFixedTaskSchema = createInsertSchema(fixedTasks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertForm = z.infer<typeof insertFormSchema>;
@@ -1007,6 +1031,8 @@ export type InsertRestHoursCrewRecord = z.infer<typeof insertRestHoursCrewRecord
 export type RestHoursCrewRecord = typeof restHoursCrewRecords.$inferSelect;
 export type InsertRestHoursDailyRecord = z.infer<typeof insertRestHoursDailyRecordSchema>;
 export type RestHoursDailyRecord = typeof restHoursDailyRecords.$inferSelect;
+export type InsertFixedTask = z.infer<typeof insertFixedTaskSchema>;
+export type FixedTask = typeof fixedTasks.$inferSelect;
 
 // Dashboard Types
 export const dashboardStatusSchema = z.object({
