@@ -467,7 +467,31 @@ export const VariableTaskForm = ({
                     <FormItem>
                       <FormLabel>Start Time</FormLabel>
                       <FormControl>
-                        <Input type="time" {...field} data-testid="input-start-time" />
+                        <Input 
+                          type="text"
+                          placeholder="HH:MM (e.g., 14:30)"
+                          maxLength={5}
+                          {...field}
+                          onChange={(e) => {
+                            let value = e.target.value.replace(/[^0-9:]/g, '');
+                            if (value.length === 2 && !value.includes(':')) {
+                              value = value + ':';
+                            }
+                            if (value.length <= 5) {
+                              field.onChange(value);
+                            }
+                          }}
+                          onBlur={(e) => {
+                            const value = e.target.value;
+                            const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+                            if (value && !timeRegex.test(value)) {
+                              field.onChange('');
+                            } else {
+                              field.onBlur();
+                            }
+                          }}
+                          data-testid="input-start-time"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -493,7 +517,31 @@ export const VariableTaskForm = ({
                     <FormItem>
                       <FormLabel>Finish Time</FormLabel>
                       <FormControl>
-                        <Input type="time" {...field} data-testid="input-finish-time" />
+                        <Input 
+                          type="text"
+                          placeholder="HH:MM (e.g., 16:00)"
+                          maxLength={5}
+                          {...field}
+                          onChange={(e) => {
+                            let value = e.target.value.replace(/[^0-9:]/g, '');
+                            if (value.length === 2 && !value.includes(':')) {
+                              value = value + ':';
+                            }
+                            if (value.length <= 5) {
+                              field.onChange(value);
+                            }
+                          }}
+                          onBlur={(e) => {
+                            const value = e.target.value;
+                            const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+                            if (value && !timeRegex.test(value)) {
+                              field.onChange('');
+                            } else {
+                              field.onBlur();
+                            }
+                          }}
+                          data-testid="input-finish-time"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
