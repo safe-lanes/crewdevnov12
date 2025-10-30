@@ -58,6 +58,243 @@ const rankReorderSchema = z.array(z.object({
   sortOrder: z.number().int().nonnegative()
 }));
 
+// Helper function to convert time string (HH:MM) to half-hour cell index (0-47)
+function timeToCell(timeStr: string): number {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours * 2 + (minutes >= 30 ? 1 : 0);
+}
+
+// Helper function to sync variable task to RH records
+async function syncVariableTaskToRHRecords(task: any, oldTask?: any) {
+  try {
+    // Only sync if task is submitted (not draft)
+    if (task.isDraft) {
+      return;
+    }
+
+    // Parse crew involved details
+    let crewDetails: any = {};
+    try {
+      crewDetails = JSON.parse(task.crewInvolvedDetails || '{}');
+    } catch (e) {
+      console.error('Failed to parse crew details:', e);
+      return;
+    }
+
+    const crewArray = crewDetails.crew || [];
+    if (crewArray.length === 0) {
+      return;
+    }
+
+    // Parse task dates and times
+    const [startDateStr, startTimeStr] = task.startDateTime.split(' ');
+    const [finishDateStr, finishTimeStr] = task.finishDateTime.split(' ');
+
+    const startDate = new Date(startDateStr.split('-').reverse().join('-')); // DD-MMM-YYYY to YYYY-MM-DD
+    const finishDate = new Date(finishDateStr.split('-').reverse().join('-'));
+
+    const startCell = timeToCell(startTimeStr);
+    const finishCell = timeToCell(finishTimeStr);
+
+    const isPlan = task.statusType === 'planned';
+
+    // If editing, remove old 'a' codes for planned tasks
+    if (oldTask && !oldTask.isDraft && oldTask.statusType === 'planned') {
+      await removeVariableTaskFromRHRecords(oldTask);
+    }
+
+    // Process each crew member
+    for (const crew of crewArray) {
+      // Process each day in the task date range
+      let currentDate = new Date(startDate);
+      
+      while (currentDate <= finishDate) {
+        // Skip this day if it's the finish date and task ends at midnight (00:00)
+        // This prevents marking the next day when task actually ends on previous day
+        if (currentDate.getTime() === finishDate.getTime() && finishCell === 0) {
+          break;
+        }
+
+        const monthYear = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+        const day = currentDate.getDate();
+
+        // Get or create RH daily record for this crew member
+        let rhRecord = await storage.getRestHoursDailyRecordByKey(crew.id, task.vesselId, monthYear);
+        
+        if (!rhRecord) {
+          // Create new record if it doesn't exist
+          const crewMembers = await storage.getCrewMembers();
+          const crewMember = crewMembers.find(c => c.id === crew.id);
+          
+          if (!crewMember) {
+            continue;
+          }
+
+          rhRecord = await storage.createRestHoursDailyRecord({
+            crewMemberId: crew.id,
+            vesselId: task.vesselId,
+            rank: crew.rank,
+            name: crew.name,
+            monthYear,
+            dailyRecords: JSON.stringify([])
+          });
+        }
+
+        // Parse daily records
+        let dailyRecords: any[] = [];
+        try {
+          dailyRecords = JSON.parse(rhRecord.dailyRecords);
+        } catch (e) {
+          dailyRecords = [];
+        }
+
+        // Find or create the day record
+        let dayRecord = dailyRecords.find((d: any) => d.day === day);
+        if (!dayRecord) {
+          dayRecord = {
+            day,
+            dayOfWeek: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][currentDate.getDay()],
+            hours: Array(48).fill(''),
+            isPlan,
+            comments: '',
+            violations: []
+          };
+          dailyRecords.push(dayRecord);
+        }
+
+        // Determine cell range for this day
+        let dayCellStart = 0;
+        let dayCellEnd = 47;
+
+        if (currentDate.getTime() === startDate.getTime()) {
+          dayCellStart = startCell;
+        }
+        if (currentDate.getTime() === finishDate.getTime()) {
+          dayCellEnd = finishCell;
+        }
+
+        // Update hours array with 'a' code (only if not 'w' or 'd')
+        for (let cellIdx = dayCellStart; cellIdx <= dayCellEnd; cellIdx++) {
+          const currentCode = dayRecord.hours[cellIdx];
+          // Only add 'a' if cell is empty or already 'a' (don't overwrite 'w' or 'd')
+          if (currentCode !== 'w' && currentCode !== 'd') {
+            dayRecord.hours[cellIdx] = 'a';
+          }
+        }
+
+        // Update isPlan to match task status
+        dayRecord.isPlan = isPlan;
+
+        // Save updated record
+        await storage.updateRestHoursDailyRecord(rhRecord.id, {
+          dailyRecords: JSON.stringify(dailyRecords)
+        });
+
+        // Move to next day
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to sync variable task to RH records:', error);
+  }
+}
+
+// Helper function to remove variable task from RH records (for planned tasks only)
+async function removeVariableTaskFromRHRecords(task: any) {
+  try {
+    // Only remove if task is planned (completed tasks can only be removed manually)
+    if (task.statusType !== 'planned') {
+      return;
+    }
+
+    // Parse crew involved details
+    let crewDetails: any = {};
+    try {
+      crewDetails = JSON.parse(task.crewInvolvedDetails || '{}');
+    } catch (e) {
+      return;
+    }
+
+    const crewArray = crewDetails.crew || [];
+    if (crewArray.length === 0) {
+      return;
+    }
+
+    // Parse task dates and times
+    const [startDateStr, startTimeStr] = task.startDateTime.split(' ');
+    const [finishDateStr, finishTimeStr] = task.finishDateTime.split(' ');
+
+    const startDate = new Date(startDateStr.split('-').reverse().join('-'));
+    const finishDate = new Date(finishDateStr.split('-').reverse().join('-'));
+
+    const startCell = timeToCell(startTimeStr);
+    const finishCell = timeToCell(finishTimeStr);
+
+    // Process each crew member
+    for (const crew of crewArray) {
+      let currentDate = new Date(startDate);
+      
+      while (currentDate <= finishDate) {
+        // Skip this day if it's the finish date and task ends at midnight (00:00)
+        if (currentDate.getTime() === finishDate.getTime() && finishCell === 0) {
+          break;
+        }
+
+        const monthYear = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+        const day = currentDate.getDate();
+
+        const rhRecord = await storage.getRestHoursDailyRecordByKey(crew.id, task.vesselId, monthYear);
+        
+        if (!rhRecord) {
+          currentDate.setDate(currentDate.getDate() + 1);
+          continue;
+        }
+
+        let dailyRecords: any[] = [];
+        try {
+          dailyRecords = JSON.parse(rhRecord.dailyRecords);
+        } catch (e) {
+          currentDate.setDate(currentDate.getDate() + 1);
+          continue;
+        }
+
+        const dayRecord = dailyRecords.find((d: any) => d.day === day);
+        if (!dayRecord) {
+          currentDate.setDate(currentDate.getDate() + 1);
+          continue;
+        }
+
+        // Determine cell range for this day
+        let dayCellStart = 0;
+        let dayCellEnd = 47;
+
+        if (currentDate.getTime() === startDate.getTime()) {
+          dayCellStart = startCell;
+        }
+        if (currentDate.getTime() === finishDate.getTime()) {
+          dayCellEnd = finishCell;
+        }
+
+        // Remove 'a' codes (set to empty string)
+        for (let cellIdx = dayCellStart; cellIdx <= dayCellEnd; cellIdx++) {
+          if (dayRecord.hours[cellIdx] === 'a') {
+            dayRecord.hours[cellIdx] = '';
+          }
+        }
+
+        // Save updated record
+        await storage.updateRestHoursDailyRecord(rhRecord.id, {
+          dailyRecords: JSON.stringify(dailyRecords)
+        });
+
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to remove variable task from RH records:', error);
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for database connectivity
   app.get("/api/health", async (req, res) => {
@@ -1925,6 +2162,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid variable task data", details: result.error.issues });
       }
       const task = await storage.createVariableTask(result.data);
+      
+      // Sync to RH records if submitted (not draft)
+      await syncVariableTaskToRHRecords(task);
+      
       res.status(201).json(task);
     } catch (error) {
       console.error("Failed to create variable task:", error);
@@ -1938,6 +2179,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid task ID - must be a number" });
       }
+      
+      // Get old task for comparison
+      const oldTask = await storage.getVariableTask(id);
+      
       const result = insertVariableTaskSchema.partial().safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({ error: "Invalid variable task data", details: result.error.issues });
@@ -1946,6 +2191,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!task) {
         return res.status(404).json({ error: "Variable task not found" });
       }
+      
+      // Sync to RH records (will remove old 'a' codes for planned tasks and add new ones)
+      await syncVariableTaskToRHRecords(task, oldTask);
+      
       res.json(task);
     } catch (error) {
       console.error("Failed to update variable task:", error);
@@ -1959,6 +2208,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid task ID - must be a number" });
       }
+      
+      // Get task before deletion to remove 'a' codes from RH records (only for planned tasks)
+      const task = await storage.getVariableTask(id);
+      if (task) {
+        await removeVariableTaskFromRHRecords(task);
+      }
+      
       const deleted = await storage.deleteVariableTask(id);
       if (!deleted) {
         return res.status(404).json({ error: "Variable task not found" });
