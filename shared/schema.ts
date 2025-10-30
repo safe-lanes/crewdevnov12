@@ -1077,6 +1077,23 @@ export const crewDashboardSummarySchema = z.object({
   appraisals: z.array(appraisalPointSchema),
 });
 
+// Variable Tasks Schema for RH Planning
+export const variableTasks = pgTable("variable_tasks", {
+  id: serial("id").primaryKey(),
+  startDateTime: text("start_date_time").notNull(),
+  finishDateTime: text("finish_date_time").notNull(),
+  task: text("task").notNull(),
+  status: text("status").notNull(), // 'Planned' or 'Completed'
+  crewInvolved: integer("crew_involved").notNull(),
+  remarks: text("remarks"),
+  periodValue: text("period_value"), // e.g., "2025-10"
+  vesselId: text("vessel_id"),
+});
+
+export const insertVariableTaskSchema = createInsertSchema(variableTasks).omit({ id: true });
+export type InsertVariableTask = z.infer<typeof insertVariableTaskSchema>;
+export type VariableTask = typeof variableTasks.$inferSelect;
+
 export type DashboardStatus = z.infer<typeof dashboardStatusSchema>;
 export type ExperienceMetric = z.infer<typeof experienceMetricSchema>;
 export type ShipTypeExperience = z.infer<typeof shipTypeExperienceSchema>;
