@@ -252,6 +252,25 @@ export const VariableTaskForm = ({
         parsedCrewDetails = {};
       }
 
+      // Extract deck and engine crew IDs from the crew array (new format)
+      // or fall back to the old format if crew array doesn't exist
+      let deckCrewIds: string[] = [];
+      let engineCrewIds: string[] = [];
+      
+      if (parsedCrewDetails.crew && Array.isArray(parsedCrewDetails.crew)) {
+        // New format: crew is an array of { id, rank, name, department }
+        deckCrewIds = parsedCrewDetails.crew
+          .filter((c: any) => c.department === 'Deck & Catering')
+          .map((c: any) => c.id);
+        engineCrewIds = parsedCrewDetails.crew
+          .filter((c: any) => c.department === 'Engine')
+          .map((c: any) => c.id);
+      } else {
+        // Old format fallback
+        deckCrewIds = parsedCrewDetails.deckCrews || [];
+        engineCrewIds = parsedCrewDetails.engineCrews || [];
+      }
+
       form.reset({
         startDate,
         startTime,
@@ -262,8 +281,8 @@ export const VariableTaskForm = ({
         selectedTasks: parsedTasks,
         otherTask: editData.otherTask || '',
         crewGroups: parsedCrewDetails.groups || [],
-        deckCrews: parsedCrewDetails.deckCrews || [],
-        engineCrews: parsedCrewDetails.engineCrews || [],
+        deckCrews: deckCrewIds,
+        engineCrews: engineCrewIds,
         comments: editData.comments || '',
       });
 
@@ -347,15 +366,37 @@ export const VariableTaskForm = ({
 
     const statusLabel = statusType === 'planned' ? 'Planned' : 'Completed';
 
+    // Build detailed crew member array with id, rank, name, department
+    const selectedDeckCrewDetails = (values.deckCrews || []).map(crewId => {
+      const crewMember = categorizedCrew.deckCateringCrew.find(c => c.id === crewId);
+      return crewMember ? {
+        id: crewMember.id,
+        rank: crewMember.rank,
+        name: crewMember.name,
+        department: 'Deck & Catering'
+      } : null;
+    }).filter(Boolean);
+
+    const selectedEngineCrewDetails = (values.engineCrews || []).map(crewId => {
+      const crewMember = categorizedCrew.engineCrew.find(c => c.id === crewId);
+      return crewMember ? {
+        id: crewMember.id,
+        rank: crewMember.rank,
+        name: crewMember.name,
+        department: 'Engine'
+      } : null;
+    }).filter(Boolean);
+
+    const allSelectedCrewDetails = [...selectedDeckCrewDetails, ...selectedEngineCrewDetails];
+
     const crewInvolvedDetails = {
       groups: values.crewGroups || [],
-      deckCrews: values.deckCrews || [],
-      engineCrews: values.engineCrews || [],
+      crew: allSelectedCrewDetails,
+      deckCrewCount: selectedDeckCrewDetails.length,
+      engineCrewCount: selectedEngineCrewDetails.length,
     };
 
-    const totalCrew = (values.crewGroups?.length || 0) + 
-                      (values.deckCrews?.length || 0) + 
-                      (values.engineCrews?.length || 0);
+    const totalCrew = allSelectedCrewDetails.length;
 
     const insertData: InsertVariableTask = {
       startDateTime,
