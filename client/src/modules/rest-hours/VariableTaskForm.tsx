@@ -473,16 +473,11 @@ export const VariableTaskForm = ({
                           maxLength={5}
                           {...field}
                           onChange={(e) => {
-                            let value = e.target.value.replace(/[^0-9:]/g, '');
-                            if (value.length === 2 && !value.includes(':')) {
-                              value = value + ':';
-                            }
-                            if (value.length <= 5) {
-                              field.onChange(value);
-                            }
+                            const value = e.target.value.replace(/[^0-9:]/g, '');
+                            field.onChange(value);
                           }}
                           onBlur={(e) => {
-                            const value = e.target.value;
+                            const value = e.target.value.trim();
                             const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
                             if (value && !timeRegex.test(value)) {
                               field.onChange('');
@@ -523,16 +518,11 @@ export const VariableTaskForm = ({
                           maxLength={5}
                           {...field}
                           onChange={(e) => {
-                            let value = e.target.value.replace(/[^0-9:]/g, '');
-                            if (value.length === 2 && !value.includes(':')) {
-                              value = value + ':';
-                            }
-                            if (value.length <= 5) {
-                              field.onChange(value);
-                            }
+                            const value = e.target.value.replace(/[^0-9:]/g, '');
+                            field.onChange(value);
                           }}
                           onBlur={(e) => {
-                            const value = e.target.value;
+                            const value = e.target.value.trim();
                             const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
                             if (value && !timeRegex.test(value)) {
                               field.onChange('');
