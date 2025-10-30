@@ -3235,7 +3235,7 @@ const AdminModuleInner = (): JSX.Element => {
                       });
                     }}
                     variant="outline"
-                    className="h-8 text-xs border-[#e1e8ed] text-[#16569e] hover:bg-[#f3f4f6]"
+                    className="hidden h-8 text-xs border-[#e1e8ed] text-[#16569e] hover:bg-[#f3f4f6]"
                     data-testid="button-refresh-ranks-mobile"
                   >
                     🔄 Refresh
@@ -3249,7 +3249,7 @@ const AdminModuleInner = (): JSX.Element => {
                   <Button
                     onClick={handleCleanupAllRanks}
                     disabled={clearAllRanksMutation.isPending}
-                    className="h-8 bg-red-600 hover:bg-red-700 text-white text-xs"
+                    className="hidden h-8 bg-red-600 hover:bg-red-700 text-white text-xs"
                     data-testid="button-clear-all-ranks-mobile"
                   >
                     {clearAllRanksMutation.isPending ? "Clearing..." : "🗑️ Clear All"}
@@ -3341,7 +3341,7 @@ const AdminModuleInner = (): JSX.Element => {
                     });
                   }}
                   variant="outline"
-                  className="h-8 text-xs border-[#e1e8ed] text-[#16569e] hover:bg-[#f3f4f6]"
+                  className="hidden h-8 text-xs border-[#e1e8ed] text-[#16569e] hover:bg-[#f3f4f6]"
                   data-testid="button-refresh-ranks"
                 >
                   🔄 Refresh
@@ -3355,7 +3355,7 @@ const AdminModuleInner = (): JSX.Element => {
                 <Button
                   onClick={handleCleanupAllRanks}
                   disabled={clearAllRanksMutation.isPending}
-                  className="h-8 bg-red-600 hover:bg-red-700 text-white text-xs"
+                  className="hidden h-8 bg-red-600 hover:bg-red-700 text-white text-xs"
                   data-testid="button-clear-all-ranks"
                 >
                   {clearAllRanksMutation.isPending ? "Clearing..." : "🗑️ Clear All"}
