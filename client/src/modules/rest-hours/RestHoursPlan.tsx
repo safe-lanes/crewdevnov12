@@ -130,7 +130,7 @@ export const RestHoursPlan = (): JSX.Element => {
             </SelectTrigger>
             <SelectContent>
               {vessels.map((vessel: any) => (
-                <SelectItem key={vessel.id} value={vessel.id}>
+                <SelectItem key={vessel.id} value={vessel.entryId}>
                   {vessel.name}
                 </SelectItem>
               ))}

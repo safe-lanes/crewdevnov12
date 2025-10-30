@@ -237,7 +237,7 @@ export const VariableTaskForm = ({
       crewInvolved: totalCrew,
       remarks: values.comments || '',
       periodValue,
-      vesselId: vesselId || null,
+      vesselId: vesselId ? String(vesselId) : null,
       isDraft,
       recordType: values.recordType,
       statusType: values.statusType,

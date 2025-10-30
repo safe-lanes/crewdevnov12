@@ -83,10 +83,7 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertVariableTask) => {
-      return apiRequest('/api/variable-tasks', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+      return apiRequest('POST', '/api/variable-tasks', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/variable-tasks'] });
@@ -106,10 +103,7 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: Partial<InsertVariableTask> }) => {
-      return apiRequest(`/api/variable-tasks/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-      });
+      return apiRequest('PATCH', `/api/variable-tasks/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/variable-tasks'] });
@@ -129,9 +123,7 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest(`/api/variable-tasks/${id}`, {
-        method: 'DELETE',
-      });
+      return apiRequest('DELETE', `/api/variable-tasks/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/variable-tasks'] });
