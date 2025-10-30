@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError } from "./storage";
-import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema } from "@shared/schema";
+import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertVariableTaskSchema } from "@shared/schema";
 import { z } from "zod";
 import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew } from "@shared/crew-mapping";
 import { 
@@ -1877,6 +1877,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to delete rest hours daily record:", error);
       res.status(500).json({ error: "Failed to delete rest hours daily record" });
+    }
+  });
+
+  // Variable Tasks API routes
+  app.get("/api/variable-tasks", async (req, res) => {
+    try {
+      const { vesselId, periodValue } = req.query;
+      
+      if (vesselId || periodValue) {
+        const tasks = await storage.getVariableTasksByFilters({
+          vesselId: vesselId as string,
+          periodValue: periodValue as string
+        });
+        res.json(tasks);
+      } else {
+        const tasks = await storage.getVariableTasks();
+        res.json(tasks);
+      }
+    } catch (error) {
+      console.error("Failed to get variable tasks:", error);
+      res.status(500).json({ error: "Failed to get variable tasks" });
+    }
+  });
+
+  app.get("/api/variable-tasks/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid task ID - must be a number" });
+      }
+      const task = await storage.getVariableTask(id);
+      if (!task) {
+        return res.status(404).json({ error: "Variable task not found" });
+      }
+      res.json(task);
+    } catch (error) {
+      console.error("Failed to get variable task:", error);
+      res.status(500).json({ error: "Failed to get variable task" });
+    }
+  });
+
+  app.post("/api/variable-tasks", async (req, res) => {
+    try {
+      const result = insertVariableTaskSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid variable task data", details: result.error.issues });
+      }
+      const task = await storage.createVariableTask(result.data);
+      res.status(201).json(task);
+    } catch (error) {
+      console.error("Failed to create variable task:", error);
+      res.status(500).json({ error: "Failed to create variable task" });
+    }
+  });
+
+  app.patch("/api/variable-tasks/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid task ID - must be a number" });
+      }
+      const result = insertVariableTaskSchema.partial().safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid variable task data", details: result.error.issues });
+      }
+      const task = await storage.updateVariableTask(id, result.data);
+      if (!task) {
+        return res.status(404).json({ error: "Variable task not found" });
+      }
+      res.json(task);
+    } catch (error) {
+      console.error("Failed to update variable task:", error);
+      res.status(500).json({ error: "Failed to update variable task" });
+    }
+  });
+
+  app.delete("/api/variable-tasks/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid task ID - must be a number" });
+      }
+      const deleted = await storage.deleteVariableTask(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Variable task not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete variable task:", error);
+      res.status(500).json({ error: "Failed to delete variable task" });
     }
   });
 
