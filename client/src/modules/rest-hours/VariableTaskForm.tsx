@@ -154,6 +154,80 @@ export const VariableTaskForm = ({
   const statusType = form.watch('statusType');
   const selectedTasks = form.watch('selectedTasks') || [];
 
+  // Helper function to get crew IDs for a specific group
+  const getCrewIdsForGroup = (groupId: string): string[] => {
+    switch (groupId) {
+      case 'all-crew':
+        // All crew from both departments
+        return [
+          ...categorizedCrew.deckCateringCrew.map(c => c.id),
+          ...categorizedCrew.engineCrew.map(c => c.id)
+        ];
+      
+      case 'deck-officers':
+        // Deck officers only (deckOfficer flag)
+        return categorizedCrew.deckCateringCrew
+          .filter(c => c.rankData.deckOfficer)
+          .map(c => c.id);
+      
+      case 'engine-officers':
+        // Engine officers only (engOfficer flag)
+        return categorizedCrew.engineCrew
+          .filter(c => c.rankData.engOfficer)
+          .map(c => c.id);
+      
+      case 'deck-crew':
+        // Deck crew/ratings only (deckRating flag)
+        return categorizedCrew.deckCateringCrew
+          .filter(c => c.rankData.deckRating)
+          .map(c => c.id);
+      
+      case 'engine-crew':
+        // Engine crew/ratings only (engineRating flag)
+        return categorizedCrew.engineCrew
+          .filter(c => c.rankData.engineRating)
+          .map(c => c.id);
+      
+      case 'catering':
+        // Catering staff only (cateringRating flag)
+        return categorizedCrew.deckCateringCrew
+          .filter(c => c.rankData.cateringRating)
+          .map(c => c.id);
+      
+      default:
+        return [];
+    }
+  };
+
+  // Handle group checkbox changes
+  const handleGroupCheckboxChange = (groupId: string, checked: boolean) => {
+    const groupCrewIds = getCrewIdsForGroup(groupId);
+    
+    // Separate into deck and engine crew
+    const deckIds = groupCrewIds.filter(id => 
+      categorizedCrew.deckCateringCrew.some(c => c.id === id)
+    );
+    const engineIds = groupCrewIds.filter(id => 
+      categorizedCrew.engineCrew.some(c => c.id === id)
+    );
+    
+    if (checked) {
+      // Add crew IDs to respective form fields
+      const currentDeckCrews = form.getValues('deckCrews') || [];
+      const currentEngineCrews = form.getValues('engineCrews') || [];
+      
+      form.setValue('deckCrews', Array.from(new Set([...currentDeckCrews, ...deckIds])));
+      form.setValue('engineCrews', Array.from(new Set([...currentEngineCrews, ...engineIds])));
+    } else {
+      // Remove crew IDs from respective form fields
+      const currentDeckCrews = form.getValues('deckCrews') || [];
+      const currentEngineCrews = form.getValues('engineCrews') || [];
+      
+      form.setValue('deckCrews', currentDeckCrews.filter(id => !deckIds.includes(id)));
+      form.setValue('engineCrews', currentEngineCrews.filter(id => !engineIds.includes(id)));
+    }
+  };
+
   useEffect(() => {
     if (editData) {
       const startDT = editData.startDateTime.split(' / ');
@@ -558,13 +632,14 @@ export const VariableTaskForm = ({
                                       <Checkbox
                                         checked={field.value?.includes(group.id)}
                                         onCheckedChange={(checked) => {
-                                          return checked
-                                            ? field.onChange([...(field.value || []), group.id])
-                                            : field.onChange(
-                                                field.value?.filter(
-                                                  (value) => value !== group.id
-                                                )
-                                              );
+                                          // Update the group selection
+                                          const newValue = checked
+                                            ? [...(field.value || []), group.id]
+                                            : field.value?.filter((value) => value !== group.id);
+                                          field.onChange(newValue);
+                                          
+                                          // Auto-select/deselect corresponding individual crew members
+                                          handleGroupCheckboxChange(group.id, checked as boolean);
                                         }}
                                         data-testid={`checkbox-group-${group.id}`}
                                       />
