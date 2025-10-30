@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type DrugAlcoholTestRecord, type InsertDrugAlcoholTestRecord, type RestHoursVesselRecord, type InsertRestHoursVesselRecord, type RestHoursCrewRecord, type InsertRestHoursCrewRecord, type RestHoursDailyRecord, type InsertRestHoursDailyRecord, type VariableTask, type InsertVariableTask, type CrewDashboardSummary } from "@shared/schema";
+import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type DrugAlcoholTestRecord, type InsertDrugAlcoholTestRecord, type RestHoursVesselRecord, type InsertRestHoursVesselRecord, type RestHoursCrewRecord, type InsertRestHoursCrewRecord, type RestHoursDailyRecord, type InsertRestHoursDailyRecord, type FixedTask, type InsertFixedTask, type VariableTask, type InsertVariableTask, type CrewDashboardSummary } from "@shared/schema";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -144,6 +144,14 @@ export interface IStorage {
   createVariableTask(task: InsertVariableTask): Promise<VariableTask>;
   updateVariableTask(id: number, task: Partial<InsertVariableTask>): Promise<VariableTask | undefined>;
   deleteVariableTask(id: number): Promise<boolean>;
+  // Fixed Tasks
+  getFixedTasks(): Promise<FixedTask[]>;
+  getFixedTask(id: number): Promise<FixedTask | undefined>;
+  getFixedTasksByVesselAndMonth(vesselId: string, monthYear: string): Promise<FixedTask[]>;
+  getFixedTaskByKey(crewMemberId: string, vesselId: string, monthYear: string): Promise<FixedTask | undefined>;
+  createFixedTask(task: InsertFixedTask): Promise<FixedTask>;
+  updateFixedTask(id: number, task: Partial<InsertFixedTask>): Promise<FixedTask | undefined>;
+  deleteFixedTask(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -165,6 +173,8 @@ export class MemStorage implements IStorage {
   private restHoursVesselRecords: Map<number, RestHoursVesselRecord>;
   private restHoursCrewRecords: Map<number, RestHoursCrewRecord>;
   private restHoursDailyRecords: Map<number, RestHoursDailyRecord>;
+  private fixedTasks: Map<number, FixedTask>;
+  private variableTasks: Map<number, VariableTask>;
   private currentUserId: number;
   private currentFormId: number;
   private currentRankGroupId: number;
@@ -181,6 +191,8 @@ export class MemStorage implements IStorage {
   private currentRestHoursVesselRecordId: number;
   private currentRestHoursCrewRecordId: number;
   private currentRestHoursDailyRecordId: number;
+  private currentFixedTaskId: number;
+  private currentVariableTaskId: number;
 
   constructor() {
     this.users = new Map();
@@ -201,6 +213,8 @@ export class MemStorage implements IStorage {
     this.restHoursVesselRecords = new Map();
     this.restHoursCrewRecords = new Map();
     this.restHoursDailyRecords = new Map();
+    this.fixedTasks = new Map();
+    this.variableTasks = new Map();
     this.currentUserId = 1;
     this.currentFormId = 1;
     this.currentRankGroupId = 1;
@@ -217,6 +231,8 @@ export class MemStorage implements IStorage {
     this.currentRestHoursVesselRecordId = 1;
     this.currentRestHoursCrewRecordId = 1;
     this.currentRestHoursDailyRecordId = 1;
+    this.currentFixedTaskId = 1;
+    this.currentVariableTaskId = 1;
     
     this.initializeDefaultData();
 
@@ -1853,6 +1869,105 @@ export class MemStorage implements IStorage {
 
   async deleteRestHoursDailyRecord(id: number): Promise<boolean> {
     return this.restHoursDailyRecords.delete(id);
+  }
+
+  // Fixed Tasks Methods
+  async getFixedTasks(): Promise<FixedTask[]> {
+    return Array.from(this.fixedTasks.values());
+  }
+
+  async getFixedTask(id: number): Promise<FixedTask | undefined> {
+    return this.fixedTasks.get(id);
+  }
+
+  async getFixedTasksByVesselAndMonth(vesselId: string, monthYear: string): Promise<FixedTask[]> {
+    const tasks = Array.from(this.fixedTasks.values());
+    return tasks.filter(task => 
+      task.vesselId === vesselId && 
+      task.monthYear === monthYear
+    );
+  }
+
+  async getFixedTaskByKey(crewMemberId: string, vesselId: string, monthYear: string): Promise<FixedTask | undefined> {
+    const tasks = Array.from(this.fixedTasks.values());
+    return tasks.find(task => 
+      task.crewMemberId === crewMemberId && 
+      task.vesselId === vesselId && 
+      task.monthYear === monthYear
+    );
+  }
+
+  async createFixedTask(insertTask: InsertFixedTask): Promise<FixedTask> {
+    const id = this.currentFixedTaskId++;
+    const task: FixedTask = {
+      ...insertTask,
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.fixedTasks.set(id, task);
+    return task;
+  }
+
+  async updateFixedTask(id: number, updateData: Partial<InsertFixedTask>): Promise<FixedTask | undefined> {
+    const existingTask = this.fixedTasks.get(id);
+    if (!existingTask) return undefined;
+    
+    const updatedTask: FixedTask = {
+      ...existingTask,
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    this.fixedTasks.set(id, updatedTask);
+    return updatedTask;
+  }
+
+  async deleteFixedTask(id: number): Promise<boolean> {
+    return this.fixedTasks.delete(id);
+  }
+
+  // Variable Tasks Methods
+  async getVariableTasks(): Promise<VariableTask[]> {
+    return Array.from(this.variableTasks.values());
+  }
+
+  async getVariableTask(id: number): Promise<VariableTask | undefined> {
+    return this.variableTasks.get(id);
+  }
+
+  async getVariableTasksByFilters(filters: { vesselId?: string; periodValue?: string }): Promise<VariableTask[]> {
+    const tasks = Array.from(this.variableTasks.values());
+    return tasks.filter(task => {
+      if (filters.vesselId && task.vesselId !== filters.vesselId) return false;
+      if (filters.periodValue && task.periodValue !== filters.periodValue) return false;
+      return true;
+    });
+  }
+
+  async createVariableTask(insertTask: InsertVariableTask): Promise<VariableTask> {
+    const id = this.currentVariableTaskId++;
+    const task: VariableTask = {
+      ...insertTask,
+      id,
+    };
+    this.variableTasks.set(id, task);
+    return task;
+  }
+
+  async updateVariableTask(id: number, updateData: Partial<InsertVariableTask>): Promise<VariableTask | undefined> {
+    const existingTask = this.variableTasks.get(id);
+    if (!existingTask) return undefined;
+    
+    const updatedTask: VariableTask = {
+      ...existingTask,
+      ...updateData,
+    };
+    this.variableTasks.set(id, updatedTask);
+    return updatedTask;
+  }
+
+  async deleteVariableTask(id: number): Promise<boolean> {
+    return this.variableTasks.delete(id);
   }
 }
 
