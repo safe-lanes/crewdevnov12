@@ -1,10 +1,9 @@
 # Seafarer Performance Management System
 
 ## Overview
-A comprehensive seafarer performance management system designed to streamline seafarer and vessel management. It integrates crew and appraisal functionalities, a robust vessel revision system for rank assignments, advanced form configuration, and an intuitive user experience. The system aims to optimize crew deployment and compliance through a scalable, module-first architecture.
+A comprehensive seafarer performance management system designed to streamline seafarer and vessel management. It integrates crew and appraisal functionalities, a robust vessel revision system for rank assignments, advanced form configuration, and an intuitive user experience. The system aims to optimize crew deployment and compliance through a scalable, module-first architecture, ultimately enhancing maritime operational efficiency and compliance.
 
 ## User Preferences
-
 ### Code Style
 - Use functional components with hooks
 - Prefer TypeScript strict mode
@@ -34,54 +33,30 @@ The application employs a modern web stack with a module-first architecture for 
 - Consistent layout, alignment, error handling, and loading states.
 - Adherence to SAIL Form Standards for input fields and sections.
 
-### Technical Implementations
+### System Design Choices
+- **Module-First Architecture**: Ensures clear separation of concerns and scalability.
 - **Vessel ID/Name Translation**: Backend uses vessel IDs, UI displays vessel names with a dedicated translation layer.
-- **Master Data System**: Centralized storage for reference data like vessels, accessible via a consistent API.
-- **Vessel Revision System**: Manages vessel rank assignments with draft and submission workflows, including date validation.
+- **Master Data System**: Centralized storage for reference data (e.g., vessels) via a consistent API.
+- **Vessel Revision System**: Manages vessel rank assignments with draft/submission workflows and date validation.
 - **Rank Designation Synchronization**: Supports company and vessel-specific rank designations with inheritance and overrides.
 - **Vessel Database Module**: Displays vessel data, calculates crew counts, and includes Officer Matrix, Planning, and Training Matrix.
-- **Rotation Module**: Manages crew rotation planning with "Due" and "Plan" sections, featuring visual timelines, comprehensive filters, and multi-vessel assignment.
-- **Promotion Hierarchy System**: Configurable promotion paths for different rank groups, accessible from the Rank Master screen.
-    - **Hierarchy Configuration**: Allows creation, reordering, and CRUD operations for promotion paths.
-    - **Promotions Module Integration**: Filters the Promotions table and calculates the "Next Promotion Rank" based on configured hierarchies.
-    - **Promotion Review Form**: A three-part modal form (Criteria Review, Approval, Execution) for managing promotions, including dynamic criteria, approver management, and execution details.
-    - **Promotion Checklist Form**: A continuous-scroll modal for detailed review of seafarer information, sea service, and promotion checklist items.
-- **Forms Configuration - Company Rank Integration**: The Forms Configuration module uses company-specific rank labels for rank group creation and automatically matches forms to crew member ranks during appraisals.
-    - **Multi-Category Form Support**: Supports independent categories (Appraisal, Promotion) with category-specific rank group mappings and filtering.
-    - **Promotion Form Builder**: Provides a comprehensive configuration interface for promotion forms, mirroring the three-part structure of the Promotion Review Form.
-- **Drugs & Alcohol Testing Module**: Tracks drug and alcohol testing with six test types, comprehensive filtering, and AG Grid tables for data display.
-    - **Summary View**: Vessel-centric consolidated view showing all 5 test types in a single table with aggregated history, due-in badges, frequency configuration, and planning fields. Supports single-vessel selection with auto-selection.
-    - **D&A Test Form**: Modal form for creating/editing test records with Part A (Basic Information) and Part B (Personnel Details).
-        - **Part A - B1. General**: 13 fields including vessel, location, test type, multi-select alcohol/drug type (checkboxes), date/time, incident linking, reason, description, and external results date (conditional).
-        - **Part A - B2. Testing Equipment**: Dynamic equipment section with N/A checkbox, multiple equipment entries (Equipment ID dropdown with auto-populate for Make/Model and Serial No from master data), last calibrated dates, and add/remove functionality.
-        - **Part B - B1. Personnel Tested**: Dynamic table pre-populated with vessel crew roster, featuring columns for rank, name, alcohol/drug test checkboxes with date/time, results (BAC levels), violation flags, and witness selection. Supports "+ Add Other" button for manual personnel entries. Table dynamically refreshes when vessel selection changes in the form, clearing/updating crew roster while preserving draft data.
-        - **Part B - Comments**: Textarea for additional testing notes and observations.
-        - **Part B - Master/Deputy Confirmation**: Digital signature section with confirmation checkbox, name field, date selector, and attachment file upload displaying filename on selection.
-        - **Field Visibility Logic**: Post-incident fields (Incident Title, Date & Time of Incident, Alcohol/Drug Test Date & Times) show only for post-incident type; Other test fields (Initiated By, Reason for Testing, Description) show only for others type; External Results Date visible for annual, post-incident, and others types only.
-        - **Dynamic Crew Filtering**: Form watches vessel selection changes and automatically refreshes personnel table with current vessel's crew using useEffect with vessel change detection. Handles empty crew scenarios by clearing personnel rows when switching to vessels without crew.
-        - **Data Structure**: alcoholDrugType stored as array for true multi-select support, testingEquipment as JSON array for multiple entries, personnelTested as JSON array with nested test objects, masterDeputySignature as JSON object, all integrated with PersistentFileStorage.
+- **Rotation Module**: Manages crew rotation planning with "Due" and "Plan" sections, visual timelines, and comprehensive filters.
+- **Promotion Hierarchy System**: Configurable promotion paths for different rank groups, integrated with the Promotions module for filtering and "Next Promotion Rank" calculation.
+    - **Promotion Review Form**: A three-part modal for managing promotions (Criteria Review, Approval, Execution) with dynamic criteria and approver management.
+    - **Promotion Checklist Form**: A detailed modal for reviewing seafarer information, sea service, and promotion checklist items.
+- **Forms Configuration - Company Rank Integration**: Uses company-specific rank labels for rank group creation and automatically matches forms to crew member ranks during appraisals, supporting multi-category forms (Appraisal, Promotion).
+- **Drugs & Alcohol Testing Module**: Tracks testing with six test types, comprehensive filtering, and AG Grid tables.
+    - **Summary View**: Vessel-centric consolidated view with aggregated history, due-in badges, frequency configuration, and planning fields.
+    - **D&A Test Form**: Modal for creating/editing records with dynamic sections for general information, testing equipment, personnel tested (pre-populated roster with dynamic filtering, violation flags, witness selection, and "+ Add Other" option), and digital signature. Includes field visibility logic based on test type and dynamic crew filtering.
 - **Rest Hours Module**: Manages seafarer work and rest hours in compliance with maritime regulations (ILO, MLC, US-OPA 90).
-    - **Dashboard**: Provides fleet-wide overview of recordkeeping status, compliance, violations, non-conformities, and statistics. Features comprehensive filtering with Period dropdown (last 12 months + older periods), radio-button selection for Vessel/Fleet/Additional Group filters, vessel multi-select using live data from master storage, and Clear functionality. Follows the same filter pattern as the Rotation module. Dashboard content implementation pending.
-    - **Record**: Manages recordkeeping of work and rest hours for seafarers. Features comprehensive filtering with Period dropdown (last 12 months + older periods), radio-button selection for Vessel/Fleet/Additional Group filters, vessel multi-select using live data from master storage, and Clear functionality. Follows the same filter pattern as the Rotation module.
-        - **RH Recording Form**: Modal form with 3-level drill-down structure (Vessel Overview → Crew Records → Recording Form) featuring interactive dropdowns for Period, Vessel, and Crew Member selection. Uses HTML table with half-hour divisions (48 cells per day) for data entry with arrow key navigation support. Displays both calendar-day metrics and regulatory "any period" rolling window calculations using backward-looking windows only.
-        - **Backward-Looking Window Calculations**: All "any period" calculations check only backward-looking windows for regulatory compliance. For each half-hour of the current day: (1) 24-hour windows check the previous 24 hours (48 windows total), (2) 7-day windows check a single window ending on current day looking back 7 days, (3) 72-hour windows check the previous 72 hours (48 windows total for OPA Code 8). Rest periods crossing midnight are treated as continuous periods when they span consecutive cells.
-        - **Violation Detection**: Implements 8 violation codes checking regulatory compliance using backward-looking windows. Code 3 (rest period distribution) validates that the two largest rest periods sum to ≥10 hours with at least one ≥6 hours, checking 48 backward-looking 24-hour windows per day. Returns detailed diagnostics showing which window and rest period pattern triggered the violation. Code 4 (interval between rest periods) validates work gaps don't exceed 14 hours across backward-looking windows. OPA-specific violations (Codes 7 & 8) are conditional on OPA checkbox enablement. Cross-month scenarios use previous month's actual data when available, falling back to rest assumption otherwise.
-        - **Violation Diagnostics**: Displays detailed diagnostic information in tooltips when hovering over violation codes, showing window start time (with cross-month date handling) and specific failure reasons (e.g., rest period breakdown for Code 3).
-        - **Multi-Range Violation Highlighting**: Interactive violation highlighting system that displays all violating time periods when hovering over violation codes. Supports Codes 1, 3, 5, and 7 with precise 24-hour window tracking. For single violations, shows specific window start time (e.g., "Oct 6, 14:30"); for multiple violations, displays count with "Multiple windows" indicator. Red outline highlights all violating cells across days, including cross-day windows. Tooltips show "X violating windows detected" with hover hint for multi-range violations.
-        - **UX Features**: Vessel-dependent crew filtering (shows only crew assigned to selected vessel via presentVessel field), auto-reset crew selection on vessel change, keyboard navigation (arrow keys, Tab), fixed cell widths (15px) to prevent layout shifts, and two-row header structure for "any period" columns.
-    - **Plan**: Handles work planning, fixed working hours, and variable tasks affecting groups of seafarers. Features comprehensive filtering with Period dropdown (last 12 months + older periods) and vessel single-select using live data from master storage, and Clear functionality. Includes centered module switcher (Fixed Tasks/Variable Tasks) using same rounded-pill style as Rank Administration, with period display in "YYYY, MMM" format shown next to the title.
-        - **Variable Tasks**: Full CRUD implementation for planning and tracking variable tasks that affect groups of seafarers. Features shadcn Table components with blue header (`bg-[#52baf3]`), sorting, pagination, and "+ Add Task" button with vessel/period-based enablement.
-        - **Variable Task Form**: Modal form with comprehensive sections for task planning: Date/Time (start/finish with automatic sort value generation), Record Type (Task/Port Call), Tasks Involved (predefined task list from Master 016 plus free text "Other" option), Crew Involved (advanced crew selection linked to Rank Administration), Comments textarea, and draft/submit workflow (Save button creates draft, Submit button finalizes).
-        - **Crew Selection System**: Advanced crew selection feature dynamically linked to Rank Administration configurations (Company & Vessel tabs) for precise crew assignment.
-            - **Data Flow**: Fetches crew members filtered by presentVessel field → Fetches company ranks with designation flags (deckOfficer, engOfficer, deckRating, engineRating, cateringRating) → Categorizes crew into departments → Displays in structured UI
-            - **Department Categorization**: Crew separated into "Deck & Catering Dept" (deckOfficer || deckRating || cateringRating flags) and "Engine Dept" (engOfficer || engineRating flags)
-            - **UI Layout**: Three-column layout with left column showing 6 group shortcuts, right two columns displaying individual crew members in "Rank - Name" format by department
-            - **Group Shortcuts**: All Crew (selects all), Deck Officers (deckOfficer flag), Engine Officers (engOfficer flag), Deck Crew (deckRating flag), Engine Crew (engineRating flag), Catering (cateringRating flag)
-            - **Auto-Selection Logic**: Checking a group automatically checks corresponding individual crew members based on rank designation flags; unchecking removes selections
-            - **Data Storage**: crewInvolvedDetails stored as JSON with structure: { groups: string[], crew: [{ id, rank, name, department }], deckCrewCount, engineCrewCount }
-            - **Edit Flow**: Supports backward compatibility - extracts crew IDs from new crew array format or falls back to legacy deckCrews/engineCrews arrays for proper form repopulation
-        - **Data Model**: VariableTask schema includes vesselId, periodValue for filtering, isDraft status, recordType, statusType, selectedTasks (JSON array), crewInvolvedDetails (JSON with detailed crew member data), and automatic Task/Status label generation from task selections.
-        - **Integration**: Uses vessel.entryId (string like "VSL-003") for proper vessel identification, TanStack Query for real-time data synchronization, client-side filtering by vessel and period, and apiRequest helper with (method, url, data) signature for all CRUD operations.
+    - **Dashboard**: Provides fleet-wide overview of recordkeeping status, compliance, and statistics with comprehensive filtering.
+    - **Record**: Manages recordkeeping for individual seafarers.
+        - **RH Recording Form**: Interactive modal form with a 3-level drill-down structure, HTML table for data entry with half-hour divisions, arrow key navigation, and displays both calendar-day and regulatory "any period" rolling window calculations.
+        - **Violation Detection**: Implements 8 violation codes using backward-looking windows for regulatory compliance, providing detailed diagnostics and multi-range violation highlighting. Supports OPA-specific violations.
+    - **Plan**: Handles work planning, fixed working hours, and variable tasks for groups of seafarers.
+        - **Variable Tasks**: Full CRUD implementation for planning and tracking with shadcn Table components.
+        - **Variable Task Form**: Modal for task planning including Date/Time, Record Type, Tasks Involved, advanced Crew Selection System (linked to Rank Administration configurations with department categorization and group shortcuts), Comments, and draft/submit workflow.
+        - **Auto-Sync to RH Recording Forms**: Automated synchronization system updates crew members' Rest Hours Recording forms when variable tasks are created, edited, or deleted (only for submitted tasks), handling time mapping, multi-day tasks, work code priority, and color coding.
 - **Performance Optimization**: Utilizes map-based lookups, TanStack Query for caching, `useRef`, `useMemo`, and optimized `PersistentFileStorage`.
 - **Data Storage**: `PersistentFileStorage` for development, with PostgreSQL/Drizzle ORM for production.
 
