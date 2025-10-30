@@ -57,6 +57,7 @@ const PREDEFINED_TASKS = [
 ];
 
 const CREW_GROUPS = [
+  { id: 'all-crew', label: 'All Crew' },
   { id: 'deck-officers', label: 'Deck Officers' },
   { id: 'engine-officers', label: 'Engine Officers' },
   { id: 'deck-crew', label: 'Deck Crew' },
@@ -592,37 +593,37 @@ export const VariableTaskForm = ({
                     render={() => (
                       <FormItem>
                         <div className="space-y-2 max-h-48 overflow-y-auto">
-                          {deckCrewMembers.length === 0 ? (
+                          {categorizedCrew.deckCateringCrew.length === 0 ? (
                             <p className="text-sm text-gray-500">No crew members available</p>
                           ) : (
-                            deckCrewMembers.map((crew) => (
+                            categorizedCrew.deckCateringCrew.map((crew) => (
                               <FormField
-                                key={crew.crewId}
+                                key={crew.id}
                                 control={form.control}
                                 name="deckCrews"
                                 render={({ field }) => {
                                   return (
                                     <FormItem
-                                      key={crew.crewId}
+                                      key={crew.id}
                                       className="flex flex-row items-start space-x-3 space-y-0"
                                     >
                                       <FormControl>
                                         <Checkbox
-                                          checked={field.value?.includes(crew.crewId)}
+                                          checked={field.value?.includes(crew.id)}
                                           onCheckedChange={(checked) => {
                                             return checked
-                                              ? field.onChange([...(field.value || []), crew.crewId])
+                                              ? field.onChange([...(field.value || []), crew.id])
                                               : field.onChange(
                                                   field.value?.filter(
-                                                    (value) => value !== crew.crewId
+                                                    (value) => value !== crew.id
                                                   )
                                                 );
                                           }}
-                                          data-testid={`checkbox-deck-crew-${crew.crewId}`}
+                                          data-testid={`checkbox-deck-crew-${crew.id}`}
                                         />
                                       </FormControl>
                                       <FormLabel className="text-sm font-normal">
-                                        {crew.name}
+                                        {crew.rank} - {crew.name}
                                       </FormLabel>
                                     </FormItem>
                                   );
@@ -646,37 +647,37 @@ export const VariableTaskForm = ({
                     render={() => (
                       <FormItem>
                         <div className="space-y-2 max-h-48 overflow-y-auto">
-                          {engineCrewMembers.length === 0 ? (
+                          {categorizedCrew.engineCrew.length === 0 ? (
                             <p className="text-sm text-gray-500">No crew members available</p>
                           ) : (
-                            engineCrewMembers.map((crew) => (
+                            categorizedCrew.engineCrew.map((crew) => (
                               <FormField
-                                key={crew.crewId}
+                                key={crew.id}
                                 control={form.control}
                                 name="engineCrews"
                                 render={({ field }) => {
                                   return (
                                     <FormItem
-                                      key={crew.crewId}
+                                      key={crew.id}
                                       className="flex flex-row items-start space-x-3 space-y-0"
                                     >
                                       <FormControl>
                                         <Checkbox
-                                          checked={field.value?.includes(crew.crewId)}
+                                          checked={field.value?.includes(crew.id)}
                                           onCheckedChange={(checked) => {
                                             return checked
-                                              ? field.onChange([...(field.value || []), crew.crewId])
+                                              ? field.onChange([...(field.value || []), crew.id])
                                               : field.onChange(
                                                   field.value?.filter(
-                                                    (value) => value !== crew.crewId
+                                                    (value) => value !== crew.id
                                                   )
                                                 );
                                           }}
-                                          data-testid={`checkbox-engine-crew-${crew.crewId}`}
+                                          data-testid={`checkbox-engine-crew-${crew.id}`}
                                         />
                                       </FormControl>
                                       <FormLabel className="text-sm font-normal">
-                                        {crew.name}
+                                        {crew.rank} - {crew.name}
                                       </FormLabel>
                                     </FormItem>
                                   );
