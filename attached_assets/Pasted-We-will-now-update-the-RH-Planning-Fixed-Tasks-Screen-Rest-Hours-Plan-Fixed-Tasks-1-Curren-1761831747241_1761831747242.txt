@@ -1,0 +1,15 @@
+We will now update the RH Planning - Fixed Tasks Screen (Rest Hours> Plan> Fixed Tasks)
+
+1. Currently the screen displays as per image 1 – so screen title & filters bar is already created. 
+2. Create a table below the filters bar as shown in Image 2.
+3. The table does not need to be AG Grid.
+4. The table is somewhat similar to the RH Recording Form (image 3) in terms of UI, though there are differences:
+    - This is a table and not a popup form. 
+    - Another difference - In the RH Recording form there is one row per crewmember for one day, here it is  2 rows per crewmember per day (One for Sea and one for port)
+    - In RH Recording form the Rows are dates but here the rows are all crewmembers on board.   
+5. The concept of ‘Fixed tasks’ is that every crew member is expected to be assigned some fixed tasks (or fixed working hours) when a) at Sea, and b) in port. These fixed tasks (working hours) may change from month to month, e.g., an AB in May is keeping a 0400 to 0800 watch while in June he is shifted to 0800-1200 watch. SO the schedule changes every month. For some crew members the schedule mau not change month by month. 
+6. When the fixed tasks ( Working hours) are recorded in this Sub module, these are transferred for the entire month as ‘plan’ for that crew member in their RH Recording form. E.g., For 3rd officer the fixed task (hours) in May are 0800 – 1200 (w) and then 1300 to 1500 (d) and then again 2000 to 2400 (w). Once this is saved, all days of May for this officer will automatically be updated with this plan. 
+7. On days where he follows this plan exactly, he just needs to click the (Plan/ Rec) button on that day in RH Recording form and the plan gets updated to record and changes colour (grey to Green or Blue).
+8. Fixed task (working hours) codes will be ‘w’ or ‘d’ only and not ‘a’.
+9. On days where he works ‘out of fixed schedule’ he can update the form manually with ‘a’ fields. 
+10. If any variable tasks are assigned , that we have already covered , how that shows up in the system.
