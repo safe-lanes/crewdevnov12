@@ -76,6 +76,61 @@ export const VariableTaskForm = ({
   const { toast } = useToast();
   const [showOtherTask, setShowOtherTask] = useState(false);
 
+  // Fetch all crew members
+  const { data: allCrewMembers = [] } = useQuery<any[]>({
+    queryKey: ['/api/crew-members'],
+    enabled: open,
+  });
+
+  // Fetch company ranks with designation flags
+  const { data: companyRanks = [] } = useQuery<any[]>({
+    queryKey: ['/api/company-ranks'],
+    enabled: open,
+  });
+
+  // Filter crew members by vessel
+  const vesselCrewMembers = useMemo(() => {
+    return allCrewMembers.filter((crew: any) => crew.presentVessel === vesselId);
+  }, [allCrewMembers, vesselId]);
+
+  // Build rank designation lookup map
+  const rankDesignationMap = useMemo(() => {
+    const map = new Map<string, any>();
+    companyRanks.forEach((rank: any) => {
+      map.set(rank.rank, rank);
+    });
+    return map;
+  }, [companyRanks]);
+
+  // Categorize crew into departments based on rank designation flags
+  const categorizedCrew = useMemo(() => {
+    const deckCateringCrew: Array<{ id: string; rank: string; name: string; rankData: any }> = [];
+    const engineCrew: Array<{ id: string; rank: string; name: string; rankData: any }> = [];
+
+    vesselCrewMembers.forEach((crew: any) => {
+      const rankData = rankDesignationMap.get(crew.presentRank);
+      if (!rankData) return;
+
+      const crewItem = {
+        id: crew.id || crew.employeeId,
+        rank: crew.presentRank,
+        name: `${crew.firstName || ''} ${crew.lastName || ''}`.trim(),
+        rankData,
+      };
+
+      // Check if rank belongs to Deck & Catering Dept
+      if (rankData.deckOfficer || rankData.deckRating || rankData.cateringRating) {
+        deckCateringCrew.push(crewItem);
+      }
+      // Check if rank belongs to Engine Dept
+      else if (rankData.engOfficer || rankData.engineRating) {
+        engineCrew.push(crewItem);
+      }
+    });
+
+    return { deckCateringCrew, engineCrew };
+  }, [vesselCrewMembers, rankDesignationMap]);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
