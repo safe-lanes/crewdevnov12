@@ -86,15 +86,31 @@ async function syncVariableTaskToRHRecords(task: any, oldTask?: any) {
       return;
     }
 
-    // Parse task dates and times
-    const [startDateStr, startTimeStr] = task.startDateTime.split(' ');
-    const [finishDateStr, finishTimeStr] = task.finishDateTime.split(' ');
+    // Parse task dates and times (format: "04-Oct-2025 / 10:00")
+    const [startDateStr, startTimeStr] = task.startDateTime.split(' / ');
+    const [finishDateStr, finishTimeStr] = task.finishDateTime.split(' / ');
 
-    const startDate = new Date(startDateStr.split('-').reverse().join('-')); // DD-MMM-YYYY to YYYY-MM-DD
-    const finishDate = new Date(finishDateStr.split('-').reverse().join('-'));
+    // Parse date from DD-MMM-YYYY format
+    const parseTaskDate = (dateStr: string) => {
+      const [day, monthStr, year] = dateStr.split('-');
+      const monthMap: Record<string, number> = {
+        'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+        'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+      };
+      return new Date(parseInt(year), monthMap[monthStr], parseInt(day));
+    };
+
+    const startDate = parseTaskDate(startDateStr);
+    const finishDate = parseTaskDate(finishDateStr);
 
     const startCell = timeToCell(startTimeStr);
-    const finishCell = timeToCell(finishTimeStr);
+    // For finish time, if it's on the hour (e.g., 14:00), mark up to the previous cell
+    // because the task ends at that time, not after it
+    const [finishHours, finishMinutes] = finishTimeStr.split(':').map(Number);
+    let finishCell = timeToCell(finishTimeStr);
+    if (finishMinutes === 0 && finishCell > 0) {
+      finishCell = finishCell - 1;
+    }
 
     const isPlan = task.statusType === 'planned';
 
@@ -130,13 +146,28 @@ async function syncVariableTaskToRHRecords(task: any, oldTask?: any) {
             continue;
           }
 
+          // Initialize all days of the month to prevent partial form display
+          const [year, month] = monthYear.split('-').map(Number);
+          const daysInMonth = new Date(year, month, 0).getDate();
+          const initialDailyRecords = Array.from({ length: daysInMonth }, (_, i) => {
+            const dayDate = new Date(year, month - 1, i + 1);
+            return {
+              day: i + 1,
+              dayOfWeek: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayDate.getDay()],
+              hours: Array(48).fill(''),
+              isPlan: false,
+              comments: '',
+              violations: []
+            };
+          });
+
           rhRecord = await storage.createRestHoursDailyRecord({
             crewMemberId: crew.id,
             vesselId: task.vesselId,
             rank: crew.rank,
             name: crew.name,
             monthYear,
-            dailyRecords: JSON.stringify([])
+            dailyRecords: JSON.stringify(initialDailyRecords)
           });
         }
 
@@ -220,15 +251,30 @@ async function removeVariableTaskFromRHRecords(task: any) {
       return;
     }
 
-    // Parse task dates and times
-    const [startDateStr, startTimeStr] = task.startDateTime.split(' ');
-    const [finishDateStr, finishTimeStr] = task.finishDateTime.split(' ');
+    // Parse task dates and times (format: "04-Oct-2025 / 10:00")
+    const [startDateStr, startTimeStr] = task.startDateTime.split(' / ');
+    const [finishDateStr, finishTimeStr] = task.finishDateTime.split(' / ');
 
-    const startDate = new Date(startDateStr.split('-').reverse().join('-'));
-    const finishDate = new Date(finishDateStr.split('-').reverse().join('-'));
+    // Parse date from DD-MMM-YYYY format
+    const parseTaskDate = (dateStr: string) => {
+      const [day, monthStr, year] = dateStr.split('-');
+      const monthMap: Record<string, number> = {
+        'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+        'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+      };
+      return new Date(parseInt(year), monthMap[monthStr], parseInt(day));
+    };
+
+    const startDate = parseTaskDate(startDateStr);
+    const finishDate = parseTaskDate(finishDateStr);
 
     const startCell = timeToCell(startTimeStr);
-    const finishCell = timeToCell(finishTimeStr);
+    // For finish time, if it's on the hour (e.g., 14:00), mark up to the previous cell
+    const [finishHours, finishMinutes] = finishTimeStr.split(':').map(Number);
+    let finishCell = timeToCell(finishTimeStr);
+    if (finishMinutes === 0 && finishCell > 0) {
+      finishCell = finishCell - 1;
+    }
 
     // Process each crew member
     for (const crew of crewArray) {
