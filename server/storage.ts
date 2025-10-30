@@ -1993,6 +1993,7 @@ export class PersistentFileStorage implements IStorage {
   private restHoursCrewRecords: Map<number, RestHoursCrewRecord>;
   private restHoursDailyRecords: Map<number, RestHoursDailyRecord>;
   private variableTasks: Map<number, VariableTask>;
+  private fixedTasks: Map<number, FixedTask>;
   private currentUserId: number;
   private currentFormId: number;
   private currentRankGroupId: number;
@@ -2010,6 +2011,7 @@ export class PersistentFileStorage implements IStorage {
   private currentRestHoursCrewRecordId: number;
   private currentRestHoursDailyRecordId: number;
   private currentVariableTaskId: number;
+  private currentFixedTaskId: number;
   private filePath: string;
   private saveTimeout: NodeJS.Timeout | null = null;
   private isSaving: boolean = false;
@@ -2038,6 +2040,7 @@ export class PersistentFileStorage implements IStorage {
     this.restHoursCrewRecords = new Map();
     this.restHoursDailyRecords = new Map();
     this.variableTasks = new Map();
+    this.fixedTasks = new Map();
     this.currentUserId = 1;
     this.currentFormId = 1;
     this.currentRankGroupId = 1;
@@ -2055,6 +2058,7 @@ export class PersistentFileStorage implements IStorage {
     this.currentRestHoursCrewRecordId = 1;
     this.currentRestHoursDailyRecordId = 1;
     this.currentVariableTaskId = 1;
+    this.currentFixedTaskId = 1;
     
     this.filePath = path.join(process.cwd(), 'test-data.json');
     this.loadFromFile();
@@ -2166,6 +2170,8 @@ export class PersistentFileStorage implements IStorage {
         // Load variable tasks and counter
         this.variableTasks = new Map(data.variableTasks || []);
         this.currentVariableTaskId = data.currentVariableTaskId || 1;
+        this.fixedTasks = new Map(data.fixedTasks || []);
+        this.currentFixedTaskId = data.currentFixedTaskId || 1;
         
         console.log("📄 Loaded existing data from test-data.json");
         
@@ -2208,6 +2214,7 @@ export class PersistentFileStorage implements IStorage {
       restHoursCrewRecords: Array.from(this.restHoursCrewRecords.entries()),
       restHoursDailyRecords: Array.from(this.restHoursDailyRecords.entries()),
       variableTasks: Array.from(this.variableTasks.entries()),
+      fixedTasks: Array.from(this.fixedTasks.entries()),
       masterDataEntries: Array.from(this.masterDataEntries.entries()),
       currentUserId: this.currentUserId,
       currentFormId: this.currentFormId,
@@ -2225,7 +2232,8 @@ export class PersistentFileStorage implements IStorage {
       currentRestHoursVesselRecordId: this.currentRestHoursVesselRecordId,
       currentRestHoursCrewRecordId: this.currentRestHoursCrewRecordId,
       currentRestHoursDailyRecordId: this.currentRestHoursDailyRecordId,
-      currentVariableTaskId: this.currentVariableTaskId
+      currentVariableTaskId: this.currentVariableTaskId,
+      currentFixedTaskId: this.currentFixedTaskId
     };
     
     if (this.saveTimeout) {
@@ -3942,6 +3950,42 @@ export class PersistentFileStorage implements IStorage {
     const result = this.variableTasks.delete(id);
     if (result) this.saveToFile(); // SAVE TO FILE AFTER EVERY DELETE!
     return result;
+  }
+
+  // Fixed Tasks
+  async getFixedTasks(): Promise<FixedTask[]> {
+    return Array.from(this.fixedTasks.values());
+  }
+
+  async getFixedTasksByVesselAndMonth(vesselId: string, monthYear: string): Promise<FixedTask[]> {
+    const allTasks = Array.from(this.fixedTasks.values());
+    return allTasks.filter(task => 
+      task.vesselId === vesselId && task.monthYear === monthYear
+    );
+  }
+
+  async createFixedTask(insertTask: InsertFixedTask): Promise<FixedTask> {
+    const id = this.currentFixedTaskId++;
+    const task: FixedTask = {
+      ...insertTask,
+      id,
+    };
+    this.fixedTasks.set(id, task);
+    this.saveToFile(); // SAVE TO FILE AFTER EVERY CREATE!
+    return task;
+  }
+
+  async updateFixedTask(id: number, updateData: Partial<InsertFixedTask>): Promise<FixedTask | undefined> {
+    const existingTask = this.fixedTasks.get(id);
+    if (!existingTask) return undefined;
+    
+    const updatedTask: FixedTask = {
+      ...existingTask,
+      ...updateData,
+    };
+    this.fixedTasks.set(id, updatedTask);
+    this.saveToFile(); // SAVE TO FILE AFTER EVERY UPDATE!
+    return updatedTask;
   }
 
   // Data Masters methods (return empty array for frontend compatibility)
