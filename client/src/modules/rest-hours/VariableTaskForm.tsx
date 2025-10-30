@@ -95,10 +95,12 @@ export const VariableTaskForm = ({
   }, [allCrewMembers, vesselId]);
 
   // Build rank designation lookup map
+  // Use role if it exists (for multi-position ranks like "3rd Officer_1"), otherwise use rank name
   const rankDesignationMap = useMemo(() => {
     const map = new Map<string, any>();
     companyRanks.forEach((rank: any) => {
-      map.set(rank.rank, rank);
+      const key = rank.role || rank.rank;
+      map.set(key, rank);
     });
     return map;
   }, [companyRanks]);
@@ -276,8 +278,8 @@ export const VariableTaskForm = ({
         startTime,
         finishDate,
         finishTime,
-        recordType: editData.recordType,
-        statusType: editData.statusType,
+        recordType: editData.recordType as "task" | "port-call",
+        statusType: editData.statusType as "planned" | "completed",
         selectedTasks: parsedTasks,
         otherTask: editData.otherTask || '',
         crewGroups: parsedCrewDetails.groups || [],
