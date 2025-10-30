@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError } from "./storage";
-import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertVariableTaskSchema } from "@shared/schema";
+import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema } from "@shared/schema";
 import { z } from "zod";
 import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew } from "@shared/crew-mapping";
 import { 
@@ -2269,6 +2269,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to delete variable task:", error);
       res.status(500).json({ error: "Failed to delete variable task" });
+    }
+  });
+
+  // Fixed Tasks API routes
+  app.get("/api/fixed-tasks", async (req, res) => {
+    try {
+      const { vesselId, monthYear } = req.query;
+      
+      if (vesselId && monthYear) {
+        const tasks = await storage.getFixedTasksByVesselAndMonth(vesselId as string, monthYear as string);
+        res.json(tasks);
+      } else {
+        const tasks = await storage.getFixedTasks();
+        res.json(tasks);
+      }
+    } catch (error) {
+      console.error("Failed to get fixed tasks:", error);
+      res.status(500).json({ error: "Failed to get fixed tasks" });
+    }
+  });
+
+  app.get("/api/fixed-tasks/by-key/:crewMemberId/:vesselId/:monthYear", async (req, res) => {
+    try {
+      const { crewMemberId, vesselId, monthYear } = req.params;
+      const task = await storage.getFixedTaskByKey(crewMemberId, vesselId, monthYear);
+      if (!task) {
+        return res.status(404).json({ error: "Fixed task not found" });
+      }
+      res.json(task);
+    } catch (error) {
+      console.error("Failed to get fixed task by key:", error);
+      res.status(500).json({ error: "Failed to get fixed task by key" });
+    }
+  });
+
+  app.get("/api/fixed-tasks/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid task ID - must be a number" });
+      }
+      const task = await storage.getFixedTask(id);
+      if (!task) {
+        return res.status(404).json({ error: "Fixed task not found" });
+      }
+      res.json(task);
+    } catch (error) {
+      console.error("Failed to get fixed task:", error);
+      res.status(500).json({ error: "Failed to get fixed task" });
+    }
+  });
+
+  app.post("/api/fixed-tasks", async (req, res) => {
+    try {
+      const result = insertFixedTaskSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid fixed task data", details: result.error.issues });
+      }
+      const task = await storage.createFixedTask(result.data);
+      res.status(201).json(task);
+    } catch (error) {
+      console.error("Failed to create fixed task:", error);
+      res.status(500).json({ error: "Failed to create fixed task" });
+    }
+  });
+
+  app.put("/api/fixed-tasks/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid task ID - must be a number" });
+      }
+      const result = insertFixedTaskSchema.partial().safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid fixed task data", details: result.error.issues });
+      }
+      const task = await storage.updateFixedTask(id, result.data);
+      if (!task) {
+        return res.status(404).json({ error: "Fixed task not found" });
+      }
+      res.json(task);
+    } catch (error) {
+      console.error("Failed to update fixed task:", error);
+      res.status(500).json({ error: "Failed to update fixed task" });
+    }
+  });
+
+  app.delete("/api/fixed-tasks/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid task ID - must be a number" });
+      }
+      const deleted = await storage.deleteFixedTask(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Fixed task not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete fixed task:", error);
+      res.status(500).json({ error: "Failed to delete fixed task" });
     }
   });
 
