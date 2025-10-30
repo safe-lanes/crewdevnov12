@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import type { VariableTask, InsertVariableTask } from '@shared/schema';
 
-type SortColumn = 'startDateTime' | 'finishDateTime' | 'task' | 'status' | 'crewInvolved' | 'remarks' | null;
+type SortColumn = 'startDateTime' | 'finishDateTime' | 'task' | 'status' | 'crewInvolved' | 'remarks' | 'submissionStatus' | null;
 type SortDirection = 'asc' | 'desc';
 
 const StatusBadge = ({ status }: { status: string }) => {
@@ -41,6 +41,21 @@ const StatusBadge = ({ status }: { status: string }) => {
       data-testid={`status-${status.toLowerCase()}`}
     >
       {status}
+    </span>
+  );
+};
+
+const SubmissionStatusBadge = ({ isDraft }: { isDraft: boolean }) => {
+  return (
+    <span
+      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+        isDraft
+          ? 'bg-gray-100 text-gray-800'
+          : 'bg-blue-100 text-blue-800'
+      }`}
+      data-testid={`submission-status-${isDraft ? 'draft' : 'submitted'}`}
+    >
+      {isDraft ? 'Draft' : 'Submitted'}
     </span>
   );
 };
@@ -164,6 +179,10 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
       } else if (sortColumn === 'finishDateTime') {
         aValue = a.finishDateTimeSort;
         bValue = b.finishDateTimeSort;
+      } else if (sortColumn === 'submissionStatus') {
+        // Map isDraft to sortable strings (Draft < Submitted alphabetically)
+        aValue = a.isDraft ? 'Draft' : 'Submitted';
+        bValue = b.isDraft ? 'Draft' : 'Submitted';
       } else {
         aValue = a[sortColumn];
         bValue = b[sortColumn];
@@ -319,6 +338,16 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
                     <SortIndicator column="remarks" />
                   </div>
                 </TableHead>
+                <TableHead
+                  className="text-white text-xs font-normal cursor-pointer group sticky top-0 bg-[#52baf3] shadow-sm"
+                  onClick={() => handleSort('submissionStatus')}
+                  data-testid="header-submission-status"
+                >
+                  <div className="flex items-center">
+                    Submission Status
+                    <SortIndicator column="submissionStatus" />
+                  </div>
+                </TableHead>
                 <TableHead className="text-white text-xs font-normal text-center sticky top-0 bg-[#52baf3] shadow-sm w-20">
                   Actions
                 </TableHead>
@@ -327,7 +356,7 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
             <TableBody>
               {paginatedTasks.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                     No tasks added yet. Click "+ Add Task" to create a new task.
                   </TableCell>
                 </TableRow>
@@ -351,6 +380,9 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
                     </TableCell>
                     <TableCell className="py-3 text-sm" data-testid={`text-remarks-${task.id}`}>
                       {task.remarks}
+                    </TableCell>
+                    <TableCell className="py-3" data-testid={`cell-submission-status-${task.id}`}>
+                      <SubmissionStatusBadge isDraft={task.isDraft} />
                     </TableCell>
                     <TableCell className="py-3">
                       <div className="flex items-center justify-center gap-2">
