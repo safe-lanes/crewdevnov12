@@ -1641,7 +1641,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                     </SelectTrigger>
                     <SelectContent className="max-h-[200px]">
                       {ranksLoading ? (
-                        <SelectItem value="" disabled>Loading ranks...</SelectItem>
+                        <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
                       ) : (
                         rankNames.map(rank => (
                           <SelectItem key={rank} value={rank}>{rank}</SelectItem>
@@ -1798,7 +1798,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   </SelectTrigger>
                   <SelectContent className="max-h-[200px]">
                     {ranksLoading ? (
-                      <SelectItem value="" disabled>Loading ranks...</SelectItem>
+                      <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
                     ) : (
                       rankNames.map(rank => (
                         <SelectItem key={rank} value={rank}>{rank}</SelectItem>
@@ -2757,7 +2757,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                     </SelectTrigger>
                     <SelectContent>
                       {ranksLoading ? (
-                        <SelectItem value="" disabled>Loading ranks...</SelectItem>
+                        <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
                       ) : (
                         rankNames.map((rank) => (
                           <SelectItem key={rank} value={rank}>
