@@ -156,7 +156,7 @@ export const RestHoursPlan = (): JSX.Element => {
             Fixed Tasks content will be implemented here.
           </div>
         ) : (
-          <VariableTasksTable />
+          <VariableTasksTable vesselId={selectedVessel} periodValue={periodValue} />
         )}
       </div>
     </div>

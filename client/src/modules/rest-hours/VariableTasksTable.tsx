@@ -10,110 +10,21 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { VariableTask } from '@shared/schema';
-
-const mockVariableTasks: VariableTask[] = [
-  {
-    id: 1,
-    startDateTime: '09-Jan-2025 / 14:00',
-    finishDateTime: '09-Jan-2025 / 16:00',
-    startDateTimeSort: '2025-01-09T14:00:00',
-    finishDateTimeSort: '2025-01-09T16:00:00',
-    task: 'Hot work',
-    status: 'Planned',
-    crewInvolved: 5,
-    remarks: 'Hot work on Monkey Island',
-    periodValue: '2025-10',
-    vesselId: null,
-    isDraft: false,
-    recordType: 'task',
-    statusType: 'planned',
-    selectedTasks: '["1"]',
-    otherTask: null,
-    crewInvolvedDetails: '[]',
-    comments: 'Hot work on Monkey Island',
-  },
-  {
-    id: 2,
-    startDateTime: '08-Jan-2025 / 18:00',
-    finishDateTime: '09-Jan-2025 / 21:00',
-    startDateTimeSort: '2025-01-08T18:00:00',
-    finishDateTimeSort: '2025-01-09T21:00:00',
-    task: 'Departure Port',
-    status: 'Completed',
-    crewInvolved: 20,
-    remarks: 'Departure Ulsan',
-    periodValue: '2025-10',
-    vesselId: null,
-    isDraft: false,
-    recordType: 'port-call',
-    statusType: 'completed',
-    selectedTasks: '[]',
-    otherTask: null,
-    crewInvolvedDetails: '[]',
-    comments: 'Departure Ulsan',
-  },
-  {
-    id: 3,
-    startDateTime: '10-Jan-2025 / 08:00',
-    finishDateTime: '10-Jan-2025 / 12:00',
-    startDateTimeSort: '2025-01-10T08:00:00',
-    finishDateTimeSort: '2025-01-10T12:00:00',
-    task: 'Safety Drill',
-    status: 'Planned',
-    crewInvolved: 15,
-    remarks: 'Fire drill and boat drill',
-    periodValue: '2025-10',
-    vesselId: null,
-    isDraft: false,
-    recordType: 'task',
-    statusType: 'planned',
-    selectedTasks: '["3"]',
-    otherTask: null,
-    crewInvolvedDetails: '[]',
-    comments: 'Fire drill and boat drill',
-  },
-  {
-    id: 4,
-    startDateTime: '11-Jan-2025 / 10:00',
-    finishDateTime: '11-Jan-2025 / 14:00',
-    startDateTimeSort: '2025-01-11T10:00:00',
-    finishDateTimeSort: '2025-01-11T14:00:00',
-    task: 'Maintenance',
-    status: 'Planned',
-    crewInvolved: 8,
-    remarks: 'Engine room maintenance',
-    periodValue: '2025-10',
-    vesselId: null,
-    isDraft: false,
-    recordType: 'task',
-    statusType: 'planned',
-    selectedTasks: '["4"]',
-    otherTask: null,
-    crewInvolvedDetails: '[]',
-    comments: 'Engine room maintenance',
-  },
-  {
-    id: 5,
-    startDateTime: '12-Jan-2025 / 15:00',
-    finishDateTime: '12-Jan-2025 / 18:00',
-    startDateTimeSort: '2025-01-12T15:00:00',
-    finishDateTimeSort: '2025-01-12T18:00:00',
-    task: 'Cargo Operations',
-    status: 'Completed',
-    crewInvolved: 12,
-    remarks: 'Loading cargo at berth 3',
-    periodValue: '2025-10',
-    vesselId: null,
-    isDraft: false,
-    recordType: 'task',
-    statusType: 'completed',
-    selectedTasks: '["5"]',
-    otherTask: null,
-    crewInvolvedDetails: '[]',
-    comments: 'Loading cargo at berth 3',
-  },
-];
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
+import { queryClient, apiRequest } from '@/lib/queryClient';
+import { VariableTaskForm } from './VariableTaskForm';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import type { VariableTask, InsertVariableTask } from '@shared/schema';
 
 type SortColumn = 'startDateTime' | 'finishDateTime' | 'task' | 'status' | 'crewInvolved' | 'remarks' | null;
 type SortDirection = 'asc' | 'desc';
@@ -134,12 +45,109 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-export const VariableTasksTable = () => {
-  const [tasks, setTasks] = useState<VariableTask[]>(mockVariableTasks);
+interface VariableTasksTableProps {
+  vesselId: string;
+  periodValue: string;
+}
+
+export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTableProps) => {
+  const { toast } = useToast();
   const [sortColumn, setSortColumn] = useState<SortColumn>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<VariableTask | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<number | null>(null);
   const itemsPerPage = 10;
+
+  const { data: allTasks = [], isLoading } = useQuery<VariableTask[]>({
+    queryKey: ['/api/variable-tasks'],
+  });
+
+  const tasks = useMemo(() => {
+    if (!vesselId || !periodValue) return [];
+    return allTasks.filter(task => 
+      task.vesselId === vesselId && task.periodValue === periodValue
+    );
+  }, [allTasks, vesselId, periodValue]);
+
+  const { data: crewMembers = [] } = useQuery<any[]>({
+    queryKey: ['/api/crew-members'],
+  });
+
+  const vesselCrewMembers = useMemo(() => {
+    if (!vesselId || !crewMembers) return [];
+    return crewMembers.filter(crew => crew.presentVessel === vesselId);
+  }, [crewMembers, vesselId]);
+
+  const createMutation = useMutation({
+    mutationFn: async (data: InsertVariableTask) => {
+      return apiRequest('/api/variable-tasks', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/variable-tasks'] });
+      toast({
+        title: 'Success',
+        description: 'Variable task created successfully',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create variable task',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<InsertVariableTask> }) => {
+      return apiRequest(`/api/variable-tasks/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/variable-tasks'] });
+      toast({
+        title: 'Success',
+        description: 'Variable task updated successfully',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update variable task',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest(`/api/variable-tasks/${id}`, {
+        method: 'DELETE',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/variable-tasks'] });
+      toast({
+        title: 'Success',
+        description: 'Variable task deleted successfully',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete variable task',
+        variant: 'destructive',
+      });
+    },
+  });
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -209,16 +217,35 @@ export const VariableTasksTable = () => {
     );
   };
 
-  const handleEdit = (id: number) => {
-    console.log('Edit task:', id);
+  const handleEdit = (task: VariableTask) => {
+    setEditingTask(task);
+    setFormOpen(true);
   };
 
   const handleDelete = (id: number) => {
-    console.log('Delete task:', id);
+    setTaskToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (taskToDelete !== null) {
+      deleteMutation.mutate(taskToDelete);
+      setDeleteDialogOpen(false);
+      setTaskToDelete(null);
+    }
   };
 
   const handleAddTask = () => {
-    console.log('Add new task');
+    setEditingTask(null);
+    setFormOpen(true);
+  };
+
+  const handleFormSubmit = (data: InsertVariableTask, isDraft: boolean) => {
+    if (editingTask) {
+      updateMutation.mutate({ id: editingTask.id, data });
+    } else {
+      createMutation.mutate(data);
+    }
   };
 
   return (
@@ -226,7 +253,8 @@ export const VariableTasksTable = () => {
       <div className="flex justify-end mb-4">
         <Button
           onClick={handleAddTask}
-          className="h-8 text-xs bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+          disabled={!vesselId || !periodValue}
+          className="h-8 text-xs bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           data-testid="button-add-task"
         >
           <Plus className="h-4 w-4 mr-1" />
@@ -335,7 +363,7 @@ export const VariableTasksTable = () => {
                     <TableCell className="py-3">
                       <div className="flex items-center justify-center gap-2">
                         <button
-                          onClick={() => handleEdit(task.id)}
+                          onClick={() => handleEdit(task)}
                           className="text-gray-600 hover:text-blue-600 transition-colors"
                           data-testid={`button-edit-${task.id}`}
                         >
@@ -406,6 +434,35 @@ export const VariableTasksTable = () => {
           </div>
         </div>
       )}
+
+      {/* Variable Task Form Modal */}
+      <VariableTaskForm
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        onSubmit={handleFormSubmit}
+        editData={editingTask}
+        vesselId={vesselId}
+        periodValue={periodValue}
+        crewMembers={vesselCrewMembers}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the variable task.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} data-testid="button-confirm-delete">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
