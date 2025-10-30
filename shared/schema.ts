@@ -1084,12 +1084,21 @@ export const variableTasks = pgTable("variable_tasks", {
   finishDateTime: text("finish_date_time").notNull(),
   startDateTimeSort: text("start_date_time_sort").notNull(), // ISO format for sorting
   finishDateTimeSort: text("finish_date_time_sort").notNull(), // ISO format for sorting
-  task: text("task").notNull(),
+  task: text("task").notNull(), // Display text for task
   status: text("status").notNull(), // 'Planned' or 'Completed'
-  crewInvolved: integer("crew_involved").notNull(),
+  crewInvolved: integer("crew_involved").notNull(), // Count of crew members
   remarks: text("remarks"),
   periodValue: text("period_value"), // e.g., "2025-10"
   vesselId: text("vessel_id"),
+  
+  // New fields for form
+  isDraft: boolean("is_draft").notNull().default(true),
+  recordType: text("record_type").notNull(), // 'task' or 'port-call'
+  statusType: text("status_type").notNull(), // 'planned' or 'completed'
+  selectedTasks: text("selected_tasks"), // JSON array of task IDs
+  otherTask: text("other_task"), // Free text for unlisted tasks
+  crewInvolvedDetails: text("crew_involved_details"), // JSON array of crew member IDs and groups
+  comments: text("comments"),
 });
 
 export const insertVariableTaskSchema = createInsertSchema(variableTasks).omit({ id: true });

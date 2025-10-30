@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type DrugAlcoholTestRecord, type InsertDrugAlcoholTestRecord, type RestHoursVesselRecord, type InsertRestHoursVesselRecord, type RestHoursCrewRecord, type InsertRestHoursCrewRecord, type RestHoursDailyRecord, type InsertRestHoursDailyRecord, type CrewDashboardSummary } from "@shared/schema";
+import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type DrugAlcoholTestRecord, type InsertDrugAlcoholTestRecord, type RestHoursVesselRecord, type InsertRestHoursVesselRecord, type RestHoursCrewRecord, type InsertRestHoursCrewRecord, type RestHoursDailyRecord, type InsertRestHoursDailyRecord, type VariableTask, type InsertVariableTask, type CrewDashboardSummary } from "@shared/schema";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -137,6 +137,13 @@ export interface IStorage {
   createRestHoursDailyRecord(record: InsertRestHoursDailyRecord): Promise<RestHoursDailyRecord>;
   updateRestHoursDailyRecord(id: number, record: Partial<InsertRestHoursDailyRecord>): Promise<RestHoursDailyRecord | undefined>;
   deleteRestHoursDailyRecord(id: number): Promise<boolean>;
+  // Variable Tasks
+  getVariableTasks(): Promise<VariableTask[]>;
+  getVariableTask(id: number): Promise<VariableTask | undefined>;
+  getVariableTasksByFilters(filters: { vesselId?: string; periodValue?: string }): Promise<VariableTask[]>;
+  createVariableTask(task: InsertVariableTask): Promise<VariableTask>;
+  updateVariableTask(id: number, task: Partial<InsertVariableTask>): Promise<VariableTask | undefined>;
+  deleteVariableTask(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -1870,6 +1877,7 @@ export class PersistentFileStorage implements IStorage {
   private restHoursVesselRecords: Map<number, RestHoursVesselRecord>;
   private restHoursCrewRecords: Map<number, RestHoursCrewRecord>;
   private restHoursDailyRecords: Map<number, RestHoursDailyRecord>;
+  private variableTasks: Map<number, VariableTask>;
   private currentUserId: number;
   private currentFormId: number;
   private currentRankGroupId: number;
@@ -1886,6 +1894,7 @@ export class PersistentFileStorage implements IStorage {
   private currentRestHoursVesselRecordId: number;
   private currentRestHoursCrewRecordId: number;
   private currentRestHoursDailyRecordId: number;
+  private currentVariableTaskId: number;
   private filePath: string;
   private saveTimeout: NodeJS.Timeout | null = null;
   private isSaving: boolean = false;
@@ -1913,6 +1922,7 @@ export class PersistentFileStorage implements IStorage {
     this.restHoursVesselRecords = new Map();
     this.restHoursCrewRecords = new Map();
     this.restHoursDailyRecords = new Map();
+    this.variableTasks = new Map();
     this.currentUserId = 1;
     this.currentFormId = 1;
     this.currentRankGroupId = 1;
@@ -1929,6 +1939,7 @@ export class PersistentFileStorage implements IStorage {
     this.currentRestHoursVesselRecordId = 1;
     this.currentRestHoursCrewRecordId = 1;
     this.currentRestHoursDailyRecordId = 1;
+    this.currentVariableTaskId = 1;
     
     this.filePath = path.join(process.cwd(), 'test-data.json');
     this.loadFromFile();
@@ -2037,6 +2048,10 @@ export class PersistentFileStorage implements IStorage {
         this.restHoursDailyRecords = new Map(data.restHoursDailyRecords || []);
         this.currentRestHoursDailyRecordId = data.currentRestHoursDailyRecordId || 1;
         
+        // Load variable tasks and counter
+        this.variableTasks = new Map(data.variableTasks || []);
+        this.currentVariableTaskId = data.currentVariableTaskId || 1;
+        
         console.log("📄 Loaded existing data from test-data.json");
         
         // Initialize rest hours sample data if empty
@@ -2077,6 +2092,7 @@ export class PersistentFileStorage implements IStorage {
       restHoursVesselRecords: Array.from(this.restHoursVesselRecords.entries()),
       restHoursCrewRecords: Array.from(this.restHoursCrewRecords.entries()),
       restHoursDailyRecords: Array.from(this.restHoursDailyRecords.entries()),
+      variableTasks: Array.from(this.variableTasks.entries()),
       masterDataEntries: Array.from(this.masterDataEntries.entries()),
       currentUserId: this.currentUserId,
       currentFormId: this.currentFormId,
@@ -2093,7 +2109,8 @@ export class PersistentFileStorage implements IStorage {
       currentDrugAlcoholTestRecordId: this.currentDrugAlcoholTestRecordId,
       currentRestHoursVesselRecordId: this.currentRestHoursVesselRecordId,
       currentRestHoursCrewRecordId: this.currentRestHoursCrewRecordId,
-      currentRestHoursDailyRecordId: this.currentRestHoursDailyRecordId
+      currentRestHoursDailyRecordId: this.currentRestHoursDailyRecordId,
+      currentVariableTaskId: this.currentVariableTaskId
     };
     
     if (this.saveTimeout) {
@@ -3755,6 +3772,59 @@ export class PersistentFileStorage implements IStorage {
 
   async deleteRestHoursDailyRecord(id: number): Promise<boolean> {
     const result = this.restHoursDailyRecords.delete(id);
+    if (result) this.saveToFile(); // SAVE TO FILE AFTER EVERY DELETE!
+    return result;
+  }
+
+  // Variable Tasks methods
+  async getVariableTasks(): Promise<VariableTask[]> {
+    return Array.from(this.variableTasks.values());
+  }
+
+  async getVariableTask(id: number): Promise<VariableTask | undefined> {
+    return this.variableTasks.get(id);
+  }
+
+  async getVariableTasksByFilters(filters: { vesselId?: string; periodValue?: string }): Promise<VariableTask[]> {
+    let tasks = Array.from(this.variableTasks.values());
+    
+    if (filters.vesselId) {
+      tasks = tasks.filter(task => task.vesselId === filters.vesselId);
+    }
+    
+    if (filters.periodValue) {
+      tasks = tasks.filter(task => task.periodValue === filters.periodValue);
+    }
+    
+    return tasks;
+  }
+
+  async createVariableTask(insertTask: InsertVariableTask): Promise<VariableTask> {
+    const id = this.currentVariableTaskId++;
+    const task: VariableTask = {
+      ...insertTask,
+      id,
+    };
+    this.variableTasks.set(id, task);
+    this.saveToFile(); // SAVE TO FILE AFTER EVERY CREATE!
+    return task;
+  }
+
+  async updateVariableTask(id: number, updateData: Partial<InsertVariableTask>): Promise<VariableTask | undefined> {
+    const existingTask = this.variableTasks.get(id);
+    if (!existingTask) return undefined;
+    
+    const updatedTask: VariableTask = {
+      ...existingTask,
+      ...updateData,
+    };
+    this.variableTasks.set(id, updatedTask);
+    this.saveToFile(); // SAVE TO FILE AFTER EVERY UPDATE!
+    return updatedTask;
+  }
+
+  async deleteVariableTask(id: number): Promise<boolean> {
+    const result = this.variableTasks.delete(id);
     if (result) this.saveToFile(); // SAVE TO FILE AFTER EVERY DELETE!
     return result;
   }
