@@ -68,7 +68,8 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
     });
 
     setCrewTasks(tasks);
-  }, [vesselCrewMembers, existingTasks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vesselId, monthYear]);
 
   // Save mutation
   const saveMutation = useMutation({
