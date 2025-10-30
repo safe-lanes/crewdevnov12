@@ -276,13 +276,13 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
         <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="bg-gray-100 dark:bg-gray-800">
-              <th className="border px-2 py-1 text-left sticky left-0 bg-gray-100 dark:bg-gray-800 z-10">
+              <th className="border px-2 py-1 text-left sticky left-0 bg-gray-100 dark:bg-gray-800 z-10 w-20">
                 Rank
               </th>
-              <th className="border px-2 py-1 text-left sticky left-[60px] bg-gray-100 dark:bg-gray-800 z-10">
+              <th className="border px-2 py-1 text-left sticky left-20 bg-gray-100 dark:bg-gray-800 z-10 w-32">
                 Name
               </th>
-              <th className="border px-2 py-1 text-center">
+              <th className="border px-2 py-1 text-center w-16">
                 Watch/<br/>Duty
               </th>
               {/* Hours 00-23 */}
@@ -306,18 +306,18 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
                 {/* Sea row */}
                 <tr key={`${crew.crewMemberId}-sea`} className="hover:bg-gray-50 dark:hover:bg-gray-900">
                   <td 
-                    className="border px-2 py-1 sticky left-0 bg-white dark:bg-gray-950"
+                    className="border px-2 py-1 sticky left-0 bg-white dark:bg-gray-950 w-20"
                     rowSpan={2}
                   >
                     {crew.rank}
                   </td>
                   <td 
-                    className="border px-2 py-1 sticky left-[60px] bg-white dark:bg-gray-950 font-medium"
+                    className="border px-2 py-1 sticky left-20 bg-white dark:bg-gray-950 font-medium w-32"
                     rowSpan={2}
                   >
                     {crew.crewName}
                   </td>
-                  <td className="border px-2 py-1 text-center text-blue-600 font-semibold">Sea</td>
+                  <td className="border px-2 py-1 text-center text-blue-600 font-semibold w-16">Sea</td>
                   {/* Display 2 cells per hour (48 cells total) */}
                   {Array.from({ length: 24 }, (_, hour) => {
                     const cell1Index = hour * 2;
@@ -354,7 +354,7 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
                 </tr>
                 {/* Port row */}
                 <tr key={`${crew.crewMemberId}-port`} className="hover:bg-gray-50 dark:hover:bg-gray-900">
-                  <td className="border px-2 py-1 text-center text-green-600 font-semibold">Port</td>
+                  <td className="border px-2 py-1 text-center text-green-600 font-semibold w-16">Port</td>
                   {/* Display 2 cells per hour (48 cells total) */}
                   {Array.from({ length: 24 }, (_, hour) => {
                     const cell1Index = hour * 2;
