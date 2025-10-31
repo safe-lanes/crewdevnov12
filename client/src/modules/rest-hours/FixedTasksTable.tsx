@@ -383,7 +383,7 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
                                 }
                               }
                             }}
-                            className="outline-none cursor-text min-h-[20px] text-center border-r"
+                            className="outline-none cursor-text min-h-[20px] text-center"
                             style={{ 
                               width: '15px',
                               minWidth: '15px',
@@ -528,7 +528,7 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
                                 }
                               }
                             }}
-                            className="outline-none cursor-text min-h-[20px] text-center border-r"
+                            className="outline-none cursor-text min-h-[20px] text-center"
                             style={{ 
                               width: '15px',
                               minWidth: '15px',
