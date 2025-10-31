@@ -100,6 +100,20 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
     setFormOpen(true);
   };
 
+  // Fetch available ranks to get sortOrder
+  const { data: availableRanks = [] } = useQuery<any[]>({
+    queryKey: ['/api/available-ranks'],
+  });
+
+  // Create a map of rank name to sortOrder for sorting
+  const rankOrderMap = useMemo(() => {
+    const map = new Map<string, number>();
+    availableRanks.forEach((rank: any) => {
+      map.set(rank.name, rank.sortOrder || 0);
+    });
+    return map;
+  }, [availableRanks]);
+
   // Build query params
   const queryParams = new URLSearchParams();
   if (vesselId) queryParams.append('vesselIds', vesselId);
@@ -109,7 +123,7 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
   }
   if (searchText) queryParams.append('search', searchText);
 
-  const { data: records = [], isLoading } = useQuery<RestHoursCrewRecord[]>({
+  const { data: rawRecords = [], isLoading } = useQuery<RestHoursCrewRecord[]>({
     queryKey: ['/api/rest-hours-crew-records', queryParams.toString()],
     queryFn: async () => {
       const url = queryParams.toString() 
@@ -120,6 +134,18 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
       return response.json();
     },
   });
+
+  // Sort records by rank order
+  const records = useMemo(() => {
+    return [...rawRecords].sort((a, b) => {
+      // Strip suffix from rank name (e.g., "3rd Officer_1" -> "3rd Officer")
+      const aRankBase = a.rank?.split('_')[0] || a.rank;
+      const bRankBase = b.rank?.split('_')[0] || b.rank;
+      const aOrder = rankOrderMap.get(aRankBase) ?? 999;
+      const bOrder = rankOrderMap.get(bRankBase) ?? 999;
+      return aOrder - bOrder;
+    });
+  }, [rawRecords, rankOrderMap]);
 
   const columnDefs: ColDef[] = useMemo(() => [
     {

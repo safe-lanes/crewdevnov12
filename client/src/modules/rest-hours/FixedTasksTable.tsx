@@ -49,8 +49,11 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
     const filtered = allCrewMembers.filter((crew: any) => crew.presentVessel === vesselId);
     // Sort by rank order
     return filtered.sort((a: any, b: any) => {
-      const aOrder = rankOrderMap.get(a.presentRank) ?? 999;
-      const bOrder = rankOrderMap.get(b.presentRank) ?? 999;
+      // Strip suffix from rank name (e.g., "3rd Officer_1" -> "3rd Officer")
+      const aRankBase = a.presentRank?.split('_')[0] || a.presentRank;
+      const bRankBase = b.presentRank?.split('_')[0] || b.presentRank;
+      const aOrder = rankOrderMap.get(aRankBase) ?? 999;
+      const bOrder = rankOrderMap.get(bRankBase) ?? 999;
       return aOrder - bOrder;
     });
   }, [allCrewMembers, vesselId, rankOrderMap]);

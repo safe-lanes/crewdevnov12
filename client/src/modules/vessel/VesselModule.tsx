@@ -816,6 +816,20 @@ export const VesselModule = (): JSX.Element => {
     const { data: vessels = [], isLoading: vesselsLoading } = useVessels();
     const { data: crewMembers = [], isLoading: crewLoading } = useCrewMembers();
     
+    // Fetch available ranks to get sortOrder
+    const { data: availableRanks = [] } = useQuery<any[]>({
+        queryKey: ['/api/available-ranks'],
+    });
+
+    // Create a map of rank name to sortOrder for sorting
+    const rankOrderMap = useMemo(() => {
+        const map = new Map<string, number>();
+        availableRanks.forEach((rank: any) => {
+            map.set(rank.name, rank.sortOrder || 0);
+        });
+        return map;
+    }, [availableRanks]);
+    
     // Fetch vessel ranks for selected vessel (use vessel ID, e.g., VSL-003)
     const { data: vesselRanks = [], isLoading: ranksLoading } = useVesselRanks(selectedVessel?.vesselId || null);
     
@@ -1058,10 +1072,21 @@ export const VesselModule = (): JSX.Element => {
                                                         </TableCell>
                                                     </TableRow>
                                                 ) : (() => {
-                                                    const vesselCrew = crewMembers.filter((crew: any) => 
-                                                        crew.presentVessel === selectedVessel?.name || 
-                                                        crew.presentVessel === selectedVessel?.vesselId
-                                                    );
+                                                    const vesselCrew = crewMembers
+                                                        .filter((crew: any) => 
+                                                            crew.presentVessel === selectedVessel?.name || 
+                                                            crew.presentVessel === selectedVessel?.vesselId
+                                                        )
+                                                        .sort((a: any, b: any) => {
+                                                            // Strip suffix from rank name (e.g., "3rd Officer_1" -> "3rd Officer")
+                                                            const aRank = a.presentRank || a.rank;
+                                                            const bRank = b.presentRank || b.rank;
+                                                            const aRankBase = aRank?.split('_')[0] || aRank;
+                                                            const bRankBase = bRank?.split('_')[0] || bRank;
+                                                            const aOrder = rankOrderMap.get(aRankBase) ?? 999;
+                                                            const bOrder = rankOrderMap.get(bRankBase) ?? 999;
+                                                            return aOrder - bOrder;
+                                                        });
                                                     
                                                     if (vesselCrew.length === 0) {
                                                         return (
