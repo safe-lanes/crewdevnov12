@@ -373,7 +373,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
     },
   });
 
-  // Optimized cell edit handler - only updates the specific crew member
+  // Optimized cell edit handler - clones crew object so React.memo detects changes
   const handleCellEdit = useCallback((crewIndex: number, type: 'sea' | 'port', cellIndex: number, value: string) => {
     const normalizedValue = value.toLowerCase();
     // Allow only 'w', 'd', or empty
@@ -385,12 +385,21 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
       const updated = [...prev];
       const current = updated[crewIndex];
       
+      // Clone the crew object AND the hours array to create new references for React.memo
       if (type === 'sea') {
-        current.seaHours = [...current.seaHours];
-        current.seaHours[cellIndex] = normalizedValue;
+        const newSeaHours = [...current.seaHours];
+        newSeaHours[cellIndex] = normalizedValue;
+        updated[crewIndex] = {
+          ...current,
+          seaHours: newSeaHours,
+        };
       } else {
-        current.portHours = [...current.portHours];
-        current.portHours[cellIndex] = normalizedValue;
+        const newPortHours = [...current.portHours];
+        newPortHours[cellIndex] = normalizedValue;
+        updated[crewIndex] = {
+          ...current,
+          portHours: newPortHours,
+        };
       }
 
       return updated;
