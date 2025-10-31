@@ -37,6 +37,13 @@ export const RestHoursPlan = (): JSX.Element => {
 
   const { vessels, isLoading: vesselsLoading } = useVesselLookup();
 
+  // Auto-select first vessel when vessels load
+  useEffect(() => {
+    if (!vesselsLoading && vessels.length > 0 && !selectedVessel) {
+      setSelectedVessel(vessels[0].entryId);
+    }
+  }, [vesselsLoading, vessels, selectedVessel]);
+
   // Format period for display (e.g., "2024, Mar")
   const displayPeriod = useMemo(() => {
     if (!periodValue || periodValue === "older") return "";
