@@ -47,6 +47,15 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
     enabled: !!vesselId && !!monthYear,
   });
 
+  // Create stable dependency values to avoid infinite loops
+  const crewMemberIds = useMemo(() => {
+    return vesselCrewMembers.map(c => c.id).join(',');
+  }, [vesselCrewMembers]);
+
+  const existingTaskIds = useMemo(() => {
+    return existingTasks.map(t => `${t.crewMemberId}-${t.id}`).join(',');
+  }, [existingTasks]);
+
   // Initialize crew tasks from existing data or create empty
   useEffect(() => {
     if (vesselCrewMembers.length === 0) {
@@ -68,7 +77,8 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
     });
 
     setCrewTasks(tasks);
-  }, [vesselCrewMembers, existingTasks, vesselId, monthYear]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [crewMemberIds, existingTaskIds, vesselId, monthYear]);
 
   // Save mutation
   const saveMutation = useMutation({
