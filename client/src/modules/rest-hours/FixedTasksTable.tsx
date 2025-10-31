@@ -289,10 +289,11 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
               <th className="border px-2 py-1 text-center w-16 bg-gray-100 dark:bg-gray-800">
                 Watch/<br/>Duty
               </th>
-              {/* Hours 00-23 */}
+              {/* Hours 00-23 (each spans 2 half-hour columns) */}
               {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
                 <th 
                   key={hour} 
+                  colSpan={2}
                   className="border px-1 py-1 text-center bg-gray-100 dark:bg-gray-800"
                   data-testid={`header-hour-${hour}`}
                 >
