@@ -133,38 +133,32 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
     },
   });
 
-  const handleCellClick = (crewIndex: number, type: 'sea' | 'port', cellIndex: number) => {
-    if (!isEditMode) return;
-
+  // Handle cell edit with keyboard input
+  const handleCellEdit = (crewIndex: number, type: 'sea' | 'port', cellIndex: number, value: string) => {
     setCrewTasks((prev) => {
       const updated = [...prev];
       const current = updated[crewIndex];
-      const hours = type === 'sea' ? [...current.seaHours] : [...current.portHours];
       
-      // Cycle through: '' -> 'w' -> 'd' -> ''
-      const currentValue = hours[cellIndex];
-      if (currentValue === '') {
-        hours[cellIndex] = 'w';
-      } else if (currentValue === 'w') {
-        hours[cellIndex] = 'd';
-      } else {
-        hours[cellIndex] = '';
-      }
-
-      if (type === 'sea') {
-        current.seaHours = hours;
-      } else {
-        current.portHours = hours;
+      // Allow only 'w', 'd', or empty
+      const normalizedValue = value.toLowerCase();
+      if (normalizedValue === 'w' || normalizedValue === 'd' || normalizedValue === '') {
+        if (type === 'sea') {
+          current.seaHours = [...current.seaHours];
+          current.seaHours[cellIndex] = normalizedValue;
+        } else {
+          current.portHours = [...current.portHours];
+          current.portHours[cellIndex] = normalizedValue;
+        }
       }
 
       return updated;
     });
   };
 
-  const getCellColor = (value: string) => {
-    if (value === 'w') return 'bg-blue-500';
-    if (value === 'd') return 'bg-orange-500';
-    return 'bg-white dark:bg-gray-800';
+  // Get cell background color (matching RH Recording form plan view)
+  const getCellBackgroundColor = (value: string): string => {
+    if (value === 'w' || value === 'd') return '#E5E7EB'; // Grey for all work (matching plan view)
+    return 'white'; // White for rest
   };
 
   const handleNewMonth = async () => {
@@ -328,32 +322,140 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
                     {crew.crewName}
                   </td>
                   <td className="border px-2 py-1 text-center text-blue-600 font-semibold w-16">Sea</td>
-                  {/* Display 2 cells per hour (48 cells total) */}
+                  {/* Display 24 hour columns, each with 2 half-hour cells */}
                   {Array.from({ length: 24 }, (_, hour) => {
                     const cell1Index = hour * 2;
                     const cell2Index = hour * 2 + 1;
                     const cell1Value = crew.seaHours[cell1Index] || '';
                     const cell2Value = crew.seaHours[cell2Index] || '';
-
+                    
                     return (
-                      <td 
-                        key={hour} 
-                        className="border p-0"
-                        data-testid={`cell-sea-${crewIndex}-hour-${hour}`}
-                      >
+                      <td key={hour} className="border p-0">
                         <div className="flex">
+                          {/* First half-hour (00 minutes) */}
                           <div
-                            className={`w-3 h-6 border-r ${getCellColor(cell1Value)} ${isEditMode ? 'cursor-pointer hover:opacity-70' : ''}`}
-                            onClick={() => handleCellClick(crewIndex, 'sea', cell1Index)}
-                            title={`${String(hour).padStart(2, '0')}:00`}
-                            data-testid={`cell-sea-${crewIndex}-hour-${hour}-first`}
-                          />
+                            contentEditable={isEditMode}
+                            suppressContentEditableWarning
+                            onBlur={(e) => {
+                              const value = e.currentTarget.textContent || '';
+                              handleCellEdit(crewIndex, 'sea', cell1Index, value);
+                            }}
+                            onKeyDown={(e) => {
+                              if (!isEditMode) return;
+                              
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                e.currentTarget.blur();
+                                return;
+                              }
+                              
+                              if (['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                                e.preventDefault();
+                                
+                                let targetCrew = crewIndex;
+                                let targetCell = cell1Index;
+                                let targetType: 'sea' | 'port' = 'sea';
+                                
+                                if (e.key === 'ArrowRight') {
+                                  targetCell++;
+                                  if (targetCell >= 48) targetCell = 0;
+                                } else if (e.key === 'ArrowLeft') {
+                                  targetCell--;
+                                  if (targetCell < 0) targetCell = 47;
+                                } else if (e.key === 'ArrowDown') {
+                                  targetType = 'port';
+                                } else if (e.key === 'ArrowUp' && crewIndex > 0) {
+                                  targetCrew = crewIndex - 1;
+                                  targetType = 'port';
+                                }
+                                
+                                const targetElement = document.querySelector(
+                                  `[data-testid="cell-${targetType}-${targetCrew}-${targetCell}"]`
+                                ) as HTMLElement;
+                                
+                                if (targetElement) {
+                                  targetElement.focus();
+                                  const selection = window.getSelection();
+                                  const range = document.createRange();
+                                  range.selectNodeContents(targetElement);
+                                  selection?.removeAllRanges();
+                                  selection?.addRange(range);
+                                }
+                              }
+                            }}
+                            className="outline-none cursor-text min-h-[20px] text-center border-r"
+                            style={{ 
+                              width: '15px',
+                              minWidth: '15px',
+                              padding: '2px',
+                              backgroundColor: getCellBackgroundColor(cell1Value)
+                            }}
+                            data-testid={`cell-sea-${crewIndex}-${cell1Index}`}
+                          >
+                            {cell1Value}
+                          </div>
+                          {/* Second half-hour (30 minutes) */}
                           <div
-                            className={`w-3 h-6 ${getCellColor(cell2Value)} ${isEditMode ? 'cursor-pointer hover:opacity-70' : ''}`}
-                            onClick={() => handleCellClick(crewIndex, 'sea', cell2Index)}
-                            title={`${String(hour).padStart(2, '0')}:30`}
-                            data-testid={`cell-sea-${crewIndex}-hour-${hour}-second`}
-                          />
+                            contentEditable={isEditMode}
+                            suppressContentEditableWarning
+                            onBlur={(e) => {
+                              const value = e.currentTarget.textContent || '';
+                              handleCellEdit(crewIndex, 'sea', cell2Index, value);
+                            }}
+                            onKeyDown={(e) => {
+                              if (!isEditMode) return;
+                              
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                e.currentTarget.blur();
+                                return;
+                              }
+                              
+                              if (['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                                e.preventDefault();
+                                
+                                let targetCrew = crewIndex;
+                                let targetCell = cell2Index;
+                                let targetType: 'sea' | 'port' = 'sea';
+                                
+                                if (e.key === 'ArrowRight') {
+                                  targetCell++;
+                                  if (targetCell >= 48) targetCell = 0;
+                                } else if (e.key === 'ArrowLeft') {
+                                  targetCell--;
+                                  if (targetCell < 0) targetCell = 47;
+                                } else if (e.key === 'ArrowDown') {
+                                  targetType = 'port';
+                                } else if (e.key === 'ArrowUp' && crewIndex > 0) {
+                                  targetCrew = crewIndex - 1;
+                                  targetType = 'port';
+                                }
+                                
+                                const targetElement = document.querySelector(
+                                  `[data-testid="cell-${targetType}-${targetCrew}-${targetCell}"]`
+                                ) as HTMLElement;
+                                
+                                if (targetElement) {
+                                  targetElement.focus();
+                                  const selection = window.getSelection();
+                                  const range = document.createRange();
+                                  range.selectNodeContents(targetElement);
+                                  selection?.removeAllRanges();
+                                  selection?.addRange(range);
+                                }
+                              }
+                            }}
+                            className="outline-none cursor-text min-h-[20px] text-center"
+                            style={{ 
+                              width: '15px',
+                              minWidth: '15px',
+                              padding: '2px',
+                              backgroundColor: getCellBackgroundColor(cell2Value)
+                            }}
+                            data-testid={`cell-sea-${crewIndex}-${cell2Index}`}
+                          >
+                            {cell2Value}
+                          </div>
                         </div>
                       </td>
                     );
@@ -365,32 +467,140 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
                 {/* Port row */}
                 <tr key={`${crew.crewMemberId}-port`} className="hover:bg-gray-50 dark:hover:bg-gray-900">
                   <td className="border px-2 py-1 text-center text-green-600 font-semibold w-16">Port</td>
-                  {/* Display 2 cells per hour (48 cells total) */}
+                  {/* Display 24 hour columns, each with 2 half-hour cells */}
                   {Array.from({ length: 24 }, (_, hour) => {
                     const cell1Index = hour * 2;
                     const cell2Index = hour * 2 + 1;
                     const cell1Value = crew.portHours[cell1Index] || '';
                     const cell2Value = crew.portHours[cell2Index] || '';
-
+                    
                     return (
-                      <td 
-                        key={hour} 
-                        className="border p-0"
-                        data-testid={`cell-port-${crewIndex}-hour-${hour}`}
-                      >
+                      <td key={hour} className="border p-0">
                         <div className="flex">
+                          {/* First half-hour (00 minutes) */}
                           <div
-                            className={`w-3 h-6 border-r ${getCellColor(cell1Value)} ${isEditMode ? 'cursor-pointer hover:opacity-70' : ''}`}
-                            onClick={() => handleCellClick(crewIndex, 'port', cell1Index)}
-                            title={`${String(hour).padStart(2, '0')}:00`}
-                            data-testid={`cell-port-${crewIndex}-hour-${hour}-first`}
-                          />
+                            contentEditable={isEditMode}
+                            suppressContentEditableWarning
+                            onBlur={(e) => {
+                              const value = e.currentTarget.textContent || '';
+                              handleCellEdit(crewIndex, 'port', cell1Index, value);
+                            }}
+                            onKeyDown={(e) => {
+                              if (!isEditMode) return;
+                              
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                e.currentTarget.blur();
+                                return;
+                              }
+                              
+                              if (['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                                e.preventDefault();
+                                
+                                let targetCrew = crewIndex;
+                                let targetCell = cell1Index;
+                                let targetType: 'sea' | 'port' = 'port';
+                                
+                                if (e.key === 'ArrowRight') {
+                                  targetCell++;
+                                  if (targetCell >= 48) targetCell = 0;
+                                } else if (e.key === 'ArrowLeft') {
+                                  targetCell--;
+                                  if (targetCell < 0) targetCell = 47;
+                                } else if (e.key === 'ArrowUp') {
+                                  targetType = 'sea';
+                                } else if (e.key === 'ArrowDown' && crewIndex < crewTasks.length - 1) {
+                                  targetCrew = crewIndex + 1;
+                                  targetType = 'sea';
+                                }
+                                
+                                const targetElement = document.querySelector(
+                                  `[data-testid="cell-${targetType}-${targetCrew}-${targetCell}"]`
+                                ) as HTMLElement;
+                                
+                                if (targetElement) {
+                                  targetElement.focus();
+                                  const selection = window.getSelection();
+                                  const range = document.createRange();
+                                  range.selectNodeContents(targetElement);
+                                  selection?.removeAllRanges();
+                                  selection?.addRange(range);
+                                }
+                              }
+                            }}
+                            className="outline-none cursor-text min-h-[20px] text-center border-r"
+                            style={{ 
+                              width: '15px',
+                              minWidth: '15px',
+                              padding: '2px',
+                              backgroundColor: getCellBackgroundColor(cell1Value)
+                            }}
+                            data-testid={`cell-port-${crewIndex}-${cell1Index}`}
+                          >
+                            {cell1Value}
+                          </div>
+                          {/* Second half-hour (30 minutes) */}
                           <div
-                            className={`w-3 h-6 ${getCellColor(cell2Value)} ${isEditMode ? 'cursor-pointer hover:opacity-70' : ''}`}
-                            onClick={() => handleCellClick(crewIndex, 'port', cell2Index)}
-                            title={`${String(hour).padStart(2, '0')}:30`}
-                            data-testid={`cell-port-${crewIndex}-hour-${hour}-second`}
-                          />
+                            contentEditable={isEditMode}
+                            suppressContentEditableWarning
+                            onBlur={(e) => {
+                              const value = e.currentTarget.textContent || '';
+                              handleCellEdit(crewIndex, 'port', cell2Index, value);
+                            }}
+                            onKeyDown={(e) => {
+                              if (!isEditMode) return;
+                              
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                e.currentTarget.blur();
+                                return;
+                              }
+                              
+                              if (['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                                e.preventDefault();
+                                
+                                let targetCrew = crewIndex;
+                                let targetCell = cell2Index;
+                                let targetType: 'sea' | 'port' = 'port';
+                                
+                                if (e.key === 'ArrowRight') {
+                                  targetCell++;
+                                  if (targetCell >= 48) targetCell = 0;
+                                } else if (e.key === 'ArrowLeft') {
+                                  targetCell--;
+                                  if (targetCell < 0) targetCell = 47;
+                                } else if (e.key === 'ArrowUp') {
+                                  targetType = 'sea';
+                                } else if (e.key === 'ArrowDown' && crewIndex < crewTasks.length - 1) {
+                                  targetCrew = crewIndex + 1;
+                                  targetType = 'sea';
+                                }
+                                
+                                const targetElement = document.querySelector(
+                                  `[data-testid="cell-${targetType}-${targetCrew}-${targetCell}"]`
+                                ) as HTMLElement;
+                                
+                                if (targetElement) {
+                                  targetElement.focus();
+                                  const selection = window.getSelection();
+                                  const range = document.createRange();
+                                  range.selectNodeContents(targetElement);
+                                  selection?.removeAllRanges();
+                                  selection?.addRange(range);
+                                }
+                              }
+                            }}
+                            className="outline-none cursor-text min-h-[20px] text-center"
+                            style={{ 
+                              width: '15px',
+                              minWidth: '15px',
+                              padding: '2px',
+                              backgroundColor: getCellBackgroundColor(cell2Value)
+                            }}
+                            data-testid={`cell-port-${crewIndex}-${cell2Index}`}
+                          >
+                            {cell2Value}
+                          </div>
                         </div>
                       </td>
                     );
@@ -408,19 +618,15 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
       {/* Legend */}
       <div className="flex gap-4 text-xs text-gray-600">
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-blue-500 border"></div>
-          <span>Watch (w)</span>
+          <div className="w-4 h-4 border" style={{ backgroundColor: '#E5E7EB' }}></div>
+          <span>Watch (w) / Daywork (d)</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-orange-500 border"></div>
-          <span>Duty (d)</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-white dark:bg-gray-800 border"></div>
+          <div className="w-4 h-4 border" style={{ backgroundColor: 'white' }}></div>
           <span>Rest</span>
         </div>
         <div className="ml-4 text-gray-500">
-          This daily template applies to all days in the month | Click cells in edit mode to cycle: Rest → Watch → Duty
+          This daily template applies to all days in the month | Type 'w' or 'd' in edit mode | Use arrow keys to navigate
         </div>
       </div>
     </div>
