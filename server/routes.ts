@@ -341,6 +341,54 @@ async function removeVariableTaskFromRHRecords(task: any) {
   }
 }
 
+// Helper function to clear plan codes for a specific crew member when Fixed Task is deleted
+async function clearFixedTaskPlanCodes(crewMemberId: string, vesselId: string, monthYear: string) {
+  try {
+    console.log(`🧹 Clearing Fixed Task plan codes for crew ${crewMemberId}, vessel ${vesselId}, month ${monthYear}`);
+    
+    // Get RH daily record for this crew member
+    const rhRecord = await storage.getRestHoursDailyRecordByKey(crewMemberId, vesselId, monthYear);
+    
+    if (!rhRecord) {
+      console.log('No RH record found - nothing to clear');
+      return;
+    }
+
+    // Parse daily records
+    let dailyRecords: any[] = [];
+    try {
+      dailyRecords = JSON.parse(rhRecord.dailyRecords);
+    } catch (e) {
+      console.warn(`Failed to parse dailyRecords for crew ${crewMemberId}`);
+      return;
+    }
+
+    // Clear all plan codes (reset to empty) for each day
+    let clearedAnyDay = false;
+    for (const dayRecord of dailyRecords) {
+      if (dayRecord.isPlan === true) {
+        // Clear all work codes for plan days
+        for (let cellIdx = 0; cellIdx < 48; cellIdx++) {
+          if (dayRecord.hours[cellIdx] !== '') {
+            dayRecord.hours[cellIdx] = '';
+            clearedAnyDay = true;
+          }
+        }
+      }
+    }
+
+    // Save updated record if anything changed
+    if (clearedAnyDay) {
+      await storage.updateRestHoursDailyRecord(rhRecord.id, {
+        dailyRecords: JSON.stringify(dailyRecords)
+      });
+      console.log(`✅ Cleared Fixed Task plan codes for crew ${crewMemberId}`);
+    }
+  } catch (error) {
+    console.error('❌ Failed to clear Fixed Task plan codes:', error);
+  }
+}
+
 // Helper function to sync Fixed Tasks to RH records
 async function syncFixedTasksToRHRecords(vesselId: string, monthYear: string) {
   try {
@@ -396,12 +444,8 @@ async function syncFixedTasksToRHRecords(vesselId: string, monthYear: string) {
           continue;
         }
         
-        // Check if template is all empty (all rest) - skip sync if nothing to apply
-        const hasAnyWork = seaHoursTemplate.some(code => code === 'w' || code === 'd');
-        if (!hasAnyWork) {
-          console.log(`Skipping crew ${fixedTask.crewMemberId} - no work codes in template (all rest)`);
-          continue;
-        }
+        // REMOVED: Don't skip if template is all empty - we need to clear existing plan codes
+        // Users can edit Fixed Tasks to remove codes, and sync must clear those codes in RH Recording
         
       } catch (e) {
         console.warn(`Failed to parse seaHours for crew ${fixedTask.crewMemberId}:`, e);
@@ -480,14 +524,12 @@ async function syncFixedTasksToRHRecords(vesselId: string, monthYear: string) {
           const templateValue = seaHoursTemplate[cellIdx];
           const currentValue = dayRecord.hours[cellIdx];
           
-          // Smart overwrite logic:
-          // 1. Always overwrite if empty ('')
-          // 2. Overwrite 'a' only if it's a plan entry (isPlan: true for the day)
-          // 3. NEVER overwrite completed entries (anything else, including completed 'a')
+          // Smart overwrite logic for Fixed Tasks:
+          // - If day is PLAN (isPlan: true): Overwrite ALL cells with template (including clearing codes)
+          // - If day is COMPLETED (isPlan: false): NEVER overwrite - user has manually recorded data
+          // - Variable task codes ('a') from plan are also overwritten by Fixed Task template
           
-          const shouldOverwrite = 
-            currentValue === '' || 
-            (currentValue === 'a' && dayRecord.isPlan === true);
+          const shouldOverwrite = dayRecord.isPlan === true;
 
           if (shouldOverwrite && templateValue !== currentValue) {
             dayRecord.hours[cellIdx] = templateValue;
@@ -2547,10 +2589,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid task ID - must be a number" });
       }
+      
+      // Get task first to extract vesselId, monthYear, and crewMemberId for sync
+      const task = await storage.getFixedTask(id);
+      if (!task) {
+        return res.status(404).json({ error: "Fixed task not found" });
+      }
+      
+      // Delete the task
       const deleted = await storage.deleteFixedTask(id);
       if (!deleted) {
         return res.status(404).json({ error: "Fixed task not found" });
       }
+      
+      // Clear all plan codes from RH Recording for this crew member
+      // since their Fixed Task no longer exists
+      await clearFixedTaskPlanCodes(task.crewMemberId, task.vesselId, task.monthYear);
+      
       res.json({ success: true });
     } catch (error) {
       console.error("Failed to delete fixed task:", error);
