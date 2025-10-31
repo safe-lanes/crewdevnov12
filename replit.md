@@ -57,6 +57,12 @@ The application employs a modern web stack with a module-first architecture for 
         - **Variable Tasks**: Full CRUD implementation for planning and tracking with shadcn Table components.
         - **Variable Task Form**: Modal for task planning including Date/Time, Record Type, Tasks Involved, advanced Crew Selection System (linked to Rank Administration configurations with department categorization and group shortcuts), Comments, and draft/submit workflow.
         - **Auto-Sync to RH Recording Forms**: Automated synchronization system updates crew members' Rest Hours Recording forms when variable tasks are created, edited, or deleted (only for submitted tasks), handling time mapping, multi-day tasks, work code priority, and color coding.
+        - **Fixed Tasks**: Monthly fixed working schedule management with 48 half-hour templates for "at Sea" and "in Port" conditions, supporting watch ('w') and daywork ('d') codes. Table structure matches RH Recording form with direct keyboard typing.
+- **Rank Ordering System**: All crew-displaying modules use rank-based sorting from Admin > Rank Administration.
+    - Fetches sortOrder from `/api/available-ranks` and creates memoized rankOrderMap
+    - **Suffix Normalization**: Strips rank suffixes (e.g., "3rd Officer_1" → "3rd Officer") before sortOrder lookup to handle vessel-specific role variants
+    - Unknown/null ranks default to sortOrder 999 for consistent fallback behavior
+    - Implemented in: Fixed Tasks, Rest Hours Record, Vessel Crew List
 - **Performance Optimization**: Utilizes map-based lookups, TanStack Query for caching, `useRef`, `useMemo`, and optimized `PersistentFileStorage`.
 - **Data Storage**: `PersistentFileStorage` for development, with PostgreSQL/Drizzle ORM for production.
 
