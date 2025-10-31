@@ -365,13 +365,34 @@ async function syncFixedTasksToRHRecords(vesselId: string, monthYear: string) {
       // Parse the seaHours template (default to Sea, Port toggle will be added later)
       let seaHoursTemplate: string[] = [];
       try {
-        seaHoursTemplate = JSON.parse(fixedTask.seaHours);
-        if (!Array.isArray(seaHoursTemplate) || seaHoursTemplate.length !== 48) {
-          console.warn(`Invalid seaHours template for crew ${fixedTask.crewMemberId}`);
+        // Handle potential malformed JSON or empty data
+        const seaHoursData = fixedTask.seaHours;
+        
+        // Skip if empty or null
+        if (!seaHoursData || seaHoursData.trim() === '') {
+          console.log(`Skipping crew ${fixedTask.crewMemberId} - empty seaHours`);
           continue;
         }
+        
+        // Try to parse
+        seaHoursTemplate = JSON.parse(seaHoursData);
+        
+        // Validate array structure
+        if (!Array.isArray(seaHoursTemplate) || seaHoursTemplate.length !== 48) {
+          console.warn(`Invalid seaHours template for crew ${fixedTask.crewMemberId} - expected array of 48, got ${Array.isArray(seaHoursTemplate) ? seaHoursTemplate.length : 'not an array'}`);
+          continue;
+        }
+        
+        // Check if template is all empty (all rest) - skip sync if nothing to apply
+        const hasAnyWork = seaHoursTemplate.some(code => code === 'w' || code === 'd');
+        if (!hasAnyWork) {
+          console.log(`Skipping crew ${fixedTask.crewMemberId} - no work codes in template (all rest)`);
+          continue;
+        }
+        
       } catch (e) {
         console.warn(`Failed to parse seaHours for crew ${fixedTask.crewMemberId}:`, e);
+        console.warn(`Raw seaHours data: ${fixedTask.seaHours?.substring(0, 100)}`);
         continue;
       }
 
