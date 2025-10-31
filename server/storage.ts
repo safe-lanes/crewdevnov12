@@ -3973,6 +3973,16 @@ export class PersistentFileStorage implements IStorage {
       .map(task => this.parseFixedTaskData(task));
   }
 
+  async getFixedTaskByKey(crewMemberId: string, vesselId: string, monthYear: string): Promise<FixedTask | undefined> {
+    const tasks = Array.from(this.fixedTasks.values());
+    const task = tasks.find(task => 
+      task.crewMemberId === crewMemberId && 
+      task.vesselId === vesselId && 
+      task.monthYear === monthYear
+    );
+    return task ? this.parseFixedTaskData(task) : undefined;
+  }
+
   async createFixedTask(insertTask: InsertFixedTask): Promise<FixedTask> {
     const id = this.currentFixedTaskId++;
     const task: FixedTask = {

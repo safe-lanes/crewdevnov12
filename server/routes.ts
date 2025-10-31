@@ -369,13 +369,26 @@ async function syncFixedTasksToRHRecords(vesselId: string, monthYear: string) {
         const seaHoursData = fixedTask.seaHours;
         
         // Skip if empty or null
-        if (!seaHoursData || seaHoursData.trim() === '') {
+        if (!seaHoursData) {
           console.log(`Skipping crew ${fixedTask.crewMemberId} - empty seaHours`);
           continue;
         }
         
-        // Try to parse
-        seaHoursTemplate = JSON.parse(seaHoursData);
+        // Handle both array (already parsed) and string (JSON) formats
+        if (Array.isArray(seaHoursData)) {
+          // Already an array - use directly
+          seaHoursTemplate = seaHoursData;
+        } else if (typeof seaHoursData === 'string') {
+          // String - need to parse as JSON
+          if (seaHoursData.trim() === '') {
+            console.log(`Skipping crew ${fixedTask.crewMemberId} - empty seaHours string`);
+            continue;
+          }
+          seaHoursTemplate = JSON.parse(seaHoursData);
+        } else {
+          console.warn(`Unexpected seaHours type for crew ${fixedTask.crewMemberId}: ${typeof seaHoursData}`);
+          continue;
+        }
         
         // Validate array structure
         if (!Array.isArray(seaHoursTemplate) || seaHoursTemplate.length !== 48) {
@@ -392,7 +405,10 @@ async function syncFixedTasksToRHRecords(vesselId: string, monthYear: string) {
         
       } catch (e) {
         console.warn(`Failed to parse seaHours for crew ${fixedTask.crewMemberId}:`, e);
-        console.warn(`Raw seaHours data: ${fixedTask.seaHours?.substring(0, 100)}`);
+        const debugData = typeof fixedTask.seaHours === 'string' 
+          ? fixedTask.seaHours.substring(0, 100)
+          : `[${typeof fixedTask.seaHours}]`;
+        console.warn(`Raw seaHours data: ${debugData}`);
         continue;
       }
 
