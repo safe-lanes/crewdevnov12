@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Fragment } from 'react';
 import { Button } from '@/components/ui/button';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
@@ -68,8 +68,7 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
     });
 
     setCrewTasks(tasks);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vesselId, monthYear]);
+  }, [vesselCrewMembers, existingTasks, vesselId, monthYear]);
 
   // Save mutation
   const saveMutation = useMutation({
@@ -303,7 +302,7 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
           </thead>
           <tbody>
             {crewTasks.map((crew, crewIndex) => (
-              <>
+              <Fragment key={crew.crewMemberId}>
                 {/* Sea row */}
                 <tr key={`${crew.crewMemberId}-sea`} className="hover:bg-gray-50 dark:hover:bg-gray-900">
                   <td 
@@ -390,7 +389,7 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
                     {calculateRestHours(crew.portHours).toFixed(1)}
                   </td>
                 </tr>
-              </>
+              </Fragment>
             ))}
           </tbody>
         </table>
