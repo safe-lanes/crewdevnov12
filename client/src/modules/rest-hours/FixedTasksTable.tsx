@@ -322,140 +322,79 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
                     {crew.crewName}
                   </td>
                   <td className="border px-2 py-1 text-center text-blue-600 font-semibold w-16">Sea</td>
-                  {/* Display 24 hour columns, each with 2 half-hour cells */}
-                  {Array.from({ length: 24 }, (_, hour) => {
-                    const cell1Index = hour * 2;
-                    const cell2Index = hour * 2 + 1;
-                    const cell1Value = crew.seaHours[cell1Index] || '';
-                    const cell2Value = crew.seaHours[cell2Index] || '';
+                  {/* 48 Half-Hour Columns (matching RH Recording Form structure) */}
+                  {crew.seaHours.map((cellValue, cellIndex) => {
+                    const isSecondHalf = cellIndex % 2 === 1;
                     
                     return (
-                      <td key={hour} className="border p-0">
-                        <div className="flex gap-0">
-                          {/* First half-hour (00 minutes) */}
-                          <div
-                            contentEditable={isEditMode}
-                            suppressContentEditableWarning
-                            onBlur={(e) => {
-                              const value = e.currentTarget.textContent || '';
-                              handleCellEdit(crewIndex, 'sea', cell1Index, value);
-                            }}
-                            onKeyDown={(e) => {
-                              if (!isEditMode) return;
+                      <td
+                        key={cellIndex}
+                        className={`border-t border-b border-l text-center ${isSecondHalf ? 'border-r' : ''}`}
+                        style={{
+                          padding: '2px',
+                          backgroundColor: getCellBackgroundColor(cellValue),
+                          borderRightWidth: isSecondHalf ? '1px' : '0.5px',
+                          borderRightColor: isSecondHalf ? '#d1d5db' : '#e5e7eb',
+                          borderRightStyle: 'solid',
+                          minWidth: '15px',
+                          width: '15px',
+                        }}
+                      >
+                        <div
+                          contentEditable={isEditMode}
+                          suppressContentEditableWarning
+                          onBlur={(e) => {
+                            const value = e.currentTarget.textContent || '';
+                            handleCellEdit(crewIndex, 'sea', cellIndex, value);
+                          }}
+                          onKeyDown={(e) => {
+                            if (!isEditMode) return;
+                            
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              e.currentTarget.blur();
+                              return;
+                            }
+                            
+                            if (['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                              e.preventDefault();
                               
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                e.currentTarget.blur();
-                                return;
+                              let targetCrew = crewIndex;
+                              let targetCell = cellIndex;
+                              let targetType: 'sea' | 'port' = 'sea';
+                              
+                              if (e.key === 'ArrowRight') {
+                                targetCell++;
+                                if (targetCell >= 48) targetCell = 0;
+                              } else if (e.key === 'ArrowLeft') {
+                                targetCell--;
+                                if (targetCell < 0) targetCell = 47;
+                              } else if (e.key === 'ArrowDown') {
+                                targetType = 'port';
+                              } else if (e.key === 'ArrowUp' && crewIndex > 0) {
+                                targetCrew = crewIndex - 1;
+                                targetType = 'port';
                               }
                               
-                              if (['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-                                e.preventDefault();
-                                
-                                let targetCrew = crewIndex;
-                                let targetCell = cell1Index;
-                                let targetType: 'sea' | 'port' = 'sea';
-                                
-                                if (e.key === 'ArrowRight') {
-                                  targetCell++;
-                                  if (targetCell >= 48) targetCell = 0;
-                                } else if (e.key === 'ArrowLeft') {
-                                  targetCell--;
-                                  if (targetCell < 0) targetCell = 47;
-                                } else if (e.key === 'ArrowDown') {
-                                  targetType = 'port';
-                                } else if (e.key === 'ArrowUp' && crewIndex > 0) {
-                                  targetCrew = crewIndex - 1;
-                                  targetType = 'port';
-                                }
-                                
-                                const targetElement = document.querySelector(
-                                  `[data-testid="cell-${targetType}-${targetCrew}-${targetCell}"]`
-                                ) as HTMLElement;
-                                
-                                if (targetElement) {
-                                  targetElement.focus();
-                                  const selection = window.getSelection();
-                                  const range = document.createRange();
-                                  range.selectNodeContents(targetElement);
-                                  selection?.removeAllRanges();
-                                  selection?.addRange(range);
-                                }
-                              }
-                            }}
-                            className="outline-none cursor-text min-h-[20px] text-center"
-                            style={{ 
-                              width: '15px',
-                              minWidth: '15px',
-                              padding: '2px',
-                              backgroundColor: getCellBackgroundColor(cell1Value)
-                            }}
-                            data-testid={`cell-sea-${crewIndex}-${cell1Index}`}
-                          >
-                            {cell1Value}
-                          </div>
-                          {/* Second half-hour (30 minutes) */}
-                          <div
-                            contentEditable={isEditMode}
-                            suppressContentEditableWarning
-                            onBlur={(e) => {
-                              const value = e.currentTarget.textContent || '';
-                              handleCellEdit(crewIndex, 'sea', cell2Index, value);
-                            }}
-                            onKeyDown={(e) => {
-                              if (!isEditMode) return;
+                              const targetElement = document.querySelector(
+                                `[data-testid="cell-${targetType}-${targetCrew}-${targetCell}"]`
+                              ) as HTMLElement;
                               
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                e.currentTarget.blur();
-                                return;
+                              if (targetElement) {
+                                targetElement.focus();
+                                const selection = window.getSelection();
+                                const range = document.createRange();
+                                range.selectNodeContents(targetElement);
+                                selection?.removeAllRanges();
+                                selection?.addRange(range);
                               }
-                              
-                              if (['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-                                e.preventDefault();
-                                
-                                let targetCrew = crewIndex;
-                                let targetCell = cell2Index;
-                                let targetType: 'sea' | 'port' = 'sea';
-                                
-                                if (e.key === 'ArrowRight') {
-                                  targetCell++;
-                                  if (targetCell >= 48) targetCell = 0;
-                                } else if (e.key === 'ArrowLeft') {
-                                  targetCell--;
-                                  if (targetCell < 0) targetCell = 47;
-                                } else if (e.key === 'ArrowDown') {
-                                  targetType = 'port';
-                                } else if (e.key === 'ArrowUp' && crewIndex > 0) {
-                                  targetCrew = crewIndex - 1;
-                                  targetType = 'port';
-                                }
-                                
-                                const targetElement = document.querySelector(
-                                  `[data-testid="cell-${targetType}-${targetCrew}-${targetCell}"]`
-                                ) as HTMLElement;
-                                
-                                if (targetElement) {
-                                  targetElement.focus();
-                                  const selection = window.getSelection();
-                                  const range = document.createRange();
-                                  range.selectNodeContents(targetElement);
-                                  selection?.removeAllRanges();
-                                  selection?.addRange(range);
-                                }
-                              }
-                            }}
-                            className="outline-none cursor-text min-h-[20px] text-center"
-                            style={{ 
-                              width: '15px',
-                              minWidth: '15px',
-                              padding: '2px',
-                              backgroundColor: getCellBackgroundColor(cell2Value)
-                            }}
-                            data-testid={`cell-sea-${crewIndex}-${cell2Index}`}
-                          >
-                            {cell2Value}
-                          </div>
+                            }
+                          }}
+                          className="outline-none cursor-text min-h-[20px]"
+                          style={{ width: '100%', minWidth: '15px' }}
+                          data-testid={`cell-sea-${crewIndex}-${cellIndex}`}
+                        >
+                          {cellValue}
                         </div>
                       </td>
                     );
@@ -467,140 +406,79 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
                 {/* Port row */}
                 <tr key={`${crew.crewMemberId}-port`} className="hover:bg-gray-50 dark:hover:bg-gray-900">
                   <td className="border px-2 py-1 text-center text-green-600 font-semibold w-16">Port</td>
-                  {/* Display 24 hour columns, each with 2 half-hour cells */}
-                  {Array.from({ length: 24 }, (_, hour) => {
-                    const cell1Index = hour * 2;
-                    const cell2Index = hour * 2 + 1;
-                    const cell1Value = crew.portHours[cell1Index] || '';
-                    const cell2Value = crew.portHours[cell2Index] || '';
+                  {/* 48 Half-Hour Columns (matching RH Recording Form structure) */}
+                  {crew.portHours.map((cellValue, cellIndex) => {
+                    const isSecondHalf = cellIndex % 2 === 1;
                     
                     return (
-                      <td key={hour} className="border p-0">
-                        <div className="flex gap-0">
-                          {/* First half-hour (00 minutes) */}
-                          <div
-                            contentEditable={isEditMode}
-                            suppressContentEditableWarning
-                            onBlur={(e) => {
-                              const value = e.currentTarget.textContent || '';
-                              handleCellEdit(crewIndex, 'port', cell1Index, value);
-                            }}
-                            onKeyDown={(e) => {
-                              if (!isEditMode) return;
+                      <td
+                        key={cellIndex}
+                        className={`border-t border-b border-l text-center ${isSecondHalf ? 'border-r' : ''}`}
+                        style={{
+                          padding: '2px',
+                          backgroundColor: getCellBackgroundColor(cellValue),
+                          borderRightWidth: isSecondHalf ? '1px' : '0.5px',
+                          borderRightColor: isSecondHalf ? '#d1d5db' : '#e5e7eb',
+                          borderRightStyle: 'solid',
+                          minWidth: '15px',
+                          width: '15px',
+                        }}
+                      >
+                        <div
+                          contentEditable={isEditMode}
+                          suppressContentEditableWarning
+                          onBlur={(e) => {
+                            const value = e.currentTarget.textContent || '';
+                            handleCellEdit(crewIndex, 'port', cellIndex, value);
+                          }}
+                          onKeyDown={(e) => {
+                            if (!isEditMode) return;
+                            
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              e.currentTarget.blur();
+                              return;
+                            }
+                            
+                            if (['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                              e.preventDefault();
                               
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                e.currentTarget.blur();
-                                return;
+                              let targetCrew = crewIndex;
+                              let targetCell = cellIndex;
+                              let targetType: 'sea' | 'port' = 'port';
+                              
+                              if (e.key === 'ArrowRight') {
+                                targetCell++;
+                                if (targetCell >= 48) targetCell = 0;
+                              } else if (e.key === 'ArrowLeft') {
+                                targetCell--;
+                                if (targetCell < 0) targetCell = 47;
+                              } else if (e.key === 'ArrowUp') {
+                                targetType = 'sea';
+                              } else if (e.key === 'ArrowDown' && crewIndex < crewTasks.length - 1) {
+                                targetCrew = crewIndex + 1;
+                                targetType = 'sea';
                               }
                               
-                              if (['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-                                e.preventDefault();
-                                
-                                let targetCrew = crewIndex;
-                                let targetCell = cell1Index;
-                                let targetType: 'sea' | 'port' = 'port';
-                                
-                                if (e.key === 'ArrowRight') {
-                                  targetCell++;
-                                  if (targetCell >= 48) targetCell = 0;
-                                } else if (e.key === 'ArrowLeft') {
-                                  targetCell--;
-                                  if (targetCell < 0) targetCell = 47;
-                                } else if (e.key === 'ArrowUp') {
-                                  targetType = 'sea';
-                                } else if (e.key === 'ArrowDown' && crewIndex < crewTasks.length - 1) {
-                                  targetCrew = crewIndex + 1;
-                                  targetType = 'sea';
-                                }
-                                
-                                const targetElement = document.querySelector(
-                                  `[data-testid="cell-${targetType}-${targetCrew}-${targetCell}"]`
-                                ) as HTMLElement;
-                                
-                                if (targetElement) {
-                                  targetElement.focus();
-                                  const selection = window.getSelection();
-                                  const range = document.createRange();
-                                  range.selectNodeContents(targetElement);
-                                  selection?.removeAllRanges();
-                                  selection?.addRange(range);
-                                }
-                              }
-                            }}
-                            className="outline-none cursor-text min-h-[20px] text-center"
-                            style={{ 
-                              width: '15px',
-                              minWidth: '15px',
-                              padding: '2px',
-                              backgroundColor: getCellBackgroundColor(cell1Value)
-                            }}
-                            data-testid={`cell-port-${crewIndex}-${cell1Index}`}
-                          >
-                            {cell1Value}
-                          </div>
-                          {/* Second half-hour (30 minutes) */}
-                          <div
-                            contentEditable={isEditMode}
-                            suppressContentEditableWarning
-                            onBlur={(e) => {
-                              const value = e.currentTarget.textContent || '';
-                              handleCellEdit(crewIndex, 'port', cell2Index, value);
-                            }}
-                            onKeyDown={(e) => {
-                              if (!isEditMode) return;
+                              const targetElement = document.querySelector(
+                                `[data-testid="cell-${targetType}-${targetCrew}-${targetCell}"]`
+                              ) as HTMLElement;
                               
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                e.currentTarget.blur();
-                                return;
+                              if (targetElement) {
+                                targetElement.focus();
+                                const selection = window.getSelection();
+                                const range = document.createRange();
+                                range.selectNodeContents(targetElement);
+                                selection?.removeAllRanges();
+                                selection?.addRange(range);
                               }
-                              
-                              if (['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-                                e.preventDefault();
-                                
-                                let targetCrew = crewIndex;
-                                let targetCell = cell2Index;
-                                let targetType: 'sea' | 'port' = 'port';
-                                
-                                if (e.key === 'ArrowRight') {
-                                  targetCell++;
-                                  if (targetCell >= 48) targetCell = 0;
-                                } else if (e.key === 'ArrowLeft') {
-                                  targetCell--;
-                                  if (targetCell < 0) targetCell = 47;
-                                } else if (e.key === 'ArrowUp') {
-                                  targetType = 'sea';
-                                } else if (e.key === 'ArrowDown' && crewIndex < crewTasks.length - 1) {
-                                  targetCrew = crewIndex + 1;
-                                  targetType = 'sea';
-                                }
-                                
-                                const targetElement = document.querySelector(
-                                  `[data-testid="cell-${targetType}-${targetCrew}-${targetCell}"]`
-                                ) as HTMLElement;
-                                
-                                if (targetElement) {
-                                  targetElement.focus();
-                                  const selection = window.getSelection();
-                                  const range = document.createRange();
-                                  range.selectNodeContents(targetElement);
-                                  selection?.removeAllRanges();
-                                  selection?.addRange(range);
-                                }
-                              }
-                            }}
-                            className="outline-none cursor-text min-h-[20px] text-center"
-                            style={{ 
-                              width: '15px',
-                              minWidth: '15px',
-                              padding: '2px',
-                              backgroundColor: getCellBackgroundColor(cell2Value)
-                            }}
-                            data-testid={`cell-port-${crewIndex}-${cell2Index}`}
-                          >
-                            {cell2Value}
-                          </div>
+                            }
+                          }}
+                          className="outline-none cursor-text min-h-[20px]"
+                          style={{ width: '100%', minWidth: '15px' }}
+                          data-testid={`cell-port-${crewIndex}-${cellIndex}`}
+                        >
+                          {cellValue}
                         </div>
                       </td>
                     );
