@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, Fragment } from 'react';
+import { useState, useEffect, useMemo, useCallback, Fragment } from 'react';
 import { Button } from '@/components/ui/button';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
@@ -208,15 +208,20 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
     });
   }, [newMonthTrigger]);
 
+  // Create stable save handler
+  const handleSave = useCallback(() => {
+    saveMutation.mutate();
+  }, [saveMutation]);
+
   // Expose save handler to parent and clean up on unmount
   useEffect(() => {
-    onSaveHandlerReady(() => saveMutation.mutate());
+    onSaveHandlerReady(handleSave);
     
     // Cleanup: clear handler when component unmounts or edit mode ends
     return () => {
       onSaveHandlerReady(null);
     };
-  }, [onSaveHandlerReady, saveMutation.mutate]);
+  }, [onSaveHandlerReady, handleSave]);
 
   const calculateRestHours = (hours: string[]) => {
     const workHours = hours.filter(h => h === 'w' || h === 'd').length * 0.5;
