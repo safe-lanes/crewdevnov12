@@ -296,7 +296,7 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
                 <th 
                   key={hour} 
                   colSpan={2}
-                  className="border px-1 py-1 text-center bg-gray-100 dark:bg-gray-800"
+                  className="border px-1 py-1 text-left bg-gray-100 dark:bg-gray-800"
                   data-testid={`header-hour-${hour}`}
                 >
                   {String(hour).padStart(2, '0')}
