@@ -1,12 +1,17 @@
-import { useState, useMemo } from 'react';
-import { Filter } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Filter, Edit2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { VariableTasksTable } from './VariableTasksTable';
 import { FixedTasksTable } from './FixedTasksTable';
+import { useToast } from '@/hooks/use-toast';
+import type { FixedTask } from '@shared/schema';
 
 export const RestHoursPlan = (): JSX.Element => {
+  const { toast } = useToast();
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [newMonthTrigger, setNewMonthTrigger] = useState<{ tasks: FixedTask[]; timestamp: number } | null>(null);
   // Generate last 12 months for period dropdown
   const periodOptions = useMemo(() => {
     const options = [];
@@ -40,9 +45,61 @@ export const RestHoursPlan = (): JSX.Element => {
     return `${year}, ${monthName}`;
   }, [periodValue]);
 
+  // Reset edit mode when vessel, period, or tab changes
+  useEffect(() => {
+    setIsEditMode(false);
+  }, [selectedVessel, periodValue, selectedTab]);
+
   const handleClearFilters = () => {
     setPeriodValue(periodOptions[0]?.value || "");
     setSelectedVessel("");
+  };
+
+  const handleNewMonth = async () => {
+    if (!selectedVessel || !periodValue) {
+      toast({
+        title: 'Selection required',
+        description: 'Please select a vessel and period first',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Get previous month
+    const [year, month] = periodValue.split('-').map(Number);
+    const prevDate = new Date(year, month - 2, 1);
+    const prevYear = prevDate.getFullYear();
+    const prevMonth = (prevDate.getMonth() + 1).toString().padStart(2, '0');
+    const prevMonthYear = `${prevYear}-${prevMonth}`;
+
+    try {
+      const response = await fetch(`/api/fixed-tasks?vesselId=${selectedVessel}&monthYear=${prevMonthYear}`);
+      if (response.ok) {
+        const prevTasks: FixedTask[] = await response.json();
+        // Trigger state update in child via ref
+        setNewMonthTrigger({ tasks: prevTasks, timestamp: Date.now() });
+        setIsEditMode(true);
+        toast({
+          title: 'Previous month copied',
+          description: 'Data from previous month loaded for editing',
+        });
+      } else {
+        setIsEditMode(false);
+        toast({
+          title: 'No previous data',
+          description: 'No fixed tasks found for previous month',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load previous month:', error);
+      setIsEditMode(false);
+      toast({
+        title: 'Error',
+        description: 'Failed to load previous month data',
+        variant: 'destructive',
+      });
+    }
   };
 
   const title = selectedTab === "fixed" ? "RH Planning - Fixed Tasks" : "RH Planning - Variable Tasks";
@@ -85,8 +142,34 @@ export const RestHoursPlan = (): JSX.Element => {
           </div>
         </div>
 
-        {/* Right: Filters Button */}
-        <div className="flex justify-end">
+        {/* Right: Action Buttons + Filters */}
+        <div className="flex justify-end gap-2">
+          {selectedTab === "fixed" && !isEditMode && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditMode(true)}
+                disabled={!selectedVessel || !periodValue}
+                className="h-8 gap-2"
+                data-testid="button-edit"
+              >
+                <Edit2 className="h-4 w-4" />
+                Edit
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNewMonth}
+                disabled={!selectedVessel || !periodValue}
+                className="h-8 gap-2"
+                data-testid="button-new-month"
+              >
+                <Plus className="h-4 w-4" />
+                +New Month
+              </Button>
+            </>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -153,7 +236,13 @@ export const RestHoursPlan = (): JSX.Element => {
       {/* Content Area */}
       <div className="px-0 pb-6">
         {selectedTab === "fixed" ? (
-          <FixedTasksTable vesselId={selectedVessel} monthYear={periodValue} />
+          <FixedTasksTable 
+            vesselId={selectedVessel} 
+            monthYear={periodValue}
+            isEditMode={isEditMode}
+            setIsEditMode={setIsEditMode}
+            newMonthTrigger={newMonthTrigger}
+          />
         ) : (
           <VariableTasksTable vesselId={selectedVessel} periodValue={periodValue} />
         )}

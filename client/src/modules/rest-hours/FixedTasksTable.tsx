@@ -9,6 +9,9 @@ import type { FixedTask } from '@shared/schema';
 interface FixedTasksTableProps {
   vesselId: string;
   monthYear: string; // Format: "2025-10"
+  isEditMode: boolean;
+  setIsEditMode: (value: boolean) => void;
+  newMonthTrigger: { tasks: FixedTask[]; timestamp: number } | null;
 }
 
 interface CrewTaskData {
@@ -20,9 +23,8 @@ interface CrewTaskData {
   taskId?: number;
 }
 
-export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): JSX.Element => {
+export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode, newMonthTrigger }: FixedTasksTableProps): JSX.Element => {
   const { toast } = useToast();
-  const [isEditMode, setIsEditMode] = useState(false);
   const [crewTasks, setCrewTasks] = useState<CrewTaskData[]>([]);
 
   // Fetch crew members assigned to this vessel
@@ -186,56 +188,24 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
     return 'white'; // White for rest
   };
 
-  const handleNewMonth = async () => {
-    // Get previous month
-    const [year, month] = monthYear.split('-').map(Number);
-    const prevDate = new Date(year, month - 2, 1); // -2 because month is 1-indexed
-    const prevYear = prevDate.getFullYear();
-    const prevMonth = (prevDate.getMonth() + 1).toString().padStart(2, '0');
-    const prevMonthYear = `${prevYear}-${prevMonth}`;
-
-    try {
-      // Fetch previous month's tasks
-      const response = await fetch(`/api/fixed-tasks?vesselId=${vesselId}&monthYear=${prevMonthYear}`);
-      if (response.ok) {
-        const prevTasks: FixedTask[] = await response.json();
-        
-        // Copy previous month's data to current crew tasks
-        setCrewTasks((prev) => {
-          return prev.map((task) => {
-            const prevTask = prevTasks.find((t: FixedTask) => t.crewMemberId === task.crewMemberId);
-            if (prevTask) {
-              return {
-                ...task,
-                seaHours: Array.isArray(prevTask.seaHours) ? Array.from(prevTask.seaHours) : [],
-                portHours: Array.isArray(prevTask.portHours) ? Array.from(prevTask.portHours) : [],
-              };
-            }
-            return task;
-          });
-        });
-        
-        setIsEditMode(true);
-        toast({
-          title: 'Previous month copied',
-          description: 'Data from previous month loaded for editing',
-        });
-      } else {
-        toast({
-          title: 'No previous data',
-          description: 'No fixed tasks found for previous month',
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      console.error('Failed to load previous month:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load previous month data',
-        variant: 'destructive',
+  // Handle loading data from previous month when triggered
+  useEffect(() => {
+    if (!newMonthTrigger) return;
+    
+    setCrewTasks((prev) => {
+      return prev.map((task) => {
+        const prevTask = newMonthTrigger.tasks.find((t: FixedTask) => t.crewMemberId === task.crewMemberId);
+        if (prevTask) {
+          return {
+            ...task,
+            seaHours: Array.isArray(prevTask.seaHours) ? Array.from(prevTask.seaHours) : [],
+            portHours: Array.isArray(prevTask.portHours) ? Array.from(prevTask.portHours) : [],
+          };
+        }
+        return task;
       });
-    }
-  };
+    });
+  }, [newMonthTrigger]);
 
   const calculateRestHours = (hours: string[]) => {
     const workHours = hours.filter(h => h === 'w' || h === 'd').length * 0.5;
@@ -260,32 +230,9 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Action buttons */}
-      <div className="flex gap-2 justify-end">
-        {!isEditMode ? (
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsEditMode(true)}
-              className="gap-2"
-              data-testid="button-edit"
-            >
-              <Edit2 className="h-4 w-4" />
-              Edit
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleNewMonth}
-              className="gap-2"
-              data-testid="button-new-month"
-            >
-              <Plus className="h-4 w-4" />
-              +New Month
-            </Button>
-          </>
-        ) : (
+      {/* Save button (shown only in edit mode) */}
+      {isEditMode && (
+        <div className="flex gap-2 justify-end">
           <Button
             variant="default"
             size="sm"
@@ -297,8 +244,8 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
             <Save className="h-4 w-4" />
             {saveMutation.isPending ? 'Saving...' : 'Save'}
           </Button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Hourly view - showing 24 hours with 2 half-hour cells each */}
       <div className="overflow-x-auto overflow-y-auto border rounded-lg max-h-[600px]">
