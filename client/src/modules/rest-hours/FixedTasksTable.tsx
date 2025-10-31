@@ -282,30 +282,30 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
       </div>
 
       {/* Hourly view - showing 24 hours with 2 half-hour cells each */}
-      <div className="overflow-x-auto border rounded-lg">
+      <div className="overflow-x-auto overflow-y-auto border rounded-lg max-h-[600px]">
         <table className="w-full border-collapse text-xs">
-          <thead>
+          <thead className="sticky top-0 z-20">
             <tr className="bg-gray-100 dark:bg-gray-800">
-              <th className="border px-2 py-1 text-left sticky left-0 bg-gray-100 dark:bg-gray-800 z-10 w-20">
+              <th className="border px-2 py-1 text-left sticky left-0 bg-gray-100 dark:bg-gray-800 z-30 w-20">
                 Rank
               </th>
-              <th className="border px-2 py-1 text-left sticky left-20 bg-gray-100 dark:bg-gray-800 z-10 w-32">
+              <th className="border px-2 py-1 text-left sticky left-20 bg-gray-100 dark:bg-gray-800 z-30 w-32">
                 Name
               </th>
-              <th className="border px-2 py-1 text-center w-16">
+              <th className="border px-2 py-1 text-center w-16 bg-gray-100 dark:bg-gray-800">
                 Watch/<br/>Duty
               </th>
               {/* Hours 00-23 */}
               {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
                 <th 
                   key={hour} 
-                  className="border px-1 py-1 text-center"
+                  className="border px-1 py-1 text-center bg-gray-100 dark:bg-gray-800"
                   data-testid={`header-hour-${hour}`}
                 >
                   {String(hour).padStart(2, '0')}
                 </th>
               ))}
-              <th className="border px-2 py-1 text-center">
+              <th className="border px-2 py-1 text-center bg-gray-100 dark:bg-gray-800">
                 Total<br/>Rest Hrs
               </th>
             </tr>
