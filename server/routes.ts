@@ -341,6 +341,146 @@ async function removeVariableTaskFromRHRecords(task: any) {
   }
 }
 
+// Helper function to sync Fixed Tasks to RH records
+async function syncFixedTasksToRHRecords(vesselId: string, monthYear: string) {
+  try {
+    console.log(`🔄 Syncing Fixed Tasks for vessel ${vesselId}, month ${monthYear}`);
+    
+    // Get all fixed tasks for this vessel and month
+    const fixedTasks = await storage.getFixedTasksByVesselAndMonth(vesselId, monthYear);
+    
+    if (!fixedTasks || fixedTasks.length === 0) {
+      console.log('No fixed tasks found for sync');
+      return;
+    }
+
+    // Parse monthYear to get date info
+    const [year, month] = monthYear.split('-').map(Number);
+    const daysInMonth = new Date(year, month, 0).getDate();
+    
+    console.log(`📅 Processing ${fixedTasks.length} crew members for ${daysInMonth} days`);
+
+    // Process each crew member's fixed task
+    for (const fixedTask of fixedTasks) {
+      // Parse the seaHours template (default to Sea, Port toggle will be added later)
+      let seaHoursTemplate: string[] = [];
+      try {
+        seaHoursTemplate = JSON.parse(fixedTask.seaHours);
+        if (!Array.isArray(seaHoursTemplate) || seaHoursTemplate.length !== 48) {
+          console.warn(`Invalid seaHours template for crew ${fixedTask.crewMemberId}`);
+          continue;
+        }
+      } catch (e) {
+        console.warn(`Failed to parse seaHours for crew ${fixedTask.crewMemberId}:`, e);
+        continue;
+      }
+
+      // Get or create RH daily record for this crew member
+      let rhRecord = await storage.getRestHoursDailyRecordByKey(
+        fixedTask.crewMemberId, 
+        vesselId, 
+        monthYear
+      );
+
+      // Create record if it doesn't exist
+      if (!rhRecord) {
+        const initialDailyRecords = Array.from({ length: daysInMonth }, (_, i) => {
+          const dayDate = new Date(year, month - 1, i + 1);
+          return {
+            day: i + 1,
+            dayOfWeek: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayDate.getDay()],
+            hours: Array(48).fill(''),
+            isPlan: true,
+            comments: '',
+            violations: []
+          };
+        });
+
+        rhRecord = await storage.createRestHoursDailyRecord({
+          crewMemberId: fixedTask.crewMemberId,
+          vesselId,
+          rank: fixedTask.rank,
+          name: fixedTask.name,
+          monthYear,
+          dailyRecords: JSON.stringify(initialDailyRecords)
+        });
+      }
+
+      // Parse daily records
+      let dailyRecords: any[] = [];
+      try {
+        dailyRecords = JSON.parse(rhRecord.dailyRecords);
+      } catch (e) {
+        console.warn(`Failed to parse dailyRecords for crew ${fixedTask.crewMemberId}`);
+        continue;
+      }
+
+      // Apply Fixed Task template to ALL days of the month
+      let updatedAnyDay = false;
+      
+      for (let day = 1; day <= daysInMonth; day++) {
+        // Find or create day record
+        let dayRecord = dailyRecords.find((d: any) => d.day === day);
+        
+        if (!dayRecord) {
+          const dayDate = new Date(year, month - 1, day);
+          dayRecord = {
+            day,
+            dayOfWeek: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayDate.getDay()],
+            hours: Array(48).fill(''),
+            isPlan: true,
+            comments: '',
+            violations: []
+          };
+          dailyRecords.push(dayRecord);
+        }
+
+        // Track whether we modified any cells for THIS day
+        let modifiedThisDay = false;
+
+        // Apply template to each half-hour slot (0-47)
+        for (let cellIdx = 0; cellIdx < 48; cellIdx++) {
+          const templateValue = seaHoursTemplate[cellIdx];
+          const currentValue = dayRecord.hours[cellIdx];
+          
+          // Smart overwrite logic:
+          // 1. Always overwrite if empty ('')
+          // 2. Overwrite 'a' only if it's a plan entry (isPlan: true for the day)
+          // 3. NEVER overwrite completed entries (anything else, including completed 'a')
+          
+          const shouldOverwrite = 
+            currentValue === '' || 
+            (currentValue === 'a' && dayRecord.isPlan === true);
+
+          if (shouldOverwrite && templateValue !== currentValue) {
+            dayRecord.hours[cellIdx] = templateValue;
+            modifiedThisDay = true;
+            updatedAnyDay = true;
+          }
+        }
+        
+        // Only mark this day as plan if we actually modified cells
+        // This preserves completed days (isPlan: false) that weren't touched
+        if (modifiedThisDay && dayRecord.isPlan !== true) {
+          dayRecord.isPlan = true;
+        }
+      }
+
+      // Save updated record only if something changed
+      if (updatedAnyDay) {
+        await storage.updateRestHoursDailyRecord(rhRecord.id, {
+          dailyRecords: JSON.stringify(dailyRecords)
+        });
+        console.log(`✅ Synced Fixed Tasks for crew ${fixedTask.name}`);
+      }
+    }
+
+    console.log(`✅ Fixed Tasks sync completed for vessel ${vesselId}, month ${monthYear}`);
+  } catch (error) {
+    console.error('❌ Failed to sync Fixed Tasks to RH records:', error);
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for database connectivity
   app.get("/api/health", async (req, res) => {
@@ -2328,6 +2468,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid fixed task data", details: result.error.issues });
       }
       const task = await storage.createFixedTask(result.data);
+      
+      // Sync Fixed Tasks to RH Recording immediately after saving
+      await syncFixedTasksToRHRecords(task.vesselId, task.monthYear);
+      
       res.status(201).json(task);
     } catch (error) {
       console.error("Failed to create fixed task:", error);
@@ -2349,6 +2493,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!task) {
         return res.status(404).json({ error: "Fixed task not found" });
       }
+      
+      // Sync Fixed Tasks to RH Recording immediately after updating
+      await syncFixedTasksToRHRecords(task.vesselId, task.monthYear);
+      
       res.json(task);
     } catch (error) {
       console.error("Failed to update fixed task:", error);
