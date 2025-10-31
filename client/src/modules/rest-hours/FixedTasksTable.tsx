@@ -331,7 +331,7 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
                     
                     return (
                       <td key={hour} className="border p-0">
-                        <div className="flex">
+                        <div className="flex gap-0">
                           {/* First half-hour (00 minutes) */}
                           <div
                             contentEditable={isEditMode}
@@ -476,7 +476,7 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
                     
                     return (
                       <td key={hour} className="border p-0">
-                        <div className="flex">
+                        <div className="flex gap-0">
                           {/* First half-hour (00 minutes) */}
                           <div
                             contentEditable={isEditMode}
