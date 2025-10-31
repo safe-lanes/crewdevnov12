@@ -3952,16 +3952,25 @@ export class PersistentFileStorage implements IStorage {
     return result;
   }
 
+  // Helper to parse fixed task JSON fields
+  private parseFixedTaskData(task: FixedTask): FixedTask {
+    return {
+      ...task,
+      seaHours: typeof task.seaHours === 'string' ? JSON.parse(task.seaHours) : task.seaHours,
+      portHours: typeof task.portHours === 'string' ? JSON.parse(task.portHours) : task.portHours,
+    };
+  }
+
   // Fixed Tasks
   async getFixedTasks(): Promise<FixedTask[]> {
-    return Array.from(this.fixedTasks.values());
+    return Array.from(this.fixedTasks.values()).map(task => this.parseFixedTaskData(task));
   }
 
   async getFixedTasksByVesselAndMonth(vesselId: string, monthYear: string): Promise<FixedTask[]> {
     const allTasks = Array.from(this.fixedTasks.values());
-    return allTasks.filter(task => 
-      task.vesselId === vesselId && task.monthYear === monthYear
-    );
+    return allTasks
+      .filter(task => task.vesselId === vesselId && task.monthYear === monthYear)
+      .map(task => this.parseFixedTaskData(task));
   }
 
   async createFixedTask(insertTask: InsertFixedTask): Promise<FixedTask> {
@@ -3972,7 +3981,7 @@ export class PersistentFileStorage implements IStorage {
     };
     this.fixedTasks.set(id, task);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY CREATE!
-    return task;
+    return this.parseFixedTaskData(task);
   }
 
   async updateFixedTask(id: number, updateData: Partial<InsertFixedTask>): Promise<FixedTask | undefined> {
@@ -3985,7 +3994,7 @@ export class PersistentFileStorage implements IStorage {
     };
     this.fixedTasks.set(id, updatedTask);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY UPDATE!
-    return updatedTask;
+    return this.parseFixedTaskData(updatedTask);
   }
 
   // Data Masters methods (return empty array for frontend compatibility)

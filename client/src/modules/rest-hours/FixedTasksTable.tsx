@@ -87,9 +87,11 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
         const data = {
           crewMemberId: task.crewMemberId,
           vesselId,
+          rank: task.rank,
+          name: task.crewName,
           monthYear,
-          seaHours: task.seaHours,
-          portHours: task.portHours,
+          seaHours: JSON.stringify(task.seaHours),
+          portHours: JSON.stringify(task.portHours),
         };
 
         if (task.taskId) {
