@@ -31,9 +31,29 @@ export const FixedTasksTable = ({ vesselId, monthYear }: FixedTasksTableProps): 
     enabled: !!vesselId,
   });
 
+  // Fetch available ranks to get sortOrder
+  const { data: availableRanks = [] } = useQuery<any[]>({
+    queryKey: ['/api/available-ranks'],
+  });
+
+  // Create a map of rank name to sortOrder for sorting
+  const rankOrderMap = useMemo(() => {
+    const map = new Map<string, number>();
+    availableRanks.forEach((rank: any) => {
+      map.set(rank.name, rank.sortOrder || 0);
+    });
+    return map;
+  }, [availableRanks]);
+
   const vesselCrewMembers = useMemo(() => {
-    return allCrewMembers.filter((crew: any) => crew.presentVessel === vesselId);
-  }, [allCrewMembers, vesselId]);
+    const filtered = allCrewMembers.filter((crew: any) => crew.presentVessel === vesselId);
+    // Sort by rank order
+    return filtered.sort((a: any, b: any) => {
+      const aOrder = rankOrderMap.get(a.presentRank) ?? 999;
+      const bOrder = rankOrderMap.get(b.presentRank) ?? 999;
+      return aOrder - bOrder;
+    });
+  }, [allCrewMembers, vesselId, rankOrderMap]);
 
   // Fetch existing fixed tasks for this vessel and month
   const { data: existingTasks = [] } = useQuery<FixedTask[]>({
