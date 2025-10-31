@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Filter, Edit2, Plus } from 'lucide-react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { Filter, Edit2, Plus, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
@@ -12,6 +12,7 @@ export const RestHoursPlan = (): JSX.Element => {
   const { toast } = useToast();
   const [isEditMode, setIsEditMode] = useState(false);
   const [newMonthTrigger, setNewMonthTrigger] = useState<{ tasks: FixedTask[]; timestamp: number } | null>(null);
+  const [saveHandler, setSaveHandler] = useState<(() => void) | null>(null);
   // Generate last 12 months for period dropdown
   const periodOptions = useMemo(() => {
     const options = [];
@@ -48,12 +49,18 @@ export const RestHoursPlan = (): JSX.Element => {
   // Reset edit mode when vessel, period, or tab changes
   useEffect(() => {
     setIsEditMode(false);
+    setSaveHandler(null); // Clear save handler when context changes
   }, [selectedVessel, periodValue, selectedTab]);
 
   const handleClearFilters = () => {
     setPeriodValue(periodOptions[0]?.value || "");
     setSelectedVessel("");
   };
+
+  // Memoize the callback to prevent infinite render loops
+  const handleSaveHandlerReady = useCallback((handler: (() => void) | null) => {
+    setSaveHandler(handler ? () => handler : null);
+  }, []);
 
   const handleNewMonth = async () => {
     if (!selectedVessel || !periodValue) {
@@ -144,30 +151,50 @@ export const RestHoursPlan = (): JSX.Element => {
 
         {/* Right: Action Buttons + Filters */}
         <div className="flex justify-end gap-2">
-          {selectedTab === "fixed" && !isEditMode && (
+          {selectedTab === "fixed" && (
             <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsEditMode(true)}
-                disabled={!selectedVessel || !periodValue}
-                className="h-8 gap-2"
-                data-testid="button-edit"
-              >
-                <Edit2 className="h-4 w-4" />
-                Edit
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleNewMonth}
-                disabled={!selectedVessel || !periodValue}
-                className="h-8 gap-2"
-                data-testid="button-new-month"
-              >
-                <Plus className="h-4 w-4" />
-                +New Month
-              </Button>
+              {!isEditMode ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditMode(true)}
+                    disabled={!selectedVessel || !periodValue}
+                    className="h-8 gap-2"
+                    data-testid="button-edit"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                    Edit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleNewMonth}
+                    disabled={!selectedVessel || !periodValue}
+                    className="h-8 gap-2"
+                    data-testid="button-new-month"
+                  >
+                    <Plus className="h-4 w-4" />
+                    New Month
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => {
+                    if (saveHandler) {
+                      saveHandler();
+                    }
+                  }}
+                  disabled={!saveHandler}
+                  className="h-8 gap-2"
+                  data-testid="button-save"
+                >
+                  <Save className="h-4 w-4" />
+                  Save
+                </Button>
+              )}
             </>
           )}
           <Button
@@ -242,6 +269,7 @@ export const RestHoursPlan = (): JSX.Element => {
             isEditMode={isEditMode}
             setIsEditMode={setIsEditMode}
             newMonthTrigger={newMonthTrigger}
+            onSaveHandlerReady={handleSaveHandlerReady}
           />
         ) : (
           <VariableTasksTable vesselId={selectedVessel} periodValue={periodValue} />

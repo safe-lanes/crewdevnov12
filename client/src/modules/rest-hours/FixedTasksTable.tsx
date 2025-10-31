@@ -12,6 +12,7 @@ interface FixedTasksTableProps {
   isEditMode: boolean;
   setIsEditMode: (value: boolean) => void;
   newMonthTrigger: { tasks: FixedTask[]; timestamp: number } | null;
+  onSaveHandlerReady: (handler: (() => void) | null) => void;
 }
 
 interface CrewTaskData {
@@ -23,7 +24,7 @@ interface CrewTaskData {
   taskId?: number;
 }
 
-export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode, newMonthTrigger }: FixedTasksTableProps): JSX.Element => {
+export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode, newMonthTrigger, onSaveHandlerReady }: FixedTasksTableProps): JSX.Element => {
   const { toast } = useToast();
   const [crewTasks, setCrewTasks] = useState<CrewTaskData[]>([]);
 
@@ -207,6 +208,16 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
     });
   }, [newMonthTrigger]);
 
+  // Expose save handler to parent and clean up on unmount
+  useEffect(() => {
+    onSaveHandlerReady(() => saveMutation.mutate());
+    
+    // Cleanup: clear handler when component unmounts or edit mode ends
+    return () => {
+      onSaveHandlerReady(null);
+    };
+  }, [onSaveHandlerReady, saveMutation.mutate]);
+
   const calculateRestHours = (hours: string[]) => {
     const workHours = hours.filter(h => h === 'w' || h === 'd').length * 0.5;
     return 24 - workHours;
@@ -230,23 +241,6 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Save button (shown only in edit mode) */}
-      {isEditMode && (
-        <div className="flex gap-2 justify-end">
-          <Button
-            variant="default"
-            size="sm"
-            onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending}
-            className="gap-2"
-            data-testid="button-save"
-          >
-            <Save className="h-4 w-4" />
-            {saveMutation.isPending ? 'Saving...' : 'Save'}
-          </Button>
-        </div>
-      )}
-
       {/* Hourly view - showing 24 hours with 2 half-hour cells each */}
       <div className="overflow-x-auto overflow-y-auto border rounded-lg max-h-[600px]">
         <table className="w-full border-collapse text-xs">
