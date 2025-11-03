@@ -1400,27 +1400,39 @@ export const RHRecordingForm = ({
                 <th rowSpan={2} className="border border-gray-300 p-0.5 min-w-[150px]" style={{ padding: '2px' }}>
                   Comments
                 </th>
-                <th colSpan={2} className="border border-gray-300 p-0.5 bg-blue-50" style={{ padding: '2px' }}>
-                  Hours of Rest in any
-                </th>
-                <th colSpan={2} className="border border-gray-300 p-0.5 bg-blue-50" style={{ padding: '2px' }}>
-                  Hours of Work in any
-                </th>
+                {complianceMode === 'Rest' && (
+                  <th colSpan={2} className="border border-gray-300 p-0.5 bg-blue-50" style={{ padding: '2px' }}>
+                    Hours of Rest in any
+                  </th>
+                )}
+                {complianceMode === 'Work' && (
+                  <th colSpan={2} className="border border-gray-300 p-0.5 bg-blue-50" style={{ padding: '2px' }}>
+                    Hours of Work in any
+                  </th>
+                )}
               </tr>
               {/* Header Row 2 */}
               <tr>
-                <th className="border border-gray-300 p-0.5 min-w-[70px] bg-blue-50" style={{ padding: '2px' }}>
-                  24 Hr Period
-                </th>
-                <th className="border border-gray-300 p-0.5 min-w-[60px] bg-blue-50" style={{ padding: '2px' }}>
-                  7 days
-                </th>
-                <th className="border border-gray-300 p-0.5 min-w-[60px] bg-blue-50" style={{ padding: '2px' }}>
-                  24 Hr Period
-                </th>
-                <th className="border border-gray-300 p-0.5 min-w-[60px] bg-blue-50" style={{ padding: '2px' }}>
-                  7 days
-                </th>
+                {complianceMode === 'Rest' && (
+                  <>
+                    <th className="border border-gray-300 p-0.5 min-w-[70px] bg-blue-50" style={{ padding: '2px' }}>
+                      24 Hr Period
+                    </th>
+                    <th className="border border-gray-300 p-0.5 min-w-[60px] bg-blue-50" style={{ padding: '2px' }}>
+                      7 days
+                    </th>
+                  </>
+                )}
+                {complianceMode === 'Work' && (
+                  <>
+                    <th className="border border-gray-300 p-0.5 min-w-[60px] bg-blue-50" style={{ padding: '2px' }}>
+                      24 Hr Period
+                    </th>
+                    <th className="border border-gray-300 p-0.5 min-w-[60px] bg-blue-50" style={{ padding: '2px' }}>
+                      7 days
+                    </th>
+                  </>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -1628,53 +1640,61 @@ export const RHRecordingForm = ({
                     />
                   </td>
                   
-                  {/* Any Period: Rest in 24hr */}
-                  <td 
-                    className="border border-gray-300 text-center bg-blue-50" 
-                    style={{ 
-                      padding: '2px',
-                      color: record.anyPeriodRest24hr < 10 ? 'red' : 'inherit',
-                      fontWeight: record.anyPeriodRest24hr < 10 ? 'bold' : 'normal'
-                    }}
-                  >
-                    {record.anyPeriodRest24hr.toFixed(1)}
-                  </td>
+                  {complianceMode === 'Rest' && (
+                    <>
+                      {/* Any Period: Rest in 24hr */}
+                      <td 
+                        className="border border-gray-300 text-center bg-blue-50" 
+                        style={{ 
+                          padding: '2px',
+                          color: record.anyPeriodRest24hr < 10 ? 'red' : 'inherit',
+                          fontWeight: record.anyPeriodRest24hr < 10 ? 'bold' : 'normal'
+                        }}
+                      >
+                        {record.anyPeriodRest24hr.toFixed(1)}
+                      </td>
+                      
+                      {/* Any Period: Rest in 7 days */}
+                      <td 
+                        className="border border-gray-300 text-center bg-blue-50" 
+                        style={{ 
+                          padding: '2px',
+                          color: record.anyPeriodRest7day < 77 ? 'red' : 'inherit',
+                          fontWeight: record.anyPeriodRest7day < 77 ? 'bold' : 'normal'
+                        }}
+                      >
+                        {record.anyPeriodRest7day.toFixed(1)}
+                      </td>
+                    </>
+                  )}
                   
-                  {/* Any Period: Rest in 7 days */}
-                  <td 
-                    className="border border-gray-300 text-center bg-blue-50" 
-                    style={{ 
-                      padding: '2px',
-                      color: record.anyPeriodRest7day < 77 ? 'red' : 'inherit',
-                      fontWeight: record.anyPeriodRest7day < 77 ? 'bold' : 'normal'
-                    }}
-                  >
-                    {record.anyPeriodRest7day.toFixed(1)}
-                  </td>
-                  
-                  {/* Any Period: Work in 24hr */}
-                  <td 
-                    className="border border-gray-300 text-center bg-blue-50" 
-                    style={{ 
-                      padding: '2px',
-                      color: record.anyPeriodWork24hr > 14 ? 'red' : 'inherit',
-                      fontWeight: record.anyPeriodWork24hr > 14 ? 'bold' : 'normal'
-                    }}
-                  >
-                    {record.anyPeriodWork24hr.toFixed(1)}
-                  </td>
-                  
-                  {/* Any Period: Work in 7 days */}
-                  <td 
-                    className="border border-gray-300 text-center bg-blue-50" 
-                    style={{ 
-                      padding: '2px',
-                      color: record.anyPeriodWork7day > 72 ? 'red' : 'inherit',
-                      fontWeight: record.anyPeriodWork7day > 72 ? 'bold' : 'normal'
-                    }}
-                  >
-                    {record.anyPeriodWork7day.toFixed(1)}
-                  </td>
+                  {complianceMode === 'Work' && (
+                    <>
+                      {/* Any Period: Work in 24hr */}
+                      <td 
+                        className="border border-gray-300 text-center bg-blue-50" 
+                        style={{ 
+                          padding: '2px',
+                          color: record.anyPeriodWork24hr > 14 ? 'red' : 'inherit',
+                          fontWeight: record.anyPeriodWork24hr > 14 ? 'bold' : 'normal'
+                        }}
+                      >
+                        {record.anyPeriodWork24hr.toFixed(1)}
+                      </td>
+                      
+                      {/* Any Period: Work in 7 days */}
+                      <td 
+                        className="border border-gray-300 text-center bg-blue-50" 
+                        style={{ 
+                          padding: '2px',
+                          color: record.anyPeriodWork7day > 72 ? 'red' : 'inherit',
+                          fontWeight: record.anyPeriodWork7day > 72 ? 'bold' : 'normal'
+                        }}
+                      >
+                        {record.anyPeriodWork7day.toFixed(1)}
+                      </td>
+                    </>
+                  )}
                 </tr>
               ))}
             </tbody>
