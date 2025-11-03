@@ -487,6 +487,7 @@ export const restHoursVesselRecords = pgTable("rest_hours_vessel_records", {
   totalNCs: integer("total_ncs").notNull().default(0), // Non-conformities
   crewWithNCs: integer("crew_with_ncs").notNull().default(0),
   predictedViolations: integer("predicted_violations").notNull().default(0),
+  crewWithPredictedViolations: integer("crew_with_predicted_violations").notNull().default(0),
   predictedNCs: integer("predicted_ncs").notNull().default(0),
   officeReviewStatus: text("office_review_status").notNull().default("Due"), // "Completed", "Due", "Overdue"
   

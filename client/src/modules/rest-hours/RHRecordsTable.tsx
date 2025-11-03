@@ -106,6 +106,24 @@ const BadgeRenderer = (params: ICellRendererParams) => {
   );
 };
 
+const PredictedViolationsRenderer = (params: ICellRendererParams) => {
+  const predictedViolations = params.data?.predictedViolations || 0;
+  const crewCount = params.data?.crewWithPredictedViolations || 0;
+
+  if (predictedViolations === 0) return null;
+
+  return (
+    <div className="flex items-center justify-center gap-3 h-full py-2">
+      <span className="px-3 py-1.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
+        {predictedViolations}
+      </span>
+      <span className="px-3 py-1.5 rounded font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
+        {crewCount}
+      </span>
+    </div>
+  );
+};
+
 const OfficeReviewRenderer = (params: ICellRendererParams) => {
   const status = params.value || 'Due';
   
@@ -249,7 +267,7 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
       headerName: 'Predicted Violations',
       field: 'predictedViolations',
       width: 150,
-      cellRenderer: BadgeRenderer,
+      cellRenderer: PredictedViolationsRenderer,
     },
     {
       headerName: 'Predicted NCs',

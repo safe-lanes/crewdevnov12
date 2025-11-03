@@ -2285,6 +2285,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let totalViolations = 0;
           let predictedViolations = 0;
           let crewWithViolations = 0;
+          let crewWithPredictedViolations = 0;
           const dailyRecords = dailyRecordsByVesselMonth.get(key) || [];
           
           if (dailyRecords.length > 0 && targetMonth) {
@@ -2313,6 +2314,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               hasViolationDays(dr.dailyRecords, mode, isOpaMode, false)
             ).length;
             
+            // Count crew members with predicted violations using deduplicated records
+            crewWithPredictedViolations = uniqueDailyRecords.filter(dr => 
+              hasViolationDays(dr.dailyRecords, mode, isOpaMode, true)
+            ).length;
+            
             // Debug logging for MT Nordic Star
             if (vesselId === 'VSL-003' && targetMonth === '2025-11') {
               console.log(`🔍 [DEBUG] VSL-003 violations - Mode: ${mode}, OPA: ${isOpaMode}`);
@@ -2335,7 +2341,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               recordingStatusPercent: recordingPercent,
               totalViolations: totalViolations,
               predictedViolations: predictedViolations,
-              crewWithViolations: crewWithViolations
+              crewWithViolations: crewWithViolations,
+              crewWithPredictedViolations: crewWithPredictedViolations
             };
           } else {
             // Create placeholder record with calculated values
@@ -2353,6 +2360,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               totalNCs: 0,
               crewWithNCs: 0,
               predictedViolations: predictedViolations,
+              crewWithPredictedViolations: crewWithPredictedViolations,
               predictedNCs: 0,
               officeReviewStatus: 'Due',
               createdAt: null,
@@ -2370,6 +2378,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let totalViolations = 0;
           let predictedViolations = 0;
           let crewWithViolations = 0;
+          let crewWithPredictedViolations = 0;
           
           if (dailyRecords.length > 0 && record.monthValue) {
             const percentages = dailyRecords.map(dr => 
@@ -2395,15 +2404,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
             crewWithViolations = uniqueDailyRecords.filter(dr => 
               hasViolationDays(dr.dailyRecords, mode, isOpaMode, false)
             ).length;
+            
+            // Count crew members with predicted violations using deduplicated records
+            crewWithPredictedViolations = uniqueDailyRecords.filter(dr => 
+              hasViolationDays(dr.dailyRecords, mode, isOpaMode, true)
+            ).length;
+            
+            return {
+              ...record,
+              totalCrew: crewCountByVessel.get(record.vesselId) || 0,
+              recordingStatusPercent: recordingPercent,
+              totalViolations: totalViolations,
+              predictedViolations: predictedViolations,
+              crewWithViolations: crewWithViolations,
+              crewWithPredictedViolations: crewWithPredictedViolations
+            };
           }
           
           return {
             ...record,
             totalCrew: crewCountByVessel.get(record.vesselId) || 0,
-            recordingStatusPercent: recordingPercent,
-            totalViolations: totalViolations,
-            predictedViolations: predictedViolations,
-            crewWithViolations: crewWithViolations
+            recordingStatusPercent: 0,
+            totalViolations: 0,
+            predictedViolations: 0,
+            crewWithViolations: 0,
+            crewWithPredictedViolations: 0
           };
         });
       }
