@@ -645,6 +645,39 @@ function countViolationDays(dailyRecordsJson: string, complianceMode: 'Rest' | '
   }
 }
 
+// Helper function to check if a crew member has any violation days
+function hasViolationDays(dailyRecordsJson: string, complianceMode: 'Rest' | 'Work', opaMode: boolean, isPlanMode: boolean): boolean {
+  try {
+    const dailyRecords = JSON.parse(dailyRecordsJson);
+    if (!Array.isArray(dailyRecords) || dailyRecords.length === 0) {
+      return false;
+    }
+
+    // Check if any day has violations
+    return dailyRecords.some((day: any) => {
+      // Filter by isPlan status
+      const dayIsPlan = day.isPlan === true;
+      if (isPlanMode !== dayIsPlan) {
+        return false;
+      }
+      
+      // Check if day has violations
+      if (!Array.isArray(day.violations) || day.violations.length === 0) {
+        return false;
+      }
+      
+      // Filter violations based on compliance mode
+      const relevantViolations = filterViolationsByMode(day.violations, complianceMode, opaMode);
+      
+      // Return true if there are any relevant violations
+      return relevantViolations.length > 0;
+    });
+  } catch (error) {
+    console.error('Failed to check violation days:', error);
+    return false;
+  }
+}
+
 // Helper function to update crew and vessel recording percentages
 async function updateRecordingPercentages(crewMemberId: string, vesselId: string, monthYear: string) {
   try {
