@@ -1165,8 +1165,8 @@ export const RHRecordingForm = ({
 
   // Get cell background color based on isPlan and value
   const getCellColor = (isPlan: boolean, value: string): string => {
-    if (isPlan && value !== '') {
-      return '#E5E7EB'; // Grey for plan
+    if (isPlan && value !== '' && showPlanning) {
+      return '#E5E7EB'; // Grey for plan (only when showPlanning is true)
     }
     if (!isPlan) {
       if (value === 'w' || value === 'd') {
@@ -1403,12 +1403,8 @@ export const RHRecordingForm = ({
               </tr>
             </thead>
             <tbody>
-              {dailyRecords
-                .filter(record => showPlanning || !record.isPlan)
-                .map((record) => {
-                  const dayIndex = record.day - 1; // Get original index in dailyRecords
-                  return (
-                <tr key={record.day}>
+              {dailyRecords.map((record, dayIndex) => (
+                <tr key={dayIndex}>
                   {/* Plan/Rec Button */}
                   <td className="border border-gray-300 text-center" style={{ padding: '2px' }}>
                     <button
@@ -1525,7 +1521,7 @@ export const RHRecordingForm = ({
                           style={{ width: '100%', minWidth: '15px' }}
                           data-testid={`cell-hour-${dayIndex}-${hourIndex}`}
                         >
-                          {hour}
+                          {(showPlanning || !record.isPlan) ? hour : ''}
                         </div>
                       </td>
                     );
@@ -1659,8 +1655,7 @@ export const RHRecordingForm = ({
                     {record.anyPeriodWork7day.toFixed(1)}
                   </td>
                 </tr>
-              );
-            })}
+              ))}
             </tbody>
           </table>
         </div>
