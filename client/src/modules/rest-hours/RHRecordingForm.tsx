@@ -213,6 +213,7 @@ export const RHRecordingForm = ({
       });
     }
     
+    console.log('[INIT] Setting dailyRecords with hoursOfRest24hr:', records[0]?.hoursOfRest24hr);
     setDailyRecords(records);
   }, [selectedPeriod, selectedCrewMemberId, selectedVesselId, open]);
 
@@ -276,8 +277,10 @@ export const RHRecordingForm = ({
 
   // Load previous month's records for cross-month calculations
   useEffect(() => {
-    if (!open || !previousMonthRecord) {
-      setPreviousMonthRecords([]);
+    if (!open) return;
+    
+    if (!previousMonthRecord) {
+      // Don't set to empty array yet - wait for query to complete
       return;
     }
     
@@ -323,6 +326,7 @@ export const RHRecordingForm = ({
     
     if (existingRecord) {
       // Existing record found - load it
+      console.log('[LOAD] Loading existing record');
       setFormId(existingRecord.id);
       setShowPlanning(existingRecord.showPlanning ?? true);
       setOpaMode(existingRecord.opaMode || false);
@@ -354,6 +358,7 @@ export const RHRecordingForm = ({
             violationDiagnostics: diagnostics,
           };
         });
+        console.log('[LOAD] Loaded record, hoursOfRest24hr:', recordsWithViolations[0]?.hoursOfRest24hr);
         setDailyRecords(recordsWithViolations);
       } catch (error) {
         console.error('Failed to parse daily records:', error);
@@ -361,7 +366,7 @@ export const RHRecordingForm = ({
     } else if (isError || existingRecord === undefined) {
       // No record found (404) or query error - state remains clean from initialization
       // This explicitly ensures no stale data leaks between crew members
-      console.log('No existing record found - using clean initialized state');
+      console.log('[LOAD] No existing record found - using clean initialized state');
     }
   }, [existingRecord, isError, open, previousMonthRecords]);
 
