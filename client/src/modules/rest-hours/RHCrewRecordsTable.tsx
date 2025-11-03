@@ -6,12 +6,15 @@ import { Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { RestHoursCrewRecord } from '@shared/schema';
 import { RHRecordingForm } from './RHRecordingForm';
+import { type ComplianceMode } from './violationFilters';
 
 interface RHCrewRecordsTableProps {
   vesselId?: string;
   monthValue?: string;
   selectedRanks?: string[];
   searchText?: string;
+  complianceMode: ComplianceMode;
+  opaMode: boolean;
 }
 
 const ProgressBarRenderer = (params: ICellRendererParams) => {
@@ -89,7 +92,7 @@ const ActionsRenderer = (params: ICellRendererParams) => {
   );
 };
 
-export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, searchText }: RHCrewRecordsTableProps) {
+export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, searchText, complianceMode, opaMode }: RHCrewRecordsTableProps) {
   const gridRef = useRef<AgGridReact>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<RestHoursCrewRecord | null>(null);

@@ -40,6 +40,8 @@ export const RestHoursVesselOverview = (): JSX.Element => {
   const [selectedVessel, setSelectedVessel] = useState(urlVesselId || "");
   const [selectedRank, setSelectedRank] = useState("");
   const [searchText, setSearchText] = useState("");
+  const [complianceMode, setComplianceMode] = useState<'Rest' | 'Work'>('Rest');
+  const [opaMode, setOpaMode] = useState(false);
 
   const { vessels, isLoading: vesselsLoading } = useVesselLookup();
 
@@ -113,7 +115,26 @@ export const RestHoursVesselOverview = (): JSX.Element => {
       <MainLayout>
         <div className="flex flex-col h-full">
           <SectionTitleComponents title={`RH Records - ${vesselName} - ${monthDisplay}`}>
-        <div className="flex gap-2">
+        <div className="flex gap-4 items-center">
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-[#4f5863]">Rest</span>
+            <button
+              onClick={() => setComplianceMode(prev => prev === 'Rest' ? 'Work' : 'Rest')}
+              className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${
+                complianceMode === 'Work' ? 'bg-blue-600' : 'bg-gray-300'
+              }`}
+              data-testid="toggle-compliance-mode"
+              type="button"
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  complianceMode === 'Work' ? 'translate-x-5' : 'translate-x-1'
+                }`}
+              />
+            </button>
+            <span className="text-xs text-[#4f5863]">Work</span>
+          </div>
+          
           <Button
             variant="outline"
             size="sm"
@@ -226,6 +247,8 @@ export const RestHoursVesselOverview = (): JSX.Element => {
           monthValue={periodValue}
           selectedRanks={selectedRank && selectedRank !== 'all' ? [selectedRank] : undefined}
           searchText={searchText}
+          complianceMode={complianceMode}
+          opaMode={opaMode}
         />
       </div>
         </div>
