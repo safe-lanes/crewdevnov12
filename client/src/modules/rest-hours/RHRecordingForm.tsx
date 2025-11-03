@@ -166,6 +166,13 @@ export const RHRecordingForm = ({
     }
   }, [selectedVesselId, filteredCrewMembers, open]);
 
+  // Auto-check "Show Planning" when switching to Plan mode
+  useEffect(() => {
+    if (recordMode === 'Plan') {
+      setShowPlanning(true);
+    }
+  }, [recordMode]);
+
   // Initialize daily records for the month - reset when crew/vessel/month changes or modal opens
   useEffect(() => {
     if (!selectedPeriod || !open) return;
