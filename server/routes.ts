@@ -2284,6 +2284,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let recordingPercent = 0;
           let totalViolations = 0;
           let predictedViolations = 0;
+          let crewWithViolations = 0;
           const dailyRecords = dailyRecordsByVesselMonth.get(key) || [];
           
           if (dailyRecords.length > 0 && targetMonth) {
@@ -2301,6 +2302,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             predictedViolations = dailyRecords.reduce((sum, dr) => 
               sum + countViolationDays(dr.dailyRecords, mode, isOpaMode, true), 0
             );
+            
+            // Count crew members with violations (completed records only)
+            crewWithViolations = dailyRecords.filter(dr => 
+              hasViolationDays(dr.dailyRecords, mode, isOpaMode, false)
+            ).length;
           }
           
           if (persistedRecord) {
@@ -2310,7 +2316,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               totalCrew: crewCountByVessel.get(vesselId) || 0,
               recordingStatusPercent: recordingPercent,
               totalViolations: totalViolations,
-              predictedViolations: predictedViolations
+              predictedViolations: predictedViolations,
+              crewWithViolations: crewWithViolations
             };
           } else {
             // Create placeholder record with calculated values
@@ -2324,7 +2331,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               recordingStatusPercent: recordingPercent,
               activityConflicting: false,
               totalViolations: totalViolations,
-              crewWithViolations: 0,
+              crewWithViolations: crewWithViolations,
               totalNCs: 0,
               crewWithNCs: 0,
               predictedViolations: predictedViolations,
@@ -2344,6 +2351,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let recordingPercent = 0;
           let totalViolations = 0;
           let predictedViolations = 0;
+          let crewWithViolations = 0;
           
           if (dailyRecords.length > 0 && record.monthValue) {
             const percentages = dailyRecords.map(dr => 
@@ -2359,6 +2367,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             predictedViolations = dailyRecords.reduce((sum, dr) => 
               sum + countViolationDays(dr.dailyRecords, mode, isOpaMode, true), 0
             );
+            
+            // Count crew members with violations (completed records only)
+            crewWithViolations = dailyRecords.filter(dr => 
+              hasViolationDays(dr.dailyRecords, mode, isOpaMode, false)
+            ).length;
           }
           
           return {
@@ -2366,7 +2379,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             totalCrew: crewCountByVessel.get(record.vesselId) || 0,
             recordingStatusPercent: recordingPercent,
             totalViolations: totalViolations,
-            predictedViolations: predictedViolations
+            predictedViolations: predictedViolations,
+            crewWithViolations: crewWithViolations
           };
         });
       }
