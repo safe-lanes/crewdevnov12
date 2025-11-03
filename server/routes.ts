@@ -2570,7 +2570,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dailyRecordsMap = new Map<string, any>();
       allDailyRecords.forEach(record => {
         const key = `${record.crewMemberId}-${record.vesselId}-${record.monthYear}`;
-        dailyRecordsMap.set(key, record);
+        const existing = dailyRecordsMap.get(key);
+        // If duplicate exists, keep the one with higher ID (most recent)
+        // Use numeric comparison to handle string IDs correctly
+        const recordIdNum = Number(record.id);
+        const existingIdNum = existing ? Number(existing.id) : -1;
+        if (!existing || recordIdNum > existingIdNum) {
+          dailyRecordsMap.set(key, record);
+        }
       });
       
       // Generate crew records with left-join to persisted records
@@ -2603,13 +2610,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             totalViolations = countViolationDays(dailyRecord.dailyRecords, mode, isOpaMode, false);
             // Count predicted violations (isPlan = true)
             predictedViolations = countViolationDays(dailyRecord.dailyRecords, mode, isOpaMode, true);
-            
-            // Debug logging for Chief Officer on MT Nordic Star
-            if (vesselId === 'VSL-003' && targetMonth === '2025-11' && rank === 'Chief Officer') {
-              console.log(`🔍 [CREW DEBUG] ${fullName} (${rank}) - VSL-003 - Mode: ${mode}, OPA: ${isOpaMode}`);
-              console.log(`  Total violations: ${totalViolations}`);
-              console.log(`  Predicted violations: ${predictedViolations}`);
-            }
           }
           
           if (persistedRecord) {
