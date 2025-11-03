@@ -2603,6 +2603,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             totalViolations = countViolationDays(dailyRecord.dailyRecords, mode, isOpaMode, false);
             // Count predicted violations (isPlan = true)
             predictedViolations = countViolationDays(dailyRecord.dailyRecords, mode, isOpaMode, true);
+            
+            // Debug logging for Chief Officer on MT Nordic Star
+            if (vesselId === 'VSL-003' && targetMonth === '2025-11' && rank === 'Chief Officer') {
+              console.log(`🔍 [CREW DEBUG] ${fullName} (${rank}) - VSL-003 - Mode: ${mode}, OPA: ${isOpaMode}`);
+              console.log(`  Total violations: ${totalViolations}`);
+              console.log(`  Predicted violations: ${predictedViolations}`);
+            }
           }
           
           if (persistedRecord) {
