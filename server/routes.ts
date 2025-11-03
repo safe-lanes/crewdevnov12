@@ -2307,14 +2307,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const crewWithViolationsList = dailyRecords.filter(dr => 
               hasViolationDays(dr.dailyRecords, mode, isOpaMode, false)
             );
-            crewWithViolations = crewWithViolationsList.length;
+            
+            // Deduplicate by crewMemberId to count unique crew members
+            const uniqueCrewIds = new Set(crewWithViolationsList.map(dr => dr.crewMemberId));
+            crewWithViolations = uniqueCrewIds.size;
             
             // Debug logging for MT Nordic Star
             if (vesselId === 'VSL-003' && targetMonth === '2025-11') {
               console.log(`🔍 [DEBUG] VSL-003 violations - Mode: ${mode}, OPA: ${isOpaMode}`);
-              console.log(`🔍 Total crew with violations: ${crewWithViolations}`);
-              crewWithViolationsList.forEach(dr => {
-                console.log(`  - ${dr.name} (${dr.rank}) - ${dr.crewMemberId}`);
+              console.log(`🔍 Total unique crew with violations: ${crewWithViolations}`);
+              uniqueCrewIds.forEach(id => {
+                const crew = crewWithViolationsList.find(dr => dr.crewMemberId === id);
+                if (crew) {
+                  console.log(`  - ${crew.name} (${crew.rank}) - ${id}`);
+                }
               });
             }
           }
@@ -2379,9 +2385,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             );
             
             // Count crew members with violations (completed records only)
-            crewWithViolations = dailyRecords.filter(dr => 
+            const crewWithViolationsList = dailyRecords.filter(dr => 
               hasViolationDays(dr.dailyRecords, mode, isOpaMode, false)
-            ).length;
+            );
+            
+            // Deduplicate by crewMemberId to count unique crew members
+            const uniqueCrewIds = new Set(crewWithViolationsList.map(dr => dr.crewMemberId));
+            crewWithViolations = uniqueCrewIds.size;
           }
           
           return {
