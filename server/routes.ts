@@ -627,7 +627,7 @@ async function updateRecordingPercentages(crewMemberId: string, vesselId: string
         month: formatMonthDisplay(monthYear),
         signOnOffInfo: '',
         recordingStatusPercent: recordingPercent,
-        activityConflicting: 0,
+        activityConflicting: false,
         totalViolations: 0,
         totalNCs: 0,
         predictedViolations: 0,
@@ -689,7 +689,7 @@ async function updateVesselRecordingPercentage(vesselId: string, monthValue: str
         month: formatMonthDisplay(monthValue),
         totalCrew: crewRecords.length,
         recordingStatusPercent: averagePercent,
-        activityConflicting: 0,
+        activityConflicting: false,
         totalViolations: 0,
         crewWithViolations: 0,
         totalNCs: 0,
@@ -2149,6 +2149,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Determine which month to show
       const targetMonth = monthValue as string || '';
       
+      // Get all daily records for calculating percentages
+      const allDailyRecords = await storage.getRestHoursDailyRecords();
+      
+      // Group daily records by vessel and month for percentage calculation
+      const dailyRecordsByVesselMonth = new Map<string, any[]>();
+      allDailyRecords.forEach(record => {
+        const key = `${record.vesselId}-${record.monthYear}`;
+        if (!dailyRecordsByVesselMonth.has(key)) {
+          dailyRecordsByVesselMonth.set(key, []);
+        }
+        dailyRecordsByVesselMonth.get(key)!.push(record);
+      });
+      
       let allVesselRecords;
       
       if (targetMonth) {
@@ -2168,14 +2181,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const key = `${vesselId}-${targetMonth}`;
           const persistedRecord = persistedRecordsMap.get(key);
           
+          // Calculate actual recording percentage from crew daily records
+          let recordingPercent = 0;
+          const dailyRecords = dailyRecordsByVesselMonth.get(key) || [];
+          
+          if (dailyRecords.length > 0 && targetMonth) {
+            // Calculate average percentage across all crew members on this vessel
+            const percentages = dailyRecords.map(dr => 
+              calculateRecordingPercentage(dr.dailyRecords, targetMonth)
+            );
+            const total = percentages.reduce((sum, p) => sum + p, 0);
+            recordingPercent = Math.round(total / percentages.length);
+          }
+          
           if (persistedRecord) {
-            // Use existing record with real crew count
+            // Use existing record with real crew count and calculated percentage
             return {
               ...persistedRecord,
-              totalCrew: crewCountByVessel.get(vesselId) || 0
+              totalCrew: crewCountByVessel.get(vesselId) || 0,
+              recordingStatusPercent: recordingPercent
             };
           } else {
-            // Create placeholder record with 0%
+            // Create placeholder record with calculated percentage
             return {
               id: null,
               vesselId,
@@ -2183,8 +2210,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               monthValue: targetMonth,
               month: formatMonth(targetMonth),
               totalCrew: crewCountByVessel.get(vesselId) || 0,
-              recordingStatusPercent: 0,
-              activityConflicting: 0,
+              recordingStatusPercent: recordingPercent,
+              activityConflicting: false,
               totalViolations: 0,
               crewWithViolations: 0,
               totalNCs: 0,
@@ -2198,11 +2225,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
       } else {
-        // No month filter - return all persisted records with enriched crew counts
-        allVesselRecords = persistedRecords.map(record => ({
-          ...record,
-          totalCrew: crewCountByVessel.get(record.vesselId) || 0
-        }));
+        // No month filter - return all persisted records with enriched crew counts and calculated percentages
+        allVesselRecords = persistedRecords.map(record => {
+          const key = `${record.vesselId}-${record.monthValue}`;
+          const dailyRecords = dailyRecordsByVesselMonth.get(key) || [];
+          
+          let recordingPercent = 0;
+          if (dailyRecords.length > 0 && record.monthValue) {
+            const percentages = dailyRecords.map(dr => 
+              calculateRecordingPercentage(dr.dailyRecords, record.monthValue)
+            );
+            const total = percentages.reduce((sum, p) => sum + p, 0);
+            recordingPercent = Math.round(total / percentages.length);
+          }
+          
+          return {
+            ...record,
+            totalCrew: crewCountByVessel.get(record.vesselId) || 0,
+            recordingStatusPercent: recordingPercent
+          };
+        });
       }
       
       const filteredRecords = allVesselRecords;
@@ -2373,28 +2415,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return vesselId !== null;
         })
         .map((crew, index) => {
+          const crewAny = crew as any; // Cast for legacy field access
           const vesselId = getVesselId(crew)!;
-          const vesselName = vesselIdToNameMap.get(vesselId) || crew.presentVessel || crew.vessel || '';
-          const rank = crew.presentRank || crew.rank || 'Unknown';
-          const fullName = `${crew.firstName || ''} ${crew.familyName || crew.lastName || ''}`.trim();
+          const vesselName = vesselIdToNameMap.get(vesselId) || crew.presentVessel || crewAny.vessel || '';
+          const rank = crew.presentRank || crewAny.rank || 'Unknown';
+          const fullName = `${crew.firstName || ''} ${crew.familyName || crewAny.lastName || ''}`.trim();
           const crewMemberId = crew.id || `${fullName}-${rank}-${vesselId}`;
           
-          // Look up persisted record for this crew/vessel/month
+          // Look up persisted record and daily record for this crew/vessel/month
           const key = `${crewMemberId}-${vesselId}-${targetMonth}`;
           const persistedRecord = persistedRecordsMap.get(key);
+          const dailyRecord = dailyRecordsMap.get(key);
+          
+          // Always calculate actual percentage from daily records
+          let recordingPercent = 0;
+          if (dailyRecord && targetMonth) {
+            recordingPercent = calculateRecordingPercentage(dailyRecord.dailyRecords, targetMonth);
+          }
           
           if (persistedRecord) {
-            // Use existing record
-            return persistedRecord;
+            // Use existing record but update percentage from daily records
+            return {
+              ...persistedRecord,
+              recordingStatusPercent: recordingPercent
+            };
           } else {
-            // Calculate actual recording percentage from daily records
-            const dailyRecord = dailyRecordsMap.get(key);
-            let recordingPercent = 0;
-            
-            if (dailyRecord && targetMonth) {
-              recordingPercent = calculateRecordingPercentage(dailyRecord.dailyRecords, targetMonth);
-            }
-            
             // Create placeholder record with calculated percentage
             return {
               id: null,
@@ -2407,7 +2452,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               monthValue: targetMonth,
               signOnOffInfo: getSignOnOffInfo(crew),
               recordingStatusPercent: recordingPercent,
-              activityConflicting: 0,
+              activityConflicting: false,
               totalViolations: 0,
               totalNCs: 0,
               predictedViolations: 0,
@@ -2433,8 +2478,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (ranks) {
-        const ranksArray = typeof ranks === 'string' ? [ranks] : ranks;
-        filteredRecords = filteredRecords.filter(record => ranksArray.includes(record.rank));
+        const ranksArray = Array.isArray(ranks) ? ranks : [ranks as string];
+        filteredRecords = filteredRecords.filter(record => (ranksArray as string[]).includes(record.rank));
       }
       
       if (search && typeof search === 'string') {
