@@ -1835,14 +1835,45 @@ export class MemStorage implements IStorage {
 
   async getRestHoursDailyRecordByKey(crewMemberId: string, vesselId: string, monthYear: string): Promise<RestHoursDailyRecord | undefined> {
     const records = Array.from(this.restHoursDailyRecords.values());
-    return records.find(record => 
+    const matches = records.filter(record => 
       record.crewMemberId === crewMemberId && 
       record.vesselId === vesselId && 
       record.monthYear === monthYear
     );
+    
+    // If duplicates exist, return the one with the highest ID (most recent)
+    if (matches.length === 0) return undefined;
+    if (matches.length === 1) return matches[0];
+    
+    return matches.reduce((latest, current) => {
+      const latestId = Number(latest.id);
+      const currentId = Number(current.id);
+      return currentId > latestId ? current : latest;
+    });
   }
 
   async createRestHoursDailyRecord(insertRecord: InsertRestHoursDailyRecord): Promise<RestHoursDailyRecord> {
+    // Check if a record already exists for this crew/vessel/month (upsert logic)
+    const existing = await this.getRestHoursDailyRecordByKey(
+      insertRecord.crewMemberId,
+      insertRecord.vesselId,
+      insertRecord.monthYear
+    );
+    
+    if (existing) {
+      // Update existing record instead of creating duplicate
+      const updatedRecord: RestHoursDailyRecord = {
+        ...existing,
+        ...insertRecord,
+        id: existing.id, // Keep the original ID
+        createdAt: existing.createdAt, // Keep the original creation date
+        updatedAt: new Date(),
+      };
+      this.restHoursDailyRecords.set(existing.id, updatedRecord);
+      return updatedRecord;
+    }
+    
+    // Create new record if none exists
     const id = this.currentRestHoursDailyRecordId++;
     const record: RestHoursDailyRecord = {
       ...insertRecord,
@@ -2064,6 +2095,42 @@ export class PersistentFileStorage implements IStorage {
     this.loadFromFile();
   }
 
+  private deduplicateDailyRecords(): void {
+    // Group records by crew/vessel/month key
+    const grouped = new Map<string, RestHoursDailyRecord[]>();
+    
+    for (const record of this.restHoursDailyRecords.values()) {
+      const key = `${record.crewMemberId}-${record.vesselId}-${record.monthYear}`;
+      if (!grouped.has(key)) {
+        grouped.set(key, []);
+      }
+      grouped.get(key)!.push(record);
+    }
+    
+    // Find and remove duplicates (keep highest ID)
+    let duplicatesRemoved = 0;
+    for (const [key, records] of grouped.entries()) {
+      if (records.length > 1) {
+        // Sort by numeric ID (highest first)
+        records.sort((a, b) => Number(b.id) - Number(a.id));
+        const keepRecord = records[0]; // Highest ID
+        const removeRecords = records.slice(1); // All others
+        
+        // Remove duplicates from the Map
+        for (const record of removeRecords) {
+          this.restHoursDailyRecords.delete(record.id);
+          duplicatesRemoved++;
+        }
+      }
+    }
+    
+    if (duplicatesRemoved > 0) {
+      console.log(`🔧 Deduplicated ${duplicatesRemoved} duplicate daily records (kept highest ID for each crew/vessel/month)`);
+      // Save cleaned data back to file
+      this.saveToFile();
+    }
+  }
+
   private loadNestedMapData(data: any): Map<number, VesselRevision> {
     // Helper function to recursively extract revision objects from nested arrays
     const extractRevisions = (arr: any, results: VesselRevision[] = []): VesselRevision[] => {
@@ -2166,6 +2233,9 @@ export class PersistentFileStorage implements IStorage {
         // Load rest hours daily records and counter
         this.restHoursDailyRecords = new Map(data.restHoursDailyRecords || []);
         this.currentRestHoursDailyRecordId = data.currentRestHoursDailyRecordId || 1;
+        
+        // Deduplicate daily records (keep highest ID for each crew/vessel/month)
+        this.deduplicateDailyRecords();
         
         // Load variable tasks and counter
         this.variableTasks = new Map(data.variableTasks || []);
@@ -3859,14 +3929,46 @@ export class PersistentFileStorage implements IStorage {
 
   async getRestHoursDailyRecordByKey(crewMemberId: string, vesselId: string, monthYear: string): Promise<RestHoursDailyRecord | undefined> {
     const records = Array.from(this.restHoursDailyRecords.values());
-    return records.find(record => 
+    const matches = records.filter(record => 
       record.crewMemberId === crewMemberId && 
       record.vesselId === vesselId && 
       record.monthYear === monthYear
     );
+    
+    // If duplicates exist, return the one with the highest ID (most recent)
+    if (matches.length === 0) return undefined;
+    if (matches.length === 1) return matches[0];
+    
+    return matches.reduce((latest, current) => {
+      const latestId = Number(latest.id);
+      const currentId = Number(current.id);
+      return currentId > latestId ? current : latest;
+    });
   }
 
   async createRestHoursDailyRecord(insertRecord: InsertRestHoursDailyRecord): Promise<RestHoursDailyRecord> {
+    // Check if a record already exists for this crew/vessel/month (upsert logic)
+    const existing = await this.getRestHoursDailyRecordByKey(
+      insertRecord.crewMemberId,
+      insertRecord.vesselId,
+      insertRecord.monthYear
+    );
+    
+    if (existing) {
+      // Update existing record instead of creating duplicate
+      const updatedRecord: RestHoursDailyRecord = {
+        ...existing,
+        ...insertRecord,
+        id: existing.id, // Keep the original ID
+        createdAt: existing.createdAt, // Keep the original creation date
+        updatedAt: new Date(),
+      };
+      this.restHoursDailyRecords.set(existing.id, updatedRecord);
+      this.saveToFile(); // SAVE TO FILE AFTER UPDATE!
+      return updatedRecord;
+    }
+    
+    // Create new record if none exists
     const id = this.currentRestHoursDailyRecordId++;
     const record: RestHoursDailyRecord = {
       ...insertRecord,
