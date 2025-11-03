@@ -1566,7 +1566,7 @@ export const RHRecordingForm = ({
                   </td>
                   
                   {/* Violations */}
-                  <td className="border border-gray-300 text-center text-red-600 font-semibold" style={{ padding: '2px' }}>
+                  <td className={`border border-gray-300 text-center font-semibold ${record.isPlan ? 'text-gray-500' : 'text-red-600'}`} style={{ padding: '2px' }}>
                     {(() => {
                       const visibleViolations = filterViolations(record.violations, complianceMode, opaMode);
                       const visibleDiagnostics = record.violationDiagnostics?.filter(d => visibleViolations.includes(d.code)) || [];
@@ -1594,7 +1594,7 @@ export const RHRecordingForm = ({
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <span
-                                      className="cursor-help underline decoration-dotted hover:bg-red-100 px-0.5 rounded"
+                                      className={`cursor-help underline decoration-dotted px-0.5 rounded ${record.isPlan ? 'hover:bg-gray-200' : 'hover:bg-red-100'}`}
                                       onMouseEnter={() => setHoveredViolation({ dayIndex, code })}
                                       onMouseLeave={() => setHoveredViolation(null)}
                                     >
