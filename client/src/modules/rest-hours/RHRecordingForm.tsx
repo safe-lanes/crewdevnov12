@@ -1124,6 +1124,9 @@ export const RHRecordingForm = ({
         record.hours = [...record.hours];
         record.hours[hourIndex] = normalizedValue;
         
+        // Set isPlan based on the current recordMode toggle
+        record.isPlan = (recordMode === 'Plan');
+        
         // Recalculate 24hr metrics
         record.hoursOfRest24hr = calculateHoursOfRest24hr(record.hours);
         record.hoursOfWork24hr = calculateHoursOfWork24hr(record.hours);
@@ -1152,7 +1155,7 @@ export const RHRecordingForm = ({
       
       return newRecords;
     });
-  }, [previousMonthRecords]);
+  }, [previousMonthRecords, selectedPeriod, recordMode]);
 
   // Handler: Edit comments
   const handleCommentsChange = useCallback((dayIndex: number, comments: string) => {
