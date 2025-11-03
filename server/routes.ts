@@ -2295,32 +2295,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const total = percentages.reduce((sum, p) => sum + p, 0);
             recordingPercent = Math.round(total / percentages.length);
             
-            // Sum up violations across all crew members
-            totalViolations = dailyRecords.reduce((sum, dr) => 
+            // Deduplicate daily records by crewMemberId to avoid counting same crew twice
+            const uniqueDailyRecords = Array.from(
+              new Map(dailyRecords.map(dr => [dr.crewMemberId, dr])).values()
+            );
+            
+            // Sum up violations across unique crew members only
+            totalViolations = uniqueDailyRecords.reduce((sum, dr) => 
               sum + countViolationDays(dr.dailyRecords, mode, isOpaMode, false), 0
             );
-            predictedViolations = dailyRecords.reduce((sum, dr) => 
+            predictedViolations = uniqueDailyRecords.reduce((sum, dr) => 
               sum + countViolationDays(dr.dailyRecords, mode, isOpaMode, true), 0
             );
             
-            // Count crew members with violations (completed records only)
-            const crewWithViolationsList = dailyRecords.filter(dr => 
+            // Count crew members with violations (completed records only) using deduplicated records
+            crewWithViolations = uniqueDailyRecords.filter(dr => 
               hasViolationDays(dr.dailyRecords, mode, isOpaMode, false)
-            );
-            
-            // Deduplicate by crewMemberId to count unique crew members
-            const uniqueCrewIds = new Set(crewWithViolationsList.map(dr => dr.crewMemberId));
-            crewWithViolations = uniqueCrewIds.size;
+            ).length;
             
             // Debug logging for MT Nordic Star
             if (vesselId === 'VSL-003' && targetMonth === '2025-11') {
               console.log(`🔍 [DEBUG] VSL-003 violations - Mode: ${mode}, OPA: ${isOpaMode}`);
+              console.log(`🔍 Total violation days: ${totalViolations}`);
               console.log(`🔍 Total unique crew with violations: ${crewWithViolations}`);
-              uniqueCrewIds.forEach(id => {
-                const crew = crewWithViolationsList.find(dr => dr.crewMemberId === id);
-                if (crew) {
-                  console.log(`  - ${crew.name} (${crew.rank}) - ${id}`);
-                }
+              console.log(`🔍 Daily records (before dedup): ${dailyRecords.length}`);
+              console.log(`🔍 Daily records (after dedup): ${uniqueDailyRecords.length}`);
+              uniqueDailyRecords.forEach(dr => {
+                const vCount = countViolationDays(dr.dailyRecords, mode, isOpaMode, false);
+                console.log(`  - ${dr.name} (${dr.rank}) - ${dr.crewMemberId}: ${vCount} violation days`);
               });
             }
           }
@@ -2376,22 +2378,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const total = percentages.reduce((sum, p) => sum + p, 0);
             recordingPercent = Math.round(total / percentages.length);
             
-            // Sum up violations across all crew members
-            totalViolations = dailyRecords.reduce((sum, dr) => 
+            // Deduplicate daily records by crewMemberId to avoid counting same crew twice
+            const uniqueDailyRecords = Array.from(
+              new Map(dailyRecords.map(dr => [dr.crewMemberId, dr])).values()
+            );
+            
+            // Sum up violations across unique crew members only
+            totalViolations = uniqueDailyRecords.reduce((sum, dr) => 
               sum + countViolationDays(dr.dailyRecords, mode, isOpaMode, false), 0
             );
-            predictedViolations = dailyRecords.reduce((sum, dr) => 
+            predictedViolations = uniqueDailyRecords.reduce((sum, dr) => 
               sum + countViolationDays(dr.dailyRecords, mode, isOpaMode, true), 0
             );
             
-            // Count crew members with violations (completed records only)
-            const crewWithViolationsList = dailyRecords.filter(dr => 
+            // Count crew members with violations (completed records only) using deduplicated records
+            crewWithViolations = uniqueDailyRecords.filter(dr => 
               hasViolationDays(dr.dailyRecords, mode, isOpaMode, false)
-            );
-            
-            // Deduplicate by crewMemberId to count unique crew members
-            const uniqueCrewIds = new Set(crewWithViolationsList.map(dr => dr.crewMemberId));
-            crewWithViolations = uniqueCrewIds.size;
+            ).length;
           }
           
           return {
