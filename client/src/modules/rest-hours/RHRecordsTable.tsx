@@ -93,6 +93,19 @@ const NCsRenderer = (params: ICellRendererParams) => {
   );
 };
 
+const BadgeRenderer = (params: ICellRendererParams) => {
+  const value = params.value;
+  if (!value || value === 0) return null;
+
+  return (
+    <div className="flex items-center justify-center h-full py-2">
+      <span className="px-3 py-1.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
+        {value}
+      </span>
+    </div>
+  );
+};
+
 const OfficeReviewRenderer = (params: ICellRendererParams) => {
   const status = params.value || 'Due';
   
@@ -130,8 +143,10 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
     if (selectedMonth && selectedMonth !== 'older' && selectedMonth !== '') {
       params.append('monthValue', selectedMonth);
     }
+    params.append('complianceMode', complianceMode);
+    params.append('opaMode', String(opaMode));
     return params.toString();
-  }, [selectedMonth]);
+  }, [selectedMonth, complianceMode, opaMode]);
 
   const { data: records = [], isLoading } = useQuery<RestHoursVesselRecord[]>({
     queryKey: ['/api/rest-hours-vessel-records', queryParams],
@@ -234,7 +249,7 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
       headerName: 'Predicted Violations',
       field: 'predictedViolations',
       width: 150,
-      cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }
+      cellRenderer: BadgeRenderer,
     },
     {
       headerName: 'Predicted NCs',

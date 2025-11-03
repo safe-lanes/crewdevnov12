@@ -591,6 +591,60 @@ function calculateRecordingPercentage(dailyRecordsJson: string, monthYear: strin
   }
 }
 
+// Helper function to filter violations based on compliance mode
+function filterViolationsByMode(violations: number[], complianceMode: 'Rest' | 'Work', opaMode: boolean): number[] {
+  const visibleCodes: number[] = [];
+  
+  // Add codes based on compliance mode
+  if (complianceMode === 'Rest') {
+    visibleCodes.push(1, 2, 3, 4); // Rest mode violations
+  } else {
+    visibleCodes.push(5, 6); // Work mode violations
+  }
+  
+  // Add OPA codes if OPA mode is enabled
+  if (opaMode) {
+    visibleCodes.push(7, 8);
+  }
+  
+  return violations.filter(v => visibleCodes.includes(v));
+}
+
+// Helper function to count violation days based on compliance mode
+function countViolationDays(dailyRecordsJson: string, complianceMode: 'Rest' | 'Work', opaMode: boolean, isPlanMode: boolean): number {
+  try {
+    const dailyRecords = JSON.parse(dailyRecordsJson);
+    if (!Array.isArray(dailyRecords) || dailyRecords.length === 0) {
+      return 0;
+    }
+
+    // Count days with violations
+    const violationDays = dailyRecords.filter((day: any) => {
+      // Filter by isPlan status
+      const dayIsPlan = day.isPlan === true;
+      if (isPlanMode !== dayIsPlan) {
+        return false;
+      }
+      
+      // Check if day has violations
+      if (!Array.isArray(day.violations) || day.violations.length === 0) {
+        return false;
+      }
+      
+      // Filter violations based on compliance mode
+      const relevantViolations = filterViolationsByMode(day.violations, complianceMode, opaMode);
+      
+      // Count as 1 if there are any relevant violations (regardless of how many)
+      return relevantViolations.length > 0;
+    }).length;
+
+    return violationDays;
+  } catch (error) {
+    console.error('Failed to count violation days:', error);
+    return 0;
+  }
+}
+
 // Helper function to update crew and vessel recording percentages
 async function updateRecordingPercentages(crewMemberId: string, vesselId: string, monthYear: string) {
   try {
@@ -2091,7 +2145,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Rest Hours Vessel Records API routes
   app.get("/api/rest-hours-vessel-records", async (req, res) => {
     try {
-      const { vesselIds, monthValue } = req.query;
+      const { vesselIds, monthValue, complianceMode, opaMode } = req.query;
+      
+      // Parse compliance mode and OPA mode (default to Rest and false)
+      const mode: 'Rest' | 'Work' = (complianceMode as string) === 'Work' ? 'Work' : 'Rest';
+      const isOpaMode = opaMode === 'true';
       
       // Get all crew members to calculate actual crew counts
       const allCrewMembers = await storage.getCrewMembers();
@@ -2189,8 +2247,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const key = `${vesselId}-${targetMonth}`;
           const persistedRecord = persistedRecordsMap.get(key);
           
-          // Calculate actual recording percentage from crew daily records
+          // Calculate actual recording percentage and violations from crew daily records
           let recordingPercent = 0;
+          let totalViolations = 0;
+          let predictedViolations = 0;
           const dailyRecords = dailyRecordsByVesselMonth.get(key) || [];
           
           if (dailyRecords.length > 0 && targetMonth) {
@@ -2200,17 +2260,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
             );
             const total = percentages.reduce((sum, p) => sum + p, 0);
             recordingPercent = Math.round(total / percentages.length);
+            
+            // Sum up violations across all crew members
+            totalViolations = dailyRecords.reduce((sum, dr) => 
+              sum + countViolationDays(dr.dailyRecords, mode, isOpaMode, false), 0
+            );
+            predictedViolations = dailyRecords.reduce((sum, dr) => 
+              sum + countViolationDays(dr.dailyRecords, mode, isOpaMode, true), 0
+            );
           }
           
           if (persistedRecord) {
-            // Use existing record with real crew count and calculated percentage
+            // Use existing record with real crew count and calculated values
             return {
               ...persistedRecord,
               totalCrew: crewCountByVessel.get(vesselId) || 0,
-              recordingStatusPercent: recordingPercent
+              recordingStatusPercent: recordingPercent,
+              totalViolations: totalViolations,
+              predictedViolations: predictedViolations
             };
           } else {
-            // Create placeholder record with calculated percentage
+            // Create placeholder record with calculated values
             return {
               id: null,
               vesselId,
@@ -2220,11 +2290,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               totalCrew: crewCountByVessel.get(vesselId) || 0,
               recordingStatusPercent: recordingPercent,
               activityConflicting: false,
-              totalViolations: 0,
+              totalViolations: totalViolations,
               crewWithViolations: 0,
               totalNCs: 0,
               crewWithNCs: 0,
-              predictedViolations: 0,
+              predictedViolations: predictedViolations,
               predictedNCs: 0,
               officeReviewStatus: 'Due',
               createdAt: null,
@@ -2233,24 +2303,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
       } else {
-        // No month filter - return all persisted records with enriched crew counts and calculated percentages
+        // No month filter - return all persisted records with enriched crew counts and calculated values
         allVesselRecords = persistedRecords.map(record => {
           const key = `${record.vesselId}-${record.monthValue}`;
           const dailyRecords = dailyRecordsByVesselMonth.get(key) || [];
           
           let recordingPercent = 0;
+          let totalViolations = 0;
+          let predictedViolations = 0;
+          
           if (dailyRecords.length > 0 && record.monthValue) {
             const percentages = dailyRecords.map(dr => 
               calculateRecordingPercentage(dr.dailyRecords, record.monthValue)
             );
             const total = percentages.reduce((sum, p) => sum + p, 0);
             recordingPercent = Math.round(total / percentages.length);
+            
+            // Sum up violations across all crew members
+            totalViolations = dailyRecords.reduce((sum, dr) => 
+              sum + countViolationDays(dr.dailyRecords, mode, isOpaMode, false), 0
+            );
+            predictedViolations = dailyRecords.reduce((sum, dr) => 
+              sum + countViolationDays(dr.dailyRecords, mode, isOpaMode, true), 0
+            );
           }
           
           return {
             ...record,
             totalCrew: crewCountByVessel.get(record.vesselId) || 0,
-            recordingStatusPercent: recordingPercent
+            recordingStatusPercent: recordingPercent,
+            totalViolations: totalViolations,
+            predictedViolations: predictedViolations
           };
         });
       }
@@ -2336,7 +2419,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Rest Hours Crew Records API routes
   app.get("/api/rest-hours-crew-records", async (req, res) => {
     try {
-      const { vesselIds, monthValue, ranks, search } = req.query;
+      const { vesselIds, monthValue, ranks, search, complianceMode, opaMode } = req.query;
+      
+      // Parse compliance mode and OPA mode (default to Rest and false)
+      const mode: 'Rest' | 'Work' = (complianceMode as string) === 'Work' ? 'Work' : 'Rest';
+      const isOpaMode = opaMode === 'true';
       
       // Get all crew members from storage
       const allCrewMembers = await storage.getCrewMembers();
@@ -2435,20 +2522,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const persistedRecord = persistedRecordsMap.get(key);
           const dailyRecord = dailyRecordsMap.get(key);
           
-          // Always calculate actual percentage from daily records
+          // Always calculate actual percentage and violations from daily records
           let recordingPercent = 0;
+          let totalViolations = 0;
+          let predictedViolations = 0;
+          
           if (dailyRecord && targetMonth) {
             recordingPercent = calculateRecordingPercentage(dailyRecord.dailyRecords, targetMonth);
+            // Count completed violations (isPlan = false)
+            totalViolations = countViolationDays(dailyRecord.dailyRecords, mode, isOpaMode, false);
+            // Count predicted violations (isPlan = true)
+            predictedViolations = countViolationDays(dailyRecord.dailyRecords, mode, isOpaMode, true);
           }
           
           if (persistedRecord) {
-            // Use existing record but update percentage from daily records
+            // Use existing record but update calculated values from daily records
             return {
               ...persistedRecord,
-              recordingStatusPercent: recordingPercent
+              recordingStatusPercent: recordingPercent,
+              totalViolations: totalViolations,
+              predictedViolations: predictedViolations
             };
           } else {
-            // Create placeholder record with calculated percentage
+            // Create placeholder record with calculated values
             return {
               id: null,
               vesselId,
@@ -2461,9 +2557,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               signOnOffInfo: getSignOnOffInfo(crew),
               recordingStatusPercent: recordingPercent,
               activityConflicting: false,
-              totalViolations: 0,
+              totalViolations: totalViolations,
               totalNCs: 0,
-              predictedViolations: 0,
+              predictedViolations: predictedViolations,
               predictedNCs: 0,
               createdAt: null,
               updatedAt: null,

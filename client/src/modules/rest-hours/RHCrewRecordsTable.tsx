@@ -127,6 +127,8 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
     selectedRanks.forEach(rank => queryParams.append('ranks', rank));
   }
   if (searchText) queryParams.append('search', searchText);
+  queryParams.append('complianceMode', complianceMode);
+  queryParams.append('opaMode', String(opaMode));
 
   const { data: rawRecords = [], isLoading } = useQuery<RestHoursCrewRecord[]>({
     queryKey: ['/api/rest-hours-crew-records', queryParams.toString()],
@@ -207,7 +209,7 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
       headerName: 'Predicted Violations',
       field: 'predictedViolations',
       width: 150,
-      cellStyle: { textAlign: 'center', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }
+      cellRenderer: BadgeRenderer,
     },
     {
       headerName: 'Predicted NCs',
