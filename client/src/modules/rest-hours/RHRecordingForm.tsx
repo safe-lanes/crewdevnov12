@@ -11,6 +11,7 @@ import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import type { RestHoursDailyRecord, FixedTask } from '@shared/schema';
+import { filterViolations } from './violationFilters';
 
 interface RHRecordingFormProps {
   open: boolean;
@@ -71,6 +72,7 @@ export const RHRecordingForm = ({
   
   // Form state
   const [showPlanning, setShowPlanning] = useState(true);
+  const [complianceMode, setComplianceMode] = useState<'Rest' | 'Work'>('Rest');
   const [opaMode, setOpaMode] = useState(false);
   const [dailyRecords, setDailyRecords] = useState<DailyRecord[]>([]);
   const [previousMonthRecords, setPreviousMonthRecords] = useState<DailyRecord[]>([]);
@@ -1348,6 +1350,25 @@ export const RHRecordingForm = ({
               OPA
             </Label>
           </div>
+
+          <div className="flex items-center gap-1 ml-4">
+            <span className="text-xs text-[#4f5863]">Rest</span>
+            <button
+              onClick={() => setComplianceMode(prev => prev === 'Rest' ? 'Work' : 'Rest')}
+              className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${
+                complianceMode === 'Work' ? 'bg-blue-600' : 'bg-gray-300'
+              }`}
+              data-testid="toggle-compliance-mode"
+              type="button"
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  complianceMode === 'Work' ? 'translate-x-5' : 'translate-x-1'
+                }`}
+              />
+            </button>
+            <span className="text-xs text-[#4f5863]">Work</span>
+          </div>
         </div>
 
         {/* Rest Hours Table */}
@@ -1535,7 +1556,7 @@ export const RHRecordingForm = ({
                   {/* Violations */}
                   <td className="border border-gray-300 text-center text-red-600 font-semibold" style={{ padding: '2px' }}>
                     {(() => {
-                      const visibleViolations = record.violations.filter(v => opaMode || (v !== 7 && v !== 8));
+                      const visibleViolations = filterViolations(record.violations, complianceMode, opaMode);
                       const visibleDiagnostics = record.violationDiagnostics?.filter(d => visibleViolations.includes(d.code)) || [];
                       
                       if (visibleViolations.length === 0) return '';
