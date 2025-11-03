@@ -71,6 +71,7 @@ export const RHRecordingForm = ({
   const [selectedCrewMemberId, setSelectedCrewMemberId] = useState(initialCrewMemberId);
   
   // Form state
+  const [recordMode, setRecordMode] = useState<'Rec' | 'Plan'>('Rec');
   const [showPlanning, setShowPlanning] = useState(true);
   const [complianceMode, setComplianceMode] = useState<'Rest' | 'Work'>('Rest');
   const [opaMode, setOpaMode] = useState(false);
@@ -1327,7 +1328,26 @@ export const RHRecordingForm = ({
             </Select>
           </div>
 
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-1 ml-auto">
+            <span className="text-xs text-[#4f5863]">Rec.</span>
+            <button
+              onClick={() => setRecordMode(prev => prev === 'Rec' ? 'Plan' : 'Rec')}
+              className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${
+                recordMode === 'Plan' ? 'bg-blue-600' : 'bg-gray-300'
+              }`}
+              data-testid="toggle-record-mode"
+              type="button"
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  recordMode === 'Plan' ? 'translate-x-5' : 'translate-x-1'
+                }`}
+              />
+            </button>
+            <span className="text-xs text-[#4f5863]">Plan</span>
+          </div>
+
+          <div className="flex items-center gap-2">
             <Checkbox
               id="show-planning"
               checked={showPlanning}
