@@ -1597,7 +1597,7 @@ export const RHRecordingForm = ({
                               e.preventDefault();
                             }
                           }}
-                          className="outline-none cursor-text min-h-[20px]"
+                          className={`outline-none cursor-text min-h-[20px] ${record.isPlan ? 'font-light text-gray-400' : ''}`}
                           style={{ width: '100%', minWidth: '15px' }}
                           data-testid={`cell-hour-${dayIndex}-${hourIndex}`}
                         >
@@ -1608,7 +1608,7 @@ export const RHRecordingForm = ({
                   })}
                   
                   {/* Hours of Rest (Calendar Day) */}
-                  <td className="border border-gray-300 text-center" style={{ padding: '2px' }}>
+                  <td className={`border border-gray-300 text-center ${record.isPlan ? 'font-light text-gray-400' : ''}`} style={{ padding: '2px' }}>
                     {record.hoursOfRest24hr}
                   </td>
                   
@@ -1694,11 +1694,11 @@ export const RHRecordingForm = ({
                     <>
                       {/* Any Period: Rest in 24hr */}
                       <td 
-                        className="border border-gray-300 text-center bg-blue-50" 
+                        className={`border border-gray-300 text-center bg-blue-50 ${record.isPlan ? 'font-light text-gray-400' : ''}`}
                         style={{ 
                           padding: '2px',
-                          color: record.anyPeriodRest24hr < 10 ? 'red' : 'inherit',
-                          fontWeight: record.anyPeriodRest24hr < 10 ? 'bold' : 'normal'
+                          color: record.isPlan ? undefined : (record.anyPeriodRest24hr < 10 ? 'red' : 'inherit'),
+                          fontWeight: record.isPlan ? 300 : (record.anyPeriodRest24hr < 10 ? 'bold' : 'normal')
                         }}
                       >
                         {record.anyPeriodRest24hr.toFixed(1)}
@@ -1706,11 +1706,11 @@ export const RHRecordingForm = ({
                       
                       {/* Any Period: Rest in 7 days */}
                       <td 
-                        className="border border-gray-300 text-center bg-blue-50" 
+                        className={`border border-gray-300 text-center bg-blue-50 ${record.isPlan ? 'font-light text-gray-400' : ''}`}
                         style={{ 
                           padding: '2px',
-                          color: record.anyPeriodRest7day < 77 ? 'red' : 'inherit',
-                          fontWeight: record.anyPeriodRest7day < 77 ? 'bold' : 'normal'
+                          color: record.isPlan ? undefined : (record.anyPeriodRest7day < 77 ? 'red' : 'inherit'),
+                          fontWeight: record.isPlan ? 300 : (record.anyPeriodRest7day < 77 ? 'bold' : 'normal')
                         }}
                       >
                         {record.anyPeriodRest7day.toFixed(1)}
