@@ -70,7 +70,7 @@ export const RHRecordingForm = ({
   const [selectedCrewMemberId, setSelectedCrewMemberId] = useState(initialCrewMemberId);
   
   // Form state
-  const [showPlanning, setShowPlanning] = useState(false);
+  const [showPlanning, setShowPlanning] = useState(true);
   const [opaMode, setOpaMode] = useState(false);
   const [dailyRecords, setDailyRecords] = useState<DailyRecord[]>([]);
   const [previousMonthRecords, setPreviousMonthRecords] = useState<DailyRecord[]>([]);
@@ -1403,8 +1403,12 @@ export const RHRecordingForm = ({
               </tr>
             </thead>
             <tbody>
-              {dailyRecords.map((record, dayIndex) => (
-                <tr key={dayIndex}>
+              {dailyRecords
+                .filter(record => showPlanning || !record.isPlan)
+                .map((record) => {
+                  const dayIndex = record.day - 1; // Get original index in dailyRecords
+                  return (
+                <tr key={record.day}>
                   {/* Plan/Rec Button */}
                   <td className="border border-gray-300 text-center" style={{ padding: '2px' }}>
                     <button
@@ -1655,7 +1659,8 @@ export const RHRecordingForm = ({
                     {record.anyPeriodWork7day.toFixed(1)}
                   </td>
                 </tr>
-              ))}
+              );
+            })}
             </tbody>
           </table>
         </div>
