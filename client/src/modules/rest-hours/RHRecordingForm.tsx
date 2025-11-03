@@ -302,11 +302,16 @@ export const RHRecordingForm = ({
     if (!Array.isArray(template) || template.length !== 48) return;
     
     setDailyRecords(prevRecords => {
-      return prevRecords.map(record => ({
-        ...record,
-        hours: [...template], // Apply the fixed task template
-        isPlan: true, // Mark as plan data
-      }));
+      return prevRecords.map(record => {
+        const newHours = [...template];
+        return {
+          ...record,
+          hours: newHours,
+          isPlan: true,
+          hoursOfRest24hr: calculateHoursOfRest24hr(newHours),
+          hoursOfWork24hr: calculateHoursOfWork24hr(newHours),
+        };
+      });
     });
   }, [fixedTask, open, existingRecord]);
 
