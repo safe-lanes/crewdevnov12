@@ -1941,20 +1941,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { vesselIds, monthValue } = req.query;
       
-      // Build filters for persisted records
-      const filters: { vesselIds?: string[]; monthValue?: string } = {};
-      if (vesselIds) {
-        filters.vesselIds = typeof vesselIds === 'string' ? [vesselIds] : vesselIds as string[];
-      }
-      if (monthValue) {
-        filters.monthValue = monthValue as string;
-      }
-      
-      // Get persisted vessel records from storage
-      const records = Object.keys(filters).length > 0
-        ? await storage.getRestHoursVesselRecordsByFilters(filters)
-        : await storage.getRestHoursVesselRecords();
-      
       // Get all crew members to calculate actual crew counts
       const allCrewMembers = await storage.getCrewMembers();
       
@@ -1962,8 +1948,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const vesselMasterData = await storage.getMasterDataEntries('014');
       
       // Build comprehensive vessel name ↔ ID maps from master data
-      // Support all field variations: name, label, vessel, and direct entryId lookups
       const vesselNameToIdMap = new Map<string, string>();
+      const vesselIdToNameMap = new Map<string, string>();
       vesselMasterData.forEach((entry: any) => {
         const entryId = entry.entryId || entry.entry_id;
         if (!entryId) return;
@@ -1975,11 +1961,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Map the ID to itself for direct ID lookups
         vesselNameToIdMap.set(entryId, entryId);
+        
+        // Store ID → name mapping
+        const displayName = entry.name || entry.label || entry.vessel || entryId;
+        vesselIdToNameMap.set(entryId, displayName);
       });
       
       // Count crew per vessel using dynamic mapping
       const crewCountByVessel = new Map<string, number>();
-      allCrewMembers.forEach(crew => {
+      allCrewMembers.forEach((crew: any) => {
         const vesselName = crew.presentVessel || crew.vessel;
         if (vesselName) {
           const vesselId = vesselNameToIdMap.get(vesselName);
@@ -1989,13 +1979,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
       
-      // Enrich persisted records with real crew counts
-      const enrichedRecords = records.map(record => ({
-        ...record,
-        totalCrew: crewCountByVessel.get(record.vesselId) || 0
-      }));
+      // Build filters for persisted records
+      const filters: { vesselIds?: string[]; monthValue?: string } = {};
+      if (vesselIds) {
+        filters.vesselIds = typeof vesselIds === 'string' ? [vesselIds] : vesselIds as string[];
+      }
+      if (monthValue) {
+        filters.monthValue = monthValue as string;
+      }
       
-      res.json(enrichedRecords);
+      // Get persisted vessel records from storage with filters
+      const persistedRecords = Object.keys(filters).length > 0
+        ? await storage.getRestHoursVesselRecordsByFilters(filters)
+        : await storage.getRestHoursVesselRecords();
+      
+      // Generate month display from monthValue
+      const formatMonth = (monthVal: string): string => {
+        if (!monthVal) return '';
+        const [year, month] = monthVal.split('-');
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const monthIndex = parseInt(month) - 1;
+        return `${monthNames[monthIndex]}-${year}`;
+      };
+      
+      // Determine which month to show
+      const targetMonth = monthValue as string || '';
+      
+      let allVesselRecords;
+      
+      if (targetMonth) {
+        // Month filter is specified - show all vessels for this month with left-join
+        const persistedRecordsMap = new Map<string, any>();
+        persistedRecords.forEach(record => {
+          const key = `${record.vesselId}-${record.monthValue}`;
+          persistedRecordsMap.set(key, record);
+        });
+        
+        // Determine which vessels to generate records for
+        const targetVessels = filters.vesselIds && filters.vesselIds.length > 0
+          ? Array.from(vesselIdToNameMap.entries()).filter(([vesselId]) => filters.vesselIds!.includes(vesselId))
+          : Array.from(vesselIdToNameMap.entries());
+        
+        allVesselRecords = targetVessels.map(([vesselId, vesselName]) => {
+          const key = `${vesselId}-${targetMonth}`;
+          const persistedRecord = persistedRecordsMap.get(key);
+          
+          if (persistedRecord) {
+            // Use existing record with real crew count
+            return {
+              ...persistedRecord,
+              totalCrew: crewCountByVessel.get(vesselId) || 0
+            };
+          } else {
+            // Create placeholder record with 0%
+            return {
+              id: null,
+              vesselId,
+              vesselName,
+              monthValue: targetMonth,
+              month: formatMonth(targetMonth),
+              totalCrew: crewCountByVessel.get(vesselId) || 0,
+              recordingStatusPercent: 0,
+              activityConflicting: 0,
+              totalViolations: 0,
+              crewWithViolations: 0,
+              totalNCs: 0,
+              crewWithNCs: 0,
+              predictedViolations: 0,
+              predictedNCs: 0,
+              officeReviewStatus: 'Due',
+              createdAt: null,
+              updatedAt: null,
+            };
+          }
+        });
+      } else {
+        // No month filter - return all persisted records with enriched crew counts
+        allVesselRecords = persistedRecords.map(record => ({
+          ...record,
+          totalCrew: crewCountByVessel.get(record.vesselId) || 0
+        }));
+      }
+      
+      const filteredRecords = allVesselRecords;
+      
+      res.json(filteredRecords);
     } catch (error) {
       console.error("Failed to fetch rest hours vessel records:", error);
       res.status(500).json({ error: "Failed to fetch rest hours vessel records" });
@@ -2079,11 +2147,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all crew members from storage
       const allCrewMembers = await storage.getCrewMembers();
       
+      // Get persisted crew records from storage (if any exist)
+      const persistedRecords = await storage.getRestHoursCrewRecords();
+      const persistedRecordsMap = new Map<string, any>();
+      persistedRecords.forEach(record => {
+        const key = `${record.crewMemberId}-${record.vesselId}-${record.monthValue}`;
+        persistedRecordsMap.set(key, record);
+      });
+      
       // Get vessel master data for dynamic name/ID mapping
       const vesselMasterData = await storage.getMasterDataEntries('014');
       
       // Build comprehensive vessel name ↔ ID maps from master data
-      // Support all field variations: name, label, vessel, and direct entryId lookups
       const vesselNameToIdMap = new Map<string, string>();
       const vesselIdToNameMap = new Map<string, string>();
       vesselMasterData.forEach((entry: any) => {
@@ -2098,18 +2173,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Map the ID to itself for direct ID lookups
         vesselNameToIdMap.set(entryId, entryId);
         
-        // Store ID → name mapping (prefer name, fallback to label or vessel)
+        // Store ID → name mapping
         const displayName = entry.name || entry.label || entry.vessel || entryId;
         vesselIdToNameMap.set(entryId, displayName);
       });
       
-      // Helper function to get vessel ID (handle both vessel and presentVessel fields)
+      // Helper function to get vessel ID
       const getVesselId = (crew: any): string | null => {
-        // Try presentVessel field first (preferred), then vessel field
         const vesselName = crew.presentVessel || crew.vessel;
         if (!vesselName || vesselName === '') return null;
-        
-        // Use dynamic mapping from master data
         return vesselNameToIdMap.get(vesselName) || null;
       };
       
@@ -2122,7 +2194,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const month = monthNames[date.getMonth()];
           const year = date.getFullYear();
           
-          // Determine role based on rank
           const isOfficer = ['Master', 'Chief Officer', 'Chief Engineer', '2nd Officer', '3rd Officer', '2nd Engineer', '3rd Engineer'].includes(crew.presentRank || crew.rank || '');
           const role = isOfficer ? 'Officer' : 'Rating';
           
@@ -2131,22 +2202,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return '';
       };
       
-      // Generate crew records dynamically from real crew members
-      // Use a deterministic hash for consistent random values based on crew ID
-      const hashCode = (str: string): number => {
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-          const char = str.charCodeAt(i);
-          hash = ((hash << 5) - hash) + char;
-          hash = hash & hash;
-        }
-        return Math.abs(hash);
+      // Format month display from monthValue
+      const formatMonth = (monthVal: string): string => {
+        if (!monthVal) return '';
+        const [year, month] = monthVal.split('-');
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const monthIndex = parseInt(month) - 1;
+        return `${monthNames[monthIndex]}-${year}`;
       };
       
+      // Determine target month
+      const targetMonth = monthValue as string || '';
+      
+      // Generate crew records with left-join to persisted records
       const crewRecords = allCrewMembers
         .filter(crew => {
           const vesselId = getVesselId(crew);
-          // Only include crew with valid vessel assignments
           return vesselId !== null;
         })
         .map((crew, index) => {
@@ -2154,35 +2225,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const vesselName = vesselIdToNameMap.get(vesselId) || crew.presentVessel || crew.vessel || '';
           const rank = crew.presentRank || crew.rank || 'Unknown';
           const fullName = `${crew.firstName || ''} ${crew.familyName || crew.lastName || ''}`.trim();
+          const crewMemberId = crew.id || `${fullName}-${rank}-${vesselId}`;
           
-          // Generate a unique identifier for the crew member (use id or create from name+rank+vessel)
-          const crewIdentifier = crew.id || `${fullName}-${rank}-${vesselId}`;
+          // Look up persisted record for this crew/vessel/month
+          const key = `${crewMemberId}-${vesselId}-${targetMonth}`;
+          const persistedRecord = persistedRecordsMap.get(key);
           
-          // Generate deterministic variation based on crew identifier for consistent results
-          const hash = hashCode(crewIdentifier);
-          const recordingStatusPercent = [50, 75, 85, 95, 100][hash % 5];
-          const hasViolations = hash % 4 === 0;
-          const hasNCs = hash % 5 === 0;
-          
-          return {
-            id: index + 1,
-            vesselId,
-            vesselName,
-            crewMemberId: crew.id,
-            rank,
-            name: fullName,
-            month: 'Oct-2025',
-            monthValue: '2025-10',
-            signOnOffInfo: getSignOnOffInfo(crew),
-            recordingStatusPercent,
-            activityConflicting: 0,
-            totalViolations: hasViolations ? (hash % 3) + 1 : 0,
-            totalNCs: hasNCs ? (hash % 2) + 1 : 0,
-            predictedViolations: 0,
-            predictedNCs: 0,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          };
+          if (persistedRecord) {
+            // Use existing record
+            return persistedRecord;
+          } else {
+            // Create placeholder record with 0%
+            return {
+              id: null,
+              vesselId,
+              vesselName,
+              crewMemberId,
+              rank,
+              name: fullName,
+              month: formatMonth(targetMonth),
+              monthValue: targetMonth,
+              signOnOffInfo: getSignOnOffInfo(crew),
+              recordingStatusPercent: 0,
+              activityConflicting: 0,
+              totalViolations: 0,
+              totalNCs: 0,
+              predictedViolations: 0,
+              predictedNCs: 0,
+              createdAt: null,
+              updatedAt: null,
+            };
+          }
         });
       
       // Apply filters
@@ -2195,8 +2268,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         filteredRecords = filteredRecords.filter(record => record.vesselId === vesselIds);
       }
       
-      if (monthValue) {
-        filteredRecords = filteredRecords.filter(record => record.monthValue === monthValue);
+      if (targetMonth) {
+        filteredRecords = filteredRecords.filter(record => record.monthValue === targetMonth);
       }
       
       if (ranks) {

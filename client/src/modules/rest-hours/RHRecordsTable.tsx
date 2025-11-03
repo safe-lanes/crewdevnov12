@@ -18,7 +18,9 @@ interface RHRecordsTableProps {
 const ProgressBarRenderer = (params: ICellRendererParams) => {
   const percent = params.value || 0;
   const isComplete = percent === 100;
-  const bgColor = isComplete ? '#22C55E' : '#EAB308';
+  const isZero = percent === 0;
+  // Grey for 0%, green for 100%, yellow for in-progress
+  const bgColor = isZero ? '#9CA3AF' : isComplete ? '#22C55E' : '#EAB308';
   
   return (
     <div className="flex items-center h-full w-full px-3 py-2 group relative">
@@ -121,24 +123,38 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
   const gridRef = useRef<AgGridReact>(null);
   const [, setLocation] = useLocation();
 
+  // Build query params for backend
+  const queryParams = useMemo(() => {
+    const params = new URLSearchParams();
+    // Only pass month if it's a valid value (not "older" or empty)
+    if (selectedMonth && selectedMonth !== 'older' && selectedMonth !== '') {
+      params.append('monthValue', selectedMonth);
+    }
+    return params.toString();
+  }, [selectedMonth]);
+
   const { data: records = [], isLoading } = useQuery<RestHoursVesselRecord[]>({
-    queryKey: ['/api/rest-hours-vessel-records'],
+    queryKey: ['/api/rest-hours-vessel-records', queryParams],
+    queryFn: async () => {
+      const url = queryParams 
+        ? `/api/rest-hours-vessel-records?${queryParams}`
+        : '/api/rest-hours-vessel-records';
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch vessel records');
+      return response.json();
+    },
   });
 
   const filteredRecords = useMemo(() => {
     let filtered = records;
 
-    // Only filter by month if it's a valid month value (not "older" or empty)
-    if (selectedMonth && selectedMonth !== 'older' && selectedMonth !== '') {
-      filtered = filtered.filter(r => r.monthValue === selectedMonth);
-    }
-
+    // Apply client-side vessel filter
     if (selectedVessels.length > 0) {
       filtered = filtered.filter(r => selectedVessels.includes(r.vesselName));
     }
 
     return filtered;
-  }, [records, selectedVessels, selectedMonth]);
+  }, [records, selectedVessels]);
 
   // Handle navigation to vessel overview
   const handleEditRecord = (record: RestHoursVesselRecord) => {

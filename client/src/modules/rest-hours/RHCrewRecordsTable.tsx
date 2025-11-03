@@ -20,7 +20,9 @@ interface RHCrewRecordsTableProps {
 const ProgressBarRenderer = (params: ICellRendererParams) => {
   const percent = params.value || 0;
   const isComplete = percent === 100;
-  const bgColor = isComplete ? '#22C55E' : '#EAB308';
+  const isZero = percent === 0;
+  // Grey for 0%, green for 100%, yellow for in-progress
+  const bgColor = isZero ? '#9CA3AF' : isComplete ? '#22C55E' : '#EAB308';
   
   return (
     <div className="flex items-center h-full w-full px-3 py-2 group relative">
