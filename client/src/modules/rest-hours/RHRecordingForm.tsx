@@ -213,7 +213,6 @@ export const RHRecordingForm = ({
       });
     }
     
-    console.log('[INIT] Setting dailyRecords with hoursOfRest24hr:', records[0]?.hoursOfRest24hr);
     setDailyRecords(records);
   }, [selectedPeriod, selectedCrewMemberId, selectedVesselId, open]);
 
@@ -326,7 +325,6 @@ export const RHRecordingForm = ({
     
     if (existingRecord) {
       // Existing record found - load it
-      console.log('[LOAD] Loading existing record');
       setFormId(existingRecord.id);
       setShowPlanning(existingRecord.showPlanning ?? true);
       setOpaMode(existingRecord.opaMode || false);
@@ -336,12 +334,18 @@ export const RHRecordingForm = ({
         // Ensure all records have the any-period fields (for backward compatibility)
         // and recalculate them to ensure accuracy
         const updatedRecords = parsedRecords.map((record: DailyRecord, index: number) => {
+          // Calculate 24hr metrics if missing (backward compatibility)
+          const restHours = record.hours ? record.hours.filter((h: string) => h === '').length / 2 : 24;
+          const workHours = 24 - restHours;
+          
           // Calculate any-period metrics for this record
           const anyPeriod24 = calculateAnyPeriod24hr(parsedRecords, index, selectedPeriod, previousMonthRecords);
           const anyPeriod7day = calculateAnyPeriod7day(parsedRecords, index, previousMonthRecords);
           
           return {
             ...record,
+            hoursOfRest24hr: record.hoursOfRest24hr ?? restHours,
+            hoursOfWork24hr: record.hoursOfWork24hr ?? workHours,
             anyPeriodRest24hr: anyPeriod24.anyPeriodRest24hr,
             anyPeriodRest7day: anyPeriod7day.anyPeriodRest7day,
             anyPeriodWork24hr: anyPeriod24.anyPeriodWork24hr,
@@ -358,7 +362,6 @@ export const RHRecordingForm = ({
             violationDiagnostics: diagnostics,
           };
         });
-        console.log('[LOAD] Loaded record, hoursOfRest24hr:', recordsWithViolations[0]?.hoursOfRest24hr);
         setDailyRecords(recordsWithViolations);
       } catch (error) {
         console.error('Failed to parse daily records:', error);
@@ -366,7 +369,7 @@ export const RHRecordingForm = ({
     } else if (isError || existingRecord === undefined) {
       // No record found (404) or query error - state remains clean from initialization
       // This explicitly ensures no stale data leaks between crew members
-      console.log('[LOAD] No existing record found - using clean initialized state');
+      console.log('No existing record found - using clean initialized state');
     }
   }, [existingRecord, isError, open, previousMonthRecords]);
 
