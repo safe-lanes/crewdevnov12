@@ -172,7 +172,8 @@ export const RHRecordingForm = ({
     
     // Reset all form state to clean slate
     setFormId(null);
-    setShowPlanning(false);
+    setRecordMode('Rec');
+    setShowPlanning(true);
     setOpaMode(false);
     
     const [year, month] = selectedPeriod.split('-');
@@ -462,7 +463,8 @@ export const RHRecordingForm = ({
     }
     
     setDailyRecords(records);
-    setShowPlanning(false);
+    setRecordMode('Rec');
+    setShowPlanning(true);
     setOpaMode(false);
   };
 
