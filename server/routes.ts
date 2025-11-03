@@ -560,6 +560,150 @@ async function syncFixedTasksToRHRecords(vesselId: string, monthYear: string) {
   }
 }
 
+// Helper function to calculate recording percentage based on daily records
+function calculateRecordingPercentage(dailyRecordsJson: string, monthYear: string): number {
+  try {
+    const dailyRecords = JSON.parse(dailyRecordsJson);
+    if (!Array.isArray(dailyRecords) || dailyRecords.length === 0) {
+      return 0;
+    }
+
+    // Get the number of days in the month
+    const [year, month] = monthYear.split('-').map(Number);
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    // Count days that have been filled (not plan entries)
+    const filledDays = dailyRecords.filter((day: any) => {
+      // A day is "filled" if it's NOT a plan (isPlan = false or undefined for actual recordings)
+      // AND has at least one non-empty hour entry
+      const isPlan = day.isPlan === true;
+      const hasHours = Array.isArray(day.hours) && day.hours.some((h: string) => h !== '');
+      
+      return !isPlan && hasHours;
+    }).length;
+
+    // Calculate percentage
+    const percentage = Math.round((filledDays / daysInMonth) * 100);
+    return Math.min(100, Math.max(0, percentage));
+  } catch (error) {
+    console.error('Failed to calculate recording percentage:', error);
+    return 0;
+  }
+}
+
+// Helper function to update crew and vessel recording percentages
+async function updateRecordingPercentages(crewMemberId: string, vesselId: string, monthYear: string) {
+  try {
+    // Get the daily record
+    const dailyRecord = await storage.getRestHoursDailyRecordByKey(crewMemberId, vesselId, monthYear);
+    if (!dailyRecord) {
+      return;
+    }
+
+    // Calculate the recording percentage
+    const recordingPercent = calculateRecordingPercentage(dailyRecord.dailyRecords, monthYear);
+
+    // Find existing crew record by filtering
+    const crewRecords = await storage.getRestHoursCrewRecordsByFilters({
+      vesselIds: [vesselId],
+      monthValue: monthYear
+    });
+    
+    const existingCrewRecord = crewRecords.find(r => r.crewMemberId === crewMemberId);
+    
+    if (existingCrewRecord) {
+      await storage.updateRestHoursCrewRecord(existingCrewRecord.id, {
+        recordingStatusPercent: recordingPercent
+      });
+    } else {
+      // Create crew record if it doesn't exist
+      await storage.createRestHoursCrewRecord({
+        crewMemberId,
+        vesselId,
+        vesselName: '', // Will be enriched by API
+        rank: dailyRecord.rank,
+        name: dailyRecord.name,
+        monthValue: monthYear,
+        month: formatMonthDisplay(monthYear),
+        signOnOffInfo: '',
+        recordingStatusPercent: recordingPercent,
+        activityConflicting: 0,
+        totalViolations: 0,
+        totalNCs: 0,
+        predictedViolations: 0,
+        predictedNCs: 0,
+      });
+    }
+
+    // Update vessel-level aggregate
+    await updateVesselRecordingPercentage(vesselId, monthYear);
+  } catch (error) {
+    console.error('Failed to update recording percentages:', error);
+  }
+}
+
+// Helper function to format month display
+function formatMonthDisplay(monthValue: string): string {
+  if (!monthValue) return '';
+  const [year, month] = monthValue.split('-');
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthIndex = parseInt(month) - 1;
+  return `${monthNames[monthIndex]}-${year}`;
+}
+
+// Helper function to update vessel-level recording percentage
+async function updateVesselRecordingPercentage(vesselId: string, monthValue: string) {
+  try {
+    // Get all crew records for this vessel and month
+    const crewRecords = await storage.getRestHoursCrewRecordsByFilters({
+      vesselIds: [vesselId],
+      monthValue
+    });
+
+    if (crewRecords.length === 0) {
+      return;
+    }
+
+    // Calculate average recording percentage across all crew
+    const totalPercent = crewRecords.reduce((sum, record) => sum + (record.recordingStatusPercent || 0), 0);
+    const averagePercent = Math.round(totalPercent / crewRecords.length);
+
+    // Find existing vessel record by filtering
+    const vesselRecords = await storage.getRestHoursVesselRecordsByFilters({
+      vesselIds: [vesselId],
+      monthValue
+    });
+    
+    const existingVesselRecord = vesselRecords.find(r => r.vesselId === vesselId && r.monthValue === monthValue);
+    
+    if (existingVesselRecord) {
+      await storage.updateRestHoursVesselRecord(existingVesselRecord.id, {
+        recordingStatusPercent: averagePercent
+      });
+    } else {
+      // Create vessel record if it doesn't exist
+      await storage.createRestHoursVesselRecord({
+        vesselId,
+        vesselName: '', // Will be enriched by API
+        monthValue,
+        month: formatMonthDisplay(monthValue),
+        totalCrew: crewRecords.length,
+        recordingStatusPercent: averagePercent,
+        activityConflicting: 0,
+        totalViolations: 0,
+        crewWithViolations: 0,
+        totalNCs: 0,
+        crewWithNCs: 0,
+        predictedViolations: 0,
+        predictedNCs: 0,
+        officeReviewStatus: 'Due',
+      });
+    }
+  } catch (error) {
+    console.error('Failed to update vessel recording percentage:', error);
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for database connectivity
   app.get("/api/health", async (req, res) => {
@@ -2214,6 +2358,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Determine target month
       const targetMonth = monthValue as string || '';
       
+      // Get all daily records for calculating percentages
+      const allDailyRecords = await storage.getRestHoursDailyRecords();
+      const dailyRecordsMap = new Map<string, any>();
+      allDailyRecords.forEach(record => {
+        const key = `${record.crewMemberId}-${record.vesselId}-${record.monthYear}`;
+        dailyRecordsMap.set(key, record);
+      });
+      
       // Generate crew records with left-join to persisted records
       const crewRecords = allCrewMembers
         .filter(crew => {
@@ -2235,7 +2387,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Use existing record
             return persistedRecord;
           } else {
-            // Create placeholder record with 0%
+            // Calculate actual recording percentage from daily records
+            const dailyRecord = dailyRecordsMap.get(key);
+            let recordingPercent = 0;
+            
+            if (dailyRecord && targetMonth) {
+              recordingPercent = calculateRecordingPercentage(dailyRecord.dailyRecords, targetMonth);
+            }
+            
+            // Create placeholder record with calculated percentage
             return {
               id: null,
               vesselId,
@@ -2246,7 +2406,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               month: formatMonth(targetMonth),
               monthValue: targetMonth,
               signOnOffInfo: getSignOnOffInfo(crew),
-              recordingStatusPercent: 0,
+              recordingStatusPercent: recordingPercent,
               activityConflicting: 0,
               totalViolations: 0,
               totalNCs: 0,
@@ -2431,6 +2591,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!record) {
         return res.status(404).json({ error: "Rest hours daily record not found" });
       }
+      
+      // Update recording percentages after saving
+      await updateRecordingPercentages(record.crewMemberId, record.vesselId, record.monthYear);
+      
       res.json(record);
     } catch (error) {
       console.error("Failed to update rest hours daily record:", error);
