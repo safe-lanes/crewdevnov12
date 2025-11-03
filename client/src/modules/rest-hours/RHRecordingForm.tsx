@@ -1600,6 +1600,9 @@ export const RHRecordingForm = ({
                   {/* Violations */}
                   <td className={`border border-gray-300 text-center font-semibold ${record.isPlan ? 'text-gray-500' : 'text-red-600'}`} style={{ padding: '2px' }}>
                     {(() => {
+                      // Hide predicted violations (from plan rows) when Show Planning is unchecked
+                      if (record.isPlan && !showPlanning) return '';
+                      
                       const visibleViolations = filterViolations(record.violations, complianceMode, opaMode);
                       const visibleDiagnostics = record.violationDiagnostics?.filter(d => visibleViolations.includes(d.code)) || [];
                       
