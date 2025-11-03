@@ -304,12 +304,14 @@ export const RHRecordingForm = ({
     setDailyRecords(prevRecords => {
       return prevRecords.map(record => {
         const newHours = [...template];
+        const restHours = newHours.filter(h => h === '').length / 2;
+        const workHours = 24 - restHours;
         return {
           ...record,
           hours: newHours,
           isPlan: true,
-          hoursOfRest24hr: calculateHoursOfRest24hr(newHours),
-          hoursOfWork24hr: calculateHoursOfWork24hr(newHours),
+          hoursOfRest24hr: restHours,
+          hoursOfWork24hr: workHours,
         };
       });
     });
