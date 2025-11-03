@@ -1391,13 +1391,13 @@ export const RHRecordingForm = ({
                     {i.toString().padStart(2, '0')}
                   </th>
                 ))}
-                <th rowSpan={2} className="border border-gray-300 p-0.5 min-w-[80px]" style={{ padding: '2px' }}>
-                  Hours of Rest in 24hr period
+                <th rowSpan={2} className="border border-gray-300 p-0.5 min-w-[60px]" style={{ padding: '2px' }}>
+                  RH in 24 Hr
                 </th>
                 <th rowSpan={2} className="border border-gray-300 p-0.5 min-w-[80px]" style={{ padding: '2px' }}>
                   Violations
                 </th>
-                <th rowSpan={2} className="border border-gray-300 p-0.5 min-w-[150px]" style={{ padding: '2px' }}>
+                <th rowSpan={2} className="border border-gray-300 p-0.5 min-w-[220px]" style={{ padding: '2px' }}>
                   Comments
                 </th>
                 {complianceMode === 'Rest' && (
