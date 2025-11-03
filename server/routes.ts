@@ -2304,9 +2304,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             );
             
             // Count crew members with violations (completed records only)
-            crewWithViolations = dailyRecords.filter(dr => 
+            const crewWithViolationsList = dailyRecords.filter(dr => 
               hasViolationDays(dr.dailyRecords, mode, isOpaMode, false)
-            ).length;
+            );
+            crewWithViolations = crewWithViolationsList.length;
+            
+            // Debug logging for MT Nordic Star
+            if (vesselId === 'VSL-003' && targetMonth === '2025-11') {
+              console.log(`🔍 [DEBUG] VSL-003 violations - Mode: ${mode}, OPA: ${isOpaMode}`);
+              console.log(`🔍 Total crew with violations: ${crewWithViolations}`);
+              crewWithViolationsList.forEach(dr => {
+                console.log(`  - ${dr.name} (${dr.rank}) - ${dr.crewMemberId}`);
+              });
+            }
           }
           
           if (persistedRecord) {
