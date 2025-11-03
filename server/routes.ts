@@ -681,10 +681,18 @@ async function updateVesselRecordingPercentage(vesselId: string, monthValue: str
         recordingStatusPercent: averagePercent
       });
     } else {
+      // Fetch vessel name from master data
+      const vesselMasterData = await storage.getMasterDataEntries('014');
+      const vessel = vesselMasterData?.find((v: any) => {
+        const entryId = v.entryId || v.entry_id;
+        return entryId === vesselId;
+      });
+      const vesselName = vessel?.name || vessel?.label || vessel?.vessel || '';
+      
       // Create vessel record if it doesn't exist
       await storage.createRestHoursVesselRecord({
         vesselId,
-        vesselName: '', // Will be enriched by API
+        vesselName,
         monthValue,
         month: formatMonthDisplay(monthValue),
         totalCrew: crewRecords.length,
