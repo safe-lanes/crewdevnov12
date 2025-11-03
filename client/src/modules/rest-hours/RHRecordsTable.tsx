@@ -6,10 +6,13 @@ import { ColDef, ICellRendererParams } from 'ag-grid-community';
 import { Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { RestHoursVesselRecord } from '@shared/schema';
+import { type ComplianceMode } from './violationFilters';
 
 interface RHRecordsTableProps {
   selectedVessels: string[];
   selectedMonth: string;
+  complianceMode: ComplianceMode;
+  opaMode: boolean;
 }
 
 const ProgressBarRenderer = (params: ICellRendererParams) => {
@@ -114,7 +117,7 @@ const OfficeReviewRenderer = (params: ICellRendererParams) => {
 };
 
 
-export function RHRecordsTable({ selectedVessels, selectedMonth }: RHRecordsTableProps) {
+export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode, opaMode }: RHRecordsTableProps) {
   const gridRef = useRef<AgGridReact>(null);
   const [, setLocation] = useLocation();
 

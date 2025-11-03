@@ -29,6 +29,8 @@ export const RestHoursRecord = (): JSX.Element => {
   }, []);
 
   const [showFilters, setShowFilters] = useState(true);
+  const [complianceMode, setComplianceMode] = useState<'Rest' | 'Work'>('Rest');
+  const [opaMode, setOpaMode] = useState(false);
   const [filterType, setFilterType] = useState<"vessel" | "fleet" | "addGroup">("vessel");
   const [selectedVessels, setSelectedVessels] = useState<string[]>([]);
   const [fleetValue, setFleetValue] = useState("");
@@ -56,7 +58,26 @@ export const RestHoursRecord = (): JSX.Element => {
   return (
     <div className="flex flex-col h-full">
       <SectionTitleComponents title="RH Records - Office Overview">
-        <div className="flex gap-2">
+        <div className="flex gap-4 items-center">
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-[#4f5863]">Rest</span>
+            <button
+              onClick={() => setComplianceMode(prev => prev === 'Rest' ? 'Work' : 'Rest')}
+              className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${
+                complianceMode === 'Work' ? 'bg-blue-600' : 'bg-gray-300'
+              }`}
+              data-testid="toggle-compliance-mode"
+              type="button"
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  complianceMode === 'Work' ? 'translate-x-5' : 'translate-x-1'
+                }`}
+              />
+            </button>
+            <span className="text-xs text-[#4f5863]">Work</span>
+          </div>
+          
           <Button
             variant="outline"
             size="sm"
@@ -228,6 +249,8 @@ export const RestHoursRecord = (): JSX.Element => {
         <RHRecordsTable 
           selectedVessels={filterType === 'vessel' ? selectedVessels : []}
           selectedMonth={periodValue}
+          complianceMode={complianceMode}
+          opaMode={opaMode}
         />
       </div>
     </div>
