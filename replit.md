@@ -53,6 +53,7 @@ The application employs a modern web stack with a module-first architecture for 
     - **Record**: Manages recordkeeping for individual seafarers.
         - **RH Recording Form**: Interactive modal form with a 3-level drill-down structure, HTML table for data entry with half-hour divisions, arrow key navigation, and displays both calendar-day and regulatory "any period" rolling window calculations.
         - **Violation Detection**: Implements 8 violation codes using backward-looking windows for regulatory compliance, providing detailed diagnostics and multi-range violation highlighting. Supports OPA-specific violations.
+        - **Recording Status Calculation**: Dynamic percentage calculation based on actual form completion (filled days / total days in month). Progress bars display with color coding (grey for 0%, yellow for partial, green for 100%). Crew-level percentages are calculated individually, while vessel-level percentages aggregate across all crew members. Updates automatically when daily records are saved.
     - **Plan**: Handles work planning, fixed working hours, and variable tasks for groups of seafarers.
         - **Variable Tasks**: Full CRUD implementation for planning and tracking with shadcn Table components.
         - **Variable Task Form**: Modal for task planning including Date/Time, Record Type, Tasks Involved, advanced Crew Selection System (linked to Rank Administration configurations with department categorization and group shortcuts), Comments, and draft/submit workflow.
