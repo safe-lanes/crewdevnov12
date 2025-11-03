@@ -1722,11 +1722,11 @@ export const RHRecordingForm = ({
                     <>
                       {/* Any Period: Work in 24hr */}
                       <td 
-                        className="border border-gray-300 text-center bg-blue-50" 
+                        className={`border border-gray-300 text-center bg-blue-50 ${record.isPlan ? 'font-light text-gray-400' : ''}`}
                         style={{ 
                           padding: '2px',
-                          color: record.anyPeriodWork24hr > 14 ? 'red' : 'inherit',
-                          fontWeight: record.anyPeriodWork24hr > 14 ? 'bold' : 'normal'
+                          color: record.isPlan ? undefined : (record.anyPeriodWork24hr > 14 ? 'red' : 'inherit'),
+                          fontWeight: record.isPlan ? 300 : (record.anyPeriodWork24hr > 14 ? 'bold' : 'normal')
                         }}
                       >
                         {record.anyPeriodWork24hr.toFixed(1)}
@@ -1734,11 +1734,11 @@ export const RHRecordingForm = ({
                       
                       {/* Any Period: Work in 7 days */}
                       <td 
-                        className="border border-gray-300 text-center bg-blue-50" 
+                        className={`border border-gray-300 text-center bg-blue-50 ${record.isPlan ? 'font-light text-gray-400' : ''}`}
                         style={{ 
                           padding: '2px',
-                          color: record.anyPeriodWork7day > 72 ? 'red' : 'inherit',
-                          fontWeight: record.anyPeriodWork7day > 72 ? 'bold' : 'normal'
+                          color: record.isPlan ? undefined : (record.anyPeriodWork7day > 72 ? 'red' : 'inherit'),
+                          fontWeight: record.isPlan ? 300 : (record.anyPeriodWork7day > 72 ? 'bold' : 'normal')
                         }}
                       >
                         {record.anyPeriodWork7day.toFixed(1)}
