@@ -165,25 +165,25 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
       field: 'rank',
       width: 170,
       pinned: 'left',
-      cellStyle: { fontWeight: 500, fontSize: '13px', display: 'flex', alignItems: 'center' }
+      cellStyle: { fontWeight: 500, fontSize: '13px', display: 'flex', alignItems: 'center' } as any
     },
     {
       headerName: 'Name',
       field: 'name',
       width: 200,
-      cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center' }
+      cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center' } as any
     },
     {
       headerName: 'Month',
       field: 'month',
       width: 130,
-      cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center' }
+      cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center' } as any
     },
     {
       headerName: 'S.On or S.Off with Role',
       field: 'signOnOffInfo',
       width: 150,
-      cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }
+      cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' } as any
     },
     {
       headerName: 'Recording Status',
