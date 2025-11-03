@@ -308,7 +308,7 @@ export const RHRecordingForm = ({
     if (existingRecord) {
       // Existing record found - load it
       setFormId(existingRecord.id);
-      setShowPlanning(existingRecord.showPlanning || false);
+      setShowPlanning(existingRecord.showPlanning ?? true);
       setOpaMode(existingRecord.opaMode || false);
       
       try {
