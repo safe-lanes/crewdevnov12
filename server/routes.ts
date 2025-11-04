@@ -2286,6 +2286,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let predictedViolations = 0;
           let crewWithViolations = 0;
           let crewWithPredictedViolations = 0;
+          let crewWithViolationsDetails: { name: string; rank: string }[] = [];
+          let crewWithPredictedViolationsDetails: { name: string; rank: string }[] = [];
           const dailyRecords = dailyRecordsByVesselMonth.get(key) || [];
           
           if (dailyRecords.length > 0 && targetMonth) {
@@ -2316,7 +2318,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             crewWithViolations = crewWithViolationsRecords.length;
             
             // Collect crew member details for violations
-            const crewWithViolationsDetails = crewWithViolationsRecords.map(dr => ({
+            crewWithViolationsDetails = crewWithViolationsRecords.map(dr => ({
               name: dr.name,
               rank: dr.rank
             }));
@@ -2328,7 +2330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             crewWithPredictedViolations = crewWithPredictedViolationsRecords.length;
             
             // Collect crew member details for predicted violations
-            const crewWithPredictedViolationsDetails = crewWithPredictedViolationsRecords.map(dr => ({
+            crewWithPredictedViolationsDetails = crewWithPredictedViolationsRecords.map(dr => ({
               name: dr.name,
               rank: dr.rank
             }));
@@ -2347,8 +2349,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
           
-          const crewWithViolationsDetailsJson = dailyRecords.length > 0 ? JSON.stringify(crewWithViolationsDetails) : null;
-          const crewWithPredictedViolationsDetailsJson = dailyRecords.length > 0 ? JSON.stringify(crewWithPredictedViolationsDetails) : null;
+          const crewWithViolationsDetailsJson = crewWithViolationsDetails.length > 0 ? JSON.stringify(crewWithViolationsDetails) : null;
+          const crewWithPredictedViolationsDetailsJson = crewWithPredictedViolationsDetails.length > 0 ? JSON.stringify(crewWithPredictedViolationsDetails) : null;
           
           if (persistedRecord) {
             // Use existing record with real crew count and calculated values
@@ -2400,6 +2402,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let predictedViolations = 0;
           let crewWithViolations = 0;
           let crewWithPredictedViolations = 0;
+          let crewWithViolationsDetails: { name: string; rank: string }[] = [];
+          let crewWithPredictedViolationsDetails: { name: string; rank: string }[] = [];
           
           if (dailyRecords.length > 0 && record.monthValue) {
             const percentages = dailyRecords.map(dr => 
@@ -2428,7 +2432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             crewWithViolations = crewWithViolationsRecords.length;
             
             // Collect crew member details for violations
-            const crewWithViolationsDetails = crewWithViolationsRecords.map(dr => ({
+            crewWithViolationsDetails = crewWithViolationsRecords.map(dr => ({
               name: dr.name,
               rank: dr.rank
             }));
@@ -2440,7 +2444,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             crewWithPredictedViolations = crewWithPredictedViolationsRecords.length;
             
             // Collect crew member details for predicted violations
-            const crewWithPredictedViolationsDetails = crewWithPredictedViolationsRecords.map(dr => ({
+            crewWithPredictedViolationsDetails = crewWithPredictedViolationsRecords.map(dr => ({
               name: dr.name,
               rank: dr.rank
             }));
