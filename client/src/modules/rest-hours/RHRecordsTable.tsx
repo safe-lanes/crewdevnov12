@@ -414,7 +414,7 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
       headerName: 'Predicted NCs',
       field: 'predictedNCs',
       width: 140,
-      cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }
+      cellRenderer: BadgeRenderer,
     },
     {
       headerName: 'Office Review',
