@@ -5,6 +5,7 @@ import { AgGridReact } from 'ag-grid-react';
 import { ColDef, ICellRendererParams } from 'ag-grid-community';
 import { Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { RestHoursVesselRecord } from '@shared/schema';
 import { type ComplianceMode } from './violationFilters';
 
@@ -60,6 +61,16 @@ const YesNoRenderer = (params: ICellRendererParams) => {
 const ViolationsRenderer = (params: ICellRendererParams) => {
   const violations = params.data?.totalViolations || 0;
   const crewCount = params.data?.crewWithViolations || 0;
+  const crewDetailsJson = params.data?.crewWithViolationsDetails;
+  
+  let crewDetails: { name: string; rank: string }[] = [];
+  try {
+    if (crewDetailsJson) {
+      crewDetails = JSON.parse(crewDetailsJson);
+    }
+  } catch (e) {
+    console.error('Failed to parse crew details:', e);
+  }
 
   if (violations === 0) return null;
 
@@ -68,9 +79,31 @@ const ViolationsRenderer = (params: ICellRendererParams) => {
       <span className="px-3 py-1.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
         {violations}
       </span>
-      <span className="px-3 py-1.5 rounded font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
-        {crewCount}
-      </span>
+      {crewDetails.length > 0 ? (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="px-3 py-1.5 rounded font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center cursor-help" style={{ fontSize: '13px' }}>
+                {crewCount}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              <div className="text-sm">
+                <div className="font-semibold mb-1">Crew with Violations:</div>
+                {crewDetails.map((crew, index) => (
+                  <div key={index} className="text-xs">
+                    {crew.name} - {crew.rank}
+                  </div>
+                ))}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ) : (
+        <span className="px-3 py-1.5 rounded font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
+          {crewCount}
+        </span>
+      )}
     </div>
   );
 };
@@ -109,6 +142,16 @@ const BadgeRenderer = (params: ICellRendererParams) => {
 const PredictedViolationsRenderer = (params: ICellRendererParams) => {
   const predictedViolations = params.data?.predictedViolations || 0;
   const crewCount = params.data?.crewWithPredictedViolations || 0;
+  const crewDetailsJson = params.data?.crewWithPredictedViolationsDetails;
+  
+  let crewDetails: { name: string; rank: string }[] = [];
+  try {
+    if (crewDetailsJson) {
+      crewDetails = JSON.parse(crewDetailsJson);
+    }
+  } catch (e) {
+    console.error('Failed to parse predicted crew details:', e);
+  }
 
   if (predictedViolations === 0) return null;
 
@@ -117,9 +160,31 @@ const PredictedViolationsRenderer = (params: ICellRendererParams) => {
       <span className="px-3 py-1.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
         {predictedViolations}
       </span>
-      <span className="px-3 py-1.5 rounded font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
-        {crewCount}
-      </span>
+      {crewDetails.length > 0 ? (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="px-3 py-1.5 rounded font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center cursor-help" style={{ fontSize: '13px' }}>
+                {crewCount}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              <div className="text-sm">
+                <div className="font-semibold mb-1">Crew with Predicted Violations:</div>
+                {crewDetails.map((crew, index) => (
+                  <div key={index} className="text-xs">
+                    {crew.name} - {crew.rank}
+                  </div>
+                ))}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ) : (
+        <span className="px-3 py-1.5 rounded font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
+          {crewCount}
+        </span>
+      )}
     </div>
   );
 };

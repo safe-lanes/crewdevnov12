@@ -2310,14 +2310,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
             );
             
             // Count crew members with violations (completed records only) using deduplicated records
-            crewWithViolations = uniqueDailyRecords.filter(dr => 
+            const crewWithViolationsRecords = uniqueDailyRecords.filter(dr => 
               hasViolationDays(dr.dailyRecords, mode, isOpaMode, false)
-            ).length;
+            );
+            crewWithViolations = crewWithViolationsRecords.length;
+            
+            // Collect crew member details for violations
+            const crewWithViolationsDetails = crewWithViolationsRecords.map(dr => ({
+              name: dr.name,
+              rank: dr.rank
+            }));
             
             // Count crew members with predicted violations using deduplicated records
-            crewWithPredictedViolations = uniqueDailyRecords.filter(dr => 
+            const crewWithPredictedViolationsRecords = uniqueDailyRecords.filter(dr => 
               hasViolationDays(dr.dailyRecords, mode, isOpaMode, true)
-            ).length;
+            );
+            crewWithPredictedViolations = crewWithPredictedViolationsRecords.length;
+            
+            // Collect crew member details for predicted violations
+            const crewWithPredictedViolationsDetails = crewWithPredictedViolationsRecords.map(dr => ({
+              name: dr.name,
+              rank: dr.rank
+            }));
             
             // Debug logging for MT Nordic Star
             if (vesselId === 'VSL-003' && targetMonth === '2025-11') {
@@ -2333,6 +2347,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
           
+          const crewWithViolationsDetailsJson = dailyRecords.length > 0 ? JSON.stringify(crewWithViolationsDetails) : null;
+          const crewWithPredictedViolationsDetailsJson = dailyRecords.length > 0 ? JSON.stringify(crewWithPredictedViolationsDetails) : null;
+          
           if (persistedRecord) {
             // Use existing record with real crew count and calculated values
             return {
@@ -2342,7 +2359,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               totalViolations: totalViolations,
               predictedViolations: predictedViolations,
               crewWithViolations: crewWithViolations,
-              crewWithPredictedViolations: crewWithPredictedViolations
+              crewWithPredictedViolations: crewWithPredictedViolations,
+              crewWithViolationsDetails: crewWithViolationsDetailsJson,
+              crewWithPredictedViolationsDetails: crewWithPredictedViolationsDetailsJson
             };
           } else {
             // Create placeholder record with calculated values
@@ -2357,10 +2376,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               activityConflicting: false,
               totalViolations: totalViolations,
               crewWithViolations: crewWithViolations,
+              crewWithViolationsDetails: crewWithViolationsDetailsJson,
               totalNCs: 0,
               crewWithNCs: 0,
               predictedViolations: predictedViolations,
               crewWithPredictedViolations: crewWithPredictedViolations,
+              crewWithPredictedViolationsDetails: crewWithPredictedViolationsDetailsJson,
               predictedNCs: 0,
               officeReviewStatus: 'Due',
               createdAt: null,
@@ -2401,14 +2422,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
             );
             
             // Count crew members with violations (completed records only) using deduplicated records
-            crewWithViolations = uniqueDailyRecords.filter(dr => 
+            const crewWithViolationsRecords = uniqueDailyRecords.filter(dr => 
               hasViolationDays(dr.dailyRecords, mode, isOpaMode, false)
-            ).length;
+            );
+            crewWithViolations = crewWithViolationsRecords.length;
+            
+            // Collect crew member details for violations
+            const crewWithViolationsDetails = crewWithViolationsRecords.map(dr => ({
+              name: dr.name,
+              rank: dr.rank
+            }));
             
             // Count crew members with predicted violations using deduplicated records
-            crewWithPredictedViolations = uniqueDailyRecords.filter(dr => 
+            const crewWithPredictedViolationsRecords = uniqueDailyRecords.filter(dr => 
               hasViolationDays(dr.dailyRecords, mode, isOpaMode, true)
-            ).length;
+            );
+            crewWithPredictedViolations = crewWithPredictedViolationsRecords.length;
+            
+            // Collect crew member details for predicted violations
+            const crewWithPredictedViolationsDetails = crewWithPredictedViolationsRecords.map(dr => ({
+              name: dr.name,
+              rank: dr.rank
+            }));
             
             return {
               ...record,
@@ -2417,7 +2452,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               totalViolations: totalViolations,
               predictedViolations: predictedViolations,
               crewWithViolations: crewWithViolations,
-              crewWithPredictedViolations: crewWithPredictedViolations
+              crewWithPredictedViolations: crewWithPredictedViolations,
+              crewWithViolationsDetails: JSON.stringify(crewWithViolationsDetails),
+              crewWithPredictedViolationsDetails: JSON.stringify(crewWithPredictedViolationsDetails)
             };
           }
           
@@ -2428,7 +2465,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             totalViolations: 0,
             predictedViolations: 0,
             crewWithViolations: 0,
-            crewWithPredictedViolations: 0
+            crewWithPredictedViolations: 0,
+            crewWithViolationsDetails: null,
+            crewWithPredictedViolationsDetails: null
           };
         });
       }
