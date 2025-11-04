@@ -304,68 +304,74 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
     {
       headerName: 'Rank',
       field: 'rank',
-      width: 170,
+      width: 150,
       pinned: 'left',
       cellStyle: { fontWeight: 500, fontSize: '13px', display: 'flex', alignItems: 'center' } as any
     },
     {
       headerName: 'Name',
       field: 'name',
-      width: 200,
+      width: 180,
       cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center' } as any
     },
     {
       headerName: 'Month',
       field: 'month',
-      width: 130,
+      width: 110,
       cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center' } as any
     },
     {
-      headerName: 'S.On or S.Off with Role',
+      headerName: 'S.On/Off',
       field: 'signOnOffInfo',
-      width: 150,
-      cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' } as any
-    },
-    {
-      headerName: 'Recording Status',
-      field: 'recordingStatusPercent',
-      width: 200,
-      cellRenderer: ProgressBarRenderer,
-    },
-    {
-      headerName: 'Activity conflicting with actual recording',
-      field: 'activityConflicting',
-      width: 140,
-      cellRenderer: YesNoRenderer,
-      headerTooltip: 'Indicates conflicts between recorded hours and variable tasks'
-    },
-    {
-      headerName: 'Total Violations',
-      field: 'totalViolations',
-      width: 140,
-      cellRenderer: ViolationsWithDatesRenderer,
-    },
-    {
-      headerName: 'Total NCs',
-      field: 'totalNCs',
       width: 120,
-      cellRenderer: BadgeRenderer,
+      cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' } as any,
+      headerTooltip: 'S.On or S.Off with Role'
     },
     {
-      headerName: 'Predicted Violations',
+      headerName: 'Status',
+      field: 'recordingStatusPercent',
+      width: 160,
+      cellRenderer: ProgressBarRenderer,
+      headerTooltip: 'Recording Status'
+    },
+    {
+      headerName: 'Activity Conflicts',
+      field: 'activityConflicting',
+      width: 120,
+      cellRenderer: YesNoRenderer,
+      headerTooltip: 'Activity conflicting with actual recording'
+    },
+    {
+      headerName: 'Violations',
+      field: 'totalViolations',
+      width: 120,
+      cellRenderer: ViolationsWithDatesRenderer,
+      headerTooltip: 'Total Violations'
+    },
+    {
+      headerName: 'NCs',
+      field: 'totalNCs',
+      width: 100,
+      cellRenderer: BadgeRenderer,
+      headerTooltip: 'Total NCs'
+    },
+    {
+      headerName: 'Pred. Violations',
       field: 'predictedViolations',
-      width: 150,
+      width: 120,
       cellRenderer: PredictedViolationsWithDatesRenderer,
+      headerTooltip: 'Predicted Violations'
     },
     {
-      headerName: 'Predicted NCs',
+      headerName: 'Pred. NCs',
       field: 'predictedNCs',
-      width: 140,
+      width: 110,
       cellRenderer: BadgeRenderer,
+      headerTooltip: 'Predicted NCs'
     },
     {
       headerName: 'Actions',
-      width: 100,
+      width: 90,
       cellRenderer: ActionsRenderer,
       pinned: 'right',
       sortable: false,
