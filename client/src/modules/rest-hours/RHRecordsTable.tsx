@@ -365,19 +365,19 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
       field: 'vesselName',
       width: 150,
       pinned: 'left' as const,
-      cellStyle: { fontWeight: 500, fontSize: '13px', display: 'flex', alignItems: 'center' }
+      cellStyle: { fontWeight: 500, fontSize: '13px', display: 'flex', alignItems: 'center' } as any
     },
     {
       headerName: 'Month',
       field: 'month',
       width: 110,
-      cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center' }
+      cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center' } as any
     },
     {
       headerName: 'Total Crew',
       field: 'totalCrew',
       width: 100,
-      cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }
+      cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' } as any
     },
     {
       headerName: 'Status',
