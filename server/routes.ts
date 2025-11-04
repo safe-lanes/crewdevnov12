@@ -678,6 +678,44 @@ function hasViolationDays(dailyRecordsJson: string, complianceMode: 'Rest' | 'Wo
   }
 }
 
+// Helper function to get array of dates (day numbers) where violations occurred
+function getViolationDates(dailyRecordsJson: string, complianceMode: 'Rest' | 'Work', opaMode: boolean, isPlanMode: boolean): number[] {
+  try {
+    const dailyRecords = JSON.parse(dailyRecordsJson);
+    if (!Array.isArray(dailyRecords) || dailyRecords.length === 0) {
+      return [];
+    }
+
+    // Collect day numbers where violations occurred
+    const violationDates: number[] = [];
+    dailyRecords.forEach((day: any) => {
+      // Filter by isPlan status
+      const dayIsPlan = day.isPlan === true;
+      if (isPlanMode !== dayIsPlan) {
+        return;
+      }
+      
+      // Check if day has violations
+      if (!Array.isArray(day.violations) || day.violations.length === 0) {
+        return;
+      }
+      
+      // Filter violations based on compliance mode
+      const relevantViolations = filterViolationsByMode(day.violations, complianceMode, opaMode);
+      
+      // Add day number if there are relevant violations
+      if (relevantViolations.length > 0 && day.day) {
+        violationDates.push(day.day);
+      }
+    });
+
+    return violationDates.sort((a, b) => a - b); // Sort dates in ascending order
+  } catch (error) {
+    console.error('Failed to get violation dates:', error);
+    return [];
+  }
+}
+
 // Helper function to update crew and vessel recording percentages
 async function updateRecordingPercentages(crewMemberId: string, vesselId: string, monthYear: string) {
   try {
@@ -2334,6 +2372,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
               name: dr.name,
               rank: dr.rank
             }));
+          }
+          
+          // Collect violation dates across all crew members on this vessel
+          let violationDates: number[] = [];
+          let predictedViolationDates: number[] = [];
+          
+          if (dailyRecords.length > 0) {
+            // Deduplicate daily records by crewMemberId
+            const uniqueDailyRecords = Array.from(
+              new Map(dailyRecords.map(dr => [dr.crewMemberId, dr])).values()
+            );
+            
+            // Collect all violation dates from all crew members
+            const allViolationDates = new Set<number>();
+            const allPredictedViolationDates = new Set<number>();
+            
+            uniqueDailyRecords.forEach(dr => {
+              const completedDates = getViolationDates(dr.dailyRecords, mode, isOpaMode, false);
+              const plannedDates = getViolationDates(dr.dailyRecords, mode, isOpaMode, true);
+              
+              completedDates.forEach(date => allViolationDates.add(date));
+              plannedDates.forEach(date => allPredictedViolationDates.add(date));
+            });
+            
+            violationDates = Array.from(allViolationDates).sort((a, b) => a - b);
+            predictedViolationDates = Array.from(allPredictedViolationDates).sort((a, b) => a - b);
             
             // Debug logging for MT Nordic Star
             if (vesselId === 'VSL-003' && targetMonth === '2025-11') {
@@ -2351,6 +2415,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           const crewWithViolationsDetailsJson = crewWithViolationsDetails.length > 0 ? JSON.stringify(crewWithViolationsDetails) : null;
           const crewWithPredictedViolationsDetailsJson = crewWithPredictedViolationsDetails.length > 0 ? JSON.stringify(crewWithPredictedViolationsDetails) : null;
+          const violationDatesJson = violationDates.length > 0 ? JSON.stringify(violationDates) : null;
+          const predictedViolationDatesJson = predictedViolationDates.length > 0 ? JSON.stringify(predictedViolationDates) : null;
           
           if (persistedRecord) {
             // Use existing record with real crew count and calculated values
@@ -2363,7 +2429,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               crewWithViolations: crewWithViolations,
               crewWithPredictedViolations: crewWithPredictedViolations,
               crewWithViolationsDetails: crewWithViolationsDetailsJson,
-              crewWithPredictedViolationsDetails: crewWithPredictedViolationsDetailsJson
+              crewWithPredictedViolationsDetails: crewWithPredictedViolationsDetailsJson,
+              violationDates: violationDatesJson,
+              predictedViolationDates: predictedViolationDatesJson
             };
           } else {
             // Create placeholder record with calculated values
@@ -2379,11 +2447,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               totalViolations: totalViolations,
               crewWithViolations: crewWithViolations,
               crewWithViolationsDetails: crewWithViolationsDetailsJson,
+              violationDates: violationDatesJson,
               totalNCs: 0,
               crewWithNCs: 0,
               predictedViolations: predictedViolations,
               crewWithPredictedViolations: crewWithPredictedViolations,
               crewWithPredictedViolationsDetails: crewWithPredictedViolationsDetailsJson,
+              predictedViolationDates: predictedViolationDatesJson,
               predictedNCs: 0,
               officeReviewStatus: 'Due',
               createdAt: null,
@@ -2449,6 +2519,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
               rank: dr.rank
             }));
             
+            // Collect violation dates across all crew members
+            const allViolationDates = new Set<number>();
+            const allPredictedViolationDates = new Set<number>();
+            
+            uniqueDailyRecords.forEach(dr => {
+              const completedDates = getViolationDates(dr.dailyRecords, mode, isOpaMode, false);
+              const plannedDates = getViolationDates(dr.dailyRecords, mode, isOpaMode, true);
+              
+              completedDates.forEach(date => allViolationDates.add(date));
+              plannedDates.forEach(date => allPredictedViolationDates.add(date));
+            });
+            
+            const violationDates = Array.from(allViolationDates).sort((a, b) => a - b);
+            const predictedViolationDates = Array.from(allPredictedViolationDates).sort((a, b) => a - b);
+            
             return {
               ...record,
               totalCrew: crewCountByVessel.get(record.vesselId) || 0,
@@ -2458,7 +2543,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               crewWithViolations: crewWithViolations,
               crewWithPredictedViolations: crewWithPredictedViolations,
               crewWithViolationsDetails: JSON.stringify(crewWithViolationsDetails),
-              crewWithPredictedViolationsDetails: JSON.stringify(crewWithPredictedViolationsDetails)
+              crewWithPredictedViolationsDetails: JSON.stringify(crewWithPredictedViolationsDetails),
+              violationDates: violationDates.length > 0 ? JSON.stringify(violationDates) : null,
+              predictedViolationDates: predictedViolationDates.length > 0 ? JSON.stringify(predictedViolationDates) : null
             };
           }
           
@@ -2471,7 +2558,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             crewWithViolations: 0,
             crewWithPredictedViolations: 0,
             crewWithViolationsDetails: null,
-            crewWithPredictedViolationsDetails: null
+            crewWithPredictedViolationsDetails: null,
+            violationDates: null,
+            predictedViolationDates: null
           };
         });
       }

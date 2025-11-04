@@ -62,8 +62,11 @@ const ViolationsRenderer = (params: ICellRendererParams) => {
   const violations = params.data?.totalViolations || 0;
   const crewCount = params.data?.crewWithViolations || 0;
   const crewDetailsJson = params.data?.crewWithViolationsDetails;
+  const violationDatesJson = params.data?.violationDates;
   
   let crewDetails: { name: string; rank: string }[] = [];
+  let violationDates: number[] = [];
+  
   try {
     if (crewDetailsJson) {
       crewDetails = JSON.parse(crewDetailsJson);
@@ -71,14 +74,49 @@ const ViolationsRenderer = (params: ICellRendererParams) => {
   } catch (e) {
     console.error('Failed to parse crew details:', e);
   }
+  
+  try {
+    if (violationDatesJson) {
+      violationDates = JSON.parse(violationDatesJson);
+    }
+  } catch (e) {
+    console.error('Failed to parse violation dates:', e);
+  }
+  
+  // Format dates with ordinal suffixes (1st, 2nd, 3rd, etc.)
+  const formatDate = (day: number): string => {
+    const suffix = ['th', 'st', 'nd', 'rd'];
+    const v = day % 100;
+    return day + (suffix[(v - 20) % 10] || suffix[v] || suffix[0]);
+  };
 
   if (violations === 0) return null;
 
   return (
     <div className="flex items-center justify-center gap-3 h-full py-2">
-      <span className="px-3 py-1.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
-        {violations}
-      </span>
+      {violationDates.length > 0 ? (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="px-3 py-1.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center cursor-help" style={{ fontSize: '13px' }}>
+                {violations}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              <div className="text-sm">
+                <div className="font-semibold mb-1">Violation Dates:</div>
+                <div className="text-xs">
+                  {violationDates.map(formatDate).join(', ')}
+                </div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ) : (
+        <span className="px-3 py-1.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
+          {violations}
+        </span>
+      )}
       {crewDetails.length > 0 ? (
         <TooltipProvider>
           <Tooltip>
@@ -143,8 +181,11 @@ const PredictedViolationsRenderer = (params: ICellRendererParams) => {
   const predictedViolations = params.data?.predictedViolations || 0;
   const crewCount = params.data?.crewWithPredictedViolations || 0;
   const crewDetailsJson = params.data?.crewWithPredictedViolationsDetails;
+  const predictedDatesJson = params.data?.predictedViolationDates;
   
   let crewDetails: { name: string; rank: string }[] = [];
+  let predictedDates: number[] = [];
+  
   try {
     if (crewDetailsJson) {
       crewDetails = JSON.parse(crewDetailsJson);
@@ -152,14 +193,49 @@ const PredictedViolationsRenderer = (params: ICellRendererParams) => {
   } catch (e) {
     console.error('Failed to parse predicted crew details:', e);
   }
+  
+  try {
+    if (predictedDatesJson) {
+      predictedDates = JSON.parse(predictedDatesJson);
+    }
+  } catch (e) {
+    console.error('Failed to parse predicted violation dates:', e);
+  }
+  
+  // Format dates with ordinal suffixes (1st, 2nd, 3rd, etc.)
+  const formatDate = (day: number): string => {
+    const suffix = ['th', 'st', 'nd', 'rd'];
+    const v = day % 100;
+    return day + (suffix[(v - 20) % 10] || suffix[v] || suffix[0]);
+  };
 
   if (predictedViolations === 0) return null;
 
   return (
     <div className="flex items-center justify-center gap-3 h-full py-2">
-      <span className="px-3 py-1.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
-        {predictedViolations}
-      </span>
+      {predictedDates.length > 0 ? (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="px-3 py-1.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center cursor-help" style={{ fontSize: '13px' }}>
+                {predictedViolations}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              <div className="text-sm">
+                <div className="font-semibold mb-1">Predicted Violation Dates:</div>
+                <div className="text-xs">
+                  {predictedDates.map(formatDate).join(', ')}
+                </div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ) : (
+        <span className="px-3 py-1.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
+          {predictedViolations}
+        </span>
+      )}
       {crewDetails.length > 0 ? (
         <TooltipProvider>
           <Tooltip>
