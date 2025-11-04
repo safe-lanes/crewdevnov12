@@ -61,14 +61,18 @@ const YesNoRenderer = (params: ICellRendererParams) => {
 
 const BadgeRenderer = (params: ICellRendererParams) => {
   const value = params.value ?? 0;
-  const isZero = value === 0;
+  // Normalize to number to handle both numeric and string zeroes
+  const isZero = Number(value) === 0;
+
+  // Return empty div with preserved alignment for zero values
+  if (isZero) {
+    return <div className="flex items-center justify-center h-full py-2"></div>;
+  }
 
   return (
     <div className="flex items-center justify-center h-full py-2">
       <span 
-        className={`px-3 py-1.5 rounded font-semibold min-w-[32px] text-center ${
-          isZero ? 'bg-gray-200 text-gray-600' : 'bg-pink-100 text-red-600'
-        }`} 
+        className="px-3 py-1.5 rounded font-semibold min-w-[32px] text-center bg-pink-100 text-red-600" 
         style={{ fontSize: '13px' }}
       >
         {value}
