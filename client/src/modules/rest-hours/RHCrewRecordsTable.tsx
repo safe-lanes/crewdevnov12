@@ -4,6 +4,7 @@ import { AgGridReact } from 'ag-grid-react';
 import { ColDef, ICellRendererParams } from 'ag-grid-community';
 import { Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { RestHoursCrewRecord } from '@shared/schema';
 import { RHRecordingForm } from './RHRecordingForm';
 import { type ComplianceMode } from './violationFilters';
@@ -67,6 +68,142 @@ const BadgeRenderer = (params: ICellRendererParams) => {
   // Return empty div with preserved alignment for zero values
   if (isZero) {
     return <div className="flex items-center justify-center h-full py-2"></div>;
+  }
+
+  return (
+    <div className="flex items-center justify-center h-full py-2">
+      <span 
+        className="px-3 py-1.5 rounded font-semibold min-w-[32px] text-center bg-pink-100 text-red-600" 
+        style={{ fontSize: '13px' }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+};
+
+const ViolationsWithDatesRenderer = (params: ICellRendererParams) => {
+  const value = params.value ?? 0;
+  const violationDatesJson = params.data?.violationDates;
+  
+  let violationDates: number[] = [];
+  try {
+    if (violationDatesJson) {
+      violationDates = JSON.parse(violationDatesJson);
+    }
+  } catch (e) {
+    console.error('Failed to parse violation dates:', e);
+  }
+  
+  // Format dates with ordinal suffixes (1st, 2nd, 3rd, etc.)
+  const formatDate = (day: number): string => {
+    const suffix = ['th', 'st', 'nd', 'rd'];
+    const v = day % 100;
+    return day + (suffix[(v - 20) % 10] || suffix[v] || suffix[0]);
+  };
+
+  // Normalize to number to handle both numeric and string zeroes
+  const isZero = Number(value) === 0;
+
+  // Return empty div with preserved alignment for zero values
+  if (isZero) {
+    return <div className="flex items-center justify-center h-full py-2"></div>;
+  }
+
+  // Show tooltip if we have violation dates
+  if (violationDates.length > 0) {
+    return (
+      <div className="flex items-center justify-center h-full py-2">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span 
+                className="px-3 py-1.5 rounded font-semibold min-w-[32px] text-center bg-pink-100 text-red-600 cursor-help" 
+                style={{ fontSize: '13px' }}
+              >
+                {value}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              <div className="text-sm">
+                <div className="font-semibold mb-1">Violation Dates:</div>
+                <div className="text-xs">
+                  {violationDates.map(formatDate).join(', ')}
+                </div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-center h-full py-2">
+      <span 
+        className="px-3 py-1.5 rounded font-semibold min-w-[32px] text-center bg-pink-100 text-red-600" 
+        style={{ fontSize: '13px' }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+};
+
+const PredictedViolationsWithDatesRenderer = (params: ICellRendererParams) => {
+  const value = params.value ?? 0;
+  const predictedDatesJson = params.data?.predictedViolationDates;
+  
+  let predictedDates: number[] = [];
+  try {
+    if (predictedDatesJson) {
+      predictedDates = JSON.parse(predictedDatesJson);
+    }
+  } catch (e) {
+    console.error('Failed to parse predicted violation dates:', e);
+  }
+  
+  // Format dates with ordinal suffixes (1st, 2nd, 3rd, etc.)
+  const formatDate = (day: number): string => {
+    const suffix = ['th', 'st', 'nd', 'rd'];
+    const v = day % 100;
+    return day + (suffix[(v - 20) % 10] || suffix[v] || suffix[0]);
+  };
+
+  // Normalize to number to handle both numeric and string zeroes
+  const isZero = Number(value) === 0;
+
+  // Return empty div with preserved alignment for zero values
+  if (isZero) {
+    return <div className="flex items-center justify-center h-full py-2"></div>;
+  }
+
+  // Show tooltip if we have predicted violation dates
+  if (predictedDates.length > 0) {
+    return (
+      <div className="flex items-center justify-center h-full py-2">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span 
+                className="px-3 py-1.5 rounded font-semibold min-w-[32px] text-center bg-pink-100 text-red-600 cursor-help" 
+                style={{ fontSize: '13px' }}
+              >
+                {value}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              <div className="text-sm">
+                <div className="font-semibold mb-1">Predicted Violation Dates:</div>
+                <div className="text-xs">
+                  {predictedDates.map(formatDate).join(', ')}
+                </div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+    );
   }
 
   return (
@@ -206,7 +343,7 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
       headerName: 'Total Violations',
       field: 'totalViolations',
       width: 140,
-      cellRenderer: BadgeRenderer,
+      cellRenderer: ViolationsWithDatesRenderer,
     },
     {
       headerName: 'Total NCs',
@@ -218,7 +355,7 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
       headerName: 'Predicted Violations',
       field: 'predictedViolations',
       width: 150,
-      cellRenderer: BadgeRenderer,
+      cellRenderer: PredictedViolationsWithDatesRenderer,
     },
     {
       headerName: 'Predicted NCs',

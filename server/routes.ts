@@ -2760,6 +2760,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let recordingPercent = 0;
           let totalViolations = 0;
           let predictedViolations = 0;
+          let violationDates: number[] = [];
+          let predictedViolationDates: number[] = [];
           
           if (dailyRecord && targetMonth) {
             recordingPercent = calculateRecordingPercentage(dailyRecord.dailyRecords, targetMonth);
@@ -2767,7 +2769,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             totalViolations = countViolationDays(dailyRecord.dailyRecords, mode, isOpaMode, false);
             // Count predicted violations (isPlan = true)
             predictedViolations = countViolationDays(dailyRecord.dailyRecords, mode, isOpaMode, true);
+            // Get violation dates
+            violationDates = getViolationDates(dailyRecord.dailyRecords, mode, isOpaMode, false);
+            predictedViolationDates = getViolationDates(dailyRecord.dailyRecords, mode, isOpaMode, true);
           }
+          
+          const violationDatesJson = violationDates.length > 0 ? JSON.stringify(violationDates) : null;
+          const predictedViolationDatesJson = predictedViolationDates.length > 0 ? JSON.stringify(predictedViolationDates) : null;
           
           if (persistedRecord) {
             // Use existing record but update calculated values from daily records
@@ -2775,7 +2783,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ...persistedRecord,
               recordingStatusPercent: recordingPercent,
               totalViolations: totalViolations,
-              predictedViolations: predictedViolations
+              predictedViolations: predictedViolations,
+              violationDates: violationDatesJson,
+              predictedViolationDates: predictedViolationDatesJson
             };
           } else {
             // Create placeholder record with calculated values
@@ -2792,8 +2802,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               recordingStatusPercent: recordingPercent,
               activityConflicting: false,
               totalViolations: totalViolations,
+              violationDates: violationDatesJson,
               totalNCs: 0,
               predictedViolations: predictedViolations,
+              predictedViolationDates: predictedViolationDatesJson,
               predictedNCs: 0,
               createdAt: null,
               updatedAt: null,
