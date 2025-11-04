@@ -716,6 +716,73 @@ function getViolationDates(dailyRecordsJson: string, complianceMode: 'Rest' | 'W
   }
 }
 
+// Helper function to check if daily records contain Code [2] violations
+function hasCode2Violation(dailyRecordsJson: string, complianceMode: 'Rest' | 'Work', opaMode: boolean, isPlanMode: boolean): boolean {
+  try {
+    const dailyRecords = JSON.parse(dailyRecordsJson);
+    if (!Array.isArray(dailyRecords) || dailyRecords.length === 0) {
+      return false;
+    }
+
+    // Check if any day has Code [2] violation
+    return dailyRecords.some((day: any) => {
+      // Filter by isPlan status
+      const dayIsPlan = day.isPlan === true;
+      if (isPlanMode !== dayIsPlan) {
+        return false;
+      }
+      
+      // Check if day has violations
+      if (!Array.isArray(day.violations) || day.violations.length === 0) {
+        return false;
+      }
+      
+      // Filter violations based on compliance mode
+      const relevantViolations = filterViolationsByMode(day.violations, complianceMode, opaMode);
+      
+      // Check if Code [2] is present in relevant violations
+      return relevantViolations.includes(2);
+    });
+  } catch (error) {
+    console.error('Failed to check Code [2] violation:', error);
+    return false;
+  }
+}
+
+// Helper function to calculate NC (Non-Conformance) for a crew member
+// Returns {totalNCs: number, predictedNCs: number}
+function calculateNCs(dailyRecordsJson: string, complianceMode: 'Rest' | 'Work', opaMode: boolean): { totalNCs: number; predictedNCs: number } {
+  try {
+    // Count completed violation days
+    const completedViolationDays = countViolationDays(dailyRecordsJson, complianceMode, opaMode, false);
+    // Check for Code [2] in completed records
+    const hasCompletedCode2 = hasCode2Violation(dailyRecordsJson, complianceMode, opaMode, false);
+    
+    // Determine if there's a completed NC
+    const hasCompletedNC = completedViolationDays >= 3 || hasCompletedCode2;
+    
+    if (hasCompletedNC) {
+      // If there's a completed NC, return it and no predicted NC
+      return { totalNCs: 1, predictedNCs: 0 };
+    }
+    
+    // No completed NC - check for predicted NC
+    const predictedViolationDays = countViolationDays(dailyRecordsJson, complianceMode, opaMode, true);
+    const combinedViolationDays = completedViolationDays + predictedViolationDays;
+    
+    // Check for Code [2] in predicted records
+    const hasPredictedCode2 = hasCode2Violation(dailyRecordsJson, complianceMode, opaMode, true);
+    
+    // Predicted NC occurs if: combined days >= 3 OR Code [2] in predicted
+    const hasPredictedNC = combinedViolationDays >= 3 || hasPredictedCode2;
+    
+    return { totalNCs: 0, predictedNCs: hasPredictedNC ? 1 : 0 };
+  } catch (error) {
+    console.error('Failed to calculate NCs:', error);
+    return { totalNCs: 0, predictedNCs: 0 };
+  }
+}
+
 // Helper function to update crew and vessel recording percentages
 async function updateRecordingPercentages(crewMemberId: string, vesselId: string, monthYear: string) {
   try {
@@ -2374,6 +2441,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }));
           }
           
+          // Calculate NCs across all crew members
+          let totalNCs = 0;
+          let predictedNCs = 0;
+          let crewWithNCs = 0;
+          let crewWithPredictedNCs = 0;
+          
+          if (dailyRecords.length > 0) {
+            // Deduplicate daily records by crewMemberId
+            const uniqueDailyRecords = Array.from(
+              new Map(dailyRecords.map(dr => [dr.crewMemberId, dr])).values()
+            );
+            
+            // Calculate NCs for each crew member and aggregate
+            uniqueDailyRecords.forEach(dr => {
+              const ncs = calculateNCs(dr.dailyRecords, mode, isOpaMode);
+              totalNCs += ncs.totalNCs;
+              predictedNCs += ncs.predictedNCs;
+              if (ncs.totalNCs > 0) crewWithNCs++;
+              if (ncs.predictedNCs > 0) crewWithPredictedNCs++;
+            });
+          }
+          
           // Collect violation dates across all crew members on this vessel
           let violationDates: number[] = [];
           let predictedViolationDates: number[] = [];
@@ -2431,7 +2520,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               crewWithViolationsDetails: crewWithViolationsDetailsJson,
               crewWithPredictedViolationsDetails: crewWithPredictedViolationsDetailsJson,
               violationDates: violationDatesJson,
-              predictedViolationDates: predictedViolationDatesJson
+              predictedViolationDates: predictedViolationDatesJson,
+              totalNCs: totalNCs,
+              crewWithNCs: crewWithNCs,
+              predictedNCs: predictedNCs
             };
           } else {
             // Create placeholder record with calculated values
@@ -2448,13 +2540,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               crewWithViolations: crewWithViolations,
               crewWithViolationsDetails: crewWithViolationsDetailsJson,
               violationDates: violationDatesJson,
-              totalNCs: 0,
-              crewWithNCs: 0,
+              totalNCs: totalNCs,
+              crewWithNCs: crewWithNCs,
               predictedViolations: predictedViolations,
               crewWithPredictedViolations: crewWithPredictedViolations,
               crewWithPredictedViolationsDetails: crewWithPredictedViolationsDetailsJson,
               predictedViolationDates: predictedViolationDatesJson,
-              predictedNCs: 0,
+              predictedNCs: predictedNCs,
               officeReviewStatus: 'Due',
               createdAt: null,
               updatedAt: null,
@@ -2534,6 +2626,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const violationDates = Array.from(allViolationDates).sort((a, b) => a - b);
             const predictedViolationDates = Array.from(allPredictedViolationDates).sort((a, b) => a - b);
             
+            // Calculate NCs for each crew member and aggregate
+            let totalNCs = 0;
+            let predictedNCs = 0;
+            let crewWithNCs = 0;
+            let crewWithPredictedNCs = 0;
+            
+            uniqueDailyRecords.forEach(dr => {
+              const ncs = calculateNCs(dr.dailyRecords, mode, isOpaMode);
+              totalNCs += ncs.totalNCs;
+              predictedNCs += ncs.predictedNCs;
+              if (ncs.totalNCs > 0) crewWithNCs++;
+              if (ncs.predictedNCs > 0) crewWithPredictedNCs++;
+            });
+            
             return {
               ...record,
               totalCrew: crewCountByVessel.get(record.vesselId) || 0,
@@ -2545,7 +2651,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               crewWithViolationsDetails: JSON.stringify(crewWithViolationsDetails),
               crewWithPredictedViolationsDetails: JSON.stringify(crewWithPredictedViolationsDetails),
               violationDates: violationDates.length > 0 ? JSON.stringify(violationDates) : null,
-              predictedViolationDates: predictedViolationDates.length > 0 ? JSON.stringify(predictedViolationDates) : null
+              predictedViolationDates: predictedViolationDates.length > 0 ? JSON.stringify(predictedViolationDates) : null,
+              totalNCs: totalNCs,
+              crewWithNCs: crewWithNCs,
+              predictedNCs: predictedNCs
             };
           }
           
@@ -2560,7 +2669,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             crewWithViolationsDetails: null,
             crewWithPredictedViolationsDetails: null,
             violationDates: null,
-            predictedViolationDates: null
+            predictedViolationDates: null,
+            totalNCs: 0,
+            crewWithNCs: 0,
+            predictedNCs: 0
           };
         });
       }
@@ -2762,6 +2874,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let predictedViolations = 0;
           let violationDates: number[] = [];
           let predictedViolationDates: number[] = [];
+          let totalNCs = 0;
+          let predictedNCs = 0;
           
           if (dailyRecord && targetMonth) {
             recordingPercent = calculateRecordingPercentage(dailyRecord.dailyRecords, targetMonth);
@@ -2772,6 +2886,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Get violation dates
             violationDates = getViolationDates(dailyRecord.dailyRecords, mode, isOpaMode, false);
             predictedViolationDates = getViolationDates(dailyRecord.dailyRecords, mode, isOpaMode, true);
+            // Calculate NCs
+            const ncs = calculateNCs(dailyRecord.dailyRecords, mode, isOpaMode);
+            totalNCs = ncs.totalNCs;
+            predictedNCs = ncs.predictedNCs;
           }
           
           const violationDatesJson = violationDates.length > 0 ? JSON.stringify(violationDates) : null;
@@ -2785,7 +2903,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               totalViolations: totalViolations,
               predictedViolations: predictedViolations,
               violationDates: violationDatesJson,
-              predictedViolationDates: predictedViolationDatesJson
+              predictedViolationDates: predictedViolationDatesJson,
+              totalNCs: totalNCs,
+              predictedNCs: predictedNCs
             };
           } else {
             // Create placeholder record with calculated values
@@ -2803,10 +2923,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               activityConflicting: false,
               totalViolations: totalViolations,
               violationDates: violationDatesJson,
-              totalNCs: 0,
+              totalNCs: totalNCs,
               predictedViolations: predictedViolations,
               predictedViolationDates: predictedViolationDatesJson,
-              predictedNCs: 0,
+              predictedNCs: predictedNCs,
               createdAt: null,
               updatedAt: null,
             };
