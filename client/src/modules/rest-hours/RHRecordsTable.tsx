@@ -363,68 +363,73 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
     {
       headerName: 'Vessel',
       field: 'vesselName',
-      width: 170,
+      width: 150,
       pinned: 'left' as const,
       cellStyle: { fontWeight: 500, fontSize: '13px', display: 'flex', alignItems: 'center' }
     },
     {
       headerName: 'Month',
       field: 'month',
-      width: 130,
+      width: 110,
       cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center' }
     },
     {
       headerName: 'Total Crew',
       field: 'totalCrew',
-      width: 120,
+      width: 100,
       cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }
     },
     {
-      headerName: 'Recording Status',
+      headerName: 'Status',
       field: 'recordingStatusPercent',
-      width: 200,
-      cellRenderer: ProgressBarRenderer,
-    },
-    {
-      headerName: 'Activity conflicting with actual recording',
-      field: 'activityConflicting',
-      width: 140,
-      cellRenderer: YesNoRenderer,
-      headerTooltip: 'Indicates conflicts between recorded hours and variable tasks'
-    },
-    {
-      headerName: 'Total violations/ No. of crew involved',
       width: 160,
+      cellRenderer: ProgressBarRenderer,
+      headerTooltip: 'Recording Status'
+    },
+    {
+      headerName: 'Activity Conflicts',
+      field: 'activityConflicting',
+      width: 120,
+      cellRenderer: YesNoRenderer,
+      headerTooltip: 'Activity conflicting with actual recording'
+    },
+    {
+      headerName: 'Violations / Crew',
+      width: 130,
       cellRenderer: ViolationsRenderer,
       valueGetter: (params) => params.data?.totalViolations,
+      headerTooltip: 'Total violations / No. of crew involved'
     },
     {
-      headerName: 'Total NCs/ No. of crew involved',
-      width: 140,
+      headerName: 'NCs / Crew',
+      width: 110,
       cellRenderer: NCsRenderer,
       valueGetter: (params) => params.data?.totalNCs,
+      headerTooltip: 'Total NCs / No. of crew involved'
     },
     {
-      headerName: 'Predicted Violations',
+      headerName: 'Pred. Violations',
       field: 'predictedViolations',
-      width: 150,
+      width: 120,
       cellRenderer: PredictedViolationsRenderer,
+      headerTooltip: 'Predicted Violations'
     },
     {
-      headerName: 'Predicted NCs',
+      headerName: 'Pred. NCs',
       field: 'predictedNCs',
-      width: 140,
+      width: 110,
       cellRenderer: BadgeRenderer,
+      headerTooltip: 'Predicted NCs'
     },
     {
       headerName: 'Office Review',
       field: 'officeReviewStatus',
-      width: 150,
+      width: 130,
       cellRenderer: OfficeReviewRenderer,
     },
     {
       headerName: 'Actions',
-      width: 100,
+      width: 90,
       cellRenderer: ActionsRenderer,
       pinned: 'right',
       sortable: false,
