@@ -96,13 +96,17 @@ export function NCOverviewDialog({
   });
 
   // Get crew IDs that have NCs to fetch their daily records
+  // NCs are based on violation days (3+ violations or Code 2), so we use crew with NCs > 0
   const crewIdsWithNCs = useMemo(() => {
-    return crewSummaries
+    const crewWithNCs = crewSummaries
       .filter(crew => {
-        const ncDaysField = isPredicted ? crew.predictedNcDays : crew.ncDays;
-        return ncDaysField && ncDaysField !== '[]';
+        const ncCount = isPredicted ? crew.predictedNCs : crew.totalNCs;
+        return ncCount && ncCount > 0;
       })
       .map(crew => crew.crewMemberId);
+    
+    console.log(`[NC Dialog] Found ${crewWithNCs.length} crew members with NCs (isPredicted: ${isPredicted})`);
+    return crewWithNCs;
   }, [crewSummaries, isPredicted]);
 
   // Fetch daily records only for crew members with NCs
@@ -158,16 +162,20 @@ export function NCOverviewDialog({
       });
 
     vesselCrewSummaries.forEach(crew => {
-      // Use the pre-calculated NC days from crew record
-      const ncDaysField = isPredicted ? crew.predictedNcDays : crew.ncDays;
+      // Check if this crew member has NCs
+      const ncCount = isPredicted ? crew.predictedNCs : crew.totalNCs;
+      if (!ncCount || ncCount === 0) return;
       
-      if (!ncDaysField) return;
+      // Get violation dates (these are the days that contribute to the NC)
+      const violationDatesField = isPredicted ? crew.predictedViolationDates : crew.violationDates;
+      
+      if (!violationDatesField) return;
 
-      let ncDays: number[] = [];
+      let violationDays: number[] = [];
       try {
-        ncDays = JSON.parse(ncDaysField);
+        violationDays = JSON.parse(violationDatesField);
       } catch (e) {
-        console.error('Failed to parse NC days:', e);
+        console.error('Failed to parse violation dates:', e);
         return;
       }
 
@@ -178,8 +186,8 @@ export function NCOverviewDialog({
       const baseName = crew.rank.split('_')[0];
       const rankSortOrder = rankOrderMap.get(baseName) || rankOrderMap.get(crew.rank) || 999;
 
-      // For each day that has an NC, find the corresponding daily record
-      ncDays.forEach(day => {
+      // For each violation day (which contributes to the NC), find the corresponding daily record
+      violationDays.forEach(day => {
         const dayRecord = dailyRecords.find(r => r.day === day && (isPredicted ? r.isPlan : !r.isPlan));
         
         if (dayRecord) {
@@ -199,7 +207,7 @@ export function NCOverviewDialog({
             comments: dayRecord.comments || '',
           });
         } else {
-          // If we can't find the daily record, still show the NC date
+          // If we can't find the daily record, still show the violation date
           allNCs.push({
             crewMemberId: crew.crewMemberId,
             crewMemberName: crew.name,
