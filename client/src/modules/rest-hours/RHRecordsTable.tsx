@@ -149,6 +149,17 @@ const ViolationsRenderer = (params: ICellRendererParams) => {
 const NCsRenderer = (params: ICellRendererParams) => {
   const ncs = params.data?.totalNCs || 0;
   const crewCount = params.data?.crewWithNCs || 0;
+  const crewDetailsJson = params.data?.crewWithNCsDetails;
+  
+  let crewDetails: { name: string; rank: string }[] = [];
+  
+  try {
+    if (crewDetailsJson) {
+      crewDetails = JSON.parse(crewDetailsJson);
+    }
+  } catch (e) {
+    console.error('Failed to parse crew NCs details:', e);
+  }
 
   if (ncs === 0) return null;
 
@@ -157,9 +168,31 @@ const NCsRenderer = (params: ICellRendererParams) => {
       <span className="px-3 py-1.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
         {ncs}
       </span>
-      <span className="px-3 py-1.5 rounded font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
-        {crewCount}
-      </span>
+      {crewDetails.length > 0 ? (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="px-3 py-1.5 rounded font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center cursor-help" style={{ fontSize: '13px' }}>
+                {crewCount}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              <div className="text-sm">
+                <div className="font-semibold mb-1">Crew with NCs:</div>
+                {crewDetails.map((crew, index) => (
+                  <div key={index} className="text-xs">
+                    {crew.name} - {crew.rank}
+                  </div>
+                ))}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ) : (
+        <span className="px-3 py-1.5 rounded font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
+          {crewCount}
+        </span>
+      )}
     </div>
   );
 };
@@ -167,6 +200,17 @@ const NCsRenderer = (params: ICellRendererParams) => {
 const PredictedNCsRenderer = (params: ICellRendererParams) => {
   const predictedNCs = params.data?.predictedNCs || 0;
   const crewCount = params.data?.crewWithPredictedNCs || 0;
+  const crewDetailsJson = params.data?.crewWithPredictedNCsDetails;
+  
+  let crewDetails: { name: string; rank: string }[] = [];
+  
+  try {
+    if (crewDetailsJson) {
+      crewDetails = JSON.parse(crewDetailsJson);
+    }
+  } catch (e) {
+    console.error('Failed to parse crew predicted NCs details:', e);
+  }
 
   if (predictedNCs === 0) return null;
 
@@ -175,9 +219,31 @@ const PredictedNCsRenderer = (params: ICellRendererParams) => {
       <span className="px-3 py-1.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
         {predictedNCs}
       </span>
-      <span className="px-3 py-1.5 rounded font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
-        {crewCount}
-      </span>
+      {crewDetails.length > 0 ? (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="px-3 py-1.5 rounded font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center cursor-help" style={{ fontSize: '13px' }}>
+                {crewCount}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              <div className="text-sm">
+                <div className="font-semibold mb-1">Crew with Predicted NCs:</div>
+                {crewDetails.map((crew, index) => (
+                  <div key={index} className="text-xs">
+                    {crew.name} - {crew.rank}
+                  </div>
+                ))}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ) : (
+        <span className="px-3 py-1.5 rounded font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
+          {crewCount}
+        </span>
+      )}
     </div>
   );
 };

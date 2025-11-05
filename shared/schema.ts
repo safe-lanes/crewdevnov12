@@ -487,11 +487,13 @@ export const restHoursVesselRecords = pgTable("rest_hours_vessel_records", {
   crewWithViolationsDetails: text("crew_with_violations_details"), // JSON array: [{name: string, rank: string}]
   totalNCs: integer("total_ncs").notNull().default(0), // Non-conformities
   crewWithNCs: integer("crew_with_ncs").notNull().default(0),
+  crewWithNCsDetails: text("crew_with_ncs_details"), // JSON array: [{name: string, rank: string}]
   predictedViolations: integer("predicted_violations").notNull().default(0),
   crewWithPredictedViolations: integer("crew_with_predicted_violations").notNull().default(0),
   crewWithPredictedViolationsDetails: text("crew_with_predicted_violations_details"), // JSON array: [{name: string, rank: string}]
   predictedNCs: integer("predicted_ncs").notNull().default(0),
   crewWithPredictedNCs: integer("crew_with_predicted_ncs").notNull().default(0),
+  crewWithPredictedNCsDetails: text("crew_with_predicted_ncs_details"), // JSON array: [{name: string, rank: string}]
   officeReviewStatus: text("office_review_status").notNull().default("Due"), // "Completed", "Due", "Overdue"
   
   createdAt: timestamp("created_at").defaultNow(),

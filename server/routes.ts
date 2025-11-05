@@ -2446,6 +2446,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let predictedNCs = 0;
           let crewWithNCs = 0;
           let crewWithPredictedNCs = 0;
+          let crewWithNCsDetails: { name: string; rank: string }[] = [];
+          let crewWithPredictedNCsDetails: { name: string; rank: string }[] = [];
           
           if (dailyRecords.length > 0) {
             // Deduplicate daily records by crewMemberId
@@ -2453,13 +2455,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
               new Map(dailyRecords.map(dr => [dr.crewMemberId, dr])).values()
             );
             
-            // Calculate NCs for each crew member and aggregate
+            // Calculate NCs for each crew member and aggregate with crew details
             uniqueDailyRecords.forEach(dr => {
               const ncs = calculateNCs(dr.dailyRecords, mode, isOpaMode);
               totalNCs += ncs.totalNCs;
               predictedNCs += ncs.predictedNCs;
-              if (ncs.totalNCs > 0) crewWithNCs++;
-              if (ncs.predictedNCs > 0) crewWithPredictedNCs++;
+              if (ncs.totalNCs > 0) {
+                crewWithNCs++;
+                crewWithNCsDetails.push({ name: dr.name, rank: dr.rank });
+              }
+              if (ncs.predictedNCs > 0) {
+                crewWithPredictedNCs++;
+                crewWithPredictedNCsDetails.push({ name: dr.name, rank: dr.rank });
+              }
             });
           }
           
@@ -2504,6 +2512,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           const crewWithViolationsDetailsJson = crewWithViolationsDetails.length > 0 ? JSON.stringify(crewWithViolationsDetails) : null;
           const crewWithPredictedViolationsDetailsJson = crewWithPredictedViolationsDetails.length > 0 ? JSON.stringify(crewWithPredictedViolationsDetails) : null;
+          const crewWithNCsDetailsJson = crewWithNCsDetails.length > 0 ? JSON.stringify(crewWithNCsDetails) : null;
+          const crewWithPredictedNCsDetailsJson = crewWithPredictedNCsDetails.length > 0 ? JSON.stringify(crewWithPredictedNCsDetails) : null;
           const violationDatesJson = violationDates.length > 0 ? JSON.stringify(violationDates) : null;
           const predictedViolationDatesJson = predictedViolationDates.length > 0 ? JSON.stringify(predictedViolationDates) : null;
           
@@ -2523,8 +2533,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               predictedViolationDates: predictedViolationDatesJson,
               totalNCs: totalNCs,
               crewWithNCs: crewWithNCs,
+              crewWithNCsDetails: crewWithNCsDetailsJson,
               predictedNCs: predictedNCs,
-              crewWithPredictedNCs: crewWithPredictedNCs
+              crewWithPredictedNCs: crewWithPredictedNCs,
+              crewWithPredictedNCsDetails: crewWithPredictedNCsDetailsJson
             };
           } else {
             // Create placeholder record with calculated values
@@ -2543,12 +2555,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               violationDates: violationDatesJson,
               totalNCs: totalNCs,
               crewWithNCs: crewWithNCs,
+              crewWithNCsDetails: crewWithNCsDetailsJson,
               predictedViolations: predictedViolations,
               crewWithPredictedViolations: crewWithPredictedViolations,
               crewWithPredictedViolationsDetails: crewWithPredictedViolationsDetailsJson,
               predictedViolationDates: predictedViolationDatesJson,
               predictedNCs: predictedNCs,
               crewWithPredictedNCs: crewWithPredictedNCs,
+              crewWithPredictedNCsDetails: crewWithPredictedNCsDetailsJson,
               officeReviewStatus: 'Due',
               createdAt: null,
               updatedAt: null,
@@ -2628,18 +2642,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const violationDates = Array.from(allViolationDates).sort((a, b) => a - b);
             const predictedViolationDates = Array.from(allPredictedViolationDates).sort((a, b) => a - b);
             
-            // Calculate NCs for each crew member and aggregate
+            // Calculate NCs for each crew member and aggregate with crew details
             let totalNCs = 0;
             let predictedNCs = 0;
             let crewWithNCs = 0;
             let crewWithPredictedNCs = 0;
+            let crewWithNCsDetails: { name: string; rank: string }[] = [];
+            let crewWithPredictedNCsDetails: { name: string; rank: string }[] = [];
             
             uniqueDailyRecords.forEach(dr => {
               const ncs = calculateNCs(dr.dailyRecords, mode, isOpaMode);
               totalNCs += ncs.totalNCs;
               predictedNCs += ncs.predictedNCs;
-              if (ncs.totalNCs > 0) crewWithNCs++;
-              if (ncs.predictedNCs > 0) crewWithPredictedNCs++;
+              if (ncs.totalNCs > 0) {
+                crewWithNCs++;
+                crewWithNCsDetails.push({ name: dr.name, rank: dr.rank });
+              }
+              if (ncs.predictedNCs > 0) {
+                crewWithPredictedNCs++;
+                crewWithPredictedNCsDetails.push({ name: dr.name, rank: dr.rank });
+              }
             });
             
             return {
@@ -2656,8 +2678,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               predictedViolationDates: predictedViolationDates.length > 0 ? JSON.stringify(predictedViolationDates) : null,
               totalNCs: totalNCs,
               crewWithNCs: crewWithNCs,
+              crewWithNCsDetails: crewWithNCsDetails.length > 0 ? JSON.stringify(crewWithNCsDetails) : null,
               predictedNCs: predictedNCs,
-              crewWithPredictedNCs: crewWithPredictedNCs
+              crewWithPredictedNCs: crewWithPredictedNCs,
+              crewWithPredictedNCsDetails: crewWithPredictedNCsDetails.length > 0 ? JSON.stringify(crewWithPredictedNCsDetails) : null
             };
           }
           
@@ -2675,8 +2699,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             predictedViolationDates: null,
             totalNCs: 0,
             crewWithNCs: 0,
+            crewWithNCsDetails: null,
             predictedNCs: 0,
-            crewWithPredictedNCs: 0
+            crewWithPredictedNCs: 0,
+            crewWithPredictedNCsDetails: null
           };
         });
       }
