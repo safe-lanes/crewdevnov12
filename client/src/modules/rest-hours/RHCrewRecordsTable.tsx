@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { RestHoursCrewRecord } from '@shared/schema';
 import { RHRecordingForm } from './RHRecordingForm';
 import { ViolationsDetailDialog } from './ViolationsDetailDialog';
+import { NCReportDialog } from './NCReportDialog';
 import { type ComplianceMode } from './violationFilters';
 
 interface RHCrewRecordsTableProps {
@@ -66,6 +67,12 @@ const BadgeRenderer = (params: ICellRendererParams) => {
   // Normalize to number to handle both numeric and string zeroes
   const isZero = Number(value) === 0;
 
+  const handleClick = () => {
+    if (params.context && params.context.onViewNCReport) {
+      params.context.onViewNCReport(params.data);
+    }
+  };
+
   // Return empty div with preserved alignment for zero values
   if (isZero) {
     return <div className="flex items-center justify-center h-full py-2"></div>;
@@ -74,8 +81,10 @@ const BadgeRenderer = (params: ICellRendererParams) => {
   return (
     <div className="flex items-center justify-center h-full py-2">
       <span 
-        className="px-3 py-1.5 rounded font-semibold min-w-[32px] text-center bg-pink-100 text-red-600" 
+        className="px-3 py-1.5 rounded font-semibold min-w-[32px] text-center bg-pink-100 text-red-600 cursor-pointer hover:bg-pink-200 transition-colors" 
         style={{ fontSize: '13px' }}
+        onClick={handleClick}
+        data-testid={`button-nc-${params.data?.crewMemberId}`}
       >
         {value}
       </span>
@@ -288,6 +297,8 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
   const [selectedViolationsRecord, setSelectedViolationsRecord] = useState<RestHoursCrewRecord | null>(null);
   const [predictedViolationsDialogOpen, setPredictedViolationsDialogOpen] = useState(false);
   const [selectedPredictedViolationsRecord, setSelectedPredictedViolationsRecord] = useState<RestHoursCrewRecord | null>(null);
+  const [ncReportDialogOpen, setNCReportDialogOpen] = useState(false);
+  const [selectedNCReportRecord, setSelectedNCReportRecord] = useState<RestHoursCrewRecord | null>(null);
 
   // Handler for opening the recording form
   const handleEditRecord = (record: RestHoursCrewRecord) => {
@@ -305,6 +316,12 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
   const handleViewPredictedViolations = (record: RestHoursCrewRecord) => {
     setSelectedPredictedViolationsRecord(record);
     setPredictedViolationsDialogOpen(true);
+  };
+
+  // Handler for opening the NC report dialog
+  const handleViewNCReport = (record: RestHoursCrewRecord) => {
+    setSelectedNCReportRecord(record);
+    setNCReportDialogOpen(true);
   };
 
   // Fetch available ranks to get sortOrder
@@ -476,7 +493,7 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
           rowData={records}
           columnDefs={columnDefs}
           defaultColDef={defaultColDef}
-          context={{ onEditRecord: handleEditRecord, onViewViolations: handleViewViolations, onViewPredictedViolations: handleViewPredictedViolations }}
+          context={{ onEditRecord: handleEditRecord, onViewViolations: handleViewViolations, onViewPredictedViolations: handleViewPredictedViolations, onViewNCReport: handleViewNCReport }}
           animateRows={true}
           pagination={true}
           paginationPageSize={20}
@@ -525,6 +542,16 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
           complianceMode={complianceMode}
           opaMode={opaMode}
           isPredicted={true}
+        />
+      )}
+
+      {selectedNCReportRecord && (
+        <NCReportDialog
+          key={`nc-report-${selectedNCReportRecord.crewMemberId}-${selectedNCReportRecord.vesselId}-${selectedNCReportRecord.monthValue}`}
+          open={ncReportDialogOpen}
+          onOpenChange={setNCReportDialogOpen}
+          crewRecord={selectedNCReportRecord}
+          vesselName={selectedNCReportRecord.vesselId}
         />
       )}
     </>

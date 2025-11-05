@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError } from "./storage";
-import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema } from "@shared/schema";
+import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertNCReportSchema } from "@shared/schema";
 import { z } from "zod";
 import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew } from "@shared/crew-mapping";
 import { 
@@ -3192,6 +3192,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to save vessel violation comment:", error);
       res.status(500).json({ error: "Failed to save vessel violation comment" });
+    }
+  });
+
+  // NC Reports API routes
+  app.get("/api/nc-reports", async (req, res) => {
+    try {
+      const { crewMemberId, vesselId, monthValue } = req.query;
+      
+      if (!crewMemberId || !vesselId || !monthValue) {
+        return res.status(400).json({ error: "crewMemberId, vesselId, and monthValue are required" });
+      }
+      
+      const report = await storage.getNCReport(crewMemberId as string, vesselId as string, monthValue as string);
+      res.json(report);
+    } catch (error) {
+      console.error("Failed to get NC report:", error);
+      res.status(500).json({ error: "Failed to get NC report" });
+    }
+  });
+
+  app.post("/api/nc-reports", async (req, res) => {
+    try {
+      const result = insertNCReportSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid NC report data", details: result.error.issues });
+      }
+      const report = await storage.saveNCReport(result.data);
+      res.status(201).json(report);
+    } catch (error) {
+      console.error("Failed to save NC report:", error);
+      res.status(500).json({ error: "Failed to save NC report" });
     }
   });
 

@@ -2191,6 +2191,7 @@ export class PersistentFileStorage implements IStorage {
     this.currentVariableTaskId = 1;
     this.currentFixedTaskId = 1;
     this.currentVesselViolationCommentId = 1;
+    this.currentNCReportId = 1;
     
     this.filePath = path.join(process.cwd(), 'test-data.json');
     this.loadFromFile();
@@ -2302,6 +2303,50 @@ export class PersistentFileStorage implements IStorage {
     }
   }
 
+  // NC Reports Methods
+  async getNCReport(crewMemberId: string, vesselId: string, monthValue: string): Promise<NCReport | null> {
+    const reports = Array.from(this.ncReports.values());
+    const existing = reports.find(r => 
+      r.crewMemberId === crewMemberId && 
+      r.vesselId === vesselId && 
+      r.monthValue === monthValue
+    );
+    return existing || null;
+  }
+
+  async saveNCReport(insertReport: InsertNCReport): Promise<NCReport> {
+    const reports = Array.from(this.ncReports.values());
+    const existing = reports.find(r => 
+      r.crewMemberId === insertReport.crewMemberId && 
+      r.vesselId === insertReport.vesselId && 
+      r.monthValue === insertReport.monthValue
+    );
+    
+    if (existing) {
+      const updated: NCReport = {
+        ...existing,
+        ...insertReport,
+        id: existing.id,
+        createdAt: existing.createdAt,
+        updatedAt: new Date(),
+      };
+      this.ncReports.set(existing.id, updated);
+      this.saveToFile();
+      return updated;
+    } else {
+      const id = this.currentNCReportId++;
+      const newReport: NCReport = {
+        id,
+        ...insertReport,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      this.ncReports.set(id, newReport);
+      this.saveToFile();
+      return newReport;
+    }
+  }
+
   private loadFromFile(): void {
     try {
       if (fs.existsSync(this.filePath)) {
@@ -2385,6 +2430,10 @@ export class PersistentFileStorage implements IStorage {
         this.vesselViolationComments = new Map(data.vesselViolationComments || []);
         this.currentVesselViolationCommentId = data.currentVesselViolationCommentId || 1;
         
+        // Load NC reports and counter
+        this.ncReports = new Map(data.ncReports || []);
+        this.currentNCReportId = data.currentNCReportId || 1;
+        
         console.log("📄 Loaded existing data from test-data.json");
         
         // Initialize rest hours sample data if empty
@@ -2428,6 +2477,7 @@ export class PersistentFileStorage implements IStorage {
       variableTasks: Array.from(this.variableTasks.entries()),
       fixedTasks: Array.from(this.fixedTasks.entries()),
       vesselViolationComments: Array.from(this.vesselViolationComments.entries()),
+      ncReports: Array.from(this.ncReports.entries()),
       masterDataEntries: Array.from(this.masterDataEntries.entries()),
       currentUserId: this.currentUserId,
       currentFormId: this.currentFormId,
@@ -2447,7 +2497,8 @@ export class PersistentFileStorage implements IStorage {
       currentRestHoursDailyRecordId: this.currentRestHoursDailyRecordId,
       currentVariableTaskId: this.currentVariableTaskId,
       currentFixedTaskId: this.currentFixedTaskId,
-      currentVesselViolationCommentId: this.currentVesselViolationCommentId
+      currentVesselViolationCommentId: this.currentVesselViolationCommentId,
+      currentNCReportId: this.currentNCReportId
     };
     
     if (this.saveTimeout) {
