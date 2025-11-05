@@ -478,7 +478,6 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
           defaultColDef={defaultColDef}
           context={{ onEditRecord: handleEditRecord, onViewViolations: handleViewViolations, onViewPredictedViolations: handleViewPredictedViolations }}
           animateRows={true}
-          rowSelection="single"
           pagination={true}
           paginationPageSize={20}
           domLayout="normal"

@@ -673,7 +673,6 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
             onViewPredictedNCs: handleViewPredictedNCs
           }}
           animateRows={true}
-          rowSelection="single"
           pagination={true}
           paginationPageSize={20}
           domLayout="normal"
