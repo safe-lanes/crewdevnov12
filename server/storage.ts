@@ -2210,6 +2210,43 @@ export class PersistentFileStorage implements IStorage {
     return map;
   }
 
+  // Vessel Violation Comments Methods
+  async getVesselViolationComment(vesselId: string, monthValue: string): Promise<VesselViolationComment | null> {
+    const comments = Array.from(this.vesselViolationComments.values());
+    const existing = comments.find(c => c.vesselId === vesselId && c.monthValue === monthValue);
+    return existing || null;
+  }
+
+  async saveVesselViolationComment(insertComment: InsertVesselViolationComment): Promise<VesselViolationComment> {
+    // Check if comment already exists for this vessel/month (upsert logic)
+    const comments = Array.from(this.vesselViolationComments.values());
+    const existing = comments.find(c => c.vesselId === insertComment.vesselId && c.monthValue === insertComment.monthValue);
+    
+    if (existing) {
+      // Update existing comment
+      const updated: VesselViolationComment = {
+        ...existing,
+        comment: insertComment.comment,
+        updatedAt: new Date(),
+      };
+      this.vesselViolationComments.set(existing.id, updated);
+      this.saveToFile();
+      return updated;
+    } else {
+      // Create new comment
+      const id = this.currentVesselViolationCommentId++;
+      const newComment: VesselViolationComment = {
+        id,
+        ...insertComment,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      this.vesselViolationComments.set(id, newComment);
+      this.saveToFile();
+      return newComment;
+    }
+  }
+
   private loadFromFile(): void {
     try {
       if (fs.existsSync(this.filePath)) {
