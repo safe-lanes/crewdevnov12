@@ -121,6 +121,9 @@ const ViolationsRenderer = (params: ICellRendererParams) => {
                 <div className="text-xs">
                   {violationDates.map(formatDate).join(', ')}
                 </div>
+                <div className="text-xs text-gray-500 mt-2 italic">
+                  Click to add vessel comments
+                </div>
               </div>
             </TooltipContent>
           </Tooltip>
