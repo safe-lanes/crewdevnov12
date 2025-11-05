@@ -155,6 +155,9 @@ export interface IStorage {
   // Vessel Violation Comments
   getVesselViolationComment(vesselId: string, monthValue: string): Promise<VesselViolationComment | null>;
   saveVesselViolationComment(comment: InsertVesselViolationComment): Promise<VesselViolationComment>;
+  // NC Reports
+  getNCReport(crewMemberId: string, vesselId: string, monthValue: string): Promise<NCReport | null>;
+  saveNCReport(report: InsertNCReport): Promise<NCReport>;
 }
 
 export class MemStorage implements IStorage {
@@ -179,6 +182,7 @@ export class MemStorage implements IStorage {
   private fixedTasks: Map<number, FixedTask>;
   private variableTasks: Map<number, VariableTask>;
   private vesselViolationComments: Map<number, VesselViolationComment>;
+  private ncReports: Map<number, NCReport>;
   private currentUserId: number;
   private currentFormId: number;
   private currentRankGroupId: number;
@@ -198,6 +202,7 @@ export class MemStorage implements IStorage {
   private currentFixedTaskId: number;
   private currentVariableTaskId: number;
   private currentVesselViolationCommentId: number;
+  private currentNCReportId: number;
 
   constructor() {
     this.users = new Map();
@@ -221,6 +226,7 @@ export class MemStorage implements IStorage {
     this.fixedTasks = new Map();
     this.variableTasks = new Map();
     this.vesselViolationComments = new Map();
+    this.ncReports = new Map();
     this.currentUserId = 1;
     this.currentFormId = 1;
     this.currentRankGroupId = 1;
@@ -240,6 +246,7 @@ export class MemStorage implements IStorage {
     this.currentFixedTaskId = 1;
     this.currentVariableTaskId = 1;
     this.currentVesselViolationCommentId = 1;
+    this.currentNCReportId = 1;
     
     this.initializeDefaultData();
 
@@ -1999,6 +2006,51 @@ export class MemStorage implements IStorage {
     }
   }
 
+  // NC Reports Methods
+  async getNCReport(crewMemberId: string, vesselId: string, monthValue: string): Promise<NCReport | null> {
+    const reports = Array.from(this.ncReports.values());
+    const existing = reports.find(r => 
+      r.crewMemberId === crewMemberId && 
+      r.vesselId === vesselId && 
+      r.monthValue === monthValue
+    );
+    return existing || null;
+  }
+
+  async saveNCReport(insertReport: InsertNCReport): Promise<NCReport> {
+    // Check if report already exists for this crew/vessel/month (upsert logic)
+    const reports = Array.from(this.ncReports.values());
+    const existing = reports.find(r => 
+      r.crewMemberId === insertReport.crewMemberId && 
+      r.vesselId === insertReport.vesselId && 
+      r.monthValue === insertReport.monthValue
+    );
+    
+    if (existing) {
+      // Update existing report
+      const updated: NCReport = {
+        ...existing,
+        ...insertReport,
+        id: existing.id,
+        createdAt: existing.createdAt,
+        updatedAt: new Date(),
+      };
+      this.ncReports.set(existing.id, updated);
+      return updated;
+    } else {
+      // Create new report
+      const id = this.currentNCReportId++;
+      const newReport: NCReport = {
+        id,
+        ...insertReport,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      this.ncReports.set(id, newReport);
+      return newReport;
+    }
+  }
+
   // Variable Tasks Methods
   async getVariableTasks(): Promise<VariableTask[]> {
     return Array.from(this.variableTasks.values());
@@ -2068,6 +2120,7 @@ export class PersistentFileStorage implements IStorage {
   private variableTasks: Map<number, VariableTask>;
   private fixedTasks: Map<number, FixedTask>;
   private vesselViolationComments: Map<number, VesselViolationComment>;
+  private ncReports: Map<number, NCReport>;
   private currentUserId: number;
   private currentFormId: number;
   private currentRankGroupId: number;
@@ -2087,6 +2140,7 @@ export class PersistentFileStorage implements IStorage {
   private currentVariableTaskId: number;
   private currentFixedTaskId: number;
   private currentVesselViolationCommentId: number;
+  private currentNCReportId: number;
   private filePath: string;
   private saveTimeout: NodeJS.Timeout | null = null;
   private isSaving: boolean = false;
@@ -2117,6 +2171,7 @@ export class PersistentFileStorage implements IStorage {
     this.variableTasks = new Map();
     this.fixedTasks = new Map();
     this.vesselViolationComments = new Map();
+    this.ncReports = new Map();
     this.currentUserId = 1;
     this.currentFormId = 1;
     this.currentRankGroupId = 1;

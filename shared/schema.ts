@@ -570,6 +570,29 @@ export const vesselViolationComments = pgTable("vessel_violation_comments", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const ncReports = pgTable("nc_reports", {
+  id: serial("id").primaryKey(),
+  crewMemberId: text("crew_member_id").notNull(), // Crew member ID
+  vesselId: text("vessel_id").notNull(), // Vessel ID from master data
+  rank: text("rank").notNull(), // Crew member's rank
+  monthValue: text("month_value").notNull(), // Format: "2025-11" (YYYY-MM)
+  
+  ncReference: text("nc_reference").notNull().default("STCW/MLC/ILO"), // Always STCW/MLC/ILO
+  
+  identifiedRootCause: text("identified_root_cause"), // User input
+  immediateCorrectiveAction: text("immediate_corrective_action"), // User input
+  preventiveAction: text("preventive_action"), // User input
+  
+  officeClosureVerifiedByName: text("office_closure_verified_by_name"), // Office user name
+  officeClosureVerifiedByPosition: text("office_closure_verified_by_position"), // Auto-filled position
+  officeClosureDate: timestamp("office_closure_date"), // Date of office closure
+  
+  submissionStatus: text("submission_status").notNull().default("draft"), // "draft" | "vessel-submitted" | "office-submitted"
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const fixedTasks = pgTable("fixed_tasks", {
   id: serial("id").primaryKey(),
   crewMemberId: text("crew_member_id").notNull(), // Reference to crew member
@@ -1002,6 +1025,12 @@ export const insertVesselViolationCommentSchema = createInsertSchema(vesselViola
   updatedAt: true,
 });
 
+export const insertNCReportSchema = createInsertSchema(ncReports).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertForm = z.infer<typeof insertFormSchema>;
@@ -1057,6 +1086,8 @@ export type InsertFixedTask = z.infer<typeof insertFixedTaskSchema>;
 export type FixedTask = typeof fixedTasks.$inferSelect;
 export type InsertVesselViolationComment = z.infer<typeof insertVesselViolationCommentSchema>;
 export type VesselViolationComment = typeof vesselViolationComments.$inferSelect;
+export type InsertNCReport = z.infer<typeof insertNCReportSchema>;
+export type NCReport = typeof ncReports.$inferSelect;
 
 // Dashboard Types
 export const dashboardStatusSchema = z.object({
