@@ -241,6 +241,12 @@
   padding: 8px 16px !important;
 }
 
+/* Center align cells with ag-cell-center class */
+.ag-theme-alpine .ag-cell-center {
+  text-align: center !important;
+  justify-content: center !important;
+}
+
 .ag-theme-alpine .ag-row-even {
   background-color: white !important;
 }

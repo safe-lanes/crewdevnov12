@@ -337,7 +337,8 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
       flex: 2,
       minWidth: 150,
       cellRenderer: ProgressBarRenderer,
-      headerTooltip: 'Recording Status'
+      headerTooltip: 'Recording Status',
+      cellClass: 'ag-cell-center'
     },
     {
       headerName: 'Activity Conflicts',
@@ -345,7 +346,8 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
       flex: 1.5,
       minWidth: 110,
       cellRenderer: YesNoRenderer,
-      headerTooltip: 'Activity conflicting with actual recording'
+      headerTooltip: 'Activity conflicting with actual recording',
+      cellClass: 'ag-cell-center'
     },
     {
       headerName: 'Violations',
@@ -353,7 +355,8 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
       flex: 1.5,
       minWidth: 110,
       cellRenderer: ViolationsWithDatesRenderer,
-      headerTooltip: 'Total Violations'
+      headerTooltip: 'Total Violations',
+      cellClass: 'ag-cell-center'
     },
     {
       headerName: 'NCs',
@@ -361,7 +364,8 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
       flex: 1,
       minWidth: 90,
       cellRenderer: BadgeRenderer,
-      headerTooltip: 'Total NCs'
+      headerTooltip: 'Total NCs',
+      cellClass: 'ag-cell-center'
     },
     {
       headerName: 'Pred. Violations',
@@ -369,7 +373,8 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
       flex: 1.5,
       minWidth: 110,
       cellRenderer: PredictedViolationsWithDatesRenderer,
-      headerTooltip: 'Predicted Violations'
+      headerTooltip: 'Predicted Violations',
+      cellClass: 'ag-cell-center'
     },
     {
       headerName: 'Pred. NCs',
@@ -377,7 +382,8 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
       flex: 1,
       minWidth: 100,
       cellRenderer: BadgeRenderer,
-      headerTooltip: 'Predicted NCs'
+      headerTooltip: 'Predicted NCs',
+      cellClass: 'ag-cell-center'
     },
     {
       headerName: 'Actions',
