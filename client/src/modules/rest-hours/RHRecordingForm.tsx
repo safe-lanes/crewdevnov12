@@ -30,6 +30,18 @@ interface ViolationDiagnostic {
   violatingRanges?: Array<{ startCell: number; endCell: number; startDay: number; monthName?: string }>; // For multi-range violations
 }
 
+// Violation code descriptions mapping
+const VIOLATION_CODE_DESCRIPTIONS: Record<number, string> = {
+  1: "Minimum 10 hours of rest in any 24 hour period",
+  2: "Minimum hours of rest in any 7 day period = 77",
+  3: "Hours of rest may be divided into no more than two periods, one of which shall be at least six hours in length",
+  4: "Interval between rest periods not to exceed 14 hours",
+  5: "ILO Work - Maximum 14 hours of work in any 24 hour period",
+  6: "ILO Work - Maximum 72 hours of work in any 7 day period",
+  7: "OPA - Maximum 15 hours of work in any 24 hour period",
+  8: "OPA - Maximum 36 hours of work in 72 hours",
+};
+
 interface DailyRecord {
   day: number;
   dayOfWeek: string;
@@ -1652,21 +1664,9 @@ export const RHRecordingForm = ({
                                     </span>
                                   </TooltipTrigger>
                                   <TooltipContent className="max-w-md">
-                                    <div className="text-sm">
-                                      <div className="font-semibold">Code {diagnostic.code}</div>
-                                      {diagnostic.violatingRanges && diagnostic.violatingRanges.length > 1 ? (
-                                        <>
-                                          <div className="text-xs text-gray-600 mt-1">
-                                            {diagnostic.violatingRanges.length} violating windows detected
-                                          </div>
-                                          <div className="text-xs text-gray-600 italic">
-                                            (Hover highlights all ranges)
-                                          </div>
-                                        </>
-                                      ) : (
-                                        <div className="text-xs text-gray-600">Window: {diagnostic.windowStart}</div>
-                                      )}
-                                      <div className="mt-1">{diagnostic.reason}</div>
+                                    <div className="text-sm space-y-1">
+                                      <div>{VIOLATION_CODE_DESCRIPTIONS[diagnostic.code]}</div>
+                                      <div className="text-xs text-gray-600">{diagnostic.reason}</div>
                                     </div>
                                   </TooltipContent>
                                 </Tooltip>
