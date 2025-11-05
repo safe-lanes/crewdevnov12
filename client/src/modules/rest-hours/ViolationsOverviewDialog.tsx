@@ -143,7 +143,7 @@ export function ViolationsOverviewDialog({
   // Mutation to save vessel comment
   const saveCommentMutation = useMutation({
     mutationFn: async (comment: string) => {
-      return apiRequest('/api/vessel-violation-comments', 'POST', {
+      return apiRequest('POST', '/api/vessel-violation-comments', {
         vesselId,
         monthValue,
         comment,
