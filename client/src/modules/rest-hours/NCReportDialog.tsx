@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
@@ -12,13 +13,43 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import type { NCReport, RestHoursCrewRecord } from "@shared/schema";
+import type { NCReport, RestHoursCrewRecord, RestHoursDailyRecord, MasterDataEntry } from "@shared/schema";
+import { filterViolations } from './violationFilters';
 
 interface NCReportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   crewRecord: RestHoursCrewRecord;
   vesselName: string;
+}
+
+// Violation code descriptions mapping
+const VIOLATION_CODE_DESCRIPTIONS: Record<number, string> = {
+  1: "Minimum 10 hours of rest in any 24 hour period",
+  2: "Minimum hours of rest in any 7 day period = 77",
+  3: "Hours of rest may be divided into no more than two periods, one of which shall be at least six hours in length",
+  4: "Interval between rest periods not to exceed 14 hours",
+  5: "ILO Work - Maximum 14 hours of work in any 24 hour period",
+  6: "ILO Work - Maximum 72 hours of work in any 7 day period",
+  7: "OPA - Maximum 15 hours of work in any 24 hour period",
+  8: "OPA - Maximum 36 hours of work in 72 hours",
+};
+
+interface ViolationDiagnostic {
+  code: number;
+  windowStart: string;
+  reason: string;
+  violatingRanges?: Array<{ startCell: number; endCell: number; startDay: number; monthName?: string }>;
+}
+
+interface DailyRecord {
+  day: number;
+  dayOfWeek: string;
+  hours: string[];
+  isPlan: boolean;
+  comments: string;
+  violations: number[];
+  violationDiagnostics?: ViolationDiagnostic[];
 }
 
 // Dummy office users data
@@ -28,7 +59,7 @@ const OFFICE_USERS = [
   { name: "Michael Chen", position: "Marine Superintendent" },
 ];
 
-export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName }: NCReportDialogProps) {
+export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: vesselIdProp }: NCReportDialogProps) {
   const { toast } = useToast();
   const [identifiedRootCause, setIdentifiedRootCause] = useState("");
   const [immediateCorrectiveAction, setImmediateCorrectiveAction] = useState("");
@@ -36,6 +67,32 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName }: N
   const [officeClosureVerifiedByName, setOfficeClosureVerifiedByName] = useState("");
   const [officeClosureDate, setOfficeClosureDate] = useState<Date | undefined>(undefined);
   const [submissionStatus, setSubmissionStatus] = useState<"draft" | "vessel-submitted" | "office-submitted">("draft");
+
+  // Fetch vessel name from master data
+  const { data: masterData } = useQuery<MasterDataEntry[]>({
+    queryKey: ["/api/masters/014/data"],
+    enabled: open,
+  });
+
+  const vesselName = useMemo(() => {
+    if (!masterData) return crewRecord.vesselId;
+    const vessel = masterData.find(v => v.entryId === crewRecord.vesselId);
+    return vessel?.name || crewRecord.vesselId;
+  }, [masterData, crewRecord.vesselId]);
+
+  // Fetch daily records to get violation details
+  const { data: dailyRecordContainer } = useQuery<RestHoursDailyRecord | null>({
+    queryKey: ['/api/rest-hours-daily-records/by-key', crewRecord.crewMemberId, crewRecord.vesselId, crewRecord.monthValue],
+    queryFn: async () => {
+      const response = await fetch(`/api/rest-hours-daily-records/by-key/${crewRecord.crewMemberId}/${crewRecord.vesselId}/${crewRecord.monthValue}`);
+      if (!response.ok) {
+        if (response.status === 404) return null;
+        throw new Error('Failed to fetch rest hours record');
+      }
+      return response.json();
+    },
+    enabled: open,
+  });
 
   // Fetch existing NC report
   const { data: existingReport, isLoading } = useQuery<NCReport | null>({
@@ -114,25 +171,63 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName }: N
 
   const isReadOnly = submissionStatus === "office-submitted";
 
-  // Parse violation details from crew record
-  const violationDetails = [];
-  if (crewRecord.violationDates) {
-    try {
-      const dates = JSON.parse(crewRecord.violationDates) as number[];
-      const codes = crewRecord.violationCodes ? JSON.parse(crewRecord.violationCodes) as string[] : [];
-      const comments = crewRecord.violationComments ? JSON.parse(crewRecord.violationComments) as string[] : [];
-
-      for (let i = 0; i < dates.length; i++) {
-        violationDetails.push({
-          date: `${crewRecord.monthValue}-${String(dates[i]).padStart(2, '0')}`,
-          codes: codes[i] || "",
-          comments: comments[i] || "",
-        });
-      }
-    } catch (e) {
-      console.error("Error parsing violation details:", e);
+  // Parse violation details from daily records
+  const violationDetails = useMemo(() => {
+    if (!dailyRecordContainer || !dailyRecordContainer.dailyRecords) {
+      return [];
     }
-  }
+
+    let dailyRecords: DailyRecord[] = [];
+    try {
+      dailyRecords = JSON.parse(dailyRecordContainer.dailyRecords);
+    } catch (e) {
+      console.error('Failed to parse daily records:', e);
+      return [];
+    }
+
+    // Get actual violations (not predicted)
+    const complianceMode = 'Rest'; // NC reports are based on Rest compliance
+    const opaMode = false; // Default to non-OPA mode
+
+    return dailyRecords
+      .filter(record => !record.isPlan) // Only actual records
+      .filter(record => {
+        const violations = Array.isArray(record.violations) ? record.violations : [];
+        const filteredViolations = filterViolations(violations, complianceMode, opaMode);
+        return filteredViolations.length > 0;
+      })
+      .map(record => {
+        const violations = Array.isArray(record.violations) ? record.violations : [];
+        const filteredViolations = filterViolations(violations, complianceMode, opaMode);
+        const diagnostics = record.violationDiagnostics || [];
+        const filteredDiagnostics = diagnostics.filter(d => filteredViolations.includes(d.code));
+
+        // Format violation codes with descriptions
+        const violationCodesStr = filteredViolations
+          .sort((a, b) => a - b)
+          .map(code => {
+            const desc = VIOLATION_CODE_DESCRIPTIONS[code] || `Code ${code}`;
+            return `${code} - ${desc}`;
+          })
+          .join('; ');
+
+        // Format day as date
+        const [year, month] = crewRecord.monthValue.split('-');
+        const date = new Date(parseInt(year), parseInt(month) - 1, record.day);
+        const dateStr = date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+
+        return {
+          date: dateStr,
+          codes: violationCodesStr,
+          comments: record.comments || "",
+        };
+      })
+      .sort((a, b) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        return dateA.getTime() - dateB.getTime();
+      });
+  }, [dailyRecordContainer, crewRecord.monthValue]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -145,27 +240,33 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName }: N
           <div className="py-8 text-center text-gray-500">Loading...</div>
         ) : (
           <div className="space-y-6">
-            {/* Header Information */}
-            <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-              <div>
-                <div className="text-sm text-gray-600">Vessel:</div>
-                <div className="font-semibold">{vesselName}</div>
+            {/* Header Information - 3 Column Layout */}
+            <div className="grid grid-cols-3 gap-6 p-4 bg-gray-50 rounded-lg">
+              <div className="space-y-4">
+                <div>
+                  <div className="text-sm text-gray-600">Vessel:</div>
+                  <div className="font-semibold">{vesselName}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-600">Seafarer's Rank:</div>
+                  <div className="font-semibold">{crewRecord.rank}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-600">NC Reference:</div>
+                  <div className="font-semibold">STCW/MLC/ILO</div>
+                </div>
               </div>
-              <div>
-                <div className="text-sm text-gray-600">Seafarer's Name:</div>
-                <div className="font-semibold">{crewRecord.name}</div>
+              <div className="space-y-4">
+                <div>
+                  <div className="text-sm text-gray-600">Seafarer's Name:</div>
+                  <div className="font-semibold">{crewRecord.name}</div>
+                </div>
               </div>
-              <div>
-                <div className="text-sm text-gray-600">Seafarer's Rank:</div>
-                <div className="font-semibold">{crewRecord.rank}</div>
-              </div>
-              <div>
-                <div className="text-sm text-gray-600">Month:</div>
-                <div className="font-semibold">{crewRecord.monthValue}</div>
-              </div>
-              <div>
-                <div className="text-sm text-gray-600">NC Reference:</div>
-                <div className="font-semibold">STCW/MLC/ILO</div>
+              <div className="space-y-4">
+                <div>
+                  <div className="text-sm text-gray-600">Month:</div>
+                  <div className="font-semibold">{crewRecord.monthValue}</div>
+                </div>
               </div>
             </div>
 
