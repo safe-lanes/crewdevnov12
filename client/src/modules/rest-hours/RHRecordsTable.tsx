@@ -228,7 +228,7 @@ const PredictedNCsRenderer = (params: ICellRendererParams) => {
 
   return (
     <div className="flex items-center justify-center gap-3 h-full py-2">
-      <span className="px-3 py-1.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
+      <span className="px-3 py-1.5 rounded font-semibold bg-gray-200 text-gray-700 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
         {predictedNCs}
       </span>
       {crewDetails.length > 0 ? (
@@ -319,7 +319,7 @@ const PredictedViolationsRenderer = (params: ICellRendererParams) => {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="px-3 py-1.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center cursor-help" style={{ fontSize: '13px' }}>
+              <span className="px-3 py-1.5 rounded font-semibold bg-gray-200 text-gray-700 min-w-[32px] text-center cursor-help" style={{ fontSize: '13px' }}>
                 {predictedViolations}
               </span>
             </TooltipTrigger>
@@ -334,7 +334,7 @@ const PredictedViolationsRenderer = (params: ICellRendererParams) => {
           </Tooltip>
         </TooltipProvider>
       ) : (
-        <span className="px-3 py-1.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
+        <span className="px-3 py-1.5 rounded font-semibold bg-gray-200 text-gray-700 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
           {predictedViolations}
         </span>
       )}
