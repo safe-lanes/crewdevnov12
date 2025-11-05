@@ -119,43 +119,18 @@ export function ViolationsOverviewDialog({
     // Filter crew summaries to only those for this vessel
     const vesselCrewSummaries = crewSummaries.filter(crew => crew.vesselId === vesselId);
 
-    console.log('[ViolationsDialog] Debug:', {
-      isPredicted,
-      vesselId,
-      monthValue,
-      crewSummariesCount: crewSummaries.length,
-      vesselCrewCount: vesselCrewSummaries.length,
-      allDailyRecordsCount: allDailyRecords.length,
-      isLoadingDaily,
-      crewIdsWithViolationsCount: crewIdsWithViolations.length
-    });
-
     // Create a map of daily records for quick lookup
     const dailyRecordsMap = new Map<string, DailyRecord[]>();
-    
-    // Debug: Check what's in allDailyRecords
-    if (allDailyRecords.length > 0) {
-      const sampleRecord = allDailyRecords[0];
-      console.log('[ViolationsDialog] Sample daily record:', {
-        vesselId: sampleRecord.vesselId,
-        monthValue: sampleRecord.monthValue,
-        crewMemberId: sampleRecord.crewMemberId,
-        hasDailyRecords: !!sampleRecord.dailyRecords
-      });
-      console.log('[ViolationsDialog] Looking for:', { vesselId, monthValue });
-    }
     
     // Filter daily records by crew members that have violations (more reliable than vessel+month)
     const filteredRecords = allDailyRecords.filter(record =>
       crewIdsWithViolations.includes(record.crewMemberId) && record.vesselId === vesselId
     );
-    console.log('[ViolationsDialog] Filtered daily records count:', filteredRecords.length);
     
     filteredRecords.forEach(recordContainer => {
         try {
           const dailyRecords: DailyRecord[] = JSON.parse(recordContainer.dailyRecords);
           dailyRecordsMap.set(recordContainer.crewMemberId, dailyRecords);
-          console.log('[ViolationsDialog] Parsed daily records for crew:', recordContainer.crewMemberId, 'count:', dailyRecords.length);
         } catch (e) {
           console.error('Failed to parse daily records:', e);
         }
