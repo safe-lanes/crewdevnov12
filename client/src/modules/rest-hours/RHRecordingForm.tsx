@@ -1663,7 +1663,7 @@ export const RHRecordingForm = ({
                                       {code}{idx < visibleViolations.length - 1 ? ', ' : ''}
                                     </span>
                                   </TooltipTrigger>
-                                  <TooltipContent className="max-w-md">
+                                  <TooltipContent side="right" align="start" sideOffset={12} className="max-w-md">
                                     <div className="text-sm space-y-1">
                                       <div>{VIOLATION_CODE_DESCRIPTIONS[diagnostic.code]}</div>
                                       <div className="text-xs text-gray-600">{diagnostic.reason}</div>
