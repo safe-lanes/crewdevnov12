@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { AgGridReact } from 'ag-grid-react';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { RestHoursVesselRecord } from '@shared/schema';
 import { type ComplianceMode } from './violationFilters';
+import { ViolationsOverviewDialog } from './ViolationsOverviewDialog';
 
 interface RHRecordsTableProps {
   selectedVessels: string[];
@@ -90,6 +91,13 @@ const ViolationsRenderer = (params: ICellRendererParams) => {
     return day + (suffix[(v - 20) % 10] || suffix[v] || suffix[0]);
   };
 
+  // Click handler to open violations detail dialog
+  const handleClick = () => {
+    if (params.context && params.context.onViewViolations) {
+      params.context.onViewViolations(params.data);
+    }
+  };
+
   if (violations === 0) return null;
 
   return (
@@ -98,7 +106,11 @@ const ViolationsRenderer = (params: ICellRendererParams) => {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="px-3 py-1.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center cursor-help" style={{ fontSize: '13px' }}>
+              <span 
+                className="px-3 py-1.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center cursor-pointer hover:bg-pink-200 transition-colors" 
+                style={{ fontSize: '13px' }}
+                onClick={handleClick}
+              >
                 {violations}
               </span>
             </TooltipTrigger>
@@ -113,7 +125,11 @@ const ViolationsRenderer = (params: ICellRendererParams) => {
           </Tooltip>
         </TooltipProvider>
       ) : (
-        <span className="px-3 py-1.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
+        <span 
+          className="px-3 py-1.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center cursor-pointer hover:bg-pink-200 transition-colors" 
+          style={{ fontSize: '13px' }}
+          onClick={handleClick}
+        >
           {violations}
         </span>
       )}
@@ -311,6 +327,13 @@ const PredictedViolationsRenderer = (params: ICellRendererParams) => {
     return day + (suffix[(v - 20) % 10] || suffix[v] || suffix[0]);
   };
 
+  // Click handler to open predicted violations detail dialog
+  const handleClick = () => {
+    if (params.context && params.context.onViewPredictedViolations) {
+      params.context.onViewPredictedViolations(params.data);
+    }
+  };
+
   if (predictedViolations === 0) return null;
 
   return (
@@ -319,7 +342,11 @@ const PredictedViolationsRenderer = (params: ICellRendererParams) => {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="px-3 py-1.5 rounded font-semibold bg-gray-200 text-gray-700 min-w-[32px] text-center cursor-help" style={{ fontSize: '13px' }}>
+              <span 
+                className="px-3 py-1.5 rounded font-semibold bg-gray-200 text-gray-700 min-w-[32px] text-center cursor-pointer hover:bg-gray-300 transition-colors" 
+                style={{ fontSize: '13px' }}
+                onClick={handleClick}
+              >
                 {predictedViolations}
               </span>
             </TooltipTrigger>
@@ -334,7 +361,11 @@ const PredictedViolationsRenderer = (params: ICellRendererParams) => {
           </Tooltip>
         </TooltipProvider>
       ) : (
-        <span className="px-3 py-1.5 rounded font-semibold bg-gray-200 text-gray-700 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
+        <span 
+          className="px-3 py-1.5 rounded font-semibold bg-gray-200 text-gray-700 min-w-[32px] text-center cursor-pointer hover:bg-gray-300 transition-colors" 
+          style={{ fontSize: '13px' }}
+          onClick={handleClick}
+        >
           {predictedViolations}
         </span>
       )}
@@ -402,6 +433,10 @@ const OfficeReviewRenderer = (params: ICellRendererParams) => {
 export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode, opaMode }: RHRecordsTableProps) {
   const gridRef = useRef<AgGridReact>(null);
   const [, setLocation] = useLocation();
+  const [violationsDialogOpen, setViolationsDialogOpen] = useState(false);
+  const [selectedViolationsRecord, setSelectedViolationsRecord] = useState<RestHoursVesselRecord | null>(null);
+  const [predictedViolationsDialogOpen, setPredictedViolationsDialogOpen] = useState(false);
+  const [selectedPredictedViolationsRecord, setSelectedPredictedViolationsRecord] = useState<RestHoursVesselRecord | null>(null);
 
   // Build query params for backend
   const queryParams = useMemo(() => {
@@ -441,6 +476,18 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
   // Handle navigation to vessel overview
   const handleEditRecord = (record: RestHoursVesselRecord) => {
     setLocation(`/rest-hours/vessel/${record.vesselId}/${record.monthValue}`);
+  };
+
+  // Handler for opening the violations detail dialog
+  const handleViewViolations = (record: RestHoursVesselRecord) => {
+    setSelectedViolationsRecord(record);
+    setViolationsDialogOpen(true);
+  };
+
+  // Handler for opening the predicted violations detail dialog
+  const handleViewPredictedViolations = (record: RestHoursVesselRecord) => {
+    setSelectedPredictedViolationsRecord(record);
+    setPredictedViolationsDialogOpen(true);
   };
 
   // Actions renderer that uses callback instead of hooks
@@ -573,19 +620,50 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
   }
 
   return (
-    <div className="ag-theme-alpine w-full" style={{ height: '600px' }}>
-      <AgGridReact
-        ref={gridRef}
-        rowData={filteredRecords}
-        columnDefs={columnDefs}
-        defaultColDef={defaultColDef}
-        animateRows={true}
-        rowSelection="single"
-        pagination={true}
-        paginationPageSize={20}
-        domLayout="normal"
-        rowHeight={56}
-      />
-    </div>
+    <>
+      <div className="ag-theme-alpine w-full" style={{ height: '600px' }}>
+        <AgGridReact
+          ref={gridRef}
+          rowData={filteredRecords}
+          columnDefs={columnDefs}
+          defaultColDef={defaultColDef}
+          context={{ onViewViolations: handleViewViolations, onViewPredictedViolations: handleViewPredictedViolations }}
+          animateRows={true}
+          rowSelection="single"
+          pagination={true}
+          paginationPageSize={20}
+          domLayout="normal"
+          rowHeight={56}
+        />
+      </div>
+
+      {selectedViolationsRecord && (
+        <ViolationsOverviewDialog
+          key={`violations-${selectedViolationsRecord.vesselId}-${selectedViolationsRecord.monthValue}`}
+          open={violationsDialogOpen}
+          onOpenChange={setViolationsDialogOpen}
+          vesselId={selectedViolationsRecord.vesselId}
+          vesselName={selectedViolationsRecord.vesselName}
+          monthValue={selectedViolationsRecord.monthValue}
+          complianceMode={complianceMode}
+          opaMode={opaMode}
+          isPredicted={false}
+        />
+      )}
+
+      {selectedPredictedViolationsRecord && (
+        <ViolationsOverviewDialog
+          key={`predicted-violations-${selectedPredictedViolationsRecord.vesselId}-${selectedPredictedViolationsRecord.monthValue}`}
+          open={predictedViolationsDialogOpen}
+          onOpenChange={setPredictedViolationsDialogOpen}
+          vesselId={selectedPredictedViolationsRecord.vesselId}
+          vesselName={selectedPredictedViolationsRecord.vesselName}
+          monthValue={selectedPredictedViolationsRecord.monthValue}
+          complianceMode={complianceMode}
+          opaMode={opaMode}
+          isPredicted={true}
+        />
+      )}
+    </>
   );
 }
