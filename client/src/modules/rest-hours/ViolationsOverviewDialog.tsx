@@ -78,7 +78,7 @@ export function ViolationsOverviewDialog({
   queryParams.append('complianceMode', complianceMode);
   queryParams.append('opaMode', String(opaMode));
 
-  const { data: crewSummaries = [], isLoading: isLoadingSummaries } = useQuery<RestHoursCrewRecord[]>({
+  const { data: crewSummaries = [], isLoading: isLoadingSummaries } = useQuery<any[]>({
     queryKey: ['/api/rest-hours-crew-records', queryParams.toString()],
     queryFn: async () => {
       const url = `/api/rest-hours-crew-records?${queryParams.toString()}`;
@@ -89,7 +89,17 @@ export function ViolationsOverviewDialog({
     enabled: open,
   });
 
-  // Fetch all daily records for the vessel (we'll filter by crew on the client)
+  // Get crew IDs that have violations to fetch their daily records
+  const crewIdsWithViolations = useMemo(() => {
+    return crewSummaries
+      .filter(crew => {
+        const violationDatesField = isPredicted ? crew.predictedViolationDates : crew.violationDates;
+        return violationDatesField && violationDatesField !== '[]';
+      })
+      .map(crew => crew.crewMemberId);
+  }, [crewSummaries, isPredicted]);
+
+  // Fetch daily records only for crew members with violations
   const { data: allDailyRecords = [], isLoading: isLoadingDaily } = useQuery<any[]>({
     queryKey: ['/api/rest-hours-daily-records'],
     queryFn: async () => {
@@ -97,64 +107,80 @@ export function ViolationsOverviewDialog({
       if (!response.ok) throw new Error('Failed to fetch daily records');
       return response.json();
     },
-    enabled: open,
+    enabled: open && crewIdsWithViolations.length > 0,
   });
 
   const isLoading = isLoadingSummaries || isLoadingDaily;
 
-  // Parse and aggregate all violations from all crew members
+  // Parse and aggregate all violations from all crew members using pre-calculated violation dates
   const violationRecords = useMemo(() => {
     const allViolations: ViolationRecord[] = [];
 
-    // Create a map of crew summaries for quick lookup
-    const crewMap = new Map<string, RestHoursCrewRecord>();
-    crewSummaries.forEach(crew => {
-      crewMap.set(`${crew.crewMemberId}-${crew.vesselId}-${crew.monthValue}`, crew);
-    });
+    // Filter crew summaries to only those for this vessel
+    const vesselCrewSummaries = crewSummaries.filter(crew => crew.vesselId === vesselId);
 
-    // Filter daily records to only those for this vessel/month
-    const relevantRecords = allDailyRecords.filter(record => 
-      record.vesselId === vesselId && record.monthValue === monthValue
-    );
+    // Create a map of daily records for quick lookup
+    const dailyRecordsMap = new Map<string, DailyRecord[]>();
+    allDailyRecords
+      .filter(record => record.vesselId === vesselId && record.monthValue === monthValue)
+      .forEach(recordContainer => {
+        try {
+          const dailyRecords: DailyRecord[] = JSON.parse(recordContainer.dailyRecords);
+          dailyRecordsMap.set(recordContainer.crewMemberId, dailyRecords);
+        } catch (e) {
+          console.error('Failed to parse daily records:', e);
+        }
+      });
 
-    relevantRecords.forEach(dailyRecordContainer => {
-      const crewKey = `${dailyRecordContainer.crewMemberId}-${dailyRecordContainer.vesselId}-${dailyRecordContainer.monthValue}`;
-      const crewInfo = crewMap.get(crewKey);
+    vesselCrewSummaries.forEach(crew => {
+      // Use the pre-calculated violation dates from crew record
+      const violationDatesField = isPredicted ? crew.predictedViolationDates : crew.violationDates;
       
-      if (!crewInfo || !dailyRecordContainer.dailyRecords) return;
+      if (!violationDatesField) return;
 
-      let dailyRecords: DailyRecord[] = [];
+      let violationDays: number[] = [];
       try {
-        dailyRecords = JSON.parse(dailyRecordContainer.dailyRecords);
+        violationDays = JSON.parse(violationDatesField);
       } catch (e) {
-        console.error('Failed to parse daily records:', e);
+        console.error('Failed to parse violation dates:', e);
         return;
       }
 
-      // Filter records based on isPredicted flag and violations
-      dailyRecords
-        .filter(record => isPredicted ? record.isPlan : !record.isPlan)
-        .filter(record => {
-          const violations = Array.isArray(record.violations) ? record.violations : [];
+      // Get the daily records for this crew member
+      const dailyRecords = dailyRecordsMap.get(crew.crewMemberId) || [];
+
+      // For each day that has a violation, find the corresponding daily record
+      violationDays.forEach(day => {
+        const dayRecord = dailyRecords.find(r => r.day === day && (isPredicted ? r.isPlan : !r.isPlan));
+        
+        if (dayRecord) {
+          const violations = Array.isArray(dayRecord.violations) ? dayRecord.violations : [];
           const filteredViolations = filterViolations(violations, complianceMode, opaMode);
-          return filteredViolations.length > 0;
-        })
-        .forEach(record => {
-          const violations = Array.isArray(record.violations) ? record.violations : [];
-          const filteredViolations = filterViolations(violations, complianceMode, opaMode);
-          const diagnostics = record.violationDiagnostics || [];
+          const diagnostics = dayRecord.violationDiagnostics || [];
           const filteredDiagnostics = diagnostics.filter(d => filteredViolations.includes(d.code));
 
           allViolations.push({
-            crewMemberId: crewInfo.crewMemberId,
-            crewMemberName: crewInfo.name,
-            rank: crewInfo.rank,
-            day: record.day,
+            crewMemberId: crew.crewMemberId,
+            crewMemberName: crew.name,
+            rank: crew.rank,
+            day: day,
             filteredViolations: filteredViolations.sort((a, b) => a - b),
             filteredDiagnostics,
-            comments: record.comments || '',
+            comments: dayRecord.comments || '',
           });
-        });
+        } else {
+          // If we can't find the daily record, still show the violation date
+          allViolations.push({
+            crewMemberId: crew.crewMemberId,
+            crewMemberName: crew.name,
+            rank: crew.rank,
+            day: day,
+            filteredViolations: [],
+            filteredDiagnostics: [],
+            comments: '',
+          });
+        }
+      });
     });
 
     // Sort by day, then by rank, then by name
