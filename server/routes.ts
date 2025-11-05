@@ -2523,7 +2523,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               predictedViolationDates: predictedViolationDatesJson,
               totalNCs: totalNCs,
               crewWithNCs: crewWithNCs,
-              predictedNCs: predictedNCs
+              predictedNCs: predictedNCs,
+              crewWithPredictedNCs: crewWithPredictedNCs
             };
           } else {
             // Create placeholder record with calculated values
@@ -2547,6 +2548,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               crewWithPredictedViolationsDetails: crewWithPredictedViolationsDetailsJson,
               predictedViolationDates: predictedViolationDatesJson,
               predictedNCs: predictedNCs,
+              crewWithPredictedNCs: crewWithPredictedNCs,
               officeReviewStatus: 'Due',
               createdAt: null,
               updatedAt: null,
@@ -2654,7 +2656,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               predictedViolationDates: predictedViolationDates.length > 0 ? JSON.stringify(predictedViolationDates) : null,
               totalNCs: totalNCs,
               crewWithNCs: crewWithNCs,
-              predictedNCs: predictedNCs
+              predictedNCs: predictedNCs,
+              crewWithPredictedNCs: crewWithPredictedNCs
             };
           }
           
@@ -2672,7 +2675,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             predictedViolationDates: null,
             totalNCs: 0,
             crewWithNCs: 0,
-            predictedNCs: 0
+            predictedNCs: 0,
+            crewWithPredictedNCs: 0
           };
         });
       }

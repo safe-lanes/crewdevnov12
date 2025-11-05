@@ -164,6 +164,24 @@ const NCsRenderer = (params: ICellRendererParams) => {
   );
 };
 
+const PredictedNCsRenderer = (params: ICellRendererParams) => {
+  const predictedNCs = params.data?.predictedNCs || 0;
+  const crewCount = params.data?.crewWithPredictedNCs || 0;
+
+  if (predictedNCs === 0) return null;
+
+  return (
+    <div className="flex items-center justify-center gap-3 h-full py-2">
+      <span className="px-3 py-1.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
+        {predictedNCs}
+      </span>
+      <span className="px-3 py-1.5 rounded font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
+        {crewCount}
+      </span>
+    </div>
+  );
+};
+
 const BadgeRenderer = (params: ICellRendererParams) => {
   const value = params.value;
   if (!value || value === 0) return null;
@@ -427,8 +445,8 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
       field: 'predictedNCs',
       flex: 1.2,
       minWidth: 100,
-      cellRenderer: BadgeRenderer,
-      headerTooltip: 'Predicted NCs'
+      cellRenderer: PredictedNCsRenderer,
+      headerTooltip: 'Predicted NCs / No. of crew involved'
     },
     {
       headerName: 'Office Review',

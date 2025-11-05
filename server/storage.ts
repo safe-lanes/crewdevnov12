@@ -2625,6 +2625,7 @@ export class PersistentFileStorage implements IStorage {
         const crewWithNCs = totalNCs > 0 ? Math.min(totalNCs, Math.floor(Math.random() * 3) + 1) : 0;
         const predictedViolations = Math.floor(Math.random() * 2);
         const predictedNCs = Math.floor(Math.random() * 2);
+        const crewWithPredictedNCs = predictedNCs > 0 ? Math.min(predictedNCs, Math.floor(Math.random() * 2) + 1) : 0;
         
         let officeReviewStatus = "Completed";
         if (monthOffset === 0 && idx < 3) {
@@ -2646,6 +2647,7 @@ export class PersistentFileStorage implements IStorage {
           crewWithNCs,
           predictedViolations,
           predictedNCs,
+          crewWithPredictedNCs,
           officeReviewStatus,
           createdAt: new Date(),
           updatedAt: new Date()
@@ -3082,6 +3084,7 @@ export class PersistentFileStorage implements IStorage {
         const crewWithNCs = totalNCs > 0 ? Math.min(totalNCs, Math.floor(Math.random() * 3) + 1) : 0;
         const predictedViolations = Math.floor(Math.random() * 2);
         const predictedNCs = Math.floor(Math.random() * 2);
+        const crewWithPredictedNCs = predictedNCs > 0 ? Math.min(predictedNCs, Math.floor(Math.random() * 2) + 1) : 0;
         
         let officeReviewStatus = "Completed";
         if (monthOffset === 0 && idx < 3) {
@@ -3103,6 +3106,7 @@ export class PersistentFileStorage implements IStorage {
           crewWithNCs,
           predictedViolations,
           predictedNCs,
+          crewWithPredictedNCs,
           officeReviewStatus,
           createdAt: new Date(),
           updatedAt: new Date()
