@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { RestHoursVesselRecord } from '@shared/schema';
 import { type ComplianceMode } from './violationFilters';
 import { ViolationsOverviewDialog } from './ViolationsOverviewDialog';
+import { NCOverviewDialog } from './NCOverviewDialog';
 
 interface RHRecordsTableProps {
   selectedVessels: string[];
@@ -183,11 +184,22 @@ const NCsRenderer = (params: ICellRendererParams) => {
     console.error('Failed to parse crew NCs details:', e);
   }
 
+  // Click handler to open NCs detail dialog
+  const handleClick = () => {
+    if (params.context && params.context.onViewNCs) {
+      params.context.onViewNCs(params.data);
+    }
+  };
+
   if (ncs === 0) return null;
 
   return (
     <div className="flex items-center justify-center gap-3 h-full py-2">
-      <span className="px-3 py-1.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
+      <span 
+        className="px-3 py-1.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center cursor-pointer hover:bg-pink-200 transition-colors" 
+        style={{ fontSize: '13px' }}
+        onClick={handleClick}
+      >
         {ncs}
       </span>
       {crewDetails.length > 0 ? (
@@ -240,11 +252,22 @@ const PredictedNCsRenderer = (params: ICellRendererParams) => {
     console.error('Failed to parse crew predicted NCs details:', e);
   }
 
+  // Click handler to open predicted NCs detail dialog
+  const handleClick = () => {
+    if (params.context && params.context.onViewPredictedNCs) {
+      params.context.onViewPredictedNCs(params.data);
+    }
+  };
+
   if (predictedNCs === 0) return null;
 
   return (
     <div className="flex items-center justify-center gap-3 h-full py-2">
-      <span className="px-3 py-1.5 rounded font-semibold bg-gray-200 text-gray-700 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
+      <span 
+        className="px-3 py-1.5 rounded font-semibold bg-gray-200 text-gray-700 min-w-[32px] text-center cursor-pointer hover:bg-gray-300 transition-colors" 
+        style={{ fontSize: '13px' }}
+        onClick={handleClick}
+      >
         {predictedNCs}
       </span>
       {crewDetails.length > 0 ? (
@@ -437,6 +460,10 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
   const [selectedViolationsRecord, setSelectedViolationsRecord] = useState<RestHoursVesselRecord | null>(null);
   const [predictedViolationsDialogOpen, setPredictedViolationsDialogOpen] = useState(false);
   const [selectedPredictedViolationsRecord, setSelectedPredictedViolationsRecord] = useState<RestHoursVesselRecord | null>(null);
+  const [ncDialogOpen, setNcDialogOpen] = useState(false);
+  const [selectedNcRecord, setSelectedNcRecord] = useState<RestHoursVesselRecord | null>(null);
+  const [predictedNcDialogOpen, setPredictedNcDialogOpen] = useState(false);
+  const [selectedPredictedNcRecord, setSelectedPredictedNcRecord] = useState<RestHoursVesselRecord | null>(null);
 
   // Build query params for backend
   const queryParams = useMemo(() => {
@@ -488,6 +515,18 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
   const handleViewPredictedViolations = (record: RestHoursVesselRecord) => {
     setSelectedPredictedViolationsRecord(record);
     setPredictedViolationsDialogOpen(true);
+  };
+
+  // Handler for opening the NCs detail dialog
+  const handleViewNCs = (record: RestHoursVesselRecord) => {
+    setSelectedNcRecord(record);
+    setNcDialogOpen(true);
+  };
+
+  // Handler for opening the predicted NCs detail dialog
+  const handleViewPredictedNCs = (record: RestHoursVesselRecord) => {
+    setSelectedPredictedNcRecord(record);
+    setPredictedNcDialogOpen(true);
   };
 
   // Actions renderer that uses callback instead of hooks
@@ -627,7 +666,12 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
           rowData={filteredRecords}
           columnDefs={columnDefs}
           defaultColDef={defaultColDef}
-          context={{ onViewViolations: handleViewViolations, onViewPredictedViolations: handleViewPredictedViolations }}
+          context={{ 
+            onViewViolations: handleViewViolations, 
+            onViewPredictedViolations: handleViewPredictedViolations,
+            onViewNCs: handleViewNCs,
+            onViewPredictedNCs: handleViewPredictedNCs
+          }}
           animateRows={true}
           rowSelection="single"
           pagination={true}
@@ -659,6 +703,34 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
           vesselId={selectedPredictedViolationsRecord.vesselId}
           vesselName={selectedPredictedViolationsRecord.vesselName}
           monthValue={selectedPredictedViolationsRecord.monthValue}
+          complianceMode={complianceMode}
+          opaMode={opaMode}
+          isPredicted={true}
+        />
+      )}
+
+      {selectedNcRecord && (
+        <NCOverviewDialog
+          key={`ncs-${selectedNcRecord.vesselId}-${selectedNcRecord.monthValue}`}
+          open={ncDialogOpen}
+          onOpenChange={setNcDialogOpen}
+          vesselId={selectedNcRecord.vesselId}
+          vesselName={selectedNcRecord.vesselName}
+          monthValue={selectedNcRecord.monthValue}
+          complianceMode={complianceMode}
+          opaMode={opaMode}
+          isPredicted={false}
+        />
+      )}
+
+      {selectedPredictedNcRecord && (
+        <NCOverviewDialog
+          key={`predicted-ncs-${selectedPredictedNcRecord.vesselId}-${selectedPredictedNcRecord.monthValue}`}
+          open={predictedNcDialogOpen}
+          onOpenChange={setPredictedNcDialogOpen}
+          vesselId={selectedPredictedNcRecord.vesselId}
+          vesselName={selectedPredictedNcRecord.vesselName}
+          monthValue={selectedPredictedNcRecord.monthValue}
           complianceMode={complianceMode}
           opaMode={opaMode}
           isPredicted={true}
