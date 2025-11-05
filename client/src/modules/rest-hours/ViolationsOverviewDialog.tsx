@@ -1,9 +1,13 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { useMemo, useState, useEffect } from 'react';
 import type { RestHoursCrewRecord } from '@shared/schema';
 import { filterViolations } from './violationFilters';
+import { useToast } from '@/hooks/use-toast';
+import { queryClient, apiRequest } from '@/lib/queryClient';
 
 // Violation code descriptions mapping
 const VIOLATION_CODE_DESCRIPTIONS: Record<number, string> = {
@@ -71,6 +75,9 @@ export function ViolationsOverviewDialog({
   opaMode,
   isPredicted = false,
 }: ViolationsOverviewDialogProps) {
+  const { toast } = useToast();
+  const [vesselComment, setVesselComment] = useState('');
+
   // Fetch all crew records for this vessel and month to get crew list
   const queryParams = new URLSearchParams();
   queryParams.append('vesselIds', vesselId);
@@ -109,6 +116,58 @@ export function ViolationsOverviewDialog({
     },
     enabled: open && crewIdsWithViolations.length > 0,
   });
+
+  // Fetch existing vessel comment (only for actual violations, not predicted)
+  const { data: vesselCommentData } = useQuery<{ comment: string } | null>({
+    queryKey: ['/api/vessel-violation-comments', vesselId, monthValue],
+    queryFn: async () => {
+      const response = await fetch(`/api/vessel-violation-comments?vesselId=${vesselId}&monthValue=${monthValue}`);
+      if (!response.ok) {
+        if (response.status === 404) return null;
+        throw new Error('Failed to fetch vessel comment');
+      }
+      return response.json();
+    },
+    enabled: open && !isPredicted,
+  });
+
+  // Update local state when comment data is fetched
+  useEffect(() => {
+    if (vesselCommentData) {
+      setVesselComment(vesselCommentData.comment || '');
+    } else {
+      setVesselComment('');
+    }
+  }, [vesselCommentData]);
+
+  // Mutation to save vessel comment
+  const saveCommentMutation = useMutation({
+    mutationFn: async (comment: string) => {
+      return apiRequest('/api/vessel-violation-comments', 'POST', {
+        vesselId,
+        monthValue,
+        comment,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/vessel-violation-comments', vesselId, monthValue] });
+      toast({
+        title: 'Success',
+        description: 'Vessel comment saved successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to save vessel comment',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleSaveComment = () => {
+    saveCommentMutation.mutate(vesselComment);
+  };
 
   const isLoading = isLoadingSummaries || isLoadingDaily;
 
@@ -289,6 +348,32 @@ export function ViolationsOverviewDialog({
             </div>
           )}
         </div>
+
+        {/* Vessel Comment Section - Only for actual violations */}
+        {!isPredicted && (
+          <div className="mt-6 space-y-3 border-t pt-4">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-gray-700">
+                Vessel Comment (Master/Chief Engineer)
+              </label>
+              <Button
+                onClick={handleSaveComment}
+                disabled={saveCommentMutation.isPending}
+                size="sm"
+                data-testid="button-save-vessel-comment"
+              >
+                {saveCommentMutation.isPending ? 'Saving...' : 'Save Comment'}
+              </Button>
+            </div>
+            <Textarea
+              value={vesselComment}
+              onChange={(e) => setVesselComment(e.target.value)}
+              placeholder="Enter corrective actions or notes regarding these violations..."
+              className="min-h-[100px] resize-y"
+              data-testid="textarea-vessel-comment"
+            />
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
