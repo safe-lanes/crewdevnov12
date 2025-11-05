@@ -98,15 +98,12 @@ export function NCOverviewDialog({
   // Get crew IDs that have NCs to fetch their daily records
   // NCs are based on violation days (3+ violations or Code 2), so we use crew with NCs > 0
   const crewIdsWithNCs = useMemo(() => {
-    const crewWithNCs = crewSummaries
+    return crewSummaries
       .filter(crew => {
         const ncCount = isPredicted ? crew.predictedNCs : crew.totalNCs;
         return ncCount && ncCount > 0;
       })
       .map(crew => crew.crewMemberId);
-    
-    console.log(`[NC Dialog] Found ${crewWithNCs.length} crew members with NCs (isPredicted: ${isPredicted})`);
-    return crewWithNCs;
   }, [crewSummaries, isPredicted]);
 
   // Fetch daily records only for crew members with NCs
