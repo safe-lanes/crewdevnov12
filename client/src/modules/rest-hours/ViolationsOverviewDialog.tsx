@@ -142,12 +142,14 @@ export function ViolationsOverviewDialog({
         crewMemberId: sampleRecord.crewMemberId,
         hasDailyRecords: !!sampleRecord.dailyRecords
       });
+      console.log('[ViolationsDialog] Looking for:', { vesselId, monthValue });
     }
     
-    const filteredRecords = allDailyRecords.filter(record => 
-      record.vesselId === vesselId && record.monthValue === monthValue
+    // Filter daily records by crew members that have violations (more reliable than vessel+month)
+    const filteredRecords = allDailyRecords.filter(record =>
+      crewIdsWithViolations.includes(record.crewMemberId) && record.vesselId === vesselId
     );
-    console.log('[ViolationsDialog] Filtered daily records count:', filteredRecords.length, 'from', allDailyRecords.length);
+    console.log('[ViolationsDialog] Filtered daily records count:', filteredRecords.length);
     
     filteredRecords.forEach(recordContainer => {
         try {
