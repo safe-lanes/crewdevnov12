@@ -363,46 +363,53 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
     {
       headerName: 'Vessel',
       field: 'vesselName',
-      width: 150,
+      flex: 2,
+      minWidth: 140,
       pinned: 'left' as const,
       cellStyle: { fontWeight: 500, fontSize: '13px', display: 'flex', alignItems: 'center' } as any
     },
     {
       headerName: 'Month',
       field: 'month',
-      width: 110,
+      flex: 1.5,
+      minWidth: 100,
       cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center' } as any
     },
     {
       headerName: 'Total Crew',
       field: 'totalCrew',
-      width: 100,
+      flex: 1,
+      minWidth: 90,
       cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' } as any
     },
     {
       headerName: 'Status',
       field: 'recordingStatusPercent',
-      width: 160,
+      flex: 2,
+      minWidth: 150,
       cellRenderer: ProgressBarRenderer,
       headerTooltip: 'Recording Status'
     },
     {
       headerName: 'Activity Conflicts',
       field: 'activityConflicting',
-      width: 120,
+      flex: 1.5,
+      minWidth: 110,
       cellRenderer: YesNoRenderer,
       headerTooltip: 'Activity conflicting with actual recording'
     },
     {
       headerName: 'Violations / Crew',
-      width: 130,
+      flex: 1.5,
+      minWidth: 120,
       cellRenderer: ViolationsRenderer,
       valueGetter: (params) => params.data?.totalViolations,
       headerTooltip: 'Total violations / No. of crew involved'
     },
     {
       headerName: 'NCs / Crew',
-      width: 110,
+      flex: 1.2,
+      minWidth: 100,
       cellRenderer: NCsRenderer,
       valueGetter: (params) => params.data?.totalNCs,
       headerTooltip: 'Total NCs / No. of crew involved'
@@ -410,26 +417,30 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
     {
       headerName: 'Pred. Violations',
       field: 'predictedViolations',
-      width: 120,
+      flex: 1.5,
+      minWidth: 110,
       cellRenderer: PredictedViolationsRenderer,
       headerTooltip: 'Predicted Violations'
     },
     {
       headerName: 'Pred. NCs',
       field: 'predictedNCs',
-      width: 110,
+      flex: 1.2,
+      minWidth: 100,
       cellRenderer: BadgeRenderer,
       headerTooltip: 'Predicted NCs'
     },
     {
       headerName: 'Office Review',
       field: 'officeReviewStatus',
-      width: 130,
+      flex: 1.5,
+      minWidth: 120,
       cellRenderer: OfficeReviewRenderer,
     },
     {
       headerName: 'Actions',
-      width: 90,
+      flex: 1,
+      minWidth: 80,
       cellRenderer: ActionsRenderer,
       pinned: 'right',
       sortable: false,

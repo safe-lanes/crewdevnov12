@@ -304,74 +304,85 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
     {
       headerName: 'Rank',
       field: 'rank',
-      width: 150,
+      flex: 2,
+      minWidth: 130,
       pinned: 'left',
       cellStyle: { fontWeight: 500, fontSize: '13px', display: 'flex', alignItems: 'center' } as any
     },
     {
       headerName: 'Name',
       field: 'name',
-      width: 180,
+      flex: 2.5,
+      minWidth: 150,
       cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center' } as any
     },
     {
       headerName: 'Month',
       field: 'month',
-      width: 110,
+      flex: 1.5,
+      minWidth: 100,
       cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center' } as any
     },
     {
       headerName: 'S.On/Off',
       field: 'signOnOffInfo',
-      width: 120,
+      flex: 1.5,
+      minWidth: 110,
       cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' } as any,
       headerTooltip: 'S.On or S.Off with Role'
     },
     {
       headerName: 'Status',
       field: 'recordingStatusPercent',
-      width: 160,
+      flex: 2,
+      minWidth: 150,
       cellRenderer: ProgressBarRenderer,
       headerTooltip: 'Recording Status'
     },
     {
       headerName: 'Activity Conflicts',
       field: 'activityConflicting',
-      width: 120,
+      flex: 1.5,
+      minWidth: 110,
       cellRenderer: YesNoRenderer,
       headerTooltip: 'Activity conflicting with actual recording'
     },
     {
       headerName: 'Violations',
       field: 'totalViolations',
-      width: 120,
+      flex: 1.5,
+      minWidth: 110,
       cellRenderer: ViolationsWithDatesRenderer,
       headerTooltip: 'Total Violations'
     },
     {
       headerName: 'NCs',
       field: 'totalNCs',
-      width: 100,
+      flex: 1,
+      minWidth: 90,
       cellRenderer: BadgeRenderer,
       headerTooltip: 'Total NCs'
     },
     {
       headerName: 'Pred. Violations',
       field: 'predictedViolations',
-      width: 120,
+      flex: 1.5,
+      minWidth: 110,
       cellRenderer: PredictedViolationsWithDatesRenderer,
       headerTooltip: 'Predicted Violations'
     },
     {
       headerName: 'Pred. NCs',
       field: 'predictedNCs',
-      width: 110,
+      flex: 1,
+      minWidth: 100,
       cellRenderer: BadgeRenderer,
       headerTooltip: 'Predicted NCs'
     },
     {
       headerName: 'Actions',
-      width: 90,
+      flex: 1,
+      minWidth: 80,
       cellRenderer: ActionsRenderer,
       pinned: 'right',
       sortable: false,
