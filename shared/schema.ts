@@ -560,6 +560,16 @@ export const restHoursDailyRecords = pgTable("rest_hours_daily_records", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const vesselViolationComments = pgTable("vessel_violation_comments", {
+  id: serial("id").primaryKey(),
+  vesselId: text("vessel_id").notNull(), // Vessel ID from master data
+  monthValue: text("month_value").notNull(), // Format: "2025-11" (YYYY-MM)
+  comment: text("comment"), // Vessel comments, explanations, corrective actions
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const fixedTasks = pgTable("fixed_tasks", {
   id: serial("id").primaryKey(),
   crewMemberId: text("crew_member_id").notNull(), // Reference to crew member
@@ -986,6 +996,12 @@ export const insertFixedTaskSchema = createInsertSchema(fixedTasks).omit({
   updatedAt: true,
 });
 
+export const insertVesselViolationCommentSchema = createInsertSchema(vesselViolationComments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertForm = z.infer<typeof insertFormSchema>;
@@ -1039,6 +1055,8 @@ export type InsertRestHoursDailyRecord = z.infer<typeof insertRestHoursDailyReco
 export type RestHoursDailyRecord = typeof restHoursDailyRecords.$inferSelect;
 export type InsertFixedTask = z.infer<typeof insertFixedTaskSchema>;
 export type FixedTask = typeof fixedTasks.$inferSelect;
+export type InsertVesselViolationComment = z.infer<typeof insertVesselViolationCommentSchema>;
+export type VesselViolationComment = typeof vesselViolationComments.$inferSelect;
 
 // Dashboard Types
 export const dashboardStatusSchema = z.object({

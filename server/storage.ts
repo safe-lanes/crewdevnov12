@@ -152,6 +152,9 @@ export interface IStorage {
   createFixedTask(task: InsertFixedTask): Promise<FixedTask>;
   updateFixedTask(id: number, task: Partial<InsertFixedTask>): Promise<FixedTask | undefined>;
   deleteFixedTask(id: number): Promise<boolean>;
+  // Vessel Violation Comments
+  getVesselViolationComment(vesselId: string, monthValue: string): Promise<VesselViolationComment | null>;
+  saveVesselViolationComment(comment: InsertVesselViolationComment): Promise<VesselViolationComment>;
 }
 
 export class MemStorage implements IStorage {
@@ -175,6 +178,7 @@ export class MemStorage implements IStorage {
   private restHoursDailyRecords: Map<number, RestHoursDailyRecord>;
   private fixedTasks: Map<number, FixedTask>;
   private variableTasks: Map<number, VariableTask>;
+  private vesselViolationComments: Map<number, VesselViolationComment>;
   private currentUserId: number;
   private currentFormId: number;
   private currentRankGroupId: number;
@@ -193,6 +197,7 @@ export class MemStorage implements IStorage {
   private currentRestHoursDailyRecordId: number;
   private currentFixedTaskId: number;
   private currentVariableTaskId: number;
+  private currentVesselViolationCommentId: number;
 
   constructor() {
     this.users = new Map();
@@ -215,6 +220,7 @@ export class MemStorage implements IStorage {
     this.restHoursDailyRecords = new Map();
     this.fixedTasks = new Map();
     this.variableTasks = new Map();
+    this.vesselViolationComments = new Map();
     this.currentUserId = 1;
     this.currentFormId = 1;
     this.currentRankGroupId = 1;
@@ -233,6 +239,7 @@ export class MemStorage implements IStorage {
     this.currentRestHoursDailyRecordId = 1;
     this.currentFixedTaskId = 1;
     this.currentVariableTaskId = 1;
+    this.currentVesselViolationCommentId = 1;
     
     this.initializeDefaultData();
 
@@ -1957,6 +1964,41 @@ export class MemStorage implements IStorage {
     return this.fixedTasks.delete(id);
   }
 
+  // Vessel Violation Comments Methods
+  async getVesselViolationComment(vesselId: string, monthValue: string): Promise<VesselViolationComment | null> {
+    const comments = Array.from(this.vesselViolationComments.values());
+    const existing = comments.find(c => c.vesselId === vesselId && c.monthValue === monthValue);
+    return existing || null;
+  }
+
+  async saveVesselViolationComment(insertComment: InsertVesselViolationComment): Promise<VesselViolationComment> {
+    // Check if comment already exists for this vessel/month (upsert logic)
+    const comments = Array.from(this.vesselViolationComments.values());
+    const existing = comments.find(c => c.vesselId === insertComment.vesselId && c.monthValue === insertComment.monthValue);
+    
+    if (existing) {
+      // Update existing comment
+      const updated: VesselViolationComment = {
+        ...existing,
+        comment: insertComment.comment,
+        updatedAt: new Date(),
+      };
+      this.vesselViolationComments.set(existing.id, updated);
+      return updated;
+    } else {
+      // Create new comment
+      const id = this.currentVesselViolationCommentId++;
+      const newComment: VesselViolationComment = {
+        id,
+        ...insertComment,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      this.vesselViolationComments.set(id, newComment);
+      return newComment;
+    }
+  }
+
   // Variable Tasks Methods
   async getVariableTasks(): Promise<VariableTask[]> {
     return Array.from(this.variableTasks.values());
@@ -2025,6 +2067,7 @@ export class PersistentFileStorage implements IStorage {
   private restHoursDailyRecords: Map<number, RestHoursDailyRecord>;
   private variableTasks: Map<number, VariableTask>;
   private fixedTasks: Map<number, FixedTask>;
+  private vesselViolationComments: Map<number, VesselViolationComment>;
   private currentUserId: number;
   private currentFormId: number;
   private currentRankGroupId: number;
@@ -2043,6 +2086,7 @@ export class PersistentFileStorage implements IStorage {
   private currentRestHoursDailyRecordId: number;
   private currentVariableTaskId: number;
   private currentFixedTaskId: number;
+  private currentVesselViolationCommentId: number;
   private filePath: string;
   private saveTimeout: NodeJS.Timeout | null = null;
   private isSaving: boolean = false;
@@ -2072,6 +2116,7 @@ export class PersistentFileStorage implements IStorage {
     this.restHoursDailyRecords = new Map();
     this.variableTasks = new Map();
     this.fixedTasks = new Map();
+    this.vesselViolationComments = new Map();
     this.currentUserId = 1;
     this.currentFormId = 1;
     this.currentRankGroupId = 1;
@@ -2090,6 +2135,7 @@ export class PersistentFileStorage implements IStorage {
     this.currentRestHoursDailyRecordId = 1;
     this.currentVariableTaskId = 1;
     this.currentFixedTaskId = 1;
+    this.currentVesselViolationCommentId = 1;
     
     this.filePath = path.join(process.cwd(), 'test-data.json');
     this.loadFromFile();
@@ -2243,6 +2289,10 @@ export class PersistentFileStorage implements IStorage {
         this.fixedTasks = new Map(data.fixedTasks || []);
         this.currentFixedTaskId = data.currentFixedTaskId || 1;
         
+        // Load vessel violation comments and counter
+        this.vesselViolationComments = new Map(data.vesselViolationComments || []);
+        this.currentVesselViolationCommentId = data.currentVesselViolationCommentId || 1;
+        
         console.log("📄 Loaded existing data from test-data.json");
         
         // Initialize rest hours sample data if empty
@@ -2285,6 +2335,7 @@ export class PersistentFileStorage implements IStorage {
       restHoursDailyRecords: Array.from(this.restHoursDailyRecords.entries()),
       variableTasks: Array.from(this.variableTasks.entries()),
       fixedTasks: Array.from(this.fixedTasks.entries()),
+      vesselViolationComments: Array.from(this.vesselViolationComments.entries()),
       masterDataEntries: Array.from(this.masterDataEntries.entries()),
       currentUserId: this.currentUserId,
       currentFormId: this.currentFormId,
@@ -2303,7 +2354,8 @@ export class PersistentFileStorage implements IStorage {
       currentRestHoursCrewRecordId: this.currentRestHoursCrewRecordId,
       currentRestHoursDailyRecordId: this.currentRestHoursDailyRecordId,
       currentVariableTaskId: this.currentVariableTaskId,
-      currentFixedTaskId: this.currentFixedTaskId
+      currentFixedTaskId: this.currentFixedTaskId,
+      currentVesselViolationCommentId: this.currentVesselViolationCommentId
     };
     
     if (this.saveTimeout) {

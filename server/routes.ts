@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError } from "./storage";
-import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema } from "@shared/schema";
+import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema } from "@shared/schema";
 import { z } from "zod";
 import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew } from "@shared/crew-mapping";
 import { 
@@ -3161,6 +3161,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to delete rest hours daily record:", error);
       res.status(500).json({ error: "Failed to delete rest hours daily record" });
+    }
+  });
+
+  // Vessel Violation Comments API routes
+  app.get("/api/vessel-violation-comments", async (req, res) => {
+    try {
+      const { vesselId, monthValue } = req.query;
+      
+      if (!vesselId || !monthValue) {
+        return res.status(400).json({ error: "vesselId and monthValue are required" });
+      }
+      
+      const comment = await storage.getVesselViolationComment(vesselId as string, monthValue as string);
+      res.json(comment);
+    } catch (error) {
+      console.error("Failed to get vessel violation comment:", error);
+      res.status(500).json({ error: "Failed to get vessel violation comment" });
+    }
+  });
+
+  app.post("/api/vessel-violation-comments", async (req, res) => {
+    try {
+      const result = insertVesselViolationCommentSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid vessel violation comment data", details: result.error.issues });
+      }
+      const comment = await storage.saveVesselViolationComment(result.data);
+      res.status(201).json(comment);
+    } catch (error) {
+      console.error("Failed to save vessel violation comment:", error);
+      res.status(500).json({ error: "Failed to save vessel violation comment" });
     }
   });
 
