@@ -201,6 +201,13 @@ const PredictedViolationsWithDatesRenderer = (params: ICellRendererParams) => {
     return day + (suffix[(v - 20) % 10] || suffix[v] || suffix[0]);
   };
 
+  // Click handler to open predicted violations detail dialog
+  const handleClick = () => {
+    if (params.context && params.context.onViewPredictedViolations) {
+      params.context.onViewPredictedViolations(params.data);
+    }
+  };
+
   // Normalize to number to handle both numeric and string zeroes
   const isZero = Number(value) === 0;
 
@@ -217,8 +224,9 @@ const PredictedViolationsWithDatesRenderer = (params: ICellRendererParams) => {
           <Tooltip>
             <TooltipTrigger asChild>
               <span 
-                className="px-3 py-1.5 rounded font-semibold min-w-[32px] text-center bg-gray-200 text-gray-700 cursor-help" 
+                className="px-3 py-1.5 rounded font-semibold min-w-[32px] text-center bg-gray-200 text-gray-700 cursor-pointer hover:bg-gray-300 transition-colors" 
                 style={{ fontSize: '13px' }}
+                onClick={handleClick}
               >
                 {value}
               </span>
@@ -240,8 +248,9 @@ const PredictedViolationsWithDatesRenderer = (params: ICellRendererParams) => {
   return (
     <div className="flex items-center justify-center h-full py-2">
       <span 
-        className="px-3 py-1.5 rounded font-semibold min-w-[32px] text-center bg-gray-200 text-gray-700" 
+        className="px-3 py-1.5 rounded font-semibold min-w-[32px] text-center bg-gray-200 text-gray-700 cursor-pointer hover:bg-gray-300 transition-colors" 
         style={{ fontSize: '13px' }}
+        onClick={handleClick}
       >
         {value}
       </span>
@@ -277,6 +286,8 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
   const [selectedRecord, setSelectedRecord] = useState<RestHoursCrewRecord | null>(null);
   const [violationsDialogOpen, setViolationsDialogOpen] = useState(false);
   const [selectedViolationsRecord, setSelectedViolationsRecord] = useState<RestHoursCrewRecord | null>(null);
+  const [predictedViolationsDialogOpen, setPredictedViolationsDialogOpen] = useState(false);
+  const [selectedPredictedViolationsRecord, setSelectedPredictedViolationsRecord] = useState<RestHoursCrewRecord | null>(null);
 
   // Handler for opening the recording form
   const handleEditRecord = (record: RestHoursCrewRecord) => {
@@ -288,6 +299,12 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
   const handleViewViolations = (record: RestHoursCrewRecord) => {
     setSelectedViolationsRecord(record);
     setViolationsDialogOpen(true);
+  };
+
+  // Handler for opening the predicted violations detail dialog
+  const handleViewPredictedViolations = (record: RestHoursCrewRecord) => {
+    setSelectedPredictedViolationsRecord(record);
+    setPredictedViolationsDialogOpen(true);
   };
 
   // Fetch available ranks to get sortOrder
@@ -459,7 +476,7 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
           rowData={records}
           columnDefs={columnDefs}
           defaultColDef={defaultColDef}
-          context={{ onEditRecord: handleEditRecord, onViewViolations: handleViewViolations }}
+          context={{ onEditRecord: handleEditRecord, onViewViolations: handleViewViolations, onViewPredictedViolations: handleViewPredictedViolations }}
           animateRows={true}
           rowSelection="single"
           pagination={true}
@@ -493,6 +510,22 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
           monthValue={selectedViolationsRecord.monthValue}
           complianceMode={complianceMode}
           opaMode={opaMode}
+          isPredicted={false}
+        />
+      )}
+
+      {selectedPredictedViolationsRecord && (
+        <ViolationsDetailDialog
+          key={`predicted-violations-${selectedPredictedViolationsRecord.crewMemberId}-${selectedPredictedViolationsRecord.vesselId}-${selectedPredictedViolationsRecord.monthValue}`}
+          open={predictedViolationsDialogOpen}
+          onOpenChange={setPredictedViolationsDialogOpen}
+          crewMemberId={selectedPredictedViolationsRecord.crewMemberId}
+          crewMemberName={selectedPredictedViolationsRecord.name}
+          vesselId={selectedPredictedViolationsRecord.vesselId}
+          monthValue={selectedPredictedViolationsRecord.monthValue}
+          complianceMode={complianceMode}
+          opaMode={opaMode}
+          isPredicted={true}
         />
       )}
     </>

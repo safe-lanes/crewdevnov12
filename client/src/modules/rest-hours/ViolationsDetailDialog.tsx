@@ -33,6 +33,7 @@ interface ViolationsDetailDialogProps {
   monthValue: string;
   complianceMode: 'Rest' | 'Work';
   opaMode: boolean;
+  isPredicted?: boolean;
 }
 
 interface DailyRecord {
@@ -60,6 +61,7 @@ export function ViolationsDetailDialog({
   monthValue,
   complianceMode,
   opaMode,
+  isPredicted = false,
 }: ViolationsDetailDialogProps) {
   // Fetch daily records container for this crew member
   const { data: recordContainer, isLoading } = useQuery<RestHoursDailyRecord | null>({
@@ -91,9 +93,11 @@ export function ViolationsDetailDialog({
       return [];
     }
 
-    // Filter records to show only days with violations (excluding predicted/plan records)
+    // Filter records to show only days with violations
+    // isPredicted=true shows planned violations (isPlan=true)
+    // isPredicted=false shows actual violations (isPlan=false)
     return dailyRecords
-      .filter(record => !record.isPlan) // Only show actual recorded violations, not planned
+      .filter(record => isPredicted ? record.isPlan : !record.isPlan)
       .filter(record => {
         // Get violations array and filter using the standard filtering logic
         const violations = Array.isArray(record.violations) ? record.violations : [];
@@ -116,7 +120,7 @@ export function ViolationsDetailDialog({
         };
       })
       .sort((a, b) => a.day - b.day);
-  }, [recordContainer, complianceMode, opaMode]);
+  }, [recordContainer, complianceMode, opaMode, isPredicted]);
 
   // Format month for display
   const formatMonth = (monthStr: string) => {
@@ -137,7 +141,7 @@ export function ViolationsDetailDialog({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            Violations - {crewMemberName} - {formatMonth(monthValue)}
+            {isPredicted ? 'Predicted Violations' : 'Violations'} - {crewMemberName} - {formatMonth(monthValue)}
           </DialogTitle>
         </DialogHeader>
 
