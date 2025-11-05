@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { RestHoursCrewRecord } from '@shared/schema';
 import { RHRecordingForm } from './RHRecordingForm';
+import { ViolationsDetailDialog } from './ViolationsDetailDialog';
 import { type ComplianceMode } from './violationFilters';
 
 interface RHCrewRecordsTableProps {
@@ -124,6 +125,12 @@ const ViolationsWithDatesRenderer = (params: ICellRendererParams) => {
     return day + (suffix[(v - 20) % 10] || suffix[v] || suffix[0]);
   };
 
+  const handleClick = () => {
+    if (params.context && params.context.onViewViolations) {
+      params.context.onViewViolations(params.data);
+    }
+  };
+
   // Normalize to number to handle both numeric and string zeroes
   const isZero = Number(value) === 0;
 
@@ -140,8 +147,9 @@ const ViolationsWithDatesRenderer = (params: ICellRendererParams) => {
           <Tooltip>
             <TooltipTrigger asChild>
               <span 
-                className="px-3 py-1.5 rounded font-semibold min-w-[32px] text-center bg-pink-100 text-red-600 cursor-help" 
+                className="px-3 py-1.5 rounded font-semibold min-w-[32px] text-center bg-pink-100 text-red-600 cursor-pointer hover:bg-pink-200 transition-colors" 
                 style={{ fontSize: '13px' }}
+                onClick={handleClick}
               >
                 {value}
               </span>
@@ -163,8 +171,9 @@ const ViolationsWithDatesRenderer = (params: ICellRendererParams) => {
   return (
     <div className="flex items-center justify-center h-full py-2">
       <span 
-        className="px-3 py-1.5 rounded font-semibold min-w-[32px] text-center bg-pink-100 text-red-600" 
+        className="px-3 py-1.5 rounded font-semibold min-w-[32px] text-center bg-pink-100 text-red-600 cursor-pointer hover:bg-pink-200 transition-colors" 
         style={{ fontSize: '13px' }}
+        onClick={handleClick}
       >
         {value}
       </span>
@@ -266,11 +275,19 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
   const gridRef = useRef<AgGridReact>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<RestHoursCrewRecord | null>(null);
+  const [violationsDialogOpen, setViolationsDialogOpen] = useState(false);
+  const [selectedViolationsRecord, setSelectedViolationsRecord] = useState<RestHoursCrewRecord | null>(null);
 
   // Handler for opening the recording form
   const handleEditRecord = (record: RestHoursCrewRecord) => {
     setSelectedRecord(record);
     setFormOpen(true);
+  };
+
+  // Handler for opening the violations detail dialog
+  const handleViewViolations = (record: RestHoursCrewRecord) => {
+    setSelectedViolationsRecord(record);
+    setViolationsDialogOpen(true);
   };
 
   // Fetch available ranks to get sortOrder
@@ -442,7 +459,7 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
           rowData={records}
           columnDefs={columnDefs}
           defaultColDef={defaultColDef}
-          context={{ onEditRecord: handleEditRecord }}
+          context={{ onEditRecord: handleEditRecord, onViewViolations: handleViewViolations }}
           animateRows={true}
           rowSelection="single"
           pagination={true}
@@ -462,6 +479,20 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
           vesselId={selectedRecord.vesselId}
           rank={selectedRecord.rank}
           monthValue={selectedRecord.monthValue}
+        />
+      )}
+
+      {selectedViolationsRecord && (
+        <ViolationsDetailDialog
+          key={`violations-${selectedViolationsRecord.crewMemberId}-${selectedViolationsRecord.vesselId}-${selectedViolationsRecord.monthValue}`}
+          open={violationsDialogOpen}
+          onOpenChange={setViolationsDialogOpen}
+          crewMemberId={selectedViolationsRecord.crewMemberId}
+          crewMemberName={selectedViolationsRecord.name}
+          vesselId={selectedViolationsRecord.vesselId}
+          monthValue={selectedViolationsRecord.monthValue}
+          complianceMode={complianceMode}
+          opaMode={opaMode}
         />
       )}
     </>
