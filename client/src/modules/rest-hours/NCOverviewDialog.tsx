@@ -271,10 +271,14 @@ export function NCOverviewDialog({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {ncRecords.map((record, index) => (
+                  {ncRecords.map((record, index) => {
+                    // Only show rank and name on the first row for each crew member
+                    const isFirstRowForCrew = index === 0 || ncRecords[index - 1].crewMemberId !== record.crewMemberId;
+                    
+                    return (
                     <tr key={`${record.crewMemberId}-${record.day}-${index}`} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm">{record.rank}</td>
-                      <td className="px-4 py-3 text-sm">{record.crewMemberName}</td>
+                      <td className="px-4 py-3 text-sm">{isFirstRowForCrew ? record.rank : ''}</td>
+                      <td className="px-4 py-3 text-sm">{isFirstRowForCrew ? record.crewMemberName : ''}</td>
                       <td className="px-4 py-3 text-sm">{formatDay(record.day, monthValue)}</td>
                       <td className="px-4 py-3 text-sm">
                         {record.filteredViolations.map((code, idx) => {
@@ -318,7 +322,8 @@ export function NCOverviewDialog({
                       </td>
                       <td className="px-4 py-3 text-sm">{record.comments}</td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
