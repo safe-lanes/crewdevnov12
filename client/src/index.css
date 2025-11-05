@@ -44,6 +44,17 @@
   color: white !important;
 }
 
+/* Header tooltip styling - white background for better readability */
+.ag-theme-alpine .ag-tooltip {
+  background-color: white !important;
+  color: #1f2937 !important;
+  border: 1px solid #d1d5db !important;
+  border-radius: 4px !important;
+  padding: 6px 10px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  font-size: 13px !important;
+}
+
 /* Column group headers (first header row) styling */
 .ag-theme-alpine .ag-header-group-cell {
   background-color: #52baf3 !important;
