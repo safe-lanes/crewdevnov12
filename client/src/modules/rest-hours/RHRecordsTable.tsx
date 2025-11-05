@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { AgGridReact } from 'ag-grid-react';
 import { ColDef, ICellRendererParams } from 'ag-grid-community';
-import { Edit } from 'lucide-react';
+import { Edit, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { RestHoursVesselRecord } from '@shared/schema';
@@ -121,9 +121,12 @@ const ViolationsRenderer = (params: ICellRendererParams) => {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="px-3 py-1.5 rounded font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center cursor-help" style={{ fontSize: '13px' }}>
-                {crewCount}
-              </span>
+              <div className="flex items-center gap-1 cursor-help text-gray-700">
+                <Users size={16} className="text-gray-600" />
+                <span className="font-medium" style={{ fontSize: '13px' }}>
+                  {crewCount}
+                </span>
+              </div>
             </TooltipTrigger>
             <TooltipContent className="max-w-xs">
               <div className="text-sm">
@@ -138,9 +141,12 @@ const ViolationsRenderer = (params: ICellRendererParams) => {
           </Tooltip>
         </TooltipProvider>
       ) : (
-        <span className="px-3 py-1.5 rounded font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
-          {crewCount}
-        </span>
+        <div className="flex items-center gap-1 text-gray-700">
+          <Users size={16} className="text-gray-600" />
+          <span className="font-medium" style={{ fontSize: '13px' }}>
+            {crewCount}
+          </span>
+        </div>
       )}
     </div>
   );
@@ -172,9 +178,12 @@ const NCsRenderer = (params: ICellRendererParams) => {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="px-3 py-1.5 rounded font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center cursor-help" style={{ fontSize: '13px' }}>
-                {crewCount}
-              </span>
+              <div className="flex items-center gap-1 cursor-help text-gray-700">
+                <Users size={16} className="text-gray-600" />
+                <span className="font-medium" style={{ fontSize: '13px' }}>
+                  {crewCount}
+                </span>
+              </div>
             </TooltipTrigger>
             <TooltipContent className="max-w-xs">
               <div className="text-sm">
@@ -189,9 +198,12 @@ const NCsRenderer = (params: ICellRendererParams) => {
           </Tooltip>
         </TooltipProvider>
       ) : (
-        <span className="px-3 py-1.5 rounded font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
-          {crewCount}
-        </span>
+        <div className="flex items-center gap-1 text-gray-700">
+          <Users size={16} className="text-gray-600" />
+          <span className="font-medium" style={{ fontSize: '13px' }}>
+            {crewCount}
+          </span>
+        </div>
       )}
     </div>
   );
@@ -223,9 +235,12 @@ const PredictedNCsRenderer = (params: ICellRendererParams) => {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="px-3 py-1.5 rounded font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center cursor-help" style={{ fontSize: '13px' }}>
-                {crewCount}
-              </span>
+              <div className="flex items-center gap-1 cursor-help text-gray-700">
+                <Users size={16} className="text-gray-600" />
+                <span className="font-medium" style={{ fontSize: '13px' }}>
+                  {crewCount}
+                </span>
+              </div>
             </TooltipTrigger>
             <TooltipContent className="max-w-xs">
               <div className="text-sm">
@@ -240,9 +255,12 @@ const PredictedNCsRenderer = (params: ICellRendererParams) => {
           </Tooltip>
         </TooltipProvider>
       ) : (
-        <span className="px-3 py-1.5 rounded font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
-          {crewCount}
-        </span>
+        <div className="flex items-center gap-1 text-gray-700">
+          <Users size={16} className="text-gray-600" />
+          <span className="font-medium" style={{ fontSize: '13px' }}>
+            {crewCount}
+          </span>
+        </div>
       )}
     </div>
   );
@@ -324,9 +342,12 @@ const PredictedViolationsRenderer = (params: ICellRendererParams) => {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="px-3 py-1.5 rounded font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center cursor-help" style={{ fontSize: '13px' }}>
-                {crewCount}
-              </span>
+              <div className="flex items-center gap-1 cursor-help text-gray-700">
+                <Users size={16} className="text-gray-600" />
+                <span className="font-medium" style={{ fontSize: '13px' }}>
+                  {crewCount}
+                </span>
+              </div>
             </TooltipTrigger>
             <TooltipContent className="max-w-xs">
               <div className="text-sm">
@@ -341,9 +362,12 @@ const PredictedViolationsRenderer = (params: ICellRendererParams) => {
           </Tooltip>
         </TooltipProvider>
       ) : (
-        <span className="px-3 py-1.5 rounded font-medium bg-gray-200 text-gray-700 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
-          {crewCount}
-        </span>
+        <div className="flex items-center gap-1 text-gray-700">
+          <Users size={16} className="text-gray-600" />
+          <span className="font-medium" style={{ fontSize: '13px' }}>
+            {crewCount}
+          </span>
+        </div>
       )}
     </div>
   );
