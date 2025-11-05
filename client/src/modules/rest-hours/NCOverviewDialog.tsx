@@ -1,8 +1,11 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { filterViolations } from './violationFilters';
+import { NCReportDialog } from './NCReportDialog';
+import type { RestHoursCrewRecord } from '@shared/schema';
 
 // Violation code descriptions mapping
 const VIOLATION_CODE_DESCRIPTIONS: Record<number, string> = {
@@ -71,6 +74,9 @@ export function NCOverviewDialog({
   opaMode,
   isPredicted = false,
 }: NCOverviewDialogProps) {
+  const [ncReportDialogOpen, setNCReportDialogOpen] = useState(false);
+  const [selectedNCReportRecord, setSelectedNCReportRecord] = useState<RestHoursCrewRecord | null>(null);
+
   // Fetch all crew records for this vessel and month to get crew list
   const queryParams = new URLSearchParams();
   queryParams.append('vesselIds', vesselId);
@@ -241,6 +247,24 @@ export function NCOverviewDialog({
     return date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
+  // Calculate row count for each crew member (for rowSpan)
+  const crewRowCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    ncRecords.forEach(record => {
+      counts.set(record.crewMemberId, (counts.get(record.crewMemberId) || 0) + 1);
+    });
+    return counts;
+  }, [ncRecords]);
+
+  // Handler to open NC Report dialog
+  const handleViewNCReport = (crewMemberId: string, rank: string, name: string) => {
+    const crewSummary = crewSummaries.find(c => c.crewMemberId === crewMemberId && c.vesselId === vesselId);
+    if (crewSummary) {
+      setSelectedNCReportRecord(crewSummary);
+      setNCReportDialogOpen(true);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl">
@@ -265,12 +289,14 @@ export function NCOverviewDialog({
                     <th className="px-4 py-3 text-left font-medium text-sm">Date</th>
                     <th className="px-4 py-3 text-left font-medium text-sm">Violations</th>
                     <th className="px-4 py-3 text-left font-medium text-sm">Comments</th>
+                    <th className="px-4 py-3 text-center font-medium text-sm">View Report</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {ncRecords.map((record, index) => {
                     // Only show rank and name on the first row for each crew member
                     const isFirstRowForCrew = index === 0 || ncRecords[index - 1].crewMemberId !== record.crewMemberId;
+                    const rowSpan = isFirstRowForCrew ? crewRowCounts.get(record.crewMemberId) || 1 : undefined;
                     
                     return (
                     <tr key={`${record.crewMemberId}-${record.day}-${index}`} className="hover:bg-gray-50">
@@ -318,6 +344,22 @@ export function NCOverviewDialog({
                         })}
                       </td>
                       <td className="px-4 py-3 text-sm">{record.comments}</td>
+                      {isFirstRowForCrew && (
+                        <td 
+                          className="px-4 py-3 text-center align-middle" 
+                          rowSpan={rowSpan}
+                        >
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewNCReport(record.crewMemberId, record.rank, record.crewMemberName)}
+                            data-testid={`button-view-nc-report-${record.crewMemberId}`}
+                            className="text-xs"
+                          >
+                            View Report
+                          </Button>
+                        </td>
+                      )}
                     </tr>
                     );
                   })}
@@ -326,6 +368,16 @@ export function NCOverviewDialog({
             </div>
           )}
         </div>
+
+        {selectedNCReportRecord && (
+          <NCReportDialog
+            key={`nc-report-${selectedNCReportRecord.crewMemberId}-${selectedNCReportRecord.vesselId}-${selectedNCReportRecord.monthValue}`}
+            open={ncReportDialogOpen}
+            onOpenChange={setNCReportDialogOpen}
+            crewRecord={selectedNCReportRecord}
+            vesselName={vesselName}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
