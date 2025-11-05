@@ -241,12 +241,24 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
         ) : (
           <div className="space-y-6">
             {/* Header Information - 3 Column Layout */}
-            <div className="grid grid-cols-3 gap-6 p-4 bg-gray-50 rounded-lg">
-              <div className="space-y-4">
+            <div className="p-4 bg-gray-50 rounded-lg">
+              {/* Row 1 */}
+              <div className="grid grid-cols-3 gap-6 mb-4">
                 <div>
                   <div className="text-sm text-gray-600">Vessel:</div>
                   <div className="font-semibold">{vesselName}</div>
                 </div>
+                <div>
+                  <div className="text-sm text-gray-600">Seafarer's Name:</div>
+                  <div className="font-semibold">{crewRecord.name}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-600">Month:</div>
+                  <div className="font-semibold">{crewRecord.monthValue}</div>
+                </div>
+              </div>
+              {/* Row 2 */}
+              <div className="grid grid-cols-3 gap-6">
                 <div>
                   <div className="text-sm text-gray-600">Seafarer's Rank:</div>
                   <div className="font-semibold">{crewRecord.rank}</div>
@@ -255,18 +267,7 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
                   <div className="text-sm text-gray-600">NC Reference:</div>
                   <div className="font-semibold">STCW/MLC/ILO</div>
                 </div>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <div className="text-sm text-gray-600">Seafarer's Name:</div>
-                  <div className="font-semibold">{crewRecord.name}</div>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <div className="text-sm text-gray-600">Month:</div>
-                  <div className="font-semibold">{crewRecord.monthValue}</div>
-                </div>
+                <div></div>
               </div>
             </div>
 
