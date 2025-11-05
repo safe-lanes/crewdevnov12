@@ -1,8 +1,28 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import type { RestHoursDailyRecord } from '@shared/schema';
 import { filterViolations } from './violationFilters';
+
+// Violation code descriptions mapping
+const VIOLATION_CODE_DESCRIPTIONS: Record<number, string> = {
+  1: "Minimum 10 hours of rest in any 24 hour period",
+  2: "Minimum hours of rest in any 7 day period = 77",
+  3: "Hours of rest may be divided into no more than two periods, one of which shall be at least six hours in length",
+  4: "Interval between rest periods not to exceed 14 hours",
+  5: "ILO Work - Maximum 14 hours of work in any 24 hour period",
+  6: "ILO Work - Maximum 72 hours of work in any 7 day period",
+  7: "OPA - Maximum 15 hours of work in any 24 hour period",
+  8: "OPA - Maximum 36 hours of work in 72 hours",
+};
+
+interface ViolationDiagnostic {
+  code: number;
+  windowStart: string;
+  reason: string;
+  violatingRanges?: Array<{ startCell: number; endCell: number; startDay: number; monthName?: string }>;
+}
 
 interface ViolationsDetailDialogProps {
   open: boolean;
@@ -22,6 +42,7 @@ interface DailyRecord {
   isPlan: boolean;
   comments: string;
   violations: number[];
+  violationDiagnostics?: ViolationDiagnostic[];
   hoursOfRest24hr: number;
   hoursOfWork24hr: number;
   anyPeriodRest24hr: number;
@@ -83,11 +104,15 @@ export function ViolationsDetailDialog({
         // Get and filter violations for display using the standard filtering logic
         const violations = Array.isArray(record.violations) ? record.violations : [];
         const filteredViolations = filterViolations(violations, complianceMode, opaMode);
+        
+        // Filter diagnostics to match filtered violations
+        const diagnostics = record.violationDiagnostics || [];
+        const filteredDiagnostics = diagnostics.filter(d => filteredViolations.includes(d.code));
 
         return {
-          day: record.day,
-          violations: filteredViolations.sort((a, b) => a - b).join(', '),
-          comments: record.comments || '',
+          ...record,
+          filteredViolations: filteredViolations.sort((a, b) => a - b),
+          filteredDiagnostics,
         };
       })
       .sort((a, b) => a.day - b.day);
@@ -135,7 +160,46 @@ export function ViolationsDetailDialog({
                   {violationRecords.map((record) => (
                     <tr key={record.day} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm">{formatDay(record.day, monthValue)}</td>
-                      <td className="px-4 py-3 text-sm">{record.violations}</td>
+                      <td className="px-4 py-3 text-sm">
+                        {record.filteredViolations.map((code, idx) => {
+                          const diagnostic = record.filteredDiagnostics.find(d => d.code === code);
+                          
+                          // If no diagnostic available, just show the code
+                          if (!diagnostic) {
+                            return (
+                              <span key={code}>
+                                {code}{idx < record.filteredViolations.length - 1 ? ', ' : ''}
+                              </span>
+                            );
+                          }
+                          
+                          // Show code with tooltip
+                          return (
+                            <TooltipProvider key={code}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span
+                                    className="cursor-help underline decoration-dotted hover:bg-pink-100 px-0.5 rounded"
+                                  >
+                                    {code}{idx < record.filteredViolations.length - 1 ? ', ' : ''}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent 
+                                  side="right" 
+                                  align="start" 
+                                  sideOffset={8}
+                                  className="max-w-[220px] text-[11px] z-50 bg-white text-gray-900"
+                                >
+                                  <div className="space-y-0.5">
+                                    <div className="leading-snug">{VIOLATION_CODE_DESCRIPTIONS[diagnostic.code]}</div>
+                                    <div className="text-gray-600 leading-snug">{diagnostic.reason}</div>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          );
+                        })}
+                      </td>
                       <td className="px-4 py-3 text-sm">{record.comments}</td>
                     </tr>
                   ))}
