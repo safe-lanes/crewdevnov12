@@ -54,35 +54,6 @@ export const RestHoursDashboard = (): JSX.Element => {
     setPeriodValue(periodOptions[0]?.value || "");
   };
 
-  const testChartOptions: AgChartOptions = useMemo(() => ({
-    data: [
-      { month: 'Jan', value: 15 },
-      { month: 'Feb', value: 22 },
-      { month: 'Mar', value: 18 },
-      { month: 'Apr', value: 25 },
-      { month: 'May', value: 30 },
-      { month: 'Jun', value: 28 }
-    ],
-    series: [
-      {
-        type: 'bar',
-        xKey: 'month',
-        yKey: 'value',
-        fill: '#3b82f6'
-      }
-    ],
-    axes: [
-      {
-        type: 'category',
-        position: 'bottom'
-      },
-      {
-        type: 'number',
-        position: 'left'
-      }
-    ]
-  }), []);
-
   return (
     <div className="flex flex-col h-full">
       <SectionTitleComponents title="RH Dashboard - Office">
@@ -256,12 +227,10 @@ export const RestHoursDashboard = (): JSX.Element => {
       {/* Dashboard Grid - 3x2 layout */}
       <div className="px-4 pb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Card 1 - Test Chart */}
+          {/* Card 1 */}
           <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700" data-testid="dashboard-card-1">
             <CardContent className="p-6 h-64">
-              <div className="w-full h-full">
-                <AgCharts options={testChartOptions} />
-              </div>
+              {/* Chart placeholder - will be implemented */}
             </CardContent>
           </Card>
 
