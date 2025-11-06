@@ -635,13 +635,13 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
       cellRenderer: OfficeReviewRenderer,
     },
     {
-      headerName: 'Actions',
-      flex: 1,
-      minWidth: 80,
+      headerName: '',
+      width: 60,
       cellRenderer: ActionsRenderer,
       pinned: 'right',
       sortable: false,
       filter: false,
+      resizable: false,
     }
   ], []);
 

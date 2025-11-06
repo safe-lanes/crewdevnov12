@@ -459,13 +459,13 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
       cellClass: 'ag-cell-center'
     },
     {
-      headerName: 'Actions',
-      flex: 1,
-      minWidth: 80,
+      headerName: '',
+      width: 60,
       cellRenderer: ActionsRenderer,
       pinned: 'right',
       sortable: false,
       filter: false,
+      resizable: false,
     }
   ], []);
 
