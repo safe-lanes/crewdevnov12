@@ -452,6 +452,17 @@ const VesselReviewRenderer = (params: ICellRendererParams) => {
     }
   };
 
+  const getDisplayText = () => {
+    switch (status) {
+      case 'Completed':
+        return 'Compl.';
+      case 'Overdue':
+        return 'O/D';
+      default:
+        return status;
+    }
+  };
+
   const isClickable = status === 'Due' || status === 'Overdue';
 
   const handleClick = () => {
@@ -463,11 +474,12 @@ const VesselReviewRenderer = (params: ICellRendererParams) => {
   return (
     <div className="flex items-center justify-center h-full py-2">
       <span 
-        className={`px-4 py-1.5 rounded font-medium ${getStatusStyles()} ${isClickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`} 
+        className={`px-4 py-1.5 rounded font-medium min-w-[70px] text-center ${getStatusStyles()} ${isClickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`} 
         style={{ fontSize: '13px' }}
         onClick={handleClick}
+        title={status}
       >
-        {status}
+        {getDisplayText()}
       </span>
     </div>
   );
@@ -494,6 +506,17 @@ const OfficeReviewRenderer = (params: ICellRendererParams) => {
     }
   };
 
+  const getDisplayText = () => {
+    switch (status) {
+      case 'Completed':
+        return 'Compl.';
+      case 'Overdue':
+        return 'O/D';
+      default:
+        return status;
+    }
+  };
+
   const isClickable = status === 'Due' || status === 'Overdue' || status === 'Completed';
 
   const handleClick = () => {
@@ -505,11 +528,12 @@ const OfficeReviewRenderer = (params: ICellRendererParams) => {
   return (
     <div className="flex items-center justify-center h-full py-2">
       <span 
-        className={`px-4 py-1.5 rounded font-medium ${getStatusStyles()} ${isClickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`} 
+        className={`px-4 py-1.5 rounded font-medium min-w-[70px] text-center ${getStatusStyles()} ${isClickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`} 
         style={{ fontSize: '13px' }}
         onClick={handleClick}
+        title={status}
       >
-        {status}
+        {getDisplayText()}
       </span>
     </div>
   );
