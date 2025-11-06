@@ -44,6 +44,8 @@
     "@radix-ui/react-toggle-group": "^1.1.3",
     "@radix-ui/react-tooltip": "^1.2.0",
     "@tanstack/react-query": "^5.60.5",
+    "ag-charts-enterprise": "^12.3.0",
+    "ag-charts-react": "^12.3.0",
     "ag-grid-community": "^34.1.0",
     "ag-grid-enterprise": "^34.1.0",
     "ag-grid-react": "^34.1.0",
