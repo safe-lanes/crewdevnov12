@@ -474,7 +474,12 @@ const VesselReviewRenderer = (params: ICellRendererParams) => {
 };
 
 const OfficeReviewRenderer = (params: ICellRendererParams) => {
-  const status = params.value || 'Due';
+  const status = params.value;
+  
+  // If no status (vessel hasn't submitted review yet), don't show any badge
+  if (!status) {
+    return null;
+  }
   
   const getStatusStyles = () => {
     switch (status) {
