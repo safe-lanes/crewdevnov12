@@ -287,22 +287,22 @@ export function ViolationsOverviewDialog({
           ) : (
             <div className="border rounded-lg overflow-hidden">
               <table className="w-full">
-                <thead className="bg-[#52baf3] text-white">
+                <thead className="bg-blue-50">
                   <tr>
-                    <th className="px-4 py-3 text-left font-medium text-sm">Date</th>
-                    <th className="px-4 py-3 text-left font-medium text-sm">Rank</th>
-                    <th className="px-4 py-3 text-left font-medium text-sm">Name</th>
-                    <th className="px-4 py-3 text-left font-medium text-sm">Violations</th>
-                    <th className="px-4 py-3 text-left font-medium text-sm">Comments</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold">Date</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold">Rank</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold">Name</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold">Violations</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold">Comments</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody>
                   {violationRecords.map((record, index) => (
-                    <tr key={`${record.crewMemberId}-${record.day}-${index}`} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm">{formatDay(record.day, monthValue)}</td>
-                      <td className="px-4 py-3 text-sm">{record.rank}</td>
-                      <td className="px-4 py-3 text-sm">{record.crewMemberName}</td>
-                      <td className="px-4 py-3 text-sm">
+                    <tr key={`${record.crewMemberId}-${record.day}-${index}`} className="border-t hover:bg-gray-50">
+                      <td className="px-4 py-2 text-sm">{formatDay(record.day, monthValue)}</td>
+                      <td className="px-4 py-2 text-sm">{record.rank}</td>
+                      <td className="px-4 py-2 text-sm">{record.crewMemberName}</td>
+                      <td className="px-4 py-2 text-sm">
                         {record.filteredViolations.map((code, idx) => {
                           const diagnostic = record.filteredDiagnostics.find(d => d.code === code);
                           
@@ -342,7 +342,7 @@ export function ViolationsOverviewDialog({
                           );
                         })}
                       </td>
-                      <td className="px-4 py-3 text-sm">{record.comments}</td>
+                      <td className="px-4 py-2 text-sm">{record.comments}</td>
                     </tr>
                   ))}
                 </tbody>

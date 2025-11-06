@@ -284,30 +284,30 @@ export function NCOverviewDialog({
           ) : (
             <div className="border rounded-lg overflow-hidden">
               <table className="w-full">
-                <thead className="bg-[#52baf3] text-white">
+                <thead className="bg-blue-50">
                   <tr>
-                    <th className="px-4 py-3 text-left font-medium text-sm">Rank</th>
-                    <th className="px-4 py-3 text-left font-medium text-sm">Name</th>
-                    <th className="px-4 py-3 text-left font-medium text-sm">Date</th>
-                    <th className="px-4 py-3 text-left font-medium text-sm">Violations</th>
-                    <th className="px-4 py-3 text-left font-medium text-sm">Comments</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold">Rank</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold">Name</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold">Date</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold">Violations</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold">Comments</th>
                     {!isPredicted && (
-                      <th className="px-4 py-3 text-center font-medium text-sm">View Report</th>
+                      <th className="px-4 py-2 text-center text-sm font-semibold">View Report</th>
                     )}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody>
                   {ncRecords.map((record, index) => {
                     // Only show rank and name on the first row for each crew member
                     const isFirstRowForCrew = index === 0 || ncRecords[index - 1].crewMemberId !== record.crewMemberId;
                     const rowSpan = isFirstRowForCrew ? crewRowCounts.get(record.crewMemberId) || 1 : undefined;
                     
                     return (
-                    <tr key={`${record.crewMemberId}-${record.day}-${index}`} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm">{isFirstRowForCrew ? record.rank : ''}</td>
-                      <td className="px-4 py-3 text-sm">{isFirstRowForCrew ? record.crewMemberName : ''}</td>
-                      <td className="px-4 py-3 text-sm">{formatDay(record.day, monthValue)}</td>
-                      <td className="px-4 py-3 text-sm">
+                    <tr key={`${record.crewMemberId}-${record.day}-${index}`} className="border-t hover:bg-gray-50">
+                      <td className="px-4 py-2 text-sm">{isFirstRowForCrew ? record.rank : ''}</td>
+                      <td className="px-4 py-2 text-sm">{isFirstRowForCrew ? record.crewMemberName : ''}</td>
+                      <td className="px-4 py-2 text-sm">{formatDay(record.day, monthValue)}</td>
+                      <td className="px-4 py-2 text-sm">
                         {record.filteredViolations.map((code, idx) => {
                           const diagnostic = record.filteredDiagnostics.find(d => d.code === code);
                           
@@ -347,10 +347,10 @@ export function NCOverviewDialog({
                           );
                         })}
                       </td>
-                      <td className="px-4 py-3 text-sm">{record.comments}</td>
+                      <td className="px-4 py-2 text-sm">{record.comments}</td>
                       {!isPredicted && isFirstRowForCrew && (
                         <td 
-                          className="px-4 py-3 text-center align-middle" 
+                          className="px-4 py-2 text-center align-middle" 
                           rowSpan={rowSpan}
                         >
                           <Button
