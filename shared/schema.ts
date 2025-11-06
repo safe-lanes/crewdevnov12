@@ -497,6 +497,7 @@ export const restHoursVesselRecords = pgTable("rest_hours_vessel_records", {
   vesselReviewStatus: text("vessel_review_status").notNull().default("Due"), // "Completed", "Due", "Overdue"
   vesselReviewSubmittedDate: timestamp("vessel_review_submitted_date"), // When vessel submitted their review
   officeReviewStatus: text("office_review_status").notNull().default("Due"), // "Completed", "Due", "Overdue"
+  officeReviewSubmittedDate: timestamp("office_review_submitted_date"), // When office submitted their review
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -567,6 +568,20 @@ export const vesselViolationComments = pgTable("vessel_violation_comments", {
   vesselId: text("vessel_id").notNull(), // Vessel ID from master data
   monthValue: text("month_value").notNull(), // Format: "2025-11" (YYYY-MM)
   comment: text("comment"), // Vessel comments, explanations, corrective actions
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const officeViolationComments = pgTable("office_violation_comments", {
+  id: serial("id").primaryKey(),
+  vesselId: text("vessel_id").notNull(), // Vessel ID from master data
+  monthValue: text("month_value").notNull(), // Format: "2025-11" (YYYY-MM)
+  comment: text("comment"), // Office comments, explanations, corrective actions
+  
+  reviewerName: text("reviewer_name"), // Office reviewer name
+  reviewerPosition: text("reviewer_position"), // Office reviewer position
+  reviewDate: timestamp("review_date"), // Date of office review
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -1027,6 +1042,12 @@ export const insertVesselViolationCommentSchema = createInsertSchema(vesselViola
   updatedAt: true,
 });
 
+export const insertOfficeViolationCommentSchema = createInsertSchema(officeViolationComments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertNCReportSchema = createInsertSchema(ncReports).omit({
   id: true,
   createdAt: true,
@@ -1088,6 +1109,8 @@ export type InsertFixedTask = z.infer<typeof insertFixedTaskSchema>;
 export type FixedTask = typeof fixedTasks.$inferSelect;
 export type InsertVesselViolationComment = z.infer<typeof insertVesselViolationCommentSchema>;
 export type VesselViolationComment = typeof vesselViolationComments.$inferSelect;
+export type InsertOfficeViolationComment = z.infer<typeof insertOfficeViolationCommentSchema>;
+export type OfficeViolationComment = typeof officeViolationComments.$inferSelect;
 export type InsertNCReport = z.infer<typeof insertNCReportSchema>;
 export type NCReport = typeof ncReports.$inferSelect;
 

@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError } from "./storage";
-import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertNCReportSchema } from "@shared/schema";
+import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertOfficeViolationCommentSchema, insertNCReportSchema } from "@shared/schema";
 import { z } from "zod";
 import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew } from "@shared/crew-mapping";
 import { 
@@ -93,6 +93,43 @@ function calculateVesselReviewStatus(monthValue: string, vesselReviewSubmittedDa
   if (now >= overdueDate) {
     return 'Overdue';
   } else if (now >= nextMonth) {
+    return 'Due';
+  }
+}
+
+function calculateOfficeReviewStatus(
+  monthValue: string, 
+  vesselReviewSubmittedDate?: Date | null,
+  officeReviewSubmittedDate?: Date | null
+): string {
+  // If office has already submitted, it's completed
+  if (officeReviewSubmittedDate) {
+    return 'Completed';
+  }
+  
+  // If vessel hasn't submitted yet, no office review status
+  if (!vesselReviewSubmittedDate) {
+    return '';
+  }
+  
+  // Parse month value (format: "YYYY-MM")
+  const [year, month] = monthValue.split('-').map(Number);
+  
+  // Calculate next month (1st day)
+  const nextMonth = new Date(year, month, 1); // month is 0-indexed, so month value gives us next month
+  
+  // Calculate overdue date (10th of next month for office review)
+  const overdueDate = new Date(year, month, 10);
+  
+  // Get current date
+  const now = new Date();
+  now.setHours(0, 0, 0, 0); // Reset to start of day for fair comparison
+  
+  // Office review becomes due as soon as vessel submits
+  // Compare dates
+  if (now >= overdueDate) {
+    return 'Overdue';
+  } else {
     return 'Due';
   }
   
@@ -932,7 +969,7 @@ async function updateVesselRecordingPercentage(vesselId: string, monthValue: str
         crewWithNCs: 0,
         predictedViolations: 0,
         predictedNCs: 0,
-        officeReviewStatus: 'Due',
+        officeReviewStatus: calculateOfficeReviewStatus(monthValue, null, null),
       });
     }
   } catch (error) {
@@ -2560,6 +2597,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               persistedRecord.vesselReviewSubmittedDate
             );
             
+            // Calculate office review status
+            const officeReviewStatus = calculateOfficeReviewStatus(
+              targetMonth,
+              persistedRecord.vesselReviewSubmittedDate,
+              persistedRecord.officeReviewSubmittedDate
+            );
+            
             // Use existing record with real crew count and calculated values
             return {
               ...persistedRecord,
@@ -2579,11 +2623,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
               predictedNCs: predictedNCs,
               crewWithPredictedNCs: crewWithPredictedNCs,
               crewWithPredictedNCsDetails: crewWithPredictedNCsDetailsJson,
-              vesselReviewStatus: vesselReviewStatus
+              vesselReviewStatus: vesselReviewStatus,
+              officeReviewStatus: officeReviewStatus
             };
           } else {
             // Calculate vessel review status for new record
             const vesselReviewStatus = calculateVesselReviewStatus(targetMonth, null);
+            
+            // Calculate office review status for new record
+            const officeReviewStatus = calculateOfficeReviewStatus(targetMonth, null, null);
             
             // Create placeholder record with calculated values
             return {
@@ -2611,7 +2659,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               crewWithPredictedNCsDetails: crewWithPredictedNCsDetailsJson,
               vesselReviewStatus: vesselReviewStatus,
               vesselReviewSubmittedDate: null,
-              officeReviewStatus: 'Due',
+              officeReviewSubmittedDate: null,
+              officeReviewStatus: officeReviewStatus,
               createdAt: null,
               updatedAt: null,
             };
@@ -2718,6 +2767,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               record.vesselReviewSubmittedDate
             );
             
+            // Calculate office review status
+            const officeReviewStatus = calculateOfficeReviewStatus(
+              record.monthValue,
+              record.vesselReviewSubmittedDate,
+              record.officeReviewSubmittedDate
+            );
+            
             return {
               ...record,
               totalCrew: crewCountByVessel.get(record.vesselId) || 0,
@@ -2736,7 +2792,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               predictedNCs: predictedNCs,
               crewWithPredictedNCs: crewWithPredictedNCs,
               crewWithPredictedNCsDetails: crewWithPredictedNCsDetails.length > 0 ? JSON.stringify(crewWithPredictedNCsDetails) : null,
-              vesselReviewStatus: vesselReviewStatus
+              vesselReviewStatus: vesselReviewStatus,
+              officeReviewStatus: officeReviewStatus
             };
           }
           
@@ -2744,6 +2801,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const vesselReviewStatus = calculateVesselReviewStatus(
             record.monthValue,
             record.vesselReviewSubmittedDate
+          );
+          
+          // Calculate office review status for records without daily records
+          const officeReviewStatus = calculateOfficeReviewStatus(
+            record.monthValue,
+            record.vesselReviewSubmittedDate,
+            record.officeReviewSubmittedDate
           );
           
           return {
@@ -2764,7 +2828,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             predictedNCs: 0,
             crewWithPredictedNCs: 0,
             crewWithPredictedNCsDetails: null,
-            vesselReviewStatus: vesselReviewStatus
+            vesselReviewStatus: vesselReviewStatus,
+            officeReviewStatus: officeReviewStatus
           };
         });
       }
@@ -3257,6 +3322,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Office Violation Comments API routes
+  app.get("/api/office-violation-comments", async (req, res) => {
+    try {
+      const { vesselId, monthValue } = req.query;
+      
+      if (!vesselId || !monthValue) {
+        return res.status(400).json({ error: "vesselId and monthValue are required" });
+      }
+      
+      const comment = await storage.getOfficeViolationComment(vesselId as string, monthValue as string);
+      res.json(comment);
+    } catch (error) {
+      console.error("Failed to get office violation comment:", error);
+      res.status(500).json({ error: "Failed to get office violation comment" });
+    }
+  });
+
+  app.post("/api/office-violation-comments", async (req, res) => {
+    try {
+      const result = insertOfficeViolationCommentSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid office violation comment data", details: result.error.issues });
+      }
+      
+      // Validate required fields
+      const { comment, reviewerName, reviewDate } = result.data;
+      
+      if (!comment || comment.trim() === '') {
+        return res.status(400).json({ error: "Comment is required and cannot be empty" });
+      }
+      
+      if (!reviewerName || reviewerName.trim() === '') {
+        return res.status(400).json({ error: "Reviewer name is required and cannot be empty" });
+      }
+      
+      if (!reviewDate) {
+        return res.status(400).json({ error: "Review date is required" });
+      }
+      
+      const savedComment = await storage.saveOfficeViolationComment(result.data);
+      res.status(201).json(savedComment);
+    } catch (error) {
+      console.error("Failed to save office violation comment:", error);
+      res.status(500).json({ error: "Failed to save office violation comment" });
+    }
+  });
+
   // Vessel Review Submission API route
   app.post("/api/rest-hours-vessel-records/submit-review", async (req, res) => {
     try {
@@ -3287,6 +3399,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to submit vessel review:", error);
       res.status(500).json({ error: "Failed to submit vessel review" });
+    }
+  });
+
+  // Office Review Submission API route
+  app.post("/api/rest-hours-vessel-records/submit-office-review", async (req, res) => {
+    try {
+      const { vesselId, monthValue } = req.body;
+      
+      if (!vesselId || !monthValue) {
+        return res.status(400).json({ error: "vesselId and monthValue are required" });
+      }
+      
+      // Check if office violation comment exists and is valid
+      const officeComment = await storage.getOfficeViolationComment(vesselId, monthValue);
+      
+      if (!officeComment) {
+        return res.status(400).json({ error: "Office violation comment must be saved before submitting office review" });
+      }
+      
+      if (!officeComment.reviewerName || officeComment.reviewerName.trim() === '') {
+        return res.status(400).json({ error: "Office violation comment must have a reviewer name before submitting" });
+      }
+      
+      if (!officeComment.reviewDate) {
+        return res.status(400).json({ error: "Office violation comment must have a review date before submitting" });
+      }
+      
+      // Find the vessel record
+      const vesselRecords = await storage.getRestHoursVesselRecordsByFilters({
+        vesselIds: [vesselId],
+        monthValue
+      });
+      
+      const existingVesselRecord = vesselRecords.find(r => r.vesselId === vesselId && r.monthValue === monthValue);
+      
+      if (!existingVesselRecord) {
+        return res.status(404).json({ error: "Vessel record not found" });
+      }
+      
+      // Update the vessel record with office review submission date
+      const updatedRecord = await storage.updateRestHoursVesselRecord(existingVesselRecord.id, {
+        officeReviewSubmittedDate: new Date(),
+      });
+      
+      res.status(200).json(updatedRecord);
+    } catch (error) {
+      console.error("Failed to submit office review:", error);
+      res.status(500).json({ error: "Failed to submit office review" });
     }
   });
 

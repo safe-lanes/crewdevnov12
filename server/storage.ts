@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type DrugAlcoholTestRecord, type InsertDrugAlcoholTestRecord, type RestHoursVesselRecord, type InsertRestHoursVesselRecord, type RestHoursCrewRecord, type InsertRestHoursCrewRecord, type RestHoursDailyRecord, type InsertRestHoursDailyRecord, type FixedTask, type InsertFixedTask, type VariableTask, type InsertVariableTask, type VesselViolationComment, type InsertVesselViolationComment, type CrewDashboardSummary } from "@shared/schema";
+import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type DrugAlcoholTestRecord, type InsertDrugAlcoholTestRecord, type RestHoursVesselRecord, type InsertRestHoursVesselRecord, type RestHoursCrewRecord, type InsertRestHoursCrewRecord, type RestHoursDailyRecord, type InsertRestHoursDailyRecord, type FixedTask, type InsertFixedTask, type VariableTask, type InsertVariableTask, type VesselViolationComment, type InsertVesselViolationComment, type OfficeViolationComment, type InsertOfficeViolationComment, type CrewDashboardSummary } from "@shared/schema";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -155,6 +155,9 @@ export interface IStorage {
   // Vessel Violation Comments
   getVesselViolationComment(vesselId: string, monthValue: string): Promise<VesselViolationComment | null>;
   saveVesselViolationComment(comment: InsertVesselViolationComment): Promise<VesselViolationComment>;
+  // Office Violation Comments
+  getOfficeViolationComment(vesselId: string, monthValue: string): Promise<OfficeViolationComment | null>;
+  saveOfficeViolationComment(comment: InsertOfficeViolationComment): Promise<OfficeViolationComment>;
   // NC Reports
   getNCReport(crewMemberId: string, vesselId: string, monthValue: string): Promise<NCReport | null>;
   saveNCReport(report: InsertNCReport): Promise<NCReport>;
@@ -182,6 +185,7 @@ export class MemStorage implements IStorage {
   private fixedTasks: Map<number, FixedTask>;
   private variableTasks: Map<number, VariableTask>;
   private vesselViolationComments: Map<number, VesselViolationComment>;
+  private officeViolationComments: Map<number, OfficeViolationComment>;
   private ncReports: Map<number, NCReport>;
   private currentUserId: number;
   private currentFormId: number;
@@ -202,6 +206,7 @@ export class MemStorage implements IStorage {
   private currentFixedTaskId: number;
   private currentVariableTaskId: number;
   private currentVesselViolationCommentId: number;
+  private currentOfficeViolationCommentId: number;
   private currentNCReportId: number;
 
   constructor() {
@@ -226,6 +231,7 @@ export class MemStorage implements IStorage {
     this.fixedTasks = new Map();
     this.variableTasks = new Map();
     this.vesselViolationComments = new Map();
+    this.officeViolationComments = new Map();
     this.ncReports = new Map();
     this.currentUserId = 1;
     this.currentFormId = 1;
@@ -246,6 +252,7 @@ export class MemStorage implements IStorage {
     this.currentFixedTaskId = 1;
     this.currentVariableTaskId = 1;
     this.currentVesselViolationCommentId = 1;
+    this.currentOfficeViolationCommentId = 1;
     this.currentNCReportId = 1;
     
     this.initializeDefaultData();
@@ -2006,6 +2013,43 @@ export class MemStorage implements IStorage {
     }
   }
 
+  // Office Violation Comments Methods
+  async getOfficeViolationComment(vesselId: string, monthValue: string): Promise<OfficeViolationComment | null> {
+    const comments = Array.from(this.officeViolationComments.values());
+    const existing = comments.find(c => c.vesselId === vesselId && c.monthValue === monthValue);
+    return existing || null;
+  }
+
+  async saveOfficeViolationComment(insertComment: InsertOfficeViolationComment): Promise<OfficeViolationComment> {
+    // Check if comment already exists for this vessel/month (upsert logic)
+    const comments = Array.from(this.officeViolationComments.values());
+    const existing = comments.find(c => c.vesselId === insertComment.vesselId && c.monthValue === insertComment.monthValue);
+    
+    if (existing) {
+      // Update existing comment
+      const updated: OfficeViolationComment = {
+        ...existing,
+        ...insertComment,
+        id: existing.id,
+        createdAt: existing.createdAt,
+        updatedAt: new Date(),
+      };
+      this.officeViolationComments.set(existing.id, updated);
+      return updated;
+    } else {
+      // Create new comment
+      const id = this.currentOfficeViolationCommentId++;
+      const newComment: OfficeViolationComment = {
+        id,
+        ...insertComment,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      this.officeViolationComments.set(id, newComment);
+      return newComment;
+    }
+  }
+
   // NC Reports Methods
   async getNCReport(crewMemberId: string, vesselId: string, monthValue: string): Promise<NCReport | null> {
     const reports = Array.from(this.ncReports.values());
@@ -2140,6 +2184,7 @@ export class PersistentFileStorage implements IStorage {
   private currentVariableTaskId: number;
   private currentFixedTaskId: number;
   private currentVesselViolationCommentId: number;
+  private currentOfficeViolationCommentId: number;
   private currentNCReportId: number;
   private filePath: string;
   private saveTimeout: NodeJS.Timeout | null = null;
@@ -2171,6 +2216,7 @@ export class PersistentFileStorage implements IStorage {
     this.variableTasks = new Map();
     this.fixedTasks = new Map();
     this.vesselViolationComments = new Map();
+    this.officeViolationComments = new Map();
     this.ncReports = new Map();
     this.currentUserId = 1;
     this.currentFormId = 1;
@@ -2191,6 +2237,7 @@ export class PersistentFileStorage implements IStorage {
     this.currentVariableTaskId = 1;
     this.currentFixedTaskId = 1;
     this.currentVesselViolationCommentId = 1;
+    this.currentOfficeViolationCommentId = 1;
     this.currentNCReportId = 1;
     
     this.filePath = path.join(process.cwd(), 'test-data.json');
@@ -2298,6 +2345,45 @@ export class PersistentFileStorage implements IStorage {
         updatedAt: new Date(),
       };
       this.vesselViolationComments.set(id, newComment);
+      this.saveToFile();
+      return newComment;
+    }
+  }
+
+  // Office Violation Comments Methods
+  async getOfficeViolationComment(vesselId: string, monthValue: string): Promise<OfficeViolationComment | null> {
+    const comments = Array.from(this.officeViolationComments.values());
+    const existing = comments.find(c => c.vesselId === vesselId && c.monthValue === monthValue);
+    return existing || null;
+  }
+
+  async saveOfficeViolationComment(insertComment: InsertOfficeViolationComment): Promise<OfficeViolationComment> {
+    // Check if comment already exists for this vessel/month (upsert logic)
+    const comments = Array.from(this.officeViolationComments.values());
+    const existing = comments.find(c => c.vesselId === insertComment.vesselId && c.monthValue === insertComment.monthValue);
+    
+    if (existing) {
+      // Update existing comment
+      const updated: OfficeViolationComment = {
+        ...existing,
+        ...insertComment,
+        id: existing.id,
+        createdAt: existing.createdAt,
+        updatedAt: new Date(),
+      };
+      this.officeViolationComments.set(existing.id, updated);
+      this.saveToFile();
+      return updated;
+    } else {
+      // Create new comment
+      const id = this.currentOfficeViolationCommentId++;
+      const newComment: OfficeViolationComment = {
+        id,
+        ...insertComment,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      this.officeViolationComments.set(id, newComment);
       this.saveToFile();
       return newComment;
     }
@@ -2430,6 +2516,10 @@ export class PersistentFileStorage implements IStorage {
         this.vesselViolationComments = new Map(data.vesselViolationComments || []);
         this.currentVesselViolationCommentId = data.currentVesselViolationCommentId || 1;
         
+        // Load office violation comments and counter
+        this.officeViolationComments = new Map(data.officeViolationComments || []);
+        this.currentOfficeViolationCommentId = data.currentOfficeViolationCommentId || 1;
+        
         // Load NC reports and counter
         this.ncReports = new Map(data.ncReports || []);
         this.currentNCReportId = data.currentNCReportId || 1;
@@ -2477,6 +2567,7 @@ export class PersistentFileStorage implements IStorage {
       variableTasks: Array.from(this.variableTasks.entries()),
       fixedTasks: Array.from(this.fixedTasks.entries()),
       vesselViolationComments: Array.from(this.vesselViolationComments.entries()),
+      officeViolationComments: Array.from(this.officeViolationComments.entries()),
       ncReports: Array.from(this.ncReports.entries()),
       masterDataEntries: Array.from(this.masterDataEntries.entries()),
       currentUserId: this.currentUserId,
@@ -2498,6 +2589,7 @@ export class PersistentFileStorage implements IStorage {
       currentVariableTaskId: this.currentVariableTaskId,
       currentFixedTaskId: this.currentFixedTaskId,
       currentVesselViolationCommentId: this.currentVesselViolationCommentId,
+      currentOfficeViolationCommentId: this.currentOfficeViolationCommentId,
       currentNCReportId: this.currentNCReportId
     };
     

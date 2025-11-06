@@ -2,6 +2,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Calendar as CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useMemo, useState, useEffect } from 'react';
 import type { RestHoursCrewRecord, NCReport } from '@shared/schema';
@@ -9,6 +14,7 @@ import { filterViolations } from './violationFilters';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { NCReportDialog } from './NCReportDialog';
+import { cn } from '@/lib/utils';
 
 const VIOLATION_CODE_DESCRIPTIONS: Record<number, string> = {
   1: "Minimum 10 hours of rest in any 24 hour period",
@@ -37,6 +43,8 @@ interface VesselReviewDialogProps {
   complianceMode: 'Rest' | 'Work';
   opaMode: boolean;
   vesselReviewStatus: string;
+  mode?: 'vessel' | 'office';
+  officeReviewStatus?: string;
 }
 
 interface DailyRecord {
@@ -73,6 +81,13 @@ interface NCRecord {
   status: string;
 }
 
+// Office users data (same as NC Report)
+const OFFICE_USERS = [
+  { name: "John Smith", position: "Marine Superintendent" },
+  { name: "Sarah Johnson", position: "Marine Superintendent" },
+  { name: "Michael Chen", position: "Marine Superintendent" },
+];
+
 export function VesselReviewDialog({
   open,
   onOpenChange,
@@ -82,13 +97,25 @@ export function VesselReviewDialog({
   complianceMode,
   opaMode,
   vesselReviewStatus,
+  mode = 'vessel',
+  officeReviewStatus = '',
 }: VesselReviewDialogProps) {
   const { toast } = useToast();
   const [vesselComment, setVesselComment] = useState('');
+  const [officeComment, setOfficeComment] = useState('');
+  const [reviewerName, setReviewerName] = useState('');
+  const [reviewDate, setReviewDate] = useState<Date | undefined>(undefined);
   const [ncReportDialogOpen, setNCReportDialogOpen] = useState(false);
   const [selectedNCReportRecord, setSelectedNCReportRecord] = useState<RestHoursCrewRecord | null>(null);
 
-  const isReadOnly = vesselReviewStatus === 'Completed';
+  const isVesselMode = mode === 'vessel';
+  const isOfficeMode = mode === 'office';
+  const isReadOnly = isVesselMode 
+    ? vesselReviewStatus === 'Completed' 
+    : officeReviewStatus === 'Completed';
+  
+  // Get reviewer position based on selected name
+  const reviewerPosition = OFFICE_USERS.find(u => u.name === reviewerName)?.position || '';
 
   // Fetch all crew records for this vessel and month
   const queryParams = new URLSearchParams();
@@ -143,6 +170,25 @@ export function VesselReviewDialog({
     enabled: open,
   });
 
+  // Fetch existing office comment
+  const { data: officeCommentData } = useQuery<{ 
+    comment: string;
+    reviewerName: string;
+    reviewerPosition: string;
+    reviewDate: string;
+  } | null>({
+    queryKey: ['/api/office-violation-comments', vesselId, monthValue],
+    queryFn: async () => {
+      const response = await fetch(`/api/office-violation-comments?vesselId=${vesselId}&monthValue=${monthValue}`);
+      if (!response.ok) {
+        if (response.status === 404) return null;
+        throw new Error('Failed to fetch office comment');
+      }
+      return response.json();
+    },
+    enabled: open && isOfficeMode,
+  });
+
   // Fetch NC reports for this vessel/month
   const { data: allNCReports = [] } = useQuery<NCReport[]>({
     queryKey: ['/api/nc-reports'],
@@ -161,6 +207,18 @@ export function VesselReviewDialog({
       setVesselComment('');
     }
   }, [vesselCommentData]);
+
+  useEffect(() => {
+    if (officeCommentData) {
+      setOfficeComment(officeCommentData.comment || '');
+      setReviewerName(officeCommentData.reviewerName || '');
+      setReviewDate(officeCommentData.reviewDate ? new Date(officeCommentData.reviewDate) : undefined);
+    } else {
+      setOfficeComment('');
+      setReviewerName('');
+      setReviewDate(undefined);
+    }
+  }, [officeCommentData]);
 
   const isLoading = isLoadingSummaries || isLoadingDaily;
 
@@ -307,6 +365,35 @@ export function VesselReviewDialog({
     },
   });
 
+  // Mutation to save office comment
+  const saveOfficeCommentMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('POST', '/api/office-violation-comments', {
+        vesselId,
+        monthValue,
+        comment: officeComment,
+        reviewerName,
+        reviewerPosition,
+        reviewDate,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/office-violation-comments', vesselId, monthValue] });
+      queryClient.invalidateQueries({ queryKey: ['/api/rest-hours-vessel-records'] });
+      toast({
+        title: 'Success',
+        description: 'Office comment saved successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to save office comment',
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Mutation to submit vessel review
   const submitReviewMutation = useMutation({
     mutationFn: async () => {
@@ -341,20 +428,73 @@ export function VesselReviewDialog({
     },
   });
 
+  // Mutation to submit office review
+  const submitOfficeReviewMutation = useMutation({
+    mutationFn: async () => {
+      // First save the office comment
+      await apiRequest('POST', '/api/office-violation-comments', {
+        vesselId,
+        monthValue,
+        comment: officeComment,
+        reviewerName,
+        reviewerPosition,
+        reviewDate,
+      });
+
+      // Then update the office review submission date
+      return apiRequest('POST', '/api/rest-hours-vessel-records/submit-office-review', {
+        vesselId,
+        monthValue,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/rest-hours-vessel-records'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/office-violation-comments', vesselId, monthValue] });
+      toast({
+        title: 'Success',
+        description: 'Office review submitted successfully',
+      });
+      onOpenChange(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to submit office review',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const handleSaveComment = () => {
-    saveCommentMutation.mutate(vesselComment);
+    if (isVesselMode) {
+      saveCommentMutation.mutate(vesselComment);
+    } else {
+      saveOfficeCommentMutation.mutate();
+    }
   };
 
   const handleSubmit = () => {
-    if (!vesselComment.trim()) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please enter vessel comments before submitting',
-        variant: 'destructive',
-      });
-      return;
+    if (isVesselMode) {
+      if (!vesselComment.trim()) {
+        toast({
+          title: 'Validation Error',
+          description: 'Please enter vessel comments before submitting',
+          variant: 'destructive',
+        });
+        return;
+      }
+      submitReviewMutation.mutate();
+    } else {
+      if (!officeComment.trim() || !reviewerName || !reviewDate) {
+        toast({
+          title: 'Validation Error',
+          description: 'Please enter office comments and complete the signature fields before submitting',
+          variant: 'destructive',
+        });
+        return;
+      }
+      submitOfficeReviewMutation.mutate();
     }
-    submitReviewMutation.mutate();
   };
 
   const handleViewNCReport = (crewMemberId: string) => {
@@ -383,7 +523,7 @@ export function VesselReviewDialog({
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Vessel Review - {vesselName} - {formatMonth(monthValue)}
+              {isVesselMode ? 'Vessel Review' : 'Office Review'} - {vesselName} - {formatMonth(monthValue)}
             </DialogTitle>
           </DialogHeader>
 
@@ -508,35 +648,122 @@ export function VesselReviewDialog({
               <label className="text-sm font-medium text-gray-700">
                 Vessel Comments (Master / Chief Engineer)
               </label>
-              <Textarea
-                value={vesselComment}
-                onChange={(e) => setVesselComment(e.target.value)}
-                placeholder="Enter corrective actions or notes regarding these violations..."
-                className="min-h-[100px] resize-y"
-                data-testid="textarea-vessel-comment"
-                disabled={isReadOnly}
-              />
+              {isOfficeMode ? (
+                <div className="min-h-[100px] p-3 border rounded-md bg-gray-50 text-sm whitespace-pre-wrap">
+                  {vesselComment || 'No vessel comments provided'}
+                </div>
+              ) : (
+                <Textarea
+                  value={vesselComment}
+                  onChange={(e) => setVesselComment(e.target.value)}
+                  placeholder="Enter corrective actions or notes regarding these violations..."
+                  className="min-h-[100px] resize-y"
+                  data-testid="textarea-vessel-comment"
+                  disabled={isReadOnly}
+                />
+              )}
             </div>
+
+            {/* Office Comments Section (only in office mode) */}
+            {isOfficeMode && (
+              <div className="space-y-3 border-t pt-4">
+                <label className="text-sm font-medium text-gray-700">
+                  Office Comments
+                </label>
+                <Textarea
+                  value={officeComment}
+                  onChange={(e) => setOfficeComment(e.target.value)}
+                  placeholder="Enter office review comments..."
+                  className="min-h-[100px] resize-y"
+                  data-testid="textarea-office-comment"
+                  disabled={isReadOnly}
+                />
+                
+                {/* Office Signature Fields */}
+                <div className="border-t pt-4 mt-4">
+                  <h3 className="text-sm font-semibold mb-3">Reviewed by Office</h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-sm text-gray-600 block mb-1">Name</label>
+                      <Select
+                        value={reviewerName}
+                        onValueChange={setReviewerName}
+                        disabled={isReadOnly}
+                      >
+                        <SelectTrigger data-testid="select-reviewer-name">
+                          <SelectValue placeholder="Select reviewer" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {OFFICE_USERS.map((user) => (
+                            <SelectItem key={user.name} value={user.name}>
+                              {user.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <label className="text-sm text-gray-600 block mb-1">Position</label>
+                      <div
+                        data-testid="text-reviewer-position"
+                        className="px-3 py-2 border rounded-md bg-gray-50 text-sm"
+                      >
+                        {reviewerPosition || "—"}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-sm text-gray-600 block mb-1">Date</label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            data-testid="button-review-date"
+                            disabled={isReadOnly}
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !reviewDate && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {reviewDate ? format(reviewDate, "PPP") : <span>Pick a date</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={reviewDate}
+                            onSelect={setReviewDate}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Action Buttons */}
             {!isReadOnly && (
               <div className="flex justify-end gap-3 pt-4 border-t">
                 <Button
                   onClick={handleSaveComment}
-                  disabled={saveCommentMutation.isPending}
+                  disabled={saveCommentMutation.isPending || saveOfficeCommentMutation.isPending}
                   variant="outline"
                   className="bg-blue-600 text-white hover:bg-blue-700"
-                  data-testid="button-save-vessel-review"
+                  data-testid={`button-save-${isVesselMode ? 'vessel' : 'office'}-review`}
                 >
-                  {saveCommentMutation.isPending ? 'Saving...' : 'Save'}
+                  {(saveCommentMutation.isPending || saveOfficeCommentMutation.isPending) ? 'Saving...' : 'Save'}
                 </Button>
                 <Button
                   onClick={handleSubmit}
-                  disabled={submitReviewMutation.isPending}
+                  disabled={submitReviewMutation.isPending || submitOfficeReviewMutation.isPending}
                   className="bg-green-600 text-white hover:bg-green-700"
-                  data-testid="button-submit-vessel-review"
+                  data-testid={`button-submit-${isVesselMode ? 'vessel' : 'office'}-review`}
                 >
-                  {submitReviewMutation.isPending ? 'Submitting...' : 'Submit'}
+                  {(submitReviewMutation.isPending || submitOfficeReviewMutation.isPending) ? 'Submitting...' : 'Submit'}
                 </Button>
               </div>
             )}

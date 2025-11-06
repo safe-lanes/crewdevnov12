@@ -489,9 +489,21 @@ const OfficeReviewRenderer = (params: ICellRendererParams) => {
     }
   };
 
+  const isClickable = status === 'Due' || status === 'Overdue' || status === 'Completed';
+
+  const handleClick = () => {
+    if (isClickable && params.context && params.context.onViewOfficeReview) {
+      params.context.onViewOfficeReview(params.data);
+    }
+  };
+
   return (
     <div className="flex items-center justify-center h-full py-2">
-      <span className={`px-4 py-1.5 rounded font-medium ${getStatusStyles()}`} style={{ fontSize: '13px' }}>
+      <span 
+        className={`px-4 py-1.5 rounded font-medium ${getStatusStyles()} ${isClickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`} 
+        style={{ fontSize: '13px' }}
+        onClick={handleClick}
+      >
         {status}
       </span>
     </div>
@@ -512,6 +524,8 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
   const [selectedPredictedNcRecord, setSelectedPredictedNcRecord] = useState<RestHoursVesselRecord | null>(null);
   const [vesselReviewDialogOpen, setVesselReviewDialogOpen] = useState(false);
   const [selectedVesselReviewRecord, setSelectedVesselReviewRecord] = useState<RestHoursVesselRecord | null>(null);
+  const [officeReviewDialogOpen, setOfficeReviewDialogOpen] = useState(false);
+  const [selectedOfficeReviewRecord, setSelectedOfficeReviewRecord] = useState<RestHoursVesselRecord | null>(null);
 
   // Build query params for backend
   const queryParams = useMemo(() => {
@@ -581,6 +595,12 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
   const handleViewVesselReview = (record: RestHoursVesselRecord) => {
     setSelectedVesselReviewRecord(record);
     setVesselReviewDialogOpen(true);
+  };
+
+  // Handler for opening the office review dialog
+  const handleViewOfficeReview = (record: RestHoursVesselRecord) => {
+    setSelectedOfficeReviewRecord(record);
+    setOfficeReviewDialogOpen(true);
   };
 
   // Actions renderer that uses callback instead of hooks
@@ -732,7 +752,8 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
             onViewPredictedViolations: handleViewPredictedViolations,
             onViewNCs: handleViewNCs,
             onViewPredictedNCs: handleViewPredictedNCs,
-            onViewVesselReview: handleViewVesselReview
+            onViewVesselReview: handleViewVesselReview,
+            onViewOfficeReview: handleViewOfficeReview
           }}
           animateRows={true}
           pagination={true}
@@ -809,6 +830,23 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
           complianceMode={complianceMode}
           opaMode={opaMode}
           vesselReviewStatus={selectedVesselReviewRecord.vesselReviewStatus || ''}
+          mode="vessel"
+        />
+      )}
+
+      {selectedOfficeReviewRecord && (
+        <VesselReviewDialog
+          key={`office-review-${selectedOfficeReviewRecord.vesselId}-${selectedOfficeReviewRecord.monthValue}`}
+          open={officeReviewDialogOpen}
+          onOpenChange={setOfficeReviewDialogOpen}
+          vesselId={selectedOfficeReviewRecord.vesselId}
+          vesselName={selectedOfficeReviewRecord.vesselName}
+          monthValue={selectedOfficeReviewRecord.monthValue}
+          complianceMode={complianceMode}
+          opaMode={opaMode}
+          vesselReviewStatus={selectedOfficeReviewRecord.vesselReviewStatus || ''}
+          mode="office"
+          officeReviewStatus={selectedOfficeReviewRecord.officeReviewStatus || ''}
         />
       )}
     </>
