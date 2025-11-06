@@ -1046,6 +1046,12 @@ export const insertOfficeViolationCommentSchema = createInsertSchema(officeViola
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  reviewDate: z.union([z.string(), z.date()]).optional().transform((val) => {
+    if (!val) return undefined;
+    if (val instanceof Date) return val;
+    return new Date(val);
+  }),
 });
 
 export const insertNCReportSchema = createInsertSchema(ncReports).omit({
