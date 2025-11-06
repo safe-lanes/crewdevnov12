@@ -150,9 +150,11 @@ export function NCOverviewDialog({
     // Create a map of daily records for quick lookup
     const dailyRecordsMap = new Map<string, DailyRecord[]>();
     
-    // Filter daily records by crew members that have NCs (using crew IDs is more reliable than vessel+month)
+    // Filter daily records by crew members that have NCs and match vessel+month
     const filteredRecords = allDailyRecords.filter(record =>
-      crewIdsWithNCs.includes(record.crewMemberId) && record.vesselId === vesselId
+      crewIdsWithNCs.includes(record.crewMemberId) && 
+      record.vesselId === vesselId &&
+      record.monthYear === monthValue
     );
     
     filteredRecords.forEach(recordContainer => {
