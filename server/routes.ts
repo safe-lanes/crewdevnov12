@@ -2926,8 +2926,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Determine target month
       const targetMonth = monthValue as string || '';
       
-      console.log(`[CREW RECORDS API] Querying for targetMonth: ${targetMonth}, vesselIds: ${vesselIds}`);
-      
       // Get all daily records for calculating percentages
       const allDailyRecords = await storage.getRestHoursDailyRecords();
       const dailyRecordsMap = new Map<string, any>();
@@ -2984,10 +2982,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const ncs = calculateNCs(dailyRecord.dailyRecords, mode, isOpaMode);
             totalNCs = ncs.totalNCs;
             predictedNCs = ncs.predictedNCs;
-            
-            if (totalViolations > 0) {
-              console.log(`[CREW RECORDS] ${fullName} (${crewMemberId}) - vessel=${vesselId}, month=${targetMonth}: ${totalViolations} violations on days ${JSON.stringify(violationDates)}`);
-            }
           }
           
           const violationDatesJson = violationDates.length > 0 ? JSON.stringify(violationDates) : null;

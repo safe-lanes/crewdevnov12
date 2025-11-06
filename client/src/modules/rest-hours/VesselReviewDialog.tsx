@@ -97,24 +97,13 @@ export function VesselReviewDialog({
   queryParams.append('complianceMode', complianceMode);
   queryParams.append('opaMode', String(opaMode));
 
-  console.log('[VesselReviewDialog] Query params:', {
-    vesselId,
-    monthValue,
-    complianceMode,
-    opaMode,
-    queryString: queryParams.toString()
-  });
-
   const { data: crewSummaries = [], isLoading: isLoadingSummaries } = useQuery<any[]>({
     queryKey: ['/api/rest-hours-crew-records', vesselId, monthValue, complianceMode, opaMode],
     queryFn: async () => {
       const url = `/api/rest-hours-crew-records?${queryParams.toString()}`;
-      console.log('[VesselReviewDialog] Fetching crew records from:', url);
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch crew records');
-      const data = await response.json();
-      console.log('[VesselReviewDialog] Crew records response:', data.length, 'records');
-      return data;
+      return response.json();
     },
     enabled: open,
   });
@@ -177,14 +166,8 @@ export function VesselReviewDialog({
 
   // Parse violations from daily records
   const violationRecords = useMemo(() => {
-    console.log('[VesselReviewDialog] Processing violations for:', { vesselId, monthValue, complianceMode, opaMode });
-    console.log('[VesselReviewDialog] Total crewSummaries:', crewSummaries.length);
-    console.log('[VesselReviewDialog] crewIdsWithViolations:', crewIdsWithViolations);
-    
     const allViolations: ViolationRecord[] = [];
     const vesselCrewSummaries = crewSummaries.filter(crew => crew.vesselId === vesselId);
-    console.log('[VesselReviewDialog] vesselCrewSummaries count:', vesselCrewSummaries.length);
-    
     const dailyRecordsMap = new Map<string, DailyRecord[]>();
     
     const filteredRecords = allDailyRecords.filter(record =>
@@ -192,13 +175,11 @@ export function VesselReviewDialog({
       record.vesselId === vesselId &&
       record.monthYear === monthValue
     );
-    console.log('[VesselReviewDialog] filteredRecords (daily) count:', filteredRecords.length);
     
     filteredRecords.forEach(recordContainer => {
       try {
         const dailyRecords: DailyRecord[] = JSON.parse(recordContainer.dailyRecords);
         dailyRecordsMap.set(recordContainer.crewMemberId, dailyRecords);
-        console.log(`[VesselReviewDialog] Parsed ${dailyRecords.length} daily records for crew ${recordContainer.crewMemberId}`);
       } catch (e) {
         console.error('Failed to parse daily records:', e);
       }
@@ -216,10 +197,7 @@ export function VesselReviewDialog({
         return;
       }
 
-      console.log(`[VesselReviewDialog] Crew ${crew.name} (${crew.crewMemberId}): ${violationDays.length} violation days:`, violationDays);
-
       const dailyRecords = dailyRecordsMap.get(crew.crewMemberId) || [];
-      console.log(`[VesselReviewDialog] Daily records available for ${crew.crewMemberId}:`, dailyRecords.length);
 
       violationDays.forEach(day => {
         const dayRecord = dailyRecords.find(r => r.day === day && !r.isPlan);
@@ -230,8 +208,6 @@ export function VesselReviewDialog({
           const diagnostics = dayRecord.violationDiagnostics || [];
           const filteredDiagnostics = diagnostics.filter(d => filteredViolations.includes(d.code));
 
-          console.log(`[VesselReviewDialog] Adding violation for ${crew.name} day ${day}: ${filteredViolations.join(', ')}`);
-
           allViolations.push({
             crewMemberId: crew.crewMemberId,
             crewMemberName: crew.name,
@@ -241,13 +217,9 @@ export function VesselReviewDialog({
             filteredDiagnostics,
             comments: dayRecord.comments || '',
           });
-        } else {
-          console.log(`[VesselReviewDialog] NO daily record found for ${crew.name} day ${day}`);
         }
       });
     });
-
-    console.log('[VesselReviewDialog] Total violation records created:', allViolations.length);
 
     return allViolations.sort((a, b) => {
       if (a.day !== b.day) return a.day - b.day;
