@@ -291,7 +291,9 @@ export function NCOverviewDialog({
                     <th className="px-4 py-3 text-left font-medium text-sm">Date</th>
                     <th className="px-4 py-3 text-left font-medium text-sm">Violations</th>
                     <th className="px-4 py-3 text-left font-medium text-sm">Comments</th>
-                    <th className="px-4 py-3 text-center font-medium text-sm">View Report</th>
+                    {!isPredicted && (
+                      <th className="px-4 py-3 text-center font-medium text-sm">View Report</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -346,7 +348,7 @@ export function NCOverviewDialog({
                         })}
                       </td>
                       <td className="px-4 py-3 text-sm">{record.comments}</td>
-                      {isFirstRowForCrew && (
+                      {!isPredicted && isFirstRowForCrew && (
                         <td 
                           className="px-4 py-3 text-center align-middle" 
                           rowSpan={rowSpan}
