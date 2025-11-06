@@ -166,18 +166,26 @@ export function VesselReviewDialog({
 
   // Parse violations from daily records
   const violationRecords = useMemo(() => {
+    console.log('[VesselReviewDialog] Processing violations for:', { vesselId, monthValue, complianceMode, opaMode });
+    console.log('[VesselReviewDialog] Total crewSummaries:', crewSummaries.length);
+    console.log('[VesselReviewDialog] crewIdsWithViolations:', crewIdsWithViolations);
+    
     const allViolations: ViolationRecord[] = [];
     const vesselCrewSummaries = crewSummaries.filter(crew => crew.vesselId === vesselId);
+    console.log('[VesselReviewDialog] vesselCrewSummaries count:', vesselCrewSummaries.length);
+    
     const dailyRecordsMap = new Map<string, DailyRecord[]>();
     
     const filteredRecords = allDailyRecords.filter(record =>
       crewIdsWithViolations.includes(record.crewMemberId) && record.vesselId === vesselId
     );
+    console.log('[VesselReviewDialog] filteredRecords (daily) count:', filteredRecords.length);
     
     filteredRecords.forEach(recordContainer => {
       try {
         const dailyRecords: DailyRecord[] = JSON.parse(recordContainer.dailyRecords);
         dailyRecordsMap.set(recordContainer.crewMemberId, dailyRecords);
+        console.log(`[VesselReviewDialog] Parsed ${dailyRecords.length} daily records for crew ${recordContainer.crewMemberId}`);
       } catch (e) {
         console.error('Failed to parse daily records:', e);
       }
@@ -195,7 +203,10 @@ export function VesselReviewDialog({
         return;
       }
 
+      console.log(`[VesselReviewDialog] Crew ${crew.name} (${crew.crewMemberId}): ${violationDays.length} violation days:`, violationDays);
+
       const dailyRecords = dailyRecordsMap.get(crew.crewMemberId) || [];
+      console.log(`[VesselReviewDialog] Daily records available for ${crew.crewMemberId}:`, dailyRecords.length);
 
       violationDays.forEach(day => {
         const dayRecord = dailyRecords.find(r => r.day === day && !r.isPlan);
@@ -206,6 +217,8 @@ export function VesselReviewDialog({
           const diagnostics = dayRecord.violationDiagnostics || [];
           const filteredDiagnostics = diagnostics.filter(d => filteredViolations.includes(d.code));
 
+          console.log(`[VesselReviewDialog] Adding violation for ${crew.name} day ${day}: ${filteredViolations.join(', ')}`);
+
           allViolations.push({
             crewMemberId: crew.crewMemberId,
             crewMemberName: crew.name,
@@ -215,16 +228,20 @@ export function VesselReviewDialog({
             filteredDiagnostics,
             comments: dayRecord.comments || '',
           });
+        } else {
+          console.log(`[VesselReviewDialog] NO daily record found for ${crew.name} day ${day}`);
         }
       });
     });
+
+    console.log('[VesselReviewDialog] Total violation records created:', allViolations.length);
 
     return allViolations.sort((a, b) => {
       if (a.day !== b.day) return a.day - b.day;
       if (a.rank !== b.rank) return a.rank.localeCompare(b.rank);
       return a.crewMemberName.localeCompare(b.crewMemberName);
     });
-  }, [crewSummaries, allDailyRecords, vesselId, complianceMode, opaMode, crewIdsWithViolations]);
+  }, [crewSummaries, allDailyRecords, vesselId, monthValue, complianceMode, opaMode, crewIdsWithViolations]);
 
   // Build NC summary records (grouped by crew member)
   const ncRecords = useMemo(() => {
