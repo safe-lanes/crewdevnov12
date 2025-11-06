@@ -188,7 +188,9 @@ export function VesselReviewDialog({
     const dailyRecordsMap = new Map<string, DailyRecord[]>();
     
     const filteredRecords = allDailyRecords.filter(record =>
-      crewIdsWithViolations.includes(record.crewMemberId) && record.vesselId === vesselId
+      crewIdsWithViolations.includes(record.crewMemberId) && 
+      record.vesselId === vesselId &&
+      record.monthYear === monthValue
     );
     console.log('[VesselReviewDialog] filteredRecords (daily) count:', filteredRecords.length);
     
