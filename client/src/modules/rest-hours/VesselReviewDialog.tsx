@@ -97,13 +97,24 @@ export function VesselReviewDialog({
   queryParams.append('complianceMode', complianceMode);
   queryParams.append('opaMode', String(opaMode));
 
+  console.log('[VesselReviewDialog] Query params:', {
+    vesselId,
+    monthValue,
+    complianceMode,
+    opaMode,
+    queryString: queryParams.toString()
+  });
+
   const { data: crewSummaries = [], isLoading: isLoadingSummaries } = useQuery<any[]>({
-    queryKey: ['/api/rest-hours-crew-records', queryParams.toString()],
+    queryKey: ['/api/rest-hours-crew-records', vesselId, monthValue, complianceMode, opaMode],
     queryFn: async () => {
       const url = `/api/rest-hours-crew-records?${queryParams.toString()}`;
+      console.log('[VesselReviewDialog] Fetching crew records from:', url);
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch crew records');
-      return response.json();
+      const data = await response.json();
+      console.log('[VesselReviewDialog] Crew records response:', data.length, 'records');
+      return data;
     },
     enabled: open,
   });
