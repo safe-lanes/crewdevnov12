@@ -494,6 +494,8 @@ export const restHoursVesselRecords = pgTable("rest_hours_vessel_records", {
   predictedNCs: integer("predicted_ncs").notNull().default(0),
   crewWithPredictedNCs: integer("crew_with_predicted_ncs").notNull().default(0),
   crewWithPredictedNCsDetails: text("crew_with_predicted_ncs_details"), // JSON array: [{name: string, rank: string}]
+  vesselReviewStatus: text("vessel_review_status").notNull().default("Due"), // "Completed", "Due", "Overdue"
+  vesselReviewSubmittedDate: timestamp("vessel_review_submitted_date"), // When vessel submitted their review
   officeReviewStatus: text("office_review_status").notNull().default("Due"), // "Completed", "Due", "Overdue"
   
   createdAt: timestamp("created_at").defaultNow(),

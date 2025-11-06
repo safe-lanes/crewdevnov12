@@ -64,6 +64,42 @@ function timeToCell(timeStr: string): number {
   return hours * 2 + (minutes >= 30 ? 1 : 0);
 }
 
+// Helper function to calculate vessel review status
+function calculateVesselReviewStatus(monthValue: string, vesselReviewSubmittedDate?: Date | null): string {
+  // If already submitted, it's completed
+  if (vesselReviewSubmittedDate) {
+    return 'Completed';
+  }
+  
+  // Parse month value (format: "YYYY-MM")
+  const [year, month] = monthValue.split('-').map(Number);
+  
+  // Calculate next month (1st day)
+  const nextMonth = new Date(year, month, 1); // month is 0-indexed, so month value gives us next month
+  
+  // Calculate overdue date (7th of next month)
+  const overdueDate = new Date(year, month, 7);
+  
+  // Get current date
+  const now = new Date();
+  now.setHours(0, 0, 0, 0); // Reset to start of day for fair comparison
+  
+  // Before the 1st of next month, no status yet
+  if (now < nextMonth) {
+    return '';
+  }
+  
+  // Compare dates
+  if (now >= overdueDate) {
+    return 'Overdue';
+  } else if (now >= nextMonth) {
+    return 'Due';
+  }
+  
+  // Fallback (should not reach here)
+  return '';
+}
+
 // Helper function to sync variable task to RH records
 async function syncVariableTaskToRHRecords(task: any, oldTask?: any) {
   try {
@@ -2518,6 +2554,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const predictedViolationDatesJson = predictedViolationDates.length > 0 ? JSON.stringify(predictedViolationDates) : null;
           
           if (persistedRecord) {
+            // Calculate vessel review status
+            const vesselReviewStatus = calculateVesselReviewStatus(
+              targetMonth,
+              persistedRecord.vesselReviewSubmittedDate
+            );
+            
             // Use existing record with real crew count and calculated values
             return {
               ...persistedRecord,
@@ -2536,9 +2578,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               crewWithNCsDetails: crewWithNCsDetailsJson,
               predictedNCs: predictedNCs,
               crewWithPredictedNCs: crewWithPredictedNCs,
-              crewWithPredictedNCsDetails: crewWithPredictedNCsDetailsJson
+              crewWithPredictedNCsDetails: crewWithPredictedNCsDetailsJson,
+              vesselReviewStatus: vesselReviewStatus
             };
           } else {
+            // Calculate vessel review status for new record
+            const vesselReviewStatus = calculateVesselReviewStatus(targetMonth, null);
+            
             // Create placeholder record with calculated values
             return {
               id: null,
@@ -2563,6 +2609,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               predictedNCs: predictedNCs,
               crewWithPredictedNCs: crewWithPredictedNCs,
               crewWithPredictedNCsDetails: crewWithPredictedNCsDetailsJson,
+              vesselReviewStatus: vesselReviewStatus,
+              vesselReviewSubmittedDate: null,
               officeReviewStatus: 'Due',
               createdAt: null,
               updatedAt: null,
@@ -2664,6 +2712,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             });
             
+            // Calculate vessel review status
+            const vesselReviewStatus = calculateVesselReviewStatus(
+              record.monthValue,
+              record.vesselReviewSubmittedDate
+            );
+            
             return {
               ...record,
               totalCrew: crewCountByVessel.get(record.vesselId) || 0,
@@ -2681,9 +2735,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
               crewWithNCsDetails: crewWithNCsDetails.length > 0 ? JSON.stringify(crewWithNCsDetails) : null,
               predictedNCs: predictedNCs,
               crewWithPredictedNCs: crewWithPredictedNCs,
-              crewWithPredictedNCsDetails: crewWithPredictedNCsDetails.length > 0 ? JSON.stringify(crewWithPredictedNCsDetails) : null
+              crewWithPredictedNCsDetails: crewWithPredictedNCsDetails.length > 0 ? JSON.stringify(crewWithPredictedNCsDetails) : null,
+              vesselReviewStatus: vesselReviewStatus
             };
           }
+          
+          // Calculate vessel review status for records without daily records
+          const vesselReviewStatus = calculateVesselReviewStatus(
+            record.monthValue,
+            record.vesselReviewSubmittedDate
+          );
           
           return {
             ...record,
@@ -2702,7 +2763,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             crewWithNCsDetails: null,
             predictedNCs: 0,
             crewWithPredictedNCs: 0,
-            crewWithPredictedNCsDetails: null
+            crewWithPredictedNCsDetails: null,
+            vesselReviewStatus: vesselReviewStatus
           };
         });
       }

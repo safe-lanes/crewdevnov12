@@ -430,6 +430,36 @@ const PredictedViolationsRenderer = (params: ICellRendererParams) => {
   );
 };
 
+const VesselReviewRenderer = (params: ICellRendererParams) => {
+  const status = params.value;
+  
+  // Don't show anything if status is empty (before review period starts)
+  if (!status) {
+    return <div className="flex items-center justify-center h-full py-2"></div>;
+  }
+  
+  const getStatusStyles = () => {
+    switch (status) {
+      case 'Completed':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'Due':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'Overdue':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-center h-full py-2">
+      <span className={`px-4 py-1.5 rounded font-medium ${getStatusStyles()}`} style={{ fontSize: '13px' }}>
+        {status}
+      </span>
+    </div>
+  );
+};
+
 const OfficeReviewRenderer = (params: ICellRendererParams) => {
   const status = params.value || 'Due';
   
@@ -626,6 +656,13 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
       minWidth: 100,
       cellRenderer: PredictedNCsRenderer,
       headerTooltip: 'Predicted NCs / No. of crew involved'
+    },
+    {
+      headerName: 'Vessel Review',
+      field: 'vesselReviewStatus',
+      flex: 1.5,
+      minWidth: 120,
+      cellRenderer: VesselReviewRenderer,
     },
     {
       headerName: 'Office Review',
