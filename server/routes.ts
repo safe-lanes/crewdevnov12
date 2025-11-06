@@ -3257,6 +3257,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Vessel Review Submission API route
+  app.post("/api/rest-hours-vessel-records/submit-review", async (req, res) => {
+    try {
+      const { vesselId, monthValue } = req.body;
+      
+      if (!vesselId || !monthValue) {
+        return res.status(400).json({ error: "vesselId and monthValue are required" });
+      }
+      
+      // Find the vessel record
+      const vesselRecords = await storage.getRestHoursVesselRecordsByFilters({
+        vesselIds: [vesselId],
+        monthValue
+      });
+      
+      const existingVesselRecord = vesselRecords.find(r => r.vesselId === vesselId && r.monthValue === monthValue);
+      
+      if (!existingVesselRecord) {
+        return res.status(404).json({ error: "Vessel record not found" });
+      }
+      
+      // Update the vessel record with submission date
+      const updatedRecord = await storage.updateRestHoursVesselRecord(existingVesselRecord.id, {
+        vesselReviewSubmittedDate: new Date(),
+      });
+      
+      res.status(200).json(updatedRecord);
+    } catch (error) {
+      console.error("Failed to submit vessel review:", error);
+      res.status(500).json({ error: "Failed to submit vessel review" });
+    }
+  });
+
   // NC Reports API routes
   app.get("/api/nc-reports", async (req, res) => {
     try {

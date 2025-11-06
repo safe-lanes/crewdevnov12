@@ -10,6 +10,7 @@ import type { RestHoursVesselRecord } from '@shared/schema';
 import { type ComplianceMode } from './violationFilters';
 import { ViolationsOverviewDialog } from './ViolationsOverviewDialog';
 import { NCOverviewDialog } from './NCOverviewDialog';
+import { VesselReviewDialog } from './VesselReviewDialog';
 
 interface RHRecordsTableProps {
   selectedVessels: string[];
@@ -451,9 +452,21 @@ const VesselReviewRenderer = (params: ICellRendererParams) => {
     }
   };
 
+  const isClickable = status === 'Due' || status === 'Overdue';
+
+  const handleClick = () => {
+    if (isClickable && params.context && params.context.onViewVesselReview) {
+      params.context.onViewVesselReview(params.data);
+    }
+  };
+
   return (
     <div className="flex items-center justify-center h-full py-2">
-      <span className={`px-4 py-1.5 rounded font-medium ${getStatusStyles()}`} style={{ fontSize: '13px' }}>
+      <span 
+        className={`px-4 py-1.5 rounded font-medium ${getStatusStyles()} ${isClickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`} 
+        style={{ fontSize: '13px' }}
+        onClick={handleClick}
+      >
         {status}
       </span>
     </div>
@@ -497,6 +510,8 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
   const [selectedNcRecord, setSelectedNcRecord] = useState<RestHoursVesselRecord | null>(null);
   const [predictedNcDialogOpen, setPredictedNcDialogOpen] = useState(false);
   const [selectedPredictedNcRecord, setSelectedPredictedNcRecord] = useState<RestHoursVesselRecord | null>(null);
+  const [vesselReviewDialogOpen, setVesselReviewDialogOpen] = useState(false);
+  const [selectedVesselReviewRecord, setSelectedVesselReviewRecord] = useState<RestHoursVesselRecord | null>(null);
 
   // Build query params for backend
   const queryParams = useMemo(() => {
@@ -560,6 +575,12 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
   const handleViewPredictedNCs = (record: RestHoursVesselRecord) => {
     setSelectedPredictedNcRecord(record);
     setPredictedNcDialogOpen(true);
+  };
+
+  // Handler for opening the vessel review dialog
+  const handleViewVesselReview = (record: RestHoursVesselRecord) => {
+    setSelectedVesselReviewRecord(record);
+    setVesselReviewDialogOpen(true);
   };
 
   // Actions renderer that uses callback instead of hooks
@@ -710,7 +731,8 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
             onViewViolations: handleViewViolations, 
             onViewPredictedViolations: handleViewPredictedViolations,
             onViewNCs: handleViewNCs,
-            onViewPredictedNCs: handleViewPredictedNCs
+            onViewPredictedNCs: handleViewPredictedNCs,
+            onViewVesselReview: handleViewVesselReview
           }}
           animateRows={true}
           pagination={true}
@@ -773,6 +795,20 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
           complianceMode={complianceMode}
           opaMode={opaMode}
           isPredicted={true}
+        />
+      )}
+
+      {selectedVesselReviewRecord && (
+        <VesselReviewDialog
+          key={`vessel-review-${selectedVesselReviewRecord.vesselId}-${selectedVesselReviewRecord.monthValue}`}
+          open={vesselReviewDialogOpen}
+          onOpenChange={setVesselReviewDialogOpen}
+          vesselId={selectedVesselReviewRecord.vesselId}
+          vesselName={selectedVesselReviewRecord.vesselName}
+          monthValue={selectedVesselReviewRecord.monthValue}
+          complianceMode={complianceMode}
+          opaMode={opaMode}
+          vesselReviewStatus={selectedVesselReviewRecord.vesselReviewStatus || ''}
         />
       )}
     </>
