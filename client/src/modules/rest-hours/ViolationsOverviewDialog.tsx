@@ -181,9 +181,11 @@ export function ViolationsOverviewDialog({
     // Create a map of daily records for quick lookup
     const dailyRecordsMap = new Map<string, DailyRecord[]>();
     
-    // Filter daily records by crew members that have violations (more reliable than vessel+month)
+    // Filter daily records by crew members that have violations and match vessel+month
     const filteredRecords = allDailyRecords.filter(record =>
-      crewIdsWithViolations.includes(record.crewMemberId) && record.vesselId === vesselId
+      crewIdsWithViolations.includes(record.crewMemberId) && 
+      record.vesselId === vesselId &&
+      record.monthYear === monthValue
     );
     
     filteredRecords.forEach(recordContainer => {
