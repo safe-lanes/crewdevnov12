@@ -8,6 +8,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 interface RankWiseViolationsChartProps {
   vesselIds?: string[];
   monthValue?: string;
+  onRenderToolbar?: (toolbar: JSX.Element) => void;
 }
 
 interface ViolationByRank {
@@ -15,7 +16,7 @@ interface ViolationByRank {
   violationDays: number;
 }
 
-export const RankWiseViolationsChart = ({ vesselIds, monthValue }: RankWiseViolationsChartProps) => {
+export const RankWiseViolationsChart = ({ vesselIds, monthValue, onRenderToolbar }: RankWiseViolationsChartProps) => {
   const chartRef = useRef<AgChartInstance | null>(null);
   const [showFullscreen, setShowFullscreen] = useState(false);
   const [chartType, setChartType] = useState<ChartType>('bar');
@@ -253,19 +254,32 @@ export const RankWiseViolationsChart = ({ vesselIds, monthValue }: RankWiseViola
     );
   }
 
+  // Create toolbar element
+  const toolbar = (
+    <ChartToolbar 
+      chartType={chartType}
+      onChartTypeChange={setChartType}
+      onDownload={handleDownload}
+      onFullscreen={() => setShowFullscreen(true)}
+      chartTitle="Rank Wise Violations"
+      showChartTypeSelector={true}
+    />
+  );
+
+  // Call onRenderToolbar if provided
+  if (onRenderToolbar) {
+    onRenderToolbar(toolbar);
+  }
+
   return (
     <>
       <div className="w-full h-full min-h-0 flex flex-col">
-        <div className="flex justify-end mb-1">
-          <ChartToolbar 
-            chartType={chartType}
-            onChartTypeChange={setChartType}
-            onDownload={handleDownload}
-            onFullscreen={() => setShowFullscreen(true)}
-            chartTitle="Rank Wise Violations"
-            showChartTypeSelector={true}
-          />
-        </div>
+        {/* Only render toolbar inline if onRenderToolbar is not provided */}
+        {!onRenderToolbar && (
+          <div className="flex justify-end mb-1">
+            {toolbar}
+          </div>
+        )}
         <div className="flex-1 min-h-0">
           <AgCharts 
             ref={chartRef}

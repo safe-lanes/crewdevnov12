@@ -4,9 +4,10 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 interface PlaceholderChartProps {
   title: string;
+  onRenderToolbar?: (toolbar: JSX.Element) => void;
 }
 
-export const PlaceholderChart = ({ title }: PlaceholderChartProps) => {
+export const PlaceholderChart = ({ title, onRenderToolbar }: PlaceholderChartProps) => {
   const [showFullscreen, setShowFullscreen] = useState(false);
 
   const handleDownload = () => {
@@ -14,16 +15,29 @@ export const PlaceholderChart = ({ title }: PlaceholderChartProps) => {
     alert(`Download functionality will be implemented for ${title} chart`);
   };
 
+  // Create toolbar element
+  const toolbar = (
+    <ChartToolbar 
+      onDownload={handleDownload}
+      onFullscreen={() => setShowFullscreen(true)}
+      chartTitle={title}
+    />
+  );
+
+  // Call onRenderToolbar if provided
+  if (onRenderToolbar) {
+    onRenderToolbar(toolbar);
+  }
+
   return (
     <>
       <div className="w-full h-full min-h-0 flex flex-col">
-        <div className="flex justify-end mb-1">
-          <ChartToolbar 
-            onDownload={handleDownload}
-            onFullscreen={() => setShowFullscreen(true)}
-            chartTitle={title}
-          />
-        </div>
+        {/* Only render toolbar inline if onRenderToolbar is not provided */}
+        {!onRenderToolbar && (
+          <div className="flex justify-end mb-1">
+            {toolbar}
+          </div>
+        )}
         <div className="flex-1 min-h-0 flex items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
           <div className="text-center">
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">

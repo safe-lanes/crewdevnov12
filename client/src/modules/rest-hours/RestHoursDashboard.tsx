@@ -20,6 +20,12 @@ export const RestHoursDashboard = (): JSX.Element => {
   const [selectedVessels, setSelectedVessels] = useState<string[]>([]);
   const [fleetValue, setFleetValue] = useState("");
   const [addGroupValue, setAddGroupValue] = useState("");
+  const [chart1Toolbar, setChart1Toolbar] = useState<JSX.Element | null>(null);
+  const [chart2Toolbar, setChart2Toolbar] = useState<JSX.Element | null>(null);
+  const [rankViolationsToolbar, setRankViolationsToolbar] = useState<JSX.Element | null>(null);
+  const [chart4Toolbar, setChart4Toolbar] = useState<JSX.Element | null>(null);
+  const [chart5Toolbar, setChart5Toolbar] = useState<JSX.Element | null>(null);
+  const [chart6Toolbar, setChart6Toolbar] = useState<JSX.Element | null>(null);
   
   // Default to current year and current month
   const currentYear = new Date().getFullYear();
@@ -239,13 +245,16 @@ export const RestHoursDashboard = (): JSX.Element => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 h-full" style={{ gridAutoRows: 'minmax(300px, 1fr)' }}>
           {/* Card 1 */}
           <div className="flex flex-col min-h-0">
-            <h3 className="text-xs font-semibold text-[#4a7ba7] dark:text-blue-400 mb-2 uppercase tracking-wide">
-              Chart Title 1
-            </h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-semibold text-[#4a7ba7] dark:text-blue-400 uppercase tracking-wide">
+                Chart Title 1
+              </h3>
+              {chart1Toolbar}
+            </div>
             <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-1">
               <CardContent className="p-6 h-full flex flex-col">
                 <div className="flex-1 min-h-0">
-                  <PlaceholderChart title="Chart Title 1" />
+                  <PlaceholderChart title="Chart Title 1" onRenderToolbar={setChart1Toolbar} />
                 </div>
               </CardContent>
             </Card>
@@ -253,13 +262,16 @@ export const RestHoursDashboard = (): JSX.Element => {
 
           {/* Card 2 */}
           <div className="flex flex-col min-h-0">
-            <h3 className="text-xs font-semibold text-[#4a7ba7] dark:text-blue-400 mb-2 uppercase tracking-wide">
-              Chart Title 2
-            </h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-semibold text-[#4a7ba7] dark:text-blue-400 uppercase tracking-wide">
+                Chart Title 2
+              </h3>
+              {chart2Toolbar}
+            </div>
             <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-2">
               <CardContent className="p-6 h-full flex flex-col">
                 <div className="flex-1 min-h-0">
-                  <PlaceholderChart title="Chart Title 2" />
+                  <PlaceholderChart title="Chart Title 2" onRenderToolbar={setChart2Toolbar} />
                 </div>
               </CardContent>
             </Card>
@@ -267,13 +279,20 @@ export const RestHoursDashboard = (): JSX.Element => {
 
           {/* Card 3 - Rank Wise Violations */}
           <div className="flex flex-col min-h-0">
-            <h3 className="text-xs font-semibold text-[#4a7ba7] dark:text-blue-400 mb-2 uppercase tracking-wide">
-              Rank Wise Violations
-            </h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-semibold text-[#4a7ba7] dark:text-blue-400 uppercase tracking-wide">
+                Rank Wise Violations
+              </h3>
+              {rankViolationsToolbar}
+            </div>
             <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-3">
               <CardContent className="p-6 h-full flex flex-col">
                 <div className="flex-1 min-h-0">
-                  <RankWiseViolationsChart vesselIds={vesselIds} monthValue={monthValue} />
+                  <RankWiseViolationsChart 
+                    vesselIds={vesselIds} 
+                    monthValue={monthValue}
+                    onRenderToolbar={setRankViolationsToolbar}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -281,13 +300,16 @@ export const RestHoursDashboard = (): JSX.Element => {
 
           {/* Card 4 */}
           <div className="flex flex-col min-h-0">
-            <h3 className="text-xs font-semibold text-[#4a7ba7] dark:text-blue-400 mb-2 uppercase tracking-wide">
-              Chart Title 4
-            </h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-semibold text-[#4a7ba7] dark:text-blue-400 uppercase tracking-wide">
+                Chart Title 4
+              </h3>
+              {chart4Toolbar}
+            </div>
             <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-4">
               <CardContent className="p-6 h-full flex flex-col">
                 <div className="flex-1 min-h-0">
-                  <PlaceholderChart title="Chart Title 4" />
+                  <PlaceholderChart title="Chart Title 4" onRenderToolbar={setChart4Toolbar} />
                 </div>
               </CardContent>
             </Card>
@@ -295,13 +317,16 @@ export const RestHoursDashboard = (): JSX.Element => {
 
           {/* Card 5 */}
           <div className="flex flex-col min-h-0">
-            <h3 className="text-xs font-semibold text-[#4a7ba7] dark:text-blue-400 mb-2 uppercase tracking-wide">
-              Chart Title 5
-            </h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-semibold text-[#4a7ba7] dark:text-blue-400 uppercase tracking-wide">
+                Chart Title 5
+              </h3>
+              {chart5Toolbar}
+            </div>
             <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-5">
               <CardContent className="p-6 h-full flex flex-col">
                 <div className="flex-1 min-h-0">
-                  <PlaceholderChart title="Chart Title 5" />
+                  <PlaceholderChart title="Chart Title 5" onRenderToolbar={setChart5Toolbar} />
                 </div>
               </CardContent>
             </Card>
@@ -309,13 +334,16 @@ export const RestHoursDashboard = (): JSX.Element => {
 
           {/* Card 6 */}
           <div className="flex flex-col min-h-0">
-            <h3 className="text-xs font-semibold text-[#4a7ba7] dark:text-blue-400 mb-2 uppercase tracking-wide">
-              Chart Title 6
-            </h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-semibold text-[#4a7ba7] dark:text-blue-400 uppercase tracking-wide">
+                Chart Title 6
+              </h3>
+              {chart6Toolbar}
+            </div>
             <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-6">
               <CardContent className="p-6 h-full flex flex-col">
                 <div className="flex-1 min-h-0">
-                  <PlaceholderChart title="Chart Title 6" />
+                  <PlaceholderChart title="Chart Title 6" onRenderToolbar={setChart6Toolbar} />
                 </div>
               </CardContent>
             </Card>
