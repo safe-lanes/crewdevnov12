@@ -2944,10 +2944,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const dailyRecords = JSON.parse(record.dailyRecords);
           const rank = record.rank;
           
-          // Count days with violations
+          // Count days with violations (only actual violations, not predicted)
           let violationDays = 0;
           dailyRecords.forEach((day: any) => {
-            if (day.violations && Array.isArray(day.violations) && day.violations.length > 0) {
+            // Only count violations from actual recorded hours (isPlan === false)
+            // Skip planned hours (isPlan === true) which represent predicted violations
+            if (day.isPlan === false && day.violations && Array.isArray(day.violations) && day.violations.length > 0) {
               violationDays++;
             }
           });
