@@ -66,7 +66,7 @@ export const ChartToolbar = ({
             <SelectTrigger className="h-7 w-[90px] text-xs border-gray-300 dark:border-gray-600" data-testid="select-chart-type">
               <div className="flex items-center gap-1.5">
                 {getChartTypeIcon(chartType)}
-                <SelectValue />
+                <span className="capitalize">{chartType}</span>
               </div>
             </SelectTrigger>
             <SelectContent>
