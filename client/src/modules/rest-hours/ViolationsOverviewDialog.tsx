@@ -67,6 +67,13 @@ interface ViolationRecord {
   comments: string;
 }
 
+// Helper function to normalize rank for comparison (strip suffixes like "_1", "_2", trim, lowercase)
+function normalizeRank(rank: string | null | undefined): string {
+  if (!rank) return '';
+  // Remove suffix pattern like "_1", "_2", etc. and normalize case/whitespace
+  return rank.replace(/_\d+$/, '').trim().toLowerCase();
+}
+
 export function ViolationsOverviewDialog({
   open,
   onOpenChange,
@@ -85,8 +92,16 @@ export function ViolationsOverviewDialog({
   // Fetch all crew records for this vessel (or multiple vessels if provided) and month to get crew list
   const queryParams = new URLSearchParams();
   
-  // Use vesselIds array if provided, otherwise fall back to single vesselId
-  const vesselIdsToUse = vesselIds && vesselIds.length > 0 ? vesselIds : [vesselId];
+  // Use vesselIds array if provided and not empty, otherwise fall back to single vesselId if not empty
+  // If both are empty, don't filter by vessel (fetch all vessels)
+  let vesselIdsToUse: string[] = [];
+  if (vesselIds && vesselIds.length > 0 && vesselIds.some(id => id && id.trim() !== '')) {
+    vesselIdsToUse = vesselIds.filter(id => id && id.trim() !== '');
+  } else if (vesselId && vesselId.trim() !== '') {
+    vesselIdsToUse = [vesselId];
+  }
+  
+  // Only add vessel filter if we have valid vessel IDs
   vesselIdsToUse.forEach(id => queryParams.append('vesselIds', id));
   
   queryParams.append('monthValue', monthValue);
@@ -183,12 +198,18 @@ export function ViolationsOverviewDialog({
   const violationRecords = useMemo(() => {
     const allViolations: ViolationRecord[] = [];
 
-    // Filter crew summaries by vessel(s) and rank
-    let vesselCrewSummaries = crewSummaries.filter(crew => vesselIdsToUse.includes(crew.vesselId));
+    // Filter crew summaries by vessel(s) if vessel filter is specified
+    // If vesselIdsToUse is empty, include all vessels (no vessel filter)
+    let vesselCrewSummaries = vesselIdsToUse.length > 0
+      ? crewSummaries.filter(crew => vesselIdsToUse.includes(crew.vesselId))
+      : crewSummaries;
     
-    // Apply rank filter if provided
+    // Apply rank filter if provided (normalize both sides for comparison)
     if (rankFilter) {
-      vesselCrewSummaries = vesselCrewSummaries.filter(crew => crew.rank === rankFilter);
+      const normalizedRankFilter = normalizeRank(rankFilter);
+      vesselCrewSummaries = vesselCrewSummaries.filter(crew => 
+        normalizeRank(crew.rank) === normalizedRankFilter
+      );
     }
 
     // Create a map of daily records for quick lookup
