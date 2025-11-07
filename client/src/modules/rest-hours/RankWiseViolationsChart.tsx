@@ -27,6 +27,24 @@ export const RankWiseViolationsChart = ({ vesselIds, monthValue }: RankWiseViola
 
   const { data: violationsData = [], isLoading, error } = useQuery<ViolationByRank[]>({
     queryKey: ['/api/rest-hours-violations-by-rank', queryParams],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (queryParams.monthValue) {
+        params.append('monthValue', queryParams.monthValue);
+      }
+      if (queryParams.vesselIds && queryParams.vesselIds.length > 0) {
+        queryParams.vesselIds.forEach((id: string) => params.append('vesselIds', id));
+      }
+      
+      const url = `/api/rest-hours-violations-by-rank${params.toString() ? `?${params.toString()}` : ''}`;
+      const res = await fetch(url, { credentials: 'include' });
+      
+      if (!res.ok) {
+        throw new Error(`Failed to fetch violations: ${res.statusText}`);
+      }
+      
+      return await res.json();
+    },
     enabled: !!monthValue,
   });
 
