@@ -295,25 +295,35 @@ export const PeriodicAnalysisChart = ({
     const results: QuarterlyData[] = [];
     
     quarterGroups.forEach((records, quarterKey) => {
+      // Filter out placeholder records (keep only real data)
+      const realRecords = records.filter(r => 
+        r.id != null || (r.totalViolations ?? 0) > 0 || (r.totalNCs ?? 0) > 0
+      );
+      
+      // Skip quarters with no real records
+      if (realRecords.length === 0) {
+        return;
+      }
+
       const [yearStr, quarterStr] = quarterKey.split('-');
       const year = parseInt(yearStr);
       const quarterNum = parseInt(quarterStr.replace('Q', ''));
       
-      // Calculate total violation days and NCs
+      // Calculate total violation days and NCs using only real records
       // Same methodology as yearly view: sum all vessel-month totals and divide by count
       let totalViolationDays = 0;
       let totalNCs = 0;
 
-      records.forEach(record => {
+      realRecords.forEach(record => {
         totalViolationDays += (record.totalViolations || 0);
         totalNCs += (record.totalNCs || 0);
       });
 
-      // Calculate average per vessel per month
-      // records.length represents vessel-months (number of vessel-month combinations)
+      // Calculate average per vessel per month using only real records
+      // realRecords.length represents vessel-months (number of vessel-month combinations)
       // This matches the yearly aggregation methodology
-      const avgViolationDays = records.length > 0 ? totalViolationDays / records.length : 0;
-      const avgNCs = records.length > 0 ? totalNCs / records.length : 0;
+      const avgViolationDays = realRecords.length > 0 ? totalViolationDays / realRecords.length : 0;
+      const avgNCs = realRecords.length > 0 ? totalNCs / realRecords.length : 0;
 
       results.push({
         quarter: `Q${quarterNum} ${year}`,
@@ -353,18 +363,28 @@ export const PeriodicAnalysisChart = ({
     const results: MonthlyData[] = [];
     
     monthGroups.forEach((records, monthValue) => {
-      // Calculate total violation days and NCs
+      // Filter out placeholder records (keep only real data)
+      const realRecords = records.filter(r => 
+        r.id != null || (r.totalViolations ?? 0) > 0 || (r.totalNCs ?? 0) > 0
+      );
+      
+      // Skip months with no real records
+      if (realRecords.length === 0) {
+        return;
+      }
+
+      // Calculate total violation days and NCs using only real records
       let totalViolationDays = 0;
       let totalNCs = 0;
 
-      records.forEach(record => {
+      realRecords.forEach(record => {
         totalViolationDays += (record.totalViolations || 0);
         totalNCs += (record.totalNCs || 0);
       });
 
-      // Calculate average per vessel per month
-      const avgViolationDays = records.length > 0 ? totalViolationDays / records.length : 0;
-      const avgNCs = records.length > 0 ? totalNCs / records.length : 0;
+      // Calculate average per vessel per month using only real records
+      const avgViolationDays = realRecords.length > 0 ? totalViolationDays / realRecords.length : 0;
+      const avgNCs = realRecords.length > 0 ? totalNCs / realRecords.length : 0;
 
       results.push({
         month: formatMonthLabel(monthValue),
