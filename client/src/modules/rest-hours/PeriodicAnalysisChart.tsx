@@ -176,8 +176,8 @@ export const PeriodicAnalysisChart = ({
           {
             type: 'bar' as any,
             xKey: 'year',
-            yKey: 'avgViolationDays',
-            yName: 'Violations per Vessel',
+            yKey: 'avgNCs',
+            yName: 'NCs per Vessel',
             fill: '#ef4444', // Red
             strokeWidth: 0,
             tooltip: {
@@ -186,7 +186,7 @@ export const PeriodicAnalysisChart = ({
                   ${datum.year}
                 </div>
                 <div class="ag-chart-tooltip-content" style="padding: 4px 8px;">
-                  Avg Violations: ${datum.avgViolationDays}
+                  Avg NCs: ${datum.avgNCs}
                 </div>`;
               },
             },
@@ -194,8 +194,8 @@ export const PeriodicAnalysisChart = ({
           {
             type: 'bar' as any,
             xKey: 'year',
-            yKey: 'avgNCs',
-            yName: 'NCs per Vessel',
+            yKey: 'avgViolationDays',
+            yName: 'Violations per Vessel',
             fill: '#52baf3', // Blue
             strokeWidth: 0,
             tooltip: {
@@ -204,7 +204,7 @@ export const PeriodicAnalysisChart = ({
                   ${datum.year}
                 </div>
                 <div class="ag-chart-tooltip-content" style="padding: 4px 8px;">
-                  Avg NCs: ${datum.avgNCs}
+                  Avg Violations: ${datum.avgViolationDays}
                 </div>`;
               },
             },
@@ -250,8 +250,8 @@ export const PeriodicAnalysisChart = ({
         {
           type: 'line' as any,
           xKey: 'year',
-          yKey: 'avgViolationDays',
-          yName: 'Violations per Vessel',
+          yKey: 'avgNCs',
+          yName: 'NCs per Vessel',
           stroke: '#ef4444', // Red
           strokeWidth: 2,
           marker: {
@@ -266,7 +266,7 @@ export const PeriodicAnalysisChart = ({
                 ${datum.year}
               </div>
               <div class="ag-chart-tooltip-content" style="padding: 4px 8px;">
-                Avg Violations: ${datum.avgViolationDays}
+                Avg NCs: ${datum.avgNCs}
               </div>`;
             },
           },
@@ -274,8 +274,8 @@ export const PeriodicAnalysisChart = ({
         {
           type: 'line' as any,
           xKey: 'year',
-          yKey: 'avgNCs',
-          yName: 'NCs per Vessel',
+          yKey: 'avgViolationDays',
+          yName: 'Violations per Vessel',
           stroke: '#52baf3', // Blue
           strokeWidth: 2,
           marker: {
@@ -290,7 +290,7 @@ export const PeriodicAnalysisChart = ({
                 ${datum.year}
               </div>
               <div class="ag-chart-tooltip-content" style="padding: 4px 8px;">
-                Avg NCs: ${datum.avgNCs}
+                Avg Violations: ${datum.avgViolationDays}
               </div>`;
             },
           },
