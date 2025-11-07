@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { ChartToolbar } from '@/components/charts/ChartToolbar';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 
@@ -10,24 +10,26 @@ interface PlaceholderChartProps {
 export const PlaceholderChart = ({ title, onRenderToolbar }: PlaceholderChartProps) => {
   const [showFullscreen, setShowFullscreen] = useState(false);
 
-  const handleDownload = () => {
+  const handleDownload = useCallback(() => {
     console.log(`Download triggered for: ${title}`);
     alert(`Download functionality will be implemented for ${title} chart`);
-  };
+  }, [title]);
 
-  // Create toolbar element
-  const toolbar = (
+  // Create toolbar element (memoized to prevent unnecessary re-renders)
+  const toolbar = useMemo(() => (
     <ChartToolbar 
       onDownload={handleDownload}
       onFullscreen={() => setShowFullscreen(true)}
       chartTitle={title}
     />
-  );
+  ), [handleDownload, title]);
 
-  // Call onRenderToolbar if provided
-  if (onRenderToolbar) {
-    onRenderToolbar(toolbar);
-  }
+  // Call onRenderToolbar in useEffect to avoid infinite loops
+  useEffect(() => {
+    if (onRenderToolbar) {
+      onRenderToolbar(toolbar);
+    }
+  }, [onRenderToolbar, toolbar]);
 
   return (
     <>

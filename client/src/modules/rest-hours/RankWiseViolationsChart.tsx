@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AgCharts } from '@/lib/agCharts';
 import type { AgChartOptions, AgChartInstance } from '@/lib/agCharts';
@@ -55,13 +55,13 @@ export const RankWiseViolationsChart = ({ vesselIds, monthValue, onRenderToolbar
     enabled: !!monthValue,
   });
 
-  const handleDownload = () => {
+  const handleDownload = useCallback(() => {
     if (chartRef.current) {
       chartRef.current.download({
         fileName: 'rank_wise_violations.png',
       });
     }
-  };
+  }, []);
 
   const chartOptions = useMemo<AgChartOptions>(() => {
     const baseOptions: AgChartOptions = {
@@ -222,6 +222,26 @@ export const RankWiseViolationsChart = ({ vesselIds, monthValue, onRenderToolbar
     } as AgChartOptions;
   }, [violationsData, chartType]);
 
+  // Create toolbar element (memoized to prevent unnecessary re-renders)
+  // Must be called before any early returns to maintain hook order
+  const toolbar = useMemo(() => (
+    <ChartToolbar 
+      chartType={chartType}
+      onChartTypeChange={setChartType}
+      onDownload={handleDownload}
+      onFullscreen={() => setShowFullscreen(true)}
+      chartTitle="Rank Wise Violations"
+      showChartTypeSelector={true}
+    />
+  ), [chartType, handleDownload]);
+
+  // Call onRenderToolbar in useEffect to avoid infinite loops
+  useEffect(() => {
+    if (onRenderToolbar) {
+      onRenderToolbar(toolbar);
+    }
+  }, [onRenderToolbar, toolbar]);
+
   if (isLoading) {
     return (
       <div className="w-full h-full flex items-center justify-center">
@@ -252,23 +272,6 @@ export const RankWiseViolationsChart = ({ vesselIds, monthValue, onRenderToolbar
         <div className="text-sm text-gray-500">No violations found for the selected period</div>
       </div>
     );
-  }
-
-  // Create toolbar element
-  const toolbar = (
-    <ChartToolbar 
-      chartType={chartType}
-      onChartTypeChange={setChartType}
-      onDownload={handleDownload}
-      onFullscreen={() => setShowFullscreen(true)}
-      chartTitle="Rank Wise Violations"
-      showChartTypeSelector={true}
-    />
-  );
-
-  // Call onRenderToolbar if provided
-  if (onRenderToolbar) {
-    onRenderToolbar(toolbar);
   }
 
   return (
