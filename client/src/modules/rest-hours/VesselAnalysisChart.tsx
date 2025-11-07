@@ -188,8 +188,8 @@ export const VesselAnalysisChart = ({
   return (
     <div className="w-full h-full flex flex-col">
       {/* Header and Toggle Switch */}
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+      <div className="relative flex items-center justify-center mb-4">
+        <h3 className="absolute left-0 text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
           GROUP & VESSEL ANALYSIS
         </h3>
         <div className="flex items-center justify-center gap-3">
