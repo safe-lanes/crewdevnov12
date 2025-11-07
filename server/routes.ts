@@ -2979,7 +2979,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Rest Hours NCs By Rank (Dashboard Chart)
   app.get("/api/rest-hours-ncs-by-rank", async (req, res) => {
     try {
-      const { vesselIds, monthValue } = req.query;
+      const { vesselIds, monthValue, complianceMode, opaMode } = req.query;
+      
+      // Parse compliance mode and OPA mode (default to Rest and false)
+      const mode: 'Rest' | 'Work' = (complianceMode as string) === 'Work' ? 'Work' : 'Rest';
+      const isOpaMode = opaMode === 'true';
       
       // Get all daily records
       const allDailyRecords = await storage.getRestHoursDailyRecords();
@@ -3002,25 +3006,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Count crew members with NCs by rank
       // Note: Max 1 NC per crew member per month (binary flag)
+      // NC occurs when: 3+ violation days OR Code [2] violation
       const ncsByRank = new Map<string, number>();
       
       filteredRecords.forEach((record: any) => {
         try {
-          const dailyRecords = JSON.parse(record.dailyRecords);
           const rank = record.rank;
           
-          // Check if this crew member has any NC (only from actual recorded hours, not planned)
-          const hasNC = dailyRecords.some((day: any) => 
-            day.isPlan === false && day.violations && Array.isArray(day.violations) && day.violations.length > 0
-          );
+          // Use the proper calculateNCs function to determine if crew has NC
+          const { totalNCs } = calculateNCs(record.dailyRecords, mode, isOpaMode);
           
-          // If crew has NC, increment count for their rank
-          if (hasNC) {
+          // If crew has NC (totalNCs = 1), increment count for their rank
+          if (totalNCs > 0) {
             const currentCount = ncsByRank.get(rank) || 0;
             ncsByRank.set(rank, currentCount + 1);
           }
         } catch (error) {
-          console.error(`Failed to parse daily records for record ${record.id}:`, error);
+          console.error(`Failed to calculate NCs for record ${record.id}:`, error);
         }
       });
       
