@@ -5,10 +5,12 @@ import type { AgChartOptions, AgChartInstance } from '@/lib/agCharts';
 import { ChartToolbar, type ChartType } from '@/components/charts/ChartToolbar';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import type { PeriodFilterValue } from '@/components/filters/PeriodFilter';
 
 interface PeriodicAnalysisChartProps {
   vesselIds?: string[];
   monthValue?: string;
+  periodFilter?: PeriodFilterValue;
   onRenderToolbar?: (toolbar: JSX.Element) => void;
   complianceMode?: 'Rest' | 'Work';
   opaMode?: boolean;
@@ -20,9 +22,18 @@ interface YearlyData {
   avgNCs: number;
 }
 
+interface QuarterlyData {
+  quarter: string; // Format: "Q1 2024"
+  year: number;
+  quarterNum: number; // 1-4
+  avgViolationDays: number;
+  avgNCs: number;
+}
+
 export const PeriodicAnalysisChart = ({ 
   vesselIds, 
   monthValue,
+  periodFilter,
   onRenderToolbar,
   complianceMode = 'Rest',
   opaMode = false,
@@ -39,7 +50,7 @@ export const PeriodicAnalysisChart = ({
     return [currentYear, currentYear - 1, currentYear - 2, currentYear - 3];
   }, [currentYear]);
 
-  // Generate all month values for the last 4 years
+  // Generate all month values for the last 4 years (for Years view)
   const monthsToFetch = useMemo(() => {
     const months: string[] = [];
     yearsToFetch.forEach(year => {
@@ -51,13 +62,59 @@ export const PeriodicAnalysisChart = ({
     return months;
   }, [yearsToFetch, currentYear, currentMonth]);
 
-  // Fetch crew summary data for all months in the last 4 years
-  // For Years view, we ignore the period filter and fetch all months
+  // Generate months for Quarterly view based on period filter
+  const quarterlyMonthsToFetch = useMemo(() => {
+    if (!periodFilter) return [];
+    
+    const months: string[] = [];
+    
+    if (periodFilter.mode === 'year-month') {
+      // Show all 4 quarters of the selected year (ignore month/quarter selection)
+      const year = periodFilter.year || currentYear;
+      for (let month = 1; month <= 12; month++) {
+        months.push(`${year}-${String(month).padStart(2, '0')}`);
+      }
+    } else if (periodFilter.mode === 'date-range' && periodFilter.dateFrom && periodFilter.dateTo) {
+      // Calculate quarters between start and end dates
+      const startDate = periodFilter.dateFrom;
+      const endDate = periodFilter.dateTo;
+      
+      const startYear = startDate.getFullYear();
+      const startMonth = startDate.getMonth() + 1; // 1-12
+      const endYear = endDate.getFullYear();
+      const endMonth = endDate.getMonth() + 1; // 1-12
+      
+      // Generate all months between start and end
+      let currentIterYear = startYear;
+      let currentIterMonth = startMonth;
+      
+      while (currentIterYear < endYear || (currentIterYear === endYear && currentIterMonth <= endMonth)) {
+        months.push(`${currentIterYear}-${String(currentIterMonth).padStart(2, '0')}`);
+        
+        currentIterMonth++;
+        if (currentIterMonth > 12) {
+          currentIterMonth = 1;
+          currentIterYear++;
+        }
+      }
+    }
+    
+    return months;
+  }, [periodFilter, currentYear]);
+
+  // Fetch crew summary data
+  // For Years view: fetch last 4 years
+  // For Quarters view: fetch months based on period filter
   const { data: allCrewRecords = [], isLoading } = useQuery<any[]>({
-    queryKey: ['/api/rest-hours-crew-records-yearly', vesselIds, complianceMode, opaMode, periodType, monthsToFetch],
+    queryKey: ['/api/rest-hours-crew-records-periodic', vesselIds, complianceMode, opaMode, periodType, monthsToFetch, quarterlyMonthsToFetch],
     queryFn: async () => {
+      // Determine which months to fetch based on period type
+      const monthsToFetchList = periodType === 'years' ? monthsToFetch : quarterlyMonthsToFetch;
+      
+      if (monthsToFetchList.length === 0) return [];
+      
       // Fetch data for all months in parallel
-      const fetchPromises = monthsToFetch.map(async (month) => {
+      const fetchPromises = monthsToFetchList.map(async (month) => {
         const params = new URLSearchParams();
         params.append('monthValue', month);
         if (vesselIds && vesselIds.length > 0) {
@@ -82,7 +139,7 @@ export const PeriodicAnalysisChart = ({
       // Flatten the array of arrays into a single array
       return allResults.flat();
     },
-    enabled: periodType === 'years', // Only fetch for Years view for now
+    enabled: periodType === 'years' || (periodType === 'quarters' && quarterlyMonthsToFetch.length > 0),
   });
 
   // Calculate yearly aggregates
@@ -146,6 +203,73 @@ export const PeriodicAnalysisChart = ({
     return results.sort((a, b) => a.year - b.year);
   }, [allCrewRecords, yearsToFetch]);
 
+  // Calculate quarterly aggregates
+  const quarterlyData = useMemo<QuarterlyData[]>(() => {
+    if (!allCrewRecords || allCrewRecords.length === 0 || periodType !== 'quarters') return [];
+
+    // Helper function to get quarter number from month (1-12)
+    const getQuarter = (month: number): number => {
+      return Math.ceil(month / 3); // Q1: 1-3, Q2: 4-6, Q3: 7-9, Q4: 10-12
+    };
+
+    // Group records by year and quarter
+    const quarterGroups = new Map<string, any[]>(); // key: "2024-Q1"
+    
+    allCrewRecords.forEach(record => {
+      if (!record.monthValue) return;
+      
+      const [yearStr, monthStr] = record.monthValue.split('-');
+      const year = parseInt(yearStr);
+      const month = parseInt(monthStr);
+      const quarterNum = getQuarter(month);
+      const quarterKey = `${year}-Q${quarterNum}`;
+      
+      if (!quarterGroups.has(quarterKey)) {
+        quarterGroups.set(quarterKey, []);
+      }
+      quarterGroups.get(quarterKey)!.push(record);
+    });
+
+    // Calculate averages for each quarter
+    const results: QuarterlyData[] = [];
+    
+    quarterGroups.forEach((records, quarterKey) => {
+      const [yearStr, quarterStr] = quarterKey.split('-');
+      const year = parseInt(yearStr);
+      const quarterNum = parseInt(quarterStr.replace('Q', ''));
+      
+      // Calculate total violation days and NCs
+      // Same methodology as yearly view: sum all vessel-month totals and divide by count
+      let totalViolationDays = 0;
+      let totalNCs = 0;
+
+      records.forEach(record => {
+        totalViolationDays += (record.totalViolations || 0);
+        totalNCs += (record.totalNCs || 0);
+      });
+
+      // Calculate average per vessel per month
+      // records.length represents vessel-months (number of vessel-month combinations)
+      // This matches the yearly aggregation methodology
+      const avgViolationDays = records.length > 0 ? totalViolationDays / records.length : 0;
+      const avgNCs = records.length > 0 ? totalNCs / records.length : 0;
+
+      results.push({
+        quarter: `Q${quarterNum} ${year}`,
+        year,
+        quarterNum,
+        avgViolationDays: parseFloat(avgViolationDays.toFixed(2)),
+        avgNCs: parseFloat(avgNCs.toFixed(2)),
+      });
+    });
+
+    // Sort by year and quarter ascending
+    return results.sort((a, b) => {
+      if (a.year !== b.year) return a.year - b.year;
+      return a.quarterNum - b.quarterNum;
+    });
+  }, [allCrewRecords, periodType]);
+
   const handleDownload = useCallback(() => {
     if (chartRef.current) {
       chartRef.current.download({
@@ -155,8 +279,13 @@ export const PeriodicAnalysisChart = ({
   }, []);
 
   const chartOptions = useMemo<AgChartOptions>(() => {
+    // Determine data and xKey based on period type
+    const data = periodType === 'quarters' ? quarterlyData : yearlyData;
+    const xKey = periodType === 'quarters' ? 'quarter' : 'year';
+    const xLabel = (datum: any) => periodType === 'quarters' ? datum.quarter : String(datum.year);
+    
     const baseOptions: AgChartOptions = {
-      data: yearlyData,
+      data,
       background: {
         fill: '#ffffff',
       },
@@ -175,7 +304,7 @@ export const PeriodicAnalysisChart = ({
         series: [
           {
             type: 'bar' as any,
-            xKey: 'year',
+            xKey,
             yKey: 'avgNCs',
             yName: 'NCs per Vessel',
             fill: '#ef4444', // Red
@@ -183,7 +312,7 @@ export const PeriodicAnalysisChart = ({
             tooltip: {
               renderer: ({ datum }: any) => {
                 return `<div class="ag-chart-tooltip-title" style="background-color: #ef4444; padding: 4px 8px; color: white; font-weight: bold;">
-                  ${datum.year}
+                  ${xLabel(datum)}
                 </div>
                 <div class="ag-chart-tooltip-content" style="padding: 4px 8px;">
                   Avg NCs: ${datum.avgNCs}
@@ -193,7 +322,7 @@ export const PeriodicAnalysisChart = ({
           } as any,
           {
             type: 'bar' as any,
-            xKey: 'year',
+            xKey,
             yKey: 'avgViolationDays',
             yName: 'Violations per Vessel',
             fill: '#52baf3', // Blue
@@ -201,7 +330,7 @@ export const PeriodicAnalysisChart = ({
             tooltip: {
               renderer: ({ datum }: any) => {
                 return `<div class="ag-chart-tooltip-title" style="background-color: #52baf3; padding: 4px 8px; color: white; font-weight: bold;">
-                  ${datum.year}
+                  ${xLabel(datum)}
                 </div>
                 <div class="ag-chart-tooltip-content" style="padding: 4px 8px;">
                   Avg Violations: ${datum.avgViolationDays}
@@ -215,7 +344,7 @@ export const PeriodicAnalysisChart = ({
             type: 'category' as any,
             position: 'bottom',
             title: {
-              text: 'Year',
+              text: periodType === 'quarters' ? 'Quarter' : 'Year',
               enabled: false,
             },
             label: {
@@ -249,7 +378,7 @@ export const PeriodicAnalysisChart = ({
       series: [
         {
           type: 'line' as any,
-          xKey: 'year',
+          xKey,
           yKey: 'avgNCs',
           yName: 'NCs per Vessel',
           stroke: '#ef4444', // Red
@@ -263,7 +392,7 @@ export const PeriodicAnalysisChart = ({
           tooltip: {
             renderer: ({ datum }: any) => {
               return `<div class="ag-chart-tooltip-title" style="background-color: #ef4444; padding: 4px 8px; color: white; font-weight: bold;">
-                ${datum.year}
+                ${xLabel(datum)}
               </div>
               <div class="ag-chart-tooltip-content" style="padding: 4px 8px;">
                 Avg NCs: ${datum.avgNCs}
@@ -273,7 +402,7 @@ export const PeriodicAnalysisChart = ({
         } as any,
         {
           type: 'line' as any,
-          xKey: 'year',
+          xKey,
           yKey: 'avgViolationDays',
           yName: 'Violations per Vessel',
           stroke: '#52baf3', // Blue
@@ -287,7 +416,7 @@ export const PeriodicAnalysisChart = ({
           tooltip: {
             renderer: ({ datum }: any) => {
               return `<div class="ag-chart-tooltip-title" style="background-color: #52baf3; padding: 4px 8px; color: white; font-weight: bold;">
-                ${datum.year}
+                ${xLabel(datum)}
               </div>
               <div class="ag-chart-tooltip-content" style="padding: 4px 8px;">
                 Avg Violations: ${datum.avgViolationDays}
@@ -301,7 +430,7 @@ export const PeriodicAnalysisChart = ({
           type: 'category' as any,
           position: 'bottom',
           title: {
-            text: 'Year',
+            text: periodType === 'quarters' ? 'Quarter' : 'Year',
             enabled: false,
           },
           label: {
@@ -327,7 +456,7 @@ export const PeriodicAnalysisChart = ({
         position: 'bottom',
       },
     } as AgChartOptions;
-  }, [yearlyData, chartType]);
+  }, [yearlyData, quarterlyData, periodType, chartType]);
 
   // Create toolbar element (memoized to prevent unnecessary re-renders)
   // Only include ChartToolbar - period radio buttons are now inside the card
@@ -355,7 +484,9 @@ export const PeriodicAnalysisChart = ({
     );
   }
 
-  if (yearlyData.length === 0) {
+  const hasData = periodType === 'quarters' ? quarterlyData.length > 0 : yearlyData.length > 0;
+  
+  if (!hasData) {
     return (
       <div className="w-full h-full flex items-center justify-center">
         <div className="text-sm text-gray-500">No data available</div>
@@ -390,11 +521,10 @@ export const PeriodicAnalysisChart = ({
               value="quarters" 
               id="period-quarters"
               className="h-3 w-3"
-              disabled
             />
             <Label 
               htmlFor="period-quarters" 
-              className="text-[10px] font-normal text-gray-400 dark:text-gray-600 cursor-not-allowed uppercase"
+              className="text-[10px] font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer uppercase"
             >
               Quarterly
             </Label>

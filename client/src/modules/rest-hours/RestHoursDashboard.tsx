@@ -276,6 +276,7 @@ export const RestHoursDashboard = (): JSX.Element => {
                   <PeriodicAnalysisChart 
                     vesselIds={vesselIds} 
                     monthValue={monthValue}
+                    periodFilter={periodFilter}
                     onRenderToolbar={setChart2Toolbar}
                     complianceMode="Rest"
                     opaMode={false}
