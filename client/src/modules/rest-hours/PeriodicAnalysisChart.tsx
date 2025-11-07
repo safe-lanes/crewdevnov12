@@ -37,12 +37,13 @@ interface MonthlyData {
   avgNCs: number;
 }
 
-// Utility function to format month label from "YYYY-MM" to "Jan 2024"
+// Utility function to format month label from "YYYY-MM" to "Jan 25"
 const formatMonthLabel = (monthValue: string): string => {
   const [year, month] = monthValue.split('-');
   const date = new Date(parseInt(year), parseInt(month) - 1, 1);
   const monthName = date.toLocaleDateString('en-US', { month: 'short' });
-  return `${monthName} ${year}`;
+  const shortYear = year.slice(-2); // Get last 2 digits of year
+  return `${monthName} ${shortYear}`;
 };
 
 export const PeriodicAnalysisChart = ({ 
