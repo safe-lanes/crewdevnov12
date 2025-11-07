@@ -9,4 +9,4 @@ if (licenseKey) {
 }
 
 export { AgCharts };
-export type { AgChartOptions } from 'ag-charts-enterprise';
+export type { AgChartOptions, AgChartInstance } from 'ag-charts-enterprise';
