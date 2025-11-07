@@ -3007,9 +3007,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Count crew members with NCs by rank
       // Note: Max 1 NC per crew member per month (binary flag)
       // NC occurs when: 3+ violation days OR Code [2] violation
+      
+      // First, deduplicate records by crew member ID to handle duplicate entries
+      const uniqueRecords = new Map<string, any>();
+      filteredRecords.forEach((record: any) => {
+        const key = `${record.crewMemberId}-${record.vesselId}-${record.monthYear}`;
+        // Keep the record with the highest ID (most recent)
+        if (!uniqueRecords.has(key) || record.id > uniqueRecords.get(key).id) {
+          uniqueRecords.set(key, record);
+        }
+      });
+      
       const ncsByRank = new Map<string, number>();
       
-      filteredRecords.forEach((record: any) => {
+      uniqueRecords.forEach((record: any) => {
         try {
           const rank = record.rank;
           
