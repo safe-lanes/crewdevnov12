@@ -35,6 +35,8 @@ interface NCOverviewDialogProps {
   complianceMode: 'Rest' | 'Work';
   opaMode: boolean;
   isPredicted?: boolean;
+  rankFilter?: string; // Optional rank filter for drill-down from charts
+  vesselIds?: string[]; // Optional vessel IDs filter for chart drill-down (multiple vessels)
 }
 
 interface DailyRecord {
@@ -58,10 +60,19 @@ interface NCRecord {
   crewMemberName: string;
   rank: string;
   rankSortOrder: number;
+  vesselId: string;
+  vesselName: string;
   day: number;
   filteredViolations: number[];
   filteredDiagnostics: ViolationDiagnostic[];
   comments: string;
+}
+
+// Helper function to normalize rank for comparison (strip suffixes like "_1", "_2", trim, lowercase)
+function normalizeRank(rank: string | null | undefined): string {
+  if (!rank) return '';
+  // Remove suffix pattern like "_1", "_2", etc. and normalize case/whitespace
+  return rank.replace(/_\d+$/, '').trim().toLowerCase();
 }
 
 export function NCOverviewDialog({
@@ -73,13 +84,28 @@ export function NCOverviewDialog({
   complianceMode,
   opaMode,
   isPredicted = false,
+  rankFilter,
+  vesselIds,
 }: NCOverviewDialogProps) {
   const [ncReportDialogOpen, setNCReportDialogOpen] = useState(false);
   const [selectedNCReportRecord, setSelectedNCReportRecord] = useState<RestHoursCrewRecord | null>(null);
 
-  // Fetch all crew records for this vessel and month to get crew list
+  // Determine which vessel IDs to use
+  // If vesselIds array is provided and not empty, use it; otherwise use single vesselId
+  // If both are empty, don't filter by vessel (fetch all vessels)
+  let vesselIdsToUse: string[] = [];
+  if (vesselIds && vesselIds.length > 0 && vesselIds.some(id => id && id.trim() !== '')) {
+    vesselIdsToUse = vesselIds.filter(id => id && id.trim() !== '');
+  } else if (vesselId && vesselId.trim() !== '') {
+    vesselIdsToUse = [vesselId];
+  }
+
+  // Fetch all crew records for the vessels and month to get crew list
   const queryParams = new URLSearchParams();
-  queryParams.append('vesselIds', vesselId);
+  
+  // Only add vessel filter if we have valid vessel IDs
+  vesselIdsToUse.forEach(id => queryParams.append('vesselIds', id));
+  
   queryParams.append('monthValue', monthValue);
   queryParams.append('complianceMode', complianceMode);
   queryParams.append('opaMode', String(opaMode));
@@ -100,6 +126,21 @@ export function NCOverviewDialog({
     queryKey: ['/api/available-ranks'],
     enabled: open,
   });
+
+  // Fetch vessel master data for vessel names
+  const { data: vesselMasterData = [] } = useQuery<any[]>({
+    queryKey: ['/api/masters/014/data'],
+    enabled: open,
+  });
+
+  // Create vessel name map
+  const vesselNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    vesselMasterData.forEach(vessel => {
+      map.set(vessel.entryId, vessel.label);
+    });
+    return map;
+  }, [vesselMasterData]);
 
   // Get crew IDs that have NCs to fetch their daily records
   // NCs are based on violation days (3+ violations or Code 2), so we use crew with NCs > 0
@@ -144,16 +185,28 @@ export function NCOverviewDialog({
   const ncRecords = useMemo(() => {
     const allNCs: NCRecord[] = [];
 
-    // Filter crew summaries to only those for this vessel
-    const vesselCrewSummaries = crewSummaries.filter(crew => crew.vesselId === vesselId);
+    // Filter crew summaries by vessel(s) if vessel filter is specified
+    // If vesselIdsToUse is empty, include all vessels (no vessel filter)
+    let vesselCrewSummaries = vesselIdsToUse.length > 0
+      ? crewSummaries.filter(crew => vesselIdsToUse.includes(crew.vesselId))
+      : crewSummaries;
+
+    // Apply rank filter if provided (normalize both sides for comparison)
+    if (rankFilter) {
+      const normalizedRankFilter = normalizeRank(rankFilter);
+      vesselCrewSummaries = vesselCrewSummaries.filter(crew => 
+        normalizeRank(crew.rank) === normalizedRankFilter
+      );
+    }
 
     // Create a map of daily records for quick lookup
     const dailyRecordsMap = new Map<string, DailyRecord[]>();
     
     // Filter daily records by crew members that have NCs and match vessel+month
+    // Apply vessel filter only if vesselIdsToUse is not empty
     const filteredRecords = allDailyRecords.filter(record =>
       crewIdsWithNCs.includes(record.crewMemberId) && 
-      record.vesselId === vesselId &&
+      (vesselIdsToUse.length === 0 || vesselIdsToUse.includes(record.vesselId)) &&
       record.monthYear === monthValue
     );
     
@@ -206,6 +259,8 @@ export function NCOverviewDialog({
             crewMemberName: crew.name,
             rank: crew.rank,
             rankSortOrder,
+            vesselId: crew.vesselId,
+            vesselName: vesselNameMap.get(crew.vesselId) || crew.vesselId,
             day: day,
             filteredViolations: filteredViolations.sort((a, b) => a - b),
             filteredDiagnostics,
@@ -218,6 +273,8 @@ export function NCOverviewDialog({
             crewMemberName: crew.name,
             rank: crew.rank,
             rankSortOrder,
+            vesselId: crew.vesselId,
+            vesselName: vesselNameMap.get(crew.vesselId) || crew.vesselId,
             day: day,
             filteredViolations: [],
             filteredDiagnostics: [],
@@ -227,13 +284,14 @@ export function NCOverviewDialog({
       });
     });
 
-    // Sort by rank order, then by name, then by date
+    // Sort by vessel name, then rank order, then by name, then by date
     return allNCs.sort((a, b) => {
+      if (a.vesselName !== b.vesselName) return a.vesselName.localeCompare(b.vesselName);
       if (a.rankSortOrder !== b.rankSortOrder) return a.rankSortOrder - b.rankSortOrder;
       if (a.crewMemberName !== b.crewMemberName) return a.crewMemberName.localeCompare(b.crewMemberName);
       return a.day - b.day;
     });
-  }, [crewSummaries, allDailyRecords, availableRanks, rankOrderMap, vesselId, complianceMode, opaMode, isPredicted, crewIdsWithNCs]);
+  }, [crewSummaries, allDailyRecords, rankOrderMap, vesselNameMap, vesselIdsToUse, complianceMode, opaMode, isPredicted, crewIdsWithNCs, rankFilter, monthValue]);
 
   // Format month for display
   const formatMonth = (monthStr: string) => {
@@ -259,20 +317,38 @@ export function NCOverviewDialog({
   }, [ncRecords]);
 
   // Handler to open NC Report dialog
-  const handleViewNCReport = (crewMemberId: string, rank: string, name: string) => {
-    const crewSummary = crewSummaries.find(c => c.crewMemberId === crewMemberId && c.vesselId === vesselId);
+  const handleViewNCReport = (crewMemberId: string, crewVesselId: string) => {
+    const crewSummary = crewSummaries.find(c => c.crewMemberId === crewMemberId && c.vesselId === crewVesselId);
     if (crewSummary) {
       setSelectedNCReportRecord(crewSummary);
       setNCReportDialogOpen(true);
     }
   };
 
+  // Determine title based on vessel filter
+  const dialogTitle = useMemo(() => {
+    const prefix = isPredicted ? 'Predicted Non-Conformities' : 'Non-Conformities';
+    const month = formatMonth(monthValue);
+    
+    if (vesselIdsToUse.length === 0) {
+      // No vessel filter - showing all vessels
+      return rankFilter ? `${prefix} - ${rankFilter} - ${month}` : `${prefix} - All Vessels - ${month}`;
+    } else if (vesselIdsToUse.length === 1) {
+      // Single vessel
+      const singleVesselName = vesselNameMap.get(vesselIdsToUse[0]) || vesselName;
+      return rankFilter ? `${prefix} - ${singleVesselName} - ${rankFilter} - ${month}` : `${prefix} - ${singleVesselName} - ${month}`;
+    } else {
+      // Multiple vessels
+      return rankFilter ? `${prefix} - Multiple Vessels - ${rankFilter} - ${month}` : `${prefix} - Multiple Vessels - ${month}`;
+    }
+  }, [vesselIdsToUse, vesselName, vesselNameMap, monthValue, isPredicted, rankFilter]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-5xl">
         <DialogHeader>
           <DialogTitle>
-            {isPredicted ? 'Predicted Non-Conformities' : 'Non-Conformities'} - {vesselName} - {formatMonth(monthValue)}
+            {dialogTitle}
           </DialogTitle>
         </DialogHeader>
 
@@ -286,6 +362,7 @@ export function NCOverviewDialog({
               <table className="w-full">
                 <thead className="bg-blue-50">
                   <tr>
+                    <th className="px-4 py-2 text-left text-sm font-semibold">Vessel</th>
                     <th className="px-4 py-2 text-left text-sm font-semibold">Rank</th>
                     <th className="px-4 py-2 text-left text-sm font-semibold">Name</th>
                     <th className="px-4 py-2 text-left text-sm font-semibold">Date</th>
@@ -298,14 +375,27 @@ export function NCOverviewDialog({
                 </thead>
                 <tbody>
                   {ncRecords.map((record, index) => {
-                    // Only show rank and name on the first row for each crew member
+                    // Only show vessel, rank and name on the first row for each crew member
                     const isFirstRowForCrew = index === 0 || ncRecords[index - 1].crewMemberId !== record.crewMemberId;
                     const rowSpan = isFirstRowForCrew ? crewRowCounts.get(record.crewMemberId) || 1 : undefined;
                     
                     return (
                     <tr key={`${record.crewMemberId}-${record.day}-${index}`} className="border-t hover:bg-gray-50">
-                      <td className="px-4 py-2 text-sm">{isFirstRowForCrew ? record.rank : ''}</td>
-                      <td className="px-4 py-2 text-sm">{isFirstRowForCrew ? record.crewMemberName : ''}</td>
+                      {isFirstRowForCrew && (
+                        <td className="px-4 py-2 text-sm align-middle" rowSpan={rowSpan}>
+                          {record.vesselName}
+                        </td>
+                      )}
+                      {isFirstRowForCrew && (
+                        <td className="px-4 py-2 text-sm align-middle" rowSpan={rowSpan}>
+                          {record.rank}
+                        </td>
+                      )}
+                      {isFirstRowForCrew && (
+                        <td className="px-4 py-2 text-sm align-middle" rowSpan={rowSpan}>
+                          {record.crewMemberName}
+                        </td>
+                      )}
                       <td className="px-4 py-2 text-sm">{formatDay(record.day, monthValue)}</td>
                       <td className="px-4 py-2 text-sm">
                         {record.filteredViolations.map((code, idx) => {
@@ -356,7 +446,7 @@ export function NCOverviewDialog({
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleViewNCReport(record.crewMemberId, record.rank, record.crewMemberName)}
+                            onClick={() => handleViewNCReport(record.crewMemberId, record.vesselId)}
                             data-testid={`button-view-nc-report-${record.crewMemberId}`}
                             className="text-xs"
                           >

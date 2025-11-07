@@ -4,7 +4,7 @@ import { AgCharts } from '@/lib/agCharts';
 import type { AgChartOptions, AgChartInstance } from '@/lib/agCharts';
 import { ChartToolbar, type ChartType } from '@/components/charts/ChartToolbar';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { ViolationsOverviewDialog } from './ViolationsOverviewDialog';
+import { NCOverviewDialog } from './NCOverviewDialog';
 
 interface RankWiseNCsChartProps {
   vesselIds?: string[];
@@ -344,9 +344,9 @@ export const RankWiseNCsChart = ({
         </DialogContent>
       </Dialog>
 
-      {/* Drill-down Dialog - Shows violations that led to NCs */}
+      {/* Drill-down Dialog - Shows NCs for selected rank */}
       {selectedRank && monthValue && (
-        <ViolationsOverviewDialog
+        <NCOverviewDialog
           open={showDrillDown}
           onOpenChange={setShowDrillDown}
           vesselId=""
