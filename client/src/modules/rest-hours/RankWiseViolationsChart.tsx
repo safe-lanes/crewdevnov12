@@ -160,7 +160,7 @@ export const RankWiseViolationsChart = ({ vesselIds, monthValue }: RankWiseViola
     <>
       <div className="w-full h-full min-h-0 flex flex-col relative">
         {/* Toolbar positioned in top-right corner */}
-        <div className="absolute top-1 right-1 z-10">
+        <div className="absolute top-3 right-3 z-10">
           <ChartToolbar 
             onDownload={handleDownload}
             onFullscreen={() => setShowFullscreen(true)}
