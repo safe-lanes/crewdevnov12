@@ -34,17 +34,21 @@ export const RankWiseViolationsChart = ({ vesselIds, monthValue }: RankWiseViola
     data: violationsData,
     series: [
       {
-        type: 'column' as any,
+        type: 'bar' as any,
         xKey: 'rank',
         yKey: 'violationDays',
         fill: '#ef4444',
         stroke: '#dc2626',
         strokeWidth: 1,
         tooltip: {
-          renderer: ({ datum }: any) => ({
-            title: datum.rank,
-            content: `${datum.violationDays} violation day${datum.violationDays !== 1 ? 's' : ''}`,
-          }),
+          renderer: ({ datum }: any) => {
+            return `<div class="ag-chart-tooltip-title" style="background-color: #ef4444; padding: 4px 8px; color: white; font-weight: bold;">
+              ${datum.rank}
+            </div>
+            <div class="ag-chart-tooltip-content" style="padding: 4px 8px;">
+              ${datum.violationDays} violation day${datum.violationDays !== 1 ? 's' : ''}
+            </div>`;
+          },
         },
       },
     ],

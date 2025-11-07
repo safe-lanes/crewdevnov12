@@ -2936,6 +2936,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       }
       
+      console.log(`🔍 [VIOLATIONS BY RANK] Filtering: vessels=${vesselIds}, month=${monthValue}`);
+      console.log(`🔍 [VIOLATIONS BY RANK] Total records after filter: ${filteredRecords.length}`);
+      
       // Aggregate violation days by rank
       const violationsByRank = new Map<string, number>();
       
@@ -2954,6 +2957,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Add to rank total
           if (violationDays > 0) {
+            console.log(`🔍 [VIOLATIONS BY RANK] Crew ${record.crewMemberId} (${rank}): ${violationDays} violation days`);
             const currentTotal = violationsByRank.get(rank) || 0;
             violationsByRank.set(rank, currentTotal + violationDays);
           }
@@ -2966,6 +2970,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = Array.from(violationsByRank.entries())
         .map(([rank, violationDays]) => ({ rank, violationDays }))
         .sort((a, b) => b.violationDays - a.violationDays);
+      
+      console.log(`🔍 [VIOLATIONS BY RANK] Final result:`, result);
       
       res.json(result);
     } catch (error) {
