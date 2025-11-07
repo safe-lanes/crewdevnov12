@@ -10,31 +10,24 @@ import { Card, CardContent } from '@/components/ui/card';
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { AgCharts, type AgChartOptions } from '@/lib/agCharts';
+import { PeriodFilter, type PeriodFilterValue } from '@/components/filters/PeriodFilter';
 
 export const RestHoursDashboard = (): JSX.Element => {
-  // Generate last 12 months for period dropdown
-  const periodOptions = useMemo(() => {
-    const options = [];
-    const currentDate = new Date();
-    
-    for (let i = 0; i < 12; i++) {
-      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-      const month = date.toLocaleDateString('en-US', { month: 'short' });
-      const year = date.getFullYear();
-      const monthYear = `${month}-${year}`;
-      const value = `${year}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      options.push({ label: monthYear, value });
-    }
-    
-    return options;
-  }, []);
-
   const [showFilters, setShowFilters] = useState(true);
   const [filterType, setFilterType] = useState<"vessel" | "fleet" | "addGroup">("vessel");
   const [selectedVessels, setSelectedVessels] = useState<string[]>([]);
   const [fleetValue, setFleetValue] = useState("");
   const [addGroupValue, setAddGroupValue] = useState("");
-  const [periodValue, setPeriodValue] = useState(periodOptions[0]?.value || "");
+  
+  // Default to current year and current month
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1;
+  
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilterValue>({
+    mode: 'year-month',
+    year: currentYear,
+    month: currentMonth,
+  });
 
   const { vessels, isLoading: vesselsLoading } = useVesselLookup();
 
@@ -51,7 +44,11 @@ export const RestHoursDashboard = (): JSX.Element => {
     setSelectedVessels([]);
     setFleetValue("");
     setAddGroupValue("");
-    setPeriodValue(periodOptions[0]?.value || "");
+    setPeriodFilter({
+      mode: 'year-month',
+      year: currentYear,
+      month: currentMonth,
+    });
   };
 
   return (
@@ -73,23 +70,11 @@ export const RestHoursDashboard = (): JSX.Element => {
 
       {showFilters && (
         <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
-          {/* Period Dropdown */}
-          <Select value={periodValue} onValueChange={setPeriodValue}>
-            <SelectTrigger 
-              className="h-8 w-40 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
-              data-testid="select-period"
-            >
-              <SelectValue placeholder="Period" />
-            </SelectTrigger>
-            <SelectContent>
-              {periodOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-              <SelectItem value="older">Older Periods...</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Period Filter */}
+          <PeriodFilter 
+            value={periodFilter}
+            onChange={setPeriodFilter}
+          />
 
           {/* Radio Group for Vessel/Fleet/Add Group */}
           <RadioGroup 
