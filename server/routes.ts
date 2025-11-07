@@ -2912,10 +2912,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to get visible violation codes based on compliance mode and OPA mode
+  function getVisibleViolationCodes(complianceMode: string, opaMode: boolean): number[] {
+    const codes: number[] = [];
+    
+    // Add codes based on compliance mode
+    if (complianceMode === 'Rest') {
+      codes.push(1, 2, 3, 4); // Rest mode violations
+    } else {
+      codes.push(5, 6); // Work mode violations
+    }
+    
+    // Add OPA codes if OPA mode is enabled
+    if (opaMode) {
+      codes.push(7, 8);
+    }
+    
+    return codes;
+  }
+
   // Rest Hours Violations By Rank (Dashboard Chart)
   app.get("/api/rest-hours-violations-by-rank", async (req, res) => {
     try {
-      const { vesselIds, monthValue } = req.query;
+      const { vesselIds, monthValue, complianceMode = 'Rest', opaMode = 'false' } = req.query;
+      
+      const isOpaMode = opaMode === 'true';
+      const visibleViolationCodes = getVisibleViolationCodes(complianceMode as string, isOpaMode);
       
       // Get all daily records
       const allDailyRecords = await storage.getRestHoursDailyRecords();
@@ -2945,12 +2967,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const rank = record.rank;
           
           // Count days with violations (only actual violations, not predicted)
+          // AND filter by compliance mode and OPA setting
           let violationDays = 0;
           dailyRecords.forEach((day: any) => {
             // Only count violations from actual recorded hours (isPlan === false)
             // Skip planned hours (isPlan === true) which represent predicted violations
-            if (day.isPlan === false && day.violations && Array.isArray(day.violations) && day.violations.length > 0) {
-              violationDays++;
+            if (day.isPlan === false && day.violations && Array.isArray(day.violations)) {
+              // Filter violations to only include codes visible in current compliance mode
+              const filteredViolations = day.violations.filter((code: number) => 
+                visibleViolationCodes.includes(code)
+              );
+              
+              if (filteredViolations.length > 0) {
+                violationDays++;
+              }
             }
           });
           

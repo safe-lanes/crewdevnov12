@@ -40,8 +40,10 @@ export const RankWiseViolationsChart = ({
     if (vesselIds && vesselIds.length > 0) {
       params.vesselIds = vesselIds;
     }
+    params.complianceMode = complianceMode;
+    params.opaMode = opaMode;
     return params;
-  }, [vesselIds, monthValue]);
+  }, [vesselIds, monthValue, complianceMode, opaMode]);
 
   const { data: violationsData = [], isLoading, error } = useQuery<ViolationByRank[]>({
     queryKey: ['/api/rest-hours-violations-by-rank', queryParams],
@@ -53,6 +55,8 @@ export const RankWiseViolationsChart = ({
       if (queryParams.vesselIds && queryParams.vesselIds.length > 0) {
         queryParams.vesselIds.forEach((id: string) => params.append('vesselIds', id));
       }
+      params.append('complianceMode', queryParams.complianceMode);
+      params.append('opaMode', String(queryParams.opaMode));
       
       const url = `/api/rest-hours-violations-by-rank${params.toString() ? `?${params.toString()}` : ''}`;
       const res = await fetch(url, { credentials: 'include' });
