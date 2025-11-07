@@ -216,7 +216,7 @@ export const PerformanceOverviewCard = ({
           </div>
         </div>
         <div className="text-center">
-          <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">NCs</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Total NCs</div>
           <div className="text-3xl font-bold text-gray-800 dark:text-gray-200" data-testid="metric-significant-ncs">
             {metrics.significantNCs}
           </div>
