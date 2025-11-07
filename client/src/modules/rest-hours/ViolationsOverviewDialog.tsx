@@ -61,6 +61,8 @@ interface ViolationRecord {
   crewMemberId: string;
   crewMemberName: string;
   rank: string;
+  vesselId: string;
+  vesselName: string;
   day: number;
   filteredViolations: number[];
   filteredDiagnostics: ViolationDiagnostic[];
@@ -118,6 +120,21 @@ export function ViolationsOverviewDialog({
     },
     enabled: open,
   });
+
+  // Fetch vessel master data for vessel names
+  const { data: vesselMasterData = [] } = useQuery<any[]>({
+    queryKey: ['/api/masters/014/data'],
+    enabled: open,
+  });
+
+  // Create vessel name map
+  const vesselNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    vesselMasterData.forEach(vessel => {
+      map.set(vessel.entryId, vessel.label);
+    });
+    return map;
+  }, [vesselMasterData]);
 
   // Get crew IDs that have violations to fetch their daily records
   const crewIdsWithViolations = useMemo(() => {
@@ -218,7 +235,7 @@ export function ViolationsOverviewDialog({
     // Filter daily records by crew members that have violations and match vessel(s)+month
     const filteredRecords = allDailyRecords.filter(record =>
       crewIdsWithViolations.includes(record.crewMemberId) && 
-      vesselIdsToUse.includes(record.vesselId) &&
+      (vesselIdsToUse.length === 0 || vesselIdsToUse.includes(record.vesselId)) &&
       record.monthYear === monthValue
     );
     
@@ -262,6 +279,8 @@ export function ViolationsOverviewDialog({
             crewMemberId: crew.crewMemberId,
             crewMemberName: crew.name,
             rank: crew.rank,
+            vesselId: crew.vesselId,
+            vesselName: vesselNameMap.get(crew.vesselId) || crew.vesselId,
             day: day,
             filteredViolations: filteredViolations.sort((a, b) => a - b),
             filteredDiagnostics,
@@ -273,6 +292,8 @@ export function ViolationsOverviewDialog({
             crewMemberId: crew.crewMemberId,
             crewMemberName: crew.name,
             rank: crew.rank,
+            vesselId: crew.vesselId,
+            vesselName: vesselNameMap.get(crew.vesselId) || crew.vesselId,
             day: day,
             filteredViolations: [],
             filteredDiagnostics: [],
@@ -288,7 +309,7 @@ export function ViolationsOverviewDialog({
       if (a.rank !== b.rank) return a.rank.localeCompare(b.rank);
       return a.crewMemberName.localeCompare(b.crewMemberName);
     });
-  }, [crewSummaries, allDailyRecords, vesselIdsToUse, monthValue, complianceMode, opaMode, isPredicted, rankFilter]);
+  }, [crewSummaries, allDailyRecords, vesselIdsToUse, monthValue, complianceMode, opaMode, isPredicted, rankFilter, vesselNameMap, crewIdsWithViolations]);
 
   // Format month for display
   const formatMonth = (monthStr: string) => {
@@ -303,6 +324,15 @@ export function ViolationsOverviewDialog({
     const date = new Date(parseInt(year), parseInt(month) - 1, day);
     return date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
   };
+
+  // Calculate row count for each crew member (for rowSpan)
+  const crewRowCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    violationRecords.forEach(record => {
+      counts.set(record.crewMemberId, (counts.get(record.crewMemberId) || 0) + 1);
+    });
+    return counts;
+  }, [violationRecords]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -323,19 +353,38 @@ export function ViolationsOverviewDialog({
               <table className="w-full">
                 <thead className="bg-blue-50">
                   <tr>
-                    <th className="px-4 py-2 text-left text-sm font-semibold">Date</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold">Vessel</th>
                     <th className="px-4 py-2 text-left text-sm font-semibold">Rank</th>
                     <th className="px-4 py-2 text-left text-sm font-semibold">Name</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold">Date</th>
                     <th className="px-4 py-2 text-left text-sm font-semibold">Violations</th>
                     <th className="px-4 py-2 text-left text-sm font-semibold">Comments</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {violationRecords.map((record, index) => (
+                  {violationRecords.map((record, index) => {
+                    // Only show vessel, rank and name on the first row for each crew member
+                    const isFirstRowForCrew = index === 0 || violationRecords[index - 1].crewMemberId !== record.crewMemberId;
+                    const rowSpan = isFirstRowForCrew ? crewRowCounts.get(record.crewMemberId) || 1 : undefined;
+                    
+                    return (
                     <tr key={`${record.crewMemberId}-${record.day}-${index}`} className="border-t hover:bg-gray-50">
+                      {isFirstRowForCrew && (
+                        <td className="px-4 py-2 text-sm align-middle" rowSpan={rowSpan}>
+                          {record.vesselName}
+                        </td>
+                      )}
+                      {isFirstRowForCrew && (
+                        <td className="px-4 py-2 text-sm align-middle" rowSpan={rowSpan}>
+                          {record.rank}
+                        </td>
+                      )}
+                      {isFirstRowForCrew && (
+                        <td className="px-4 py-2 text-sm align-middle" rowSpan={rowSpan}>
+                          {record.crewMemberName}
+                        </td>
+                      )}
                       <td className="px-4 py-2 text-sm">{formatDay(record.day, monthValue)}</td>
-                      <td className="px-4 py-2 text-sm">{record.rank}</td>
-                      <td className="px-4 py-2 text-sm">{record.crewMemberName}</td>
                       <td className="px-4 py-2 text-sm">
                         {record.filteredViolations.map((code, idx) => {
                           const diagnostic = record.filteredDiagnostics.find(d => d.code === code);
@@ -378,7 +427,8 @@ export function ViolationsOverviewDialog({
                       </td>
                       <td className="px-4 py-2 text-sm">{record.comments}</td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
