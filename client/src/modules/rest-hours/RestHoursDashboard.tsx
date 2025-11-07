@@ -12,6 +12,7 @@ import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { AgCharts, type AgChartOptions } from '@/lib/agCharts';
 import { PeriodFilter, type PeriodFilterValue } from '@/components/filters/PeriodFilter';
 import { RankWiseViolationsChart } from './RankWiseViolationsChart';
+import { PlaceholderChart } from './PlaceholderChart';
 
 export const RestHoursDashboard = (): JSX.Element => {
   const [showFilters, setShowFilters] = useState(true);
@@ -243,7 +244,9 @@ export const RestHoursDashboard = (): JSX.Element => {
             </h3>
             <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-1">
               <CardContent className="p-6 h-full flex flex-col">
-                {/* Chart placeholder - will be implemented */}
+                <div className="flex-1 min-h-0">
+                  <PlaceholderChart title="Chart Title 1" />
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -255,7 +258,9 @@ export const RestHoursDashboard = (): JSX.Element => {
             </h3>
             <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-2">
               <CardContent className="p-6 h-full flex flex-col">
-                {/* Chart placeholder - will be implemented later */}
+                <div className="flex-1 min-h-0">
+                  <PlaceholderChart title="Chart Title 2" />
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -281,7 +286,9 @@ export const RestHoursDashboard = (): JSX.Element => {
             </h3>
             <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-4">
               <CardContent className="p-6 h-full flex flex-col">
-                {/* Chart placeholder - will be implemented later */}
+                <div className="flex-1 min-h-0">
+                  <PlaceholderChart title="Chart Title 4" />
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -293,7 +300,9 @@ export const RestHoursDashboard = (): JSX.Element => {
             </h3>
             <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-5">
               <CardContent className="p-6 h-full flex flex-col">
-                {/* Chart placeholder - will be implemented later */}
+                <div className="flex-1 min-h-0">
+                  <PlaceholderChart title="Chart Title 5" />
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -305,7 +314,9 @@ export const RestHoursDashboard = (): JSX.Element => {
             </h3>
             <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-6">
               <CardContent className="p-6 h-full flex flex-col">
-                {/* Chart placeholder - will be implemented later */}
+                <div className="flex-1 min-h-0">
+                  <PlaceholderChart title="Chart Title 6" />
+                </div>
               </CardContent>
             </Card>
           </div>
