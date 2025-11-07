@@ -83,8 +83,8 @@ export const RankWiseViolationsChart = ({ vesselIds, monthValue }: RankWiseViola
           color: '#4b5563',
           rotation: 0,
         },
-        paddingInner: 0.3,
-        paddingOuter: 0.5,
+        paddingInner: 0.2,
+        paddingOuter: 0.3,
       },
       {
         type: 'number' as any,
