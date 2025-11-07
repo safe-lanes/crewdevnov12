@@ -15,6 +15,7 @@ import { RankWiseViolationsChart } from './RankWiseViolationsChart';
 import { RankWiseNCsChart } from './RankWiseNCsChart';
 import { PlaceholderChart } from './PlaceholderChart';
 import { PeriodicAnalysisChart } from './PeriodicAnalysisChart';
+import { PerformanceOverviewCard } from './PerformanceOverviewCard';
 
 export const RestHoursDashboard = (): JSX.Element => {
   const [showFilters, setShowFilters] = useState(true);
@@ -245,18 +246,23 @@ export const RestHoursDashboard = (): JSX.Element => {
       {/* Dashboard Grid - 3x2 layout with wider middle column */}
       <div className="flex-1 px-4 pb-6 overflow-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1fr_1.3fr_1fr] gap-6 h-full" style={{ gridAutoRows: 'minmax(300px, 1fr)' }}>
-          {/* Card 1 */}
+          {/* Card 1 - Performance Overview */}
           <div className="flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xs font-semibold text-[#4a7ba7] dark:text-blue-400 uppercase tracking-wide">
-                Chart Title 1
+                Performance Overview
               </h3>
-              {chart1Toolbar}
             </div>
             <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-1">
               <CardContent className="p-3 h-full flex flex-col">
                 <div className="flex-1 min-h-0">
-                  <PlaceholderChart title="Chart Title 1" onRenderToolbar={setChart1Toolbar} />
+                  <PerformanceOverviewCard 
+                    vesselIds={vesselIds} 
+                    monthValue={monthValue}
+                    periodFilter={periodFilter}
+                    complianceMode="Rest"
+                    opaMode={false}
+                  />
                 </div>
               </CardContent>
             </Card>
