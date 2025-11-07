@@ -131,7 +131,7 @@ export function ViolationsOverviewDialog({
   const vesselNameMap = useMemo(() => {
     const map = new Map<string, string>();
     vesselMasterData.forEach(vessel => {
-      map.set(vessel.entryId, vessel.label);
+      map.set(vessel.entryId, vessel.vessel || vessel.name);
     });
     return map;
   }, [vesselMasterData]);
