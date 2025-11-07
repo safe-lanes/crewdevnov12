@@ -227,13 +227,13 @@ export const VesselAnalysisChart = ({
         <table className="w-full border-collapse">
           <thead>
             <tr>
-              <th className="sticky left-0 z-10 bg-white dark:bg-gray-800 border-b border-r border-gray-300 dark:border-gray-600 px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">
+              <th className="sticky left-0 z-10 bg-white dark:bg-gray-800 border-b border-r border-gray-300 dark:border-gray-600 px-3 py-1.5 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">
                 {/* Empty header for vessel names */}
               </th>
               {MONTHS.map((month, index) => (
                 <th
                   key={month}
-                  className="border-b border-gray-300 dark:border-gray-600 px-2 py-2 text-center text-xs font-semibold text-gray-700 dark:text-gray-300"
+                  className="border-b border-gray-300 dark:border-gray-600 px-1.5 py-1.5 text-center text-xs font-semibold text-gray-700 dark:text-gray-300"
                   data-testid={`header-${month.toLowerCase()}`}
                 >
                   {month}
@@ -251,7 +251,7 @@ export const VesselAnalysisChart = ({
             ) : (
               vesselData.map((vessel) => (
                 <tr key={vessel.vesselId} data-testid={`row-vessel-${vessel.vesselId}`}>
-                  <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 border-r border-b border-gray-300 dark:border-gray-600 px-3 py-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 border-r border-b border-gray-300 dark:border-gray-600 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
                     {vessel.vesselName}
                   </td>
                   {MONTHS.map((month, index) => {
@@ -265,15 +265,15 @@ export const VesselAnalysisChart = ({
                     return (
                       <td
                         key={month}
-                        className="border-b border-gray-200 dark:border-gray-700 px-2 py-3 text-center"
+                        className="border-b border-gray-200 dark:border-gray-700 px-1.5 py-1.5 text-center"
                         data-testid={`cell-${vessel.vesselId}-${month.toLowerCase()}`}
                       >
                         <div className="flex items-center justify-center">
                           {value === 0 ? (
-                            <div className="w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-600" />
+                            <div className="w-6 h-6 rounded-full bg-gray-300 dark:bg-gray-600" />
                           ) : (
-                            <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center">
-                              <span className="text-white text-xs font-semibold">
+                            <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center">
+                              <span className="text-white text-[10px] font-semibold">
                                 {value}
                               </span>
                             </div>
