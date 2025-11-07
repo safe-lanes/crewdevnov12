@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AgCharts } from '@/lib/agCharts';
 import type { AgChartOptions, AgChartInstance } from '@/lib/agCharts';
-import { ChartToolbar } from '@/components/charts/ChartToolbar';
+import { ChartToolbar, type ChartType } from '@/components/charts/ChartToolbar';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 interface RankWiseViolationsChartProps {
@@ -18,6 +18,7 @@ interface ViolationByRank {
 export const RankWiseViolationsChart = ({ vesselIds, monthValue }: RankWiseViolationsChartProps) => {
   const chartRef = useRef<AgChartInstance | null>(null);
   const [showFullscreen, setShowFullscreen] = useState(false);
+  const [chartType, setChartType] = useState<ChartType>('bar');
 
   const queryParams = useMemo(() => {
     const params: Record<string, any> = {};
@@ -61,68 +62,164 @@ export const RankWiseViolationsChart = ({ vesselIds, monthValue }: RankWiseViola
     }
   };
 
-  const chartOptions = useMemo<AgChartOptions>(() => ({
-    data: violationsData,
-    series: [
-      {
-        type: 'bar' as any,
-        xKey: 'rank',
-        yKey: 'violationDays',
-        fill: '#52baf3',
-        stroke: '#3a9fd9',
-        strokeWidth: 1,
-        tooltip: {
-          renderer: ({ datum }: any) => {
-            return `<div class="ag-chart-tooltip-title" style="background-color: #52baf3; padding: 4px 8px; color: white; font-weight: bold;">
-              ${datum.rank}
-            </div>
-            <div class="ag-chart-tooltip-content" style="padding: 4px 8px;">
-              ${datum.violationDays} violation day${datum.violationDays !== 1 ? 's' : ''}
-            </div>`;
+  const chartOptions = useMemo<AgChartOptions>(() => {
+    const baseOptions: AgChartOptions = {
+      data: violationsData,
+      background: {
+        fill: '#ffffff',
+      },
+      padding: {
+        top: 10,
+        right: 10,
+        bottom: 30,
+        left: 40,
+      },
+    };
+
+    if (chartType === 'pie') {
+      return {
+        ...baseOptions,
+        series: [
+          {
+            type: 'pie' as any,
+            angleKey: 'violationDays',
+            calloutLabelKey: 'rank',
+            fills: ['#52baf3', '#3a9fd9', '#2a7db8', '#1a6d9f', '#0a5d86'],
+            strokes: ['#3a9fd9', '#2a7db8', '#1a6d9f', '#0a5d86', '#004d73'],
+            calloutLabel: {
+              enabled: true,
+              fontSize: 11,
+              color: '#4b5563',
+            },
+            tooltip: {
+              renderer: ({ datum }: any) => {
+                return `<div class="ag-chart-tooltip-title" style="background-color: #52baf3; padding: 4px 8px; color: white; font-weight: bold;">
+                  ${datum.rank}
+                </div>
+                <div class="ag-chart-tooltip-content" style="padding: 4px 8px;">
+                  ${datum.violationDays} violation day${datum.violationDays !== 1 ? 's' : ''}
+                </div>`;
+              },
+            },
+          },
+        ],
+      } as AgChartOptions;
+    }
+
+    if (chartType === 'line') {
+      return {
+        ...baseOptions,
+        series: [
+          {
+            type: 'line' as any,
+            xKey: 'rank',
+            yKey: 'violationDays',
+            stroke: '#52baf3',
+            strokeWidth: 2,
+            marker: {
+              fill: '#52baf3',
+              stroke: '#3a9fd9',
+              strokeWidth: 1,
+              size: 6,
+            },
+            tooltip: {
+              renderer: ({ datum }: any) => {
+                return `<div class="ag-chart-tooltip-title" style="background-color: #52baf3; padding: 4px 8px; color: white; font-weight: bold;">
+                  ${datum.rank}
+                </div>
+                <div class="ag-chart-tooltip-content" style="padding: 4px 8px;">
+                  ${datum.violationDays} violation day${datum.violationDays !== 1 ? 's' : ''}
+                </div>`;
+              },
+            },
+          },
+        ],
+        axes: [
+          {
+            type: 'category' as any,
+            position: 'bottom',
+            title: {
+              text: 'Rank',
+              enabled: false,
+            },
+            label: {
+              fontSize: 11,
+              color: '#4b5563',
+              rotation: 0,
+            },
+          },
+          {
+            type: 'number' as any,
+            position: 'left',
+            title: {
+              text: 'Violation Days',
+              enabled: false,
+            },
+            label: {
+              fontSize: 11,
+              color: '#4b5563',
+            },
+            min: 0,
+          },
+        ],
+      } as AgChartOptions;
+    }
+
+    // Default: bar chart
+    return {
+      ...baseOptions,
+      series: [
+        {
+          type: 'bar' as any,
+          xKey: 'rank',
+          yKey: 'violationDays',
+          fill: '#52baf3',
+          stroke: '#3a9fd9',
+          strokeWidth: 1,
+          tooltip: {
+            renderer: ({ datum }: any) => {
+              return `<div class="ag-chart-tooltip-title" style="background-color: #52baf3; padding: 4px 8px; color: white; font-weight: bold;">
+                ${datum.rank}
+              </div>
+              <div class="ag-chart-tooltip-content" style="padding: 4px 8px;">
+                ${datum.violationDays} violation day${datum.violationDays !== 1 ? 's' : ''}
+              </div>`;
+            },
           },
         },
-      },
-    ],
-    axes: [
-      {
-        type: 'category' as any,
-        position: 'bottom',
-        title: {
-          text: 'Rank',
-          enabled: false,
+      ],
+      axes: [
+        {
+          type: 'category' as any,
+          position: 'bottom',
+          title: {
+            text: 'Rank',
+            enabled: false,
+          },
+          label: {
+            fontSize: 11,
+            color: '#4b5563',
+            rotation: 0,
+          },
+          paddingInner: 0.2,
+          paddingOuter: 0.3,
         },
-        label: {
-          fontSize: 11,
-          color: '#4b5563',
-          rotation: 0,
+        {
+          type: 'number' as any,
+          position: 'left',
+          title: {
+            text: 'Violation Days',
+            enabled: false,
+          },
+          label: {
+            fontSize: 11,
+            color: '#4b5563',
+          },
+          min: 0,
         },
-        paddingInner: 0.2,
-        paddingOuter: 0.3,
-      },
-      {
-        type: 'number' as any,
-        position: 'left',
-        title: {
-          text: 'Violation Days',
-          enabled: false,
-        },
-        label: {
-          fontSize: 11,
-          color: '#4b5563',
-        },
-        min: 0,
-      },
-    ],
-    background: {
-      fill: '#ffffff',
-    },
-    padding: {
-      top: 10,
-      right: 10,
-      bottom: 30,
-      left: 40,
-    },
-  } as AgChartOptions), [violationsData]);
+      ],
+    } as AgChartOptions;
+  }, [violationsData, chartType]);
 
   if (isLoading) {
     return (
@@ -161,9 +258,12 @@ export const RankWiseViolationsChart = ({ vesselIds, monthValue }: RankWiseViola
       <div className="w-full h-full min-h-0 flex flex-col">
         <div className="flex justify-end mb-1">
           <ChartToolbar 
+            chartType={chartType}
+            onChartTypeChange={setChartType}
             onDownload={handleDownload}
             onFullscreen={() => setShowFullscreen(true)}
             chartTitle="Rank Wise Violations"
+            showChartTypeSelector={true}
           />
         </div>
         <div className="flex-1 min-h-0">

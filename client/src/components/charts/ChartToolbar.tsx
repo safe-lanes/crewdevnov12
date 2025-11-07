@@ -1,17 +1,31 @@
 import { useState, useRef, useCallback } from 'react';
-import { Download, Maximize2 } from 'lucide-react';
+import { Download, Maximize2, BarChart3, LineChart, PieChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { AgChartInstance } from '@/lib/agCharts';
+
+export type ChartType = 'bar' | 'line' | 'pie';
 
 interface ChartToolbarProps {
   chartRef?: React.RefObject<AgChartInstance>;
   chartTitle?: string;
+  chartType?: ChartType;
+  onChartTypeChange?: (type: ChartType) => void;
   onDownload?: () => void;
   onFullscreen?: () => void;
+  showChartTypeSelector?: boolean;
 }
 
-export const ChartToolbar = ({ chartRef, chartTitle = 'chart', onDownload, onFullscreen }: ChartToolbarProps) => {
+export const ChartToolbar = ({ 
+  chartRef, 
+  chartTitle = 'chart', 
+  chartType = 'bar',
+  onChartTypeChange,
+  onDownload, 
+  onFullscreen,
+  showChartTypeSelector = false
+}: ChartToolbarProps) => {
   const [showFullscreen, setShowFullscreen] = useState(false);
 
   const handleDownload = useCallback(() => {
@@ -33,9 +47,50 @@ export const ChartToolbar = ({ chartRef, chartTitle = 'chart', onDownload, onFul
     }
   }, [onFullscreen]);
 
+  const getChartTypeIcon = (type: ChartType) => {
+    switch (type) {
+      case 'bar':
+        return <BarChart3 className="h-3.5 w-3.5" />;
+      case 'line':
+        return <LineChart className="h-3.5 w-3.5" />;
+      case 'pie':
+        return <PieChart className="h-3.5 w-3.5" />;
+    }
+  };
+
   return (
     <>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
+        {showChartTypeSelector && onChartTypeChange && (
+          <Select value={chartType} onValueChange={(value) => onChartTypeChange(value as ChartType)}>
+            <SelectTrigger className="h-7 w-[90px] text-xs border-gray-300 dark:border-gray-600" data-testid="select-chart-type">
+              <div className="flex items-center gap-1.5">
+                {getChartTypeIcon(chartType)}
+                <SelectValue />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="bar" className="text-xs">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  Bar
+                </div>
+              </SelectItem>
+              <SelectItem value="line" className="text-xs">
+                <div className="flex items-center gap-2">
+                  <LineChart className="h-3.5 w-3.5" />
+                  Line
+                </div>
+              </SelectItem>
+              <SelectItem value="pie" className="text-xs">
+                <div className="flex items-center gap-2">
+                  <PieChart className="h-3.5 w-3.5" />
+                  Pie
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        )}
         <Button
           variant="ghost"
           size="sm"
