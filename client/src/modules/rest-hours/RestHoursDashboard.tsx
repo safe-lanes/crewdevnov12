@@ -13,6 +13,7 @@ import { AgCharts, type AgChartOptions } from '@/lib/agCharts';
 import { PeriodFilter, type PeriodFilterValue } from '@/components/filters/PeriodFilter';
 import { RankWiseViolationsChart } from './RankWiseViolationsChart';
 import { RankWiseNCsChart } from './RankWiseNCsChart';
+import { PeriodicAnalysisChart } from './PeriodicAnalysisChart';
 import { PlaceholderChart } from './PlaceholderChart';
 
 export const RestHoursDashboard = (): JSX.Element => {
@@ -261,18 +262,24 @@ export const RestHoursDashboard = (): JSX.Element => {
             </Card>
           </div>
 
-          {/* Card 2 */}
+          {/* Card 2 - Periodic Analysis */}
           <div className="flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xs font-semibold text-[#4a7ba7] dark:text-blue-400 uppercase tracking-wide">
-                Chart Title 2
+                Periodic Analysis
               </h3>
               {chart2Toolbar}
             </div>
             <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-2">
               <CardContent className="p-6 h-full flex flex-col">
                 <div className="flex-1 min-h-0">
-                  <PlaceholderChart title="Chart Title 2" onRenderToolbar={setChart2Toolbar} />
+                  <PeriodicAnalysisChart 
+                    vesselIds={vesselIds}
+                    year={periodFilter.year?.toString()}
+                    onRenderToolbar={setChart2Toolbar}
+                    complianceMode="Rest"
+                    opaMode={false}
+                  />
                 </div>
               </CardContent>
             </Card>
