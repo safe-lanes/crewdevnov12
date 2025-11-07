@@ -232,7 +232,7 @@ export const PerformanceOverviewCard = ({
       {/* Row 2: Semi-Circular Gauge Charts */}
       <div className="flex-1 grid grid-cols-2 gap-4">
         <div className="flex flex-col">
-          <div className="text-xs text-center text-gray-600 dark:text-gray-400 mb-2 font-medium">
+          <div className="text-xs text-center text-gray-600 dark:text-gray-400 mb-2 font-medium min-h-[32px] flex items-center justify-center">
             No of Vessels with Violations
           </div>
           <div className="flex-1 flex items-center justify-center" data-testid="chart-vessels-violations">
@@ -246,7 +246,7 @@ export const PerformanceOverviewCard = ({
         </div>
 
         <div className="flex flex-col">
-          <div className="text-xs text-center text-gray-600 dark:text-gray-400 mb-2 font-medium">
+          <div className="text-xs text-center text-gray-600 dark:text-gray-400 mb-2 font-medium min-h-[32px] flex items-center justify-center">
             No of Vessels with NCs
           </div>
           <div className="flex-1 flex items-center justify-center" data-testid="chart-vessels-ncs">

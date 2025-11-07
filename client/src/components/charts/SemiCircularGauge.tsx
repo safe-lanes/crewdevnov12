@@ -18,9 +18,9 @@ export const SemiCircularGauge = ({ value, max, color, label }: SemiCircularGaug
   // Goes from 180° (left/9 o'clock) to 0° (right/3 o'clock)
   const backgroundPath = describeArc(center, center, radius, 180, 0);
   
-  // Filled arc based on percentage (fills from left to right)
-  // Starts at 180° (left) and fills clockwise based on percentage
-  const filledEndAngle = 180 - fillAngle;
+  // Filled arc based on percentage (fills from left toward right through top)
+  // Starts at 180° (left) and fills clockwise toward 0° (right) through 270° (top)
+  const filledEndAngle = 180 + fillAngle;
   const filledPath = percentage > 0 ? describeArc(center, center, radius, 180, filledEndAngle) : '';
   
   return (
@@ -77,9 +77,8 @@ function describeArc(x: number, y: number, radius: number, startAngle: number, e
   const start = polarToCartesian(x, y, radius, startAngle);
   const end = polarToCartesian(x, y, radius, endAngle);
   
-  // Calculate the angle difference
-  // For arc from 180° to 0° going through top (clockwise in SVG = through 270°)
-  let angleDiff = startAngle - endAngle;
+  // Calculate the clockwise angle difference (for sweep flag = 1)
+  let angleDiff = endAngle - startAngle;
   if (angleDiff < 0) angleDiff += 360;
   
   // For 180 degrees or more, we need the large arc flag
