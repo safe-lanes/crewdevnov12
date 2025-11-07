@@ -237,51 +237,78 @@ export const RestHoursDashboard = (): JSX.Element => {
       <div className="flex-1 px-4 pb-6 overflow-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 h-full" style={{ gridAutoRows: 'minmax(300px, 1fr)' }}>
           {/* Card 1 */}
-          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 min-h-0" data-testid="dashboard-card-1">
-            <CardContent className="p-6 h-full flex flex-col">
-              {/* Chart placeholder - will be implemented */}
-            </CardContent>
-          </Card>
+          <div className="flex flex-col min-h-0">
+            <h3 className="text-xs font-semibold text-[#4a7ba7] dark:text-blue-400 mb-2 uppercase tracking-wide">
+              Chart Title 1
+            </h3>
+            <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-1">
+              <CardContent className="p-6 h-full flex flex-col">
+                {/* Chart placeholder - will be implemented */}
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Card 2 */}
-          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 min-h-0" data-testid="dashboard-card-2">
-            <CardContent className="p-6 h-full flex flex-col">
-              {/* Chart placeholder - will be implemented later */}
-            </CardContent>
-          </Card>
+          <div className="flex flex-col min-h-0">
+            <h3 className="text-xs font-semibold text-[#4a7ba7] dark:text-blue-400 mb-2 uppercase tracking-wide">
+              Chart Title 2
+            </h3>
+            <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-2">
+              <CardContent className="p-6 h-full flex flex-col">
+                {/* Chart placeholder - will be implemented later */}
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Card 3 - Rank Wise Violations */}
-          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 min-h-0" data-testid="dashboard-card-3">
-            <CardContent className="p-6 h-full flex flex-col">
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                RANK WISE VIOLATIONS
-              </h3>
-              <div className="flex-1 min-h-0">
-                <RankWiseViolationsChart vesselIds={vesselIds} monthValue={monthValue} />
-              </div>
-            </CardContent>
-          </Card>
+          <div className="flex flex-col min-h-0">
+            <h3 className="text-xs font-semibold text-[#4a7ba7] dark:text-blue-400 mb-2 uppercase tracking-wide">
+              Rank Wise Violations
+            </h3>
+            <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-3">
+              <CardContent className="p-6 h-full flex flex-col">
+                <div className="flex-1 min-h-0">
+                  <RankWiseViolationsChart vesselIds={vesselIds} monthValue={monthValue} />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Card 4 */}
-          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 min-h-0" data-testid="dashboard-card-4">
-            <CardContent className="p-6 h-full flex flex-col">
-              {/* Chart placeholder - will be implemented later */}
-            </CardContent>
-          </Card>
+          <div className="flex flex-col min-h-0">
+            <h3 className="text-xs font-semibold text-[#4a7ba7] dark:text-blue-400 mb-2 uppercase tracking-wide">
+              Chart Title 4
+            </h3>
+            <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-4">
+              <CardContent className="p-6 h-full flex flex-col">
+                {/* Chart placeholder - will be implemented later */}
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Card 5 */}
-          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 min-h-0" data-testid="dashboard-card-5">
-            <CardContent className="p-6 h-full flex flex-col">
-              {/* Chart placeholder - will be implemented later */}
-            </CardContent>
-          </Card>
+          <div className="flex flex-col min-h-0">
+            <h3 className="text-xs font-semibold text-[#4a7ba7] dark:text-blue-400 mb-2 uppercase tracking-wide">
+              Chart Title 5
+            </h3>
+            <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-5">
+              <CardContent className="p-6 h-full flex flex-col">
+                {/* Chart placeholder - will be implemented later */}
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Card 6 */}
-          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 min-h-0" data-testid="dashboard-card-6">
-            <CardContent className="p-6 h-full flex flex-col">
-              {/* Chart placeholder - will be implemented later */}
-            </CardContent>
-          </Card>
+          <div className="flex flex-col min-h-0">
+            <h3 className="text-xs font-semibold text-[#4a7ba7] dark:text-blue-400 mb-2 uppercase tracking-wide">
+              Chart Title 6
+            </h3>
+            <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-6">
+              <CardContent className="p-6 h-full flex flex-col">
+                {/* Chart placeholder - will be implemented later */}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>
