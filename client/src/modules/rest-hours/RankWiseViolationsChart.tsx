@@ -114,7 +114,7 @@ export const RankWiseViolationsChart = ({ vesselIds, monthValue }: RankWiseViola
       },
     ],
     background: {
-      fill: 'transparent',
+      fill: '#ffffff',
     },
     padding: {
       top: 10,
