@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AgGauge } from '@/lib/agCharts';
-import type { AgGaugeOptions } from '@/lib/agCharts';
+import { SemiCircularGauge } from '@/components/charts/SemiCircularGauge';
 import type { PeriodFilterValue } from '@/components/filters/PeriodFilter';
 
 interface PerformanceOverviewCardProps {
@@ -177,88 +176,6 @@ export const PerformanceOverviewCard = ({
     return '#ef4444'; // Red
   };
 
-  // Violations radial gauge options
-  const violationsGaugeOptions = useMemo<AgGaugeOptions>(() => {
-    const percentage = metrics.violationsPercentage;
-    const color = getColorForPercentage(percentage);
-    const maxVessels = metrics.totalVessels || 1; // Prevent division by zero
-    
-    return {
-      type: 'radial-gauge',
-      value: metrics.vesselsWithViolations,
-      scale: {
-        min: 0,
-        max: maxVessels,
-        label: {
-          enabled: false,
-        },
-      },
-      startAngle: -90,
-      endAngle: 90,
-      needle: {
-        enabled: false,
-      },
-      bar: {
-        enabled: true,
-        fill: color,
-      },
-      label: {
-        enabled: true,
-        formatter: () => String(metrics.vesselsWithViolations),
-        fontSize: 24,
-        fontWeight: 'bold' as any,
-        color: '#1f2937',
-      },
-      secondaryLabel: {
-        enabled: true,
-        text: 'Vessels',
-        fontSize: 12,
-        color: '#6b7280',
-      },
-    } as AgGaugeOptions;
-  }, [metrics]);
-
-  // NCs radial gauge options
-  const ncsGaugeOptions = useMemo<AgGaugeOptions>(() => {
-    const percentage = metrics.ncsPercentage;
-    const color = getColorForPercentage(percentage);
-    const maxVessels = metrics.totalVessels || 1; // Prevent division by zero
-    
-    return {
-      type: 'radial-gauge',
-      value: metrics.vesselsWithNCs,
-      scale: {
-        min: 0,
-        max: maxVessels,
-        label: {
-          enabled: false,
-        },
-      },
-      startAngle: -90,
-      endAngle: 90,
-      needle: {
-        enabled: false,
-      },
-      bar: {
-        enabled: true,
-        fill: color,
-      },
-      label: {
-        enabled: true,
-        formatter: () => String(metrics.vesselsWithNCs),
-        fontSize: 24,
-        fontWeight: 'bold' as any,
-        color: '#1f2937',
-      },
-      secondaryLabel: {
-        enabled: true,
-        text: 'Vessels',
-        fontSize: 12,
-        color: '#6b7280',
-      },
-    } as AgGaugeOptions;
-  }, [metrics]);
-
   if (isLoading) {
     return (
       <div className="w-full h-full flex items-center justify-center">
@@ -299,14 +216,19 @@ export const PerformanceOverviewCard = ({
         </div>
       </div>
 
-      {/* Row 2: Radial Gauge Charts */}
+      {/* Row 2: Semi-Circular Gauge Charts */}
       <div className="flex-1 grid grid-cols-2 gap-4">
         <div className="flex flex-col">
           <div className="text-xs text-center text-gray-600 dark:text-gray-400 mb-2 font-medium">
             No of Vessels with Violations
           </div>
-          <div className="flex-1 min-h-0" data-testid="chart-vessels-violations">
-            <AgGauge options={violationsGaugeOptions} />
+          <div className="flex-1 flex items-center justify-center" data-testid="chart-vessels-violations">
+            <SemiCircularGauge
+              value={metrics.vesselsWithViolations}
+              max={metrics.totalVessels || 1}
+              color={getColorForPercentage(metrics.violationsPercentage)}
+              label="Vessels"
+            />
           </div>
         </div>
 
@@ -314,8 +236,13 @@ export const PerformanceOverviewCard = ({
           <div className="text-xs text-center text-gray-600 dark:text-gray-400 mb-2 font-medium">
             No of Vessels with NCs
           </div>
-          <div className="flex-1 min-h-0" data-testid="chart-vessels-ncs">
-            <AgGauge options={ncsGaugeOptions} />
+          <div className="flex-1 flex items-center justify-center" data-testid="chart-vessels-ncs">
+            <SemiCircularGauge
+              value={metrics.vesselsWithNCs}
+              max={metrics.totalVessels || 1}
+              color={getColorForPercentage(metrics.ncsPercentage)}
+              label="Vessels"
+            />
           </div>
         </div>
       </div>
