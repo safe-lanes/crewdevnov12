@@ -266,51 +266,96 @@ export const PeriodicAnalysisChart = ({
 
   // Calculate quarterly aggregates
   const quarterlyData = useMemo<QuarterlyData[]>(() => {
-    if (!allCrewRecords || allCrewRecords.length === 0 || periodType !== 'quarters') return [];
+    if (periodType !== 'quarters') return [];
 
     // Helper function to get quarter number from month (1-12)
     const getQuarter = (month: number): number => {
       return Math.ceil(month / 3); // Q1: 1-3, Q2: 4-6, Q3: 7-9, Q4: 10-12
     };
 
+    // Determine which quarters to generate based on period filter
+    const allQuarters: { year: number; quarterNum: number; quarterKey: string }[] = [];
+    
+    if (periodFilter && periodFilter.mode === 'year-month') {
+      const year = periodFilter.year || currentYear;
+      // Generate all 4 quarters for the selected year
+      for (let q = 1; q <= 4; q++) {
+        allQuarters.push({
+          year,
+          quarterNum: q,
+          quarterKey: `${year}-Q${q}`,
+        });
+      }
+    } else if (periodFilter && periodFilter.mode === 'date-range' && periodFilter.dateFrom && periodFilter.dateTo) {
+      const startDate = periodFilter.dateFrom;
+      const endDate = periodFilter.dateTo;
+      
+      const startYear = startDate.getFullYear();
+      const startMonth = startDate.getMonth() + 1;
+      const endYear = endDate.getFullYear();
+      const endMonth = endDate.getMonth() + 1;
+      
+      const startQuarter = getQuarter(startMonth);
+      const endQuarter = getQuarter(endMonth);
+      
+      // Generate all quarters between start and end
+      for (let year = startYear; year <= endYear; year++) {
+        const firstQ = year === startYear ? startQuarter : 1;
+        const lastQ = year === endYear ? endQuarter : 4;
+        
+        for (let q = firstQ; q <= lastQ; q++) {
+          allQuarters.push({
+            year,
+            quarterNum: q,
+            quarterKey: `${year}-Q${q}`,
+          });
+        }
+      }
+    }
+
+    if (allQuarters.length === 0) return [];
+
     // Group records by year and quarter
     const quarterGroups = new Map<string, any[]>(); // key: "2024-Q1"
     
-    allCrewRecords.forEach(record => {
-      if (!record.monthValue) return;
-      
-      const [yearStr, monthStr] = record.monthValue.split('-');
-      const year = parseInt(yearStr);
-      const month = parseInt(monthStr);
-      const quarterNum = getQuarter(month);
-      const quarterKey = `${year}-Q${quarterNum}`;
-      
-      if (!quarterGroups.has(quarterKey)) {
-        quarterGroups.set(quarterKey, []);
-      }
-      quarterGroups.get(quarterKey)!.push(record);
-    });
+    if (allCrewRecords) {
+      allCrewRecords.forEach(record => {
+        if (!record.monthValue) return;
+        
+        const [yearStr, monthStr] = record.monthValue.split('-');
+        const year = parseInt(yearStr);
+        const month = parseInt(monthStr);
+        const quarterNum = getQuarter(month);
+        const quarterKey = `${year}-Q${quarterNum}`;
+        
+        if (!quarterGroups.has(quarterKey)) {
+          quarterGroups.set(quarterKey, []);
+        }
+        quarterGroups.get(quarterKey)!.push(record);
+      });
+    }
 
-    // Calculate averages for each quarter
-    const results: QuarterlyData[] = [];
-    
-    quarterGroups.forEach((records, quarterKey) => {
+    // Generate data for ALL quarters (use null for quarters without data)
+    const results: QuarterlyData[] = allQuarters.map(({ year, quarterNum, quarterKey }) => {
+      const records = quarterGroups.get(quarterKey) || [];
+      
       // Filter out placeholder records (keep only real data)
       const realRecords = records.filter(r => 
         r.id != null || (r.totalViolations ?? 0) > 0 || (r.totalNCs ?? 0) > 0
       );
       
-      // Skip quarters with no real records
+      // If no real data, return null values (will show gap in line chart)
       if (realRecords.length === 0) {
-        return;
+        return {
+          quarter: `Q${quarterNum} ${year}`,
+          year,
+          quarterNum,
+          avgViolationDays: null as any,
+          avgNCs: null as any,
+        };
       }
 
-      const [yearStr, quarterStr] = quarterKey.split('-');
-      const year = parseInt(yearStr);
-      const quarterNum = parseInt(quarterStr.replace('Q', ''));
-      
       // Calculate total violation days and NCs using only real records
-      // Same methodology as yearly view: sum all vessel-month totals and divide by count
       let totalViolationDays = 0;
       let totalNCs = 0;
 
@@ -320,57 +365,91 @@ export const PeriodicAnalysisChart = ({
       });
 
       // Calculate average per vessel per month using only real records
-      // realRecords.length represents vessel-months (number of vessel-month combinations)
-      // This matches the yearly aggregation methodology
       const avgViolationDays = realRecords.length > 0 ? totalViolationDays / realRecords.length : 0;
       const avgNCs = realRecords.length > 0 ? totalNCs / realRecords.length : 0;
 
-      results.push({
+      return {
         quarter: `Q${quarterNum} ${year}`,
         year,
         quarterNum,
         avgViolationDays: parseFloat(avgViolationDays.toFixed(2)),
         avgNCs: parseFloat(avgNCs.toFixed(2)),
-      });
+      };
     });
 
-    // Sort by year and quarter ascending
-    return results.sort((a, b) => {
-      if (a.year !== b.year) return a.year - b.year;
-      return a.quarterNum - b.quarterNum;
-    });
-  }, [allCrewRecords, periodType]);
+    return results;
+  }, [allCrewRecords, periodType, periodFilter, currentYear]);
 
   // Calculate monthly data (no aggregation needed - just format the raw data)
   const monthlyData = useMemo<MonthlyData[]>(() => {
-    if (!allCrewRecords || allCrewRecords.length === 0 || periodType !== 'months') return [];
+    if (periodType !== 'months') return [];
+    
+    // Generate all 12 months for the selected period
+    const allMonths: string[] = [];
+    
+    if (periodFilter && periodFilter.mode === 'year-month') {
+      const year = periodFilter.year || currentYear;
+      for (let month = 1; month <= 12; month++) {
+        allMonths.push(`${year}-${String(month).padStart(2, '0')}`);
+      }
+    } else if (periodFilter && periodFilter.mode === 'date-range' && periodFilter.dateFrom && periodFilter.dateTo) {
+      const startDate = periodFilter.dateFrom;
+      const endDate = periodFilter.dateTo;
+      
+      const startYear = startDate.getFullYear();
+      const startMonth = startDate.getMonth() + 1;
+      const endYear = endDate.getFullYear();
+      const endMonth = endDate.getMonth() + 1;
+      
+      let currentIterYear = startYear;
+      let currentIterMonth = startMonth;
+      
+      while (currentIterYear < endYear || (currentIterYear === endYear && currentIterMonth <= endMonth)) {
+        allMonths.push(`${currentIterYear}-${String(currentIterMonth).padStart(2, '0')}`);
+        
+        currentIterMonth++;
+        if (currentIterMonth > 12) {
+          currentIterMonth = 1;
+          currentIterYear++;
+        }
+      }
+    }
+
+    if (allMonths.length === 0) return [];
 
     // Group records by month
     const monthGroups = new Map<string, any[]>();
     
-    allCrewRecords.forEach(record => {
-      if (!record.monthValue) return;
-      
-      const monthKey = record.monthValue; // Format: "YYYY-MM"
-      
-      if (!monthGroups.has(monthKey)) {
-        monthGroups.set(monthKey, []);
-      }
-      monthGroups.get(monthKey)!.push(record);
-    });
+    if (allCrewRecords) {
+      allCrewRecords.forEach(record => {
+        if (!record.monthValue) return;
+        
+        const monthKey = record.monthValue;
+        
+        if (!monthGroups.has(monthKey)) {
+          monthGroups.set(monthKey, []);
+        }
+        monthGroups.get(monthKey)!.push(record);
+      });
+    }
 
-    // Calculate averages for each month
-    const results: MonthlyData[] = [];
-    
-    monthGroups.forEach((records, monthValue) => {
+    // Generate data for ALL months (use null for months without data)
+    const results: MonthlyData[] = allMonths.map(monthValue => {
+      const records = monthGroups.get(monthValue) || [];
+      
       // Filter out placeholder records (keep only real data)
       const realRecords = records.filter(r => 
         r.id != null || (r.totalViolations ?? 0) > 0 || (r.totalNCs ?? 0) > 0
       );
       
-      // Skip months with no real records
+      // If no real data, return null values (will show gap in line chart)
       if (realRecords.length === 0) {
-        return;
+        return {
+          month: formatMonthLabel(monthValue),
+          monthValue,
+          avgViolationDays: null as any,
+          avgNCs: null as any,
+        };
       }
 
       // Calculate total violation days and NCs using only real records
@@ -386,17 +465,16 @@ export const PeriodicAnalysisChart = ({
       const avgViolationDays = realRecords.length > 0 ? totalViolationDays / realRecords.length : 0;
       const avgNCs = realRecords.length > 0 ? totalNCs / realRecords.length : 0;
 
-      results.push({
+      return {
         month: formatMonthLabel(monthValue),
         monthValue,
         avgViolationDays: parseFloat(avgViolationDays.toFixed(2)),
         avgNCs: parseFloat(avgNCs.toFixed(2)),
-      });
+      };
     });
 
-    // Sort by monthValue (YYYY-MM format sorts chronologically)
-    return results.sort((a, b) => a.monthValue.localeCompare(b.monthValue));
-  }, [allCrewRecords, periodType]);
+    return results;
+  }, [allCrewRecords, periodType, periodFilter, currentYear]);
 
   const handleDownload = useCallback(() => {
     if (chartRef.current) {
@@ -529,6 +607,7 @@ export const PeriodicAnalysisChart = ({
           yName: 'NCs per Vessel',
           stroke: '#ef4444', // Red
           strokeWidth: 2,
+          connectMissingData: false, // Don't connect points across null values
           marker: {
             fill: '#ef4444',
             stroke: '#dc2626',
@@ -537,6 +616,7 @@ export const PeriodicAnalysisChart = ({
           },
           tooltip: {
             renderer: ({ datum }: any) => {
+              if (datum.avgNCs == null) return '';
               return `<div class="ag-chart-tooltip-title" style="background-color: #ef4444; padding: 4px 8px; color: white; font-weight: bold;">
                 ${xLabel(datum)}
               </div>
@@ -553,6 +633,7 @@ export const PeriodicAnalysisChart = ({
           yName: 'Violations per Vessel',
           stroke: '#52baf3', // Blue
           strokeWidth: 2,
+          connectMissingData: false, // Don't connect points across null values
           marker: {
             fill: '#52baf3',
             stroke: '#3a9fd9',
@@ -561,6 +642,7 @@ export const PeriodicAnalysisChart = ({
           },
           tooltip: {
             renderer: ({ datum }: any) => {
+              if (datum.avgViolationDays == null) return '';
               return `<div class="ag-chart-tooltip-title" style="background-color: #52baf3; padding: 4px 8px; color: white; font-weight: bold;">
                 ${xLabel(datum)}
               </div>
