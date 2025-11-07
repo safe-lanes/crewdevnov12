@@ -91,6 +91,13 @@ export const RankWiseViolationsChart = ({
         bottom: 30,
         left: 40,
       },
+      listeners: {
+        seriesNodeClick: (event: any) => {
+          if (event.datum && event.datum.rank) {
+            handleBarClick(event.datum.rank);
+          }
+        },
+      } as any,
     };
 
     if (chartType === 'pie') {
@@ -118,13 +125,6 @@ export const RankWiseViolationsChart = ({
                 </div>`;
               },
             },
-            listeners: {
-              nodeClick: (event: any) => {
-                if (event.datum && event.datum.rank) {
-                  handleBarClick(event.datum.rank);
-                }
-              },
-            } as any,
           } as any,
         ],
       } as AgChartOptions;
@@ -156,13 +156,6 @@ export const RankWiseViolationsChart = ({
                 </div>`;
               },
             },
-            listeners: {
-              nodeClick: (event: any) => {
-                if (event.datum && event.datum.rank) {
-                  handleBarClick(event.datum.rank);
-                }
-              },
-            } as any,
           } as any,
         ],
         axes: [
@@ -217,13 +210,6 @@ export const RankWiseViolationsChart = ({
               </div>`;
             },
           },
-          listeners: {
-            nodeClick: (event: any) => {
-              if (event.datum && event.datum.rank) {
-                handleBarClick(event.datum.rank);
-              }
-            },
-          } as any,
         } as any,
       ],
       axes: [
