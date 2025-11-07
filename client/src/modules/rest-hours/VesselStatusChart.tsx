@@ -25,17 +25,17 @@ const StatusBar = ({ label, count, total }: StatusBarProps) => {
   
   return (
     <div className="flex items-center gap-3">
-      <div className="w-48 text-sm text-gray-700 dark:text-gray-300 font-medium">
+      <div className="min-w-[180px] text-sm text-gray-700 dark:text-gray-300 font-medium flex-shrink-0">
         {label}:
       </div>
       <div className="flex-1 flex items-center gap-2">
         <div className="flex-1 h-8 bg-gray-200 dark:bg-gray-700 rounded-md overflow-hidden relative">
           <div 
-            className={`h-full transition-all duration-300 ${isZero ? 'bg-gray-300 dark:bg-gray-600' : 'bg-orange-400'}`}
+            className={`h-full transition-all duration-300 ${isZero ? 'bg-gray-300 dark:bg-gray-600' : 'bg-orange-400 dark:bg-orange-500'}`}
             style={{ width: `${percentage}%` }}
           />
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+            <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">
               {percentage}% ({count}/{total})
             </span>
           </div>
@@ -103,10 +103,10 @@ export const VesselStatusChart = ({
       
       return await res.json();
     },
-    enabled: true,
+    enabled: !!monthValue,
   });
 
-  // Calculate vessel status metrics
+  // Calculate vessel status metrics (deduplicate by vesselId)
   const metrics = useMemo(() => {
     if (!vesselRecords || vesselRecords.length === 0) {
       return {
@@ -116,32 +116,36 @@ export const VesselStatusChart = ({
       };
     }
 
-    let overdueCount = 0;
-    let conflictCount = 0;
-    let incompleteCount = 0;
+    // Use Sets to track unique vessels for each metric
+    const overdueVessels = new Set<string>();
+    const conflictVessels = new Set<string>();
+    const incompleteVessels = new Set<string>();
 
     vesselRecords.forEach(record => {
-      // Count vessels with overdue office response
+      const vesselId = record.vesselId;
+      if (!vesselId) return; // Skip records without vesselId
+
+      // Track vessels with overdue office response
       if (record.officeReviewStatus === 'Overdue') {
-        overdueCount++;
+        overdueVessels.add(vesselId);
       }
 
-      // Count vessels with activity conflicts
+      // Track vessels with activity conflicts
       if (record.activityConflicting === true) {
-        conflictCount++;
+        conflictVessels.add(vesselId);
       }
 
-      // Count vessels with incomplete data (recording status < 100%)
+      // Track vessels with incomplete data (recording status < 100%)
       const recordingStatus = record.recordingStatus ?? 0;
       if (recordingStatus < 100) {
-        incompleteCount++;
+        incompleteVessels.add(vesselId);
       }
     });
 
     return {
-      overdueOfficeResponse: overdueCount,
-      restHoursConflict: conflictCount,
-      incompleteData: incompleteCount,
+      overdueOfficeResponse: overdueVessels.size,
+      restHoursConflict: conflictVessels.size,
+      incompleteData: incompleteVessels.size,
     };
   }, [vesselRecords]);
 
@@ -171,7 +175,7 @@ export const VesselStatusChart = ({
         onRenderToolbar(null);
       }
     };
-  }, [onRenderToolbar]);
+  }, [onRenderToolbar, showFullscreen]);
 
   // Render content
   const renderContent = () => {
