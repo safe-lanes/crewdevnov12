@@ -142,8 +142,10 @@ export const RankWiseViolationsChart = ({ vesselIds, monthValue }: RankWiseViola
   }
 
   return (
-    <div className="w-full h-full">
-      <AgCharts options={chartOptions} />
+    <div className="w-full h-full min-h-0 flex flex-col">
+      <div className="flex-1 min-h-0 w-full">
+        <AgCharts options={chartOptions} style={{ width: '100%', height: '100%' }} />
+      </div>
     </div>
   );
 };
