@@ -55,12 +55,12 @@ export const RankWiseViolationsChart = ({ vesselIds, monthValue }: RankWiseViola
         type: 'bar' as any,
         xKey: 'rank',
         yKey: 'violationDays',
-        fill: '#ef4444',
-        stroke: '#dc2626',
+        fill: '#52baf3',
+        stroke: '#3a9fd9',
         strokeWidth: 1,
         tooltip: {
           renderer: ({ datum }: any) => {
-            return `<div class="ag-chart-tooltip-title" style="background-color: #ef4444; padding: 4px 8px; color: white; font-weight: bold;">
+            return `<div class="ag-chart-tooltip-title" style="background-color: #52baf3; padding: 4px 8px; color: white; font-weight: bold;">
               ${datum.rank}
             </div>
             <div class="ag-chart-tooltip-content" style="padding: 4px 8px;">
