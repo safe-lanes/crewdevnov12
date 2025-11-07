@@ -1,6 +1,8 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { ChartToolbar } from '@/components/charts/ChartToolbar';
 import type { PeriodFilterValue } from '@/components/filters/PeriodFilter';
 
 interface VesselAnalysisChartProps {
@@ -32,6 +34,7 @@ export const VesselAnalysisChart = ({
   onRenderToolbar,
 }: VesselAnalysisChartProps) => {
   const [mode, setMode] = useState<'violations' | 'ncs'>('ncs');
+  const [showFullscreen, setShowFullscreen] = useState(false);
   const currentYear = new Date().getFullYear();
 
   // Get selected year from period filter
@@ -157,11 +160,12 @@ export const VesselAnalysisChart = ({
   // Memoize toolbar element
   const toolbar = useMemo(() => {
     return (
-      <div className="flex items-center gap-2">
-        {/* Placeholder for future toolbar items */}
-      </div>
+      <ChartToolbar
+        chartTitle="Vessel Analysis"
+        onFullscreen={() => setShowFullscreen(true)}
+      />
     );
-  }, []); // Empty dependencies - toolbar is static for now
+  }, []);
 
   // Call onRenderToolbar in effect to avoid render-phase updates
   useEffect(() => {
@@ -177,39 +181,9 @@ export const VesselAnalysisChart = ({
     };
   }, [toolbar, onRenderToolbar]);
 
-  if (isLoading) {
-    return (
-      <div className="w-full h-full flex items-center justify-center">
-        <div className="text-sm text-gray-500 dark:text-gray-400">Loading...</div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="w-full h-full flex flex-col">
-      {/* Header and Toggle Switch */}
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-          GROUP & VESSEL ANALYSIS
-        </h3>
-        <div className="flex items-center gap-3">
-          <span className={`text-sm font-medium ${mode === 'ncs' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
-            NCs
-          </span>
-          <Switch
-            checked={mode === 'violations'}
-            onCheckedChange={(checked) => setMode(checked ? 'violations' : 'ncs')}
-            data-testid="toggle-switch"
-          />
-          <span className={`text-sm font-medium ${mode === 'violations' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
-            Violations
-          </span>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="flex-1 overflow-auto">
-        <table className="w-full border-collapse">
+  // Render table content (shared between regular and fullscreen views)
+  const renderTable = () => (
+    <table className="w-full border-collapse">
           <thead>
             <tr>
               <th className="sticky left-0 z-10 bg-white dark:bg-gray-800 border-b border-r border-gray-300 dark:border-gray-600 px-3 py-1.5 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">
@@ -271,8 +245,71 @@ export const VesselAnalysisChart = ({
               ))
             )}
           </tbody>
-        </table>
+    </table>
+  );
+
+  if (isLoading) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <div className="text-sm text-gray-500 dark:text-gray-400">Loading...</div>
       </div>
-    </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="w-full h-full flex flex-col">
+        {/* Header and Toggle Switch */}
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+            GROUP & VESSEL ANALYSIS
+          </h3>
+          <div className="flex items-center gap-3">
+            <span className={`text-sm font-medium ${mode === 'ncs' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+              NCs
+            </span>
+            <Switch
+              checked={mode === 'violations'}
+              onCheckedChange={(checked) => setMode(checked ? 'violations' : 'ncs')}
+              data-testid="toggle-switch"
+            />
+            <span className={`text-sm font-medium ${mode === 'violations' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+              Violations
+            </span>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="flex-1 overflow-auto">
+          {renderTable()}
+        </div>
+      </div>
+
+      {/* Fullscreen Dialog */}
+      <Dialog open={showFullscreen} onOpenChange={setShowFullscreen}>
+        <DialogContent className="max-w-[95vw] h-[95vh] flex flex-col p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Vessel Analysis - {mode === 'violations' ? 'Violations' : 'NCs'}
+            </h2>
+            <div className="flex items-center gap-3">
+              <span className={`text-sm font-medium ${mode === 'ncs' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                NCs
+              </span>
+              <Switch
+                checked={mode === 'violations'}
+                onCheckedChange={(checked) => setMode(checked ? 'violations' : 'ncs')}
+              />
+              <span className={`text-sm font-medium ${mode === 'violations' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                Violations
+              </span>
+            </div>
+          </div>
+          <div className="flex-1 overflow-auto">
+            {renderTable()}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
