@@ -2976,6 +2976,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Rest Hours NCs By Rank (Dashboard Chart)
+  app.get("/api/rest-hours-ncs-by-rank", async (req, res) => {
+    try {
+      const { vesselIds, monthValue } = req.query;
+      
+      // Get all daily records
+      const allDailyRecords = await storage.getRestHoursDailyRecords();
+      
+      // Filter daily records by vessel and month
+      let filteredRecords = allDailyRecords;
+      
+      if (vesselIds) {
+        const vesselIdArray = typeof vesselIds === 'string' ? [vesselIds] : vesselIds as string[];
+        filteredRecords = filteredRecords.filter((record: any) => 
+          vesselIdArray.includes(record.vesselId)
+        );
+      }
+      
+      if (monthValue) {
+        filteredRecords = filteredRecords.filter((record: any) => 
+          record.monthYear === monthValue
+        );
+      }
+      
+      // Count crew members with NCs by rank
+      // Note: Max 1 NC per crew member per month (binary flag)
+      const ncsByRank = new Map<string, number>();
+      
+      filteredRecords.forEach((record: any) => {
+        try {
+          const dailyRecords = JSON.parse(record.dailyRecords);
+          const rank = record.rank;
+          
+          // Check if this crew member has any NC (only from actual recorded hours, not planned)
+          const hasNC = dailyRecords.some((day: any) => 
+            day.isPlan === false && day.violations && Array.isArray(day.violations) && day.violations.length > 0
+          );
+          
+          // If crew has NC, increment count for their rank
+          if (hasNC) {
+            const currentCount = ncsByRank.get(rank) || 0;
+            ncsByRank.set(rank, currentCount + 1);
+          }
+        } catch (error) {
+          console.error(`Failed to parse daily records for record ${record.id}:`, error);
+        }
+      });
+      
+      // Convert to array and sort by NC count descending
+      const result = Array.from(ncsByRank.entries())
+        .map(([rank, ncCount]) => ({ rank, ncCount }))
+        .sort((a, b) => b.ncCount - a.ncCount);
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Failed to get NCs by rank:", error);
+      res.status(500).json({ error: "Failed to get NCs by rank" });
+    }
+  });
+
   // Rest Hours Crew Records API routes
   app.get("/api/rest-hours-crew-records", async (req, res) => {
     try {

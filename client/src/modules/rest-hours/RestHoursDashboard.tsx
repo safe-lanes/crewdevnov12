@@ -12,6 +12,7 @@ import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { AgCharts, type AgChartOptions } from '@/lib/agCharts';
 import { PeriodFilter, type PeriodFilterValue } from '@/components/filters/PeriodFilter';
 import { RankWiseViolationsChart } from './RankWiseViolationsChart';
+import { RankWiseNCsChart } from './RankWiseNCsChart';
 import { PlaceholderChart } from './PlaceholderChart';
 
 export const RestHoursDashboard = (): JSX.Element => {
@@ -336,14 +337,14 @@ export const RestHoursDashboard = (): JSX.Element => {
           <div className="flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xs font-semibold text-[#4a7ba7] dark:text-blue-400 uppercase tracking-wide">
-                Chart Title 6
+                Rank Wise NCs
               </h3>
               {chart6Toolbar}
             </div>
             <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-6">
               <CardContent className="p-6 h-full flex flex-col">
                 <div className="flex-1 min-h-0">
-                  <PlaceholderChart title="Chart Title 6" onRenderToolbar={setChart6Toolbar} />
+                  <RankWiseNCsChart vesselIds={vesselIds} monthValue={monthValue} onRenderToolbar={setChart6Toolbar} />
                 </div>
               </CardContent>
             </Card>
