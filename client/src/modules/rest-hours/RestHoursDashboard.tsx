@@ -242,9 +242,9 @@ export const RestHoursDashboard = (): JSX.Element => {
         </div>
       )}
 
-      {/* Dashboard Grid - 3x2 layout */}
+      {/* Dashboard Grid - 3x2 layout with wider middle column */}
       <div className="flex-1 px-4 pb-6 overflow-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 h-full" style={{ gridAutoRows: 'minmax(300px, 1fr)' }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1fr_1.3fr_1fr] gap-6 h-full" style={{ gridAutoRows: 'minmax(300px, 1fr)' }}>
           {/* Card 1 */}
           <div className="flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-2">
