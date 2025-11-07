@@ -7,32 +7,24 @@ import { VariableTasksTable } from './VariableTasksTable';
 import { FixedTasksTable } from './FixedTasksTable';
 import { useToast } from '@/hooks/use-toast';
 import type { FixedTask } from '@shared/schema';
+import { PeriodFilter, type PeriodFilterValue } from '@/components/filters/PeriodFilter';
 
 export const RestHoursPlan = (): JSX.Element => {
   const { toast } = useToast();
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1;
+  
   const [isEditMode, setIsEditMode] = useState(false);
   const [newMonthTrigger, setNewMonthTrigger] = useState<{ tasks: FixedTask[]; timestamp: number } | null>(null);
   const [saveHandler, setSaveHandler] = useState<(() => void) | null>(null);
-  // Generate last 12 months for period dropdown
-  const periodOptions = useMemo(() => {
-    const options = [];
-    const currentDate = new Date();
-    
-    for (let i = 0; i < 12; i++) {
-      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-      const month = date.toLocaleDateString('en-US', { month: 'short' });
-      const year = date.getFullYear();
-      const monthYear = `${month}-${year}`;
-      const value = `${year}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      options.push({ label: monthYear, value });
-    }
-    
-    return options;
-  }, []);
 
   const [showFilters, setShowFilters] = useState(true);
   const [selectedTab, setSelectedTab] = useState<"fixed" | "variable">("fixed");
-  const [periodValue, setPeriodValue] = useState(periodOptions[0]?.value || "");
+  const [periodValue, setPeriodValue] = useState<PeriodFilterValue>({
+    mode: 'year-month',
+    year: currentYear,
+    month: currentMonth,
+  });
   const [selectedVessel, setSelectedVessel] = useState("");
 
   const { vessels, isLoading: vesselsLoading } = useVesselLookup();
@@ -44,14 +36,22 @@ export const RestHoursPlan = (): JSX.Element => {
     }
   }, [vesselsLoading, vessels, selectedVessel]);
 
+  // Convert PeriodFilterValue to string format (YYYY-MM)
+  const periodValueString = useMemo(() => {
+    if (periodValue.mode === 'year-month' && periodValue.year && periodValue.month) {
+      return `${periodValue.year}-${String(periodValue.month).padStart(2, '0')}`;
+    }
+    return '';
+  }, [periodValue]);
+
   // Format period for display (e.g., "2024, Mar")
   const displayPeriod = useMemo(() => {
-    if (!periodValue || periodValue === "older") return "";
-    const [year, month] = periodValue.split('-');
+    if (!periodValueString) return "";
+    const [year, month] = periodValueString.split('-');
     const monthIndex = parseInt(month, 10) - 1;
     const monthName = new Date(2000, monthIndex, 1).toLocaleDateString('en-US', { month: 'short' });
     return `${year}, ${monthName}`;
-  }, [periodValue]);
+  }, [periodValueString]);
 
   // Reset edit mode when vessel, period, or tab changes
   useEffect(() => {
@@ -60,7 +60,11 @@ export const RestHoursPlan = (): JSX.Element => {
   }, [selectedVessel, periodValue, selectedTab]);
 
   const handleClearFilters = () => {
-    setPeriodValue(periodOptions[0]?.value || "");
+    setPeriodValue({
+      mode: 'year-month',
+      year: currentYear,
+      month: currentMonth,
+    });
     setSelectedVessel("");
   };
 
@@ -70,7 +74,7 @@ export const RestHoursPlan = (): JSX.Element => {
   }, []);
 
   const handleNewMonth = async () => {
-    if (!selectedVessel || !periodValue) {
+    if (!selectedVessel || !periodValueString) {
       toast({
         title: 'Selection required',
         description: 'Please select a vessel and period first',
@@ -80,7 +84,7 @@ export const RestHoursPlan = (): JSX.Element => {
     }
 
     // Get previous month
-    const [year, month] = periodValue.split('-').map(Number);
+    const [year, month] = periodValueString.split('-').map(Number);
     const prevDate = new Date(year, month - 2, 1);
     const prevYear = prevDate.getFullYear();
     const prevMonth = (prevDate.getMonth() + 1).toString().padStart(2, '0');
@@ -166,7 +170,7 @@ export const RestHoursPlan = (): JSX.Element => {
                     variant="outline"
                     size="sm"
                     onClick={() => setIsEditMode(true)}
-                    disabled={!selectedVessel || !periodValue}
+                    disabled={!selectedVessel || !periodValueString}
                     className="h-8 gap-2"
                     data-testid="button-edit"
                   >
@@ -177,7 +181,7 @@ export const RestHoursPlan = (): JSX.Element => {
                     variant="outline"
                     size="sm"
                     onClick={handleNewMonth}
-                    disabled={!selectedVessel || !periodValue}
+                    disabled={!selectedVessel || !periodValueString}
                     className="h-8 gap-2"
                     data-testid="button-new-month"
                   >
@@ -219,23 +223,8 @@ export const RestHoursPlan = (): JSX.Element => {
 
       {showFilters && (
         <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
-          {/* Period Dropdown */}
-          <Select value={periodValue} onValueChange={setPeriodValue}>
-            <SelectTrigger 
-              className="h-8 w-40 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
-              data-testid="select-period"
-            >
-              <SelectValue placeholder="Period" />
-            </SelectTrigger>
-            <SelectContent>
-              {periodOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-              <SelectItem value="older">Older Periods...</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Period Filter */}
+          <PeriodFilter value={periodValue} onChange={setPeriodValue} />
 
           {/* Vessel Single-Select */}
           <Select value={selectedVessel} onValueChange={setSelectedVessel}>
@@ -269,17 +258,21 @@ export const RestHoursPlan = (): JSX.Element => {
 
       {/* Content Area */}
       <div className="px-0 pb-6">
-        {selectedTab === "fixed" ? (
+        {!periodValueString ? (
+          <div className="flex items-center justify-center h-64 text-gray-500">
+            Please select a year and month to view planning data
+          </div>
+        ) : selectedTab === "fixed" ? (
           <FixedTasksTable 
             vesselId={selectedVessel} 
-            monthYear={periodValue}
+            monthYear={periodValueString}
             isEditMode={isEditMode}
             setIsEditMode={setIsEditMode}
             newMonthTrigger={newMonthTrigger}
             onSaveHandlerReady={handleSaveHandlerReady}
           />
         ) : (
-          <VariableTasksTable vesselId={selectedVessel} periodValue={periodValue} />
+          <VariableTasksTable vesselId={selectedVessel} periodValue={periodValueString} />
         )}
       </div>
     </div>

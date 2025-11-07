@@ -9,25 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { RHRecordsTable } from './RHRecordsTable';
+import { PeriodFilter, type PeriodFilterValue } from '@/components/filters/PeriodFilter';
 
 export const RestHoursRecord = (): JSX.Element => {
-  // Generate last 12 months for period dropdown
-  const periodOptions = useMemo(() => {
-    const options = [];
-    const currentDate = new Date();
-    
-    for (let i = 0; i < 12; i++) {
-      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-      const month = date.toLocaleDateString('en-US', { month: 'short' });
-      const year = date.getFullYear();
-      const monthYear = `${month}-${year}`;
-      const value = `${year}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      options.push({ label: monthYear, value });
-    }
-    
-    return options;
-  }, []);
-
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1;
+  
   const [showFilters, setShowFilters] = useState(true);
   const [complianceMode, setComplianceMode] = useState<'Rest' | 'Work'>('Rest');
   const [opaMode, setOpaMode] = useState(false);
@@ -35,9 +22,21 @@ export const RestHoursRecord = (): JSX.Element => {
   const [selectedVessels, setSelectedVessels] = useState<string[]>([]);
   const [fleetValue, setFleetValue] = useState("");
   const [addGroupValue, setAddGroupValue] = useState("");
-  const [periodValue, setPeriodValue] = useState(periodOptions[0]?.value || "");
+  const [periodValue, setPeriodValue] = useState<PeriodFilterValue>({
+    mode: 'year-month',
+    year: currentYear,
+    month: currentMonth,
+  });
 
   const { vessels, isLoading: vesselsLoading } = useVesselLookup();
+
+  // Convert PeriodFilterValue to string format for RHRecordsTable (YYYY-MM)
+  const selectedMonthString = useMemo(() => {
+    if (periodValue.mode === 'year-month' && periodValue.year && periodValue.month) {
+      return `${periodValue.year}-${String(periodValue.month).padStart(2, '0')}`;
+    }
+    return '';
+  }, [periodValue]);
 
   const toggleVessel = (vesselName: string) => {
     setSelectedVessels(prev => 
@@ -52,7 +51,11 @@ export const RestHoursRecord = (): JSX.Element => {
     setSelectedVessels([]);
     setFleetValue("");
     setAddGroupValue("");
-    setPeriodValue(periodOptions[0]?.value || "");
+    setPeriodValue({
+      mode: 'year-month',
+      year: currentYear,
+      month: currentMonth,
+    });
   };
 
   return (
@@ -93,23 +96,8 @@ export const RestHoursRecord = (): JSX.Element => {
 
       {showFilters && (
         <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
-          {/* Period Dropdown */}
-          <Select value={periodValue} onValueChange={setPeriodValue}>
-            <SelectTrigger 
-              className="h-8 w-40 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
-              data-testid="select-period"
-            >
-              <SelectValue placeholder="Period" />
-            </SelectTrigger>
-            <SelectContent>
-              {periodOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-              <SelectItem value="older">Older Periods...</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Period Filter */}
+          <PeriodFilter value={periodValue} onChange={setPeriodValue} />
 
           {/* Radio Group for Vessel/Fleet/Add Group */}
           <RadioGroup 
@@ -246,12 +234,18 @@ export const RestHoursRecord = (): JSX.Element => {
 
       {/* RH Records Table */}
       <div className="pr-4 pb-4">
-        <RHRecordsTable 
-          selectedVessels={filterType === 'vessel' ? selectedVessels : []}
-          selectedMonth={periodValue}
-          complianceMode={complianceMode}
-          opaMode={opaMode}
-        />
+        {selectedMonthString ? (
+          <RHRecordsTable 
+            selectedVessels={filterType === 'vessel' ? selectedVessels : []}
+            selectedMonth={selectedMonthString}
+            complianceMode={complianceMode}
+            opaMode={opaMode}
+          />
+        ) : (
+          <div className="flex items-center justify-center h-64 text-gray-500">
+            Please select a year and month to view records
+          </div>
+        )}
       </div>
     </div>
   );
