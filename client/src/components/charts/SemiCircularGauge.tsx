@@ -7,23 +7,26 @@ interface SemiCircularGaugeProps {
 
 export const SemiCircularGauge = ({ value, max, color, label }: SemiCircularGaugeProps) => {
   const percentage = max > 0 ? Math.min(1, value / max) : 0;
-  const angle = percentage * 180; // 0-180 degrees for semi-circle
+  const fillAngle = percentage * 180; // 0-180 degrees for the filled portion
   
   // SVG parameters
-  const radius = 80;
-  const strokeWidth = 15;
+  const radius = 70;
+  const strokeWidth = 20;
   const center = 100;
   
-  // Calculate the path for the background arc (semi-circle)
+  // Full 180° background arc (always visible, represents 100% of vessels)
+  // Goes from 180° (left/9 o'clock) to 0° (right/3 o'clock)
   const backgroundPath = describeArc(center, center, radius, 180, 0);
   
-  // Calculate the path for the filled arc
-  const filledPath = describeArc(center, center, radius, 180, 180 - angle);
+  // Filled arc based on percentage (fills from left to right)
+  // Starts at 180° (left) and fills clockwise based on percentage
+  const filledEndAngle = 180 - fillAngle;
+  const filledPath = percentage > 0 ? describeArc(center, center, radius, 180, filledEndAngle) : '';
   
   return (
     <div className="flex items-center justify-center w-full h-full">
       <svg width="200" height="130" viewBox="0 0 200 130">
-        {/* Background arc */}
+        {/* Background arc - full 180° frame (light gray) */}
         <path
           d={backgroundPath}
           fill="none"
@@ -32,21 +35,23 @@ export const SemiCircularGauge = ({ value, max, color, label }: SemiCircularGaug
           strokeLinecap="round"
         />
         
-        {/* Filled arc */}
-        <path
-          d={filledPath}
-          fill="none"
-          stroke={color}
-          strokeWidth={strokeWidth}
-          strokeLinecap="round"
-        />
+        {/* Filled arc - percentage-based (colored) */}
+        {percentage > 0 && (
+          <path
+            d={filledPath}
+            fill="none"
+            stroke={color}
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+          />
+        )}
         
         {/* Center value */}
         <text
           x={center}
-          y={center - 10}
+          y={center - 5}
           textAnchor="middle"
-          className="text-3xl font-bold fill-gray-800 dark:fill-gray-200"
+          className="text-4xl font-bold fill-gray-800 dark:fill-gray-200"
         >
           {value}
         </text>
@@ -55,7 +60,7 @@ export const SemiCircularGauge = ({ value, max, color, label }: SemiCircularGaug
         {label && (
           <text
             x={center}
-            y={center + 10}
+            y={center + 18}
             textAnchor="middle"
             className="text-sm fill-gray-600 dark:fill-gray-400"
           >
