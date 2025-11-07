@@ -330,66 +330,15 @@ export const PeriodicAnalysisChart = ({
   }, [yearlyData, chartType]);
 
   // Create toolbar element (memoized to prevent unnecessary re-renders)
+  // Only include ChartToolbar - period radio buttons are now inside the card
   const toolbar = useMemo(() => (
-    <div className="flex items-center gap-4">
-      {/* Period Type Radio Buttons */}
-      <RadioGroup 
-        value={periodType} 
-        onValueChange={(value: 'years' | 'quarters' | 'months') => setPeriodType(value)}
-        className="flex items-center gap-3"
-      >
-        <div className="flex items-center gap-1.5">
-          <RadioGroupItem 
-            value="years" 
-            id="period-years"
-            className="h-3 w-3"
-          />
-          <Label 
-            htmlFor="period-years" 
-            className="text-[10px] font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer uppercase"
-          >
-            Yearly
-          </Label>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <RadioGroupItem 
-            value="quarters" 
-            id="period-quarters"
-            className="h-3 w-3"
-            disabled
-          />
-          <Label 
-            htmlFor="period-quarters" 
-            className="text-[10px] font-normal text-gray-400 dark:text-gray-600 cursor-not-allowed uppercase"
-          >
-            Quarterly
-          </Label>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <RadioGroupItem 
-            value="months" 
-            id="period-months"
-            className="h-3 w-3"
-            disabled
-          />
-          <Label 
-            htmlFor="period-months" 
-            className="text-[10px] font-normal text-gray-400 dark:text-gray-600 cursor-not-allowed uppercase"
-          >
-            Monthly
-          </Label>
-        </div>
-      </RadioGroup>
-
-      {/* Chart Type Selector */}
-      <ChartToolbar
-        chartType={chartType}
-        onChartTypeChange={setChartType}
-        onDownload={handleDownload}
-        showChartTypeSelector={true}
-      />
-    </div>
-  ), [chartType, periodType, handleDownload]);
+    <ChartToolbar
+      chartType={chartType}
+      onChartTypeChange={setChartType}
+      onDownload={handleDownload}
+      showChartTypeSelector={true}
+    />
+  ), [chartType, handleDownload]);
 
   // Call onRenderToolbar in useEffect to avoid infinite loops
   useEffect(() => {
@@ -415,12 +364,66 @@ export const PeriodicAnalysisChart = ({
   }
 
   return (
-    <div className="w-full h-full min-h-0">
-      <AgCharts 
-        ref={chartRef}
-        options={chartOptions} 
-        style={{ width: '100%', height: '100%' }}
-      />
+    <div className="w-full h-full min-h-0 flex flex-col">
+      {/* Period Type Radio Buttons - Inside card at top */}
+      <div className="pt-2 pb-1 px-2">
+        <RadioGroup 
+          value={periodType} 
+          onValueChange={(value: 'years' | 'quarters' | 'months') => setPeriodType(value)}
+          className="flex items-center gap-3"
+        >
+          <div className="flex items-center gap-1.5">
+            <RadioGroupItem 
+              value="years" 
+              id="period-years"
+              className="h-3 w-3"
+            />
+            <Label 
+              htmlFor="period-years" 
+              className="text-[10px] font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer uppercase"
+            >
+              Yearly
+            </Label>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <RadioGroupItem 
+              value="quarters" 
+              id="period-quarters"
+              className="h-3 w-3"
+              disabled
+            />
+            <Label 
+              htmlFor="period-quarters" 
+              className="text-[10px] font-normal text-gray-400 dark:text-gray-600 cursor-not-allowed uppercase"
+            >
+              Quarterly
+            </Label>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <RadioGroupItem 
+              value="months" 
+              id="period-months"
+              className="h-3 w-3"
+              disabled
+            />
+            <Label 
+              htmlFor="period-months" 
+              className="text-[10px] font-normal text-gray-400 dark:text-gray-600 cursor-not-allowed uppercase"
+            >
+              Monthly
+            </Label>
+          </div>
+        </RadioGroup>
+      </div>
+
+      {/* Chart Area */}
+      <div className="flex-1 min-h-0">
+        <AgCharts 
+          ref={chartRef}
+          options={chartOptions} 
+          style={{ width: '100%', height: '100%' }}
+        />
+      </div>
     </div>
   );
 };
