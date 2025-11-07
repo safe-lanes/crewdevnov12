@@ -74,19 +74,26 @@ export const SemiCircularGauge = ({ value, max, color, label }: SemiCircularGaug
 
 // Helper function to describe an arc path
 function describeArc(x: number, y: number, radius: number, startAngle: number, endAngle: number): string {
-  const start = polarToCartesian(x, y, radius, endAngle);
-  const end = polarToCartesian(x, y, radius, startAngle);
-  const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
+  const start = polarToCartesian(x, y, radius, startAngle);
+  const end = polarToCartesian(x, y, radius, endAngle);
+  
+  // Calculate the absolute angle difference, normalized to 0-360
+  const angleDiff = Math.abs((endAngle - startAngle + 360) % 360);
+  // For 180 degrees or more, we need the large arc flag
+  const largeArcFlag = angleDiff >= 180 ? '1' : '0';
+  // Use sweep flag = 1 for clockwise direction
+  const sweepFlag = '1';
   
   return [
     'M', start.x, start.y,
-    'A', radius, radius, 0, largeArcFlag, 0, end.x, end.y
+    'A', radius, radius, 0, largeArcFlag, sweepFlag, end.x, end.y
   ].join(' ');
 }
 
 // Helper function to convert polar coordinates to cartesian
+// 0° = 3 o'clock (right), 90° = 6 o'clock (bottom), 180° = 9 o'clock (left), 270° = 12 o'clock (top)
 function polarToCartesian(centerX: number, centerY: number, radius: number, angleInDegrees: number) {
-  const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
+  const angleInRadians = (angleInDegrees * Math.PI) / 180.0;
   
   return {
     x: centerX + (radius * Math.cos(angleInRadians)),
