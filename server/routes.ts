@@ -3079,6 +3079,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Periodic Analysis API endpoint
+  app.get("/api/rest-hours-periodic-analysis", async (req, res) => {
+    try {
+      const { timePeriod, year, vesselIds, complianceMode, opaMode } = req.query;
+      
+      // Parse parameters
+      const mode: 'Rest' | 'Work' = (complianceMode as string) === 'Work' ? 'Work' : 'Rest';
+      const isOpaMode = opaMode === 'true';
+      const selectedYear = year ? parseInt(year as string) : new Date().getFullYear();
+      const period = (timePeriod as string) || 'yearly';
+      
+      // Parse vessel IDs
+      let vesselIdsArray: string[] = [];
+      if (vesselIds) {
+        vesselIdsArray = Array.isArray(vesselIds) ? vesselIds as string[] : [vesselIds as string];
+      }
+      
+      // Get all crew records
+      const allCrewRecords = await storage.getRestHoursCrewRecords();
+      
+      // Filter by vessels if specified
+      const filteredRecords = vesselIdsArray.length > 0
+        ? allCrewRecords.filter(record => vesselIdsArray.includes(record.vesselId))
+        : allCrewRecords;
+      
+      // Filter by compliance mode and calculate metrics
+      const getViolationCount = (record: any) => {
+        if (mode === 'Rest') {
+          return (record.totalViolations || 0) - ((record.violationCode5 || 0) + (record.violationCode6 || 0));
+        } else {
+          return (record.violationCode5 || 0) + (record.violationCode6 || 0);
+        }
+      };
+      
+      const getNcCount = (record: any) => {
+        if (mode === 'Rest') {
+          return (record.totalNCs || 0) - ((record.ncCode5 || 0) + (record.ncCode6 || 0));
+        } else {
+          return (record.ncCode5 || 0) + (record.ncCode6 || 0);
+        }
+      };
+      
+      // Group data by time period
+      const dataByPeriod = new Map<string, { violations: number; ncs: number; vessels: Set<string>; months: number }>();
+      
+      filteredRecords.forEach(record => {
+        const [recordYear, recordMonth] = record.monthValue.split('-').map(Number);
+        let periodKey = '';
+        
+        if (period === 'yearly') {
+          periodKey = recordYear.toString();
+        } else if (period === 'quarterly') {
+          if (recordYear !== selectedYear) return; // Only include selected year for quarterly
+          const quarter = Math.ceil(recordMonth / 3);
+          periodKey = `Q${quarter}`;
+        } else if (period === 'monthly') {
+          if (recordYear !== selectedYear) return; // Only include selected year for monthly
+          periodKey = new Date(recordYear, recordMonth - 1).toLocaleString('en-US', { month: 'short' });
+        }
+        
+        if (!periodKey) return;
+        
+        if (!dataByPeriod.has(periodKey)) {
+          dataByPeriod.set(periodKey, { violations: 0, ncs: 0, vessels: new Set(), months: 0 });
+        }
+        
+        const data = dataByPeriod.get(periodKey)!;
+        data.violations += getViolationCount(record);
+        data.ncs += getNcCount(record);
+        data.vessels.add(record.vesselId);
+        data.months++;
+      });
+      
+      // Calculate averages and format response
+      const result = Array.from(dataByPeriod.entries()).map(([periodKey, data]) => {
+        const vesselCount = data.vessels.size;
+        const monthsInPeriod = period === 'yearly' ? 12 : period === 'quarterly' ? 3 : 1;
+        
+        // Average per vessel per month
+        const avgViolations = vesselCount > 0 && data.months > 0
+          ? data.violations / vesselCount / monthsInPeriod
+          : 0;
+        const avgNCs = vesselCount > 0 && data.months > 0
+          ? data.ncs / vesselCount / monthsInPeriod
+          : 0;
+        
+        return {
+          period: periodKey,
+          avgViolations: Number(avgViolations.toFixed(2)),
+          avgNCs: Number(avgNCs.toFixed(2)),
+        };
+      });
+      
+      // Sort the results
+      result.sort((a, b) => {
+        if (period === 'yearly') {
+          return parseInt(a.period) - parseInt(b.period);
+        } else if (period === 'quarterly') {
+          const qA = parseInt(a.period.replace('Q', ''));
+          const qB = parseInt(b.period.replace('Q', ''));
+          return qA - qB;
+        } else {
+          // Monthly - sort by month order
+          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          return months.indexOf(a.period) - months.indexOf(b.period);
+        }
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Failed to get periodic analysis:", error);
+      res.status(500).json({ error: "Failed to get periodic analysis" });
+    }
+  });
+
   // Rest Hours Crew Records API routes
   app.get("/api/rest-hours-crew-records", async (req, res) => {
     try {
