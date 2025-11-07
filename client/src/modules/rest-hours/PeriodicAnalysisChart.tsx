@@ -2,9 +2,12 @@ import { useState, useCallback, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AgCharts } from '@/lib/agCharts';
 import type { AgChartOptions, AgChartInstance } from '@/lib/agCharts';
-import { ChartToolbar, type ChartType } from '@/components/charts/ChartToolbar';
+import type { ChartType } from '@/components/charts/ChartToolbar';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
+import { Download, LineChart, BarChart3 } from 'lucide-react';
 
 interface PeriodicAnalysisChartProps {
   vesselIds?: string[];
@@ -96,7 +99,7 @@ export function PeriodicAnalysisChart({
         ...baseOptions,
         series: [
           {
-            type: 'bar' as any,
+            type: 'column' as any,
             xKey: 'period',
             yKey: 'avgNCs',
             yName: 'NCs per Vessel',
@@ -115,7 +118,7 @@ export function PeriodicAnalysisChart({
             },
           } as any,
           {
-            type: 'bar' as any,
+            type: 'column' as any,
             xKey: 'period',
             yKey: 'avgViolations',
             yName: 'Violations per Vessel',
@@ -256,14 +259,47 @@ export function PeriodicAnalysisChart({
     } as AgChartOptions;
   }, [periodicData, chartType, timePeriod]);
 
+  const getChartTypeIcon = (type: ChartType) => {
+    if (type === 'bar') {
+      return <BarChart3 className="h-3.5 w-3.5" />;
+    }
+    return <LineChart className="h-3.5 w-3.5" />;
+  };
+
   const toolbar = (
-    <ChartToolbar
-      chartType={chartType}
-      onChartTypeChange={handleChartTypeChange}
-      onDownload={handleDownload}
-      availableTypes={['line', 'bar']}
-      data-testid="toolbar-periodic-analysis"
-    />
+    <div className="flex items-center gap-2">
+      <Select value={chartType} onValueChange={(value) => handleChartTypeChange(value as ChartType)}>
+        <SelectTrigger className="h-7 w-[100px] text-xs border-gray-300 dark:border-gray-600" data-testid="select-chart-type">
+          <div className="flex items-center gap-1.5">
+            {getChartTypeIcon(chartType)}
+            <span className="capitalize">{chartType === 'bar' ? 'Column' : chartType}</span>
+          </div>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="line" className="text-xs">
+            <div className="flex items-center gap-2">
+              <LineChart className="h-3.5 w-3.5" />
+              <span>Line</span>
+            </div>
+          </SelectItem>
+          <SelectItem value="bar" className="text-xs">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-3.5 w-3.5" />
+              <span>Column</span>
+            </div>
+          </SelectItem>
+        </SelectContent>
+      </Select>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleDownload}
+        className="h-7 w-7 p-0 border-gray-300 dark:border-gray-600"
+        data-testid="button-download"
+      >
+        <Download className="h-3.5 w-3.5" />
+      </Button>
+    </div>
   );
 
   if (onRenderToolbar) {
