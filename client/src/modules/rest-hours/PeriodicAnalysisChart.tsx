@@ -234,12 +234,8 @@ export const PeriodicAnalysisChart = ({
     yearsToFetch.forEach(year => {
       const records = yearGroups.get(year) || [];
       
+      // Skip years with no data
       if (records.length === 0) {
-        results.push({
-          year,
-          avgViolationDays: 0,
-          avgNCs: 0,
-        });
         return;
       }
 
