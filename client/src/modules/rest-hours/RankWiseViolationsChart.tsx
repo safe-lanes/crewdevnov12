@@ -158,17 +158,15 @@ export const RankWiseViolationsChart = ({ vesselIds, monthValue }: RankWiseViola
 
   return (
     <>
-      <div className="w-full h-full min-h-0 flex flex-col relative">
-        {/* Toolbar positioned in top-right corner */}
-        <div className="absolute top-3 right-3 z-10">
+      <div className="w-full h-full min-h-0 flex flex-col">
+        <div className="flex justify-end mb-1">
           <ChartToolbar 
             onDownload={handleDownload}
             onFullscreen={() => setShowFullscreen(true)}
             chartTitle="Rank Wise Violations"
           />
         </div>
-        
-        <div className="flex-1 min-h-0 w-full">
+        <div className="flex-1 min-h-0">
           <AgCharts 
             ref={chartRef}
             options={chartOptions} 
