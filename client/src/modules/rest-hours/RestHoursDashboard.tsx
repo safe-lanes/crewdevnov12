@@ -254,7 +254,7 @@ export const RestHoursDashboard = (): JSX.Element => {
               {chart1Toolbar}
             </div>
             <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-1">
-              <CardContent className="p-6 h-full flex flex-col">
+              <CardContent className="p-3 h-full flex flex-col">
                 <div className="flex-1 min-h-0">
                   <PlaceholderChart title="Chart Title 1" onRenderToolbar={setChart1Toolbar} />
                 </div>
@@ -271,7 +271,7 @@ export const RestHoursDashboard = (): JSX.Element => {
               {chart2Toolbar}
             </div>
             <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-2">
-              <CardContent className="p-6 h-full flex flex-col">
+              <CardContent className="p-3 h-full flex flex-col">
                 <div className="flex-1 min-h-0">
                   <PeriodicAnalysisChart 
                     vesselIds={vesselIds} 
@@ -294,7 +294,7 @@ export const RestHoursDashboard = (): JSX.Element => {
               {rankViolationsToolbar}
             </div>
             <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-3">
-              <CardContent className="p-6 h-full flex flex-col">
+              <CardContent className="p-3 h-full flex flex-col">
                 <div className="flex-1 min-h-0">
                   <RankWiseViolationsChart 
                     vesselIds={vesselIds} 
@@ -317,7 +317,7 @@ export const RestHoursDashboard = (): JSX.Element => {
               {chart4Toolbar}
             </div>
             <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-4">
-              <CardContent className="p-6 h-full flex flex-col">
+              <CardContent className="p-3 h-full flex flex-col">
                 <div className="flex-1 min-h-0">
                   <PlaceholderChart title="Chart Title 4" onRenderToolbar={setChart4Toolbar} />
                 </div>
@@ -334,7 +334,7 @@ export const RestHoursDashboard = (): JSX.Element => {
               {chart5Toolbar}
             </div>
             <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-5">
-              <CardContent className="p-6 h-full flex flex-col">
+              <CardContent className="p-3 h-full flex flex-col">
                 <div className="flex-1 min-h-0">
                   <PlaceholderChart title="Chart Title 5" onRenderToolbar={setChart5Toolbar} />
                 </div>
@@ -351,7 +351,7 @@ export const RestHoursDashboard = (): JSX.Element => {
               {chart6Toolbar}
             </div>
             <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-6">
-              <CardContent className="p-6 h-full flex flex-col">
+              <CardContent className="p-3 h-full flex flex-col">
                 <div className="flex-1 min-h-0">
                   <RankWiseNCsChart 
                     vesselIds={vesselIds} 

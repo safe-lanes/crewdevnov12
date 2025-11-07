@@ -366,11 +366,11 @@ export const PeriodicAnalysisChart = ({
   return (
     <div className="w-full h-full min-h-0 flex flex-col">
       {/* Period Type Radio Buttons - Inside card at top */}
-      <div className="pt-2 pb-1 px-2">
+      <div className="pt-1 pb-0 px-2">
         <RadioGroup 
           value={periodType} 
           onValueChange={(value: 'years' | 'quarters' | 'months') => setPeriodType(value)}
-          className="flex items-center gap-3"
+          className="flex items-center justify-center gap-3"
         >
           <div className="flex items-center gap-1.5">
             <RadioGroupItem 
