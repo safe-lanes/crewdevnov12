@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import type { PeriodFilterValue } from '@/components/filters/PeriodFilter';
 
 interface VesselAnalysisChartProps {
@@ -187,38 +187,23 @@ export const VesselAnalysisChart = ({
 
   return (
     <div className="w-full h-full flex flex-col">
-      {/* Toggle Button */}
+      {/* Header and Toggle Switch */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
           GROUP & VESSEL ANALYSIS
         </h3>
-        <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 rounded-md p-1">
-          <Button
-            variant={mode === 'ncs' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setMode('ncs')}
-            className={`text-xs ${
-              mode === 'ncs' 
-                ? 'bg-white dark:bg-gray-600 shadow-sm' 
-                : 'hover:bg-gray-200 dark:hover:bg-gray-600'
-            }`}
-            data-testid="toggle-ncs"
-          >
+        <div className="flex items-center justify-center gap-3">
+          <span className={`text-sm font-medium ${mode === 'ncs' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
             NCs
-          </Button>
-          <Button
-            variant={mode === 'violations' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setMode('violations')}
-            className={`text-xs ${
-              mode === 'violations' 
-                ? 'bg-white dark:bg-gray-600 shadow-sm' 
-                : 'hover:bg-gray-200 dark:hover:bg-gray-600'
-            }`}
-            data-testid="toggle-violations"
-          >
+          </span>
+          <Switch
+            checked={mode === 'violations'}
+            onCheckedChange={(checked) => setMode(checked ? 'violations' : 'ncs')}
+            data-testid="toggle-switch"
+          />
+          <span className={`text-sm font-medium ${mode === 'violations' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
             Violations
-          </Button>
+          </span>
         </div>
       </div>
 
