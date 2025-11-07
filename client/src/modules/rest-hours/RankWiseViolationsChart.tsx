@@ -4,11 +4,14 @@ import { AgCharts } from '@/lib/agCharts';
 import type { AgChartOptions, AgChartInstance } from '@/lib/agCharts';
 import { ChartToolbar, type ChartType } from '@/components/charts/ChartToolbar';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { ViolationsOverviewDialog } from './ViolationsOverviewDialog';
 
 interface RankWiseViolationsChartProps {
   vesselIds?: string[];
   monthValue?: string;
   onRenderToolbar?: (toolbar: JSX.Element) => void;
+  complianceMode?: 'Rest' | 'Work';
+  opaMode?: boolean;
 }
 
 interface ViolationByRank {
@@ -16,10 +19,18 @@ interface ViolationByRank {
   violationDays: number;
 }
 
-export const RankWiseViolationsChart = ({ vesselIds, monthValue, onRenderToolbar }: RankWiseViolationsChartProps) => {
+export const RankWiseViolationsChart = ({ 
+  vesselIds, 
+  monthValue, 
+  onRenderToolbar,
+  complianceMode = 'Rest',
+  opaMode = false,
+}: RankWiseViolationsChartProps) => {
   const chartRef = useRef<AgChartInstance | null>(null);
   const [showFullscreen, setShowFullscreen] = useState(false);
   const [chartType, setChartType] = useState<ChartType>('bar');
+  const [showDrillDown, setShowDrillDown] = useState(false);
+  const [selectedRank, setSelectedRank] = useState<string | null>(null);
 
   const queryParams = useMemo(() => {
     const params: Record<string, any> = {};
@@ -63,6 +74,11 @@ export const RankWiseViolationsChart = ({ vesselIds, monthValue, onRenderToolbar
     }
   }, []);
 
+  const handleBarClick = useCallback((rank: string) => {
+    setSelectedRank(rank);
+    setShowDrillDown(true);
+  }, []);
+
   const chartOptions = useMemo<AgChartOptions>(() => {
     const baseOptions: AgChartOptions = {
       data: violationsData,
@@ -102,7 +118,14 @@ export const RankWiseViolationsChart = ({ vesselIds, monthValue, onRenderToolbar
                 </div>`;
               },
             },
-          },
+            listeners: {
+              nodeClick: (event: any) => {
+                if (event.datum && event.datum.rank) {
+                  handleBarClick(event.datum.rank);
+                }
+              },
+            } as any,
+          } as any,
         ],
       } as AgChartOptions;
     }
@@ -133,7 +156,14 @@ export const RankWiseViolationsChart = ({ vesselIds, monthValue, onRenderToolbar
                 </div>`;
               },
             },
-          },
+            listeners: {
+              nodeClick: (event: any) => {
+                if (event.datum && event.datum.rank) {
+                  handleBarClick(event.datum.rank);
+                }
+              },
+            } as any,
+          } as any,
         ],
         axes: [
           {
@@ -187,7 +217,14 @@ export const RankWiseViolationsChart = ({ vesselIds, monthValue, onRenderToolbar
               </div>`;
             },
           },
-        },
+          listeners: {
+            nodeClick: (event: any) => {
+              if (event.datum && event.datum.rank) {
+                handleBarClick(event.datum.rank);
+              }
+            },
+          } as any,
+        } as any,
       ],
       axes: [
         {
@@ -220,7 +257,7 @@ export const RankWiseViolationsChart = ({ vesselIds, monthValue, onRenderToolbar
         },
       ],
     } as AgChartOptions;
-  }, [violationsData, chartType]);
+  }, [violationsData, chartType, handleBarClick]);
 
   // Create toolbar element (memoized to prevent unnecessary re-renders)
   // Must be called before any early returns to maintain hook order
@@ -320,6 +357,22 @@ export const RankWiseViolationsChart = ({ vesselIds, monthValue, onRenderToolbar
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Drill-down Dialog */}
+      {selectedRank && monthValue && (
+        <ViolationsOverviewDialog
+          open={showDrillDown}
+          onOpenChange={setShowDrillDown}
+          vesselId=""
+          vesselName=""
+          vesselIds={vesselIds}
+          monthValue={monthValue}
+          complianceMode={complianceMode}
+          opaMode={opaMode}
+          isPredicted={false}
+          rankFilter={selectedRank}
+        />
+      )}
     </>
   );
 };

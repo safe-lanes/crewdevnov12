@@ -4,11 +4,14 @@ import { AgCharts } from '@/lib/agCharts';
 import type { AgChartOptions, AgChartInstance } from '@/lib/agCharts';
 import { ChartToolbar, type ChartType } from '@/components/charts/ChartToolbar';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { ViolationsOverviewDialog } from './ViolationsOverviewDialog';
 
 interface RankWiseNCsChartProps {
   vesselIds?: string[];
   monthValue?: string;
   onRenderToolbar?: (toolbar: JSX.Element) => void;
+  complianceMode?: 'Rest' | 'Work';
+  opaMode?: boolean;
 }
 
 interface NCByRank {
@@ -16,10 +19,18 @@ interface NCByRank {
   ncCount: number;
 }
 
-export const RankWiseNCsChart = ({ vesselIds, monthValue, onRenderToolbar }: RankWiseNCsChartProps) => {
+export const RankWiseNCsChart = ({ 
+  vesselIds, 
+  monthValue, 
+  onRenderToolbar,
+  complianceMode = 'Rest',
+  opaMode = false,
+}: RankWiseNCsChartProps) => {
   const chartRef = useRef<AgChartInstance | null>(null);
   const [showFullscreen, setShowFullscreen] = useState(false);
   const [chartType, setChartType] = useState<ChartType>('bar');
+  const [showDrillDown, setShowDrillDown] = useState(false);
+  const [selectedRank, setSelectedRank] = useState<string | null>(null);
 
   const queryParams = useMemo(() => {
     const params: Record<string, any> = {};
@@ -63,6 +74,11 @@ export const RankWiseNCsChart = ({ vesselIds, monthValue, onRenderToolbar }: Ran
     }
   }, []);
 
+  const handleBarClick = useCallback((rank: string) => {
+    setSelectedRank(rank);
+    setShowDrillDown(true);
+  }, []);
+
   const chartOptions = useMemo<AgChartOptions>(() => {
     const baseOptions: AgChartOptions = {
       data: ncsData,
@@ -102,7 +118,14 @@ export const RankWiseNCsChart = ({ vesselIds, monthValue, onRenderToolbar }: Ran
                 </div>`;
               },
             },
-          },
+            listeners: {
+              nodeClick: (event: any) => {
+                if (event.datum && event.datum.rank) {
+                  handleBarClick(event.datum.rank);
+                }
+              },
+            } as any,
+          } as any,
         ],
       } as AgChartOptions;
     }
@@ -133,7 +156,14 @@ export const RankWiseNCsChart = ({ vesselIds, monthValue, onRenderToolbar }: Ran
                 </div>`;
               },
             },
-          },
+            listeners: {
+              nodeClick: (event: any) => {
+                if (event.datum && event.datum.rank) {
+                  handleBarClick(event.datum.rank);
+                }
+              },
+            } as any,
+          } as any,
         ],
         axes: [
           {
@@ -187,7 +217,14 @@ export const RankWiseNCsChart = ({ vesselIds, monthValue, onRenderToolbar }: Ran
               </div>`;
             },
           },
-        },
+          listeners: {
+            nodeClick: (event: any) => {
+              if (event.datum && event.datum.rank) {
+                handleBarClick(event.datum.rank);
+              }
+            },
+          } as any,
+        } as any,
       ],
       axes: [
         {
@@ -220,7 +257,7 @@ export const RankWiseNCsChart = ({ vesselIds, monthValue, onRenderToolbar }: Ran
         },
       ],
     } as AgChartOptions;
-  }, [ncsData, chartType]);
+  }, [ncsData, chartType, handleBarClick]);
 
   // Create toolbar element (memoized to prevent unnecessary re-renders)
   // Must be called before any early returns to maintain hook order
@@ -320,6 +357,22 @@ export const RankWiseNCsChart = ({ vesselIds, monthValue, onRenderToolbar }: Ran
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Drill-down Dialog - Shows violations that led to NCs */}
+      {selectedRank && monthValue && (
+        <ViolationsOverviewDialog
+          open={showDrillDown}
+          onOpenChange={setShowDrillDown}
+          vesselId=""
+          vesselName=""
+          vesselIds={vesselIds}
+          monthValue={monthValue}
+          complianceMode={complianceMode}
+          opaMode={opaMode}
+          isPredicted={false}
+          rankFilter={selectedRank}
+        />
+      )}
     </>
   );
 };

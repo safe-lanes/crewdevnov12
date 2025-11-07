@@ -293,6 +293,8 @@ export const RestHoursDashboard = (): JSX.Element => {
                     vesselIds={vesselIds} 
                     monthValue={monthValue}
                     onRenderToolbar={setRankViolationsToolbar}
+                    complianceMode="Rest"
+                    opaMode={false}
                   />
                 </div>
               </CardContent>
@@ -344,7 +346,13 @@ export const RestHoursDashboard = (): JSX.Element => {
             <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex-1 min-h-0" data-testid="dashboard-card-6">
               <CardContent className="p-6 h-full flex flex-col">
                 <div className="flex-1 min-h-0">
-                  <RankWiseNCsChart vesselIds={vesselIds} monthValue={monthValue} onRenderToolbar={setChart6Toolbar} />
+                  <RankWiseNCsChart 
+                    vesselIds={vesselIds} 
+                    monthValue={monthValue} 
+                    onRenderToolbar={setChart6Toolbar}
+                    complianceMode="Rest"
+                    opaMode={false}
+                  />
                 </div>
               </CardContent>
             </Card>

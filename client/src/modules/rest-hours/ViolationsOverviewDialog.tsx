@@ -37,6 +37,8 @@ interface ViolationsOverviewDialogProps {
   complianceMode: 'Rest' | 'Work';
   opaMode: boolean;
   isPredicted?: boolean;
+  rankFilter?: string; // Optional rank filter for drill-down
+  vesselIds?: string[]; // Optional vessel IDs filter for chart drill-down
 }
 
 interface DailyRecord {
@@ -74,13 +76,19 @@ export function ViolationsOverviewDialog({
   complianceMode,
   opaMode,
   isPredicted = false,
+  rankFilter,
+  vesselIds,
 }: ViolationsOverviewDialogProps) {
   const { toast } = useToast();
   const [vesselComment, setVesselComment] = useState('');
 
-  // Fetch all crew records for this vessel and month to get crew list
+  // Fetch all crew records for this vessel (or multiple vessels if provided) and month to get crew list
   const queryParams = new URLSearchParams();
-  queryParams.append('vesselIds', vesselId);
+  
+  // Use vesselIds array if provided, otherwise fall back to single vesselId
+  const vesselIdsToUse = vesselIds && vesselIds.length > 0 ? vesselIds : [vesselId];
+  vesselIdsToUse.forEach(id => queryParams.append('vesselIds', id));
+  
   queryParams.append('monthValue', monthValue);
   queryParams.append('complianceMode', complianceMode);
   queryParams.append('opaMode', String(opaMode));
@@ -117,7 +125,7 @@ export function ViolationsOverviewDialog({
     enabled: open && crewIdsWithViolations.length > 0,
   });
 
-  // Fetch existing vessel comment (only for actual violations, not predicted)
+  // Fetch existing vessel comment (only for actual violations, not predicted, and single vessel view)
   const { data: vesselCommentData } = useQuery<{ comment: string } | null>({
     queryKey: ['/api/vessel-violation-comments', vesselId, monthValue],
     queryFn: async () => {
@@ -128,7 +136,7 @@ export function ViolationsOverviewDialog({
       }
       return response.json();
     },
-    enabled: open && !isPredicted,
+    enabled: open && !isPredicted && !rankFilter && vesselIdsToUse.length === 1 && vesselId !== '',
   });
 
   // Update local state when comment data is fetched
@@ -175,16 +183,21 @@ export function ViolationsOverviewDialog({
   const violationRecords = useMemo(() => {
     const allViolations: ViolationRecord[] = [];
 
-    // Filter crew summaries to only those for this vessel
-    const vesselCrewSummaries = crewSummaries.filter(crew => crew.vesselId === vesselId);
+    // Filter crew summaries by vessel(s) and rank
+    let vesselCrewSummaries = crewSummaries.filter(crew => vesselIdsToUse.includes(crew.vesselId));
+    
+    // Apply rank filter if provided
+    if (rankFilter) {
+      vesselCrewSummaries = vesselCrewSummaries.filter(crew => crew.rank === rankFilter);
+    }
 
     // Create a map of daily records for quick lookup
     const dailyRecordsMap = new Map<string, DailyRecord[]>();
     
-    // Filter daily records by crew members that have violations and match vessel+month
+    // Filter daily records by crew members that have violations and match vessel(s)+month
     const filteredRecords = allDailyRecords.filter(record =>
       crewIdsWithViolations.includes(record.crewMemberId) && 
-      record.vesselId === vesselId &&
+      vesselIdsToUse.includes(record.vesselId) &&
       record.monthYear === monthValue
     );
     
@@ -254,7 +267,7 @@ export function ViolationsOverviewDialog({
       if (a.rank !== b.rank) return a.rank.localeCompare(b.rank);
       return a.crewMemberName.localeCompare(b.crewMemberName);
     });
-  }, [crewSummaries, allDailyRecords, vesselId, monthValue, complianceMode, opaMode, isPredicted]);
+  }, [crewSummaries, allDailyRecords, vesselIdsToUse, monthValue, complianceMode, opaMode, isPredicted, rankFilter]);
 
   // Format month for display
   const formatMonth = (monthStr: string) => {
@@ -275,7 +288,7 @@ export function ViolationsOverviewDialog({
       <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>
-            {isPredicted ? 'Predicted Violations' : 'Violations'} - {vesselName} - {formatMonth(monthValue)}
+            {isPredicted ? 'Predicted Violations' : 'Violations'} - {rankFilter ? rankFilter : vesselName} - {formatMonth(monthValue)}
           </DialogTitle>
         </DialogHeader>
 
@@ -351,8 +364,8 @@ export function ViolationsOverviewDialog({
           )}
         </div>
 
-        {/* Vessel Comment Section - Only for actual violations */}
-        {!isPredicted && (
+        {/* Vessel Comment Section - Only for actual violations and single vessel view */}
+        {!isPredicted && !rankFilter && vesselIdsToUse.length === 1 && (
           <div className="mt-6 space-y-3 border-t pt-4">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-gray-700">
