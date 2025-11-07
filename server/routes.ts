@@ -2912,6 +2912,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Rest Hours Violations By Rank (Dashboard Chart)
+  app.get("/api/rest-hours-violations-by-rank", async (req, res) => {
+    try {
+      const { vesselIds, monthValue } = req.query;
+      
+      // Get all daily records
+      const allDailyRecords = await storage.getRestHoursDailyRecords();
+      
+      // Filter daily records by vessel and month
+      let filteredRecords = allDailyRecords;
+      
+      if (vesselIds) {
+        const vesselIdArray = typeof vesselIds === 'string' ? [vesselIds] : vesselIds as string[];
+        filteredRecords = filteredRecords.filter((record: any) => 
+          vesselIdArray.includes(record.vesselId)
+        );
+      }
+      
+      if (monthValue) {
+        filteredRecords = filteredRecords.filter((record: any) => 
+          record.monthYear === monthValue
+        );
+      }
+      
+      // Aggregate violation days by rank
+      const violationsByRank = new Map<string, number>();
+      
+      filteredRecords.forEach((record: any) => {
+        try {
+          const dailyRecords = JSON.parse(record.dailyRecords);
+          const rank = record.rank;
+          
+          // Count days with violations
+          let violationDays = 0;
+          dailyRecords.forEach((day: any) => {
+            if (day.violations && Array.isArray(day.violations) && day.violations.length > 0) {
+              violationDays++;
+            }
+          });
+          
+          // Add to rank total
+          if (violationDays > 0) {
+            const currentTotal = violationsByRank.get(rank) || 0;
+            violationsByRank.set(rank, currentTotal + violationDays);
+          }
+        } catch (error) {
+          console.error(`Failed to parse daily records for record ${record.id}:`, error);
+        }
+      });
+      
+      // Convert to array and sort by violation days descending
+      const result = Array.from(violationsByRank.entries())
+        .map(([rank, violationDays]) => ({ rank, violationDays }))
+        .sort((a, b) => b.violationDays - a.violationDays);
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Failed to get violations by rank:", error);
+      res.status(500).json({ error: "Failed to get violations by rank" });
+    }
+  });
+
   // Rest Hours Crew Records API routes
   app.get("/api/rest-hours-crew-records", async (req, res) => {
     try {

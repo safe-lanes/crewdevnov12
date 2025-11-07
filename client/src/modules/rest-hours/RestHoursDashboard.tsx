@@ -11,6 +11,7 @@ import SectionTitleComponents from '@/components/Section/SectionTitleComponents'
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { AgCharts, type AgChartOptions } from '@/lib/agCharts';
 import { PeriodFilter, type PeriodFilterValue } from '@/components/filters/PeriodFilter';
+import { RankWiseViolationsChart } from './RankWiseViolationsChart';
 
 export const RestHoursDashboard = (): JSX.Element => {
   const [showFilters, setShowFilters] = useState(true);
@@ -50,6 +51,29 @@ export const RestHoursDashboard = (): JSX.Element => {
       month: currentMonth,
     });
   };
+
+  // Convert PeriodFilterValue to monthValue string (YYYY-MM)
+  const monthValue = useMemo(() => {
+    if (periodFilter.mode === 'year-month' && periodFilter.year && periodFilter.month) {
+      return `${periodFilter.year}-${String(periodFilter.month).padStart(2, '0')}`;
+    }
+    return undefined;
+  }, [periodFilter]);
+
+  // Get vessel IDs from vessel names (for filtering)
+  const vesselIds = useMemo(() => {
+    if (filterType !== 'vessel' || selectedVessels.length === 0) return undefined;
+    
+    // Map vessel names to IDs
+    const ids: string[] = [];
+    selectedVessels.forEach(vesselName => {
+      const vessel = vessels.find((v: any) => v.name === vesselName);
+      if (vessel) {
+        ids.push(vessel.entryId);
+      }
+    });
+    return ids.length > 0 ? ids : undefined;
+  }, [filterType, selectedVessels, vessels]);
 
   return (
     <div className="flex flex-col h-full">
@@ -226,10 +250,15 @@ export const RestHoursDashboard = (): JSX.Element => {
             </CardContent>
           </Card>
 
-          {/* Card 3 */}
+          {/* Card 3 - Rank Wise Violations */}
           <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700" data-testid="dashboard-card-3">
-            <CardContent className="p-6 h-64">
-              {/* Chart placeholder - will be implemented later */}
+            <CardContent className="p-6 h-64 flex flex-col">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                RANK WISE VIOLATIONS
+              </h3>
+              <div className="flex-1">
+                <RankWiseViolationsChart vesselIds={vesselIds} monthValue={monthValue} />
+              </div>
             </CardContent>
           </Card>
 
