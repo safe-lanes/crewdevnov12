@@ -1,7 +1,7 @@
-import { useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AgCharts } from '@/lib/agCharts';
-import type { AgChartOptions, AgChartInstance } from '@/lib/agCharts';
+import { AgGauge } from '@/lib/agCharts';
+import type { AgGaugeOptions } from '@/lib/agCharts';
 import type { PeriodFilterValue } from '@/components/filters/PeriodFilter';
 
 interface PerformanceOverviewCardProps {
@@ -19,9 +19,6 @@ export const PerformanceOverviewCard = ({
   complianceMode = 'Rest',
   opaMode = false,
 }: PerformanceOverviewCardProps) => {
-  const violationsChartRef = useRef<AgChartInstance | null>(null);
-  const ncsChartRef = useRef<AgChartInstance | null>(null);
-
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
 
@@ -180,104 +177,86 @@ export const PerformanceOverviewCard = ({
     return '#ef4444'; // Red
   };
 
-  // Violations donut chart options
-  const violationsChartOptions = useMemo<AgChartOptions>(() => {
+  // Violations radial gauge options
+  const violationsGaugeOptions = useMemo<AgGaugeOptions>(() => {
     const percentage = metrics.violationsPercentage;
     const color = getColorForPercentage(percentage);
+    const maxVessels = metrics.totalVessels || 1; // Prevent division by zero
     
     return {
-      data: [
-        { category: 'Violations', value: metrics.vesselsWithViolations },
-        { category: 'Remaining', value: metrics.totalVessels - metrics.vesselsWithViolations },
-      ],
-      background: {
-        fill: '#ffffff',
+      type: 'radial-gauge',
+      value: metrics.vesselsWithViolations,
+      scale: {
+        min: 0,
+        max: maxVessels,
+        label: {
+          enabled: false,
+        },
       },
-      series: [
-        {
-          type: 'pie' as any,
-          angleKey: 'value',
-          sectorLabelKey: 'category',
-          fills: [color, '#e5e7eb'],
-          strokes: ['transparent'],
-          innerRadiusRatio: 0.7,
-          innerLabels: [
-            {
-              text: String(metrics.vesselsWithViolations),
-              fontSize: 24,
-              fontWeight: 'bold',
-              color: '#1f2937',
-            },
-            {
-              text: 'Vessels',
-              fontSize: 12,
-              color: '#6b7280',
-              margin: 4,
-            },
-          ],
-          sectorLabel: {
-            enabled: false,
-          },
-          showInLegend: false,
-        } as any,
-      ],
-      padding: {
-        top: 10,
-        right: 10,
-        bottom: 10,
-        left: 10,
+      startAngle: -90,
+      endAngle: 90,
+      needle: {
+        enabled: false,
       },
-    } as AgChartOptions;
+      bar: {
+        enabled: true,
+        fill: color,
+      },
+      label: {
+        enabled: true,
+        formatter: () => String(metrics.vesselsWithViolations),
+        fontSize: 24,
+        fontWeight: 'bold' as any,
+        color: '#1f2937',
+      },
+      secondaryLabel: {
+        enabled: true,
+        text: 'Vessels',
+        fontSize: 12,
+        color: '#6b7280',
+      },
+    } as AgGaugeOptions;
   }, [metrics]);
 
-  // NCs donut chart options
-  const ncsChartOptions = useMemo<AgChartOptions>(() => {
+  // NCs radial gauge options
+  const ncsGaugeOptions = useMemo<AgGaugeOptions>(() => {
     const percentage = metrics.ncsPercentage;
     const color = getColorForPercentage(percentage);
+    const maxVessels = metrics.totalVessels || 1; // Prevent division by zero
     
     return {
-      data: [
-        { category: 'NCs', value: metrics.vesselsWithNCs },
-        { category: 'Remaining', value: metrics.totalVessels - metrics.vesselsWithNCs },
-      ],
-      background: {
-        fill: '#ffffff',
+      type: 'radial-gauge',
+      value: metrics.vesselsWithNCs,
+      scale: {
+        min: 0,
+        max: maxVessels,
+        label: {
+          enabled: false,
+        },
       },
-      series: [
-        {
-          type: 'pie' as any,
-          angleKey: 'value',
-          sectorLabelKey: 'category',
-          fills: [color, '#e5e7eb'],
-          strokes: ['transparent'],
-          innerRadiusRatio: 0.7,
-          innerLabels: [
-            {
-              text: String(metrics.vesselsWithNCs),
-              fontSize: 24,
-              fontWeight: 'bold',
-              color: '#1f2937',
-            },
-            {
-              text: 'Vessels',
-              fontSize: 12,
-              color: '#6b7280',
-              margin: 4,
-            },
-          ],
-          sectorLabel: {
-            enabled: false,
-          },
-          showInLegend: false,
-        } as any,
-      ],
-      padding: {
-        top: 10,
-        right: 10,
-        bottom: 10,
-        left: 10,
+      startAngle: -90,
+      endAngle: 90,
+      needle: {
+        enabled: false,
       },
-    } as AgChartOptions;
+      bar: {
+        enabled: true,
+        fill: color,
+      },
+      label: {
+        enabled: true,
+        formatter: () => String(metrics.vesselsWithNCs),
+        fontSize: 24,
+        fontWeight: 'bold' as any,
+        color: '#1f2937',
+      },
+      secondaryLabel: {
+        enabled: true,
+        text: 'Vessels',
+        fontSize: 12,
+        color: '#6b7280',
+      },
+    } as AgGaugeOptions;
   }, [metrics]);
 
   if (isLoading) {
@@ -320,19 +299,14 @@ export const PerformanceOverviewCard = ({
         </div>
       </div>
 
-      {/* Row 2: Donut Charts */}
+      {/* Row 2: Radial Gauge Charts */}
       <div className="flex-1 grid grid-cols-2 gap-4">
         <div className="flex flex-col">
           <div className="text-xs text-center text-gray-600 dark:text-gray-400 mb-2 font-medium">
             No of Vessels with Violations
           </div>
           <div className="flex-1 min-h-0" data-testid="chart-vessels-violations">
-            <AgCharts options={violationsChartOptions} ref={violationsChartRef} />
-          </div>
-          <div className="text-xs text-center text-gray-500 mt-1">
-            <span className="text-gray-400">0</span>
-            <span className="mx-2">|</span>
-            <span className="text-gray-600 dark:text-gray-400">{metrics.totalVessels}</span>
+            <AgGauge options={violationsGaugeOptions} />
           </div>
         </div>
 
@@ -341,12 +315,7 @@ export const PerformanceOverviewCard = ({
             No of Vessels with NCs
           </div>
           <div className="flex-1 min-h-0" data-testid="chart-vessels-ncs">
-            <AgCharts options={ncsChartOptions} ref={ncsChartRef} />
-          </div>
-          <div className="text-xs text-center text-gray-500 mt-1">
-            <span className="text-gray-400">0</span>
-            <span className="mx-2">|</span>
-            <span className="text-gray-600 dark:text-gray-400">{metrics.totalVessels}</span>
+            <AgGauge options={ncsGaugeOptions} />
           </div>
         </div>
       </div>
