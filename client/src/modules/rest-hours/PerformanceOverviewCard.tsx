@@ -61,6 +61,20 @@ export const PerformanceOverviewCard = ({
     return months;
   }, [periodFilter, currentYear, currentMonth]);
 
+  // Fetch total vessels count from master data
+  const { data: allVessels = [] } = useQuery<Array<{ id: number; entryId: string; name: string }>>({
+    queryKey: ['/api/masters/014/data'],
+    enabled: true,
+  });
+
+  // Calculate total vessels based on filter
+  const totalVesselsInFleet = useMemo(() => {
+    if (vesselIds && vesselIds.length > 0) {
+      return vesselIds.length;
+    }
+    return allVessels.length;
+  }, [vesselIds, allVessels]);
+
   // Fetch crew records data
   const { data: allCrewRecords = [], isLoading, isError, error } = useQuery<any[]>({
     queryKey: ['/api/rest-hours-crew-records-performance', vesselIds, complianceMode, opaMode, monthsToFetch],
@@ -94,6 +108,9 @@ export const PerformanceOverviewCard = ({
 
   // Calculate performance metrics
   const metrics = useMemo(() => {
+    // Use total vessels from fleet, not just vessels with data
+    const totalVessels = totalVesselsInFleet;
+
     if (!allCrewRecords || allCrewRecords.length === 0) {
       return {
         totalViolations: 0,
@@ -101,7 +118,7 @@ export const PerformanceOverviewCard = ({
         predictedNCs: 0,
         vesselsWithViolations: 0,
         vesselsWithNCs: 0,
-        totalVessels: 0,
+        totalVessels,
         violationsPercentage: 0,
         ncsPercentage: 0,
       };
@@ -119,7 +136,7 @@ export const PerformanceOverviewCard = ({
         predictedNCs: 0,
         vesselsWithViolations: 0,
         vesselsWithNCs: 0,
-        totalVessels: 0,
+        totalVessels,
         violationsPercentage: 0,
         ncsPercentage: 0,
       };
@@ -130,7 +147,6 @@ export const PerformanceOverviewCard = ({
     let predictedNCs = 0;
     const vesselsWithViolationsSet = new Set<string>();
     const vesselsWithNCsSet = new Set<string>();
-    const allVesselsSet = new Set<string>();
 
     realRecords.forEach(record => {
       totalViolations += (record.totalViolations || 0);
@@ -138,8 +154,6 @@ export const PerformanceOverviewCard = ({
       predictedNCs += (record.predictedViolations || 0);
       
       if (record.vesselId) {
-        allVesselsSet.add(record.vesselId);
-        
         if ((record.totalViolations || 0) > 0) {
           vesselsWithViolationsSet.add(record.vesselId);
         }
@@ -150,7 +164,6 @@ export const PerformanceOverviewCard = ({
       }
     });
 
-    const totalVessels = allVesselsSet.size;
     const vesselsWithViolations = vesselsWithViolationsSet.size;
     const vesselsWithNCs = vesselsWithNCsSet.size;
     
@@ -167,7 +180,7 @@ export const PerformanceOverviewCard = ({
       violationsPercentage,
       ncsPercentage,
     };
-  }, [allCrewRecords]);
+  }, [allCrewRecords, totalVesselsInFleet]);
 
   // Helper function to get color based on percentage
   const getColorForPercentage = (percentage: number): string => {

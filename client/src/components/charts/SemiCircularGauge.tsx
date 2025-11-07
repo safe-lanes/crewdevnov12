@@ -77,12 +77,15 @@ function describeArc(x: number, y: number, radius: number, startAngle: number, e
   const start = polarToCartesian(x, y, radius, startAngle);
   const end = polarToCartesian(x, y, radius, endAngle);
   
-  // Calculate the absolute angle difference, normalized to 0-360
-  const angleDiff = Math.abs((endAngle - startAngle + 360) % 360);
+  // Calculate the angle difference
+  // For arc from 180° to 0° going through top (counter-clockwise in SVG = through 270°)
+  let angleDiff = startAngle - endAngle;
+  if (angleDiff < 0) angleDiff += 360;
+  
   // For 180 degrees or more, we need the large arc flag
   const largeArcFlag = angleDiff >= 180 ? '1' : '0';
-  // Use sweep flag = 1 for clockwise direction
-  const sweepFlag = '1';
+  // Use sweep flag = 0 for counter-clockwise (goes through the top for our semicircle)
+  const sweepFlag = '0';
   
   return [
     'M', start.x, start.y,
