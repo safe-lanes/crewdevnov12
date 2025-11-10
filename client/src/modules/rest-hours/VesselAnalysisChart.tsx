@@ -37,6 +37,14 @@ export const VesselAnalysisChart = ({
 }: VesselAnalysisChartProps) => {
   const [mode, setMode] = useState<'violations' | 'ncs'>('ncs');
   const [showFullscreen, setShowFullscreen] = useState(false);
+  
+  // Dialog state for drill-down
+  const [violationsDialogOpen, setViolationsDialogOpen] = useState(false);
+  const [ncDialogOpen, setNCDialogOpen] = useState(false);
+  const [selectedVesselId, setSelectedVesselId] = useState<string>('');
+  const [selectedVesselName, setSelectedVesselName] = useState<string>('');
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
+  
   const currentYear = new Date().getFullYear();
 
   // Get selected year from period filter
