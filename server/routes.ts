@@ -95,6 +95,8 @@ function calculateVesselReviewStatus(monthValue: string, vesselReviewSubmittedDa
   } else if (now >= nextMonth) {
     return 'Due';
   }
+  
+  return '';
 }
 
 function calculateOfficeReviewStatus(
@@ -298,6 +300,9 @@ async function syncVariableTaskToRHRecords(task: any, oldTask?: any) {
         currentDate.setDate(currentDate.getDate() + 1);
       }
     }
+    
+    // Recalculate activity conflicts for this vessel/month after syncing
+    await recalculateActivityConflicts(task.vesselId, task.periodValue);
   } catch (error) {
     console.error('Failed to sync variable task to RH records:', error);
   }
@@ -411,6 +416,232 @@ async function removeVariableTaskFromRHRecords(task: any) {
     }
   } catch (error) {
     console.error('Failed to remove variable task from RH records:', error);
+  }
+}
+
+// Helper function to recalculate activity conflicts for a vessel/month
+async function recalculateActivityConflicts(vesselId: string, monthYear: string) {
+  try {
+    console.log(`🔍 Recalculating activity conflicts for vessel ${vesselId}, month ${monthYear}`);
+    
+    // Get all COMPLETED variable tasks for this vessel and month
+    const allTasks = await storage.getVariableTasksByFilters({ vesselId, periodValue: monthYear });
+    const completedTasks = allTasks.filter(task => 
+      !task.isDraft && 
+      task.statusType === 'completed'
+    );
+    
+    if (completedTasks.length === 0) {
+      console.log('No completed tasks found - no conflicts possible');
+      
+      // Update vessel record to clear conflicts
+      const vesselRecords = await storage.getRestHoursVesselRecords();
+      const vesselRecord = vesselRecords.find(r => r.vesselId === vesselId && r.monthValue === monthYear);
+      if (vesselRecord) {
+        await storage.updateRestHoursVesselRecord(vesselRecord.id, {
+          activityConflicting: false,
+          crewWithActivityConflicts: 0,
+          crewWithActivityConflictsDetails: null
+        });
+      }
+      
+      // Also clear crew-level records to prevent stuck flags
+      const crewRecords = await storage.getRestHoursCrewRecords();
+      for (const crewRecord of crewRecords) {
+        if (crewRecord.vesselId === vesselId && crewRecord.monthValue === monthYear) {
+          await storage.updateRestHoursCrewRecord(crewRecord.id, {
+            activityConflicting: false
+          });
+        }
+      }
+      
+      return;
+    }
+    
+    console.log(`Found ${completedTasks.length} completed tasks to check`);
+    
+    // Prefetch all RH daily records for this vessel/month to avoid repeated storage calls
+    const allDailyRecords = await storage.getRestHoursDailyRecords();
+    const rhRecordsCache = new Map<string, { record: any; dailyRecords: any[] }>();
+    
+    for (const record of allDailyRecords) {
+      if (record.vesselId === vesselId && record.monthYear === monthYear) {
+        const cacheKey = `${record.crewMemberId}-${monthYear}`;
+        try {
+          const dailyRecords = JSON.parse(record.dailyRecords);
+          rhRecordsCache.set(cacheKey, { record, dailyRecords });
+        } catch (e) {
+          console.error(`Failed to parse dailyRecords for crew ${record.crewMemberId} - treating as conflict`);
+          // Treat parse failures as missing data = conflict
+          rhRecordsCache.set(cacheKey, { record, dailyRecords: [] });
+        }
+      }
+    }
+    
+    // Track crew members with conflicts
+    const crewConflictsMap = new Map<string, { name: string; rank: string }>();
+    
+    // Process each completed task
+    for (const task of completedTasks) {
+      // Parse crew involved details
+      let crewDetails: any = {};
+      try {
+        crewDetails = JSON.parse(task.crewInvolvedDetails || '{}');
+      } catch (e) {
+        console.error('Failed to parse crew details:', e);
+        continue;
+      }
+      
+      const crewArray = crewDetails.crew || [];
+      if (crewArray.length === 0) {
+        continue;
+      }
+      
+      // Parse task dates and times (format: "04-Oct-2025 / 10:00")
+      const [startDateStr, startTimeStr] = task.startDateTime.split(' / ');
+      const [finishDateStr, finishTimeStr] = task.finishDateTime.split(' / ');
+      
+      // Parse date from DD-MMM-YYYY format
+      const parseTaskDate = (dateStr: string) => {
+        const [day, monthStr, year] = dateStr.split('-');
+        const monthMap: Record<string, number> = {
+          'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+          'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+        };
+        return new Date(parseInt(year), monthMap[monthStr], parseInt(day));
+      };
+      
+      const startDate = parseTaskDate(startDateStr);
+      const finishDate = parseTaskDate(finishDateStr);
+      
+      const startCell = timeToCell(startTimeStr);
+      const [finishHours, finishMinutes] = finishTimeStr.split(':').map(Number);
+      let finishCell = timeToCell(finishTimeStr);
+      if (finishMinutes === 0 && finishCell > 0) {
+        finishCell = finishCell - 1;
+      }
+      
+      // Check each crew member
+      for (const crew of crewArray) {
+        // Process each day in the task date range
+        let currentDate = new Date(startDate);
+        let hasConflict = false;
+        
+        while (currentDate <= finishDate && !hasConflict) {
+          // Skip this day if it's the finish date and task ends at midnight (00:00)
+          if (currentDate.getTime() === finishDate.getTime() && finishCell === 0) {
+            break;
+          }
+          
+          const taskMonthYear = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+          const day = currentDate.getDate();
+          
+          // Get cached RH daily record for this crew member (or fetch if not cached for cross-month tasks)
+          const cacheKey = `${crew.id}-${taskMonthYear}`;
+          let cachedData = rhRecordsCache.get(cacheKey);
+          
+          // If not in cache (e.g., task spans multiple months), fetch and cache it
+          if (!cachedData) {
+            const rhRecord = await storage.getRestHoursDailyRecordByKey(crew.id, vesselId, taskMonthYear);
+            if (!rhRecord) {
+              // No RH record exists = conflict
+              hasConflict = true;
+              break;
+            }
+            
+            try {
+              const dailyRecords = JSON.parse(rhRecord.dailyRecords);
+              cachedData = { record: rhRecord, dailyRecords };
+              rhRecordsCache.set(cacheKey, cachedData);
+            } catch (e) {
+              console.error(`Failed to parse dailyRecords for crew ${crew.id} - treating as conflict`);
+              // Corrupted data = conflict
+              hasConflict = true;
+              break;
+            }
+          }
+          
+          if (cachedData.dailyRecords.length === 0) {
+            // Empty or corrupted data = conflict
+            hasConflict = true;
+            break;
+          }
+          
+          const dayRecord = cachedData.dailyRecords.find((d: any) => d.day === day);
+          if (!dayRecord) {
+            // No day record = conflict
+            hasConflict = true;
+            break;
+          }
+          
+          // Determine cell range for this day
+          let dayCellStart = 0;
+          let dayCellEnd = 47;
+          
+          if (currentDate.getTime() === startDate.getTime()) {
+            dayCellStart = startCell;
+          }
+          if (currentDate.getTime() === finishDate.getTime()) {
+            dayCellEnd = finishCell;
+          }
+          
+          // Check if any cells in the task time range are blank (rest)
+          for (let cellIdx = dayCellStart; cellIdx <= dayCellEnd; cellIdx++) {
+            const code = dayRecord.hours[cellIdx];
+            // Blank/empty = rest, which conflicts with a completed task
+            // Work codes are: 'a', 'w', 'd'
+            if (!code || code === '') {
+              hasConflict = true;
+              break;
+            }
+          }
+          
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+        
+        // Add to conflicts map if conflict found
+        if (hasConflict) {
+          crewConflictsMap.set(crew.id, {
+            name: crew.name,
+            rank: crew.rank
+          });
+        }
+      }
+    }
+    
+    // Prepare conflict details
+    const crewWithConflicts = Array.from(crewConflictsMap.values());
+    const hasConflicts = crewWithConflicts.length > 0;
+    const conflictDetailsJson = hasConflicts ? JSON.stringify(crewWithConflicts) : null;
+    
+    console.log(`Conflicts found: ${hasConflicts}, Crew count: ${crewWithConflicts.length}`);
+    
+    // Update vessel record with conflict status
+    const vesselRecords = await storage.getRestHoursVesselRecords();
+    const vesselRecord = vesselRecords.find(r => r.vesselId === vesselId && r.monthValue === monthYear);
+    
+    if (vesselRecord) {
+      await storage.updateRestHoursVesselRecord(vesselRecord.id, {
+        activityConflicting: hasConflicts,
+        crewWithActivityConflicts: crewWithConflicts.length,
+        crewWithActivityConflictsDetails: conflictDetailsJson
+      });
+      console.log(`✅ Updated vessel record with conflict status`);
+    }
+    
+    // Also update crew-level records
+    const crewRecords = await storage.getRestHoursCrewRecords();
+    for (const crewRecord of crewRecords) {
+      if (crewRecord.vesselId === vesselId && crewRecord.monthValue === monthYear) {
+        const crewHasConflict = crewConflictsMap.has(crewRecord.crewMemberId);
+        await storage.updateRestHoursCrewRecord(crewRecord.id, {
+          activityConflicting: crewHasConflict
+        });
+      }
+    }
+    
+  } catch (error) {
+    console.error('Failed to recalculate activity conflicts:', error);
   }
 }
 
@@ -3417,6 +3648,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid rest hours daily record data", details: result.error.issues });
       }
       const record = await storage.createRestHoursDailyRecord(result.data);
+      
+      // Recalculate activity conflicts for this vessel/month after creating RH record
+      await recalculateActivityConflicts(record.vesselId, record.monthYear);
+      
       res.status(201).json(record);
     } catch (error) {
       console.error("Failed to create rest hours daily record:", error);
@@ -3441,6 +3676,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Update recording percentages after saving
       await updateRecordingPercentages(record.crewMemberId, record.vesselId, record.monthYear);
+      
+      // Recalculate activity conflicts for this vessel/month after updating RH record
+      await recalculateActivityConflicts(record.vesselId, record.monthYear);
       
       res.json(record);
     } catch (error) {
