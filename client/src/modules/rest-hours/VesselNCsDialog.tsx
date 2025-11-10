@@ -202,7 +202,7 @@ export function VesselNCsDialog({
                       <th className="px-4 py-2 text-left text-sm font-semibold">Rank</th>
                       <th className="px-4 py-2 text-left text-sm font-semibold">Name</th>
                       <th className="px-4 py-2 text-left text-sm font-semibold">Status</th>
-                      <th className="px-4 py-2 text-left text-sm font-semibold">View Report</th>
+                      <th className="px-4 py-2 text-center text-sm font-semibold">View Report</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -228,13 +228,13 @@ export function VesselNCsDialog({
                             <td className="px-4 py-2 text-sm">
                               <StatusBadge status={crew.status} />
                             </td>
-                            <td className="px-4 py-2 text-sm">
+                            <td className="px-4 py-2 text-center">
                               <Button
-                                variant="link"
+                                variant="outline"
                                 size="sm"
-                                className="p-0 h-auto text-blue-600 hover:text-blue-800"
                                 onClick={() => handleViewReport(crew.crewRecord)}
                                 data-testid={`button-view-report-${crew.crewMemberId}`}
+                                className="text-xs"
                               >
                                 View Report
                               </Button>
