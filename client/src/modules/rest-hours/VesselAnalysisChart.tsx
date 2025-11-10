@@ -191,6 +191,20 @@ export const VesselAnalysisChart = ({
     };
   }, [toolbar, onRenderToolbar]);
 
+  // Click handler for badge clicks
+  const handleBadgeClick = (vesselId: string, vesselName: string, monthKey: string) => {
+    setSelectedVesselId(vesselId);
+    setSelectedVesselName(vesselName);
+    setSelectedMonth(monthKey);
+    
+    // Open appropriate dialog based on current mode
+    if (mode === 'violations') {
+      setViolationsDialogOpen(true);
+    } else {
+      setNCDialogOpen(true);
+    }
+  };
+
   // Render table content (shared between regular and fullscreen views)
   const renderTable = () => (
     <table className="w-full border-collapse">
@@ -241,7 +255,11 @@ export const VesselAnalysisChart = ({
                           {value === 0 ? (
                             <div className="w-6 h-6 rounded-full bg-gray-300 dark:bg-gray-600" />
                           ) : (
-                            <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center">
+                            <div 
+                              className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center cursor-pointer hover:bg-red-600 transition-colors"
+                              onClick={() => handleBadgeClick(vessel.vesselId, vessel.vesselName, monthKey)}
+                              data-testid={`badge-${vessel.vesselId}-${month.toLowerCase()}`}
+                            >
                               <span className="text-white text-[10px] font-semibold">
                                 {value}
                               </span>
