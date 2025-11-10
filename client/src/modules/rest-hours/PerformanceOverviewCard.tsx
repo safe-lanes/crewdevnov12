@@ -4,6 +4,7 @@ import { SemiCircularGauge } from '@/components/charts/SemiCircularGauge';
 import type { PeriodFilterValue } from '@/components/filters/PeriodFilter';
 import { ViolationsOverviewDialog } from './ViolationsOverviewDialog';
 import { NCOverviewDialog } from './NCOverviewDialog';
+import { VesselViolationsDialog } from './VesselViolationsDialog';
 
 interface PerformanceOverviewCardProps {
   vesselIds?: string[];
@@ -27,6 +28,7 @@ export const PerformanceOverviewCard = ({
   const [violationsDialogOpen, setViolationsDialogOpen] = useState(false);
   const [ncsDialogOpen, setNCsDialogOpen] = useState(false);
   const [predictedViolationsDialogOpen, setPredictedViolationsDialogOpen] = useState(false);
+  const [vesselViolationsDialogOpen, setVesselViolationsDialogOpen] = useState(false);
 
   // Generate months to fetch based on period filter
   const monthsToFetch = useMemo(() => {
@@ -271,7 +273,12 @@ export const PerformanceOverviewCard = ({
           <div className="text-xs text-center text-gray-600 dark:text-gray-400 mb-2 font-medium min-h-[32px] flex items-center justify-center">
             No of Vessels with Violations
           </div>
-          <div className="flex-1 flex items-center justify-center" data-testid="chart-vessels-violations">
+          <div 
+            className={`flex-1 flex items-center justify-center ${!isMultiMonthMode ? 'cursor-pointer' : ''} transition-opacity hover:opacity-80`}
+            data-testid="chart-vessels-violations"
+            onClick={() => !isMultiMonthMode && setVesselViolationsDialogOpen(true)}
+            title={!isMultiMonthMode ? "Click to view vessel violations" : "Drilldown available for single-month view only"}
+          >
             <SemiCircularGauge
               value={metrics.vesselsWithViolations}
               max={metrics.totalVessels || 1}
@@ -330,6 +337,15 @@ export const PerformanceOverviewCard = ({
         complianceMode={complianceMode}
         opaMode={opaMode}
         isPredicted={true}
+        vesselIds={vesselIds}
+      />
+
+      <VesselViolationsDialog
+        open={vesselViolationsDialogOpen}
+        onOpenChange={setVesselViolationsDialogOpen}
+        monthValue={dialogMonthValue}
+        complianceMode={complianceMode}
+        opaMode={opaMode}
         vesselIds={vesselIds}
       />
     </div>
