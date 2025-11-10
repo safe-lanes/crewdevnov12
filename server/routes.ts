@@ -2623,6 +2623,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               predictedNCs: predictedNCs,
               crewWithPredictedNCs: crewWithPredictedNCs,
               crewWithPredictedNCsDetails: crewWithPredictedNCsDetailsJson,
+              crewWithActivityConflicts: 0,
+              crewWithActivityConflictsDetails: null,
               vesselReviewStatus: vesselReviewStatus,
               officeReviewStatus: officeReviewStatus
             };
@@ -2643,6 +2645,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               totalCrew: crewCountByVessel.get(vesselId) || 0,
               recordingStatusPercent: recordingPercent,
               activityConflicting: false,
+              crewWithActivityConflicts: 0,
+              crewWithActivityConflictsDetails: null,
               totalViolations: totalViolations,
               crewWithViolations: crewWithViolations,
               crewWithViolationsDetails: crewWithViolationsDetailsJson,
@@ -2792,6 +2796,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               predictedNCs: predictedNCs,
               crewWithPredictedNCs: crewWithPredictedNCs,
               crewWithPredictedNCsDetails: crewWithPredictedNCsDetails.length > 0 ? JSON.stringify(crewWithPredictedNCsDetails) : null,
+              crewWithActivityConflicts: 0,
+              crewWithActivityConflictsDetails: null,
               vesselReviewStatus: vesselReviewStatus,
               officeReviewStatus: officeReviewStatus
             };
@@ -2828,6 +2834,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             predictedNCs: 0,
             crewWithPredictedNCs: 0,
             crewWithPredictedNCsDetails: null,
+            crewWithActivityConflicts: 0,
+            crewWithActivityConflictsDetails: null,
             vesselReviewStatus: vesselReviewStatus,
             officeReviewStatus: officeReviewStatus
           };
