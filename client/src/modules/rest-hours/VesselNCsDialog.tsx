@@ -84,7 +84,7 @@ export function VesselNCsDialog({
   // Get crew IDs that have NCs
   const crewIdsWithNCs = useMemo(() => {
     return crewSummaries
-      .filter(crew => crew.significantNCs > 0)
+      .filter(crew => crew.totalNCs > 0)
       .map(crew => crew.crewMemberId);
   }, [crewSummaries]);
 
@@ -104,7 +104,7 @@ export function VesselNCsDialog({
     const groups = new Map<string, VesselNCGroup>();
 
     // Filter crew summaries to only those with NCs
-    const crewWithNCs = crewSummaries.filter(crew => crew.significantNCs > 0);
+    const crewWithNCs = crewSummaries.filter(crew => crew.totalNCs > 0);
 
     // Create NC reports map for quick lookup
     const ncReportsMap = new Map<string, NCReport>();
@@ -133,7 +133,7 @@ export function VesselNCsDialog({
       }
 
       const group = groups.get(vesselId)!;
-      group.totalNCs += crew.significantNCs;
+      group.totalNCs += crew.totalNCs;
       group.crewMembers.push({
         crewMemberId: crew.crewMemberId,
         crewMemberName: crew.name,
