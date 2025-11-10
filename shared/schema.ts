@@ -482,6 +482,8 @@ export const restHoursVesselRecords = pgTable("rest_hours_vessel_records", {
   totalCrew: integer("total_crew").notNull().default(0),
   recordingStatusPercent: integer("recording_status_percent").notNull().default(0), // 0-100
   activityConflicting: boolean("activity_conflicting").notNull().default(false), // Yes/No
+  crewWithActivityConflicts: integer("crew_with_activity_conflicts").notNull().default(0),
+  crewWithActivityConflictsDetails: text("crew_with_activity_conflicts_details"), // JSON array: [{name: string, rank: string}]
   totalViolations: integer("total_violations").notNull().default(0),
   crewWithViolations: integer("crew_with_violations").notNull().default(0),
   crewWithViolationsDetails: text("crew_with_violations_details"), // JSON array: [{name: string, rank: string}]
