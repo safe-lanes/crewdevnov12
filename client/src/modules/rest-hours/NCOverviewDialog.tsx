@@ -168,9 +168,9 @@ export function NCOverviewDialog({
 
   // Fetch NC reports for crew with NCs
   const { data: allNCReports = [], isLoading: isLoadingNCs } = useQuery<NCReport[]>({
-    queryKey: ['/api/nc-reports'],
+    queryKey: ['/api/nc-reports/all'],
     queryFn: async () => {
-      const response = await fetch('/api/nc-reports', { credentials: 'include' });
+      const response = await fetch('/api/nc-reports/all', { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch NC reports');
       return response.json();
     },

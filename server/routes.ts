@@ -3618,6 +3618,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // NC Reports API routes
+  app.get("/api/nc-reports/all", async (req, res) => {
+    try {
+      const reports = await storage.getAllNCReports();
+      res.json(reports);
+    } catch (error) {
+      console.error("Failed to get all NC reports:", error);
+      res.status(500).json({ error: "Failed to get all NC reports" });
+    }
+  });
+
   app.get("/api/nc-reports", async (req, res) => {
     try {
       const { crewMemberId, vesselId, monthValue } = req.query;

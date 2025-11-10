@@ -159,6 +159,7 @@ export interface IStorage {
   getOfficeViolationComment(vesselId: string, monthValue: string): Promise<OfficeViolationComment | null>;
   saveOfficeViolationComment(comment: InsertOfficeViolationComment): Promise<OfficeViolationComment>;
   // NC Reports
+  getAllNCReports(): Promise<NCReport[]>;
   getNCReport(crewMemberId: string, vesselId: string, monthValue: string): Promise<NCReport | null>;
   saveNCReport(report: InsertNCReport): Promise<NCReport>;
 }
@@ -2051,6 +2052,10 @@ export class MemStorage implements IStorage {
   }
 
   // NC Reports Methods
+  async getAllNCReports(): Promise<NCReport[]> {
+    return Array.from(this.ncReports.values());
+  }
+
   async getNCReport(crewMemberId: string, vesselId: string, monthValue: string): Promise<NCReport | null> {
     const reports = Array.from(this.ncReports.values());
     const existing = reports.find(r => 
@@ -2390,6 +2395,10 @@ export class PersistentFileStorage implements IStorage {
   }
 
   // NC Reports Methods
+  async getAllNCReports(): Promise<NCReport[]> {
+    return Array.from(this.ncReports.values());
+  }
+
   async getNCReport(crewMemberId: string, vesselId: string, monthValue: string): Promise<NCReport | null> {
     const reports = Array.from(this.ncReports.values());
     const existing = reports.find(r => 
