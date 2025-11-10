@@ -1,7 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { SemiCircularGauge } from '@/components/charts/SemiCircularGauge';
 import type { PeriodFilterValue } from '@/components/filters/PeriodFilter';
+import { ViolationsOverviewDialog } from './ViolationsOverviewDialog';
+import { NCOverviewDialog } from './NCOverviewDialog';
 
 interface PerformanceOverviewCardProps {
   vesselIds?: string[];
@@ -20,6 +22,11 @@ export const PerformanceOverviewCard = ({
 }: PerformanceOverviewCardProps) => {
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
+
+  // Dialog state management
+  const [violationsDialogOpen, setViolationsDialogOpen] = useState(false);
+  const [ncsDialogOpen, setNCsDialogOpen] = useState(false);
+  const [predictedViolationsDialogOpen, setPredictedViolationsDialogOpen] = useState(false);
 
   // Generate months to fetch based on period filter
   const monthsToFetch = useMemo(() => {
@@ -74,6 +81,20 @@ export const PerformanceOverviewCard = ({
     }
     return allVessels.length;
   }, [vesselIds, allVessels]);
+
+  // Compute monthValue for dialogs
+  // Note: For single-month periods, use that month. For multi-month periods (quarter/range),
+  // use the first month as dialogs currently support single-month view only.
+  // TODO: Future enhancement - support multi-month aggregation in dialogs
+  const dialogMonthValue = useMemo(() => {
+    if (monthsToFetch.length > 0) {
+      return monthsToFetch[0]; // Use first month for consistency
+    }
+    return `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+  }, [monthsToFetch, currentYear, currentMonth]);
+
+  // Check if we're in multi-month mode or have no valid month
+  const isMultiMonthMode = monthsToFetch.length !== 1;
 
   // Fetch crew records data
   const { data: allCrewRecords = [], isLoading, isError, error } = useQuery<any[]>({
@@ -211,19 +232,34 @@ export const PerformanceOverviewCard = ({
       <div className="grid grid-cols-3 gap-4">
         <div className="text-center">
           <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Total Violations</div>
-          <div className="text-3xl font-bold text-gray-800 dark:text-gray-200" data-testid="metric-total-violations">
+          <div 
+            className={`text-3xl font-bold text-gray-800 dark:text-gray-200 ${!isMultiMonthMode ? 'cursor-pointer hover:text-blue-600 dark:hover:text-blue-400' : ''} transition-colors`}
+            data-testid="metric-total-violations"
+            onClick={() => !isMultiMonthMode && setViolationsDialogOpen(true)}
+            title={!isMultiMonthMode ? "Click to view details" : "Drilldown available for single-month view only"}
+          >
             {metrics.totalViolations}
           </div>
         </div>
         <div className="text-center">
           <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Total NCs</div>
-          <div className="text-3xl font-bold text-gray-800 dark:text-gray-200" data-testid="metric-significant-ncs">
+          <div 
+            className={`text-3xl font-bold text-gray-800 dark:text-gray-200 ${!isMultiMonthMode ? 'cursor-pointer hover:text-blue-600 dark:hover:text-blue-400' : ''} transition-colors`}
+            data-testid="metric-significant-ncs"
+            onClick={() => !isMultiMonthMode && setNCsDialogOpen(true)}
+            title={!isMultiMonthMode ? "Click to view details" : "Drilldown available for single-month view only"}
+          >
             {metrics.significantNCs}
           </div>
         </div>
         <div className="text-center">
           <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Predicted NCs</div>
-          <div className="text-3xl font-bold text-gray-800 dark:text-gray-200" data-testid="metric-predicted-ncs">
+          <div 
+            className={`text-3xl font-bold text-gray-800 dark:text-gray-200 ${!isMultiMonthMode ? 'cursor-pointer hover:text-blue-600 dark:hover:text-blue-400' : ''} transition-colors`}
+            data-testid="metric-predicted-ncs"
+            onClick={() => !isMultiMonthMode && setPredictedViolationsDialogOpen(true)}
+            title={!isMultiMonthMode ? "Click to view details" : "Drilldown available for single-month view only"}
+          >
             {metrics.predictedNCs}
           </div>
         </div>
@@ -259,6 +295,43 @@ export const PerformanceOverviewCard = ({
           </div>
         </div>
       </div>
+
+      {/* Dialogs */}
+      <ViolationsOverviewDialog
+        open={violationsDialogOpen}
+        onOpenChange={setViolationsDialogOpen}
+        vesselId=""
+        vesselName=""
+        monthValue={dialogMonthValue}
+        complianceMode={complianceMode}
+        opaMode={opaMode}
+        isPredicted={false}
+        vesselIds={vesselIds}
+      />
+
+      <NCOverviewDialog
+        open={ncsDialogOpen}
+        onOpenChange={setNCsDialogOpen}
+        vesselId=""
+        vesselName=""
+        monthValue={dialogMonthValue}
+        complianceMode={complianceMode}
+        opaMode={opaMode}
+        isPredicted={false}
+        vesselIds={vesselIds}
+      />
+
+      <ViolationsOverviewDialog
+        open={predictedViolationsDialogOpen}
+        onOpenChange={setPredictedViolationsDialogOpen}
+        vesselId=""
+        vesselName=""
+        monthValue={dialogMonthValue}
+        complianceMode={complianceMode}
+        opaMode={opaMode}
+        isPredicted={true}
+        vesselIds={vesselIds}
+      />
     </div>
   );
 };
