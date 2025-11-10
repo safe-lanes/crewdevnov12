@@ -1,11 +1,12 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { filterViolations } from './violationFilters';
 import { NCReportDialog } from './NCReportDialog';
-import type { RestHoursCrewRecord } from '@shared/schema';
+import type { RestHoursCrewRecord, NCReport } from '@shared/schema';
 
 // Violation code descriptions mapping
 const VIOLATION_CODE_DESCRIPTIONS: Record<number, string> = {
@@ -66,6 +67,7 @@ interface NCRecord {
   filteredViolations: number[];
   filteredDiagnostics: ViolationDiagnostic[];
   comments: string;
+  status: 'Open' | 'Closed';
 }
 
 // Helper function to normalize rank for comparison (strip suffixes like "_1", "_2", trim, lowercase)
@@ -164,7 +166,18 @@ export function NCOverviewDialog({
     enabled: open && crewIdsWithNCs.length > 0,
   });
 
-  const isLoading = isLoadingSummaries || isLoadingDaily;
+  // Fetch NC reports for crew with NCs
+  const { data: allNCReports = [], isLoading: isLoadingNCs } = useQuery<NCReport[]>({
+    queryKey: ['/api/nc-reports'],
+    queryFn: async () => {
+      const response = await fetch('/api/nc-reports', { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch NC reports');
+      return response.json();
+    },
+    enabled: open && crewIdsWithNCs.length > 0 && !isPredicted,
+  });
+
+  const isLoading = isLoadingSummaries || isLoadingDaily || isLoadingNCs;
 
   // Create rank order map for sorting
   const rankOrderMap = useMemo(() => {
@@ -180,6 +193,18 @@ export function NCOverviewDialog({
     });
     return map;
   }, [availableRanks]);
+
+  // Create NC reports status map for quick lookup
+  const ncReportsStatusMap = useMemo(() => {
+    const map = new Map<string, 'Open' | 'Closed'>();
+    allNCReports
+      .filter(report => report.monthValue === monthValue)
+      .forEach(report => {
+        const key = `${report.crewMemberId}-${report.vesselId}-${report.monthValue}`;
+        map.set(key, (report.status as any) || 'Open');
+      });
+    return map;
+  }, [allNCReports, monthValue]);
 
   // Parse and aggregate all NCs from all crew members using pre-calculated NC days
   const ncRecords = useMemo(() => {
@@ -244,6 +269,10 @@ export function NCOverviewDialog({
       const baseName = crew.rank.split('_')[0];
       const rankSortOrder = rankOrderMap.get(baseName) || rankOrderMap.get(crew.rank) || 999;
 
+      // Get NC report status for this crew member
+      const ncReportKey = `${crew.crewMemberId}-${crew.vesselId}-${monthValue}`;
+      const ncStatus = ncReportsStatusMap.get(ncReportKey) || 'Open';
+
       // For each violation day (which contributes to the NC), find the corresponding daily record
       violationDays.forEach(day => {
         const dayRecord = dailyRecords.find(r => r.day === day && (isPredicted ? r.isPlan : !r.isPlan));
@@ -265,6 +294,7 @@ export function NCOverviewDialog({
             filteredViolations: filteredViolations.sort((a, b) => a - b),
             filteredDiagnostics,
             comments: dayRecord.comments || '',
+            status: ncStatus,
           });
         } else {
           // If we can't find the daily record, still show the violation date
@@ -279,6 +309,7 @@ export function NCOverviewDialog({
             filteredViolations: [],
             filteredDiagnostics: [],
             comments: '',
+            status: ncStatus,
           });
         }
       });
@@ -291,7 +322,7 @@ export function NCOverviewDialog({
       if (a.crewMemberName !== b.crewMemberName) return a.crewMemberName.localeCompare(b.crewMemberName);
       return a.day - b.day;
     });
-  }, [crewSummaries, allDailyRecords, rankOrderMap, vesselNameMap, vesselIdsToUse, complianceMode, opaMode, isPredicted, crewIdsWithNCs, rankFilter, monthValue]);
+  }, [crewSummaries, allDailyRecords, rankOrderMap, vesselNameMap, vesselIdsToUse, complianceMode, opaMode, isPredicted, crewIdsWithNCs, rankFilter, monthValue, ncReportsStatusMap]);
 
   // Format month for display
   const formatMonth = (monthStr: string) => {
@@ -372,6 +403,9 @@ export function NCOverviewDialog({
                     <th className="px-4 py-2 text-left text-sm font-semibold">Violations</th>
                     <th className="px-4 py-2 text-left text-sm font-semibold">Comments</th>
                     {!isPredicted && (
+                      <th className="px-4 py-2 text-left text-sm font-semibold">Status</th>
+                    )}
+                    {!isPredicted && (
                       <th className="px-4 py-2 text-center text-sm font-semibold">View Report</th>
                     )}
                   </tr>
@@ -441,6 +475,11 @@ export function NCOverviewDialog({
                         })}
                       </td>
                       <td className="px-4 py-2 text-sm">{record.comments}</td>
+                      {!isPredicted && isFirstRowForCrew && (
+                        <td className="px-4 py-2 text-sm align-middle" rowSpan={rowSpan}>
+                          <StatusBadge status={record.status} />
+                        </td>
+                      )}
                       {!isPredicted && isFirstRowForCrew && (
                         <td 
                           className="px-4 py-2 text-center align-middle" 
