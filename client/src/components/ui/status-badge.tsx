@@ -31,7 +31,6 @@ export function StatusBadge({ status, className, variant = "default" }: StatusBa
     return (
       <span
         className={cn("text-gray-700", className)}
-        style={{ fontSize: '13px' }}
         data-testid={`status-badge-${status.toLowerCase()}`}
       >
         {status}
