@@ -48,6 +48,50 @@ const YesNoRenderer = (params: ICellRendererParams) => {
   if (value == null) return null;
 
   const isYes = value === true || value === 'Yes';
+  
+  // Check if this is the Activity Conflicts column and parse crew details for tooltip
+  const isActivityConflicts = params.colDef.field === 'activityConflicting';
+  let crewDetails: { name: string; rank: string }[] = [];
+  
+  if (isActivityConflicts && isYes) {
+    const crewDetailsJson = params.data?.crewWithActivityConflictsDetails;
+    try {
+      if (crewDetailsJson) {
+        crewDetails = JSON.parse(crewDetailsJson);
+      }
+    } catch (e) {
+      console.error('Failed to parse crew activity conflicts details:', e);
+    }
+  }
+  
+  // If we have crew details, show tooltip
+  if (isActivityConflicts && isYes && crewDetails.length > 0) {
+    return (
+      <div className="flex items-center justify-center h-full py-2">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="px-3 py-1.5 rounded font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 cursor-help" style={{ fontSize: '13px' }}>
+                Yes
+              </span>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              <div className="text-sm">
+                <div className="font-semibold mb-1">Crew with Activity Conflicts:</div>
+                <div className="text-xs">
+                  {crewDetails.map((crew, idx) => (
+                    <div key={idx}>{crew.rank} - {crew.name}</div>
+                  ))}
+                </div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+    );
+  }
+  
+  // Default Yes/No badge without tooltip
   return (
     <div className="flex items-center justify-center h-full py-2">
       <span className={`px-3 py-1.5 rounded font-medium ${
