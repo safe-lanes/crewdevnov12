@@ -93,8 +93,12 @@ export const RankWiseNCsChart = ({
       },
       listeners: {
         seriesNodeClick: (event: any) => {
-          if (event.datum && event.datum.rank) {
-            handleBarClick(event.datum.rank);
+          try {
+            if (event?.datum?.rank) {
+              handleBarClick(event.datum.rank);
+            }
+          } catch (error) {
+            console.error('Error handling chart click:', error);
           }
         },
       } as any,
@@ -117,6 +121,9 @@ export const RankWiseNCsChart = ({
             },
             tooltip: {
               renderer: ({ datum }: any) => {
+                if (!datum || datum.rank === undefined || datum.ncCount === undefined) {
+                  return '';
+                }
                 return `<div class="ag-chart-tooltip-title" style="background-color: #52baf3; padding: 4px 8px; color: white; font-weight: bold;">
                   ${datum.rank}
                 </div>
@@ -148,6 +155,9 @@ export const RankWiseNCsChart = ({
             },
             tooltip: {
               renderer: ({ datum }: any) => {
+                if (!datum || datum.rank === undefined || datum.ncCount === undefined) {
+                  return '';
+                }
                 return `<div class="ag-chart-tooltip-title" style="background-color: #52baf3; padding: 4px 8px; color: white; font-weight: bold;">
                   ${datum.rank}
                 </div>
