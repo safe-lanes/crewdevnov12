@@ -65,6 +65,9 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
   const [identifiedRootCause, setIdentifiedRootCause] = useState("");
   const [immediateCorrectiveAction, setImmediateCorrectiveAction] = useState("");
   const [preventiveAction, setPreventiveAction] = useState("");
+  const [preventiveActionStatus, setPreventiveActionStatus] = useState<"Pending" | "Completed">("Pending");
+  const [preventiveActionDueDate, setPreventiveActionDueDate] = useState<Date | undefined>(undefined);
+  const [preventiveActionDateCompleted, setPreventiveActionDateCompleted] = useState<Date | undefined>(undefined);
   const [officeClosureVerifiedByName, setOfficeClosureVerifiedByName] = useState("");
   const [officeClosureDate, setOfficeClosureDate] = useState<Date | undefined>(undefined);
   const [submissionStatus, setSubmissionStatus] = useState<"draft" | "vessel-submitted" | "office-submitted">("draft");
@@ -113,6 +116,9 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
       setIdentifiedRootCause(existingReport.identifiedRootCause || "");
       setImmediateCorrectiveAction(existingReport.immediateCorrectiveAction || "");
       setPreventiveAction(existingReport.preventiveAction || "");
+      setPreventiveActionStatus((existingReport.preventiveActionStatus as any) || "Pending");
+      setPreventiveActionDueDate(existingReport.preventiveActionDueDate ? new Date(existingReport.preventiveActionDueDate) : undefined);
+      setPreventiveActionDateCompleted(existingReport.preventiveActionDateCompleted ? new Date(existingReport.preventiveActionDateCompleted) : undefined);
       setOfficeClosureVerifiedByName(existingReport.officeClosureVerifiedByName || "");
       setOfficeClosureDate(existingReport.officeClosureDate ? new Date(existingReport.officeClosureDate) : undefined);
       setSubmissionStatus(existingReport.submissionStatus as any);
@@ -122,6 +128,9 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
       setIdentifiedRootCause("");
       setImmediateCorrectiveAction("");
       setPreventiveAction("");
+      setPreventiveActionStatus("Pending");
+      setPreventiveActionDueDate(undefined);
+      setPreventiveActionDateCompleted(undefined);
       setOfficeClosureVerifiedByName("");
       setOfficeClosureDate(undefined);
       setSubmissionStatus("draft");
@@ -147,6 +156,9 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
         identifiedRootCause,
         immediateCorrectiveAction,
         preventiveAction,
+        preventiveActionStatus,
+        preventiveActionDueDate,
+        preventiveActionDateCompleted,
         officeClosureVerifiedByName,
         officeClosureVerifiedByPosition: selectedUserPosition,
         officeClosureDate,
@@ -175,7 +187,27 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
   });
 
   const handleSave = () => saveMutation.mutate("draft");
-  const handleVesselSubmit = () => saveMutation.mutate("vessel-submitted");
+  const handleVesselSubmit = () => {
+    // Validate vessel submission fields
+    if (!identifiedRootCause || !immediateCorrectiveAction || !preventiveAction || !preventiveActionDueDate) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in Root Cause, Corrective Action, Preventive Action, and Due Date before submitting.",
+        variant: "destructive",
+      });
+      return;
+    }
+    // If status is "Completed", require Date Completed
+    if (preventiveActionStatus === "Completed" && !preventiveActionDateCompleted) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter Date Completed when status is Completed.",
+        variant: "destructive",
+      });
+      return;
+    }
+    saveMutation.mutate("vessel-submitted");
+  };
   const handleOfficeSubmit = () => saveMutation.mutate("office-submitted");
 
   const isReadOnly = submissionStatus === "office-submitted";
@@ -184,7 +216,8 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
   const canSubmitOffice = Boolean(
     officeClosureVerifiedByName &&
     selectedUserPosition &&
-    officeClosureDate
+    officeClosureDate &&
+    preventiveActionStatus === "Completed"
   );
 
   // Parse violation details from daily records
@@ -370,6 +403,84 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
                   rows={3}
                   className="mt-1"
                 />
+              </div>
+
+              {/* Preventive Action Tracking */}
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="preventiveActionStatus">Status</Label>
+                  <Select
+                    value={preventiveActionStatus}
+                    onValueChange={(value) => setPreventiveActionStatus(value as "Pending" | "Completed")}
+                    disabled={isReadOnly}
+                  >
+                    <SelectTrigger id="preventiveActionStatus" data-testid="select-preventive-action-status" className="mt-1">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Pending">Pending</SelectItem>
+                      <SelectItem value="Completed">Completed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="preventiveActionDueDate">Due Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        id="preventiveActionDueDate"
+                        data-testid="button-preventive-action-due-date"
+                        disabled={isReadOnly}
+                        className={cn(
+                          "w-full justify-start text-left font-normal mt-1",
+                          !preventiveActionDueDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {preventiveActionDueDate ? format(preventiveActionDueDate, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={preventiveActionDueDate}
+                        onSelect={setPreventiveActionDueDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div>
+                  <Label htmlFor="preventiveActionDateCompleted">Date Completed</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        id="preventiveActionDateCompleted"
+                        data-testid="button-preventive-action-date-completed"
+                        disabled={isReadOnly}
+                        className={cn(
+                          "w-full justify-start text-left font-normal mt-1",
+                          !preventiveActionDateCompleted && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {preventiveActionDateCompleted ? format(preventiveActionDateCompleted, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={preventiveActionDateCompleted}
+                        onSelect={setPreventiveActionDateCompleted}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
             </div>
 

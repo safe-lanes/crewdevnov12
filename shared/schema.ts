@@ -600,6 +600,10 @@ export const ncReports = pgTable("nc_reports", {
   immediateCorrectiveAction: text("immediate_corrective_action"), // User input
   preventiveAction: text("preventive_action"), // User input
   
+  preventiveActionStatus: text("preventive_action_status").notNull().default("Pending"), // "Pending" | "Completed"
+  preventiveActionDueDate: timestamp("preventive_action_due_date"), // Due date for preventive action
+  preventiveActionDateCompleted: timestamp("preventive_action_date_completed"), // Date when preventive action was completed
+  
   officeClosureVerifiedByName: text("office_closure_verified_by_name"), // Office user name
   officeClosureVerifiedByPosition: text("office_closure_verified_by_position"), // Auto-filled position
   officeClosureDate: timestamp("office_closure_date"), // Date of office closure
