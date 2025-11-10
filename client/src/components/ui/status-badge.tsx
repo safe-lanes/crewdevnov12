@@ -26,15 +26,26 @@ export function StatusBadge({ status, className, variant = "default" }: StatusBa
   }
   
   // Default compact badge
+  // "Open" renders as plain text, "Closed" renders with green badge
+  if (isOpen) {
+    return (
+      <span
+        className={cn("text-gray-700", className)}
+        style={{ fontSize: '13px' }}
+        data-testid={`status-badge-${status.toLowerCase()}`}
+      >
+        {status}
+      </span>
+    );
+  }
+  
   return (
     <span
       className={cn(
-        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
-        isOpen 
-          ? "bg-red-100 text-red-800 border border-red-300" 
-          : "bg-green-100 text-green-800 border border-green-300",
+        "px-4 py-1.5 rounded font-medium min-w-[70px] text-center bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
         className
       )}
+      style={{ fontSize: '13px' }}
       data-testid={`status-badge-${status.toLowerCase()}`}
     >
       {status}
