@@ -303,11 +303,13 @@ export function ViolationsOverviewDialog({
       });
     });
 
-    // Sort by day, then by rank, then by name
+    // Sort by vessel, then by rank, then by name, then by day
+    // This ensures all rows for the same crew member are consecutive for rowspan to work correctly
     return allViolations.sort((a, b) => {
-      if (a.day !== b.day) return a.day - b.day;
+      if (a.vesselId !== b.vesselId) return a.vesselId.localeCompare(b.vesselId);
       if (a.rank !== b.rank) return a.rank.localeCompare(b.rank);
-      return a.crewMemberName.localeCompare(b.crewMemberName);
+      if (a.crewMemberName !== b.crewMemberName) return a.crewMemberName.localeCompare(b.crewMemberName);
+      return a.day - b.day;
     });
   }, [crewSummaries, allDailyRecords, vesselIdsToUse, monthValue, complianceMode, opaMode, isPredicted, rankFilter, vesselNameMap, crewIdsWithViolations]);
 
@@ -339,7 +341,7 @@ export function ViolationsOverviewDialog({
       <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>
-            {isPredicted ? 'Predicted Violations' : 'Violations'} - {rankFilter ? rankFilter : vesselName} - {formatMonth(monthValue)}
+            {isPredicted ? 'Predicted NCs' : 'Violations'} - {rankFilter ? rankFilter : vesselName} - {formatMonth(monthValue)}
           </DialogTitle>
         </DialogHeader>
 
