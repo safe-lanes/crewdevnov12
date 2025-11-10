@@ -1,9 +1,12 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 import { Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import type { PeriodFilterValue } from '@/components/filters/PeriodFilter';
+import { VesselListDialog } from './VesselListDialog';
+import { VesselReviewDialog } from './VesselReviewDialog';
 
 interface VesselStatusChartProps {
   vesselIds?: string[];
@@ -17,14 +20,20 @@ interface StatusBarProps {
   label: string;
   count: number;
   total: number;
+  onClick?: () => void;
 }
 
-const StatusBar = ({ label, count, total }: StatusBarProps) => {
+const StatusBar = ({ label, count, total, onClick }: StatusBarProps) => {
   const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
   const isZero = count === 0;
+  const isClickable = !isZero && onClick;
   
   return (
-    <div className="flex items-center gap-3">
+    <div 
+      className={`flex items-center gap-3 ${isClickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+      onClick={isClickable ? onClick : undefined}
+      data-testid={`status-bar-${label.toLowerCase().replace(/\s+/g, '-')}`}
+    >
       <div className="min-w-[180px] text-sm text-gray-700 dark:text-gray-300 font-medium flex-shrink-0">
         {label}:
       </div>
@@ -52,7 +61,20 @@ export const VesselStatusChart = ({
   opaMode = false,
   onRenderToolbar,
 }: VesselStatusChartProps) => {
+  const [, setLocation] = useLocation();
   const [showFullscreen, setShowFullscreen] = useState(false);
+  
+  // Dialog states for vessel list popups
+  const [vesselReviewListOpen, setVesselReviewListOpen] = useState(false);
+  const [officeResponseListOpen, setOfficeResponseListOpen] = useState(false);
+  const [conflictListOpen, setConflictListOpen] = useState(false);
+  const [incompleteListOpen, setIncompleteListOpen] = useState(false);
+  
+  // State for vessel review dialog
+  const [vesselReviewDialogOpen, setVesselReviewDialogOpen] = useState(false);
+  const [selectedVessel, setSelectedVessel] = useState<{ id: string; name: string } | null>(null);
+  const [reviewMode, setReviewMode] = useState<'vessel' | 'office'>('vessel');
+  
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
 
@@ -110,13 +132,17 @@ export const VesselStatusChart = ({
         overdueOfficeResponse: 0,
         restHoursConflict: 0,
         incompleteData: 0,
+        overdueVesselReviewVessels: new Set<string>(),
+        overdueOfficeVessels: new Set<string>(),
+        conflictVessels: new Set<string>(),
+        incompleteVessels: new Set<string>(),
       };
     }
 
     // Use Sets to track unique vessels for each metric
     const allVesselIds = new Set<string>();
     const overdueVesselReviewVessels = new Set<string>();
-    const overdueVessels = new Set<string>();
+    const overdueOfficeVessels = new Set<string>();
     const conflictVessels = new Set<string>();
     const incompleteVessels = new Set<string>();
 
@@ -134,7 +160,7 @@ export const VesselStatusChart = ({
 
       // Track vessels with overdue office response
       if (record.officeReviewStatus === 'Overdue') {
-        overdueVessels.add(vesselId);
+        overdueOfficeVessels.add(vesselId);
       }
 
       // Track vessels with activity conflicts
@@ -152,11 +178,35 @@ export const VesselStatusChart = ({
     return {
       totalVessels: allVesselIds.size,
       overdueVesselReview: overdueVesselReviewVessels.size,
-      overdueOfficeResponse: overdueVessels.size,
+      overdueOfficeResponse: overdueOfficeVessels.size,
       restHoursConflict: conflictVessels.size,
       incompleteData: incompleteVessels.size,
+      overdueVesselReviewVessels,
+      overdueOfficeVessels,
+      conflictVessels,
+      incompleteVessels,
     };
   }, [vesselRecords]);
+
+  // Handler functions
+  const handleVesselReviewClick = (vesselId: string, vesselName: string) => {
+    setSelectedVessel({ id: vesselId, name: vesselName });
+    setReviewMode('vessel');
+    setVesselReviewListOpen(false);
+    setVesselReviewDialogOpen(true);
+  };
+
+  const handleOfficeReviewClick = (vesselId: string, vesselName: string) => {
+    setSelectedVessel({ id: vesselId, name: vesselName });
+    setReviewMode('office');
+    setOfficeResponseListOpen(false);
+    setVesselReviewDialogOpen(true);
+  };
+
+  const handleRecordsClick = (vesselId: string, vesselName: string) => {
+    // Navigate to RH Records page with vessel filter
+    setLocation(`/rest-hours/record?vessel=${vesselId}`);
+  };
 
   // Render toolbar
   useEffect(() => {
@@ -213,22 +263,26 @@ export const VesselStatusChart = ({
           <StatusBar 
             label="O/Due Vessel Review" 
             count={metrics.overdueVesselReview} 
-            total={metrics.totalVessels} 
+            total={metrics.totalVessels}
+            onClick={() => setVesselReviewListOpen(true)}
           />
           <StatusBar 
             label="O/Due Office Response" 
             count={metrics.overdueOfficeResponse} 
-            total={metrics.totalVessels} 
+            total={metrics.totalVessels}
+            onClick={() => setOfficeResponseListOpen(true)}
           />
           <StatusBar 
             label="Rest Hours Conflict" 
             count={metrics.restHoursConflict} 
-            total={metrics.totalVessels} 
+            total={metrics.totalVessels}
+            onClick={() => setConflictListOpen(true)}
           />
           <StatusBar 
             label="Incomplete Data" 
             count={metrics.incompleteData} 
-            total={metrics.totalVessels} 
+            total={metrics.totalVessels}
+            onClick={() => setIncompleteListOpen(true)}
           />
         </div>
       </div>
@@ -254,6 +308,63 @@ export const VesselStatusChart = ({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Vessel List Dialogs */}
+      <VesselListDialog
+        open={vesselReviewListOpen}
+        onOpenChange={setVesselReviewListOpen}
+        title="Vessels with Overdue Vessel Review"
+        vesselIds={metrics.overdueVesselReviewVessels}
+        actionType="vesselReview"
+        monthValue={monthValue}
+        onVesselReviewClick={handleVesselReviewClick}
+      />
+
+      <VesselListDialog
+        open={officeResponseListOpen}
+        onOpenChange={setOfficeResponseListOpen}
+        title="Vessels with Overdue Office Response"
+        vesselIds={metrics.overdueOfficeVessels}
+        actionType="officeReview"
+        monthValue={monthValue}
+        onVesselReviewClick={handleOfficeReviewClick}
+      />
+
+      <VesselListDialog
+        open={conflictListOpen}
+        onOpenChange={setConflictListOpen}
+        title="Vessels with Rest Hours Conflict"
+        vesselIds={metrics.conflictVessels}
+        actionType="records"
+        monthValue={monthValue}
+        onRecordsClick={handleRecordsClick}
+      />
+
+      <VesselListDialog
+        open={incompleteListOpen}
+        onOpenChange={setIncompleteListOpen}
+        title="Vessels with Incomplete Data"
+        vesselIds={metrics.incompleteVessels}
+        actionType="records"
+        monthValue={monthValue}
+        onRecordsClick={handleRecordsClick}
+      />
+
+      {/* Vessel Review Dialog */}
+      {selectedVessel && (
+        <VesselReviewDialog
+          open={vesselReviewDialogOpen}
+          onOpenChange={setVesselReviewDialogOpen}
+          vesselId={selectedVessel.id}
+          vesselName={selectedVessel.name}
+          monthValue={monthValue}
+          complianceMode={complianceMode}
+          opaMode={opaMode}
+          mode={reviewMode}
+          vesselReviewStatus=""
+          officeReviewStatus=""
+        />
+      )}
     </>
   );
 };
