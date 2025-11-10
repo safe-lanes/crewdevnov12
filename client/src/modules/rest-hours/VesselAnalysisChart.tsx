@@ -4,6 +4,8 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { ChartToolbar } from '@/components/charts/ChartToolbar';
 import type { PeriodFilterValue } from '@/components/filters/PeriodFilter';
+import { ViolationsOverviewDialog } from './ViolationsOverviewDialog';
+import { NCOverviewDialog } from './NCOverviewDialog';
 
 interface VesselAnalysisChartProps {
   vesselIds?: string[];
