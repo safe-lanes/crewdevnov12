@@ -286,8 +286,11 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
                   <div className="text-sm text-gray-600">NC Reference:</div>
                   <div className="font-semibold">STCW/MLC/ILO</div>
                 </div>
-                <div className="flex items-end justify-end">
-                  <StatusBadge status={status} variant="large" />
+                <div>
+                  <div className="text-sm text-gray-600">Status:</div>
+                  <div className="font-semibold">
+                    <StatusBadge status={status} />
+                  </div>
                 </div>
               </div>
             </div>
