@@ -1063,6 +1063,22 @@ export const insertNCReportSchema = createInsertSchema(ncReports).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  preventiveActionDueDate: z.union([z.string(), z.date()]).optional().transform((val) => {
+    if (!val) return undefined;
+    if (val instanceof Date) return val;
+    return new Date(val);
+  }),
+  preventiveActionDateCompleted: z.union([z.string(), z.date()]).optional().transform((val) => {
+    if (!val) return undefined;
+    if (val instanceof Date) return val;
+    return new Date(val);
+  }),
+  officeClosureDate: z.union([z.string(), z.date()]).optional().transform((val) => {
+    if (!val) return undefined;
+    if (val instanceof Date) return val;
+    return new Date(val);
+  }),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

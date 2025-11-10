@@ -3636,10 +3636,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/nc-reports", async (req, res) => {
     try {
-      console.log("📋 [NC Report] Received request body:", JSON.stringify(req.body, null, 2));
       const result = insertNCReportSchema.safeParse(req.body);
       if (!result.success) {
-        console.error("❌ [NC Report] Validation failed:", JSON.stringify(result.error.issues, null, 2));
         return res.status(400).json({ error: "Invalid NC report data", details: result.error.issues });
       }
       const report = await storage.saveNCReport(result.data);
