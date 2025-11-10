@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -1294,6 +1294,9 @@ export const RHRecordingForm = ({
             <DialogTitle className="text-lg font-semibold text-center flex-1">
               RH Recording Form
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Rest hours recording form for daily work and rest hour tracking
+            </DialogDescription>
             <div className="flex-1 flex items-center justify-end gap-4">
               <span className="text-base font-medium text-[#4a90e2]">{monthDisplay}</span>
               <Button

@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
@@ -350,6 +350,9 @@ export function NCOverviewDialog({
           <DialogTitle>
             {dialogTitle}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            View detailed non-conformity records grouped by crew members
+          </DialogDescription>
         </DialogHeader>
 
         <div className="mt-4">

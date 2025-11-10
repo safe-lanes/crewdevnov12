@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -234,6 +234,9 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">Rest Hours - Non-Conformity Report</DialogTitle>
+          <DialogDescription className="sr-only">
+            Create or view non-conformity report for rest hours violations
+          </DialogDescription>
         </DialogHeader>
 
         {isLoading ? (

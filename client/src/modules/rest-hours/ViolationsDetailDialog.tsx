@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
@@ -143,6 +143,9 @@ export function ViolationsDetailDialog({
           <DialogTitle>
             {isPredicted ? 'Predicted Violations' : 'Violations'} - {crewMemberName} - {formatMonth(monthValue)}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            View detailed violation information for individual crew member
+          </DialogDescription>
         </DialogHeader>
 
         <div className="mt-4">

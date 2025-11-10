@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -343,6 +343,9 @@ export function ViolationsOverviewDialog({
           <DialogTitle>
             {isPredicted ? 'Predicted NCs' : 'Violations'} - {rankFilter ? rankFilter : vesselName} - {formatMonth(monthValue)}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            View detailed violation records for crew members
+          </DialogDescription>
         </DialogHeader>
 
         <div className="mt-4">
