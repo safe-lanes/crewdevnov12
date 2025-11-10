@@ -338,6 +338,32 @@ export const VesselAnalysisChart = ({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Violations Drill-Down Dialog */}
+      {selectedVesselId && (
+        <ViolationsOverviewDialog
+          open={violationsDialogOpen}
+          onOpenChange={setViolationsDialogOpen}
+          vesselId={selectedVesselId}
+          vesselName={selectedVesselName}
+          monthValue={selectedMonth}
+          complianceMode={complianceMode}
+          opaMode={opaMode}
+        />
+      )}
+
+      {/* NC Drill-Down Dialog */}
+      {selectedVesselId && (
+        <NCOverviewDialog
+          open={ncDialogOpen}
+          onOpenChange={setNCDialogOpen}
+          vesselId={selectedVesselId}
+          vesselName={selectedVesselName}
+          monthValue={selectedMonth}
+          complianceMode={complianceMode}
+          opaMode={opaMode}
+        />
+      )}
     </>
   );
 };
