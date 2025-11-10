@@ -75,11 +75,6 @@ export const VesselStatusChart = ({
     enabled: true,
   });
 
-  // Calculate total vessels
-  const totalVessels = useMemo(() => {
-    return allVessels.length;
-  }, [allVessels]);
-
   // Fetch vessel records
   const { data: vesselRecords = [], isLoading, isError } = useQuery<any[]>({
     queryKey: ['/api/rest-hours-vessel-records', vesselIds, monthValue, complianceMode, opaMode],
@@ -110,6 +105,8 @@ export const VesselStatusChart = ({
   const metrics = useMemo(() => {
     if (!vesselRecords || vesselRecords.length === 0) {
       return {
+        totalVessels: 0,
+        overdueVesselReview: 0,
         overdueOfficeResponse: 0,
         restHoursConflict: 0,
         incompleteData: 0,
@@ -117,6 +114,8 @@ export const VesselStatusChart = ({
     }
 
     // Use Sets to track unique vessels for each metric
+    const allVesselIds = new Set<string>();
+    const overdueVesselReviewVessels = new Set<string>();
     const overdueVessels = new Set<string>();
     const conflictVessels = new Set<string>();
     const incompleteVessels = new Set<string>();
@@ -124,6 +123,14 @@ export const VesselStatusChart = ({
     vesselRecords.forEach(record => {
       const vesselId = record.vesselId;
       if (!vesselId) return; // Skip records without vesselId
+
+      // Track all unique vessels in the dataset
+      allVesselIds.add(vesselId);
+
+      // Track vessels with overdue vessel review
+      if (record.vesselReviewStatus === 'Overdue') {
+        overdueVesselReviewVessels.add(vesselId);
+      }
 
       // Track vessels with overdue office response
       if (record.officeReviewStatus === 'Overdue') {
@@ -143,6 +150,8 @@ export const VesselStatusChart = ({
     });
 
     return {
+      totalVessels: allVesselIds.size,
+      overdueVesselReview: overdueVesselReviewVessels.size,
       overdueOfficeResponse: overdueVessels.size,
       restHoursConflict: conflictVessels.size,
       incompleteData: incompleteVessels.size,
@@ -202,19 +211,24 @@ export const VesselStatusChart = ({
         </h3>
         <div className="flex-1 flex flex-col justify-center space-y-4">
           <StatusBar 
+            label="O/Due Vessel Review" 
+            count={metrics.overdueVesselReview} 
+            total={metrics.totalVessels} 
+          />
+          <StatusBar 
             label="O/Due Office Response" 
             count={metrics.overdueOfficeResponse} 
-            total={totalVessels} 
+            total={metrics.totalVessels} 
           />
           <StatusBar 
             label="Rest Hours Conflict" 
             count={metrics.restHoursConflict} 
-            total={totalVessels} 
+            total={metrics.totalVessels} 
           />
           <StatusBar 
             label="Incomplete Data" 
             count={metrics.incompleteData} 
-            total={totalVessels} 
+            total={metrics.totalVessels} 
           />
         </div>
       </div>
