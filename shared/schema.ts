@@ -604,6 +604,7 @@ export const ncReports = pgTable("nc_reports", {
   officeClosureVerifiedByPosition: text("office_closure_verified_by_position"), // Auto-filled position
   officeClosureDate: timestamp("office_closure_date"), // Date of office closure
   
+  status: text("status").notNull().default("Open"), // "Open" | "Closed"
   submissionStatus: text("submission_status").notNull().default("draft"), // "draft" | "vessel-submitted" | "office-submitted"
   
   createdAt: timestamp("created_at").defaultNow(),

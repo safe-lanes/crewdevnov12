@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -67,6 +68,7 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
   const [officeClosureVerifiedByName, setOfficeClosureVerifiedByName] = useState("");
   const [officeClosureDate, setOfficeClosureDate] = useState<Date | undefined>(undefined);
   const [submissionStatus, setSubmissionStatus] = useState<"draft" | "vessel-submitted" | "office-submitted">("draft");
+  const [status, setStatus] = useState<"Open" | "Closed">("Open");
 
   // Fetch vessel name from master data
   const { data: masterData } = useQuery<MasterDataEntry[]>({
@@ -114,6 +116,7 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
       setOfficeClosureVerifiedByName(existingReport.officeClosureVerifiedByName || "");
       setOfficeClosureDate(existingReport.officeClosureDate ? new Date(existingReport.officeClosureDate) : undefined);
       setSubmissionStatus(existingReport.submissionStatus as any);
+      setStatus((existingReport.status as any) || "Open");
     } else {
       // Reset form for new report
       setIdentifiedRootCause("");
@@ -122,6 +125,7 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
       setOfficeClosureVerifiedByName("");
       setOfficeClosureDate(undefined);
       setSubmissionStatus("draft");
+      setStatus("Open");
     }
   }, [existingReport]);
 
@@ -130,7 +134,10 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
 
   // Save/Submit mutation
   const saveMutation = useMutation({
-    mutationFn: async (status: "draft" | "vessel-submitted" | "office-submitted") => {
+    mutationFn: async (submissionStatus: "draft" | "vessel-submitted" | "office-submitted") => {
+      // Determine NC status based on submission status
+      const ncStatus = submissionStatus === "office-submitted" ? "Closed" : "Open";
+      
       const data = {
         crewMemberId: crewRecord.crewMemberId,
         vesselId: crewRecord.vesselId,
@@ -143,18 +150,20 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
         officeClosureVerifiedByName,
         officeClosureVerifiedByPosition: selectedUserPosition,
         officeClosureDate,
-        submissionStatus: status,
+        status: ncStatus,
+        submissionStatus: submissionStatus,
       };
       return await apiRequest("POST", "/api/nc-reports", data);
     },
-    onSuccess: (_, status) => {
+    onSuccess: (_, submissionStatus) => {
       queryClient.invalidateQueries({ queryKey: ["/api/nc-reports"] });
-      const statusText = status === "draft" ? "saved" : status === "vessel-submitted" ? "submitted by vessel" : "submitted by office";
+      const statusText = submissionStatus === "draft" ? "saved" : submissionStatus === "vessel-submitted" ? "submitted by vessel" : "submitted by office";
       toast({
         title: "Success",
         description: `NC Report ${statusText} successfully`,
       });
-      setSubmissionStatus(status);
+      setSubmissionStatus(submissionStatus);
+      setStatus(submissionStatus === "office-submitted" ? "Closed" : "Open");
     },
     onError: () => {
       toast({
@@ -170,6 +179,13 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
   const handleOfficeSubmit = () => saveMutation.mutate("office-submitted");
 
   const isReadOnly = submissionStatus === "office-submitted";
+  
+  // Validate closure fields for office submission
+  const canSubmitOffice = Boolean(
+    officeClosureVerifiedByName &&
+    selectedUserPosition &&
+    officeClosureDate
+  );
 
   // Parse violation details from daily records
   const violationDetails = useMemo(() => {
@@ -270,7 +286,9 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
                   <div className="text-sm text-gray-600">NC Reference:</div>
                   <div className="font-semibold">STCW/MLC/ILO</div>
                 </div>
-                <div></div>
+                <div className="flex items-end justify-end">
+                  <StatusBadge status={status} variant="large" />
+                </div>
               </div>
             </div>
 
@@ -440,14 +458,27 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
                     </Button>
                   )}
                   {(submissionStatus === "vessel-submitted" || submissionStatus === "draft") && (
-                    <Button
-                      data-testid="button-office-submit"
-                      onClick={handleOfficeSubmit}
-                      disabled={saveMutation.isPending}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      Submit (Office)
-                    </Button>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span>
+                            <Button
+                              data-testid="button-office-submit"
+                              onClick={handleOfficeSubmit}
+                              disabled={saveMutation.isPending || !canSubmitOffice}
+                              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400"
+                            >
+                              Submit (Office)
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        {!canSubmitOffice && (
+                          <TooltipContent>
+                            <p>Please fill in Name, Position, and Date in Closure Verified by Office section</p>
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                    </TooltipProvider>
                   )}
                 </>
               )}
