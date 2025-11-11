@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type DrugAlcoholTestRecord, type InsertDrugAlcoholTestRecord, type RestHoursVesselRecord, type InsertRestHoursVesselRecord, type RestHoursCrewRecord, type InsertRestHoursCrewRecord, type RestHoursDailyRecord, type InsertRestHoursDailyRecord, type FixedTask, type InsertFixedTask, type VariableTask, type InsertVariableTask, type VesselViolationComment, type InsertVesselViolationComment, type OfficeViolationComment, type InsertOfficeViolationComment, type CrewDashboardSummary } from "@shared/schema";
+import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type DrugAlcoholTestRecord, type InsertDrugAlcoholTestRecord, type RestHoursVesselRecord, type InsertRestHoursVesselRecord, type RestHoursCrewRecord, type InsertRestHoursCrewRecord, type RestHoursDailyRecord, type InsertRestHoursDailyRecord, type FixedTask, type InsertFixedTask, type VariableTask, type InsertVariableTask, type VesselViolationComment, type InsertVesselViolationComment, type OfficeViolationComment, type InsertOfficeViolationComment, type NCReport, type InsertNCReport, type VesselDateLineAdjustment, type InsertVesselDateLineAdjustment, type CrewDashboardSummary } from "@shared/schema";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -162,6 +162,10 @@ export interface IStorage {
   getAllNCReports(): Promise<NCReport[]>;
   getNCReport(crewMemberId: string, vesselId: string, monthValue: string): Promise<NCReport | null>;
   saveNCReport(report: InsertNCReport): Promise<NCReport>;
+  // Vessel Date Line Adjustments
+  getVesselDateLineAdjustment(vesselId: string, monthValue: string): Promise<VesselDateLineAdjustment | null>;
+  saveVesselDateLineAdjustment(adjustment: InsertVesselDateLineAdjustment): Promise<VesselDateLineAdjustment>;
+  deleteVesselDateLineAdjustment(vesselId: string, monthValue: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -188,6 +192,7 @@ export class MemStorage implements IStorage {
   private vesselViolationComments: Map<number, VesselViolationComment>;
   private officeViolationComments: Map<number, OfficeViolationComment>;
   private ncReports: Map<number, NCReport>;
+  private vesselDateLineAdjustments: Map<number, VesselDateLineAdjustment>;
   private currentUserId: number;
   private currentFormId: number;
   private currentRankGroupId: number;
@@ -209,6 +214,7 @@ export class MemStorage implements IStorage {
   private currentVesselViolationCommentId: number;
   private currentOfficeViolationCommentId: number;
   private currentNCReportId: number;
+  private currentVesselDateLineAdjustmentId: number;
 
   constructor() {
     this.users = new Map();
@@ -234,6 +240,7 @@ export class MemStorage implements IStorage {
     this.vesselViolationComments = new Map();
     this.officeViolationComments = new Map();
     this.ncReports = new Map();
+    this.vesselDateLineAdjustments = new Map();
     this.currentUserId = 1;
     this.currentFormId = 1;
     this.currentRankGroupId = 1;
@@ -255,6 +262,7 @@ export class MemStorage implements IStorage {
     this.currentVesselViolationCommentId = 1;
     this.currentOfficeViolationCommentId = 1;
     this.currentNCReportId = 1;
+    this.currentVesselDateLineAdjustmentId = 1;
     
     this.initializeDefaultData();
 
@@ -2100,6 +2108,53 @@ export class MemStorage implements IStorage {
     }
   }
 
+  async getVesselDateLineAdjustment(vesselId: string, monthValue: string): Promise<VesselDateLineAdjustment | null> {
+    const adjustments = Array.from(this.vesselDateLineAdjustments.values());
+    const existing = adjustments.find(a => a.vesselId === vesselId && a.monthValue === monthValue);
+    return existing || null;
+  }
+
+  async saveVesselDateLineAdjustment(insertAdjustment: InsertVesselDateLineAdjustment): Promise<VesselDateLineAdjustment> {
+    const adjustments = Array.from(this.vesselDateLineAdjustments.values());
+    const existing = adjustments.find(a => 
+      a.vesselId === insertAdjustment.vesselId && 
+      a.monthValue === insertAdjustment.monthValue
+    );
+    
+    if (existing) {
+      const updated: VesselDateLineAdjustment = {
+        ...existing,
+        ...insertAdjustment,
+        id: existing.id,
+        createdAt: existing.createdAt,
+        updatedAt: new Date(),
+      };
+      this.vesselDateLineAdjustments.set(existing.id, updated);
+      return updated;
+    } else {
+      const id = this.currentVesselDateLineAdjustmentId++;
+      const newAdjustment: VesselDateLineAdjustment = {
+        id,
+        ...insertAdjustment,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      this.vesselDateLineAdjustments.set(id, newAdjustment);
+      return newAdjustment;
+    }
+  }
+
+  async deleteVesselDateLineAdjustment(vesselId: string, monthValue: string): Promise<boolean> {
+    const adjustments = Array.from(this.vesselDateLineAdjustments.values());
+    const existing = adjustments.find(a => a.vesselId === vesselId && a.monthValue === monthValue);
+    
+    if (existing) {
+      this.vesselDateLineAdjustments.delete(existing.id);
+      return true;
+    }
+    return false;
+  }
+
   // Variable Tasks Methods
   async getVariableTasks(): Promise<VariableTask[]> {
     return Array.from(this.variableTasks.values());
@@ -2169,7 +2224,9 @@ export class PersistentFileStorage implements IStorage {
   private variableTasks: Map<number, VariableTask>;
   private fixedTasks: Map<number, FixedTask>;
   private vesselViolationComments: Map<number, VesselViolationComment>;
+  private officeViolationComments: Map<number, OfficeViolationComment>;
   private ncReports: Map<number, NCReport>;
+  private vesselDateLineAdjustments: Map<number, VesselDateLineAdjustment>;
   private currentUserId: number;
   private currentFormId: number;
   private currentRankGroupId: number;
@@ -2191,6 +2248,7 @@ export class PersistentFileStorage implements IStorage {
   private currentVesselViolationCommentId: number;
   private currentOfficeViolationCommentId: number;
   private currentNCReportId: number;
+  private currentVesselDateLineAdjustmentId: number;
   private filePath: string;
   private saveTimeout: NodeJS.Timeout | null = null;
   private isSaving: boolean = false;
@@ -2223,6 +2281,7 @@ export class PersistentFileStorage implements IStorage {
     this.vesselViolationComments = new Map();
     this.officeViolationComments = new Map();
     this.ncReports = new Map();
+    this.vesselDateLineAdjustments = new Map();
     this.currentUserId = 1;
     this.currentFormId = 1;
     this.currentRankGroupId = 1;
@@ -2244,6 +2303,7 @@ export class PersistentFileStorage implements IStorage {
     this.currentVesselViolationCommentId = 1;
     this.currentOfficeViolationCommentId = 1;
     this.currentNCReportId = 1;
+    this.currentVesselDateLineAdjustmentId = 1;
     
     this.filePath = path.join(process.cwd(), 'test-data.json');
     this.loadFromFile();
@@ -2440,6 +2500,56 @@ export class PersistentFileStorage implements IStorage {
       this.saveToFile();
       return newReport;
     }
+  }
+
+  async getVesselDateLineAdjustment(vesselId: string, monthValue: string): Promise<VesselDateLineAdjustment | null> {
+    const adjustments = Array.from(this.vesselDateLineAdjustments.values());
+    const existing = adjustments.find(a => a.vesselId === vesselId && a.monthValue === monthValue);
+    return existing || null;
+  }
+
+  async saveVesselDateLineAdjustment(insertAdjustment: InsertVesselDateLineAdjustment): Promise<VesselDateLineAdjustment> {
+    const adjustments = Array.from(this.vesselDateLineAdjustments.values());
+    const existing = adjustments.find(a => 
+      a.vesselId === insertAdjustment.vesselId && 
+      a.monthValue === insertAdjustment.monthValue
+    );
+    
+    if (existing) {
+      const updated: VesselDateLineAdjustment = {
+        ...existing,
+        ...insertAdjustment,
+        id: existing.id,
+        createdAt: existing.createdAt,
+        updatedAt: new Date(),
+      };
+      this.vesselDateLineAdjustments.set(existing.id, updated);
+      this.saveToFile();
+      return updated;
+    } else {
+      const id = this.currentVesselDateLineAdjustmentId++;
+      const newAdjustment: VesselDateLineAdjustment = {
+        id,
+        ...insertAdjustment,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      this.vesselDateLineAdjustments.set(id, newAdjustment);
+      this.saveToFile();
+      return newAdjustment;
+    }
+  }
+
+  async deleteVesselDateLineAdjustment(vesselId: string, monthValue: string): Promise<boolean> {
+    const adjustments = Array.from(this.vesselDateLineAdjustments.values());
+    const existing = adjustments.find(a => a.vesselId === vesselId && a.monthValue === monthValue);
+    
+    if (existing) {
+      this.vesselDateLineAdjustments.delete(existing.id);
+      this.saveToFile();
+      return true;
+    }
+    return false;
   }
 
   private loadFromFile(): void {

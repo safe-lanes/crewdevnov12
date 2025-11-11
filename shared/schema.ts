@@ -635,6 +635,18 @@ export const fixedTasks = pgTable("fixed_tasks", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const vesselDateLineAdjustments = pgTable("vessel_dateline_adjustments", {
+  id: serial("id").primaryKey(),
+  vesselId: text("vessel_id").notNull(), // Vessel ID from master data
+  monthValue: text("month_value").notNull(), // Format: "2025-11" (YYYY-MM)
+  
+  // JSON array of date line adjustments: [{ day: 15, type: "advanced" | "retarded" }, ...]
+  adjustments: text("adjustments").notNull(), // JSON: [{day: number, type: string}]
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -1239,6 +1251,35 @@ export const variableTasks = pgTable("variable_tasks", {
 export const insertVariableTaskSchema = createInsertSchema(variableTasks).omit({ id: true });
 export type InsertVariableTask = z.infer<typeof insertVariableTaskSchema>;
 export type VariableTask = typeof variableTasks.$inferSelect;
+
+export const dateLineAdjustmentSchema = z.object({
+  day: z.number().min(1).max(31),
+  type: z.enum(["advanced", "retarded"]),
+});
+export type DateLineAdjustmentItem = z.infer<typeof dateLineAdjustmentSchema>;
+
+export const insertVesselDateLineAdjustmentSchema = createInsertSchema(vesselDateLineAdjustments).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  vesselId: z.string().min(1, "Vessel ID is required"),
+  monthValue: z.string().regex(/^\d{4}-\d{2}$/, "Month value must be in YYYY-MM format"),
+  adjustments: z.string().refine(
+    (val) => {
+      try {
+        const parsed = JSON.parse(val);
+        return Array.isArray(parsed) && parsed.every(item => 
+          typeof item.day === 'number' && 
+          item.day >= 1 && 
+          item.day <= 31 &&
+          (item.type === 'advanced' || item.type === 'retarded')
+        );
+      } catch {
+        return false;
+      }
+    },
+    { message: "Adjustments must be a valid JSON array of {day, type} objects" }
+  ),
+});
+export type InsertVesselDateLineAdjustment = z.infer<typeof insertVesselDateLineAdjustmentSchema>;
+export type VesselDateLineAdjustment = typeof vesselDateLineAdjustments.$inferSelect;
 
 export type DashboardStatus = z.infer<typeof dashboardStatusSchema>;
 export type ExperienceMetric = z.infer<typeof experienceMetricSchema>;

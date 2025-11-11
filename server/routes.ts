@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError } from "./storage";
-import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertOfficeViolationCommentSchema, insertNCReportSchema } from "@shared/schema";
+import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertOfficeViolationCommentSchema, insertNCReportSchema, insertVesselDateLineAdjustmentSchema } from "@shared/schema";
 import { z } from "zod";
 import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew } from "@shared/crew-mapping";
 import { 
@@ -3701,6 +3701,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to delete rest hours daily record:", error);
       res.status(500).json({ error: "Failed to delete rest hours daily record" });
+    }
+  });
+
+  // Vessel Date Line Adjustments API routes
+  app.get("/api/vessel-dateline-adjustments/:vesselId/:monthValue", async (req, res) => {
+    try {
+      const { vesselId, monthValue } = req.params;
+      
+      if (!monthValue.match(/^\d{4}-\d{2}$/)) {
+        return res.status(400).json({ error: "monthValue must be in YYYY-MM format" });
+      }
+      
+      const adjustment = await storage.getVesselDateLineAdjustment(vesselId, monthValue);
+      if (!adjustment) {
+        return res.status(404).json({ error: "Vessel date line adjustment not found" });
+      }
+      res.json(adjustment);
+    } catch (error) {
+      console.error("Failed to get vessel date line adjustment:", error);
+      res.status(500).json({ error: "Failed to get vessel date line adjustment" });
+    }
+  });
+
+  app.put("/api/vessel-dateline-adjustments/:vesselId/:monthValue", async (req, res) => {
+    try {
+      const { vesselId, monthValue } = req.params;
+      const result = insertVesselDateLineAdjustmentSchema.safeParse({
+        vesselId,
+        monthValue,
+        adjustments: req.body.adjustments
+      });
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid vessel date line adjustment data", details: result.error.issues });
+      }
+      const adjustment = await storage.saveVesselDateLineAdjustment(result.data);
+      res.json(adjustment);
+    } catch (error) {
+      console.error("Failed to save vessel date line adjustment:", error);
+      res.status(500).json({ error: "Failed to save vessel date line adjustment" });
+    }
+  });
+
+  app.delete("/api/vessel-dateline-adjustments/:vesselId/:monthValue", async (req, res) => {
+    try {
+      const { vesselId, monthValue } = req.params;
+      
+      if (!monthValue.match(/^\d{4}-\d{2}$/)) {
+        return res.status(400).json({ error: "monthValue must be in YYYY-MM format" });
+      }
+      
+      const deleted = await storage.deleteVesselDateLineAdjustment(vesselId, monthValue);
+      if (!deleted) {
+        return res.status(404).json({ error: "Vessel date line adjustment not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete vessel date line adjustment:", error);
+      res.status(500).json({ error: "Failed to delete vessel date line adjustment" });
     }
   });
 
