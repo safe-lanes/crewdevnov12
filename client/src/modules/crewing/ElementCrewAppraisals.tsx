@@ -77,6 +77,9 @@ const RatingBadge = ({ value, color }: { value: string; color: string }) => {
 
 // Cell renderers moved outside component to avoid hooks issues
 const RatingCellRenderer = (params: ICellRendererParams) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef || !params.data) return null;
+  
   if (params.value === "N/A") {
     return <Badge className="rounded-md px-2.5 py-1 font-bold bg-gray-400 text-white min-w-[48px] text-center">N/A</Badge>;
   }
@@ -84,6 +87,9 @@ const RatingCellRenderer = (params: ICellRendererParams) => {
 };
 
 const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEditClick: (data: CrewAppraisalData) => void } }) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef || !params.data) return null;
+  
   return (
     <div className="flex gap-2 justify-center">
       <Button variant="ghost" size="icon" className="h-6 w-6">
