@@ -1603,34 +1603,46 @@ export const RHRecordingForm = ({
               </tr>
             </thead>
             <tbody>
-              {dailyRecords.map((record, dayIndex) => (
-                <tr key={dayIndex}>
-                  {/* Plan/Rec Button */}
-                  <td className="border border-gray-300 text-center" style={{ padding: '2px' }}>
-                    <button
-                      onClick={() => handleTogglePlanRec(dayIndex)}
-                      className="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 rounded"
-                      data-testid={`button-plan-rec-${dayIndex}`}
-                    >
-                      {record.isPlan ? 'Plan' : 'Rec'}
-                    </button>
-                  </td>
-                  
-                  {/* Date */}
-                  <td className="border border-gray-300 text-center" style={{ padding: '2px' }}>
-                    {record.day}
-                  </td>
-                  
-                  {/* Day of Week */}
-                  <td className="border border-gray-300 text-center" style={{ padding: '2px' }}>
-                    {record.dayOfWeek}
-                  </td>
+              {displayRows.map((row, displayIndex) => {
+                const { baseIndex, record, dayLabel, dayOfWeekLabel, marker, occurrence } = row;
+                
+                // Determine styling based on marker and occurrence
+                const isAdvanced = marker === 'advanced';
+                const isRetardedDuplicate = marker === 'retarded' && occurrence === 'duplicate';
+                
+                const dateCellColor = isAdvanced ? 'text-red-600 font-semibold' : 
+                                     isRetardedDuplicate ? 'text-green-600 font-semibold' : '';
+                const dayMarker = isAdvanced ? ' *' : isRetardedDuplicate ? ' **' : '';
+                const rowBgColor = isRetardedDuplicate ? 'bg-green-50' : '';
+                
+                return (
+                  <tr key={displayIndex} className={rowBgColor}>
+                    {/* Plan/Rec Button */}
+                    <td className="border border-gray-300 text-center" style={{ padding: '2px' }}>
+                      <button
+                        onClick={() => handleTogglePlanRec(baseIndex)}
+                        className="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 rounded"
+                        data-testid={`button-plan-rec-${displayIndex}`}
+                      >
+                        {record.isPlan ? 'Plan' : 'Rec'}
+                      </button>
+                    </td>
+                    
+                    {/* Date */}
+                    <td className={`border border-gray-300 text-center ${dateCellColor}`} style={{ padding: '2px' }}>
+                      {dayLabel}{dayMarker}
+                    </td>
+                    
+                    {/* Day of Week */}
+                    <td className={`border border-gray-300 text-center ${dateCellColor}`} style={{ padding: '2px' }}>
+                      {dayOfWeekLabel}
+                    </td>
                   
                   {/* 48 Half-Hour Columns (2 cells per hour) */}
                   {record.hours.map((hour, hourIndex) => {
                     const isSecondHalf = hourIndex % 2 === 1;
                     const borderRight = isSecondHalf ? 'border-gray-300' : 'border-gray-200';
-                    const isHighlighted = shouldHighlightCell(dayIndex, hourIndex);
+                    const isHighlighted = shouldHighlightCell(baseIndex, hourIndex);
                     
                     return (
                       <td
@@ -1655,7 +1667,7 @@ export const RHRecordingForm = ({
                           suppressContentEditableWarning
                           onBlur={(e) => {
                             const value = e.currentTarget.textContent || '';
-                            handleHourCellEdit(dayIndex, hourIndex, value);
+                            handleHourCellEdit(baseIndex, hourIndex, value);
                           }}
                           onKeyDown={(e) => {
                             // Handle Enter key
@@ -1669,31 +1681,31 @@ export const RHRecordingForm = ({
                             if (['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
                               e.preventDefault();
                               
-                              let targetDay = dayIndex;
+                              let targetDisplayIndex = displayIndex;
                               let targetHour = hourIndex;
                               
                               if (e.key === 'ArrowRight') {
                                 targetHour++;
                                 if (targetHour >= 48) {
                                   targetHour = 0;
-                                  targetDay++;
+                                  targetDisplayIndex++;
                                 }
                               } else if (e.key === 'ArrowLeft') {
                                 targetHour--;
                                 if (targetHour < 0) {
                                   targetHour = 47;
-                                  targetDay--;
+                                  targetDisplayIndex--;
                                 }
                               } else if (e.key === 'ArrowDown') {
-                                targetDay++;
+                                targetDisplayIndex++;
                               } else if (e.key === 'ArrowUp') {
-                                targetDay--;
+                                targetDisplayIndex--;
                               }
                               
                               // Check if target is valid
-                              if (targetDay >= 0 && targetDay < dailyRecords.length) {
+                              if (targetDisplayIndex >= 0 && targetDisplayIndex < displayRows.length) {
                                 const targetCell = document.querySelector(
-                                  `[data-testid="cell-hour-${targetDay}-${targetHour}"]`
+                                  `[data-testid="cell-hour-${targetDisplayIndex}-${targetHour}"]`
                                 ) as HTMLElement;
                                 
                                 if (targetCell) {
@@ -1719,7 +1731,7 @@ export const RHRecordingForm = ({
                           }}
                           className={`outline-none cursor-text min-h-[20px] ${record.isPlan ? 'font-light text-gray-400' : ''}`}
                           style={{ width: '100%', minWidth: '15px' }}
-                          data-testid={`cell-hour-${dayIndex}-${hourIndex}`}
+                          data-testid={`cell-hour-${displayIndex}-${hourIndex}`}
                         >
                           {(showPlanning || !record.isPlan) ? hour : ''}
                         </div>
@@ -1765,7 +1777,7 @@ export const RHRecordingForm = ({
                                   <TooltipTrigger asChild>
                                     <span
                                       className={`cursor-help underline decoration-dotted px-0.5 rounded ${record.isPlan ? 'hover:bg-gray-200' : 'hover:bg-red-100'}`}
-                                      onMouseEnter={() => setHoveredViolation({ dayIndex, code })}
+                                      onMouseEnter={() => setHoveredViolation({ dayIndex: baseIndex, code })}
                                       onMouseLeave={() => setHoveredViolation(null)}
                                     >
                                       {code}{idx < visibleViolations.length - 1 ? ', ' : ''}
@@ -1798,9 +1810,9 @@ export const RHRecordingForm = ({
                     <input
                       type="text"
                       value={record.comments}
-                      onChange={(e) => handleCommentsChange(dayIndex, e.target.value)}
+                      onChange={(e) => handleCommentsChange(baseIndex, e.target.value)}
                       className="w-full outline-none bg-transparent px-1"
-                      data-testid={`input-comments-${dayIndex}`}
+                      data-testid={`input-comments-${displayIndex}`}
                     />
                   </td>
                   
@@ -1860,10 +1872,28 @@ export const RHRecordingForm = ({
                     </>
                   )}
                 </tr>
-              ))}
+              );
+              })}
             </tbody>
           </table>
         </div>
+
+        {/* Date Line Adjustments Legend */}
+        {hasDateLineAdjustments && (
+          <div className="mt-3 p-2 bg-blue-50 rounded border border-blue-200 text-xs">
+            <div className="font-semibold mb-1">International Date Line Adjustments:</div>
+            <div className="flex gap-4">
+              <div className="flex items-center gap-1">
+                <span className="text-red-600 font-semibold">*</span>
+                <span>Day Advanced (Skipped)</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-green-600 font-semibold">**</span>
+                <span>Day Retarded (Repeated)</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Footer Actions */}
         <div className="flex justify-end gap-2 pt-4 border-t">
