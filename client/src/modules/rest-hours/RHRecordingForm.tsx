@@ -522,10 +522,12 @@ export const RHRecordingForm = ({
     }
     
     // Group slots by day and convert to ranges
+    // Filter to only current month (days >= 1) since previous-month days aren't rendered
     const dayRanges = new Map<number, { minCell: number; maxCell: number }>();
     
     for (const slot of slotsToHighlight) {
-      if (slot.sourceDay < 1) continue; // Skip previous month slots
+      // Skip previous month slots - they're not visible in current month view
+      if (slot.sourceDay < 1) continue;
       
       const existing = dayRanges.get(slot.sourceDay);
       if (!existing) {
