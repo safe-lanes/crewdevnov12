@@ -12,6 +12,17 @@ import { useToast } from '@/hooks/use-toast';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import type { RestHoursDailyRecord, FixedTask, VesselDateLineAdjustment, DateLineAdjustmentItem } from '@shared/schema';
 import { filterViolations } from './violationFilters';
+import {
+  buildTimeline,
+  buildPrefixSums,
+  calculateRollingMetrics as calculateTimelineRollingMetrics,
+  detectViolations as detectTimelineViolations,
+  groupViolationsByDay,
+  prependPreviousMonthTimeline,
+  type DateLineAdjustment,
+  type TimelineSlot,
+  type Violation as TimelineViolation,
+} from './timelineCalculations';
 
 interface RHRecordingFormProps {
   open: boolean;
@@ -314,6 +325,23 @@ export const RHRecordingForm = ({
     staleTime: 0,
   });
 
+  // Parse date line adjustments into format for timeline calculations
+  const parsedDateLineAdjustments = useMemo((): DateLineAdjustment[] => {
+    if (!dateLineAdjustment) return [];
+    try {
+      const adjustments = JSON.parse(dateLineAdjustment.adjustments) as DateLineAdjustmentItem[];
+      if (Array.isArray(adjustments)) {
+        return adjustments.map(adj => ({
+          day: adj.day,
+          type: adj.type,
+        }));
+      }
+    } catch (e) {
+      console.error('Failed to parse date line adjustments:', e);
+    }
+    return [];
+  }, [dateLineAdjustment]);
+
   // Load previous month's records for cross-month calculations
   useEffect(() => {
     if (!open) return;
@@ -371,38 +399,26 @@ export const RHRecordingForm = ({
       
       try {
         const parsedRecords = JSON.parse(existingRecord.dailyRecords);
-        // Ensure all records have the any-period fields (for backward compatibility)
-        // and recalculate them to ensure accuracy
-        const updatedRecords = parsedRecords.map((record: DailyRecord, index: number) => {
-          // Calculate 24hr metrics if missing (backward compatibility)
+        // Load records as-is; timelineViolations memo will handle all calculations
+        const updatedRecords = parsedRecords.map((record: DailyRecord) => {
+          // Calculate basic 24hr metrics if missing (backward compatibility)
           const restHours = record.hours ? record.hours.filter((h: string) => h === '').length / 2 : 24;
           const workHours = 24 - restHours;
-          
-          // Calculate any-period metrics for this record
-          const anyPeriod24 = calculateAnyPeriod24hr(parsedRecords, index, selectedPeriod, previousMonthRecords);
-          const anyPeriod7day = calculateAnyPeriod7day(parsedRecords, index, previousMonthRecords);
           
           return {
             ...record,
             hoursOfRest24hr: record.hoursOfRest24hr ?? restHours,
             hoursOfWork24hr: record.hoursOfWork24hr ?? workHours,
-            anyPeriodRest24hr: anyPeriod24.anyPeriodRest24hr,
-            anyPeriodRest7day: anyPeriod7day.anyPeriodRest7day,
-            anyPeriodWork24hr: anyPeriod24.anyPeriodWork24hr,
-            anyPeriodWork7day: anyPeriod7day.anyPeriodWork7day,
+            // Metrics and violations will be calculated by timelineViolations memo
+            anyPeriodRest24hr: 24,
+            anyPeriodRest7day: 168,
+            anyPeriodWork24hr: 0,
+            anyPeriodWork7day: 0,
+            violations: [],
+            violationDiagnostics: [],
           };
         });
-        
-        // Recalculate violations for all records to ensure new rules are applied
-        const recordsWithViolations = updatedRecords.map((record: DailyRecord, index: number) => {
-          const { violations, diagnostics } = detectViolations(record, updatedRecords, index, previousMonthRecords);
-          return {
-            ...record,
-            violations,
-            violationDiagnostics: diagnostics,
-          };
-        });
-        setDailyRecords(recordsWithViolations);
+        setDailyRecords(updatedRecords);
       } catch (error) {
         console.error('Failed to parse daily records:', error);
       }
@@ -411,43 +427,129 @@ export const RHRecordingForm = ({
       // This explicitly ensures no stale data leaks between crew members
       console.log('No existing record found - using clean initialized state');
     }
-  }, [existingRecord, isError, open, previousMonthRecords]);
+  }, [existingRecord, isError, open]);
 
-  // Recalculate all metrics when previousMonthRecords changes
-  // This handles both new forms and existing forms when cross-month data loads
-  useEffect(() => {
-    if (!open || !previousMonthRecords || previousMonthRecords.length === 0) return;
+  // Timeline-based violation detection using rolling windows
+  // This memoization builds the timeline ONCE and calculates all violations efficiently
+  const timelineViolations = useMemo(() => {
+    if (dailyRecords.length === 0) return new Map<number, { violations: number[]; diagnostics: ViolationDiagnostic[]; metrics: any }>();
     
-    // Only recalculate if we have dailyRecords already set
-    // (either from initialization or from loading existing record)
-    if (dailyRecords.length === 0) return;
+    // Convert DailyRecord[] to the format expected by timelineCalculations
+    const timelineRecords = dailyRecords.map(r => ({
+      day: r.day,
+      dayOfWeek: r.dayOfWeek,
+      hours: r.hours,
+      isPlan: r.isPlan,
+      comments: r.comments,
+      violations: [],
+    }));
+    
+    const prevMonthTimelineRecords = previousMonthRecords.map(r => ({
+      day: r.day,
+      dayOfWeek: r.dayOfWeek,
+      hours: r.hours,
+      isPlan: r.isPlan,
+      comments: r.comments,
+      violations: [],
+    }));
+    
+    // Build timeline for current month
+    const currentTimeline = buildTimeline(timelineRecords, parsedDateLineAdjustments);
+    
+    // Prepend previous month data for cross-month windows (need 168 hours = 336 half-hour slots)
+    const fullTimeline = prevMonthTimelineRecords.length > 0
+      ? prependPreviousMonthTimeline(currentTimeline, prevMonthTimelineRecords, [], 336)
+      : currentTimeline;
+    
+    // Build prefix sums for efficient window calculations
+    const { cumulativeRest, cumulativeWork } = buildPrefixSums(fullTimeline);
+    
+    // Detect violations across entire timeline
+    const allViolations = detectTimelineViolations(
+      fullTimeline,
+      cumulativeRest,
+      cumulativeWork,
+      complianceMode,
+      opaMode
+    );
+    
+    // Group violations by source day
+    const violationsByDay = groupViolationsByDay(allViolations);
+    
+    // Build result map with violations and metrics for each day
+    const resultMap = new Map<number, { violations: number[]; diagnostics: ViolationDiagnostic[]; metrics: any }>();
+    
+    for (let dayIndex = 0; dayIndex < dailyRecords.length; dayIndex++) {
+      const record = dailyRecords[dayIndex];
+      const dayViolations = violationsByDay.get(record.day) || [];
+      
+      // Convert violation codes to numbers (strip brackets)
+      const violationNumbers = dayViolations.map(code => {
+        const match = code.match(/\[(\d+)\]/);
+        return match ? parseInt(match[1]) : 0;
+      }).filter(n => n > 0);
+      
+      // Find timeline violations for this day to generate diagnostics
+      const dayTimelineViolations = allViolations.filter(v => v.sourceDay === record.day);
+      const diagnostics: ViolationDiagnostic[] = dayTimelineViolations.map(v => ({
+        code: parseInt(v.code.match(/\[(\d+)\]/)![1]),
+        windowStart: 'Timeline window',
+        reason: v.reason,
+      }));
+      
+      // Calculate metrics from timeline for this day
+      // Find the last slot for this day in the timeline
+      const daySlots = fullTimeline.filter(slot => slot.sourceDay === record.day && slot.occurrence === 'primary');
+      const lastSlotIndex = daySlots.length > 0 ? daySlots[daySlots.length - 1].slotIndex : -1;
+      
+      let metrics = {
+        anyPeriodRest24hr: 24,
+        anyPeriodRest7day: 168,
+        anyPeriodWork24hr: 0,
+        anyPeriodWork7day: 0,
+      };
+      
+      if (lastSlotIndex >= 47) { // Need at least 48 slots for 24-hour window
+        const rollingMetrics = calculateTimelineRollingMetrics(lastSlotIndex, cumulativeRest, cumulativeWork);
+        metrics = {
+          anyPeriodRest24hr: rollingMetrics.rest24h,
+          anyPeriodRest7day: lastSlotIndex >= 335 ? rollingMetrics.rest168h : 168,
+          anyPeriodWork24hr: rollingMetrics.work24h,
+          anyPeriodWork7day: lastSlotIndex >= 335 ? rollingMetrics.work168h : 0,
+        };
+      }
+      
+      resultMap.set(dayIndex, {
+        violations: violationNumbers,
+        diagnostics,
+        metrics,
+      });
+    }
+    
+    return resultMap;
+  }, [dailyRecords, previousMonthRecords, parsedDateLineAdjustments, complianceMode, opaMode]);
+
+  // Apply timeline violations to dailyRecords whenever they change
+  useEffect(() => {
+    if (timelineViolations.size === 0 || dailyRecords.length === 0) return;
     
     setDailyRecords(prevRecords => {
-      // Recalculate all any-period metrics and violations for all days
-      const updatedRecords = prevRecords.map((record, index) => {
-        const anyPeriod24 = calculateAnyPeriod24hr(prevRecords, index, selectedPeriod, previousMonthRecords);
-        const anyPeriod7day = calculateAnyPeriod7day(prevRecords, index, previousMonthRecords);
+      return prevRecords.map((record, dayIndex) => {
+        const violationData = timelineViolations.get(dayIndex);
+        if (!violationData) return record;
         
         return {
           ...record,
-          anyPeriodRest24hr: anyPeriod24.anyPeriodRest24hr,
-          anyPeriodRest7day: anyPeriod7day.anyPeriodRest7day,
-          anyPeriodWork24hr: anyPeriod24.anyPeriodWork24hr,
-          anyPeriodWork7day: anyPeriod7day.anyPeriodWork7day,
-        };
-      });
-      
-      // Recalculate violations with updated metrics
-      return updatedRecords.map((record, index) => {
-        const { violations, diagnostics } = detectViolations(record, updatedRecords, index, previousMonthRecords);
-        return {
-          ...record,
-          violations,
-          violationDiagnostics: diagnostics,
+          violations: violationData.violations,
+          violationDiagnostics: violationData.diagnostics,
+          anyPeriodRest24hr: violationData.metrics.anyPeriodRest24hr,
+          anyPeriodRest7day: violationData.metrics.anyPeriodRest7day,
+          anyPeriodWork24hr: violationData.metrics.anyPeriodWork24hr,
+          anyPeriodWork7day: violationData.metrics.anyPeriodWork7day,
         };
       });
     });
-  }, [previousMonthRecords, open]);
+  }, [timelineViolations]);
 
   // Save mutation
   const saveMutation = useMutation({
@@ -623,625 +725,6 @@ export const RHRecordingForm = ({
     return 24 - calculateHoursOfRest24hr(hours);
   };
 
-  // Helper: Calculate rolling metrics (48hr, 7day, 96hr windows)
-  const calculateRollingMetrics = (records: DailyRecord[], dayIndex: number) => {
-    const currentRecord = records[dayIndex];
-    
-    // Calculate 48hr window (current day + previous day)
-    let hoursOfRest48hr = calculateHoursOfRest24hr(currentRecord.hours);
-    let hoursOfWork48hr = calculateHoursOfWork24hr(currentRecord.hours);
-    if (dayIndex > 0) {
-      hoursOfRest48hr += calculateHoursOfRest24hr(records[dayIndex - 1].hours);
-      hoursOfWork48hr += calculateHoursOfWork24hr(records[dayIndex - 1].hours);
-    } else {
-      hoursOfRest48hr += 24;
-    }
-    
-    // Calculate 7-day window (current day + previous 6 days)
-    let hoursOfRest7day = 0;
-    let hoursOfWork7day = 0;
-    for (let i = 0; i < 7; i++) {
-      const index = dayIndex - i;
-      if (index >= 0) {
-        hoursOfRest7day += calculateHoursOfRest24hr(records[index].hours);
-        hoursOfWork7day += calculateHoursOfWork24hr(records[index].hours);
-      } else {
-        hoursOfRest7day += 24;
-      }
-    }
-    
-    // Calculate 96hr window (4 days)
-    let hoursOfRest96hr = 0;
-    let hoursOfWork96hr = 0;
-    for (let i = 0; i < 4; i++) {
-      const index = dayIndex - i;
-      if (index >= 0) {
-        hoursOfRest96hr += calculateHoursOfRest24hr(records[index].hours);
-        hoursOfWork96hr += calculateHoursOfWork24hr(records[index].hours);
-      } else {
-        hoursOfRest96hr += 24;
-      }
-    }
-    
-    return {
-      hoursOfRest48hr,
-      hoursOfWork48hr,
-      hoursOfRest7day,
-      hoursOfWork7day,
-      hoursOfRest96hr,
-      hoursOfWork96hr,
-    };
-  };
-
-  // Helper: Calculate "any period" 24-hour window metrics (backward-looking windows only)
-  // For each half-hour in the current day, check the 24-hour window ending at that point
-  const calculateAnyPeriod24hr = (records: DailyRecord[], dayIndex: number, monthYear: string, prevMonthRecords: DailyRecord[] = []) => {
-    // Build a continuous array of cells from previous day + current day
-    // This gives us 96 cells to work with (48 × 2 days)
-    const allCells: string[] = [];
-    
-    // Track previous day info for window start calculations
-    let prevDayNumber = 0;
-    let prevMonthName = '';
-    
-    // Add previous day's cells
-    if (dayIndex > 0) {
-      // Previous day exists in current month
-      allCells.push(...records[dayIndex - 1].hours);
-      prevDayNumber = records[dayIndex - 1].day;
-    } else {
-      // Current day is the first day of the month - use previous month's last day
-      if (prevMonthRecords.length > 0) {
-        const lastDayOfPrevMonth = prevMonthRecords[prevMonthRecords.length - 1];
-        allCells.push(...lastDayOfPrevMonth.hours);
-        prevDayNumber = lastDayOfPrevMonth.day;
-        // Calculate previous month name from monthYear parameter
-        const [year, month] = monthYear.split('-');
-        const currentMonth = parseInt(month);
-        const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
-        const prevYear = currentMonth === 1 ? parseInt(year) - 1 : parseInt(year);
-        prevMonthName = new Date(prevYear, prevMonth - 1).toLocaleString('en-US', { month: 'short' });
-      } else {
-        // No previous month data - assume rest
-        allCells.push(...Array(48).fill(''));
-      }
-    }
-    
-    // Add current day's cells
-    allCells.push(...records[dayIndex].hours);
-    
-    // Current day occupies cells 48-95 (after previous day's 48 cells)
-    // For each half-hour in current day (cells 48-95), check the 24-hour window ending at that point
-    // Window ending at cell E starts at cell E-47 (48 cells total including E)
-    let minRest = 24;  // Minimum rest hours found
-    let maxWork = 0;   // Maximum work hours found
-    const violatingRestWindows: { startCell: number; restHours: number }[] = [];
-    const violatingWorkWindows: { startCell: number; workHours: number }[] = [];
-    
-    for (let endCell = 48; endCell <= 95; endCell++) {
-      // Window ends at endCell and starts 47 cells before (48 cells total)
-      const startCell = endCell - 47;
-      const windowCells = allCells.slice(startCell, endCell + 1);
-      
-      // Only process if we have a full 48-cell window
-      if (windowCells.length === 48) {
-        // Count rest cells in this window
-        const restCells = windowCells.filter(c => c === '').length;
-        const restHours = restCells / 2; // Each cell = 0.5 hours
-        const workHours = 24 - restHours;
-        
-        // Track violating windows
-        if (restHours < 10) {
-          violatingRestWindows.push({ startCell, restHours });
-        }
-        if (workHours > 14) {
-          violatingWorkWindows.push({ startCell, workHours });
-        }
-        
-        minRest = Math.min(minRest, restHours);
-        maxWork = Math.max(maxWork, workHours);
-      }
-    }
-    
-    return {
-      anyPeriodRest24hr: minRest,
-      anyPeriodWork24hr: maxWork,
-      violatingRestWindows,
-      violatingWorkWindows,
-      prevDayNumber,
-      prevMonthName,
-    };
-  };
-
-  // Helper: Calculate "any period" 7-day window metrics (backward-looking only)
-  // Check only the 7-day window ending on the current day
-  const calculateAnyPeriod7day = (records: DailyRecord[], dayIndex: number, prevMonthRecords: DailyRecord[] = []) => {
-    // Window ends on current day, starts 6 days before
-    const windowStart = dayIndex - 6;
-    
-    let restHours = 0;
-    let missingDays = 0;
-    
-    // Collect data from previous month if window extends before current month
-    if (windowStart < 0) {
-      const daysFromPrevMonth = Math.abs(windowStart);
-      if (prevMonthRecords.length > 0) {
-        // Get the last N days from previous month
-        for (let i = 0; i < daysFromPrevMonth; i++) {
-          const prevMonthIndex = prevMonthRecords.length - daysFromPrevMonth + i;
-          if (prevMonthIndex >= 0 && prevMonthIndex < prevMonthRecords.length) {
-            restHours += calculateHoursOfRest24hr(prevMonthRecords[prevMonthIndex].hours);
-          } else {
-            missingDays++;
-          }
-        }
-      } else {
-        // No previous month data - assume rest
-        missingDays += daysFromPrevMonth;
-      }
-      
-      // Add days from current month (from day 0 to current day)
-      for (let i = 0; i <= dayIndex; i++) {
-        restHours += calculateHoursOfRest24hr(records[i].hours);
-      }
-    } else {
-      // Window is entirely within current month
-      for (let i = windowStart; i <= dayIndex; i++) {
-        restHours += calculateHoursOfRest24hr(records[i].hours);
-      }
-    }
-    
-    // If we have missing days (no data available), assume rest
-    restHours += missingDays * 24;
-    
-    // Work hours = Total 7-day hours (168) minus rest hours
-    const workHours = 168 - restHours;
-    
-    return {
-      anyPeriodRest7day: restHours,
-      anyPeriodWork7day: workHours,
-    };
-  };
-
-  // Helper: Calculate "any period" 72-hour window metrics (for OPA Code 8) - backward-looking only
-  // For each half-hour in the current day, check the 72-hour window ending at that point
-  const calculateAnyPeriod72hr = (records: DailyRecord[], dayIndex: number, prevMonthRecords: DailyRecord[] = []) => {
-    // Build a continuous array of cells from previous 3 days + current day
-    // This gives us 192 cells to work with (48 × 4 days)
-    const allCells: string[] = [];
-    
-    // Add previous 3 days' cells (or use previous month data if days don't exist in current month)
-    for (let i = 3; i >= 1; i--) {
-      const index = dayIndex - i;
-      if (index >= 0) {
-        allCells.push(...records[index].hours);
-      } else {
-        // Day is before current month start - try to get from previous month
-        const prevMonthIndex = prevMonthRecords.length + index; // index is negative, so this calculates correctly
-        if (prevMonthRecords.length > 0 && prevMonthIndex >= 0 && prevMonthIndex < prevMonthRecords.length) {
-          allCells.push(...prevMonthRecords[prevMonthIndex].hours);
-        } else {
-          // No previous month data available - assume rest
-          allCells.push(...Array(48).fill(''));
-        }
-      }
-    }
-    
-    // Add current day's cells
-    allCells.push(...records[dayIndex].hours);
-    
-    // Current day occupies cells 144-191 (after 3 prior days × 48 cells each)
-    // For each half-hour in current day (cells 144-191), check the 72-hour window ending at that point
-    // Window ending at cell E starts at cell E-143 (144 cells total including E)
-    let maxWork = 0;  // Maximum work hours found in any backward-looking 72-hour window
-    
-    for (let endCell = 144; endCell <= 191; endCell++) {
-      // Window ends at endCell and starts 143 cells before (144 cells total)
-      const startCell = endCell - 143;
-      const windowCells = allCells.slice(startCell, endCell + 1);
-      
-      // Only process if we have a full 144-cell window
-      if (windowCells.length === 144) {
-        // Count work cells in this window
-        const workCells = windowCells.filter(c => c !== '').length;
-        const workHours = workCells / 2; // Each cell = 0.5 hours
-        
-        maxWork = Math.max(maxWork, workHours);
-      }
-    }
-    
-    return maxWork;
-  };
-
-  // Helper: Check if any 24-hour window violates Code 4 (interval between rest periods) - backward-looking only
-  // Code 4: Interval between rest periods must not exceed 14 hours
-  const checkViolationCode4 = (records: DailyRecord[], dayIndex: number, prevMonthRecords: DailyRecord[] = []): boolean => {
-    // Build a continuous array of all cells from previous day + current day
-    const allCells: string[] = [];
-    
-    // Add previous day's cells
-    if (dayIndex > 0) {
-      allCells.push(...records[dayIndex - 1].hours);
-    } else {
-      // Current day is first day of month - use previous month's last day
-      if (prevMonthRecords.length > 0) {
-        const lastDayOfPrevMonth = prevMonthRecords[prevMonthRecords.length - 1];
-        allCells.push(...lastDayOfPrevMonth.hours);
-      } else {
-        // No previous month data - assume rest
-        allCells.push(...Array(48).fill(''));
-      }
-    }
-    
-    // Add current day's cells
-    allCells.push(...records[dayIndex].hours);
-    
-    // Current day occupies cells 48-95
-    // For each half-hour in current day, check the 24-hour window ending at that point
-    for (let endCell = 48; endCell <= 95; endCell++) {
-      const startCell = endCell - 47;
-      const windowCells = allCells.slice(startCell, endCell + 1);
-      
-      // Find all rest periods and the gaps between them
-      let currentWorkGap = 0;
-      let inRestPeriod = false;
-      
-      for (let i = 0; i < windowCells.length; i++) {
-        const isRest = windowCells[i] === '';
-        
-        if (isRest) {
-          // Currently in rest
-          if (!inRestPeriod) {
-            // Just entered a rest period - check if previous work gap exceeded 14 hours
-            if (currentWorkGap > 28) { // 28 cells = 14 hours
-              return true; // Violation found!
-            }
-            currentWorkGap = 0;
-            inRestPeriod = true;
-          }
-        } else {
-          // Currently working (w, d, or a)
-          if (inRestPeriod) {
-            // Just exited a rest period
-            inRestPeriod = false;
-          }
-          currentWorkGap++;
-        }
-      }
-      
-      // Check if window ended with a work gap that exceeded 14 hours
-      if (currentWorkGap > 28) {
-        return true; // Violation found!
-      }
-    }
-    
-    // No violation found in any window
-    return false;
-  };
-
-  // Helper: Check if any 24-hour window violates Code 3 (rest period distribution) - backward-looking only
-  // Code 3: The two largest rest periods must sum to ≥10 hours, and at least one must be ≥6 hours
-  // Returns diagnostic info if violation found, null otherwise
-  const checkViolationCode3 = (records: DailyRecord[], dayIndex: number, selectedPeriod: string, prevMonthRecords: DailyRecord[] = []): ViolationDiagnostic | null => {
-    // Build a continuous array of all cells from previous day + current day
-    const allCells: string[] = [];
-    const currentDay = records[dayIndex].day;
-    
-    // Add previous day's cells
-    if (dayIndex > 0) {
-      allCells.push(...records[dayIndex - 1].hours);
-    } else {
-      // Current day is first day of month - use previous month's last day
-      if (prevMonthRecords.length > 0) {
-        const lastDayOfPrevMonth = prevMonthRecords[prevMonthRecords.length - 1];
-        allCells.push(...lastDayOfPrevMonth.hours);
-      } else {
-        // No previous month data - assume rest
-        allCells.push(...Array(48).fill(''));
-      }
-    }
-    
-    // Add current day's cells
-    allCells.push(...records[dayIndex].hours);
-    
-    // Current day occupies cells 48-95
-    // For each half-hour in current day, check the 24-hour window ending at that point
-    // Window ending at cell E starts at cell E-47 (48 cells total including E)
-    for (let endCell = 48; endCell <= 95; endCell++) {
-      const startCell = endCell - 47;
-      const windowCells = allCells.slice(startCell, endCell + 1);
-      
-      // Identify continuous rest periods in this window
-      const restPeriods: number[] = []; // Each element is the length of a rest period in cells
-      let currentPeriodLength = 0;
-      
-      for (let i = 0; i < windowCells.length; i++) {
-        if (windowCells[i] === '') {
-          // Rest cell - extend current period
-          currentPeriodLength++;
-        } else {
-          // Work cell - end current period if it exists
-          if (currentPeriodLength > 0) {
-            restPeriods.push(currentPeriodLength);
-            currentPeriodLength = 0;
-          }
-        }
-      }
-      
-      // Don't forget the last period if window ends with rest
-      if (currentPeriodLength > 0) {
-        restPeriods.push(currentPeriodLength);
-      }
-      
-      // Calculate window start time
-      // allCells = [prev day 48 cells (0-47)] + [current day 48 cells (48-95)]
-      // If startCell < 48, window starts in previous day
-      // If startCell >= 48, window starts in current day
-      const [year, month] = selectedPeriod.split('-').map(Number);
-      
-      let windowStart: string;
-      let windowStartHour: number;
-      let windowStartMin: number;
-      
-      if (startCell < 48) {
-        // Window starts in previous day
-        windowStartHour = Math.floor(startCell / 2);
-        windowStartMin = (startCell % 2) * 30;
-        
-        if (dayIndex > 0) {
-          // Previous day is in the same month
-          const prevDay = records[dayIndex - 1].day;
-          const monthName = new Date(year, month - 1).toLocaleString('en-US', { month: 'short' });
-          windowStart = `${monthName} ${prevDay}, ${String(windowStartHour).padStart(2, '0')}:${String(windowStartMin).padStart(2, '0')}`;
-        } else {
-          // Previous day is in the previous month - use prevMonthRecords
-          if (prevMonthRecords.length > 0) {
-            const lastDayOfPrevMonth = prevMonthRecords[prevMonthRecords.length - 1].day;
-            // Calculate previous month name
-            const prevMonthDate = new Date(year, month - 2); // month-2 because month is 1-indexed
-            const prevMonthName = prevMonthDate.toLocaleString('en-US', { month: 'short' });
-            windowStart = `${prevMonthName} ${lastDayOfPrevMonth}, ${String(windowStartHour).padStart(2, '0')}:${String(windowStartMin).padStart(2, '0')}`;
-          } else {
-            // Fallback: show as "Previous month"
-            windowStart = `Previous month, ${String(windowStartHour).padStart(2, '0')}:${String(windowStartMin).padStart(2, '0')}`;
-          }
-        }
-      } else {
-        // Window starts in current day
-        const currentDayCell = startCell - 48;
-        windowStartHour = Math.floor(currentDayCell / 2);
-        windowStartMin = (currentDayCell % 2) * 30;
-        const monthName = new Date(year, month - 1).toLocaleString('en-US', { month: 'short' });
-        windowStart = `${monthName} ${currentDay}, ${String(windowStartHour).padStart(2, '0')}:${String(windowStartMin).padStart(2, '0')}`;
-      }
-      
-      // Check violation conditions
-      // The rule: The two largest rest periods must sum to ≥10 hours (20 cells)
-      // AND at least one of those two must be ≥6 hours (12 cells)
-      
-      if (restPeriods.length === 0) {
-        // No rest periods at all - violation!
-        return {
-          code: 3,
-          windowStart,
-          reason: `No rest periods found in this 24-hour window`
-        };
-      }
-      
-      // Sort rest periods by duration (descending - largest first)
-      const sortedPeriods = [...restPeriods].sort((a, b) => b - a);
-      const periodsInHours = sortedPeriods.map(p => (p / 2).toFixed(1));
-      
-      if (restPeriods.length === 1) {
-        // Single rest period - it must be ≥10 hours (20 cells) to satisfy the requirement
-        const singlePeriod = sortedPeriods[0];
-        if (singlePeriod < 20) {
-          // Single period is less than 10 hours - violation!
-          return {
-            code: 3,
-            windowStart,
-            reason: `Single rest period: ${periodsInHours[0]}h (< 10h required)`
-          };
-        }
-      } else {
-        // Multiple rest periods - check the two largest
-        const largest = sortedPeriods[0];
-        const secondLargest = sortedPeriods[1];
-        
-        // Check if the two largest periods satisfy the requirements
-        const sumOfTopTwo = largest + secondLargest;
-        const hasLongPeriod = largest >= 12 || secondLargest >= 12;
-        
-        if (sumOfTopTwo < 20 || !hasLongPeriod) {
-          // Violation: Either the top 2 periods don't sum to ≥10 hours (20 cells)
-          // OR neither of the top 2 is ≥6 hours (12 cells)
-          const sumHours = (sumOfTopTwo / 2).toFixed(1);
-          const topTwoHours = [periodsInHours[0], periodsInHours[1]].join('h + ') + 'h';
-          
-          let reason = `Rest periods: ${periodsInHours.join('h, ')}h. Top 2: ${topTwoHours} = ${sumHours}h`;
-          if (sumOfTopTwo < 20) {
-            reason += ' (< 10h required)';
-          } else {
-            reason += ' (neither ≥ 6h required)';
-          }
-          
-          return {
-            code: 3,
-            windowStart,
-            reason
-          };
-        }
-      }
-    }
-    
-    // No violation found in any window
-    return null;
-  };
-
-  // Helper: Format window start string from violating range
-  const formatWindowStart = (range: { startCell: number; startDay: number; monthName?: string }, record: DailyRecord, monthYear: string): string => {
-    const hour = Math.floor(range.startCell / 2);
-    const minute = (range.startCell % 2) * 30;
-    
-    const monthName = range.monthName || new Date(parseInt(monthYear.split('-')[0]), parseInt(monthYear.split('-')[1]) - 1).toLocaleString('en-US', { month: 'short' });
-    
-    return `${monthName} ${range.startDay}, ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-  };
-
-  // Helper: Detect violations
-  // NOTE: Using "any period" values for regulatory compliance as per ILO/MLC requirements
-  // NOTE: All 8 violation codes are ALWAYS calculated. Codes 7 & 8 (OPA-specific) are filtered in the UI display.
-  const detectViolations = (record: DailyRecord, records: DailyRecord[], dayIndex: number, prevMonthRecords: DailyRecord[] = []): { violations: number[]; diagnostics: ViolationDiagnostic[] } => {
-    const violations: number[] = [];
-    const diagnostics: ViolationDiagnostic[] = [];
-    
-    // Get 24hr calculation with violating windows
-    const anyPeriod24Data = calculateAnyPeriod24hr(records, dayIndex, selectedPeriod, prevMonthRecords);
-    
-    // Rule [1]: Minimum 10 hours rest in ANY 24hr period
-    if (record.anyPeriodRest24hr < 10 && anyPeriod24Data.violatingRestWindows.length > 0) {
-      violations.push(1);
-      
-      // Convert violating windows to ranges
-      const violatingRanges = anyPeriod24Data.violatingRestWindows.map(w => {
-        // startCell is in the combined array (0-95), need to convert to day context
-        // Cells 0-47 are from previous day, 48-95 are from current day
-        const isStartInPrevDay = w.startCell < 48;
-        const endCell = w.startCell + 47; // 24-hour window
-        
-        return {
-          startCell: isStartInPrevDay ? w.startCell : w.startCell - 48,
-          endCell: endCell >= 48 ? endCell - 48 : 47,
-          startDay: isStartInPrevDay ? anyPeriod24Data.prevDayNumber : record.day,
-          monthName: isStartInPrevDay ? anyPeriod24Data.prevMonthName : undefined,
-        };
-      });
-      
-      diagnostics.push({
-        code: 1,
-        windowStart: violatingRanges.length === 1 
-          ? formatWindowStart(violatingRanges[0], record, selectedPeriod)
-          : 'Multiple windows',
-        reason: `Minimum rest in any 24hr period: ${record.anyPeriodRest24hr.toFixed(1)}h (< 10h required)`,
-        violatingRanges,
-      });
-    }
-    
-    // Rule [2]: Minimum 77 hours rest in ANY 7-day period
-    if (record.anyPeriodRest7day < 77) {
-      violations.push(2);
-      diagnostics.push({
-        code: 2,
-        windowStart: 'Various windows',
-        reason: `Minimum rest in any 7-day period: ${record.anyPeriodRest7day.toFixed(1)}h (< 77h required)`
-      });
-    }
-    
-    // Rule [3]: The two largest rest periods must sum to ≥10 hours, and at least one must be ≥6 hours
-    const code3Diagnostic = checkViolationCode3(records, dayIndex, selectedPeriod, prevMonthRecords);
-    if (code3Diagnostic) {
-      violations.push(3);
-      diagnostics.push(code3Diagnostic);
-    }
-    
-    // Rule [4]: Interval between rest periods must not exceed 14 hours
-    if (checkViolationCode4(records, dayIndex, prevMonthRecords)) {
-      violations.push(4);
-      diagnostics.push({
-        code: 4,
-        windowStart: 'Various windows',
-        reason: 'Work interval between rest periods exceeds 14 hours'
-      });
-    }
-    
-    // Rule [5]: Maximum 14 hours work in ANY 24hr period
-    if (record.anyPeriodWork24hr > 14 && anyPeriod24Data.violatingWorkWindows.length > 0) {
-      violations.push(5);
-      
-      // Convert violating windows to ranges
-      const violatingRanges = anyPeriod24Data.violatingWorkWindows.map(w => {
-        const isStartInPrevDay = w.startCell < 48;
-        const endCell = w.startCell + 47;
-        
-        return {
-          startCell: isStartInPrevDay ? w.startCell : w.startCell - 48,
-          endCell: endCell >= 48 ? endCell - 48 : 47,
-          startDay: isStartInPrevDay ? anyPeriod24Data.prevDayNumber : record.day,
-          monthName: isStartInPrevDay ? anyPeriod24Data.prevMonthName : undefined,
-        };
-      });
-      
-      diagnostics.push({
-        code: 5,
-        windowStart: violatingRanges.length === 1 
-          ? formatWindowStart(violatingRanges[0], record, selectedPeriod)
-          : 'Multiple windows',
-        reason: `Maximum work in any 24hr period: ${record.anyPeriodWork24hr.toFixed(1)}h (> 14h limit)`,
-        violatingRanges,
-      });
-    }
-    
-    // Rule [6]: Maximum 72 hours work in ANY 7-day period
-    if (record.anyPeriodWork7day > 72) {
-      violations.push(6);
-      diagnostics.push({
-        code: 6,
-        windowStart: 'Various windows',
-        reason: `Maximum work in any 7-day period: ${record.anyPeriodWork7day.toFixed(1)}h (> 72h limit)`
-      });
-    }
-    
-    // Rule [7]: Maximum 15 hours work in ANY 24hr period (OPA-specific, filtered in UI)
-    if (record.anyPeriodWork24hr > 15) {
-      violations.push(7);
-      
-      // Find all windows that violate the 15-hour OPA limit
-      const violating15hrWindows = anyPeriod24Data.violatingWorkWindows.filter(w => w.workHours > 15);
-      
-      if (violating15hrWindows.length > 0) {
-        const violatingRanges = violating15hrWindows.map(w => {
-          const isStartInPrevDay = w.startCell < 48;
-          const endCell = w.startCell + 47;
-          
-          return {
-            startCell: isStartInPrevDay ? w.startCell : w.startCell - 48,
-            endCell: endCell >= 48 ? endCell - 48 : 47,
-            startDay: isStartInPrevDay ? anyPeriod24Data.prevDayNumber : record.day,
-            monthName: isStartInPrevDay ? anyPeriod24Data.prevMonthName : undefined,
-          };
-        });
-        
-        diagnostics.push({
-          code: 7,
-          windowStart: violatingRanges.length === 1 
-            ? formatWindowStart(violatingRanges[0], record, selectedPeriod)
-            : 'Multiple windows',
-          reason: `Maximum work in any 24hr period: ${record.anyPeriodWork24hr.toFixed(1)}h (> 15h OPA limit)`,
-          violatingRanges,
-        });
-      } else {
-        diagnostics.push({
-          code: 7,
-          windowStart: 'Various windows',
-          reason: `Maximum work in any 24hr period: ${record.anyPeriodWork24hr.toFixed(1)}h (> 15h OPA limit)`
-        });
-      }
-    }
-    
-    // Rule [8]: Maximum 36 hours work in ANY 72hr period (OPA-specific, filtered in UI)
-    const maxWork72hr = calculateAnyPeriod72hr(records, dayIndex, prevMonthRecords);
-    if (maxWork72hr > 36) {
-      violations.push(8);
-      diagnostics.push({
-        code: 8,
-        windowStart: 'Various windows',
-        reason: `Maximum work in any 72hr period: ${maxWork72hr.toFixed(1)}h (> 36h OPA limit)`
-      });
-    }
-    
-    return { violations, diagnostics };
-  };
-
   // Handler: Toggle Plan/Rec
   const handleTogglePlanRec = useCallback((dayIndex: number) => {
     setDailyRecords(prevRecords => {
@@ -1273,35 +756,20 @@ export const RHRecordingForm = ({
         // Set isPlan based on the current recordMode toggle
         record.isPlan = (recordMode === 'Plan');
         
-        // Recalculate 24hr metrics
-        record.hoursOfRest24hr = calculateHoursOfRest24hr(record.hours);
-        record.hoursOfWork24hr = calculateHoursOfWork24hr(record.hours);
+        // Recalculate basic 24hr metrics
+        const restHours = record.hours.filter(h => h === '').length / 2;
+        record.hoursOfRest24hr = restHours;
+        record.hoursOfWork24hr = 24 - restHours;
         
         newRecords[dayIndex] = record;
         
-        // Recalculate rolling metrics for all affected days
-        for (let i = dayIndex; i < newRecords.length && i < dayIndex + 7; i++) {
-          const metrics = calculateRollingMetrics(newRecords, i);
-          const anyPeriod24hr = calculateAnyPeriod24hr(newRecords, i, selectedPeriod, previousMonthRecords);
-          const anyPeriod7day = calculateAnyPeriod7day(newRecords, i, previousMonthRecords);
-          
-          newRecords[i] = {
-            ...newRecords[i],
-            ...metrics,
-            ...anyPeriod24hr,
-            ...anyPeriod7day,
-          };
-          
-          // Detect violations
-          const { violations, diagnostics } = detectViolations(newRecords[i], newRecords, i, previousMonthRecords);
-          newRecords[i].violations = violations;
-          newRecords[i].violationDiagnostics = diagnostics;
-        }
+        // All other metrics and violations will be automatically recalculated
+        // by the timelineViolations memo when dailyRecords changes
       }
       
       return newRecords;
     });
-  }, [previousMonthRecords, selectedPeriod, recordMode]);
+  }, [recordMode]);
 
   // Handler: Edit comments
   const handleCommentsChange = useCallback((dayIndex: number, comments: string) => {
