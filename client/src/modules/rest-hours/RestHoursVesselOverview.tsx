@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParams, useLocation } from 'wouter';
-import { ArrowLeft } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { ArrowLeft, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -10,6 +11,8 @@ import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { RHCrewRecordsTable } from './RHCrewRecordsTable';
 import RestHoursSideBar from './RestHoursSideBar';
 import MainLayout from '@/components/main/MainLayout';
+import { DateLineAdjustmentsDialog } from './DateLineAdjustmentsDialog';
+import type { VesselDateLineAdjustment } from '@shared/schema';
 
 export const RestHoursVesselOverview = (): JSX.Element => {
   const params = useParams();
@@ -42,8 +45,34 @@ export const RestHoursVesselOverview = (): JSX.Element => {
   const [searchText, setSearchText] = useState("");
   const [complianceMode, setComplianceMode] = useState<'Rest' | 'Work'>('Rest');
   const [opaMode, setOpaMode] = useState(false);
+  const [dateLineDialogOpen, setDateLineDialogOpen] = useState(false);
 
   const { vessels, isLoading: vesselsLoading } = useVesselLookup();
+
+  // Fetch date line adjustments for badge count
+  const { data: dateLineAdjustment } = useQuery<VesselDateLineAdjustment | null>({
+    queryKey: ['/api/vessel-dateline-adjustments', selectedVessel, periodValue],
+    queryFn: async () => {
+      if (!selectedVessel || !periodValue) return null;
+      const response = await fetch(`/api/vessel-dateline-adjustments/${selectedVessel}/${periodValue}`);
+      if (!response.ok) {
+        if (response.status === 404) return null;
+        throw new Error('Failed to fetch vessel date line adjustments');
+      }
+      return response.json();
+    },
+    enabled: !!selectedVessel && !!periodValue,
+  });
+
+  const adjustmentCount = useMemo(() => {
+    if (!dateLineAdjustment) return 0;
+    try {
+      const adjustments = JSON.parse(dateLineAdjustment.adjustments);
+      return Array.isArray(adjustments) ? adjustments.length : 0;
+    } catch (e) {
+      return 0;
+    }
+  }, [dateLineAdjustment]);
 
   // Get vessel name for title
   const vesselName = useMemo(() => {
@@ -134,6 +163,22 @@ export const RestHoursVesselOverview = (): JSX.Element => {
             </button>
             <span className="text-xs text-[#4f5863]">Work</span>
           </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setDateLineDialogOpen(true)}
+            className="h-8 gap-2 bg-white dark:bg-gray-800 text-[#0f172a] dark:text-white border-gray-300 dark:border-gray-600 relative"
+            data-testid="button-date-line-adjustments"
+          >
+            <Globe className="h-4 w-4" />
+            Date Line
+            {adjustmentCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-orange-500 text-white text-[10px] font-medium flex items-center justify-center">
+                {adjustmentCount}
+              </span>
+            )}
+          </Button>
           
           <Button
             variant="outline"
@@ -147,6 +192,14 @@ export const RestHoursVesselOverview = (): JSX.Element => {
           </Button>
         </div>
       </SectionTitleComponents>
+
+      <DateLineAdjustmentsDialog
+        open={dateLineDialogOpen}
+        onOpenChange={setDateLineDialogOpen}
+        vesselId={selectedVessel}
+        vesselName={vesselName}
+        monthValue={periodValue}
+      />
 
       {/* Filters */}
       <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
