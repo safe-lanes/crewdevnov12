@@ -34,11 +34,26 @@ export const RestHoursRecord = (): JSX.Element => {
 
   const { vessels, isLoading: vesselsLoading } = useVesselLookup();
   
-  // Parse URL parameters on mount only (but don't mark as synced yet - wait for vessels)
+  // Parse URL parameters or restore from localStorage on mount
   useEffect(() => {
     const search = window.location.search;
     if (!search) {
-      // No URL params, will be marked as synced after vessel load
+      // No URL params - try to restore from localStorage
+      try {
+        const stored = localStorage.getItem('rh-records-filters');
+        if (stored) {
+          const filters = JSON.parse(stored);
+          if (filters.period) setPeriodValue(filters.period);
+          if (filters.complianceMode) setComplianceMode(filters.complianceMode);
+          if (filters.opaMode !== undefined) setOpaMode(filters.opaMode);
+          if (filters.filterType) setFilterType(filters.filterType);
+          if (filters.fleetValue) setFleetValue(filters.fleetValue);
+          if (filters.addGroupValue) setAddGroupValue(filters.addGroupValue);
+          if (filters.selectedVessels) setSelectedVessels(filters.selectedVessels);
+        }
+      } catch (e) {
+        console.error('Failed to restore filters from localStorage:', e);
+      }
       return;
     }
     
@@ -101,6 +116,27 @@ export const RestHoursRecord = (): JSX.Element => {
     // CRITICAL: Only mark as synced AFTER vessel data is loaded and applied
     hasSyncedFromUrl.current = true;
   }, [vessels, vesselsLoading]);
+  
+  // Save filter state to localStorage whenever filters change
+  useEffect(() => {
+    // Skip if still syncing from URL
+    if (!hasSyncedFromUrl.current) return;
+    
+    try {
+      const filters = {
+        period: periodValue,
+        complianceMode,
+        opaMode,
+        filterType,
+        selectedVessels,
+        fleetValue,
+        addGroupValue,
+      };
+      localStorage.setItem('rh-records-filters', JSON.stringify(filters));
+    } catch (e) {
+      console.error('Failed to save filters to localStorage:', e);
+    }
+  }, [periodValue, complianceMode, opaMode, filterType, selectedVessels, fleetValue, addGroupValue]);
 
   // Convert PeriodFilterValue to string format for RHRecordsTable (YYYY-MM)
   const selectedMonthString = useMemo(() => {

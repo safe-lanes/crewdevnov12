@@ -33,11 +33,21 @@ export const RestHoursPlan = (): JSX.Element => {
 
   const { vessels, isLoading: vesselsLoading } = useVesselLookup();
 
-  // Parse URL parameters on mount only (but don't mark as synced yet - wait for vessels)
+  // Parse URL parameters or restore from localStorage on mount
   useEffect(() => {
     const search = window.location.search;
     if (!search) {
-      // No URL params, will be marked as synced after vessel load
+      // No URL params - try to restore from localStorage
+      try {
+        const stored = localStorage.getItem('rh-plan-filters');
+        if (stored) {
+          const filters = JSON.parse(stored);
+          if (filters.period) setPeriodValue(filters.period);
+          if (filters.selectedVessel) setSelectedVessel(filters.selectedVessel);
+        }
+      } catch (e) {
+        console.error('Failed to restore filters from localStorage:', e);
+      }
       return;
     }
     
@@ -69,6 +79,22 @@ export const RestHoursPlan = (): JSX.Element => {
     // CRITICAL: Only mark as synced AFTER vessel data is loaded
     hasSyncedFromUrl.current = true;
   }, [vesselsLoading, vessels, selectedVessel]);
+  
+  // Save filter state to localStorage whenever filters change
+  useEffect(() => {
+    // Skip if still syncing from URL
+    if (!hasSyncedFromUrl.current) return;
+    
+    try {
+      const filters = {
+        period: periodValue,
+        selectedVessel,
+      };
+      localStorage.setItem('rh-plan-filters', JSON.stringify(filters));
+    } catch (e) {
+      console.error('Failed to save filters to localStorage:', e);
+    }
+  }, [periodValue, selectedVessel]);
 
   // Convert PeriodFilterValue to string format (YYYY-MM)
   const periodValueString = useMemo(() => {
