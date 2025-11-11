@@ -80,6 +80,9 @@ const calculateDueInStatus = (nextDueDate: string | undefined): { label: string;
 
 // Test History Cell Renderer (reused from Annual)
 const TestHistoryCellRenderer = (params: ICellRendererParams) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef || !params.data) return null;
+  
   const testData = params.value as TestRecord | undefined;
 
   if (!testData || !testData.date) {
@@ -106,6 +109,9 @@ const TestHistoryCellRenderer = (params: ICellRendererParams) => {
 
 // Frequency Cell Renderer
 const FrequencyCellRenderer = (params: ICellRendererParams) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef || !params.data) return null;
+  
   if (!params.data?.hasPlanning) {
     return null; // No frequency dropdown for Post Incident/Other
   }
@@ -144,6 +150,9 @@ const FrequencyCellRenderer = (params: ICellRendererParams) => {
 
 // Actions Cell Renderer
 const ActionsCellRenderer = (params: ICellRendererParams) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef || !params.data) return null;
+  
   const { onAdd } = params.context || {};
   
   const handleAdd = () => {
@@ -396,6 +405,7 @@ export function SummaryTable({ selectedVessel, onAdd }: SummaryTableProps) {
             ref={gridRef}
             rowData={summaryData}
             columnDefs={columnDefs}
+            gridOptions={{ theme: 'legacy' }}
             domLayout="autoHeight"
             headerHeight={40}
             rowHeight={70}

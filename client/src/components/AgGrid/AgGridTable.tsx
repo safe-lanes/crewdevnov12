@@ -31,8 +31,6 @@ import {
   AdvancedFilterModule,
   LicenseManager
 } from 'ag-grid-enterprise';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-alpine.css';
 import { useViewport, getViewportConfig } from '@/hooks/useViewport';
 
 // Set AG Grid Enterprise License - check both possible environment variable names

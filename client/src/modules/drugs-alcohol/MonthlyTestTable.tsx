@@ -141,6 +141,9 @@ const FrequencyHeaderComponent = (params: any) => {
 };
 
 const TestHistoryCellRenderer = (params: ICellRendererParams) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef || !params.data) return null;
+  
   const testData = params.value as TestRecord | undefined;
 
   if (!testData || !testData.date) {
@@ -166,6 +169,9 @@ const TestHistoryCellRenderer = (params: ICellRendererParams) => {
 };
 
 const NextDueCellRenderer = (params: ICellRendererParams) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef || !params.data) return null;
+  
   const { globalFrequency, vesselFrequencies } = params.context;
   const vesselId = params.data?.vesselId;
 
@@ -214,6 +220,9 @@ const NextDueCellRenderer = (params: ICellRendererParams) => {
 };
 
 const FrequencyCellRenderer = (params: ICellRendererParams) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef || !params.data) return null;
+  
   const { globalFrequency, vesselFrequencies, setVesselFrequency } = params.context;
   const vesselId = params.data?.vesselId;
 
@@ -252,6 +261,9 @@ const FrequencyCellRenderer = (params: ICellRendererParams) => {
 };
 
 const ActionsCellRenderer = (params: ICellRendererParams) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef || !params.data) return null;
+  
   const { onAdd } = params.context || {};
   
   const handleAdd = () => {

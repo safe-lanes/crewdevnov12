@@ -21,6 +21,9 @@ interface RHCrewRecordsTableProps {
 }
 
 const ProgressBarRenderer = (params: ICellRendererParams) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef) return null;
+  
   const percent = params.value || 0;
   const isComplete = percent === 100;
   const isZero = percent === 0;
@@ -45,6 +48,9 @@ const ProgressBarRenderer = (params: ICellRendererParams) => {
 };
 
 const YesNoRenderer = (params: ICellRendererParams) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef) return null;
+  
   const value = params.value;
   if (value == null) return null;
 
@@ -63,6 +69,9 @@ const YesNoRenderer = (params: ICellRendererParams) => {
 };
 
 const BadgeRenderer = (params: ICellRendererParams) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef || !params.data) return null;
+  
   const value = params.value ?? 0;
   // Normalize to number to handle both numeric and string zeroes
   const isZero = Number(value) === 0;
@@ -93,6 +102,9 @@ const BadgeRenderer = (params: ICellRendererParams) => {
 };
 
 const PredictedBadgeRenderer = (params: ICellRendererParams) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef) return null;
+  
   const value = params.value ?? 0;
   // Normalize to number to handle both numeric and string zeroes
   const isZero = Number(value) === 0;
@@ -115,6 +127,9 @@ const PredictedBadgeRenderer = (params: ICellRendererParams) => {
 };
 
 const ViolationsWithDatesRenderer = (params: ICellRendererParams) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef || !params.data) return null;
+  
   const value = params.value ?? 0;
   const violationDatesJson = params.data?.violationDates;
   
@@ -191,6 +206,9 @@ const ViolationsWithDatesRenderer = (params: ICellRendererParams) => {
 };
 
 const PredictedViolationsWithDatesRenderer = (params: ICellRendererParams) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef || !params.data) return null;
+  
   const value = params.value ?? 0;
   const predictedDatesJson = params.data?.predictedViolationDates;
   
@@ -268,6 +286,9 @@ const PredictedViolationsWithDatesRenderer = (params: ICellRendererParams) => {
 };
 
 const ActionsRenderer = (params: ICellRendererParams) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef || !params.data) return null;
+  
   const handleEdit = () => {
     if (params.context && params.context.onEditRecord) {
       params.context.onEditRecord(params.data);
@@ -493,6 +514,7 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
           rowData={records}
           columnDefs={columnDefs}
           defaultColDef={defaultColDef}
+          gridOptions={{ theme: 'legacy' }}
           context={{ onEditRecord: handleEditRecord, onViewViolations: handleViewViolations, onViewPredictedViolations: handleViewPredictedViolations, onViewNCReport: handleViewNCReport }}
           animateRows={true}
           pagination={true}

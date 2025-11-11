@@ -256,6 +256,7 @@ export function PostIncidentTestTable({
           ref={gridRef}
           rowData={tableData}
           columnDefs={columnDefs}
+          gridOptions={{ theme: 'legacy' }}
           domLayout="normal"
           headerHeight={40}
           rowHeight={50}

@@ -20,6 +20,9 @@ interface RHRecordsTableProps {
 }
 
 const ProgressBarRenderer = (params: ICellRendererParams) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef) return null;
+  
   const percent = params.value || 0;
   const isComplete = percent === 100;
   const isZero = percent === 0;
@@ -44,6 +47,9 @@ const ProgressBarRenderer = (params: ICellRendererParams) => {
 };
 
 const YesNoRenderer = (params: ICellRendererParams) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef || !params.data) return null;
+  
   const value = params.value;
   if (value == null) return null;
 
@@ -106,6 +112,9 @@ const YesNoRenderer = (params: ICellRendererParams) => {
 };
 
 const ViolationsRenderer = (params: ICellRendererParams) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef || !params.data) return null;
+  
   const violations = params.data?.totalViolations || 0;
   const crewCount = params.data?.crewWithViolations || 0;
   const crewDetailsJson = params.data?.crewWithViolationsDetails;
@@ -218,6 +227,9 @@ const ViolationsRenderer = (params: ICellRendererParams) => {
 };
 
 const NCsRenderer = (params: ICellRendererParams) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef || !params.data) return null;
+  
   const ncs = params.data?.totalNCs || 0;
   const crewCount = params.data?.crewWithNCs || 0;
   const crewDetailsJson = params.data?.crewWithNCsDetails;
@@ -286,6 +298,9 @@ const NCsRenderer = (params: ICellRendererParams) => {
 };
 
 const PredictedNCsRenderer = (params: ICellRendererParams) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef || !params.data) return null;
+  
   const predictedNCs = params.data?.predictedNCs || 0;
   const crewCount = params.data?.crewWithPredictedNCs || 0;
   const crewDetailsJson = params.data?.crewWithPredictedNCsDetails;
@@ -354,6 +369,9 @@ const PredictedNCsRenderer = (params: ICellRendererParams) => {
 };
 
 const BadgeRenderer = (params: ICellRendererParams) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef) return null;
+  
   const value = params.value;
   if (!value || value === 0) return null;
 
@@ -367,6 +385,9 @@ const BadgeRenderer = (params: ICellRendererParams) => {
 };
 
 const PredictedViolationsRenderer = (params: ICellRendererParams) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef || !params.data) return null;
+  
   const predictedViolations = params.data?.predictedViolations || 0;
   const crewCount = params.data?.crewWithPredictedViolations || 0;
   const crewDetailsJson = params.data?.crewWithPredictedViolationsDetails;
@@ -476,6 +497,9 @@ const PredictedViolationsRenderer = (params: ICellRendererParams) => {
 };
 
 const VesselReviewRenderer = (params: ICellRendererParams) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef || !params.data) return null;
+  
   const status = params.value;
   
   // Don't show anything if status is empty (before review period starts)
@@ -530,6 +554,9 @@ const VesselReviewRenderer = (params: ICellRendererParams) => {
 };
 
 const OfficeReviewRenderer = (params: ICellRendererParams) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef || !params.data) return null;
+  
   const status = params.value;
   
   // If no status (vessel hasn't submitted review yet), don't show any badge
@@ -678,6 +705,9 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
 
   // Actions renderer that uses callback instead of hooks
   const ActionsRenderer = (params: ICellRendererParams) => {
+    // Defensive guard for AG Grid initialization
+    if (!params.colDef || !params.data) return null;
+    
     const handleClick = () => {
       const record = params.data as RestHoursVesselRecord;
       if (record) {
@@ -820,6 +850,7 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
           rowData={filteredRecords}
           columnDefs={columnDefs}
           defaultColDef={defaultColDef}
+          gridOptions={{ theme: 'legacy' }}
           context={{ 
             onViewViolations: handleViewViolations, 
             onViewPredictedViolations: handleViewPredictedViolations,
