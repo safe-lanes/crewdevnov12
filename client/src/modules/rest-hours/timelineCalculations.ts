@@ -458,9 +458,30 @@ export function detectViolations(
       }
       
       if (checkCode3Violation(timeline, slotIdx)) {
+        // Get actual rest period lengths for diagnostic message
+        const restPeriods = analyzeRestPeriods(timeline, slotIdx);
+        const sorted = restPeriods.sort((a, b) => b - a);
+        const largest = sorted[0] || 0;
+        const secondLargest = sorted[1] || 0;
+        const largestHours = (largest * 0.5).toFixed(1);
+        const secondLargestHours = (secondLargest * 0.5).toFixed(1);
+        const totalHours = ((largest + secondLargest) * 0.5).toFixed(1);
+        const numPeriods = restPeriods.length;
+        
+        let reason = `Rest periods: `;
+        if (numPeriods === 0) {
+          reason += `No rest periods found`;
+        } else if (numPeriods > 2) {
+          reason += `${numPeriods} periods found (max 2 allowed). Largest: ${largestHours}h, 2nd: ${secondLargestHours}h`;
+        } else if (numPeriods === 1) {
+          reason += `${largestHours}h (need ≥6h and ≥10h total)`;
+        } else {
+          reason += `${largestHours}h + ${secondLargestHours}h = ${totalHours}h (need ≥6h longest, ≥10h total)`;
+        }
+        
         violations.push({
           code: ViolationCode.VIOLATION_3,
-          reason: `Rest periods: two largest must sum to ≥10h, and at least one must be ≥6h`,
+          reason,
           slotIndex: slotIdx,
           sourceDay: slot.sourceDay,
           occurrence: slot.occurrence,
