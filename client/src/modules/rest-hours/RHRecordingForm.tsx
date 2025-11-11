@@ -65,6 +65,15 @@ interface DailyRecord {
   anyPeriodWork7day: number;  // Maximum work hours in ANY 7-day window
 }
 
+interface DisplayRow {
+  baseIndex: number;        // Index into dailyRecords array
+  record: DailyRecord;      // Reference to the actual record
+  dayLabel: string;         // Day number with marker (e.g., "9" or "9*" or "9**")
+  dayOfWeekLabel: string;   // Day of week label
+  marker?: 'advanced' | 'retarded';  // Type of adjustment
+  occurrence: 'primary' | 'duplicate';  // For retarded days
+}
+
 export const RHRecordingForm = ({
   open,
   onOpenChange,
@@ -519,6 +528,84 @@ export const RHRecordingForm = ({
     setShowPlanning(true);
     setOpaMode(false);
   };
+
+  // Generate display rows by applying date line adjustments to dailyRecords
+  const displayRows = useMemo(() => {
+    const rows: DisplayRow[] = [];
+    
+    // Parse date line adjustments
+    let adjustmentsMap = new Map<number, 'advanced' | 'retarded'>();
+    if (dateLineAdjustment) {
+      try {
+        const adjustments = JSON.parse(dateLineAdjustment.adjustments) as DateLineAdjustmentItem[];
+        if (Array.isArray(adjustments)) {
+          adjustments.forEach(adj => {
+            adjustmentsMap.set(adj.day, adj.type);
+          });
+        }
+      } catch (e) {
+        console.error('Failed to parse date line adjustments:', e);
+      }
+    }
+    
+    // Iterate through daily records and build display rows
+    dailyRecords.forEach((record, baseIndex) => {
+      const adjustmentType = adjustmentsMap.get(record.day);
+      
+      if (adjustmentType === 'advanced') {
+        // Advanced day: single row with red text and * marker
+        rows.push({
+          baseIndex,
+          record,
+          dayLabel: `${record.day}`,
+          dayOfWeekLabel: record.dayOfWeek,
+          marker: 'advanced',
+          occurrence: 'primary',
+        });
+      } else if (adjustmentType === 'retarded') {
+        // Retarded day: emit TWO rows
+        // First occurrence (primary, unmarked)
+        rows.push({
+          baseIndex,
+          record,
+          dayLabel: `${record.day}`,
+          dayOfWeekLabel: record.dayOfWeek,
+          occurrence: 'primary',
+        });
+        // Second occurrence (duplicate with green text and ** marker)
+        rows.push({
+          baseIndex,
+          record,
+          dayLabel: `${record.day}`,
+          dayOfWeekLabel: record.dayOfWeek,
+          marker: 'retarded',
+          occurrence: 'duplicate',
+        });
+      } else {
+        // Normal day: single row, no marker
+        rows.push({
+          baseIndex,
+          record,
+          dayLabel: `${record.day}`,
+          dayOfWeekLabel: record.dayOfWeek,
+          occurrence: 'primary',
+        });
+      }
+    });
+    
+    return rows;
+  }, [dailyRecords, dateLineAdjustment]);
+
+  // Check if any date line adjustments exist
+  const hasDateLineAdjustments = useMemo(() => {
+    if (!dateLineAdjustment) return false;
+    try {
+      const adjustments = JSON.parse(dateLineAdjustment.adjustments) as DateLineAdjustmentItem[];
+      return Array.isArray(adjustments) && adjustments.length > 0;
+    } catch (e) {
+      return false;
+    }
+  }, [dateLineAdjustment]);
 
   // Helper: Calculate hours of rest in 24hr period
   // Note: Each cell represents 30 minutes (0.5 hours), so divide count by 2
