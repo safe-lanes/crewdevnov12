@@ -38,11 +38,15 @@ export interface RollingWindowMetrics {
 }
 
 /**
- * Builds a continuous timeline of half-hour slots from daily records
- * accounting for Advanced (skipped) and Retarded (repeated) days.
+ * Builds a continuous timeline of half-hour slots from daily records.
  * 
- * @param dailyRecords - Array of daily records for the month
- * @param adjustments - Array of date line adjustments
+ * IMPORTANT: Records now contain their own occurrence field. Retarded days
+ * have TWO separate records in the dailyRecords array (one primary, one duplicate).
+ * This function simply converts each record into 48 timeline slots, respecting
+ * the record's occurrence field.
+ * 
+ * @param dailyRecords - Array of daily records (retarded days have 2 entries)
+ * @param adjustments - Array of date line adjustments (used for isAdvanced/isRetarded flags only)
  * @returns Array of timeline slots in chronological order
  */
 export function buildTimeline(
@@ -61,28 +65,22 @@ export function buildTimeline(
   for (const record of dailyRecords) {
     const adjustmentType = adjustmentMap.get(record.day);
     
+    // Skip advanced days entirely
     if (adjustmentType === 'advanced') {
       continue;
     }
     
-    const addDayToTimeline = (occurrence: 'primary' | 'duplicate') => {
-      for (let halfHourIdx = 0; halfHourIdx < 48; halfHourIdx++) {
-        timeline.push({
-          slotIndex: slotIndex++,
-          sourceDay: record.day,
-          occurrence,
-          halfHourIndex: halfHourIdx,
-          status: record.hours[halfHourIdx] || '',
-          isAdvanced: false,
-          isRetarded: adjustmentType === 'retarded',
-        });
-      }
-    };
-    
-    addDayToTimeline('primary');
-    
-    if (adjustmentType === 'retarded') {
-      addDayToTimeline('duplicate');
+    // Add one set of 48 slots for this record, using its own occurrence field
+    for (let halfHourIdx = 0; halfHourIdx < 48; halfHourIdx++) {
+      timeline.push({
+        slotIndex: slotIndex++,
+        sourceDay: record.day,
+        occurrence: record.occurrence,
+        halfHourIndex: halfHourIdx,
+        status: record.hours[halfHourIdx] || '',
+        isAdvanced: false,
+        isRetarded: adjustmentType === 'retarded' && record.occurrence === 'duplicate',
+      });
     }
   }
   
