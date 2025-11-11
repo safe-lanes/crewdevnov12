@@ -61,7 +61,7 @@ export const DateLineAdjustmentsDialog = ({
 
   const saveMutation = useMutation({
     mutationFn: async (data: { vesselId: string; monthValue: string; adjustments: string }) => {
-      return apiRequest(`/api/vessel-dateline-adjustments/${data.vesselId}/${data.monthValue}`, 'PUT', { adjustments: data.adjustments });
+      return apiRequest('PUT', `/api/vessel-dateline-adjustments/${data.vesselId}/${data.monthValue}`, { adjustments: data.adjustments });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/vessel-dateline-adjustments'] });
@@ -84,7 +84,7 @@ export const DateLineAdjustmentsDialog = ({
   const deleteMutation = useMutation({
     mutationFn: async () => {
       if (!vesselId || !monthValue) throw new Error('Missing vessel or month');
-      return apiRequest(`/api/vessel-dateline-adjustments/${vesselId}/${monthValue}`, 'DELETE');
+      return apiRequest('DELETE', `/api/vessel-dateline-adjustments/${vesselId}/${monthValue}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/vessel-dateline-adjustments'] });

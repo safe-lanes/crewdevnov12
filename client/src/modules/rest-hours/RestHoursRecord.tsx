@@ -38,6 +38,14 @@ export const RestHoursRecord = (): JSX.Element => {
 
   const { vessels, isLoading: vesselsLoading } = useVesselLookup();
 
+  // Convert PeriodFilterValue to string format for queries (YYYY-MM)
+  const selectedMonthString = useMemo(() => {
+    if (periodValue.mode === 'year-month' && periodValue.year && periodValue.month) {
+      return `${periodValue.year}-${String(periodValue.month).padStart(2, '0')}`;
+    }
+    return '';
+  }, [periodValue]);
+
   const selectedVesselId = useMemo(() => {
     if (filterType !== 'vessel' || selectedVessels.length !== 1) return null;
     const vessel = vessels.find((v: any) => v.name === selectedVessels[0]);
@@ -172,20 +180,15 @@ export const RestHoursRecord = (): JSX.Element => {
     }
   }, [periodValue, complianceMode, opaMode, filterType, selectedVessels, fleetValue, addGroupValue]);
 
-  // Convert PeriodFilterValue to string format for RHRecordsTable (YYYY-MM)
-  const selectedMonthString = useMemo(() => {
-    if (periodValue.mode === 'year-month' && periodValue.year && periodValue.month) {
-      return `${periodValue.year}-${String(periodValue.month).padStart(2, '0')}`;
-    }
-    return '';
-  }, [periodValue]);
-
   const toggleVessel = (vesselName: string) => {
-    setSelectedVessels(prev => 
-      prev.includes(vesselName) 
+    console.log('[toggleVessel] Called with:', vesselName);
+    setSelectedVessels(prev => {
+      const newValue = prev.includes(vesselName) 
         ? prev.filter(v => v !== vesselName)
-        : [...prev, vesselName]
-    );
+        : [...prev, vesselName];
+      console.log('[toggleVessel] Previous:', prev, '→ New:', newValue);
+      return newValue;
+    });
   };
 
   const handleClearFilters = () => {
@@ -286,7 +289,7 @@ export const RestHoursRecord = (): JSX.Element => {
               >
                 Vessel
               </Label>
-              <Popover>
+              <Popover modal={false}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
@@ -308,19 +311,22 @@ export const RestHoursRecord = (): JSX.Element => {
                     {vessels.map((vessel: any) => (
                       <div 
                         key={vessel.id} 
-                        className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+                        className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer"
+                        data-testid={`vessel-row-${vessel.entryId || vessel.id}`}
+                        onClick={() => toggleVessel(vessel.name)}
                       >
                         <Checkbox 
                           checked={selectedVessels.includes(vessel.name)}
                           onCheckedChange={() => toggleVessel(vessel.name)}
-                          data-testid={`checkbox-vessel-${vessel.id}`}
+                          data-testid={`checkbox-vessel-${vessel.entryId || vessel.id}`}
+                          onClick={(e) => e.stopPropagation()}
                         />
-                        <label 
-                          className="text-sm cursor-pointer flex-1"
-                          onClick={() => toggleVessel(vessel.name)}
+                        <span 
+                          className="text-sm flex-1"
+                          data-testid={`label-vessel-${vessel.entryId || vessel.id}`}
                         >
                           {vessel.name}
-                        </label>
+                        </span>
                       </div>
                     ))}
                   </div>
