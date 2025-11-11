@@ -267,32 +267,63 @@ const REGULATORY_THRESHOLDS = {
 
 /**
  * Analyzes consecutive rest periods within a 24-hour window
- * Returns the lengths of all continuous rest periods found
+ * Returns both the lengths and the slot ranges of all continuous rest periods found
  */
-function analyzeRestPeriods(timeline: TimelineSlot[], endIdx: number): number[] {
+function analyzeRestPeriodsWithRanges(timeline: TimelineSlot[], endIdx: number): {
+  lengths: number[];
+  ranges: Array<{ startSlot: number; endSlot: number; length: number }>;
+} {
   const startIdx = Math.max(0, endIdx - 47);
-  const restPeriods: number[] = [];
+  const lengths: number[] = [];
+  const ranges: Array<{ startSlot: number; endSlot: number; length: number }> = [];
   let currentPeriodLength = 0;
+  let currentPeriodStart = -1;
   
   for (let i = startIdx; i <= endIdx; i++) {
     const isRest = timeline[i].status === '' || timeline[i].status.toLowerCase() === 'r';
     
     if (isRest) {
+      if (currentPeriodLength === 0) {
+        currentPeriodStart = i;
+      }
       currentPeriodLength++;
     } else {
       if (currentPeriodLength > 0) {
-        restPeriods.push(currentPeriodLength);
+        lengths.push(currentPeriodLength);
+        ranges.push({
+          startSlot: currentPeriodStart,
+          endSlot: i - 1,
+          length: currentPeriodLength
+        });
         currentPeriodLength = 0;
+        currentPeriodStart = -1;
       }
     }
   }
   
   if (currentPeriodLength > 0) {
-    restPeriods.push(currentPeriodLength);
+    lengths.push(currentPeriodLength);
+    ranges.push({
+      startSlot: currentPeriodStart,
+      endSlot: endIdx,
+      length: currentPeriodLength
+    });
   }
   
-  return restPeriods;
+  return { lengths, ranges };
 }
+
+/**
+ * Legacy function for backward compatibility
+ */
+function analyzeRestPeriods(timeline: TimelineSlot[], endIdx: number): number[] {
+  return analyzeRestPeriodsWithRanges(timeline, endIdx).lengths;
+}
+
+/**
+ * Export for UI layer highlighting purposes
+ */
+export { analyzeRestPeriodsWithRanges, checkCode4ViolationWithRange };
 
 /**
  * Checks Code [3]: Rest may be divided into NO MORE THAN TWO periods,
@@ -317,10 +348,15 @@ function checkCode3Violation(timeline: TimelineSlot[], slotIdx: number): boolean
 
 /**
  * Checks Code [4]: Work interval between rest periods must not exceed 14 hours
+ * Returns violation status and the violating work gap range if found
  */
-function checkCode4Violation(timeline: TimelineSlot[], slotIdx: number): boolean {
+function checkCode4ViolationWithRange(timeline: TimelineSlot[], slotIdx: number): {
+  hasViolation: boolean;
+  violatingRange?: { startSlot: number; endSlot: number };
+} {
   const startIdx = Math.max(0, slotIdx - 47);
   let currentWorkGap = 0;
+  let currentWorkGapStart = -1;
   let inRestPeriod = false;
   
   for (let i = startIdx; i <= slotIdx; i++) {
@@ -328,13 +364,23 @@ function checkCode4Violation(timeline: TimelineSlot[], slotIdx: number): boolean
     
     if (isRest) {
       if (!inRestPeriod) {
-        if (currentWorkGap > 28) return true;
+        if (currentWorkGap > 28) {
+          return {
+            hasViolation: true,
+            violatingRange: {
+              startSlot: currentWorkGapStart,
+              endSlot: i - 1
+            }
+          };
+        }
         currentWorkGap = 0;
+        currentWorkGapStart = -1;
       }
       inRestPeriod = true;
     } else {
       if (inRestPeriod) {
         currentWorkGap = 1;
+        currentWorkGapStart = i;
         inRestPeriod = false;
       } else {
         currentWorkGap++;
@@ -342,9 +388,24 @@ function checkCode4Violation(timeline: TimelineSlot[], slotIdx: number): boolean
     }
   }
   
-  if (!inRestPeriod && currentWorkGap > 28) return true;
+  if (!inRestPeriod && currentWorkGap > 28) {
+    return {
+      hasViolation: true,
+      violatingRange: {
+        startSlot: currentWorkGapStart,
+        endSlot: slotIdx
+      }
+    };
+  }
   
-  return false;
+  return { hasViolation: false };
+}
+
+/**
+ * Legacy function for backward compatibility
+ */
+function checkCode4Violation(timeline: TimelineSlot[], slotIdx: number): boolean {
+  return checkCode4ViolationWithRange(timeline, slotIdx).hasViolation;
 }
 
 /**

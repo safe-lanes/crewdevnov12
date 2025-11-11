@@ -19,6 +19,8 @@ import {
   detectViolations as detectTimelineViolations,
   groupViolationsByDay,
   prependPreviousMonthTimeline,
+  analyzeRestPeriodsWithRanges,
+  checkCode4ViolationWithRange,
   type DateLineAdjustment,
   type TimelineSlot,
   type Violation as TimelineViolation,
@@ -464,10 +466,102 @@ export const RHRecordingForm = ({
     }
   }, [existingRecord, isError, open]);
 
+  // Helper function to compute violatingRanges for hover highlighting
+  const computeViolatingRanges = (
+    violation: TimelineViolation,
+    timeline: TimelineSlot[],
+    codeNum: number
+  ): Array<{ startCell: number; endCell: number; startDay: number }> => {
+    let slotsToHighlight: TimelineSlot[] = [];
+    
+    // Determine which slots based on violation code
+    switch (codeNum) {
+      case 1: // Min 10h rest in 24h
+      case 5: // Max 14h work in 24h
+      case 7: // OPA Max 15h work in 24h
+        const start24 = Math.max(0, violation.slotIndex - 47);
+        slotsToHighlight = timeline.slice(start24, violation.slotIndex + 1);
+        break;
+        
+      case 2: // Min 77h rest in 168h
+      case 6: // Max 72h work in 168h
+        const start168 = Math.max(0, violation.slotIndex - 335);
+        slotsToHighlight = timeline.slice(start168, violation.slotIndex + 1);
+        break;
+        
+      case 8: // OPA Max 36h work in 72h
+        const start72 = Math.max(0, violation.slotIndex - 143);
+        slotsToHighlight = timeline.slice(start72, violation.slotIndex + 1);
+        break;
+        
+      case 3: // Rest period distribution
+        try {
+          const { ranges } = analyzeRestPeriodsWithRanges(timeline, violation.slotIndex);
+          const sorted = ranges.sort((a: { length: number }, b: { length: number }) => b.length - a.length).slice(0, 2);
+          slotsToHighlight = sorted.flatMap((r: { startSlot: number; endSlot: number }) =>
+            timeline.slice(r.startSlot, r.endSlot + 1)
+          );
+        } catch (e) {
+          console.error('Error computing Code 3 ranges:', e);
+        }
+        break;
+        
+      case 4: // Work gap >14h
+        try {
+          const code4Result = checkCode4ViolationWithRange(timeline, violation.slotIndex);
+          if (code4Result.hasViolation && code4Result.violatingRange) {
+            slotsToHighlight = timeline.slice(
+              code4Result.violatingRange.startSlot,
+              code4Result.violatingRange.endSlot + 1
+            );
+          }
+        } catch (e) {
+          console.error('Error computing Code 4 ranges:', e);
+        }
+        break;
+    }
+    
+    // Group slots by day and convert to ranges
+    const dayRanges = new Map<number, { minCell: number; maxCell: number }>();
+    
+    for (const slot of slotsToHighlight) {
+      if (slot.sourceDay < 1) continue; // Skip previous month slots
+      
+      const existing = dayRanges.get(slot.sourceDay);
+      if (!existing) {
+        dayRanges.set(slot.sourceDay, {
+          minCell: slot.halfHourIndex,
+          maxCell: slot.halfHourIndex
+        });
+      } else {
+        existing.minCell = Math.min(existing.minCell, slot.halfHourIndex);
+        existing.maxCell = Math.max(existing.maxCell, slot.halfHourIndex);
+      }
+    }
+    
+    // Convert map to array format
+    const result: Array<{ startCell: number; endCell: number; startDay: number }> = [];
+    Array.from(dayRanges.entries()).forEach(([day, range]) => {
+      result.push({
+        startDay: day,
+        startCell: range.minCell,
+        endCell: range.maxCell
+      });
+    });
+    
+    return result;
+  };
+
   // Timeline-based violation detection using rolling windows
   // This memoization builds the timeline ONCE and calculates all violations efficiently
-  const timelineViolations = useMemo(() => {
-    if (dailyRecords.length === 0) return new Map<number, { violations: number[]; diagnostics: ViolationDiagnostic[]; metrics: any }>();
+  const timelineData = useMemo(() => {
+    const emptyResult = {
+      violationMap: new Map<number, { violations: number[]; diagnostics: ViolationDiagnostic[]; metrics: any }>(),
+      timeline: [] as TimelineSlot[],
+      violations: [] as TimelineViolation[],
+    };
+    
+    if (dailyRecords.length === 0) return emptyResult;
     
     // Convert DailyRecord[] to the format expected by timelineCalculations
     const timelineRecords = dailyRecords.map(r => ({
@@ -526,11 +620,19 @@ export const RHRecordingForm = ({
       
       // Find timeline violations for this day to generate diagnostics
       const dayTimelineViolations = allViolations.filter(v => v.sourceDay === record.day);
-      const diagnostics: ViolationDiagnostic[] = dayTimelineViolations.map(v => ({
-        code: parseInt(v.code.match(/\[(\d+)\]/)![1]),
-        windowStart: 'Timeline window',
-        reason: v.reason,
-      }));
+      const diagnostics: ViolationDiagnostic[] = dayTimelineViolations.map(v => {
+        const codeNum = parseInt(v.code.match(/\[(\d+)\]/)![1]);
+        
+        // Compute violatingRanges for hover highlighting
+        const violatingRanges = computeViolatingRanges(v, fullTimeline, codeNum);
+        
+        return {
+          code: codeNum,
+          windowStart: 'Timeline window',
+          reason: v.reason,
+          violatingRanges,
+        };
+      });
       
       // Calculate metrics from timeline for this day
       // Find the last slot for this day in the timeline
@@ -561,8 +663,15 @@ export const RHRecordingForm = ({
       });
     }
     
-    return resultMap;
+    return {
+      violationMap: resultMap,
+      timeline: fullTimeline,
+      violations: allViolations,
+    };
   }, [dailyRecords, previousMonthRecords, parsedDateLineAdjustments, parsedPreviousMonthDateLineAdjustments, complianceMode, opaMode]);
+  
+  // Extract for easier access
+  const timelineViolations = timelineData.violationMap;
 
   // Apply timeline violations to dailyRecords whenever they change
   useEffect(() => {
