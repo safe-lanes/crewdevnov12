@@ -3736,6 +3736,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid vessel date line adjustment data", details: result.error.issues });
       }
       const adjustment = await storage.saveVesselDateLineAdjustment(result.data);
+      
+      try {
+        const adjustmentsArray = JSON.parse(result.data.adjustments);
+        const advancedDays = adjustmentsArray
+          .filter((adj: any) => adj.type === 'advanced')
+          .map((adj: any) => adj.day);
+        
+        if (advancedDays.length > 0) {
+          await storage.clearAdvancedDaysData(vesselId, monthValue, advancedDays);
+        }
+      } catch (e) {
+        console.error("Failed to clear advanced days data:", e);
+      }
+      
       res.json(adjustment);
     } catch (error) {
       console.error("Failed to save vessel date line adjustment:", error);

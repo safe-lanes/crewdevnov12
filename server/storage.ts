@@ -166,6 +166,7 @@ export interface IStorage {
   getVesselDateLineAdjustment(vesselId: string, monthValue: string): Promise<VesselDateLineAdjustment | null>;
   saveVesselDateLineAdjustment(adjustment: InsertVesselDateLineAdjustment): Promise<VesselDateLineAdjustment>;
   deleteVesselDateLineAdjustment(vesselId: string, monthValue: string): Promise<boolean>;
+  clearAdvancedDaysData(vesselId: string, monthValue: string, advancedDays: number[]): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -2155,6 +2156,46 @@ export class MemStorage implements IStorage {
     return false;
   }
 
+  async clearAdvancedDaysData(vesselId: string, monthValue: string, advancedDays: number[]): Promise<boolean> {
+    if (advancedDays.length === 0) return true;
+    
+    const allDailyRecords = Array.from(this.restHoursDailyRecords.values());
+    const relevantRecords = allDailyRecords.filter(
+      record => record.vesselId === vesselId && record.monthYear === monthValue
+    );
+    
+    for (const record of relevantRecords) {
+      let dailyRecords;
+      try {
+        dailyRecords = JSON.parse(record.dailyRecords);
+      } catch (e) {
+        continue;
+      }
+      
+      if (!Array.isArray(dailyRecords)) continue;
+      
+      let modified = false;
+      for (const dayRecord of dailyRecords) {
+        if (advancedDays.includes(dayRecord.day)) {
+          dayRecord.hours = Array(48).fill('');
+          dayRecord.isPlan = false;
+          dayRecord.comments = '';
+          dayRecord.violations = [];
+          modified = true;
+        }
+      }
+      
+      if (modified) {
+        this.restHoursDailyRecords.set(record.id, {
+          ...record,
+          dailyRecords: JSON.stringify(dailyRecords),
+        });
+      }
+    }
+    
+    return true;
+  }
+
   // Variable Tasks Methods
   async getVariableTasks(): Promise<VariableTask[]> {
     return Array.from(this.variableTasks.values());
@@ -2550,6 +2591,50 @@ export class PersistentFileStorage implements IStorage {
       return true;
     }
     return false;
+  }
+
+  async clearAdvancedDaysData(vesselId: string, monthValue: string, advancedDays: number[]): Promise<boolean> {
+    if (advancedDays.length === 0) return true;
+    
+    const allDailyRecords = Array.from(this.restHoursDailyRecords.values());
+    const relevantRecords = allDailyRecords.filter(
+      record => record.vesselId === vesselId && record.monthYear === monthValue
+    );
+    
+    for (const record of relevantRecords) {
+      let dailyRecords;
+      try {
+        dailyRecords = JSON.parse(record.dailyRecords);
+      } catch (e) {
+        continue;
+      }
+      
+      if (!Array.isArray(dailyRecords)) continue;
+      
+      let modified = false;
+      for (const dayRecord of dailyRecords) {
+        if (advancedDays.includes(dayRecord.day)) {
+          dayRecord.hours = Array(48).fill('');
+          dayRecord.isPlan = false;
+          dayRecord.comments = '';
+          dayRecord.violations = [];
+          modified = true;
+        }
+      }
+      
+      if (modified) {
+        this.restHoursDailyRecords.set(record.id, {
+          ...record,
+          dailyRecords: JSON.stringify(dailyRecords),
+        });
+      }
+    }
+    
+    if (relevantRecords.length > 0) {
+      this.saveToFile();
+    }
+    
+    return true;
   }
 
   private loadFromFile(): void {
