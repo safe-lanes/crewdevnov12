@@ -495,15 +495,9 @@ export const RHRecordingForm = ({
         break;
         
       case 3: // Rest period distribution
-        try {
-          const { ranges } = analyzeRestPeriodsWithRanges(timeline, violation.slotIndex);
-          const sorted = ranges.sort((a: { length: number }, b: { length: number }) => b.length - a.length).slice(0, 2);
-          slotsToHighlight = sorted.flatMap((r: { startSlot: number; endSlot: number }) =>
-            timeline.slice(r.startSlot, r.endSlot + 1)
-          );
-        } catch (e) {
-          console.error('Error computing Code 3 ranges:', e);
-        }
+        // Highlight the complete 24-hour rolling window (same as Code 1)
+        const start24Code3 = Math.max(0, violation.slotIndex - 47);
+        slotsToHighlight = timeline.slice(start24Code3, violation.slotIndex + 1);
         break;
         
       case 4: // Work gap >14h
