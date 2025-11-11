@@ -457,6 +457,8 @@ export function ApprovalTable({ selectedVessels, selectedRanks, draftIdFilter, d
       sortable: true,
       resizable: false,
       valueFormatter: (params) => {
+        // Defensive guard for AG Grid initialization
+        if (!params.colDef || !params.data) return '';
         if (!params.value) return '';
         try {
           const date = new Date(params.value);

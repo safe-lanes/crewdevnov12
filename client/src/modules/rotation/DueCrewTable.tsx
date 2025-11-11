@@ -266,6 +266,8 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
       sortable: true,
       resizable: false,
       valueFormatter: (params) => {
+        // Defensive guard for AG Grid initialization
+        if (!params.colDef || !params.data) return '';
         if (!params.value) return '';
         try {
           const date = new Date(params.value);
