@@ -14,6 +14,7 @@ import { parseRestHoursFilters, serializeRestHoursFilters, periodFilterToPart, p
 export const RestHoursPlan = (): JSX.Element => {
   const [location, setLocation] = useLocation();
   const hasSyncedFromUrl = useRef(false);
+  const lastSyncedSearch = useRef<string>('');
   const { toast } = useToast();
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
@@ -33,11 +34,11 @@ export const RestHoursPlan = (): JSX.Element => {
 
   const { vessels, isLoading: vesselsLoading } = useVesselLookup();
 
-  // Parse URL parameters whenever location changes
+  // Parse URL parameters on mount only (but don't mark as synced yet - wait for vessels)
   useEffect(() => {
     const search = window.location.search;
     if (!search) {
-      hasSyncedFromUrl.current = true;
+      // No URL params, will be marked as synced after vessel load
       return;
     }
     
@@ -53,19 +54,22 @@ export const RestHoursPlan = (): JSX.Element => {
     if (filters.vesselIds && filters.vesselIds.length === 1 && filters.vesselIds[0] !== selectedVessel) {
       setSelectedVessel(filters.vesselIds[0]);
     }
-    
-    // Mark as synced after processing URL params
-    hasSyncedFromUrl.current = true;
-  }, [location]); // Re-run when location changes
+    // Note: Mark as synced in the vessel load effect, not here
+  }, []); // Run only on mount
 
-  // Auto-select first vessel when vessels load (only if no URL params)
+  // Auto-select first vessel when vessels load (only if no URL params) and mark as synced
   useEffect(() => {
-    if (!vesselsLoading && vessels.length > 0 && !selectedVessel) {
-      const search = window.location.search;
-      if (!search) {
-        setSelectedVessel(vessels[0].entryId);
-      }
+    if (vesselsLoading || vessels.length === 0) return;
+    
+    const search = window.location.search;
+    if (!search && !selectedVessel) {
+      // No URL params, auto-select first vessel
+      setSelectedVessel(vessels[0].entryId);
     }
+    
+    // CRITICAL: Only mark as synced AFTER vessel data is loaded
+    // This prevents the write effect from running with incomplete state
+    hasSyncedFromUrl.current = true;
   }, [vesselsLoading, vessels, selectedVessel]);
   
   // Sync filter state to URL whenever filters change
@@ -89,14 +93,14 @@ export const RestHoursPlan = (): JSX.Element => {
     
     // Serialize to URL
     const search = serializeRestHoursFilters(currentFilters);
-    const targetPath = `/rest-hours/plan${search ? `?${search}` : ''}`;
-    const currentPath = window.location.pathname + window.location.search;
     
-    // Only update URL if it's actually different (prevents infinite loops)
-    if (currentPath !== targetPath) {
-      setLocation(targetPath, { replace: true });
+    // Only update URL if search params have actually changed
+    if (search !== lastSyncedSearch.current) {
+      const newUrl = `${window.location.pathname}${search ? `?${search}` : ''}`;
+      window.history.replaceState(null, '', newUrl);
+      lastSyncedSearch.current = search;
     }
-  }, [periodValue, selectedVessel, vesselsLoading, setLocation]);
+  }, [periodValue, selectedVessel, vesselsLoading]);
 
   // Convert PeriodFilterValue to string format (YYYY-MM)
   const periodValueString = useMemo(() => {
