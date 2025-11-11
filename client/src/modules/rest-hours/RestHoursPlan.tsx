@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useLocation } from 'wouter';
 import { Filter, Edit2, Plus, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -8,8 +9,11 @@ import { FixedTasksTable } from './FixedTasksTable';
 import { useToast } from '@/hooks/use-toast';
 import type { FixedTask } from '@shared/schema';
 import { PeriodFilter, type PeriodFilterValue } from '@/components/filters/PeriodFilter';
+import { parseRestHoursFilters, serializeRestHoursFilters, periodFilterToPart, partToPeriodFilter, type RestHoursFilters } from './utils/filterParams';
 
 export const RestHoursPlan = (): JSX.Element => {
+  const [location, setLocation] = useLocation();
+  const hasSyncedFromUrl = useRef(false);
   const { toast } = useToast();
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
@@ -29,12 +33,70 @@ export const RestHoursPlan = (): JSX.Element => {
 
   const { vessels, isLoading: vesselsLoading } = useVesselLookup();
 
-  // Auto-select first vessel when vessels load
+  // Parse URL parameters whenever location changes
+  useEffect(() => {
+    const search = location.split('?')[1];
+    if (!search) {
+      hasSyncedFromUrl.current = true;
+      return;
+    }
+    
+    const filters = parseRestHoursFilters(search);
+    
+    // Apply period filter (only if different from current state)
+    const parsedPeriod = partToPeriodFilter(filters);
+    if (parsedPeriod && JSON.stringify(parsedPeriod) !== JSON.stringify(periodValue)) {
+      setPeriodValue(parsedPeriod);
+    }
+    
+    // Apply vessel selection (only if different and vesselIds has exactly one vessel)
+    if (filters.vesselIds && filters.vesselIds.length === 1 && filters.vesselIds[0] !== selectedVessel) {
+      setSelectedVessel(filters.vesselIds[0]);
+    }
+    
+    // Mark as synced after processing URL params
+    hasSyncedFromUrl.current = true;
+  }, [location]); // Re-run when location changes
+
+  // Auto-select first vessel when vessels load (only if no URL params)
   useEffect(() => {
     if (!vesselsLoading && vessels.length > 0 && !selectedVessel) {
-      setSelectedVessel(vessels[0].entryId);
+      const search = location.split('?')[1];
+      if (!search) {
+        setSelectedVessel(vessels[0].entryId);
+      }
     }
-  }, [vesselsLoading, vessels, selectedVessel]);
+  }, [vesselsLoading, vessels, selectedVessel, location]);
+  
+  // Sync filter state to URL whenever filters change
+  useEffect(() => {
+    // Skip until initial URL sync is complete (prevents race conditions during mount)
+    if (!hasSyncedFromUrl.current) return;
+    
+    // Skip if vessels are still loading
+    if (vesselsLoading) return;
+    
+    // Build filter object from current state
+    const currentFilters: RestHoursFilters = {
+      ...periodFilterToPart(periodValue),
+      filterType: 'vessel',
+    };
+    
+    // Add vessel ID if selected
+    if (selectedVessel) {
+      currentFilters.vesselIds = [selectedVessel];
+    }
+    
+    // Serialize to URL
+    const search = serializeRestHoursFilters(currentFilters);
+    const targetPath = `/rest-hours/plan${search ? `?${search}` : ''}`;
+    const currentPath = window.location.pathname + window.location.search;
+    
+    // Only update URL if it's actually different (prevents infinite loops)
+    if (currentPath !== targetPath) {
+      setLocation(targetPath, { replace: true });
+    }
+  }, [periodValue, selectedVessel, vesselsLoading, setLocation]);
 
   // Convert PeriodFilterValue to string format (YYYY-MM)
   const periodValueString = useMemo(() => {

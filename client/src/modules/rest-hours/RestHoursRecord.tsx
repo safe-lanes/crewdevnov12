@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { Filter, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { parseRestHoursFilters, serializeRestHoursFilters, periodFilterToPart, p
 
 export const RestHoursRecord = (): JSX.Element => {
   const [location, setLocation] = useLocation();
+  const hasSyncedFromUrl = useRef(false);
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
   
@@ -33,49 +34,56 @@ export const RestHoursRecord = (): JSX.Element => {
 
   const { vessels, isLoading: vesselsLoading } = useVesselLookup();
   
-  // Parse URL parameters on mount and apply to state
+  // Parse URL parameters whenever location changes
   useEffect(() => {
-    const search = window.location.search;
-    if (!search) return;
+    const search = location.split('?')[1];
+    if (!search) {
+      hasSyncedFromUrl.current = true;
+      return;
+    }
     
     const filters = parseRestHoursFilters(search);
     
-    // Apply period filter
+    // Apply period filter (only if different from current state)
     const parsedPeriod = partToPeriodFilter(filters);
-    if (parsedPeriod) {
+    if (parsedPeriod && JSON.stringify(parsedPeriod) !== JSON.stringify(periodValue)) {
       setPeriodValue(parsedPeriod);
     }
     
-    // Apply compliance mode
-    if (filters.complianceMode) {
+    // Apply compliance mode (only if different)
+    if (filters.complianceMode && filters.complianceMode !== complianceMode) {
       setComplianceMode(filters.complianceMode);
     }
     
-    // Apply OPA mode
-    if (filters.opaMode !== undefined) {
+    // Apply OPA mode (only if different)
+    if (filters.opaMode !== undefined && filters.opaMode !== opaMode) {
       setOpaMode(filters.opaMode);
     }
     
-    // Apply filter type
-    if (filters.filterType) {
+    // Apply filter type (only if different)
+    if (filters.filterType && filters.filterType !== filterType) {
       setFilterType(filters.filterType);
     }
     
-    // Apply fleet/group values
-    if (filters.fleetGroup) {
+    // Apply fleet/group values (only if different)
+    if (filters.fleetGroup && filters.fleetGroup !== fleetValue) {
       setFleetValue(filters.fleetGroup);
     }
-    if (filters.addGroup) {
+    if (filters.addGroup && filters.addGroup !== addGroupValue) {
       setAddGroupValue(filters.addGroup);
     }
-  }, []); // Only run on mount
+  }, [location]); // Re-run when location changes
   
   // Update vessel selection once vessels are loaded and we have vesselIds from URL
   useEffect(() => {
     if (vesselsLoading || vessels.length === 0) return;
     
-    const search = window.location.search;
-    if (!search) return;
+    const search = location.split('?')[1];
+    if (!search) {
+      // No URL params, mark as synced
+      hasSyncedFromUrl.current = true;
+      return;
+    }
     
     const filters = parseRestHoursFilters(search);
     if (filters.vesselIds && filters.vesselIds.length > 0) {
@@ -88,7 +96,51 @@ export const RestHoursRecord = (): JSX.Element => {
         setSelectedVessels(vesselNames);
       }
     }
-  }, [vessels, vesselsLoading]);
+    
+    // Mark as synced after processing URL params with vessel data
+    hasSyncedFromUrl.current = true;
+  }, [vessels, vesselsLoading, location]);
+  
+  // Sync filter state to URL whenever filters change
+  useEffect(() => {
+    // Skip until initial URL sync is complete (prevents race conditions during mount)
+    if (!hasSyncedFromUrl.current) return;
+    
+    // Skip if vessels are still loading (we need vessel data to convert names to IDs)
+    if (vesselsLoading) return;
+    
+    // Build filter object from current state
+    const currentFilters: RestHoursFilters = {
+      ...periodFilterToPart(periodValue),
+      filterType,
+      complianceMode,
+      opaMode,
+    };
+    
+    // Add vessel IDs (convert names to IDs)
+    if (filterType === 'vessel' && selectedVessels.length > 0) {
+      const vesselIds = selectedVessels
+        .map(name => vessels.find((v: any) => v.name === name)?.entryId)
+        .filter((id): id is string => id !== undefined);
+      if (vesselIds.length > 0) {
+        currentFilters.vesselIds = vesselIds;
+      }
+    } else if (filterType === 'fleet' && fleetValue) {
+      currentFilters.fleetGroup = fleetValue;
+    } else if (filterType === 'addGroup' && addGroupValue) {
+      currentFilters.addGroup = addGroupValue;
+    }
+    
+    // Serialize to URL
+    const search = serializeRestHoursFilters(currentFilters);
+    const targetPath = `/rest-hours/records${search ? `?${search}` : ''}`;
+    const currentPath = window.location.pathname + window.location.search;
+    
+    // Only update URL if it's actually different (prevents infinite loops)
+    if (currentPath !== targetPath) {
+      setLocation(targetPath, { replace: true });
+    }
+  }, [periodValue, filterType, selectedVessels, fleetValue, addGroupValue, complianceMode, opaMode, vessels, vesselsLoading, setLocation]);
 
   // Convert PeriodFilterValue to string format for RHRecordsTable (YYYY-MM)
   const selectedMonthString = useMemo(() => {
