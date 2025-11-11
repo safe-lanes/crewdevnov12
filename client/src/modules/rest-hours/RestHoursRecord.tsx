@@ -16,7 +16,6 @@ import { parseRestHoursFilters, serializeRestHoursFilters, periodFilterToPart, p
 export const RestHoursRecord = (): JSX.Element => {
   const [location, setLocation] = useLocation();
   const hasSyncedFromUrl = useRef(false);
-  const lastSyncedSearch = useRef<string>('');
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
   
@@ -100,50 +99,8 @@ export const RestHoursRecord = (): JSX.Element => {
     }
     
     // CRITICAL: Only mark as synced AFTER vessel data is loaded and applied
-    // This prevents the write effect from running with incomplete state
     hasSyncedFromUrl.current = true;
   }, [vessels, vesselsLoading]);
-  
-  // Sync filter state to URL whenever filters change
-  useEffect(() => {
-    // Skip until initial URL sync is complete (prevents race conditions during mount)
-    if (!hasSyncedFromUrl.current) return;
-    
-    // Skip if vessels are still loading (we need vessel data to convert names to IDs)
-    if (vesselsLoading) return;
-    
-    // Build filter object from current state
-    const currentFilters: RestHoursFilters = {
-      ...periodFilterToPart(periodValue),
-      filterType,
-      complianceMode,
-      opaMode,
-    };
-    
-    // Add vessel IDs (convert names to IDs)
-    if (filterType === 'vessel' && selectedVessels.length > 0) {
-      const vesselIds = selectedVessels
-        .map(name => vessels.find((v: any) => v.name === name)?.entryId)
-        .filter((id): id is string => id !== undefined);
-      if (vesselIds.length > 0) {
-        currentFilters.vesselIds = vesselIds;
-      }
-    } else if (filterType === 'fleet' && fleetValue) {
-      currentFilters.fleetGroup = fleetValue;
-    } else if (filterType === 'addGroup' && addGroupValue) {
-      currentFilters.addGroup = addGroupValue;
-    }
-    
-    // Serialize to URL
-    const search = serializeRestHoursFilters(currentFilters);
-    
-    // Only update URL if search params have actually changed
-    if (search !== lastSyncedSearch.current) {
-      const newUrl = `${window.location.pathname}${search ? `?${search}` : ''}`;
-      window.history.replaceState(null, '', newUrl);
-      lastSyncedSearch.current = search;
-    }
-  }, [periodValue, filterType, selectedVessels, fleetValue, addGroupValue, complianceMode, opaMode, vessels, vesselsLoading]);
 
   // Convert PeriodFilterValue to string format for RHRecordsTable (YYYY-MM)
   const selectedMonthString = useMemo(() => {
