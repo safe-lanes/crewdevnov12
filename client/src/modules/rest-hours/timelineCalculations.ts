@@ -460,7 +460,7 @@ export function detectViolations(
       if (checkCode3Violation(timeline, slotIdx)) {
         // Get actual rest period lengths for diagnostic message
         const restPeriods = analyzeRestPeriods(timeline, slotIdx);
-        const sorted = restPeriods.sort((a, b) => b - a);
+        const sorted = [...restPeriods].sort((a, b) => b - a); // Clone to avoid mutation
         const largest = sorted[0] || 0;
         const secondLargest = sorted[1] || 0;
         const largestHours = (largest * 0.5).toFixed(1);
@@ -468,15 +468,18 @@ export function detectViolations(
         const totalHours = ((largest + secondLargest) * 0.5).toFixed(1);
         const numPeriods = restPeriods.length;
         
-        let reason = `Rest periods: `;
+        // Show all period lengths for transparency
+        const allPeriodsHours = sorted.map(p => (p * 0.5).toFixed(1)).join('h, ') + 'h';
+        
+        let reason = ``;
         if (numPeriods === 0) {
-          reason += `No rest periods found`;
+          reason = `No rest periods found (only blank cells count as rest, not 'd' or 'a')`;
         } else if (numPeriods > 2) {
-          reason += `${numPeriods} periods found (max 2 allowed). Largest: ${largestHours}h, 2nd: ${secondLargestHours}h`;
+          reason = `${numPeriods} rest periods found (max 2 allowed): ${allPeriodsHours}. Note: 'd' (duty) and 'a' (anchor watch) count as WORK, not rest.`;
         } else if (numPeriods === 1) {
-          reason += `${largestHours}h (need ≥6h and ≥10h total)`;
+          reason = `1 rest period: ${largestHours}h (need ≥6h and ≥10h total for single period)`;
         } else {
-          reason += `${largestHours}h + ${secondLargestHours}h = ${totalHours}h (need ≥6h longest, ≥10h total)`;
+          reason = `2 rest periods: ${largestHours}h + ${secondLargestHours}h = ${totalHours}h (need ≥6h longest, ≥10h total)`;
         }
         
         violations.push({
