@@ -326,17 +326,16 @@ function analyzeRestPeriods(timeline: TimelineSlot[], endIdx: number): number[] 
 export { analyzeRestPeriodsWithRanges, checkCode4ViolationWithRange };
 
 /**
- * Checks Code [3]: Rest may be divided into NO MORE THAN TWO periods,
- * the two must sum to ≥10h, and at least one must be ≥6h
+ * Checks Code [3]: Hours of rest may be divided into periods,
+ * where the TWO LARGEST periods must sum to ≥10h, and at least one must be ≥6h
  */
 function checkCode3Violation(timeline: TimelineSlot[], slotIdx: number): boolean {
   const restPeriods = analyzeRestPeriods(timeline, slotIdx);
   
   if (restPeriods.length === 0) return true;
   
-  if (restPeriods.length > 2) return true;
-  
-  const sorted = restPeriods.sort((a, b) => b - a);
+  // Take the two largest periods (any number of periods is allowed)
+  const sorted = [...restPeriods].sort((a, b) => b - a);
   const largest = sorted[0] || 0;
   const secondLargest = sorted[1] || 0;
   
@@ -475,7 +474,7 @@ export function detectViolations(
         if (numPeriods === 0) {
           reason = `No rest periods found (only blank cells count as rest, not 'd' or 'a')`;
         } else if (numPeriods > 2) {
-          reason = `${numPeriods} rest periods found (max 2 allowed): ${allPeriodsHours}. Note: 'd' (daywork) and 'a' (additional work) count as WORK, not rest.`;
+          reason = `${numPeriods} rest periods: ${allPeriodsHours}. Top 2: ${largestHours}h + ${secondLargestHours}h = ${totalHours}h (need ≥6h longest, ≥10h total)`;
         } else if (numPeriods === 1) {
           reason = `1 rest period: ${largestHours}h (need ≥6h and ≥10h total for single period)`;
         } else {
