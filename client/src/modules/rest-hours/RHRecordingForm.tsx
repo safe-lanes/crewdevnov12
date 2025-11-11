@@ -10,7 +10,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
-import type { RestHoursDailyRecord, FixedTask } from '@shared/schema';
+import type { RestHoursDailyRecord, FixedTask, VesselDateLineAdjustment, DateLineAdjustmentItem } from '@shared/schema';
 import { filterViolations } from './violationFilters';
 
 interface RHRecordingFormProps {
@@ -281,6 +281,24 @@ export const RHRecordingForm = ({
       return response.json();
     },
     enabled: open && !!selectedCrewMemberId && !!selectedVesselId && !!selectedPeriod,
+    retry: false,
+    gcTime: 0,
+    staleTime: 0,
+  });
+
+  // Fetch date line adjustments for the selected vessel and month
+  const { data: dateLineAdjustment } = useQuery<VesselDateLineAdjustment | null>({
+    queryKey: ['/api/vessel-dateline-adjustments', selectedVesselId, selectedPeriod],
+    queryFn: async () => {
+      if (!selectedVesselId || !selectedPeriod) return null;
+      const response = await fetch(`/api/vessel-dateline-adjustments/${selectedVesselId}/${selectedPeriod}`);
+      if (!response.ok) {
+        if (response.status === 404) return null;
+        throw new Error('Failed to fetch vessel date line adjustments');
+      }
+      return response.json();
+    },
+    enabled: open && !!selectedVesselId && !!selectedPeriod,
     retry: false,
     gcTime: 0,
     staleTime: 0,
