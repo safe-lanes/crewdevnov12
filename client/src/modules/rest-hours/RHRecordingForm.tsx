@@ -72,6 +72,7 @@ interface DisplayRow {
   dayOfWeekLabel: string;   // Day of week label
   marker?: 'advanced' | 'retarded';  // Type of adjustment
   occurrence: 'primary' | 'duplicate';  // For retarded days
+  isDisabled: boolean;      // True for Advanced days (no input allowed)
 }
 
 export const RHRecordingForm = ({
@@ -553,7 +554,7 @@ export const RHRecordingForm = ({
       const adjustmentType = adjustmentsMap.get(record.day);
       
       if (adjustmentType === 'advanced') {
-        // Advanced day: single row with red text and * marker
+        // Advanced day: single row with red text and * marker (DISABLED)
         rows.push({
           baseIndex,
           record,
@@ -561,6 +562,7 @@ export const RHRecordingForm = ({
           dayOfWeekLabel: record.dayOfWeek,
           marker: 'advanced',
           occurrence: 'primary',
+          isDisabled: true,
         });
       } else if (adjustmentType === 'retarded') {
         // Retarded day: emit TWO rows
@@ -571,6 +573,7 @@ export const RHRecordingForm = ({
           dayLabel: `${record.day}`,
           dayOfWeekLabel: record.dayOfWeek,
           occurrence: 'primary',
+          isDisabled: false,
         });
         // Second occurrence (duplicate with green text and ** marker)
         rows.push({
@@ -580,6 +583,7 @@ export const RHRecordingForm = ({
           dayOfWeekLabel: record.dayOfWeek,
           marker: 'retarded',
           occurrence: 'duplicate',
+          isDisabled: false,
         });
       } else {
         // Normal day: single row, no marker
@@ -589,6 +593,7 @@ export const RHRecordingForm = ({
           dayLabel: `${record.day}`,
           dayOfWeekLabel: record.dayOfWeek,
           occurrence: 'primary',
+          isDisabled: false,
         });
       }
     });
@@ -1604,7 +1609,7 @@ export const RHRecordingForm = ({
             </thead>
             <tbody>
               {displayRows.map((row, displayIndex) => {
-                const { baseIndex, record, dayLabel, dayOfWeekLabel, marker, occurrence } = row;
+                const { baseIndex, record, dayLabel, dayOfWeekLabel, marker, occurrence, isDisabled } = row;
                 
                 // Determine styling based on marker and occurrence
                 const isAdvanced = marker === 'advanced';
@@ -1613,7 +1618,7 @@ export const RHRecordingForm = ({
                 const dateCellColor = isAdvanced ? 'text-red-600 font-semibold' : 
                                      isRetardedDuplicate ? 'text-green-600 font-semibold' : '';
                 const dayMarker = isAdvanced ? ' *' : isRetardedDuplicate ? ' **' : '';
-                const rowBgColor = isRetardedDuplicate ? 'bg-green-50' : '';
+                const rowBgColor = isDisabled ? 'bg-gray-100' : isRetardedDuplicate ? 'bg-green-50' : '';
                 const occurrenceSuffix = occurrence === 'duplicate' ? '-duplicate' : '';
                 
                 return (
@@ -1621,8 +1626,9 @@ export const RHRecordingForm = ({
                     {/* Plan/Rec Button */}
                     <td className="border border-gray-300 text-center" style={{ padding: '2px' }}>
                       <button
-                        onClick={() => handleTogglePlanRec(baseIndex)}
-                        className="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 rounded"
+                        onClick={() => !isDisabled && handleTogglePlanRec(baseIndex)}
+                        className={`px-2 py-1 text-xs rounded ${isDisabled ? 'bg-gray-300 cursor-not-allowed' : 'bg-blue-100 hover:bg-blue-200'}`}
+                        disabled={isDisabled}
                         data-testid={`button-plan-rec-${record.day}${occurrenceSuffix}`}
                       >
                         {record.isPlan ? 'Plan' : 'Rec'}
@@ -1665,9 +1671,10 @@ export const RHRecordingForm = ({
                       >
                         <div
                           key={`${baseIndex}-${hourIndex}-${hour}`}
-                          contentEditable
+                          contentEditable={!isDisabled}
                           suppressContentEditableWarning
                           onBlur={(e) => {
+                            if (isDisabled) return;
                             const value = e.currentTarget.textContent || '';
                             handleHourCellEdit(baseIndex, hourIndex, value);
                           }}
@@ -1814,8 +1821,9 @@ export const RHRecordingForm = ({
                     <input
                       type="text"
                       value={record.comments}
-                      onChange={(e) => handleCommentsChange(baseIndex, e.target.value)}
-                      className="w-full outline-none bg-transparent px-1"
+                      onChange={(e) => !isDisabled && handleCommentsChange(baseIndex, e.target.value)}
+                      className={`w-full outline-none bg-transparent px-1 ${isDisabled ? 'cursor-not-allowed' : ''}`}
+                      disabled={isDisabled}
                       data-testid={`input-comments-${record.day}${occurrenceSuffix}`}
                     />
                   </td>

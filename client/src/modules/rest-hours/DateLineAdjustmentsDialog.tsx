@@ -65,6 +65,8 @@ export const DateLineAdjustmentsDialog = ({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/vessel-dateline-adjustments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/rest-hours-crew-records'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/rest-hours-daily-records'] });
       toast({
         title: 'Success',
         description: 'Date line adjustments saved successfully',
