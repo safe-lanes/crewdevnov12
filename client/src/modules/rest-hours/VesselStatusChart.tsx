@@ -7,6 +7,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import type { PeriodFilterValue } from '@/components/filters/PeriodFilter';
 import { VesselListDialog } from './VesselListDialog';
 import { VesselReviewDialog } from './VesselReviewDialog';
+import { serializeRestHoursFilters, periodFilterToPart, type RestHoursFilters } from './utils/filterParams';
 
 interface VesselStatusChartProps {
   vesselIds?: string[];
@@ -204,8 +205,16 @@ export const VesselStatusChart = ({
   };
 
   const handleRecordsClick = (vesselId: string, vesselName: string) => {
-    // Navigate to RH Records page with vessel filter
-    setLocation(`/rest-hours/record?vessel=${vesselId}`);
+    // Navigate to RH Records page with current filters
+    const filters: RestHoursFilters = {
+      ...periodFilterToPart(periodFilter || { mode: 'year-month', year: currentYear, month: currentMonth }),
+      filterType: 'vessel',
+      vesselIds: [vesselId],
+      complianceMode,
+      opaMode,
+    };
+    const queryString = serializeRestHoursFilters(filters);
+    setLocation(`/rest-hours/record?${queryString}`);
   };
 
   // Render toolbar

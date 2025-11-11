@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useLocation } from 'wouter';
 import { Filter, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -10,8 +11,10 @@ import SectionTitleComponents from '@/components/Section/SectionTitleComponents'
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { RHRecordsTable } from './RHRecordsTable';
 import { PeriodFilter, type PeriodFilterValue } from '@/components/filters/PeriodFilter';
+import { parseRestHoursFilters, serializeRestHoursFilters, periodFilterToPart, partToPeriodFilter, type RestHoursFilters } from './utils/filterParams';
 
 export const RestHoursRecord = (): JSX.Element => {
+  const [location, setLocation] = useLocation();
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
   
@@ -29,6 +32,63 @@ export const RestHoursRecord = (): JSX.Element => {
   });
 
   const { vessels, isLoading: vesselsLoading } = useVesselLookup();
+  
+  // Parse URL parameters on mount and apply to state
+  useEffect(() => {
+    const search = window.location.search;
+    if (!search) return;
+    
+    const filters = parseRestHoursFilters(search);
+    
+    // Apply period filter
+    const parsedPeriod = partToPeriodFilter(filters);
+    if (parsedPeriod) {
+      setPeriodValue(parsedPeriod);
+    }
+    
+    // Apply compliance mode
+    if (filters.complianceMode) {
+      setComplianceMode(filters.complianceMode);
+    }
+    
+    // Apply OPA mode
+    if (filters.opaMode !== undefined) {
+      setOpaMode(filters.opaMode);
+    }
+    
+    // Apply filter type
+    if (filters.filterType) {
+      setFilterType(filters.filterType);
+    }
+    
+    // Apply fleet/group values
+    if (filters.fleetGroup) {
+      setFleetValue(filters.fleetGroup);
+    }
+    if (filters.addGroup) {
+      setAddGroupValue(filters.addGroup);
+    }
+  }, []); // Only run on mount
+  
+  // Update vessel selection once vessels are loaded and we have vesselIds from URL
+  useEffect(() => {
+    if (vesselsLoading || vessels.length === 0) return;
+    
+    const search = window.location.search;
+    if (!search) return;
+    
+    const filters = parseRestHoursFilters(search);
+    if (filters.vesselIds && filters.vesselIds.length > 0) {
+      // Convert vessel IDs to vessel names
+      const vesselNames = filters.vesselIds
+        .map(id => vessels.find((v: any) => v.entryId === id)?.name)
+        .filter((name): name is string => name !== undefined);
+      
+      if (vesselNames.length > 0) {
+        setSelectedVessels(vesselNames);
+      }
+    }
+  }, [vessels, vesselsLoading]);
 
   // Convert PeriodFilterValue to string format for RHRecordsTable (YYYY-MM)
   const selectedMonthString = useMemo(() => {
