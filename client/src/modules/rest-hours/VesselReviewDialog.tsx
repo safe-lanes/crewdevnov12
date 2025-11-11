@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { NCReportDialog } from './NCReportDialog';
 import { cn } from '@/lib/utils';
+import type { ViolationDailyRecord, ViolationDiagnostic } from './types';
 
 const VIOLATION_CODE_DESCRIPTIONS: Record<number, string> = {
   1: "Minimum 10 hours of rest in any 24 hour period",
@@ -26,13 +27,6 @@ const VIOLATION_CODE_DESCRIPTIONS: Record<number, string> = {
   7: "OPA - Maximum 15 hours of work in any 24 hour period",
   8: "OPA - Maximum 36 hours of work in 72 hours",
 };
-
-interface ViolationDiagnostic {
-  code: number;
-  windowStart: string;
-  reason: string;
-  violatingRanges?: Array<{ startCell: number; endCell: number; startDay: number; monthName?: string }>;
-}
 
 interface VesselReviewDialogProps {
   open: boolean;
@@ -47,21 +41,8 @@ interface VesselReviewDialogProps {
   officeReviewStatus?: string;
 }
 
-interface DailyRecord {
-  day: number;
-  dayOfWeek: string;
-  hours: string[];
-  isPlan: boolean;
-  comments: string;
-  violations: number[];
-  violationDiagnostics?: ViolationDiagnostic[];
-  hoursOfRest24hr: number;
-  hoursOfWork24hr: number;
-  anyPeriodRest24hr: number;
-  anyPeriodWork24hr: number;
-  anyPeriodRest7day: number;
-  anyPeriodWork7day: number;
-}
+// Using ViolationDailyRecord from shared types
+type DailyRecord = ViolationDailyRecord;
 
 interface ViolationRecord {
   crewMemberId: string;

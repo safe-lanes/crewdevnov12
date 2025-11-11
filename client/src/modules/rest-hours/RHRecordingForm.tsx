@@ -25,6 +25,8 @@ import {
   type TimelineSlot,
   type Violation as TimelineViolation,
 } from './timelineCalculations';
+import type { ExtendedDailyRecord, ViolationDiagnostic } from './types';
+import { createBlankDailyRecord } from './types';
 
 interface RHRecordingFormProps {
   open: boolean;
@@ -34,13 +36,6 @@ interface RHRecordingFormProps {
   vesselId: string;
   rank: string;
   monthValue: string; // Format: "2025-10" (YYYY-MM)
-}
-
-interface ViolationDiagnostic {
-  code: number;
-  windowStart: string; // e.g., "Oct 4, 18:00" or "Multiple windows" (for backward compatibility)
-  reason: string; // e.g., "Rest periods: 6h, 3h, 2h. Top 2 (6h + 3h = 9h) < 10h required"
-  violatingRanges?: Array<{ startCell: number; endCell: number; startDay: number; monthName?: string }>; // For multi-range violations
 }
 
 // Violation code descriptions mapping
@@ -55,28 +50,8 @@ const VIOLATION_CODE_DESCRIPTIONS: Record<number, string> = {
   8: "OPA - Maximum 36 hours of work in 72 hours",
 };
 
-interface DailyRecord {
-  day: number;
-  dayOfWeek: string;
-  hours: string[]; // 48 entries (2 per hour for 00:00-23:30), values: "w", "d", "a", "" (blank = rest)
-  isPlan: boolean;
-  comments: string;
-  violations: number[];
-  violationDiagnostics?: ViolationDiagnostic[]; // Detailed info about why violations occurred
-  hoursOfRest24hr: number; // Calendar day: 00:00-24:00
-  hoursOfWork24hr: number;
-  hoursOfRest48hr: number;
-  hoursOfWork48hr: number;
-  hoursOfRest7day: number;
-  hoursOfWork7day: number;
-  hoursOfRest96hr: number;
-  hoursOfWork96hr: number;
-  // "Any period" rolling window calculations (for regulatory compliance)
-  anyPeriodRest24hr: number;  // Minimum rest hours in ANY 24-hour window
-  anyPeriodRest7day: number;  // Minimum rest hours in ANY 7-day window
-  anyPeriodWork24hr: number;  // Maximum work hours in ANY 24-hour window
-  anyPeriodWork7day: number;  // Maximum work hours in ANY 7-day window
-}
+// Using ExtendedDailyRecord from shared types
+type DailyRecord = ExtendedDailyRecord;
 
 interface DisplayRow {
   baseIndex: number;        // Index into dailyRecords array
@@ -226,26 +201,7 @@ export const RHRecordingForm = ({
       const date = new Date(parseInt(year), parseInt(month) - 1, day);
       const dayOfWeek = date.toLocaleString('en-US', { weekday: 'short' });
       
-      records.push({
-        day,
-        dayOfWeek,
-        hours: Array(48).fill(''), // Initialize with empty strings (rest) - 2 cells per hour
-        isPlan: false,
-        comments: '',
-        violations: [],
-        hoursOfRest24hr: 24,
-        hoursOfWork24hr: 0,
-        hoursOfRest48hr: 48,
-        hoursOfWork48hr: 0,
-        hoursOfRest7day: 168,
-        hoursOfWork7day: 0,
-        hoursOfRest96hr: 96,
-        hoursOfWork96hr: 0,
-        anyPeriodRest24hr: 24,
-        anyPeriodRest7day: 168,
-        anyPeriodWork24hr: 0,
-        anyPeriodWork7day: 0,
-      });
+      records.push(createBlankDailyRecord(day, dayOfWeek, 'primary'));
     }
     
     setDailyRecords(records);
@@ -379,6 +335,75 @@ export const RHRecordingForm = ({
     return [];
   }, [previousMonthDateLineAdjustment]);
 
+  // Apply retarded day logic to initialized records when adjustments are loaded (for new forms)
+  useEffect(() => {
+    if (!open || existingRecord) return; // Skip if loading existing data (handled elsewhere)
+    if (dailyRecords.length === 0 || parsedDateLineAdjustments.length === 0) return;
+    
+    // Check if we need to add duplicate records for retarded days
+    const retardedDays = parsedDateLineAdjustments
+      .filter(adj => adj.type === 'retarded')
+      .map(adj => adj.day);
+    
+    if (retardedDays.length === 0) return;
+    
+    // Check if any retarded day is missing its duplicate record
+    const needsUpdate = retardedDays.some(day => {
+      const duplicateExists = dailyRecords.some(
+        r => r.day === day && r.occurrence === 'duplicate'
+      );
+      return !duplicateExists;
+    });
+    
+    if (needsUpdate) {
+      const updatedRecords = ensureRetardedDayRecords(dailyRecords, parsedDateLineAdjustments);
+      setDailyRecords(updatedRecords);
+    }
+  }, [parsedDateLineAdjustments, open, existingRecord, dailyRecords]);
+
+  // Helper function: Ensure retarded days have TWO separate records
+  const ensureRetardedDayRecords = (
+    records: DailyRecord[],
+    adjustments: DateLineAdjustment[]
+  ): DailyRecord[] => {
+    if (adjustments.length === 0) return records;
+    
+    const retardedDays = new Set(
+      adjustments.filter(adj => adj.type === 'retarded').map(adj => adj.day)
+    );
+    
+    if (retardedDays.size === 0) return records;
+    
+    const result: DailyRecord[] = [];
+    
+    for (const record of records) {
+      // Always add the primary record (normalize if needed)
+      const primaryRecord = {
+        ...record,
+        entryId: record.entryId || `day-${record.day}-primary`,
+        occurrence: (record.occurrence || 'primary') as 'primary' | 'duplicate',
+      };
+      result.push(primaryRecord);
+      
+      // If this is a retarded day, check if we need to add a duplicate record
+      if (retardedDays.has(record.day)) {
+        // Check if duplicate already exists in the input records
+        const existingDuplicate = records.find(
+          r => r.day === record.day && r.occurrence === 'duplicate'
+        );
+        
+        if (!existingDuplicate) {
+          // Create a new blank duplicate record
+          const duplicateRecord = createBlankDailyRecord(record.day, record.dayOfWeek, 'duplicate');
+          result.push(duplicateRecord);
+        }
+        // If duplicate exists, it will be added in its own iteration
+      }
+    }
+    
+    return result;
+  };
+
   // Load previous month's records for cross-month calculations
   useEffect(() => {
     if (!open) return;
@@ -444,6 +469,8 @@ export const RHRecordingForm = ({
           
           return {
             ...record,
+            entryId: record.entryId || `day-${record.day}-primary`,
+            occurrence: (record.occurrence || 'primary') as 'primary' | 'duplicate',
             hoursOfRest24hr: record.hoursOfRest24hr ?? restHours,
             hoursOfWork24hr: record.hoursOfWork24hr ?? workHours,
             // Metrics and violations will be calculated by timelineViolations memo
@@ -455,7 +482,10 @@ export const RHRecordingForm = ({
             violationDiagnostics: [],
           };
         });
-        setDailyRecords(updatedRecords);
+        
+        // Apply retarded day logic if adjustments are available
+        const recordsWithRetarded = ensureRetardedDayRecords(updatedRecords, parsedDateLineAdjustments);
+        setDailyRecords(recordsWithRetarded);
       } catch (error) {
         console.error('Failed to parse daily records:', error);
       }
@@ -464,7 +494,7 @@ export const RHRecordingForm = ({
       // This explicitly ensures no stale data leaks between crew members
       console.log('No existing record found - using clean initialized state');
     }
-  }, [existingRecord, isError, open]);
+  }, [existingRecord, isError, open, parsedDateLineAdjustments]);
 
   // Helper function to compute violatingRanges for hover highlighting
   const computeViolatingRanges = (
@@ -561,8 +591,10 @@ export const RHRecordingForm = ({
     
     // Convert DailyRecord[] to the format expected by timelineCalculations
     const timelineRecords = dailyRecords.map(r => ({
+      entryId: r.entryId,
       day: r.day,
       dayOfWeek: r.dayOfWeek,
+      occurrence: r.occurrence,
       hours: r.hours,
       isPlan: r.isPlan,
       comments: r.comments,
@@ -570,8 +602,10 @@ export const RHRecordingForm = ({
     }));
     
     const prevMonthTimelineRecords = previousMonthRecords.map(r => ({
+      entryId: r.entryId,
       day: r.day,
       dayOfWeek: r.dayOfWeek,
+      occurrence: r.occurrence,
       hours: r.hours,
       isPlan: r.isPlan,
       comments: r.comments,
@@ -744,26 +778,7 @@ export const RHRecordingForm = ({
       const date = new Date(parseInt(year), parseInt(month) - 1, day);
       const dayOfWeek = date.toLocaleString('en-US', { weekday: 'short' });
       
-      records.push({
-        day,
-        dayOfWeek,
-        hours: Array(48).fill(''), // 2 cells per hour for half-hour divisions
-        isPlan: false,
-        comments: '',
-        violations: [],
-        hoursOfRest24hr: 24,
-        hoursOfWork24hr: 0,
-        hoursOfRest48hr: 48,
-        hoursOfWork48hr: 0,
-        hoursOfRest7day: 168,
-        hoursOfWork7day: 0,
-        hoursOfRest96hr: 96,
-        hoursOfWork96hr: 0,
-        anyPeriodRest24hr: 24,
-        anyPeriodRest7day: 168,
-        anyPeriodWork24hr: 0,
-        anyPeriodWork7day: 0,
-      });
+      records.push(createBlankDailyRecord(day, dayOfWeek, 'primary'));
     }
     
     setDailyRecords(records);
@@ -772,7 +787,7 @@ export const RHRecordingForm = ({
     setOpaMode(false);
   };
 
-  // Generate display rows by applying date line adjustments to dailyRecords
+  // Generate display rows - now 1:1 mapping since retarded days have separate records
   const displayRows = useMemo(() => {
     const rows: DisplayRow[] = [];
     
@@ -791,53 +806,21 @@ export const RHRecordingForm = ({
       }
     }
     
-    // Iterate through daily records and build display rows
+    // Simple 1:1 mapping: each record becomes one display row
     dailyRecords.forEach((record, baseIndex) => {
       const adjustmentType = adjustmentsMap.get(record.day);
+      const isAdvanced = adjustmentType === 'advanced';
+      const isRetarded = adjustmentType === 'retarded' && record.occurrence === 'duplicate';
       
-      if (adjustmentType === 'advanced') {
-        // Advanced day: single row with red text and * marker (DISABLED)
-        rows.push({
-          baseIndex,
-          record,
-          dayLabel: `${record.day}`,
-          dayOfWeekLabel: record.dayOfWeek,
-          marker: 'advanced',
-          occurrence: 'primary',
-          isDisabled: true,
-        });
-      } else if (adjustmentType === 'retarded') {
-        // Retarded day: emit TWO rows
-        // First occurrence (primary, unmarked)
-        rows.push({
-          baseIndex,
-          record,
-          dayLabel: `${record.day}`,
-          dayOfWeekLabel: record.dayOfWeek,
-          occurrence: 'primary',
-          isDisabled: false,
-        });
-        // Second occurrence (duplicate with green text and ** marker)
-        rows.push({
-          baseIndex,
-          record,
-          dayLabel: `${record.day}`,
-          dayOfWeekLabel: record.dayOfWeek,
-          marker: 'retarded',
-          occurrence: 'duplicate',
-          isDisabled: false,
-        });
-      } else {
-        // Normal day: single row, no marker
-        rows.push({
-          baseIndex,
-          record,
-          dayLabel: `${record.day}`,
-          dayOfWeekLabel: record.dayOfWeek,
-          occurrence: 'primary',
-          isDisabled: false,
-        });
-      }
+      rows.push({
+        baseIndex,
+        record,
+        dayLabel: `${record.day}`,
+        dayOfWeekLabel: record.dayOfWeek,
+        marker: isAdvanced ? 'advanced' : isRetarded ? 'retarded' : undefined,
+        occurrence: record.occurrence,
+        isDisabled: isAdvanced,
+      });
     });
     
     return rows;
@@ -967,7 +950,8 @@ export const RHRecordingForm = ({
     }
     
     // Fallback to old logic for Code 3 and other violations without violatingRanges
-    if (diagnostic.windowStart === 'Various windows' || diagnostic.windowStart === 'Multiple windows') return false;
+    if (!diagnostic.windowStart || diagnostic.windowStart === 'Various windows' || diagnostic.windowStart === 'Multiple windows') return false;
+    if (typeof diagnostic.windowStart !== 'string') return false;
     
     // Parse the windowStart for backward compatibility
     const match = diagnostic.windowStart.match(/(\w+)\s+(\d+),\s+(\d+):(\d+)/);

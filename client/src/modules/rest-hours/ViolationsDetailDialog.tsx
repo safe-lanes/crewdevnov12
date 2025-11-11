@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import type { RestHoursDailyRecord } from '@shared/schema';
 import { filterViolations } from './violationFilters';
+import type { ViolationDailyRecord, ViolationDiagnostic } from './types';
 
 // Violation code descriptions mapping
 const VIOLATION_CODE_DESCRIPTIONS: Record<number, string> = {
@@ -17,13 +18,6 @@ const VIOLATION_CODE_DESCRIPTIONS: Record<number, string> = {
   8: "OPA - Maximum 36 hours of work in 72 hours",
 };
 
-interface ViolationDiagnostic {
-  code: number;
-  windowStart: string;
-  reason: string;
-  violatingRanges?: Array<{ startCell: number; endCell: number; startDay: number; monthName?: string }>;
-}
-
 interface ViolationsDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -36,21 +30,8 @@ interface ViolationsDetailDialogProps {
   isPredicted?: boolean;
 }
 
-interface DailyRecord {
-  day: number;
-  dayOfWeek: string;
-  hours: string[];
-  isPlan: boolean;
-  comments: string;
-  violations: number[];
-  violationDiagnostics?: ViolationDiagnostic[];
-  hoursOfRest24hr: number;
-  hoursOfWork24hr: number;
-  anyPeriodRest24hr: number;
-  anyPeriodWork24hr: number;
-  anyPeriodRest7day: number;
-  anyPeriodWork7day: number;
-}
+// Using ViolationDailyRecord from shared types
+type DailyRecord = ViolationDailyRecord;
 
 export function ViolationsDetailDialog({
   open,

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import type { RestHoursCrewRecord } from '@shared/schema';
 import { filterViolations } from './violationFilters';
+import type { ViolationDailyRecord } from './types';
 
 interface VesselViolationsDialogProps {
   open: boolean;
@@ -13,21 +14,8 @@ interface VesselViolationsDialogProps {
   vesselIds?: string[];
 }
 
-interface DailyRecord {
-  day: number;
-  dayOfWeek: string;
-  hours: string[];
-  isPlan: boolean;
-  comments: string;
-  violations: number[];
-  violationDiagnostics?: any[];
-  hoursOfRest24hr: number;
-  hoursOfWork24hr: number;
-  anyPeriodRest24hr: number;
-  anyPeriodWork24hr: number;
-  anyPeriodRest7day: number;
-  anyPeriodWork7day: number;
-}
+// Using ViolationDailyRecord from shared types
+type DailyRecord = ViolationDailyRecord;
 
 interface CrewViolationData {
   crewMemberId: string;

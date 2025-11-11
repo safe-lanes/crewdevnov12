@@ -6,14 +6,10 @@
  * It provides true rolling window calculations for regulatory compliance.
  */
 
-export interface DailyRecord {
-  day: number;
-  dayOfWeek: string;
-  hours: string[];
-  isPlan: boolean;
-  comments: string;
-  violations: string[];
-}
+import type { TimelineDailyRecord } from './types';
+
+// Re-export for backward compatibility
+export type DailyRecord = TimelineDailyRecord;
 
 export interface DateLineAdjustment {
   day: number;
