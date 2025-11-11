@@ -1,7 +1,7 @@
 # Seafarer Performance Management System
 
 ## Overview
-A comprehensive seafarer performance management system designed to streamline seafarer and vessel management. It integrates crew and appraisal functionalities, a robust vessel revision system for rank assignments, advanced form configuration, and an intuitive user experience. The system aims to optimize crew deployment and compliance through a scalable, module-first architecture, ultimately enhancing maritime operational efficiency and compliance.
+A comprehensive system designed to streamline seafarer and vessel management. It integrates crew and appraisal functionalities, a robust vessel revision system for rank assignments, advanced form configuration, and an intuitive user experience. The system aims to optimize crew deployment and compliance through a scalable, module-first architecture, ultimately enhancing maritime operational efficiency and compliance.
 
 ## User Preferences
 ### Code Style
@@ -20,15 +20,6 @@ A comprehensive seafarer performance management system designed to streamline se
 ## System Architecture
 The application employs a modern web stack with a module-first architecture for clear separation of concerns and scalability.
 
-### Technology Stack
-- **Frontend**: React 18, TypeScript, Vite
-- **Backend**: Express.js, TypeScript
-- **UI Components**: shadcn/ui, Tailwind CSS
-- **Data Tables**: AG Grid Enterprise
-- **State Management**: TanStack Query v5
-- **Form Management**: React Hook Form, Zod validation
-- **Routing**: Wouter
-
 ### UI/UX Decisions
 - Consistent layout, alignment, error handling, and loading states.
 - Adherence to SAIL Form Standards for input fields and sections.
@@ -39,52 +30,29 @@ The application employs a modern web stack with a module-first architecture for 
 - **Master Data System**: Centralized storage for reference data (e.g., vessels) via a consistent API.
 - **Vessel Revision System**: Manages vessel rank assignments with draft/submission workflows and date validation.
 - **Rank Designation Synchronization**: Supports company and vessel-specific rank designations with inheritance and overrides.
-- **Vessel Database Module**: Displays vessel data, calculates crew counts, and includes Officer Matrix, Planning, and Training Matrix.
+- **Vessel Database Module**: Displays vessel data and includes Officer Matrix, Planning, and Training Matrix.
 - **Rotation Module**: Manages crew rotation planning with "Due" and "Plan" sections, visual timelines, and comprehensive filters.
-- **Promotion Hierarchy System**: Configurable promotion paths for different rank groups, integrated with the Promotions module for filtering and "Next Promotion Rank" calculation.
-    - **Promotion Review Form**: A three-part modal for managing promotions (Criteria Review, Approval, Execution) with dynamic criteria and approver management.
-    - **Promotion Checklist Form**: A detailed modal for reviewing seafarer information, sea service, and promotion checklist items.
-- **Forms Configuration - Company Rank Integration**: Uses company-specific rank labels for rank group creation and automatically matches forms to crew member ranks during appraisals, supporting multi-category forms (Appraisal, Promotion).
-- **Drugs & Alcohol Testing Module**: Tracks testing with six test types, comprehensive filtering, and AG Grid tables.
-    - **Summary View**: Vessel-centric consolidated view with aggregated history, due-in badges, frequency configuration, and planning fields.
-    - **D&A Test Form**: Modal for creating/editing records with dynamic sections for general information, testing equipment, personnel tested (pre-populated roster with dynamic filtering, violation flags, witness selection, and "+ Add Other" option), and digital signature. Includes field visibility logic based on test type and dynamic crew filtering.
-- **Rest Hours Module**: Manages seafarer work and rest hours in compliance with maritime regulations (ILO, MLC, US-OPA 90).
-    - **PeriodFilter Component**: Reusable period selection component with popover interface supporting two modes: (1) Year + Quarter/Month selection with mutually exclusive Quarter/Month buttons, and (2) Date Range selection with calendar pickers. Defaults to current year and month. Implements controlled component pattern with useEffect synchronization to handle external state resets. Integrated consistently across Dashboard, Record, and Plan modules with year-month validation guards.
-    - **Dashboard (Office)**: Provides fleet-wide overview with 3x2 grid of AG Charts Enterprise visualizations showing violations by rank (Chart 3), NCs by rank (Chart 6), and other metrics. Features comprehensive filtering (period, vessel/fleet, groups). Implements chart-level `seriesNodeClick` handlers for drill-down functionality. Charts use white backgrounds for proper image downloads and support multiple chart types (bar, line, pie).
-        - **Performance Overview Card**: Displays key performance metrics with text counters and custom SVG semi-circular gauges. Features three text metrics (Total Violations, Total NCs, Predicted NCs) and two gauges (Vessels with Violations, Vessels with NCs). Gauges show actual count vs. total fleet vessels with percentage-based color coding (green <25%, orange 25-75%, red >75%). Uses custom `SemiCircularGauge` component with 180° top arc (9 o'clock → 12 o'clock → 3 o'clock), gray background frame, and percentage-based colored fill. Total vessel count sourced from master data API to ensure accurate fleet percentages regardless of which vessels have crew records.
-        - **Drill-Down Feature**: 
-            - **Chart 3 (Rank Wise Violations)**: Clicking any bar opens ViolationsOverviewDialog filtered by the selected rank. Chart data and dialog both apply compliance mode (Rest/Work) and OPA filtering to ensure consistency - only violations visible in current mode are counted.
-            - **Chart 6 (Rank Wise NCs)**: Clicking any bar opens NCOverviewDialog with grouped table structure showing Vessel, Rank, Name, Date, Violations (comma-separated codes), Comments, and View Report columns. Dialog implements rank normalization (strips suffixes like "_1", case-insensitive) to match chart labels with crew records.
-        - **Empty Vessel Filter Handling**: When no vessel is selected, dialogs fetch data from ALL vessels rather than filtering to empty set.
-        - **Chart 5 (Vessel Analysis)**: Matrix visualization showing violations/NCs by vessel and month. Displays vessels as rows (alphabetically sorted), months (JAN-DEC) as columns. Shows all vessels from master data (even those with zero violations/NCs). Badge rendering: gray circles for zero counts (bg-gray-200), red circles with numbers for non-zero counts (bg-pink-100). Respects year filter from PeriodFilter and vessel filter. Fetches data for all 12 months of selected year from /api/rest-hours-crew-records and aggregates by vessel/month. Uses memoized toolbar with proper cleanup to prevent React render-phase warnings.
-    - **Record**: Manages recordkeeping for individual seafarers.
-        - **RH Recording Form**: Interactive modal form with a 3-level drill-down structure, HTML table for data entry with half-hour divisions, arrow key navigation, and displays both calendar-day and regulatory "any period" rolling window calculations.
-        - **Violation Detection**: Implements 8 violation codes using backward-looking windows for regulatory compliance, providing detailed diagnostics and multi-range violation highlighting. Supports OPA-specific violations.
-        - **Recording Status Calculation**: Dynamic percentage calculation based on actual form completion (filled days / total days in month). Progress bars display with color coding (grey for 0%, yellow for partial, green for 100%). Crew-level percentages are calculated individually, while vessel-level percentages aggregate across all crew members. Updates automatically when daily records are saved.
-        - **Violation Badge Display**: Crew records table displays both "Total Violations" (completed) and "Predicted Violations" (planned) columns with visual badges. Zero values show grey badges (bg-gray-200), non-zero values show red badges (bg-pink-100). Badge rendering applied consistently to all violation and NC columns.
-        - **Duplicate Record Handling**: When multiple daily records exist for the same crew/vessel/month combination, the system uses numeric ID comparison to keep the most recent record (highest ID), preventing stale violation data from displaying.
-        - **Vessel Violation Comments**: Vessel-level comment functionality for Masters/Chief Engineers to document corrective actions. Comments are saved at vessel+month level in the ViolationsOverviewDialog (actual violations only, not predicted). Includes textarea for comments, Save button with success/error feedback, and automatic persistence via API endpoints with upsert logic.
-        - **Vessel Review Dialog**: Comprehensive 3-section review interface triggered by clicking Due/Overdue badges in the Vessel Review column. Shows (1) Violations table with Date/Rank/Name/Violations/Comments, (2) NC summary table with Rank/Name/Dates/Status/View Report, (3) shared vessel comments. Implements Save/Submit workflow with read-only mode when completed. Critical fix: Daily records filter includes `monthYear === monthValue` to prevent cross-month data contamination.
-        - **International Date Line Crossing Adjustments**: Vessel-wide configuration system for marking days as Advanced (Skipped) or Retarded (Repeated) when crossing the international date line. Triggered manually by Ship Masters, affects all crew members' rest hours calculations. Date Line button is accessible from the Vessel Overview page (/rest-hours/vessel/:vesselId/:month) where vessel and month context is already clear from the URL. Features interactive day-by-day calendar interface with 3-state cycle (Normal → Advanced → Retarded → Normal), visual indicators (orange for Advanced, blue for Retarded), and vessel-month level storage. Adjustments stored in `vesselDateLineAdjustments` table as validated JSON arrays with schema `[{day: number, type: "advanced" | "retarded"}]`. Backend implements full CRUD API (GET/PUT/DELETE) with path parameters `/api/vessel-dateline-adjustments/:vesselId/:monthValue`, proper 404 handling for missing records, and unique constraint on vessel+month combinations. UI displays adjustment count badge on Date Line button in the header toolbar next to Rest/Work toggle and Back button, supports bulk Clear All operation, and provides real-time persistence with TanStack Query cache invalidation. Design choice: Lightweight manual notation system rather than automated position tracking, allowing Masters to mark adjustments as they occur during vessel operations.
-            - **RH Recording Form Visual Integration**: Date line adjustments visually reflected in RH Recording Form with presentation-layer implementation. Advanced days display with red text and asterisk (*) in Date/Day columns. Retarded days appear TWICE (original + duplicate row) with duplicate showing green background (bg-green-50), green text, and double asterisk (**). Implementation uses DisplayRow interface with baseIndex mapping to ensure duplicate rows share same underlying DailyRecord for data integrity. All event handlers (togglePlanRec, hourCellEdit, commentsChange) use baseIndex to update shared record. Legend appears at bottom when adjustments exist ("* Day Advanced (Skipped)" and "** Day Retarded (Repeated)"). Critical fix: contentEditable divs include key prop `${baseIndex}-${hourIndex}-${hour}` to force React re-render when underlying data changes, ensuring perfect synchronization between duplicate rows. Unique React keys and data-testid patterns with occurrence suffixes ("-duplicate") prevent reconciliation bugs. Arrow key navigation updated to construct correct testids from displayRows. E2E tested: markers display correctly, duplicate rows synchronize edits, data persists after save, legend appears/disappears correctly, no regression in violation calculations.
-    - **Plan**: Handles work planning, fixed working hours, and variable tasks for groups of seafarers.
-        - **Variable Tasks**: Full CRUD implementation for planning and tracking with shadcn Table components.
-        - **Variable Task Form**: Modal for task planning including Date/Time, Record Type, Tasks Involved, advanced Crew Selection System (linked to Rank Administration configurations with department categorization and group shortcuts), Comments, and draft/submit workflow.
-        - **Auto-Sync to RH Recording Forms**: Automated synchronization system updates crew members' Rest Hours Recording forms when variable tasks are created, edited, or deleted (only for submitted tasks), handling time mapping, multi-day tasks, work code priority, and color coding.
-        - **Fixed Tasks**: Monthly fixed working schedule management with 48 half-hour templates for "at Sea" and "in Port" conditions, supporting watch ('w') and daywork ('d') codes. Table structure matches RH Recording form with direct keyboard typing.
-- **Rank Ordering System**: All crew-displaying modules use rank-based sorting from Admin > Rank Administration.
-    - Fetches sortOrder from `/api/available-ranks` and creates memoized rankOrderMap
-    - **Suffix Normalization**: Strips rank suffixes (e.g., "3rd Officer_1" → "3rd Officer") before sortOrder lookup to handle vessel-specific role variants
-    - Unknown/null ranks default to sortOrder 999 for consistent fallback behavior
-    - Implemented in: Fixed Tasks, Rest Hours Record, Vessel Crew List
+- **Promotion Hierarchy System**: Configurable promotion paths, integrated with a Promotions module for filtering and "Next Promotion Rank" calculation. Includes a multi-part Promotion Review Form and a detailed Promotion Checklist Form.
+- **Forms Configuration - Company Rank Integration**: Uses company-specific rank labels for rank group creation and automatically matches forms to crew member ranks during appraisals.
+- **Drugs & Alcohol Testing Module**: Tracks six test types with comprehensive filtering, AG Grid tables, and a Summary View. Features a D&A Test Form with dynamic sections and digital signature.
+- **Rest Hours Module**: Manages seafarer work and rest hours in compliance with maritime regulations.
+    - **PeriodFilter Component**: Reusable period selection component with year/quarter/month or date range modes.
+    - **Dashboard (Office)**: Provides fleet-wide overview with AG Charts Enterprise visualizations, performance overview cards with custom gauges, and drill-down functionality to detailed violation and NC overviews. Includes a Vessel Analysis matrix showing violations/NCs by vessel and month.
+    - **Record**: Manages recordkeeping for individual seafarers. Features an interactive RH Recording Form with HTML table for data entry, arrow key navigation, and real-time rolling window violation detection (MLC 2006/ILO, OPA-specific). Handles International Date Line Crossing Adjustments. Displays recording status and violation badges. Includes vessel-level comment functionality and a comprehensive Vessel Review Dialog.
+    - **Plan**: Handles work planning, fixed working hours, and variable tasks. Features full CRUD for variable tasks with an advanced Crew Selection System and automated synchronization to RH Recording Forms. Manages fixed tasks with 48 half-hour templates.
+- **Rank Ordering System**: All crew-displaying modules use rank-based sorting with suffix normalization from Admin > Rank Administration.
 - **Performance Optimization**: Utilizes map-based lookups, TanStack Query for caching, `useRef`, `useMemo`, and optimized `PersistentFileStorage`.
 - **Data Storage**: `PersistentFileStorage` for development, with PostgreSQL/Drizzle ORM for production.
 
 ## External Dependencies
+- React 18
+- TypeScript
+- Vite
+- Express.js
 - AG Grid Enterprise
 - shadcn/ui
 - Tailwind CSS
-- TanStack Query
+- TanStack Query v5
 - React Hook Form
 - Zod
 - Wouter
