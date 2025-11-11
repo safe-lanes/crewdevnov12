@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
-import { useQuery } from '@tanstack/react-query';
-import { Filter, ChevronDown, Globe } from 'lucide-react';
+import { Filter, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -13,8 +12,6 @@ import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { RHRecordsTable } from './RHRecordsTable';
 import { PeriodFilter, type PeriodFilterValue } from '@/components/filters/PeriodFilter';
 import { parseRestHoursFilters, serializeRestHoursFilters, periodFilterToPart, partToPeriodFilter, type RestHoursFilters } from './utils/filterParams';
-import { DateLineAdjustmentsDialog } from './DateLineAdjustmentsDialog';
-import type { VesselDateLineAdjustment } from '@shared/schema';
 
 export const RestHoursRecord = (): JSX.Element => {
   const [location, setLocation] = useLocation();
@@ -34,7 +31,6 @@ export const RestHoursRecord = (): JSX.Element => {
     year: currentYear,
     month: currentMonth,
   });
-  const [dateLineDialogOpen, setDateLineDialogOpen] = useState(false);
 
   const { vessels, isLoading: vesselsLoading } = useVesselLookup();
 
@@ -46,35 +42,6 @@ export const RestHoursRecord = (): JSX.Element => {
     return '';
   }, [periodValue]);
 
-  const selectedVesselId = useMemo(() => {
-    if (filterType !== 'vessel' || selectedVessels.length !== 1) return null;
-    const vessel = vessels.find((v: any) => v.name === selectedVessels[0]);
-    return vessel?.entryId || null;
-  }, [filterType, selectedVessels, vessels]);
-
-  const { data: dateLineAdjustment } = useQuery<VesselDateLineAdjustment | null>({
-    queryKey: ['/api/vessel-dateline-adjustments', selectedVesselId, selectedMonthString],
-    queryFn: async () => {
-      if (!selectedVesselId || !selectedMonthString) return null;
-      const response = await fetch(`/api/vessel-dateline-adjustments/${selectedVesselId}/${selectedMonthString}`);
-      if (!response.ok) {
-        if (response.status === 404) return null;
-        throw new Error('Failed to fetch vessel date line adjustments');
-      }
-      return response.json();
-    },
-    enabled: !!selectedVesselId && !!selectedMonthString,
-  });
-
-  const adjustmentCount = useMemo(() => {
-    if (!dateLineAdjustment) return 0;
-    try {
-      const parsed = JSON.parse(dateLineAdjustment.adjustments);
-      return Array.isArray(parsed) ? parsed.length : 0;
-    } catch {
-      return 0;
-    }
-  }, [dateLineAdjustment]);
   
   // Parse URL parameters or restore from localStorage on mount
   useEffect(() => {
@@ -229,23 +196,6 @@ export const RestHoursRecord = (): JSX.Element => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setDateLineDialogOpen(true)}
-            disabled={filterType !== 'vessel' || selectedVessels.length !== 1 || !selectedMonthString}
-            className="h-8 gap-2 bg-white dark:bg-gray-800 text-[#0f172a] dark:text-white border-gray-300 dark:border-gray-600 relative"
-            data-testid="button-date-line-adjustments"
-          >
-            <Globe className="h-4 w-4" />
-            Date Line
-            {adjustmentCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
-                {adjustmentCount}
-              </span>
-            )}
-          </Button>
-          
-          <Button
-            variant="outline"
-            size="sm"
             onClick={() => setShowFilters(!showFilters)}
             className="h-8 gap-2 bg-white dark:bg-gray-800 text-[#0f172a] dark:text-white border-gray-300 dark:border-gray-600"
             data-testid="button-toggle-filters"
@@ -255,14 +205,6 @@ export const RestHoursRecord = (): JSX.Element => {
           </Button>
         </div>
       </SectionTitleComponents>
-      
-      <DateLineAdjustmentsDialog
-        open={dateLineDialogOpen}
-        onOpenChange={setDateLineDialogOpen}
-        vesselId={selectedVesselId}
-        vesselName={selectedVessels[0] || ''}
-        monthValue={selectedMonthString}
-      />
 
       {showFilters && (
         <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
