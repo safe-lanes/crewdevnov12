@@ -35,7 +35,7 @@ export const RestHoursPlan = (): JSX.Element => {
 
   // Parse URL parameters whenever location changes
   useEffect(() => {
-    const search = location.split('?')[1];
+    const search = window.location.search;
     if (!search) {
       hasSyncedFromUrl.current = true;
       return;
@@ -61,12 +61,12 @@ export const RestHoursPlan = (): JSX.Element => {
   // Auto-select first vessel when vessels load (only if no URL params)
   useEffect(() => {
     if (!vesselsLoading && vessels.length > 0 && !selectedVessel) {
-      const search = location.split('?')[1];
+      const search = window.location.search;
       if (!search) {
         setSelectedVessel(vessels[0].entryId);
       }
     }
-  }, [vesselsLoading, vessels, selectedVessel, location]);
+  }, [vesselsLoading, vessels, selectedVessel]);
   
   // Sync filter state to URL whenever filters change
   useEffect(() => {

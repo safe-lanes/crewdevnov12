@@ -36,7 +36,7 @@ export const RestHoursRecord = (): JSX.Element => {
   
   // Parse URL parameters whenever location changes
   useEffect(() => {
-    const search = location.split('?')[1];
+    const search = window.location.search;
     if (!search) {
       hasSyncedFromUrl.current = true;
       return;
@@ -78,7 +78,7 @@ export const RestHoursRecord = (): JSX.Element => {
   useEffect(() => {
     if (vesselsLoading || vessels.length === 0) return;
     
-    const search = location.split('?')[1];
+    const search = window.location.search;
     if (!search) {
       // No URL params, mark as synced
       hasSyncedFromUrl.current = true;

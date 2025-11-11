@@ -214,7 +214,7 @@ export const VesselStatusChart = ({
       opaMode,
     };
     const queryString = serializeRestHoursFilters(filters);
-    setLocation(`/rest-hours/record?${queryString}`);
+    setLocation(`/rest-hours/records?${queryString}`);
   };
 
   // Render toolbar
