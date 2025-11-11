@@ -475,7 +475,7 @@ export function detectViolations(
         if (numPeriods === 0) {
           reason = `No rest periods found (only blank cells count as rest, not 'd' or 'a')`;
         } else if (numPeriods > 2) {
-          reason = `${numPeriods} rest periods found (max 2 allowed): ${allPeriodsHours}. Note: 'd' (duty) and 'a' (anchor watch) count as WORK, not rest.`;
+          reason = `${numPeriods} rest periods found (max 2 allowed): ${allPeriodsHours}. Note: 'd' (daywork) and 'a' (additional work) count as WORK, not rest.`;
         } else if (numPeriods === 1) {
           reason = `1 rest period: ${largestHours}h (need ≥6h and ≥10h total for single period)`;
         } else {
