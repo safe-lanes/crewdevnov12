@@ -49,7 +49,7 @@ interface CrewRowProps {
 
 const CrewRow = memo(({ crew, crewIndex, isEditMode, onCellEdit }: CrewRowProps) => {
   return (
-    <Fragment key={crew.crewMemberId}>
+    <>
       {/* Sea row */}
       <tr className="hover:bg-gray-50 dark:hover:bg-gray-900">
         <td 
@@ -230,7 +230,7 @@ const CrewRow = memo(({ crew, crewIndex, isEditMode, onCellEdit }: CrewRowProps)
           {calculateRestHours(crew.portHours).toFixed(1)}
         </td>
       </tr>
-    </Fragment>
+    </>
   );
 });
 
