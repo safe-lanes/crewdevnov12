@@ -325,6 +325,24 @@ export const RHRecordingForm = ({
     staleTime: 0,
   });
 
+  // Fetch previous month's date line adjustments for cross-month rolling windows
+  const { data: previousMonthDateLineAdjustment } = useQuery<VesselDateLineAdjustment | null>({
+    queryKey: ['/api/vessel-dateline-adjustments', selectedVesselId, previousMonthPeriod],
+    queryFn: async () => {
+      if (!selectedVesselId || !previousMonthPeriod) return null;
+      const response = await fetch(`/api/vessel-dateline-adjustments/${selectedVesselId}/${previousMonthPeriod}`);
+      if (!response.ok) {
+        if (response.status === 404) return null;
+        throw new Error('Failed to fetch previous month date line adjustments');
+      }
+      return response.json();
+    },
+    enabled: open && !!selectedVesselId && !!previousMonthPeriod,
+    retry: false,
+    gcTime: 0,
+    staleTime: 0,
+  });
+
   // Parse date line adjustments into format for timeline calculations
   const parsedDateLineAdjustments = useMemo((): DateLineAdjustment[] => {
     if (!dateLineAdjustment) return [];
@@ -341,6 +359,23 @@ export const RHRecordingForm = ({
     }
     return [];
   }, [dateLineAdjustment]);
+
+  // Parse previous month's date line adjustments for cross-month rolling windows
+  const parsedPreviousMonthDateLineAdjustments = useMemo((): DateLineAdjustment[] => {
+    if (!previousMonthDateLineAdjustment) return [];
+    try {
+      const adjustments = JSON.parse(previousMonthDateLineAdjustment.adjustments) as DateLineAdjustmentItem[];
+      if (Array.isArray(adjustments)) {
+        return adjustments.map(adj => ({
+          day: adj.day,
+          type: adj.type,
+        }));
+      }
+    } catch (e) {
+      console.error('Failed to parse previous month date line adjustments:', e);
+    }
+    return [];
+  }, [previousMonthDateLineAdjustment]);
 
   // Load previous month's records for cross-month calculations
   useEffect(() => {
@@ -458,7 +493,7 @@ export const RHRecordingForm = ({
     
     // Prepend previous month data for cross-month windows (need 168 hours = 336 half-hour slots)
     const fullTimeline = prevMonthTimelineRecords.length > 0
-      ? prependPreviousMonthTimeline(currentTimeline, prevMonthTimelineRecords, [], 336)
+      ? prependPreviousMonthTimeline(currentTimeline, prevMonthTimelineRecords, parsedPreviousMonthDateLineAdjustments, 336)
       : currentTimeline;
     
     // Build prefix sums for efficient window calculations
@@ -527,7 +562,7 @@ export const RHRecordingForm = ({
     }
     
     return resultMap;
-  }, [dailyRecords, previousMonthRecords, parsedDateLineAdjustments, complianceMode, opaMode]);
+  }, [dailyRecords, previousMonthRecords, parsedDateLineAdjustments, parsedPreviousMonthDateLineAdjustments, complianceMode, opaMode]);
 
   // Apply timeline violations to dailyRecords whenever they change
   useEffect(() => {
