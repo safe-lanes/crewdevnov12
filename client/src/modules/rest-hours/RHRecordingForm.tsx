@@ -1614,15 +1614,16 @@ export const RHRecordingForm = ({
                                      isRetardedDuplicate ? 'text-green-600 font-semibold' : '';
                 const dayMarker = isAdvanced ? ' *' : isRetardedDuplicate ? ' **' : '';
                 const rowBgColor = isRetardedDuplicate ? 'bg-green-50' : '';
+                const occurrenceSuffix = occurrence === 'duplicate' ? '-duplicate' : '';
                 
                 return (
-                  <tr key={displayIndex} className={rowBgColor}>
+                  <tr key={`${record.day}-${occurrence}`} className={rowBgColor}>
                     {/* Plan/Rec Button */}
                     <td className="border border-gray-300 text-center" style={{ padding: '2px' }}>
                       <button
                         onClick={() => handleTogglePlanRec(baseIndex)}
                         className="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 rounded"
-                        data-testid={`button-plan-rec-${displayIndex}`}
+                        data-testid={`button-plan-rec-${record.day}${occurrenceSuffix}`}
                       >
                         {record.isPlan ? 'Plan' : 'Rec'}
                       </button>
@@ -1663,6 +1664,7 @@ export const RHRecordingForm = ({
                         }}
                       >
                         <div
+                          key={`${baseIndex}-${hourIndex}-${hour}`}
                           contentEditable
                           suppressContentEditableWarning
                           onBlur={(e) => {
@@ -1704,8 +1706,10 @@ export const RHRecordingForm = ({
                               
                               // Check if target is valid
                               if (targetDisplayIndex >= 0 && targetDisplayIndex < displayRows.length) {
+                                const targetRow = displayRows[targetDisplayIndex];
+                                const targetOccurrenceSuffix = targetRow.occurrence === 'duplicate' ? '-duplicate' : '';
                                 const targetCell = document.querySelector(
-                                  `[data-testid="cell-hour-${targetDisplayIndex}-${targetHour}"]`
+                                  `[data-testid="cell-hour-${targetRow.record.day}${targetOccurrenceSuffix}-${targetHour}"]`
                                 ) as HTMLElement;
                                 
                                 if (targetCell) {
@@ -1731,7 +1735,7 @@ export const RHRecordingForm = ({
                           }}
                           className={`outline-none cursor-text min-h-[20px] ${record.isPlan ? 'font-light text-gray-400' : ''}`}
                           style={{ width: '100%', minWidth: '15px' }}
-                          data-testid={`cell-hour-${displayIndex}-${hourIndex}`}
+                          data-testid={`cell-hour-${record.day}${occurrenceSuffix}-${hourIndex}`}
                         >
                           {(showPlanning || !record.isPlan) ? hour : ''}
                         </div>
@@ -1812,7 +1816,7 @@ export const RHRecordingForm = ({
                       value={record.comments}
                       onChange={(e) => handleCommentsChange(baseIndex, e.target.value)}
                       className="w-full outline-none bg-transparent px-1"
-                      data-testid={`input-comments-${displayIndex}`}
+                      data-testid={`input-comments-${record.day}${occurrenceSuffix}`}
                     />
                   </td>
                   
