@@ -436,7 +436,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       };
 
       console.log('📤 Sending appraisal payload:', appraisalPayload);
-      const result = await apiRequest('POST', '/api/appraisals', appraisalPayload);
+      const response = await apiRequest('POST', '/api/appraisals', appraisalPayload);
+      const result = await response.json();
       console.log('✅ Appraisal saved successfully:', result);
       return result;
     },

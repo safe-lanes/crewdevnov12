@@ -1,0 +1,1493 @@
+~/workspace$ npx tsc --noEmit
+client/src/modules/crewing/AppraisalForm.tsx:445:24 - error TS2339: Property 'id' does not exist on type 'Response'.
+
+445       if (data && data.id) {
+                           ~~
+
+client/src/modules/crewing/AppraisalForm.tsx:446:29 - error TS2339: Property 'id' does not exist on type 'Response'.
+
+446         setAppraisalId(data.id);
+                                ~~
+
+client/src/modules/crewing/AppraisalForm.tsx:564:48 - error TS2339: Property 'appraisalData' does not exist on type '{}'.
+
+564     if (existingAppraisal && existingAppraisal.appraisalData) {
+                                                   ~~~~~~~~~~~~~
+
+client/src/modules/crewing/AppraisalForm.tsx:566:53 - error TS2339: Property 'appraisalData' does not exist on type '{}'.
+
+566         const parsedData = typeof existingAppraisal.appraisalData === 'string'
+                                                        ~~~~~~~~~~~~~
+
+client/src/modules/crewing/AppraisalForm.tsx:567:42 - error TS2339: Property 'appraisalData' does not exist on type '{}'.
+
+567           ? JSON.parse(existingAppraisal.appraisalData)
+                                             ~~~~~~~~~~~~~
+
+client/src/modules/crewing/AppraisalForm.tsx:568:31 - error TS2339: Property 'appraisalData' does not exist on type '{}'.
+
+568           : existingAppraisal.appraisalData;
+                                  ~~~~~~~~~~~~~
+
+client/src/modules/crewing/AppraisalForm.tsx:574:31 - error TS2339: Property 'status' does not exist on type '{}'.
+
+574         if (existingAppraisal.status && ['draft', 'preliminary', 'submitted', 'reviewed'].includes(existingAppraisal.status)) {
+                                  ~~~~~~
+
+client/src/modules/crewing/AppraisalForm.tsx:574:118 - error TS2339: Property 'status' does not exist on type '{}'.
+
+574         if (existingAppraisal.status && ['draft', 'preliminary', 'submitted', 'reviewed'].includes(existingAppraisal.status)) {
+                                                                                                                         ~~~~~~
+
+client/src/modules/crewing/AppraisalForm.tsx:575:48 - error TS2339: Property 'status' does not exist on type '{}'.
+
+575           setAppraisalStatus(existingAppraisal.status as 'draft' | 'preliminary' | 'submitted' | 'reviewed');
+                                                   ~~~~~~
+
+client/src/modules/crewing/AppraisalForm.tsx:618:30 - error TS2339: Property 'id' does not exist on type 'Response'.
+
+618         if (result && result.id) {
+                                 ~~
+
+client/src/modules/crewing/AppraisalForm.tsx:619:28 - error TS2339: Property 'id' does not exist on type 'Response'.
+
+619           idToUse = result.id;
+                               ~~
+
+client/src/modules/crewing/AppraisalForm.tsx:620:33 - error TS2339: Property 'id' does not exist on type 'Response'.
+
+620           setAppraisalId(result.id);
+                                    ~~
+
+client/src/modules/crewing/AppraisalForm.tsx:633:29 - error TS2345: Argument of type 'number | null' is not assignable to parameter of type 'number'.
+  Type 'null' is not assignable to type 'number'.
+
+633       stage1Mutation.mutate(idToUse);
+                                ~~~~~~~
+
+client/src/modules/crewing/AppraisalForm.tsx:635:29 - error TS2345: Argument of type 'number | null' is not assignable to parameter of type 'number'.
+  Type 'null' is not assignable to type 'number'.
+
+635       stage2Mutation.mutate(idToUse);
+                                ~~~~~~~
+
+client/src/modules/crewing/AppraisalForm.tsx:637:29 - error TS2345: Argument of type 'number | null' is not assignable to parameter of type 'number'.
+  Type 'null' is not assignable to type 'number'.
+
+637       stage3Mutation.mutate(idToUse);
+                                ~~~~~~~
+
+server/database.ts:35:14 - error TS2420: Class 'DatabaseStorage' incorrectly implements interface 'IStorage'.
+  Type 'DatabaseStorage' is missing the following properties from type 'IStorage': getFormForRank, updateRankOrders, getCompanyRanks, getCompanyRank, and 92 more.
+
+35 export class DatabaseStorage implements IStorage {
+                ~~~~~~~~~~~~~~~
+
+server/database.ts:697:48 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "users"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "users"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; hasDefault: true; ... 6 more ...; generated: undefined; }, {}, {}>; username: PgColumn<...>; password: PgColum...' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "users"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "users"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; hasDefault: true; ... 6 more ...; generated: undefined; }, {}, {}>; username: PgColumn<...>; password: PgColumn<...>; }; ...' but required in type 'MySqlTable<TableConfig>'.
+
+697     const result = await this.db.select().from(users).where(eq(users.id, id));
+                                                   ~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:698:5 - error TS2322: Type '{} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; }' is not assignable to type '{ id: number; password: string; username: string; } | undefined'.
+  Type '{}' is missing the following properties from type '{ id: number; password: string; username: string; }': id, password, username
+
+698     return result[0];
+        ~~~~~~
+
+server/database.ts:702:48 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "users"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "users"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; hasDefault: true; ... 6 more ...; generated: undefined; }, {}, {}>; username: PgColumn<...>; password: PgColum...' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "users"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "users"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; hasDefault: true; ... 6 more ...; generated: undefined; }, {}, {}>; username: PgColumn<...>; password: PgColumn<...>; }; ...' but required in type 'MySqlTable<TableConfig>'.
+
+702     const result = await this.db.select().from(users).where(eq(users.username, username));
+                                                   ~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:703:5 - error TS2322: Type '{} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; }' is not assignable to type '{ id: number; password: string; username: string; } | undefined'.
+  Type '{}' is missing the following properties from type '{ id: number; password: string; username: string; }': id, password, username
+
+703     return result[0];
+        ~~~~~~
+
+server/database.ts:707:26 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "users"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "users"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; hasDefault: true; ... 6 more ...; generated: undefined; }, {}, {}>; username: PgColumn<...>; password: PgColum...' is not assignable to parameter of type 'MySqlTable<TableConfig>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "users"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "users"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; hasDefault: true; ... 6 more ...; generated: undefined; }, {}, {}>; username: PgColumn<...>; password: PgColumn<...>; }; ...' but required in type 'MySqlTable<TableConfig>'.
+
+707     await this.db.insert(users).values(insertUser);
+                             ~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:713:5 - error TS2322: Type '({} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; })[]' is not assignable to type '{ id: number; name: string; category: string; rankGroup: string; versionNo: string; versionDate: string; configuration: string | null; }[]'.
+  Type '{} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; }' is not assignable to type '{ id: number; name: string; category: string; rankGroup: string; versionNo: string; versionDate: string; configuration: string | null; }'.
+    Type '{}' is missing the following properties from type '{ id: number; name: string; category: string; rankGroup: string; versionNo: string; versionDate: string; configuration: string | null; }': id, name, category, rankGroup, and 3 more.
+
+713     return await this.db.select().from(forms);
+        ~~~~~~
+
+server/database.ts:713:40 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "forms"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "forms"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; hasDefault: true; ... 6 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; configuration: PgColumn<.....' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "forms"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "forms"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; hasDefault: true; ... 6 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; configuration: PgColumn<...>; }; dial...' but required in type 'MySqlTable<TableConfig>'.
+
+713     return await this.db.select().from(forms);
+                                           ~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:717:48 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "forms"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "forms"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; hasDefault: true; ... 6 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; configuration: PgColumn<.....' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "forms"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "forms"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; hasDefault: true; ... 6 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; configuration: PgColumn<...>; }; dial...' but required in type 'MySqlTable<TableConfig>'.
+
+717     const result = await this.db.select().from(forms).where(eq(forms.id, id));
+                                                   ~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:718:5 - error TS2322: Type '{} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; }' is not assignable to type '{ id: number; name: string; category: string; rankGroup: string; versionNo: string; versionDate: string; configuration: string | null; } | undefined'.
+  Type '{}' is missing the following properties from type '{ id: number; name: string; category: string; rankGroup: string; versionNo: string; versionDate: string; configuration: string | null; }': id, name, category, rankGroup, and 3 more.
+
+718     return result[0];
+        ~~~~~~
+
+server/database.ts:722:41 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "forms"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "forms"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; hasDefault: true; ... 6 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; configuration: PgColumn<.....' is not assignable to parameter of type 'MySqlTable<TableConfig>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "forms"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "forms"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; hasDefault: true; ... 6 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; configuration: PgColumn<...>; }; dial...' but required in type 'MySqlTable<TableConfig>'.
+
+722     const result = await this.db.insert(forms).values(insertForm);
+                                            ~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:728:26 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "forms"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "forms"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; hasDefault: true; ... 6 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; configuration: PgColumn<.....' is not assignable to parameter of type 'MySqlTable<TableConfig>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "forms"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "forms"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; hasDefault: true; ... 6 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; configuration: PgColumn<...>; }; dial...' but required in type 'MySqlTable<TableConfig>'.
+
+728     await this.db.update(forms).set(formData).where(eq(forms.id, id));
+                             ~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:733:41 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "forms"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "forms"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; hasDefault: true; ... 6 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; configuration: PgColumn<.....' is not assignable to parameter of type 'MySqlTable<TableConfig>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "forms"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "forms"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; hasDefault: true; ... 6 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; configuration: PgColumn<...>; }; dial...' but required in type 'MySqlTable<TableConfig>'.
+
+733     const result = await this.db.delete(forms).where(eq(forms.id, id));
+                                            ~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:739:5 - error TS2322: Type '({} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; })[]' is not assignable to type '{ id: number; name: string; formId: number; ranks: string; }[]'.
+  Type '{} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; }' is not assignable to type '{ id: number; name: string; formId: number; ranks: string; }'.
+    Type '{}' is missing the following properties from type '{ id: number; name: string; formId: number; ranks: string; }': id, name, formId, ranks
+
+739     return await this.db.select().from(rankGroups).where(eq(rankGroups.formId, formId));
+        ~~~~~~
+
+server/database.ts:739:40 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "rank_groups"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "rank_groups"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; hasDefault: true; ... 6 more ...; generated: undefined; }, {}, {}>; formId: PgColumn<...>; name: P...' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "rank_groups"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "rank_groups"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; formId: PgColumn<...>; name: PgColumn<...>; ranks: PgColumn...' but required in type 'MySqlTable<TableConfig>'.
+
+739     return await this.db.select().from(rankGroups).where(eq(rankGroups.formId, formId));
+                                           ~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:743:41 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "rank_groups"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "rank_groups"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; hasDefault: true; ... 6 more ...; generated: undefined; }, {}, {}>; formId: PgColumn<...>; name: P...' is not assignable to parameter of type 'MySqlTable<TableConfig>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "rank_groups"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "rank_groups"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; formId: PgColumn<...>; name: PgColumn<...>; ranks: PgColumn...' but required in type 'MySqlTable<TableConfig>'.
+
+743     const result = await this.db.insert(rankGroups).values(insertRankGroup);
+                                            ~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:745:51 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "rank_groups"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "rank_groups"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; hasDefault: true; ... 6 more ...; generated: undefined; }, {}, {}>; formId: PgColumn<...>; name: P...' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "rank_groups"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "rank_groups"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; formId: PgColumn<...>; name: PgColumn<...>; ranks: PgColumn...' but required in type 'MySqlTable<TableConfig>'.
+
+745     const rankGroup = await this.db.select().from(rankGroups).where(eq(rankGroups.id, insertId));
+                                                      ~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:746:5 - error TS2322: Type '{} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; }' is not assignable to type '{ id: number; name: string; formId: number; ranks: string; }'.
+  Type '{}' is missing the following properties from type '{ id: number; name: string; formId: number; ranks: string; }': id, name, formId, ranks
+
+746     return rankGroup[0];
+        ~~~~~~
+
+server/database.ts:750:26 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "rank_groups"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "rank_groups"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; hasDefault: true; ... 6 more ...; generated: undefined; }, {}, {}>; formId: PgColumn<...>; name: P...' is not assignable to parameter of type 'MySqlTable<TableConfig>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "rank_groups"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "rank_groups"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; formId: PgColumn<...>; name: PgColumn<...>; ranks: PgColumn...' but required in type 'MySqlTable<TableConfig>'.
+
+750     await this.db.update(rankGroups).set(rankGroupData).where(eq(rankGroups.id, id));
+                             ~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:751:51 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "rank_groups"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "rank_groups"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; hasDefault: true; ... 6 more ...; generated: undefined; }, {}, {}>; formId: PgColumn<...>; name: P...' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "rank_groups"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "rank_groups"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; formId: PgColumn<...>; name: PgColumn<...>; ranks: PgColumn...' but required in type 'MySqlTable<TableConfig>'.
+
+751     const rankGroup = await this.db.select().from(rankGroups).where(eq(rankGroups.id, id));
+                                                      ~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:752:5 - error TS2322: Type '{} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; }' is not assignable to type '{ id: number; name: string; formId: number; ranks: string; } | undefined'.
+  Type '{}' is missing the following properties from type '{ id: number; name: string; formId: number; ranks: string; }': id, name, formId, ranks
+
+752     return rankGroup[0];
+        ~~~~~~
+
+server/database.ts:756:41 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "rank_groups"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "rank_groups"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; hasDefault: true; ... 6 more ...; generated: undefined; }, {}, {}>; formId: PgColumn<...>; name: P...' is not assignable to parameter of type 'MySqlTable<TableConfig>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "rank_groups"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "rank_groups"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; formId: PgColumn<...>; name: PgColumn<...>; ranks: PgColumn...' but required in type 'MySqlTable<TableConfig>'.
+
+756     const result = await this.db.delete(rankGroups).where(eq(rankGroups.id, id));
+                                            ~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:762:5 - error TS2322: Type '({} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; })[]' is not assignable to type '{ label: string | null; id: number; name: string; category: string; rankId: string | null; applicableToCompany: boolean | null; sortOrder: number | null; }[]'.
+  Type '{} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; }' is not assignable to type '{ label: string | null; id: number; name: string; category: string; rankId: string | null; applicableToCompany: boolean | null; sortOrder: number | null; }'.
+    Type '{}' is missing the following properties from type '{ label: string | null; id: number; name: string; category: string; rankId: string | null; applicableToCompany: boolean | null; sortOrder: number | null; }': label, id, name, category, and 3 more.
+
+762     return await this.db.select().from(availableRanks);
+        ~~~~~~
+
+server/database.ts:762:40 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "available_ranks"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "available_ranks"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; sortOrder: PgColumn<...>...' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "available_ranks"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "available_ranks"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; sortOrder: PgColumn<...>; }; dialec...' but required in type 'MySqlTable<TableConfig>'.
+
+762     return await this.db.select().from(availableRanks);
+                                           ~~~~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:766:41 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "available_ranks"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "available_ranks"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; sortOrder: PgColumn<...>...' is not assignable to parameter of type 'MySqlTable<TableConfig>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "available_ranks"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "available_ranks"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; sortOrder: PgColumn<...>; }; dialec...' but required in type 'MySqlTable<TableConfig>'.
+
+766     const result = await this.db.insert(availableRanks).values(insertAvailableRank);
+                                            ~~~~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:768:55 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "available_ranks"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "available_ranks"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; sortOrder: PgColumn<...>...' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "available_ranks"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "available_ranks"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; sortOrder: PgColumn<...>; }; dialec...' but required in type 'MySqlTable<TableConfig>'.
+
+768     const availableRank = await this.db.select().from(availableRanks).where(eq(availableRanks.id, insertId));
+                                                          ~~~~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:769:5 - error TS2322: Type '{} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; }' is not assignable to type '{ label: string | null; id: number; name: string; category: string; rankId: string | null; applicableToCompany: boolean | null; sortOrder: number | null; }'.
+  Type '{}' is missing the following properties from type '{ label: string | null; id: number; name: string; category: string; rankId: string | null; applicableToCompany: boolean | null; sortOrder: number | null; }': label, id, name, category, and 3 more.
+
+769     return availableRank[0];
+        ~~~~~~
+
+server/database.ts:773:26 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "available_ranks"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "available_ranks"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; sortOrder: PgColumn<...>...' is not assignable to parameter of type 'MySqlTable<TableConfig>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "available_ranks"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "available_ranks"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; sortOrder: PgColumn<...>; }; dialec...' but required in type 'MySqlTable<TableConfig>'.
+
+773     await this.db.update(availableRanks).set(rankData).where(eq(availableRanks.id, id));
+                             ~~~~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:774:55 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "available_ranks"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "available_ranks"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; sortOrder: PgColumn<...>...' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "available_ranks"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "available_ranks"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; sortOrder: PgColumn<...>; }; dialec...' but required in type 'MySqlTable<TableConfig>'.
+
+774     const availableRank = await this.db.select().from(availableRanks).where(eq(availableRanks.id, id));
+                                                          ~~~~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:775:5 - error TS2322: Type '{} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; }' is not assignable to type '{ label: string | null; id: number; name: string; category: string; rankId: string | null; applicableToCompany: boolean | null; sortOrder: number | null; } | undefined'.
+  Type '{}' is missing the following properties from type '{ label: string | null; id: number; name: string; category: string; rankId: string | null; applicableToCompany: boolean | null; sortOrder: number | null; }': label, id, name, category, and 3 more.
+
+775     return availableRank[0];
+        ~~~~~~
+
+server/database.ts:781:52 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "available_ranks"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "available_ranks"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; sortOrder: PgColumn<...>...' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "available_ranks"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "available_ranks"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; sortOrder: PgColumn<...>; }; dialec...' but required in type 'MySqlTable<TableConfig>'.
+
+781       const existing = await this.db.select().from(availableRanks).where(eq(availableRanks.id, id));
+                                                       ~~~~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:786:43 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "available_ranks"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "available_ranks"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; sortOrder: PgColumn<...>...' is not assignable to parameter of type 'MySqlTable<TableConfig>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "available_ranks"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "available_ranks"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; sortOrder: PgColumn<...>; }; dialec...' but required in type 'MySqlTable<TableConfig>'.
+
+786       const result = await this.db.delete(availableRanks).where(eq(availableRanks.id, id));
+                                              ~~~~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:794:57 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "available_ranks"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "available_ranks"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; sortOrder: PgColumn<...>...' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "available_ranks"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "available_ranks"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; sortOrder: PgColumn<...>; }; dialec...' but required in type 'MySqlTable<TableConfig>'.
+
+794         const afterDelete = await this.db.select().from(availableRanks).where(eq(availableRanks.id, id));
+                                                            ~~~~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:808:43 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "available_ranks"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "available_ranks"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; sortOrder: PgColumn<...>...' is not assignable to parameter of type 'MySqlTable<TableConfig>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "available_ranks"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "available_ranks"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 5 more ...; sortOrder: PgColumn<...>; }; dialec...' but required in type 'MySqlTable<TableConfig>'.
+
+808       const result = await this.db.delete(availableRanks);
+                                              ~~~~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:823:5 - error TS2322: Type '({} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; })[]' is not assignable to type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }[]'.
+  Type '{} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; }' is not assignable to type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }'.
+    Type '{}' is missing the following properties from type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }': children, id, status, email, and 62 more.
+
+823     return await this.db.select().from(crewMembers);
+        ~~~~~~
+
+server/database.ts:823:40 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "crew_members"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "crew_members"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; hasDefault: false; ... 6 more ...; generated: undefined; }, {}, {}>; ... 64 more ...; updatedAt: P...' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "crew_members"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "crew_members"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 64 more ...; updatedAt: PgColumn<...>; }; dialect: "pg"...' but required in type 'MySqlTable<TableConfig>'.
+
+823     return await this.db.select().from(crewMembers);
+                                           ~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:827:48 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "crew_members"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "crew_members"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; hasDefault: false; ... 6 more ...; generated: undefined; }, {}, {}>; ... 64 more ...; updatedAt: P...' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "crew_members"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "crew_members"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 64 more ...; updatedAt: PgColumn<...>; }; dialect: "pg"...' but required in type 'MySqlTable<TableConfig>'.
+
+827     const result = await this.db.select().from(crewMembers).where(eq(crewMembers.id, id));
+                                                   ~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:828:5 - error TS2322: Type '{} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; }' is not assignable to type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; } | undefined'.
+  Type '{}' is missing the following properties from type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }': children, id, status, email, and 62 more.
+
+828     return result[0];
+        ~~~~~~
+
+server/database.ts:832:26 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "crew_members"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "crew_members"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; hasDefault: false; ... 6 more ...; generated: undefined; }, {}, {}>; ... 64 more ...; updatedAt: P...' is not assignable to parameter of type 'MySqlTable<TableConfig>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "crew_members"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "crew_members"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 64 more ...; updatedAt: PgColumn<...>; }; dialect: "pg"...' but required in type 'MySqlTable<TableConfig>'.
+
+832     await this.db.insert(crewMembers).values(insertCrewMember);
+                             ~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:833:54 - error TS2339: Property 'id' does not exist on type '{ vesselType: string; nationality: string; firstName: string; presentRank: string; presentVessel: string; children?: string | null | undefined; status?: string | null | undefined; email?: string | ... 1 more ... | undefined; ... 54 more ...; doctorVisits?: string | ... 1 more ... | undefined; }'.
+
+833     return await this.getCrewMember(insertCrewMember.id) as CrewMember;
+                                                         ~~
+
+server/database.ts:837:26 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "crew_members"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "crew_members"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; hasDefault: false; ... 6 more ...; generated: undefined; }, {}, {}>; ... 64 more ...; updatedAt: P...' is not assignable to parameter of type 'MySqlTable<TableConfig>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "crew_members"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "crew_members"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 64 more ...; updatedAt: PgColumn<...>; }; dialect: "pg"...' but required in type 'MySqlTable<TableConfig>'.
+
+837     await this.db.update(crewMembers).set(crewMemberData).where(eq(crewMembers.id, id));
+                             ~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:842:41 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "crew_members"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "crew_members"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; hasDefault: false; ... 6 more ...; generated: undefined; }, {}, {}>; ... 64 more ...; updatedAt: P...' is not assignable to parameter of type 'MySqlTable<TableConfig>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "crew_members"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "crew_members"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 64 more ...; updatedAt: PgColumn<...>; }; dialect: "pg"...' but required in type 'MySqlTable<TableConfig>'.
+
+842     const result = await this.db.delete(crewMembers).where(eq(crewMembers.id, id));
+                                            ~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:848:5 - error TS2322: Type '({} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; })[]' is not assignable to type '{ id: number; status: string; submittedAt: Date | null; crewMemberId: string; appraisalType: string; appraisalData: string; formId: number; appraisalDate: string; competenceRating: string | null; ... 4 more ...; stagePayloads: string | null; }[]'.
+  Type '{} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; }' is not assignable to type '{ id: number; status: string; submittedAt: Date | null; crewMemberId: string; appraisalType: string; appraisalData: string; formId: number; appraisalDate: string; competenceRating: string | null; ... 4 more ...; stagePayloads: string | null; }'.
+    Type '{}' is missing the following properties from type '{ id: number; status: string; submittedAt: Date | null; crewMemberId: string; appraisalType: string; appraisalData: string; formId: number; appraisalDate: string; competenceRating: string | null; ... 4 more ...; stagePayloads: string | null; }': id, status, submittedAt, crewMemberId, and 10 more.
+
+848     return await this.db.select().from(appraisalResults);
+        ~~~~~~
+
+server/database.ts:848:40 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "appraisal_results"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "appraisal_results"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; stagePayloads: PgCo...' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "appraisal_results"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "appraisal_results"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; ... 8 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; stagePayloads: PgColumn<...>; }; dialect: "pg...' but required in type 'MySqlTable<TableConfig>'.
+
+848     return await this.db.select().from(appraisalResults);
+                                           ~~~~~~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:852:48 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "appraisal_results"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "appraisal_results"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; stagePayloads: PgCo...' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "appraisal_results"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "appraisal_results"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; ... 8 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; stagePayloads: PgColumn<...>; }; dialect: "pg...' but required in type 'MySqlTable<TableConfig>'.
+
+852     const result = await this.db.select().from(appraisalResults).where(eq(appraisalResults.id, id));
+                                                   ~~~~~~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:853:5 - error TS2322: Type '{} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; }' is not assignable to type '{ id: number; status: string; submittedAt: Date | null; crewMemberId: string; appraisalType: string; appraisalData: string; formId: number; appraisalDate: string; competenceRating: string | null; ... 4 more ...; stagePayloads: string | null; } | undefined'.
+  Type '{}' is missing the following properties from type '{ id: number; status: string; submittedAt: Date | null; crewMemberId: string; appraisalType: string; appraisalData: string; formId: number; appraisalDate: string; competenceRating: string | null; ... 4 more ...; stagePayloads: string | null; }': id, status, submittedAt, crewMemberId, and 10 more.
+
+853     return result[0];
+        ~~~~~~
+
+server/database.ts:857:5 - error TS2322: Type '({} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; })[]' is not assignable to type '{ id: number; status: string; submittedAt: Date | null; crewMemberId: string; appraisalType: string; appraisalData: string; formId: number; appraisalDate: string; competenceRating: string | null; ... 4 more ...; stagePayloads: string | null; }[]'.
+  Type '{} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; }' is not assignable to type '{ id: number; status: string; submittedAt: Date | null; crewMemberId: string; appraisalType: string; appraisalData: string; formId: number; appraisalDate: string; competenceRating: string | null; ... 4 more ...; stagePayloads: string | null; }'.
+    Type '{}' is missing the following properties from type '{ id: number; status: string; submittedAt: Date | null; crewMemberId: string; appraisalType: string; appraisalData: string; formId: number; appraisalDate: string; competenceRating: string | null; ... 4 more ...; stagePayloads: string | null; }': id, status, submittedAt, crewMemberId, and 10 more.
+
+857     return await this.db.select().from(appraisalResults).where(eq(appraisalResults.crewMemberId, crewMemberId));
+        ~~~~~~
+
+server/database.ts:857:40 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "appraisal_results"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "appraisal_results"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; stagePayloads: PgCo...' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "appraisal_results"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "appraisal_results"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; ... 8 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; stagePayloads: PgColumn<...>; }; dialect: "pg...' but required in type 'MySqlTable<TableConfig>'.
+
+857     return await this.db.select().from(appraisalResults).where(eq(appraisalResults.crewMemberId, crewMemberId));
+                                           ~~~~~~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:861:41 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "appraisal_results"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "appraisal_results"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; stagePayloads: PgCo...' is not assignable to parameter of type 'MySqlTable<TableConfig>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "appraisal_results"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "appraisal_results"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; ... 8 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; stagePayloads: PgColumn<...>; }; dialect: "pg...' but required in type 'MySqlTable<TableConfig>'.
+
+861     const result = await this.db.insert(appraisalResults).values(insertAppraisalResult);
+                                            ~~~~~~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:867:26 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "appraisal_results"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "appraisal_results"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; stagePayloads: PgCo...' is not assignable to parameter of type 'MySqlTable<TableConfig>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "appraisal_results"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "appraisal_results"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; ... 8 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; stagePayloads: PgColumn<...>; }; dialect: "pg...' but required in type 'MySqlTable<TableConfig>'.
+
+867     await this.db.update(appraisalResults).set(appraisalResultData).where(eq(appraisalResults.id, id));
+                             ~~~~~~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:872:41 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "appraisal_results"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "appraisal_results"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; stagePayloads: PgCo...' is not assignable to parameter of type 'MySqlTable<TableConfig>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "appraisal_results"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "appraisal_results"; dataType: "number"; columnType: "PgSerial"; data: number; driverParam: number; ... 8 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; stagePayloads: PgColumn<...>; }; dialect: "pg...' but required in type 'MySqlTable<TableConfig>'.
+
+872     const result = await this.db.delete(appraisalResults).where(eq(appraisalResults.id, id));
+                                            ~~~~~~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:878:5 - error TS2322: Type '({} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; })[]' is not assignable to type '{ id: string; status: string; createdAt: Date | null; updatedAt: Date | null; vesselType: string; nationality: string; dob: string; firstName: string; middleName: string | null; ... 4 more ...; applicationData: string | null; }[]'.
+  Type '{} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; }' is not assignable to type '{ id: string; status: string; createdAt: Date | null; updatedAt: Date | null; vesselType: string; nationality: string; dob: string; firstName: string; middleName: string | null; ... 4 more ...; applicationData: string | null; }'.
+    Type '{}' is missing the following properties from type '{ id: string; status: string; createdAt: Date | null; updatedAt: Date | null; vesselType: string; nationality: string; dob: string; firstName: string; middleName: string | null; ... 4 more ...; applicationData: string | null; }': id, status, createdAt, updatedAt, and 10 more.
+
+878     return await this.db.select().from(recruitmentCandidates);
+        ~~~~~~
+
+server/database.ts:878:40 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "recruitment_candidates"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "recruitment_candidates"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; ... 8 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; updatedAt: PgColumn<...>; ...' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "recruitment_candidates"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "recruitment_candidates"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; ... 8 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; updatedAt: PgColumn<...>; }; dialect:...' but required in type 'MySqlTable<TableConfig>'.
+
+878     return await this.db.select().from(recruitmentCandidates);
+                                           ~~~~~~~~~~~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:882:49 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "recruitment_candidates"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "recruitment_candidates"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; ... 8 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; updatedAt: PgColumn<...>; ...' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "recruitment_candidates"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "recruitment_candidates"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; ... 8 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; updatedAt: PgColumn<...>; }; dialect:...' but required in type 'MySqlTable<TableConfig>'.
+
+882     const results = await this.db.select().from(recruitmentCandidates).where(eq(recruitmentCandidates.id, id));
+                                                    ~~~~~~~~~~~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:883:5 - error TS2322: Type '{} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; }' is not assignable to type '{ id: string; status: string; createdAt: Date | null; updatedAt: Date | null; vesselType: string; nationality: string; dob: string; firstName: string; middleName: string | null; ... 4 more ...; applicationData: string | null; } | undefined'.
+  Type '{}' is missing the following properties from type '{ id: string; status: string; createdAt: Date | null; updatedAt: Date | null; vesselType: string; nationality: string; dob: string; firstName: string; middleName: string | null; ... 4 more ...; applicationData: string | null; }': id, status, createdAt, updatedAt, and 10 more.
+
+883     return results[0];
+        ~~~~~~
+
+server/database.ts:887:5 - error TS2322: Type '({} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; })[]' is not assignable to type '{ id: string; status: string; createdAt: Date | null; updatedAt: Date | null; vesselType: string; nationality: string; dob: string; firstName: string; middleName: string | null; ... 4 more ...; applicationData: string | null; }[]'.
+  Type '{} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; }' is not assignable to type '{ id: string; status: string; createdAt: Date | null; updatedAt: Date | null; vesselType: string; nationality: string; dob: string; firstName: string; middleName: string | null; ... 4 more ...; applicationData: string | null; }'.
+    Type '{}' is missing the following properties from type '{ id: string; status: string; createdAt: Date | null; updatedAt: Date | null; vesselType: string; nationality: string; dob: string; firstName: string; middleName: string | null; ... 4 more ...; applicationData: string | null; }': id, status, createdAt, updatedAt, and 10 more.
+
+887     return await this.db.select().from(recruitmentCandidates).where(eq(recruitmentCandidates.status, status));
+        ~~~~~~
+
+server/database.ts:887:40 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "recruitment_candidates"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "recruitment_candidates"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; ... 8 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; updatedAt: PgColumn<...>; ...' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "recruitment_candidates"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "recruitment_candidates"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; ... 8 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; updatedAt: PgColumn<...>; }; dialect:...' but required in type 'MySqlTable<TableConfig>'.
+
+887     return await this.db.select().from(recruitmentCandidates).where(eq(recruitmentCandidates.status, status));
+                                           ~~~~~~~~~~~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:891:26 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "recruitment_candidates"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "recruitment_candidates"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; ... 8 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; updatedAt: PgColumn<...>; ...' is not assignable to parameter of type 'MySqlTable<TableConfig>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "recruitment_candidates"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "recruitment_candidates"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; ... 8 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; updatedAt: PgColumn<...>; }; dialect:...' but required in type 'MySqlTable<TableConfig>'.
+
+891     await this.db.insert(recruitmentCandidates).values(insertCandidate);
+                             ~~~~~~~~~~~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:893:49 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "recruitment_candidates"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "recruitment_candidates"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; ... 8 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; updatedAt: PgColumn<...>; ...' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "recruitment_candidates"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "recruitment_candidates"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; ... 8 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; updatedAt: PgColumn<...>; }; dialect:...' but required in type 'MySqlTable<TableConfig>'.
+
+893     const results = await this.db.select().from(recruitmentCandidates).where(eq(recruitmentCandidates.id, insertCandidate.id));
+                                                    ~~~~~~~~~~~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:894:5 - error TS2322: Type '{} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; }' is not assignable to type '{ id: string; status: string; createdAt: Date | null; updatedAt: Date | null; vesselType: string; nationality: string; dob: string; firstName: string; middleName: string | null; ... 4 more ...; applicationData: string | null; }'.
+  Type '{}' is missing the following properties from type '{ id: string; status: string; createdAt: Date | null; updatedAt: Date | null; vesselType: string; nationality: string; dob: string; firstName: string; middleName: string | null; ... 4 more ...; applicationData: string | null; }': id, status, createdAt, updatedAt, and 10 more.
+
+894     return results[0];
+        ~~~~~~
+
+server/database.ts:898:41 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "recruitment_candidates"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "recruitment_candidates"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; ... 8 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; updatedAt: PgColumn<...>; ...' is not assignable to parameter of type 'MySqlTable<TableConfig>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "recruitment_candidates"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "recruitment_candidates"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; ... 8 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; updatedAt: PgColumn<...>; }; dialect:...' but required in type 'MySqlTable<TableConfig>'.
+
+898     const result = await this.db.update(recruitmentCandidates)
+                                            ~~~~~~~~~~~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:906:49 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "recruitment_candidates"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "recruitment_candidates"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; ... 8 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; updatedAt: PgColumn<...>; ...' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "recruitment_candidates"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "recruitment_candidates"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; ... 8 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; updatedAt: PgColumn<...>; }; dialect:...' but required in type 'MySqlTable<TableConfig>'.
+
+906     const results = await this.db.select().from(recruitmentCandidates).where(eq(recruitmentCandidates.id, id));
+                                                    ~~~~~~~~~~~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:907:5 - error TS2322: Type '{} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; }' is not assignable to type '{ id: string; status: string; createdAt: Date | null; updatedAt: Date | null; vesselType: string; nationality: string; dob: string; firstName: string; middleName: string | null; ... 4 more ...; applicationData: string | null; } | undefined'.
+  Type '{}' is missing the following properties from type '{ id: string; status: string; createdAt: Date | null; updatedAt: Date | null; vesselType: string; nationality: string; dob: string; firstName: string; middleName: string | null; ... 4 more ...; applicationData: string | null; }': id, status, createdAt, updatedAt, and 10 more.
+
+907     return results[0];
+        ~~~~~~
+
+server/database.ts:911:41 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "recruitment_candidates"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "recruitment_candidates"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; ... 8 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; updatedAt: PgColumn<...>; ...' is not assignable to parameter of type 'MySqlTable<TableConfig>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "recruitment_candidates"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "recruitment_candidates"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; ... 8 more ...; generated: undefined; }, {}, {}>; ... 12 more ...; updatedAt: PgColumn<...>; }; dialect:...' but required in type 'MySqlTable<TableConfig>'.
+
+911     const result = await this.db.delete(recruitmentCandidates).where(eq(recruitmentCandidates.id, id));
+                                            ~~~~~~~~~~~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:917:5 - error TS2322: Type '({} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; })[]' is not assignable to type '{ id: string; name: string; description: string | null; createdAt: Date | null; updatedAt: Date | null; }[]'.
+  Type '{} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; }' is not assignable to type '{ id: string; name: string; description: string | null; createdAt: Date | null; updatedAt: Date | null; }'.
+    Type '{}' is missing the following properties from type '{ id: string; name: string; description: string | null; createdAt: Date | null; updatedAt: Date | null; }': id, name, description, createdAt, updatedAt
+
+917     return await this.db.select().from(dataMasters);
+        ~~~~~~
+
+server/database.ts:917:40 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "data_masters"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "data_masters"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; hasDefault: false; ... 6 more ...; generated: undefined; }, {}, {}>; name: PgColumn<...>; descript...' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "data_masters"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "data_masters"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; name: PgColumn<...>; description: PgColumn<...>; createdAt:...' but required in type 'MySqlTable<TableConfig>'.
+
+917     return await this.db.select().from(dataMasters);
+                                           ~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:921:49 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "data_masters"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "data_masters"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; hasDefault: false; ... 6 more ...; generated: undefined; }, {}, {}>; name: PgColumn<...>; descript...' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "data_masters"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "data_masters"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; name: PgColumn<...>; description: PgColumn<...>; createdAt:...' but required in type 'MySqlTable<TableConfig>'.
+
+921     const results = await this.db.select().from(dataMasters).where(eq(dataMasters.id, id));
+                                                    ~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:922:5 - error TS2322: Type '{} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; }' is not assignable to type '{ id: string; name: string; description: string | null; createdAt: Date | null; updatedAt: Date | null; } | undefined'.
+  Type '{}' is missing the following properties from type '{ id: string; name: string; description: string | null; createdAt: Date | null; updatedAt: Date | null; }': id, name, description, createdAt, updatedAt
+
+922     return results[0];
+        ~~~~~~
+
+server/database.ts:926:26 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "data_masters"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "data_masters"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; hasDefault: false; ... 6 more ...; generated: undefined; }, {}, {}>; name: PgColumn<...>; descript...' is not assignable to parameter of type 'MySqlTable<TableConfig>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "data_masters"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "data_masters"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; name: PgColumn<...>; description: PgColumn<...>; createdAt:...' but required in type 'MySqlTable<TableConfig>'.
+
+926     await this.db.insert(dataMasters).values(insertMaster);
+                             ~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:928:49 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "data_masters"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "data_masters"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; hasDefault: false; ... 6 more ...; generated: undefined; }, {}, {}>; name: PgColumn<...>; descript...' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "data_masters"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "data_masters"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; name: PgColumn<...>; description: PgColumn<...>; createdAt:...' but required in type 'MySqlTable<TableConfig>'.
+
+928     const results = await this.db.select().from(dataMasters).where(eq(dataMasters.id, insertMaster.id));
+                                                    ~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:929:5 - error TS2322: Type '{} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; }' is not assignable to type '{ id: string; name: string; description: string | null; createdAt: Date | null; updatedAt: Date | null; }'.
+  Type '{}' is missing the following properties from type '{ id: string; name: string; description: string | null; createdAt: Date | null; updatedAt: Date | null; }': id, name, description, createdAt, updatedAt
+
+929     return results[0];
+        ~~~~~~
+
+server/database.ts:933:41 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "data_masters"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "data_masters"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; hasDefault: false; ... 6 more ...; generated: undefined; }, {}, {}>; name: PgColumn<...>; descript...' is not assignable to parameter of type 'MySqlTable<TableConfig>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "data_masters"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "data_masters"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; name: PgColumn<...>; description: PgColumn<...>; createdAt:...' but required in type 'MySqlTable<TableConfig>'.
+
+933     const result = await this.db.update(dataMasters)
+                                            ~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:941:49 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "data_masters"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "data_masters"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; hasDefault: false; ... 6 more ...; generated: undefined; }, {}, {}>; name: PgColumn<...>; descript...' is not assignable to parameter of type 'SQL<unknown> | MySqlTable<TableConfig> | MySqlViewBase<string, boolean, ColumnsSelection> | Subquery<string, Record<string, unknown>>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "data_masters"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "data_masters"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; name: PgColumn<...>; description: PgColumn<...>; createdAt:...' but required in type 'MySqlTable<TableConfig>'.
+
+941     const results = await this.db.select().from(dataMasters).where(eq(dataMasters.id, id));
+                                                    ~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:942:5 - error TS2322: Type '{} | { [x: string]: never; } | { [x: string]: never; } | { [x: string]: unknown; }' is not assignable to type '{ id: string; name: string; description: string | null; createdAt: Date | null; updatedAt: Date | null; } | undefined'.
+  Type '{}' is missing the following properties from type '{ id: string; name: string; description: string | null; createdAt: Date | null; updatedAt: Date | null; }': id, name, description, createdAt, updatedAt
+
+942     return results[0];
+        ~~~~~~
+
+server/database.ts:946:41 - error TS2345: Argument of type 'PgTableWithColumns<{ name: "data_masters"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "data_masters"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; hasDefault: false; ... 6 more ...; generated: undefined; }, {}, {}>; name: PgColumn<...>; descript...' is not assignable to parameter of type 'MySqlTable<TableConfig>'.
+  Property '$columns' is missing in type 'PgTable<{ name: "data_masters"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "data_masters"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>; name: PgColumn<...>; description: PgColumn<...>; createdAt:...' but required in type 'MySqlTable<TableConfig>'.
+
+946     const result = await this.db.delete(dataMasters).where(eq(dataMasters.id, id));
+                                            ~~~~~~~~~~~
+
+  node_modules/drizzle-orm/mysql-core/table.d.ts:16:15
+    16     protected $columns: T['columns'];
+                     ~~~~~~~~
+    '$columns' is declared here.
+
+server/database.ts:1268:11 - error TS2353: Object literal may only specify known properties, and 'id' does not exist in type '{ vesselType: string; nationality: string; firstName: string; presentRank: string; presentVessel: string; children?: string | null | undefined; status?: string | null | undefined; email?: string | ... 1 more ... | undefined; ... 54 more ...; doctorVisits?: string | ... 1 more ... | undefined; }'.
+
+1268           id: "2025-05-14",
+               ~~
+
+server/database.ts:1279:11 - error TS2353: Object literal may only specify known properties, and 'id' does not exist in type '{ vesselType: string; nationality: string; firstName: string; presentRank: string; presentVessel: string; children?: string | null | undefined; status?: string | null | undefined; email?: string | ... 1 more ... | undefined; ... 54 more ...; doctorVisits?: string | ... 1 more ... | undefined; }'.
+
+1279           id: "2025-03-12",
+               ~~
+
+server/database.ts:1290:11 - error TS2353: Object literal may only specify known properties, and 'id' does not exist in type '{ vesselType: string; nationality: string; firstName: string; presentRank: string; presentVessel: string; children?: string | null | undefined; status?: string | null | undefined; email?: string | ... 1 more ... | undefined; ... 54 more ...; doctorVisits?: string | ... 1 more ... | undefined; }'.
+
+1290           id: "2025-02-12",
+               ~~
+
+server/db.ts:1:34 - error TS2307: Cannot find module '@neondatabase/serverless' or its corresponding type declarations.
+
+1 import { Pool, neonConfig } from '@neondatabase/serverless';
+                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+server/routes.ts:1225:50 - error TS2339: Property 'label' does not exist on type '{ address: string | null; id: number; name: string; type: string | null; email: string | null; description: string | null; createdAt: Date | null; updatedAt: Date | null; ... 47 more ...; departmentId: string | null; }'.
+
+1225       const vesselName = vessel?.name || vessel?.label || vessel?.vessel || '';
+                                                      ~~~~~
+
+server/routes.ts:1225:67 - error TS2339: Property 'vessel' does not exist on type '{ address: string | null; id: number; name: string; type: string | null; email: string | null; description: string | null; createdAt: Date | null; updatedAt: Date | null; ... 47 more ...; departmentId: string | null; }'.
+
+1225       const vesselName = vessel?.name || vessel?.label || vessel?.vessel || '';
+                                                                       ~~~~~~
+
+server/storage.ts:274:23 - error TS2345: Argument of type '{ id: number; name: string; rankGroup: string; versionNo: string; versionDate: string; configuration: null; }' is not assignable to parameter of type '{ id: number; name: string; category: string; rankGroup: string; versionNo: string; versionDate: string; configuration: string | null; }'.
+  Property 'category' is missing in type '{ id: number; name: string; rankGroup: string; versionNo: string; versionDate: string; configuration: null; }' but required in type '{ id: number; name: string; category: string; rankGroup: string; versionNo: string; versionDate: string; configuration: string | null; }'.
+
+274     this.forms.set(1, {
+                          ~
+275       id: 1,
+    ~~~~~~~~~~~~
+... 
+280       configuration: null,
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~
+281     });
+    ~~~~~
+
+server/storage.ts:379:40 - error TS2345: Argument of type '{ id: string; firstName: string; middleName: string; familyName: string; presentRank: string; nationality: string; presentVessel: string; vesselType: string; signOnDate: string; createdAt: Date; updatedAt: Date; }' is not assignable to parameter of type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }'.
+  Type '{ id: string; firstName: string; middleName: string; familyName: string; presentRank: string; nationality: string; presentVessel: string; vesselType: string; signOnDate: string; createdAt: Date; updatedAt: Date; }' is missing the following properties from type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }': children, status, email, mobile, and 51 more.
+
+379     this.crewMembers.set("2025-03-12", {
+                                           ~
+380       id: "2025-03-12",
+    ~~~~~~~~~~~~~~~~~~~~~~~
+... 
+390       updatedAt: new Date("2025-01-01")
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+391     });
+    ~~~~~
+
+server/storage.ts:393:40 - error TS2345: Argument of type '{ id: string; firstName: string; middleName: string; familyName: string; presentRank: string; nationality: string; presentVessel: string; vesselType: string; signOnDate: string; createdAt: Date; updatedAt: Date; }' is not assignable to parameter of type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }'.
+  Type '{ id: string; firstName: string; middleName: string; familyName: string; presentRank: string; nationality: string; presentVessel: string; vesselType: string; signOnDate: string; createdAt: Date; updatedAt: Date; }' is missing the following properties from type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }': children, status, email, mobile, and 51 more.
+
+393     this.crewMembers.set("2025-02-12", {
+                                           ~
+394       id: "2025-02-12",
+    ~~~~~~~~~~~~~~~~~~~~~~~
+... 
+404       updatedAt: new Date("2025-02-01")
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+405     });
+    ~~~~~
+
+server/storage.ts:407:42 - error TS2345: Argument of type '{ id: string; firstName: string; middleName: string; familyName: string; presentRank: string; nationality: string; presentVessel: string; vesselType: string; signOnDate: string; createdAt: Date; updatedAt: Date; }' is not assignable to parameter of type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }'.
+  Type '{ id: string; firstName: string; middleName: string; familyName: string; presentRank: string; nationality: string; presentVessel: string; vesselType: string; signOnDate: string; createdAt: Date; updatedAt: Date; }' is missing the following properties from type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }': children, status, email, mobile, and 51 more.
+
+407     this.crewMembers.set("2025-05-14-2", {
+                                             ~
+408       id: "2025-05-14-2",
+    ~~~~~~~~~~~~~~~~~~~~~~~~~
+... 
+418       updatedAt: new Date("2025-01-01")
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+419     });
+    ~~~~~
+
+server/storage.ts:428:7 - error TS2353: Object literal may only specify known properties, and 'vessel' does not exist in type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }'.
+
+428       vessel: "MT Sail Eight",
+          ~~~~~~
+
+server/storage.ts:522:34 - error TS2345: Argument of type '{ id: number; crewMemberId: string; formId: number; appraisalType: string; appraisalDate: string; appraisalData: string; competenceRating: string; behavioralRating: string; overallRating: string; submittedBy: string; status: string; submittedAt: Date; }' is not assignable to parameter of type '{ id: number; status: string; submittedAt: Date | null; crewMemberId: string; appraisalType: string; appraisalData: string; formId: number; appraisalDate: string; competenceRating: string | null; ... 4 more ...; stagePayloads: string | null; }'.
+  Type '{ id: number; crewMemberId: string; formId: number; appraisalType: string; appraisalDate: string; appraisalData: string; competenceRating: string; behavioralRating: string; overallRating: string; submittedBy: string; status: string; submittedAt: Date; }' is missing the following properties from type '{ id: number; status: string; submittedAt: Date | null; crewMemberId: string; appraisalType: string; appraisalData: string; formId: number; appraisalDate: string; competenceRating: string | null; ... 4 more ...; stagePayloads: string | null; }': stageStatuses, stagePayloads
+
+522     this.appraisalResults.set(1, {
+                                     ~
+523       id: 1,
+    ~~~~~~~~~~~~
+... 
+534       submittedAt: new Date("2025-06-06")
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+535     });
+    ~~~~~
+
+server/storage.ts:537:34 - error TS2345: Argument of type '{ id: number; crewMemberId: string; formId: number; appraisalType: string; appraisalDate: string; appraisalData: string; competenceRating: string; behavioralRating: string; overallRating: string; submittedBy: string; status: string; submittedAt: Date; }' is not assignable to parameter of type '{ id: number; status: string; submittedAt: Date | null; crewMemberId: string; appraisalType: string; appraisalData: string; formId: number; appraisalDate: string; competenceRating: string | null; ... 4 more ...; stagePayloads: string | null; }'.
+  Type '{ id: number; crewMemberId: string; formId: number; appraisalType: string; appraisalDate: string; appraisalData: string; competenceRating: string; behavioralRating: string; overallRating: string; submittedBy: string; status: string; submittedAt: Date; }' is missing the following properties from type '{ id: number; status: string; submittedAt: Date | null; crewMemberId: string; appraisalType: string; appraisalData: string; formId: number; appraisalDate: string; competenceRating: string | null; ... 4 more ...; stagePayloads: string | null; }': stageStatuses, stagePayloads
+
+537     this.appraisalResults.set(2, {
+                                     ~
+538       id: 2,
+    ~~~~~~~~~~~~
+... 
+549       submittedAt: new Date("2025-05-07")
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+550     });
+    ~~~~~
+
+server/storage.ts:552:34 - error TS2345: Argument of type '{ id: number; crewMemberId: string; formId: number; appraisalType: string; appraisalDate: string; appraisalData: string; competenceRating: string; behavioralRating: string; overallRating: string; submittedBy: string; status: string; submittedAt: Date; }' is not assignable to parameter of type '{ id: number; status: string; submittedAt: Date | null; crewMemberId: string; appraisalType: string; appraisalData: string; formId: number; appraisalDate: string; competenceRating: string | null; ... 4 more ...; stagePayloads: string | null; }'.
+  Type '{ id: number; crewMemberId: string; formId: number; appraisalType: string; appraisalDate: string; appraisalData: string; competenceRating: string; behavioralRating: string; overallRating: string; submittedBy: string; status: string; submittedAt: Date; }' is missing the following properties from type '{ id: number; status: string; submittedAt: Date | null; crewMemberId: string; appraisalType: string; appraisalData: string; formId: number; appraisalDate: string; competenceRating: string | null; ... 4 more ...; stagePayloads: string | null; }': stageStatuses, stagePayloads
+
+552     this.appraisalResults.set(3, {
+                                     ~
+553       id: 3,
+    ~~~~~~~~~~~~
+... 
+564       submittedAt: new Date("2025-06-06")
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+565     });
+    ~~~~~
+
+server/storage.ts:567:34 - error TS2345: Argument of type '{ id: number; crewMemberId: string; formId: number; appraisalType: string; appraisalDate: string; appraisalData: string; competenceRating: string; behavioralRating: string; overallRating: string; submittedBy: string; status: string; submittedAt: Date; }' is not assignable to parameter of type '{ id: number; status: string; submittedAt: Date | null; crewMemberId: string; appraisalType: string; appraisalData: string; formId: number; appraisalDate: string; competenceRating: string | null; ... 4 more ...; stagePayloads: string | null; }'.
+  Type '{ id: number; crewMemberId: string; formId: number; appraisalType: string; appraisalDate: string; appraisalData: string; competenceRating: string; behavioralRating: string; overallRating: string; submittedBy: string; status: string; submittedAt: Date; }' is missing the following properties from type '{ id: number; status: string; submittedAt: Date | null; crewMemberId: string; appraisalType: string; appraisalData: string; formId: number; appraisalDate: string; competenceRating: string | null; ... 4 more ...; stagePayloads: string | null; }': stageStatuses, stagePayloads
+
+567     this.appraisalResults.set(4, {
+                                     ~
+568       id: 4,
+    ~~~~~~~~~~~~
+... 
+579       submittedAt: new Date("2025-05-07")
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+580     });
+    ~~~~~
+
+server/storage.ts:582:34 - error TS2345: Argument of type '{ id: number; crewMemberId: string; formId: number; appraisalType: string; appraisalDate: string; appraisalData: string; competenceRating: string; behavioralRating: string; overallRating: string; submittedBy: string; status: string; submittedAt: Date; }' is not assignable to parameter of type '{ id: number; status: string; submittedAt: Date | null; crewMemberId: string; appraisalType: string; appraisalData: string; formId: number; appraisalDate: string; competenceRating: string | null; ... 4 more ...; stagePayloads: string | null; }'.
+  Type '{ id: number; crewMemberId: string; formId: number; appraisalType: string; appraisalDate: string; appraisalData: string; competenceRating: string; behavioralRating: string; overallRating: string; submittedBy: string; status: string; submittedAt: Date; }' is missing the following properties from type '{ id: number; status: string; submittedAt: Date | null; crewMemberId: string; appraisalType: string; appraisalData: string; formId: number; appraisalDate: string; competenceRating: string | null; ... 4 more ...; stagePayloads: string | null; }': stageStatuses, stagePayloads
+
+582     this.appraisalResults.set(5, {
+                                     ~
+583       id: 5,
+    ~~~~~~~~~~~~
+... 
+594       submittedAt: new Date("2025-06-06")
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+595     });
+    ~~~~~
+
+server/storage.ts:700:11 - error TS2322: Type '{ id: number; configuration: string | null; name: string; rankGroup: string; versionNo: string; versionDate: string; category?: string | undefined; }' is not assignable to type '{ id: number; name: string; category: string; rankGroup: string; versionNo: string; versionDate: string; configuration: string | null; }'.
+  Types of property 'category' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+
+700     const form: Form = {
+              ~~~~
+
+server/storage.ts:797:29 - error TS2802: Type 'MapIterator<{ id: number; name: string; formId: number; ranks: string; }>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+
+797     for (const rankGroup of this.rankGroups.values()) {
+                                ~~~~~~~~~~~~~~~~~~~~~~~~
+
+server/storage.ts:886:11 - error TS2739: Type '{ id: string; rank: string; rankId: string; role?: string | null | undefined; rating?: boolean | null | undefined; originalRankId?: string | null | undefined; isRoleRow?: boolean | null | undefined; ... 13 more ...; emtOfficer?: boolean | ... 1 more ... | undefined; }' is missing the following properties from type '{ id: string; role: string | null; rank: string; createdAt: Date | null; updatedAt: Date | null; rankId: string; rating: boolean | null; originalRankId: string | null; isRoleRow: boolean | null; ... 13 more ...; emtOfficer: boolean | null; }': createdAt, updatedAt
+
+886     const companyRank: CompanyRank = { ...insertCompanyRank };
+              ~~~~~~~~~~~
+
+server/storage.ts:914:13 - error TS2739: Type '{ id: string; rank: string; rankId: string; role?: string | null | undefined; rating?: boolean | null | undefined; originalRankId?: string | null | undefined; isRoleRow?: boolean | null | undefined; ... 13 more ...; emtOfficer?: boolean | ... 1 more ... | undefined; }' is missing the following properties from type '{ id: string; role: string | null; rank: string; createdAt: Date | null; updatedAt: Date | null; rankId: string; rating: boolean | null; originalRankId: string | null; isRoleRow: boolean | null; ... 13 more ...; emtOfficer: boolean | null; }': createdAt, updatedAt
+
+914       const companyRank: CompanyRank = { ...rank };
+                ~~~~~~~~~~~
+
+server/storage.ts:933:11 - error TS2739: Type '{ id: number; groupName: string; rankPath: string; isActive?: boolean | null | undefined; }' is missing the following properties from type '{ id: number; createdAt: Date | null; updatedAt: Date | null; groupName: string; rankPath: string; isActive: boolean | null; }': createdAt, updatedAt
+
+933     const promotionHierarchy: PromotionHierarchy = {
+              ~~~~~~~~~~~~~~~~~~
+
+server/storage.ts:967:11 - error TS2741: Property 'id' is missing in type '{ middleName: string | null; familyName: string | null; createdAt: Date; updatedAt: Date; vesselType: string; nationality: string; firstName: string; presentRank: string; presentVessel: string; ... 55 more ...; doctorVisits?: string | ... 1 more ... | undefined; }' but required in type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }'.
+
+967     const crewMember: CrewMember = {
+              ~~~~~~~~~~
+
+server/storage.ts:1006:28 - error TS2339: Property 'vessel' does not exist on type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }'.
+
+1006         vessel: crewMember.vessel,
+                                ~~~~~~
+
+server/storage.ts:1009:39 - error TS2339: Property 'vessel' does not exist on type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }'.
+
+1009         presentAssignment: crewMember.vessel || "Chandigarh",
+                                           ~~~~~~
+
+server/storage.ts:1021:9 - error TS2322: Type 'number' is not assignable to type 'string'.
+
+1021         endorsements: 5
+             ~~~~~~~~~~~~
+
+  shared/schema.ts:1181:3
+    1181   endorsements: z.string(),
+           ~~~~~~~~~~~~~~~~~~~~~~~~
+    The expected type comes from property 'endorsements' which is declared here on type '{ rank: number; company: number; tankers: number; ocw: number; endorsements: string; }'
+
+server/storage.ts:1086:11 - error TS2322: Type '{ id: number; createdAt: Date; updatedAt: Date; name: string; vesselIds: string; description?: string | null | undefined; }' is not assignable to type '{ id: number; name: string; description: string | null; createdAt: Date | null; updatedAt: Date | null; vesselIds: string; }'.
+  Types of property 'description' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+
+1086     const vesselGroup: VesselGroup = {
+               ~~~~~~~~~~~
+
+server/storage.ts:1128:11 - error TS2322: Type '{ id: number; createdAt: Date; updatedAt: Date; vesselId: string; draftData: string; revision?: string | undefined; }' is not assignable to type '{ vesselId: string; id: number; createdAt: Date | null; updatedAt: Date | null; revision: string; draftData: string; }'.
+  Types of property 'revision' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+
+1128     const vesselDraft: VesselDraft = {
+               ~~~~~~~~~~~
+
+server/storage.ts:1190:11 - error TS2741: Property 'crewMemberId' is missing in type '{ id: number; onBoardCrewId: string | null; onBoardCrewName: string | null; reliefDue: string | null; signOffDate: string | null; signOffPort: string | null; reliefStatus: string | null; ... 16 more ...; onBoardCrewNationality?: string | ... 1 more ... | undefined; }' but required in type '{ vesselId: string; id: number; crewMemberId: string | null; rank: string; createdAt: Date | null; updatedAt: Date | null; relieverCrewName: string | null; relieverNationality: string | null; ... 16 more ...; relieverCrewId: string | null; }'.
+
+1190     const vesselPlanning: VesselPlanning = {
+               ~~~~~~~~~~~~~~
+
+server/storage.ts:1239:11 - error TS2322: Type '{ id: number; planStatus: string; createdAt: Date; updatedAt: Date; vessels: string; draftId: string; lastEdited: string; crew: string; planFromDate: string; planToDate: string; createdBy: string; proposedBy?: string | ... 1 more ... | undefined; proposedDate?: string | ... 1 more ... | undefined; assignments?: stri...' is not assignable to type '{ id: number; createdAt: Date | null; updatedAt: Date | null; vessels: string; draftId: string; lastEdited: string; crew: string; planFromDate: string; planToDate: string; createdBy: string; planStatus: string; proposedBy: string | null; proposedDate: string | null; assignments: string | null; }'.
+  Types of property 'proposedBy' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+
+1239     const rotationPlan: RotationPlan = {
+               ~~~~~~~~~~~~
+
+server/storage.ts:1356:125 - error TS2339: Property 'lastName' does not exist on type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }'.
+
+1356                     name: `${crewOnBoard.firstName} ${crewOnBoard.middleName || ''} ${crewOnBoard.familyName || crewOnBoard.lastName || ''}`.replace(/\s+/g, ' ').trim(),
+                                                                                                                                 ~~~~~~~~
+
+server/storage.ts:1370:125 - error TS2339: Property 'lastName' does not exist on type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }'.
+
+1370                     name: `${crewOnBoard.firstName} ${crewOnBoard.middleName || ''} ${crewOnBoard.familyName || crewOnBoard.lastName || ''}`.replace(/\s+/g, ' ').trim(),
+                                                                                                                                 ~~~~~~~~
+
+server/storage.ts:1443:34 - error TS2802: Type 'MapIterator<[number, { vesselId: string; id: number; crewMemberId: string | null; rank: string; createdAt: Date | null; updatedAt: Date | null; relieverCrewName: string | null; ... 17 more ...; relieverCrewId: string | null; }]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+
+1443     for (const [id, planning] of this.vesselPlanning.entries()) {
+                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+server/storage.ts:1517:24 - error TS2802: Type 'MapIterator<{ id: number; createdAt: Date | null; updatedAt: Date | null; vessels: string; draftId: string; lastEdited: string; crew: string; planFromDate: string; planToDate: string; createdBy: string; planStatus: string; proposedBy: string | null; proposedDate: string | null; assignments: string | null; }>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+
+1517     for (const plan of this.rotationPlans.values()) {
+                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+server/storage.ts:1579:11 - error TS2322: Type '{ id: number; createdAt: Date; updatedAt: Date; vesselId: string; testType: string; comments?: string | null | undefined; description?: string | null | undefined; violations?: number | ... 1 more ... | undefined; ... 22 more ...; testHistory?: string | ... 1 more ... | undefined; }' is not assignable to type '{ vesselId: string; id: number; comments: string | null; description: string | null; createdAt: Date | null; updatedAt: Date | null; violations: number | null; testType: string; ... 22 more ...; testHistory: string | null; }'.
+  Types of property 'comments' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+
+1579     const record: DrugAlcoholTestRecord = {
+               ~~~~~~
+
+server/storage.ts:1622:11 - error TS2322: Type '{ id: number; competenceRating: string | null; behavioralRating: string | null; overallRating: string | null; status: string; submittedAt: Date; crewMemberId: string; appraisalType: string; ... 5 more ...; stagePayloads?: string | ... 1 more ... | undefined; }' is not assignable to type '{ id: number; status: string; submittedAt: Date | null; crewMemberId: string; appraisalType: string; appraisalData: string; formId: number; appraisalDate: string; competenceRating: string | null; ... 4 more ...; stagePayloads: string | null; }'.
+  Types of property 'stageStatuses' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+
+1622     const appraisalResult: AppraisalResult = {
+               ~~~~~~~~~~~~~~~
+
+server/storage.ts:1782:7 - error TS2353: Object literal may only specify known properties, and 'id' does not exist in type '{ vesselType: string; nationality: string; firstName: string; presentRank: string; presentVessel: string; children?: string | null | undefined; status?: string | null | undefined; email?: string | ... 1 more ... | undefined; ... 54 more ...; doctorVisits?: string | ... 1 more ... | undefined; }'.
+
+1782       id: crewId,
+           ~~
+
+server/storage.ts:1886:11 - error TS2322: Type '{ id: number; createdAt: Date; updatedAt: Date; vesselId: string; month: string; vesselName: string; monthValue: string; recordingStatusPercent?: number | undefined; activityConflicting?: boolean | undefined; ... 18 more ...; officeReviewSubmittedDate?: Date | ... 1 more ... | undefined; }' is not assignable to type '{ vesselId: string; month: string; id: number; createdAt: Date | null; updatedAt: Date | null; vesselName: string; monthValue: string; recordingStatusPercent: number; activityConflicting: boolean; ... 18 more ...; officeReviewSubmittedDate: Date | null; }'.
+  Types of property 'recordingStatusPercent' are incompatible.
+    Type 'number | undefined' is not assignable to type 'number'.
+      Type 'undefined' is not assignable to type 'number'.
+
+1886     const record: RestHoursVesselRecord = {
+               ~~~~~~
+
+server/storage.ts:1950:11 - error TS2322: Type '{ id: number; createdAt: Date; updatedAt: Date; vesselId: string; month: string; name: string; crewMemberId: string; rank: string; vesselName: string; monthValue: string; signOnOffInfo?: string | ... 1 more ... | undefined; ... 5 more ...; predictedNCs?: number | undefined; }' is not assignable to type '{ vesselId: string; month: string; id: number; name: string; crewMemberId: string; rank: string; createdAt: Date | null; updatedAt: Date | null; vesselName: string; monthValue: string; ... 6 more ...; predictedNCs: number; }'.
+  Types of property 'signOnOffInfo' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+
+1950     const record: RestHoursCrewRecord = {
+               ~~~~~~
+
+server/storage.ts:2028:11 - error TS2322: Type '{ id: number; createdAt: Date; updatedAt: Date; vesselId: string; name: string; crewMemberId: string; rank: string; monthYear: string; dailyRecords: string; opaMode?: boolean | null | undefined; showPlanning?: boolean | ... 1 more ... | undefined; }' is not assignable to type '{ vesselId: string; id: number; name: string; crewMemberId: string; rank: string; monthYear: string; createdAt: Date | null; updatedAt: Date | null; opaMode: boolean | null; showPlanning: boolean | null; dailyRecords: string; }'.
+  Types of property 'opaMode' are incompatible.
+    Type 'boolean | null | undefined' is not assignable to type 'boolean | null'.
+      Type 'undefined' is not assignable to type 'boolean | null'.
+
+2028     const record: RestHoursDailyRecord = {
+               ~~~~~~
+
+server/storage.ts:2126:9 - error TS2322: Type 'string | null | undefined' is not assignable to type 'string | null'.
+  Type 'undefined' is not assignable to type 'string | null'.
+
+2126         comment: insertComment.comment,
+             ~~~~~~~
+
+  node_modules/drizzle-orm/utils.d.ts:11:27
+    11 export type Simplify<T> = {
+                                 ~
+    12     [K in keyof T]: T[K];
+       ~~~~~~~~~~~~~~~~~~~~~~~~~
+    13 } & {};
+       ~
+    The expected type comes from property 'comment' which is declared here on type '{ vesselId: string; id: number; createdAt: Date | null; updatedAt: Date | null; comment: string | null; monthValue: string; }'
+
+server/storage.ts:2134:13 - error TS2322: Type '{ createdAt: Date; updatedAt: Date; vesselId: string; monthValue: string; comment?: string | null | undefined; id: number; }' is not assignable to type '{ vesselId: string; id: number; createdAt: Date | null; updatedAt: Date | null; comment: string | null; monthValue: string; }'.
+  Types of property 'comment' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+
+2134       const newComment: VesselViolationComment = {
+                 ~~~~~~~~~~
+
+server/storage.ts:2171:13 - error TS2322: Type '{ createdAt: Date; updatedAt: Date; vesselId: string; monthValue: string; comment?: string | null | undefined; reviewerName?: string | null | undefined; reviewDate?: Date | undefined; reviewerPosition?: string | ... 1 more ... | undefined; id: number; }' is not assignable to type '{ vesselId: string; id: number; createdAt: Date | null; updatedAt: Date | null; comment: string | null; monthValue: string; reviewerName: string | null; reviewDate: Date | null; reviewerPosition: string | null; }'.
+  Types of property 'comment' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+
+2171       const newComment: OfficeViolationComment = {
+                 ~~~~~~~~~~
+
+server/storage.ts:2220:13 - error TS2322: Type '{ createdAt: Date; updatedAt: Date; vesselId: string; crewMemberId: string; rank: string; monthValue: string; status?: string | undefined; submissionStatus?: string | undefined; ... 10 more ...; id: number; }' is not assignable to type '{ vesselId: string; id: number; status: string; submissionStatus: string; crewMemberId: string; rank: string; createdAt: Date | null; updatedAt: Date | null; monthValue: string; ... 9 more ...; officeClosureDate: Date | null; }'.
+  Types of property 'status' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+
+2220       const newReport: NCReport = {
+                 ~~~~~~~~~
+
+server/storage.ts:2338:11 - error TS2322: Type '{ id: number; status: string; startDateTime: string; finishDateTime: string; task: string; crewInvolved: number; startDateTimeSort: string; finishDateTimeSort: string; recordType: string; statusType: string; ... 7 more ...; comments?: string | ... 1 more ... | undefined; }' is not assignable to type '{ vesselId: string | null; id: number; status: string; periodValue: string | null; startDateTime: string; finishDateTime: string; task: string; crewInvolved: number; remarks: string | null; ... 8 more ...; comments: string | null; }'.
+  Types of property 'vesselId' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+
+2338     const task: VariableTask = {
+               ~~~~
+
+server/storage.ts:2364:14 - error TS2420: Class 'PersistentFileStorage' incorrectly implements interface 'IStorage'.
+  Type 'PersistentFileStorage' is missing the following properties from type 'IStorage': getFixedTask, deleteFixedTask
+
+2364 export class PersistentFileStorage implements IStorage {
+                  ~~~~~~~~~~~~~~~~~~~~~
+
+server/storage.ts:2476:26 - error TS2802: Type 'MapIterator<{ vesselId: string; id: number; name: string; crewMemberId: string; rank: string; monthYear: string; createdAt: Date | null; updatedAt: Date | null; opaMode: boolean | null; showPlanning: boolean | null; dailyRecords: string; }>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+
+2476     for (const record of this.restHoursDailyRecords.values()) {
+                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+server/storage.ts:2486:34 - error TS2802: Type 'MapIterator<[string, { vesselId: string; id: number; name: string; crewMemberId: string; rank: string; monthYear: string; createdAt: Date | null; updatedAt: Date | null; opaMode: boolean | null; showPlanning: boolean | null; dailyRecords: string; }[]]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+
+2486     for (const [key, records] of grouped.entries()) {
+                                      ~~~~~~~~~~~~~~~~~
+
+server/storage.ts:2489:23 - error TS7006: Parameter 'a' implicitly has an 'any' type.
+
+2489         records.sort((a, b) => Number(b.id) - Number(a.id));
+                           ~
+
+server/storage.ts:2489:26 - error TS7006: Parameter 'b' implicitly has an 'any' type.
+
+2489         records.sort((a, b) => Number(b.id) - Number(a.id));
+                              ~
+
+server/storage.ts:2557:9 - error TS2322: Type 'string | null | undefined' is not assignable to type 'string | null'.
+  Type 'undefined' is not assignable to type 'string | null'.
+
+2557         comment: insertComment.comment,
+             ~~~~~~~
+
+  node_modules/drizzle-orm/utils.d.ts:11:27
+    11 export type Simplify<T> = {
+                                 ~
+    12     [K in keyof T]: T[K];
+       ~~~~~~~~~~~~~~~~~~~~~~~~~
+    13 } & {};
+       ~
+    The expected type comes from property 'comment' which is declared here on type '{ vesselId: string; id: number; createdAt: Date | null; updatedAt: Date | null; comment: string | null; monthValue: string; }'
+
+server/storage.ts:2566:13 - error TS2322: Type '{ createdAt: Date; updatedAt: Date; vesselId: string; monthValue: string; comment?: string | null | undefined; id: number; }' is not assignable to type '{ vesselId: string; id: number; createdAt: Date | null; updatedAt: Date | null; comment: string | null; monthValue: string; }'.
+  Types of property 'comment' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+
+2566       const newComment: VesselViolationComment = {
+                 ~~~~~~~~~~
+
+server/storage.ts:2605:13 - error TS2322: Type '{ createdAt: Date; updatedAt: Date; vesselId: string; monthValue: string; comment?: string | null | undefined; reviewerName?: string | null | undefined; reviewDate?: Date | undefined; reviewerPosition?: string | ... 1 more ... | undefined; id: number; }' is not assignable to type '{ vesselId: string; id: number; createdAt: Date | null; updatedAt: Date | null; comment: string | null; monthValue: string; reviewerName: string | null; reviewDate: Date | null; reviewerPosition: string | null; }'.
+  Types of property 'comment' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+
+2605       const newComment: OfficeViolationComment = {
+                 ~~~~~~~~~~
+
+server/storage.ts:2653:13 - error TS2322: Type '{ createdAt: Date; updatedAt: Date; vesselId: string; crewMemberId: string; rank: string; monthValue: string; status?: string | undefined; submissionStatus?: string | undefined; ... 10 more ...; id: number; }' is not assignable to type '{ vesselId: string; id: number; status: string; submissionStatus: string; crewMemberId: string; rank: string; createdAt: Date | null; updatedAt: Date | null; monthValue: string; ... 9 more ...; officeClosureDate: Date | null; }'.
+  Types of property 'status' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+
+2653       const newReport: NCReport = {
+                 ~~~~~~~~~
+
+server/storage.ts:2964:23 - error TS2345: Argument of type '{ id: number; name: string; rankGroup: string; versionNo: string; versionDate: string; configuration: null; }' is not assignable to parameter of type '{ id: number; name: string; category: string; rankGroup: string; versionNo: string; versionDate: string; configuration: string | null; }'.
+  Property 'category' is missing in type '{ id: number; name: string; rankGroup: string; versionNo: string; versionDate: string; configuration: null; }' but required in type '{ id: number; name: string; category: string; rankGroup: string; versionNo: string; versionDate: string; configuration: string | null; }'.
+
+2964     this.forms.set(1, {
+                           ~
+2965       id: 1,
+     ~~~~~~~~~~~~
+ ... 
+2970       configuration: null,
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~
+2971     });
+     ~~~~~
+
+server/storage.ts:3097:7 - error TS2353: Object literal may only specify known properties, and 'vessel' does not exist in type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }'.
+
+3097       vessel: "MT Sail One",
+           ~~~~~~
+
+server/storage.ts:3104:40 - error TS2345: Argument of type '{ id: string; firstName: string; middleName: string; familyName: string; presentRank: string; nationality: string; presentVessel: string; vesselType: string; signOnDate: string; createdAt: Date; updatedAt: Date; }' is not assignable to parameter of type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }'.
+  Type '{ id: string; firstName: string; middleName: string; familyName: string; presentRank: string; nationality: string; presentVessel: string; vesselType: string; signOnDate: string; createdAt: Date; updatedAt: Date; }' is missing the following properties from type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }': children, status, email, mobile, and 51 more.
+
+3104     this.crewMembers.set("2025-03-12", {
+                                            ~
+3105       id: "2025-03-12",
+     ~~~~~~~~~~~~~~~~~~~~~~~
+ ... 
+3115       updatedAt: new Date("2025-01-01")
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+3116     });
+     ~~~~~
+
+server/storage.ts:3118:40 - error TS2345: Argument of type '{ id: string; firstName: string; middleName: string; familyName: string; presentRank: string; nationality: string; presentVessel: string; vesselType: string; signOnDate: string; createdAt: Date; updatedAt: Date; }' is not assignable to parameter of type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }'.
+  Type '{ id: string; firstName: string; middleName: string; familyName: string; presentRank: string; nationality: string; presentVessel: string; vesselType: string; signOnDate: string; createdAt: Date; updatedAt: Date; }' is missing the following properties from type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }': children, status, email, mobile, and 51 more.
+
+3118     this.crewMembers.set("2025-02-12", {
+                                            ~
+3119       id: "2025-02-12",
+     ~~~~~~~~~~~~~~~~~~~~~~~
+ ... 
+3129       updatedAt: new Date("2025-02-01")
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+3130     });
+     ~~~~~
+
+server/storage.ts:3137:7 - error TS2353: Object literal may only specify known properties, and 'rank' does not exist in type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }'.
+
+3137       rank: "2nd Officer",
+           ~~~~
+
+server/storage.ts:3158:7 - error TS2353: Object literal may only specify known properties, and 'createdAt' does not exist in type '{ id: number; status: string; submittedAt: Date | null; crewMemberId: string; appraisalType: string; appraisalData: string; formId: number; appraisalDate: string; competenceRating: string | null; ... 4 more ...; stagePayloads: string | null; }'.
+
+3158       createdAt: new Date("2025-06-06"),
+           ~~~~~~~~~
+
+server/storage.ts:3173:7 - error TS2353: Object literal may only specify known properties, and 'createdAt' does not exist in type '{ id: number; status: string; submittedAt: Date | null; crewMemberId: string; appraisalType: string; appraisalData: string; formId: number; appraisalDate: string; competenceRating: string | null; ... 4 more ...; stagePayloads: string | null; }'.
+
+3173       createdAt: new Date("2025-05-07"),
+           ~~~~~~~~~
+
+server/storage.ts:3188:7 - error TS2353: Object literal may only specify known properties, and 'createdAt' does not exist in type '{ id: number; status: string; submittedAt: Date | null; crewMemberId: string; appraisalType: string; appraisalData: string; formId: number; appraisalDate: string; competenceRating: string | null; ... 4 more ...; stagePayloads: string | null; }'.
+
+3188       createdAt: new Date("2025-06-06"),
+           ~~~~~~~~~
+
+server/storage.ts:3203:7 - error TS2353: Object literal may only specify known properties, and 'createdAt' does not exist in type '{ id: number; status: string; submittedAt: Date | null; crewMemberId: string; appraisalType: string; appraisalData: string; formId: number; appraisalDate: string; competenceRating: string | null; ... 4 more ...; stagePayloads: string | null; }'.
+
+3203       createdAt: new Date("2025-05-07"),
+           ~~~~~~~~~
+
+server/storage.ts:3245:53 - error TS2345: Argument of type '{ id: number; vesselId: string; vesselName: string; month: string; monthValue: string; totalCrew: number; recordingStatusPercent: number; activityConflicting: boolean; totalViolations: number; ... 8 more ...; updatedAt: Date; }' is not assignable to parameter of type '{ vesselId: string; month: string; id: number; createdAt: Date | null; updatedAt: Date | null; vesselName: string; monthValue: string; recordingStatusPercent: number; activityConflicting: boolean; ... 18 more ...; officeReviewSubmittedDate: Date | null; }'.
+  Type '{ id: number; vesselId: string; vesselName: string; month: string; monthValue: string; totalCrew: number; recordingStatusPercent: number; activityConflicting: boolean; totalViolations: number; ... 8 more ...; updatedAt: Date; }' is missing the following properties from type '{ vesselId: string; month: string; id: number; createdAt: Date | null; updatedAt: Date | null; vesselName: string; monthValue: string; recordingStatusPercent: number; activityConflicting: boolean; ... 18 more ...; officeReviewSubmittedDate: Date | null; }': crewWithActivityConflicts, crewWithActivityConflictsDetails, crewWithViolationsDetails, crewWithNCsDetails, and 6 more.
+
+3245         this.restHoursVesselRecords.set(rhRecordId, {
+                                                         ~
+3246           id: rhRecordId,
+     ~~~~~~~~~~~~~~~~~~~~~~~~~
+ ... 
+3263           updatedAt: new Date()
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+3264         });
+     ~~~~~~~~~
+
+server/storage.ts:3297:11 - error TS2322: Type '{ id: number; name: string; rankGroup: string; versionNo: string; versionDate: string; category?: string | undefined; configuration?: string | null | undefined; }' is not assignable to type '{ id: number; name: string; category: string; rankGroup: string; versionNo: string; versionDate: string; configuration: string | null; }'.
+  Types of property 'category' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+
+3297     const form: Form = { ...insertForm, id: this.currentFormId++ };
+               ~~~~
+
+server/storage.ts:3378:29 - error TS2802: Type 'MapIterator<{ id: number; name: string; formId: number; ranks: string; }>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+
+3378     for (const rankGroup of this.rankGroups.values()) {
+                                 ~~~~~~~~~~~~~~~~~~~~~~~~
+
+server/storage.ts:3470:11 - error TS2739: Type '{ id: string; rank: string; rankId: string; role?: string | null | undefined; rating?: boolean | null | undefined; originalRankId?: string | null | undefined; isRoleRow?: boolean | null | undefined; ... 13 more ...; emtOfficer?: boolean | ... 1 more ... | undefined; }' is missing the following properties from type '{ id: string; role: string | null; rank: string; createdAt: Date | null; updatedAt: Date | null; rankId: string; rating: boolean | null; originalRankId: string | null; isRoleRow: boolean | null; ... 13 more ...; emtOfficer: boolean | null; }': createdAt, updatedAt
+
+3470     const companyRank: CompanyRank = { ...insertCompanyRank };
+               ~~~~~~~~~~~
+
+server/storage.ts:3510:13 - error TS2739: Type '{ id: string; rank: string; rankId: string; role?: string | null | undefined; rating?: boolean | null | undefined; originalRankId?: string | null | undefined; isRoleRow?: boolean | null | undefined; ... 13 more ...; emtOfficer?: boolean | ... 1 more ... | undefined; }' is missing the following properties from type '{ id: string; role: string | null; rank: string; createdAt: Date | null; updatedAt: Date | null; rankId: string; rating: boolean | null; originalRankId: string | null; isRoleRow: boolean | null; ... 13 more ...; emtOfficer: boolean | null; }': createdAt, updatedAt
+
+3510       const companyRank: CompanyRank = { ...rank };
+                 ~~~~~~~~~~~
+
+server/storage.ts:3531:11 - error TS2739: Type '{ id: number; groupName: string; rankPath: string; isActive?: boolean | null | undefined; }' is missing the following properties from type '{ id: number; createdAt: Date | null; updatedAt: Date | null; groupName: string; rankPath: string; isActive: boolean | null; }': createdAt, updatedAt
+
+3531     const promotionHierarchy: PromotionHierarchy = {
+               ~~~~~~~~~~~~~~~~~~
+
+server/storage.ts:3572:11 - error TS2739: Type '{ id: string; vesselType: string; nationality: string; firstName: string; presentRank: string; presentVessel: string; children?: string | null | undefined; status?: string | null | undefined; ... 55 more ...; doctorVisits?: string | ... 1 more ... | undefined; }' is missing the following properties from type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }': createdAt, updatedAt
+
+3572     const crewMember: CrewMember = { ...insertCrewMember, id: uniqueId };
+               ~~~~~~~~~~
+
+server/storage.ts:3605:28 - error TS2339: Property 'vessel' does not exist on type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }'.
+
+3605         vessel: crewMember.vessel,
+                                ~~~~~~
+
+server/storage.ts:3608:39 - error TS2339: Property 'vessel' does not exist on type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }'.
+
+3608         presentAssignment: crewMember.vessel || "Chandigarh",
+                                           ~~~~~~
+
+server/storage.ts:3620:9 - error TS2322: Type 'number' is not assignable to type 'string'.
+
+3620         endorsements: 5
+             ~~~~~~~~~~~~
+
+  shared/schema.ts:1181:3
+    1181   endorsements: z.string(),
+           ~~~~~~~~~~~~~~~~~~~~~~~~
+    The expected type comes from property 'endorsements' which is declared here on type '{ rank: number; company: number; tankers: number; ocw: number; endorsements: string; }'
+
+server/storage.ts:3704:53 - error TS2345: Argument of type '{ id: number; vesselId: string; vesselName: string; month: string; monthValue: string; totalCrew: number; recordingStatusPercent: number; activityConflicting: boolean; totalViolations: number; ... 8 more ...; updatedAt: Date; }' is not assignable to parameter of type '{ vesselId: string; month: string; id: number; createdAt: Date | null; updatedAt: Date | null; vesselName: string; monthValue: string; recordingStatusPercent: number; activityConflicting: boolean; ... 18 more ...; officeReviewSubmittedDate: Date | null; }'.
+  Type '{ id: number; vesselId: string; vesselName: string; month: string; monthValue: string; totalCrew: number; recordingStatusPercent: number; activityConflicting: boolean; totalViolations: number; ... 8 more ...; updatedAt: Date; }' is missing the following properties from type '{ vesselId: string; month: string; id: number; createdAt: Date | null; updatedAt: Date | null; vesselName: string; monthValue: string; recordingStatusPercent: number; activityConflicting: boolean; ... 18 more ...; officeReviewSubmittedDate: Date | null; }': crewWithActivityConflicts, crewWithActivityConflictsDetails, crewWithViolationsDetails, crewWithNCsDetails, and 6 more.
+
+3704         this.restHoursVesselRecords.set(rhRecordId, {
+                                                         ~
+3705           id: rhRecordId,
+     ~~~~~~~~~~~~~~~~~~~~~~~~~
+ ... 
+3722           updatedAt: new Date()
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+3723         });
+     ~~~~~~~~~
+
+server/storage.ts:3735:30 - error TS2802: Type 'MapIterator<{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+
+3735     for (const crewMember of this.crewMembers.values()) {
+                                  ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+server/storage.ts:3768:11 - error TS2322: Type '{ id: number; createdAt: Date; updatedAt: Date; name: string; vesselIds: string; description?: string | null | undefined; }' is not assignable to type '{ id: number; name: string; description: string | null; createdAt: Date | null; updatedAt: Date | null; vesselIds: string; }'.
+  Types of property 'description' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+
+3768     const vesselGroup: VesselGroup = {
+               ~~~~~~~~~~~
+
+server/storage.ts:3816:11 - error TS2322: Type '{ id: number; createdAt: Date; updatedAt: Date; vesselId: string; draftData: string; revision?: string | undefined; }' is not assignable to type '{ vesselId: string; id: number; createdAt: Date | null; updatedAt: Date | null; revision: string; draftData: string; }'.
+  Types of property 'revision' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+
+3816     const vesselDraft: VesselDraft = {
+               ~~~~~~~~~~~
+
+server/storage.ts:3889:11 - error TS2741: Property 'submittedAt' is missing in type '{ id: number; crewMemberId: string; appraisalType: string; appraisalData: string; formId: number; appraisalDate: string; submittedBy: string; status?: string | undefined; competenceRating?: string | ... 1 more ... | undefined; behavioralRating?: string | ... 1 more ... | undefined; overallRating?: string | ... 1 mor...' but required in type '{ id: number; status: string; submittedAt: Date | null; crewMemberId: string; appraisalType: string; appraisalData: string; formId: number; appraisalDate: string; competenceRating: string | null; ... 4 more ...; stagePayloads: string | null; }'.
+
+3889     const appraisalResult: AppraisalResult = { ...insertAppraisalResult, id: this.currentAppraisalResultId++ };
+               ~~~~~~~~~~~~~~~
+
+server/storage.ts:4047:7 - error TS2353: Object literal may only specify known properties, and 'id' does not exist in type '{ vesselType: string; nationality: string; firstName: string; presentRank: string; presentVessel: string; children?: string | null | undefined; status?: string | null | undefined; email?: string | ... 1 more ... | undefined; ... 54 more ...; doctorVisits?: string | ... 1 more ... | undefined; }'.
+
+4047       id: crewId,
+           ~~
+
+server/storage.ts:4085:11 - error TS2741: Property 'crewMemberId' is missing in type '{ id: number; onBoardCrewId: string | null; onBoardCrewName: string | null; reliefDue: string | null; signOffDate: string | null; signOffPort: string | null; reliefStatus: string | null; ... 16 more ...; onBoardCrewNationality?: string | ... 1 more ... | undefined; }' but required in type '{ vesselId: string; id: number; crewMemberId: string | null; rank: string; createdAt: Date | null; updatedAt: Date | null; relieverCrewName: string | null; relieverNationality: string | null; ... 16 more ...; relieverCrewId: string | null; }'.
+
+4085     const vesselPlanning: VesselPlanning = {
+               ~~~~~~~~~~~~~~
+
+server/storage.ts:4138:11 - error TS2322: Type '{ id: number; planStatus: string; createdAt: Date; updatedAt: Date; vessels: string; draftId: string; lastEdited: string; crew: string; planFromDate: string; planToDate: string; createdBy: string; proposedBy?: string | ... 1 more ... | undefined; proposedDate?: string | ... 1 more ... | undefined; assignments?: stri...' is not assignable to type '{ id: number; createdAt: Date | null; updatedAt: Date | null; vessels: string; draftId: string; lastEdited: string; crew: string; planFromDate: string; planToDate: string; createdBy: string; planStatus: string; proposedBy: string | null; proposedDate: string | null; assignments: string | null; }'.
+  Types of property 'proposedBy' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+
+4138     const rotationPlan: RotationPlan = {
+               ~~~~~~~~~~~~
+
+server/storage.ts:4272:125 - error TS2339: Property 'lastName' does not exist on type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }'.
+
+4272                     name: `${crewOnBoard.firstName} ${crewOnBoard.middleName || ''} ${crewOnBoard.familyName || crewOnBoard.lastName || ''}`.replace(/\s+/g, ' ').trim(),
+                                                                                                                                 ~~~~~~~~
+
+server/storage.ts:4286:125 - error TS2339: Property 'lastName' does not exist on type '{ children: string | null; id: string; status: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; mobile: string | null; vesselTypes: string | null; ... 57 more ...; doctorVisits: string | null; }'.
+
+4286                     name: `${crewOnBoard.firstName} ${crewOnBoard.middleName || ''} ${crewOnBoard.familyName || crewOnBoard.lastName || ''}`.replace(/\s+/g, ' ').trim(),
+                                                                                                                                 ~~~~~~~~
+
+server/storage.ts:4360:34 - error TS2802: Type 'MapIterator<[number, { vesselId: string; id: number; crewMemberId: string | null; rank: string; createdAt: Date | null; updatedAt: Date | null; relieverCrewName: string | null; ... 17 more ...; relieverCrewId: string | null; }]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+
+4360     for (const [id, planning] of this.vesselPlanning.entries()) {
+                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+server/storage.ts:4435:24 - error TS2802: Type 'MapIterator<{ id: number; createdAt: Date | null; updatedAt: Date | null; vessels: string; draftId: string; lastEdited: string; crew: string; planFromDate: string; planToDate: string; createdBy: string; planStatus: string; proposedBy: string | null; proposedDate: string | null; assignments: string | null; }>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+
+4435     for (const plan of this.rotationPlans.values()) {
+                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+server/storage.ts:4497:11 - error TS2322: Type '{ id: number; createdAt: Date; updatedAt: Date; vesselId: string; testType: string; comments?: string | null | undefined; description?: string | null | undefined; violations?: number | ... 1 more ... | undefined; ... 22 more ...; testHistory?: string | ... 1 more ... | undefined; }' is not assignable to type '{ vesselId: string; id: number; comments: string | null; description: string | null; createdAt: Date | null; updatedAt: Date | null; violations: number | null; testType: string; ... 22 more ...; testHistory: string | null; }'.
+  Types of property 'comments' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+
+4497     const record: DrugAlcoholTestRecord = {
+               ~~~~~~
+
+server/storage.ts:4553:11 - error TS2322: Type '{ id: number; createdAt: Date; updatedAt: Date; vesselId: string; month: string; vesselName: string; monthValue: string; recordingStatusPercent?: number | undefined; activityConflicting?: boolean | undefined; ... 18 more ...; officeReviewSubmittedDate?: Date | ... 1 more ... | undefined; }' is not assignable to type '{ vesselId: string; month: string; id: number; createdAt: Date | null; updatedAt: Date | null; vesselName: string; monthValue: string; recordingStatusPercent: number; activityConflicting: boolean; ... 18 more ...; officeReviewSubmittedDate: Date | null; }'.
+  Types of property 'recordingStatusPercent' are incompatible.
+    Type 'number | undefined' is not assignable to type 'number'.
+      Type 'undefined' is not assignable to type 'number'.
+
+4553     const record: RestHoursVesselRecord = {
+               ~~~~~~
+
+server/storage.ts:4621:11 - error TS2322: Type '{ id: number; createdAt: Date; updatedAt: Date; vesselId: string; month: string; name: string; crewMemberId: string; rank: string; vesselName: string; monthValue: string; signOnOffInfo?: string | ... 1 more ... | undefined; ... 5 more ...; predictedNCs?: number | undefined; }' is not assignable to type '{ vesselId: string; month: string; id: number; name: string; crewMemberId: string; rank: string; createdAt: Date | null; updatedAt: Date | null; vesselName: string; monthValue: string; ... 6 more ...; predictedNCs: number; }'.
+  Types of property 'signOnOffInfo' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+
+4621     const record: RestHoursCrewRecord = {
+               ~~~~~~
+
+server/storage.ts:4704:11 - error TS2322: Type '{ id: number; createdAt: Date; updatedAt: Date; vesselId: string; name: string; crewMemberId: string; rank: string; monthYear: string; dailyRecords: string; opaMode?: boolean | null | undefined; showPlanning?: boolean | ... 1 more ... | undefined; }' is not assignable to type '{ vesselId: string; id: number; name: string; crewMemberId: string; rank: string; monthYear: string; createdAt: Date | null; updatedAt: Date | null; opaMode: boolean | null; showPlanning: boolean | null; dailyRecords: string; }'.
+  Types of property 'opaMode' are incompatible.
+    Type 'boolean | null | undefined' is not assignable to type 'boolean | null'.
+      Type 'undefined' is not assignable to type 'boolean | null'.
+
+4704     const record: RestHoursDailyRecord = {
+               ~~~~~~
+
+server/storage.ts:4760:11 - error TS2322: Type '{ id: number; status: string; startDateTime: string; finishDateTime: string; task: string; crewInvolved: number; startDateTimeSort: string; finishDateTimeSort: string; recordType: string; statusType: string; ... 7 more ...; comments?: string | ... 1 more ... | undefined; }' is not assignable to type '{ vesselId: string | null; id: number; status: string; periodValue: string | null; startDateTime: string; finishDateTime: string; task: string; crewInvolved: number; remarks: string | null; ... 8 more ...; comments: string | null; }'.
+  Types of property 'vesselId' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+
+4760     const task: VariableTask = {
+               ~~~~
+
+server/storage.ts:4821:11 - error TS2739: Type '{ id: number; vesselId: string; name: string; crewMemberId: string; rank: string; monthYear: string; seaHours: string; portHours: string; }' is missing the following properties from type '{ vesselId: string; id: number; name: string; crewMemberId: string; rank: string; monthYear: string; seaHours: string; portHours: string; createdAt: Date | null; updatedAt: Date | null; }': createdAt, updatedAt
+
+4821     const task: FixedTask = {
+               ~~~~
+
+server/storage.ts:4871:34 - error TS2802: Type 'Map<string, any>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+
+4871       for (const [key, entry] of this.masterDataEntries) {
+                                      ~~~~~~~~~~~~~~~~~~~~~~
+
+server/storage.ts:4937:5 - error TS2740: Type 'DatabaseStorage' is missing the following properties from type 'IStorage': getFormForRank, updateRankOrders, getCompanyRanks, getCompanyRank, and 92 more.
+
+4937     storage = new DatabaseStorage();
+         ~~~~~~~
+
+server/storage.ts:4975:5 - error TS2740: Type '(Anonymous class)' is missing the following properties from type 'IStorage': getFormForRank, updateRankOrders, getCompanyRanks, getCompanyRank, and 91 more.
+
+4975     storage = new (class implements IStorage {
+         ~~~~~~~
+
+server/storage.ts:4975:20 - error TS2420: Class '(Anonymous class)' incorrectly implements interface 'IStorage'.
+  Type '(Anonymous class)' is missing the following properties from type 'IStorage': getFormForRank, updateRankOrders, getCompanyRanks, getCompanyRank, and 91 more.
+
+4975     storage = new (class implements IStorage {
+                        ~~~~~
+
+server/storage.ts:5036:3 - error TS2739: Type 'PersistentFileStorage' is missing the following properties from type 'IStorage': getFixedTask, deleteFixedTask
+
+5036   storage = new PersistentFileStorage();
+       ~~~~~~~
+
+server/vite.ts:39:5 - error TS2322: Type '{ middlewareMode: boolean; hmr: { server: Server<typeof IncomingMessage, typeof ServerResponse>; }; allowedHosts: boolean; }' is not assignable to type 'ServerOptions$1 | ResolvedServerOptions | undefined'.
+  Type '{ middlewareMode: boolean; hmr: { server: Server<typeof IncomingMessage, typeof ServerResponse>; }; allowedHosts: boolean; }' is missing the following properties from type 'ResolvedServerOptions': fs, sourcemapIgnoreList, open, headers, and 6 more.
+
+39     server: serverOptions,
+       ~~~~~~
+
+
+Found 186 errors in 6 files.
+
+Errors  Files
+    15  client/src/modules/crewing/AppraisalForm.tsx:445
+    78  server/database.ts:35
+     1  server/db.ts:1
+     2  server/routes.ts:1225
+    89  server/storage.ts:274
+     1  server/vite.ts:39
+~/workspace$ 
