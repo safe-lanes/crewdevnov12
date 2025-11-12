@@ -129,12 +129,12 @@ const appraisalSchema = z.object({
   seafarersRank: z.string().min(1, "Seafarer's rank is required"),
   nationality: z.string().min(1, "Nationality is required"),
   vessel: z.string().min(1, "Vessel is required"),
-  signOn: z.string().min(1, "Sign On date is required"),
+  signOn: z.string().optional(),
   appraisalType: z.string().min(1, "Appraisal type is required"),
-  appraisalPeriodFrom: z.string().min(1, "Appraisal period from is required"),
+  appraisalPeriodFrom: z.string().optional(),
   appraisalPeriodTo: z.string().optional(),
   personalityIndexCategory: z.string().optional(),
-  primaryAppraiser: z.string().min(1, "Primary appraiser is required"),
+  primaryAppraiser: z.string().optional(),
   
   // Part B: Information at Start of Appraisal Period
   trainings: z.array(trainingSchema).default([]),
@@ -333,7 +333,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
         formId: 1, // Default form ID
         appraisalType: payload.data.appraisalType,
         appraisalDate: new Date().toISOString().split('T')[0],
-        appraisalData: payload.data, // Send as object, backend will handle JSON serialization
+        appraisalData: JSON.stringify(payload.data), // Stringify for backend
         competenceRating: null,
         behavioralRating: null,
         overallRating: null,
@@ -341,9 +341,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
         status: payload.status,
       };
 
-      return await apiRequest('POST', '/api/appraisals', appraisalPayload);
+      console.log('📤 Sending appraisal payload:', appraisalPayload);
+      const result = await apiRequest('POST', '/api/appraisals', appraisalPayload);
+      console.log('✅ Appraisal saved successfully:', result);
+      return result;
     },
     onSuccess: (data, variables) => {
+      console.log('🎉 Mutation onSuccess called', data);
       queryClient.invalidateQueries({ queryKey: ['/api/appraisals'] });
       toast({
         title: variables.status === 'draft' ? 'Draft Saved' : 'Appraisal Submitted',
@@ -354,6 +358,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
       onClose();
     },
     onError: (error: any) => {
+      console.error('❌ Mutation onError called:', error);
       toast({
         title: 'Error',
         description: error.message || 'Failed to save appraisal. Please try again.',
