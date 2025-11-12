@@ -521,35 +521,52 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
 
   // Shared handler for stage submissions (auto-saves draft if needed)
   const handleStageSubmission = async (stage: 'stage1' | 'stage2' | 'stage3') => {
+    const formData = form.getValues();
+    
+    // Validate stage-specific data
+    try {
+      if (stage === 'stage1') {
+        stage1Schema.parse(formData);
+      } else if (stage === 'stage2') {
+        stage2Schema.parse(formData);
+      } else if (stage === 'stage3') {
+        stage3Schema.parse(formData);
+      }
+    } catch (error: any) {
+      toast({ 
+        title: 'Validation Error', 
+        description: error.errors?.[0]?.message || 'Please complete all required fields for this stage.', 
+        variant: 'destructive' 
+      });
+      return;
+    }
+    
+    let idToUse = appraisalId;
+    
     // If no appraisalId, save as draft first
-    if (!appraisalId) {
-      const formData = form.getValues();
+    if (!idToUse) {
       try {
         const result = await saveAppraisalMutation.mutateAsync({ data: formData, status: 'draft' });
         if (result && result.id) {
-          // ID is set via onSuccess callback, give it a moment
-          setTimeout(() => {
-            if (appraisalId) {
-              triggerStageMutation(stage, appraisalId);
-            }
-          }, 100);
+          idToUse = result.id;
+          setAppraisalId(result.id);
+        } else {
+          toast({ title: 'Error', description: 'Failed to save draft. Please try again.', variant: 'destructive' });
+          return;
         }
       } catch (error) {
         toast({ title: 'Error', description: 'Failed to save draft. Please try again.', variant: 'destructive' });
         return;
       }
-    } else {
-      triggerStageMutation(stage, appraisalId);
     }
-  };
-
-  const triggerStageMutation = (stage: 'stage1' | 'stage2' | 'stage3', id: number) => {
+    
+    // Trigger the appropriate stage mutation
     if (stage === 'stage1') {
-      stage1Mutation.mutate(id);
+      stage1Mutation.mutate(idToUse);
     } else if (stage === 'stage2') {
-      stage2Mutation.mutate(id);
+      stage2Mutation.mutate(idToUse);
     } else if (stage === 'stage3') {
-      stage3Mutation.mutate(id);
+      stage3Mutation.mutate(idToUse);
     }
   };
 
@@ -1682,10 +1699,14 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                 {/* Action buttons */}
                 <div className="flex justify-end gap-4 mt-6">
                   <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={() => form.handleSubmit(onSubmit)()}>
-                    Save
+                    Save Draft
                   </Button>
-                  <Button className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" onClick={onSubmitAppraisal}>
-                    Submit
+                  <Button 
+                    className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
+                    onClick={() => handleStageSubmission('stage1')}
+                    disabled={stage1Mutation.isPending || saveAppraisalMutation.isPending}
+                  >
+                    {stage1Mutation.isPending ? 'Submitting...' : 'Submit Stage 1'}
                   </Button>
                 </div>
               </div>
@@ -2385,10 +2406,14 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                 {/* Action buttons */}
                 <div className="flex justify-end gap-4 mt-6">
                   <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={() => form.handleSubmit(onSubmit)()}>
-                    Save
+                    Save Draft
                   </Button>
-                  <Button className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" onClick={onSubmitAppraisal}>
-                    Submit
+                  <Button 
+                    className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
+                    onClick={() => handleStageSubmission('stage2')}
+                    disabled={stage2Mutation.isPending || saveAppraisalMutation.isPending}
+                  >
+                    {stage2Mutation.isPending ? 'Submitting...' : 'Submit Stage 2'}
                   </Button>
                 </div>
               </CardContent>
@@ -2798,10 +2823,14 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                       {/* Action buttons */}
                       <div className="flex justify-end gap-4 mt-6">
                         <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={() => form.handleSubmit(onSubmit)()}>
-                          Save
+                          Save Draft
                         </Button>
-                        <Button className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" onClick={onSubmitAppraisal}>
-                          Submit
+                        <Button 
+                          className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
+                          onClick={() => handleStageSubmission('stage3')}
+                          disabled={stage3Mutation.isPending || saveAppraisalMutation.isPending}
+                        >
+                          {stage3Mutation.isPending ? 'Submitting...' : 'Submit Stage 3'}
                         </Button>
                       </div>
                     </CardContent>
@@ -3377,10 +3406,14 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
 
                       <div className="flex justify-end gap-4 mt-6">
                         <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={() => form.handleSubmit(onSubmit)()}>
-                          Save
+                          Save Draft
                         </Button>
-                        <Button className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" onClick={onSubmitAppraisal}>
-                          Submit
+                        <Button 
+                          className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
+                          onClick={() => handleStageSubmission('stage1')}
+                          disabled={stage1Mutation.isPending || saveAppraisalMutation.isPending}
+                        >
+                          {stage1Mutation.isPending ? 'Submitting...' : 'Submit Stage 1'}
                         </Button>
                       </div>
                       </div>
@@ -4073,10 +4106,14 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                         {/* Action buttons */}
                         <div className="flex justify-end gap-4 mt-6">
                           <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={() => form.handleSubmit(onSubmit)()}>
-                            Save
+                            Save Draft
                           </Button>
-                          <Button className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" onClick={onSubmitAppraisal}>
-                            Submit
+                          <Button 
+                            className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
+                            onClick={() => handleStageSubmission('stage2')}
+                            disabled={stage2Mutation.isPending || saveAppraisalMutation.isPending}
+                          >
+                            {stage2Mutation.isPending ? 'Submitting...' : 'Submit Stage 2'}
                           </Button>
                         </div>
                       </CardContent>
