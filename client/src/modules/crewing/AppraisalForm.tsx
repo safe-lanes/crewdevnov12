@@ -242,6 +242,12 @@ const appraisalSchema = z.object({
 
 type AppraisalFormData = z.infer<typeof appraisalSchema>;
 
+interface ExistingAppraisal {
+  id: number;
+  appraisalData: string | AppraisalFormData;
+  status: 'draft' | 'preliminary' | 'submitted' | 'reviewed';
+}
+
 interface AppraisalFormProps {
   crewMember?: {
     id: string;
@@ -335,7 +341,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   }, [formConfig, crewMember?.rank]);
 
   // Fetch existing appraisal data when editing
-  const { data: existingAppraisal } = useQuery({
+  const { data: existingAppraisal } = useQuery<ExistingAppraisal | undefined>({
     queryKey: ['/api/appraisals', appraisalId],
     enabled: !!appraisalId,
   });
@@ -487,10 +493,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         targets: formData.targets,
       };
       
-      return await apiRequest('POST', `/api/appraisals/${appraisalId}/submit-stage1`, {
+      const response = await apiRequest('POST', `/api/appraisals/${appraisalId}/submit-stage1`, {
         data: stageData,
         submittedBy: 'Current User',
       });
+      return response.json();
     },
     onSuccess: () => {
       setAppraisalStatus('preliminary');
@@ -517,10 +524,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         seafarerComments: formData.seafarerComments,
       };
       
-      return await apiRequest('POST', `/api/appraisals/${appraisalId}/submit-stage2`, {
+      const response = await apiRequest('POST', `/api/appraisals/${appraisalId}/submit-stage2`, {
         data: stageData,
         submittedBy: 'Current User',
       });
+      return response.json();
     },
     onSuccess: () => {
       setAppraisalStatus('submitted');
@@ -543,10 +551,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         trainingFollowups: formData.trainingFollowups,
       };
       
-      return await apiRequest('POST', `/api/appraisals/${appraisalId}/submit-stage3`, {
+      const response = await apiRequest('POST', `/api/appraisals/${appraisalId}/submit-stage3`, {
         data: stageData,
         submittedBy: 'Current User',
       });
+      return response.json();
     },
     onSuccess: () => {
       setAppraisalStatus('reviewed');
@@ -629,7 +638,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       }
     }
     
-    // Trigger the appropriate stage mutation
+    // Ensure idToUse is non-null before calling mutations
+    if (idToUse === null) {
+      toast({ title: 'Error', description: 'Appraisal ID is required to submit stage.', variant: 'destructive' });
+      return;
+    }
+    
+    // Trigger the appropriate stage mutation with guaranteed non-null ID
     if (stage === 'stage1') {
       stage1Mutation.mutate(idToUse);
     } else if (stage === 'stage2') {
