@@ -5166,6 +5166,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/recruitment-candidates/:id/transfer-to-crew", async (req, res) => {
+    try {
+      const id = req.params.id;
+      const result = await storage.transferRecruitedCandidate(id);
+      res.status(201).json(result);
+    } catch (error: any) {
+      console.error('Transfer error:', error);
+      res.status(400).json({ error: error.message || "Failed to transfer candidate to crew database" });
+    }
+  });
+
   // Data Masters API routes
   app.get("/api/masters", async (req, res) => {
     try {

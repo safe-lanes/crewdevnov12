@@ -208,6 +208,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const [activeContinuousSection, setActiveContinuousSection] = useState('A1'); // For continuous scroll sections
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  
+  // Track if transfer has been completed in this session
+  const transferCompletedRef = React.useRef(candidate?.status === 'Recruited');
 
   // Get company ranks from shared hook
   const { data: companyRanks, isLoading: ranksLoading, rankNames } = useCompanyRanks();
@@ -237,13 +240,50 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
         });
       }
     },
-    onSuccess: async () => {
+    onSuccess: async (savedCandidate) => {
       toast({
         title: "Success",
         description: "Data saved successfully!",
       });
+      
+      // Only transfer if status is "Recruited" AND we haven't transferred yet in this session
+      if (savedCandidate.status === 'Recruited' && !transferCompletedRef.current) {
+        try {
+          const transferResponse = await fetch(`/api/recruitment-candidates/${savedCandidate.id}/transfer-to-crew`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          if (transferResponse.ok) {
+            const transferResult = await transferResponse.json();
+            // Mark transfer as completed
+            transferCompletedRef.current = true;
+            toast({
+              title: "Crew Member Created",
+              description: `Successfully transferred to Crew Database with ID: ${transferResult.crewId}`,
+            });
+            console.log('✅ Candidate transferred to crew database:', transferResult);
+          } else {
+            const error = await transferResponse.json();
+            toast({
+              title: "Transfer Warning",
+              description: `Candidate marked as Recruited but transfer to Crew Database failed: ${error.error}`,
+              variant: "destructive",
+            });
+          }
+        } catch (error) {
+          console.error('Failed to transfer recruited candidate:', error);
+          toast({
+            title: "Transfer Warning",
+            description: "Candidate marked as Recruited but automatic transfer to Crew Database failed. Please transfer manually.",
+            variant: "destructive",
+          });
+        }
+      }
+      
       // Force immediate refetch of the data
       await queryClient.refetchQueries({ queryKey: ['/api/recruitment-candidates'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/crew-members'] });
       // DON'T advance to next section - just save data
     },
     onError: (error) => {

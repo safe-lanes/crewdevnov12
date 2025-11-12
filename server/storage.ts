@@ -1699,6 +1699,16 @@ export class MemStorage implements IStorage {
       throw new Error(`Candidate must have status 'Recruited' to be transferred. Current status: ${candidate.status}`);
     }
 
+    // Check if already transferred by looking for crew member with matching empNo (fileNo)
+    const existingCrew = Array.from(this.crewMembers.values()).find(
+      crew => crew.empNo === candidate.fileNo
+    );
+    
+    if (existingCrew) {
+      console.log(`⚠️ Candidate ${candidate.fileNo} already transferred to crew database with ID ${existingCrew.id}`);
+      return { crewMember: existingCrew, crewId: existingCrew.id };
+    }
+
     const crewId = await this.getNextCrewId();
 
     let applicationData: any = null;
@@ -3895,6 +3905,16 @@ export class PersistentFileStorage implements IStorage {
 
     if (candidate.status !== 'Recruited') {
       throw new Error(`Candidate must have status 'Recruited' to be transferred. Current status: ${candidate.status}`);
+    }
+
+    // Check if already transferred by looking for crew member with matching empNo (fileNo)
+    const existingCrew = Array.from(this.crewMembers.values()).find(
+      crew => crew.empNo === candidate.fileNo
+    );
+    
+    if (existingCrew) {
+      console.log(`⚠️ Candidate ${candidate.fileNo} already transferred to crew database with ID ${existingCrew.id}`);
+      return { crewMember: existingCrew, crewId: existingCrew.id };
     }
 
     const crewId = await this.getNextCrewId();
