@@ -58,6 +58,45 @@ const rankReorderSchema = z.array(z.object({
   sortOrder: z.number().int().nonnegative()
 }));
 
+// Stage-specific validation schemas for appraisal submissions
+const stage1SubmissionSchema = z.object({
+  data: z.object({
+    seafarersName: z.string().min(1),
+    seafarersRank: z.string().min(1),
+    nationality: z.string().min(1),
+    vessel: z.string().min(1),
+    appraisalType: z.string().min(1),
+    signOn: z.string().optional(),
+    appraisalPeriodFrom: z.string().optional(),
+    appraisalPeriodTo: z.string().optional(),
+    personalityIndexCategory: z.string().optional(),
+    primaryAppraiser: z.string().optional(),
+    trainings: z.array(z.any()).optional(),
+    targets: z.array(z.any()).optional(),
+  }),
+  submittedBy: z.string().optional(),
+});
+
+const stage2SubmissionSchema = z.object({
+  data: z.object({
+    competenceAssessments: z.array(z.any()).optional(),
+    behaviouralAssessments: z.array(z.any()).optional(),
+    trainingNeeds: z.array(z.any()).optional(),
+    recommendations: z.array(z.any()).optional(),
+    appraiserComments: z.array(z.any()).optional(),
+    seafarerComments: z.array(z.any()).optional(),
+  }),
+  submittedBy: z.string().optional(),
+});
+
+const stage3SubmissionSchema = z.object({
+  data: z.object({
+    officeReviews: z.array(z.any()).optional(),
+    trainingFollowups: z.array(z.any()).optional(),
+  }),
+  submittedBy: z.string().optional(),
+});
+
 // Helper function to convert time string (HH:MM) to half-hour cell index (0-47)
 function timeToCell(timeStr: string): number {
   const [hours, minutes] = timeStr.split(':').map(Number);
@@ -5096,7 +5135,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/appraisals/:id/submit-stage1", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const { data, submittedBy } = req.body;
+      
+      // Validate request body
+      const validationResult = stage1SubmissionSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: "Invalid stage 1 data", 
+          details: validationResult.error.issues 
+        });
+      }
+
+      const { data, submittedBy } = validationResult.data;
       
       const appraisal = await storage.submitAppraisalStage(id, 'stage1', data, submittedBy || 'Unknown');
       if (!appraisal) {
@@ -5105,14 +5154,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(appraisal);
     } catch (error: any) {
       console.error('Stage 1 submission error:', error);
-      res.status(500).json({ error: "Failed to submit stage 1", details: error.message });
+      res.status(500).json({ error: error.message || "Failed to submit stage 1" });
     }
   });
 
   app.post("/api/appraisals/:id/submit-stage2", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const { data, submittedBy } = req.body;
+      
+      // Validate request body
+      const validationResult = stage2SubmissionSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: "Invalid stage 2 data", 
+          details: validationResult.error.issues 
+        });
+      }
+
+      const { data, submittedBy } = validationResult.data;
       
       const appraisal = await storage.submitAppraisalStage(id, 'stage2', data, submittedBy || 'Unknown');
       if (!appraisal) {
@@ -5121,14 +5180,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(appraisal);
     } catch (error: any) {
       console.error('Stage 2 submission error:', error);
-      res.status(500).json({ error: "Failed to submit stage 2", details: error.message });
+      res.status(500).json({ error: error.message || "Failed to submit stage 2" });
     }
   });
 
   app.post("/api/appraisals/:id/submit-stage3", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const { data, submittedBy } = req.body;
+      
+      // Validate request body
+      const validationResult = stage3SubmissionSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: "Invalid stage 3 data", 
+          details: validationResult.error.issues 
+        });
+      }
+
+      const { data, submittedBy } = validationResult.data;
       
       const appraisal = await storage.submitAppraisalStage(id, 'stage3', data, submittedBy || 'Unknown');
       if (!appraisal) {
@@ -5137,7 +5206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(appraisal);
     } catch (error: any) {
       console.error('Stage 3 submission error:', error);
-      res.status(500).json({ error: "Failed to submit stage 3", details: error.message });
+      res.status(500).json({ error: error.message || "Failed to submit stage 3" });
     }
   });
 

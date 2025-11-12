@@ -1652,15 +1652,27 @@ export class MemStorage implements IStorage {
     const existingAppraisal = this.appraisalResults.get(id);
     if (!existingAppraisal) return undefined;
 
-    // Parse existing stage statuses
+    // Parse existing stage statuses and payloads
     const stageStatuses = existingAppraisal.stageStatuses ? JSON.parse(existingAppraisal.stageStatuses) : {};
+    const stagePayloads = existingAppraisal.stagePayloads ? JSON.parse(existingAppraisal.stagePayloads) : {};
     
+    // Enforce sequential stage progression
+    if (stage === 'stage2' && !stageStatuses.stage1?.status) {
+      throw new Error('Stage 1 must be submitted before Stage 2');
+    }
+    if (stage === 'stage3' && !stageStatuses.stage2?.status) {
+      throw new Error('Stage 2 must be submitted before Stage 3');
+    }
+
     // Update stage status
     stageStatuses[stage] = {
-      status: 'submitted',
+      status: 'completed',
       submittedAt: new Date().toISOString(),
       submittedBy: submittedBy
     };
+
+    // Store stage payload separately
+    stagePayloads[stage] = data;
 
     // Determine overall status based on completed stages
     let newStatus = existingAppraisal.status;
@@ -1672,16 +1684,15 @@ export class MemStorage implements IStorage {
       newStatus = 'reviewed';
     }
 
-    // Parse existing appraisal data
+    // Parse existing appraisal data and merge all stage payloads
     const appraisalData = existingAppraisal.appraisalData ? JSON.parse(existingAppraisal.appraisalData) : {};
-    
-    // Merge stage data into appraisal data
     const updatedData = { ...appraisalData, ...data };
 
     const updatedAppraisal: AppraisalResult = {
       ...existingAppraisal,
       appraisalData: JSON.stringify(updatedData),
       stageStatuses: JSON.stringify(stageStatuses),
+      stagePayloads: JSON.stringify(stagePayloads),
       status: newStatus,
       submittedBy: submittedBy,
       submittedAt: new Date()
@@ -3901,15 +3912,27 @@ export class PersistentFileStorage implements IStorage {
     const existingAppraisal = this.appraisalResults.get(id);
     if (!existingAppraisal) return undefined;
 
-    // Parse existing stage statuses
+    // Parse existing stage statuses and payloads
     const stageStatuses = existingAppraisal.stageStatuses ? JSON.parse(existingAppraisal.stageStatuses) : {};
+    const stagePayloads = existingAppraisal.stagePayloads ? JSON.parse(existingAppraisal.stagePayloads) : {};
     
+    // Enforce sequential stage progression
+    if (stage === 'stage2' && !stageStatuses.stage1?.status) {
+      throw new Error('Stage 1 must be submitted before Stage 2');
+    }
+    if (stage === 'stage3' && !stageStatuses.stage2?.status) {
+      throw new Error('Stage 2 must be submitted before Stage 3');
+    }
+
     // Update stage status
     stageStatuses[stage] = {
-      status: 'submitted',
+      status: 'completed',
       submittedAt: new Date().toISOString(),
       submittedBy: submittedBy
     };
+
+    // Store stage payload separately
+    stagePayloads[stage] = data;
 
     // Determine overall status based on completed stages
     let newStatus = existingAppraisal.status;
@@ -3921,16 +3944,15 @@ export class PersistentFileStorage implements IStorage {
       newStatus = 'reviewed';
     }
 
-    // Parse existing appraisal data
+    // Parse existing appraisal data and merge all stage payloads
     const appraisalData = existingAppraisal.appraisalData ? JSON.parse(existingAppraisal.appraisalData) : {};
-    
-    // Merge stage data into appraisal data
     const updatedData = { ...appraisalData, ...data };
 
     const updatedAppraisal: AppraisalResult = {
       ...existingAppraisal,
       appraisalData: JSON.stringify(updatedData),
       stageStatuses: JSON.stringify(stageStatuses),
+      stagePayloads: JSON.stringify(stagePayloads),
       status: newStatus,
       submittedBy: submittedBy,
       submittedAt: new Date()

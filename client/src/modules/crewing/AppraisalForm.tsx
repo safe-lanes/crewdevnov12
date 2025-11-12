@@ -250,6 +250,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
   const [editingSeafarerComment, setEditingSeafarerComment] = useState<string | null>(null);
   const [nationalityOpen, setNationalityOpen] = useState(false);
   const [editingOfficeReview, setEditingOfficeReview] = useState<string | null>(null);
+  const [appraisalId, setAppraisalId] = useState<number | null>(null);
   
   // Section references using canonical Part IDs
   const partARef = useRef<HTMLDivElement>(null);
@@ -407,14 +408,20 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
     },
     onSuccess: (data, variables) => {
       console.log('🎉 Mutation onSuccess called', data);
+      if (data && data.id) {
+        setAppraisalId(data.id);
+      }
       queryClient.invalidateQueries({ queryKey: ['/api/appraisals'] });
       toast({
         title: variables.status === 'draft' ? 'Draft Saved' : 'Appraisal Submitted',
         description: variables.status === 'draft' 
-          ? 'Your appraisal draft has been saved successfully.' 
+          ? 'Your appraisal draft has been saved successfully. You can now submit stages.' 
           : 'Your appraisal has been submitted successfully.',
       });
-      onClose();
+      // Don't close on draft save, allow stage submissions
+      if (variables.status !== 'draft') {
+        onClose();
+      }
     },
     onError: (error: any) => {
       console.error('❌ Mutation onError called:', error);
@@ -425,6 +432,126 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
       });
     },
   });
+
+  // Stage 1 mutation (Parts A & B)
+  const stage1Mutation = useMutation({
+    mutationFn: async (appraisalId: number) => {
+      const formData = form.getValues();
+      const stageData = {
+        seafarersName: formData.seafarersName,
+        seafarersRank: formData.seafarersRank,
+        nationality: formData.nationality,
+        vessel: formData.vessel,
+        signOn: formData.signOn,
+        appraisalType: formData.appraisalType,
+        appraisalPeriodFrom: formData.appraisalPeriodFrom,
+        appraisalPeriodTo: formData.appraisalPeriodTo,
+        personalityIndexCategory: formData.personalityIndexCategory,
+        primaryAppraiser: formData.primaryAppraiser,
+        trainings: formData.trainings,
+        targets: formData.targets,
+      };
+      
+      return await apiRequest('POST', `/api/appraisals/${appraisalId}/submit-stage1`, {
+        data: stageData,
+        submittedBy: 'Current User',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/appraisals'] });
+      toast({ title: 'Stage 1 Submitted', description: 'Target setting (Parts A & B) submitted successfully.' });
+      onClose();
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message || 'Failed to submit Stage 1', variant: 'destructive' });
+    },
+  });
+
+  // Stage 2 mutation (Parts C, D, E, F)
+  const stage2Mutation = useMutation({
+    mutationFn: async (appraisalId: number) => {
+      const formData = form.getValues();
+      const stageData = {
+        competenceAssessments: formData.competenceAssessments,
+        behaviouralAssessments: formData.behaviouralAssessments,
+        trainingNeeds: formData.trainingNeeds,
+        recommendations: formData.recommendations,
+        appraiserComments: formData.appraiserComments,
+        seafarerComments: formData.seafarerComments,
+      };
+      
+      return await apiRequest('POST', `/api/appraisals/${appraisalId}/submit-stage2`, {
+        data: stageData,
+        submittedBy: 'Current User',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/appraisals'] });
+      toast({ title: 'Stage 2 Submitted', description: 'Performance assessment (Parts C-F) submitted successfully.' });
+      onClose();
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message || 'Failed to submit Stage 2', variant: 'destructive' });
+    },
+  });
+
+  // Stage 3 mutation (Part G)
+  const stage3Mutation = useMutation({
+    mutationFn: async (appraisalId: number) => {
+      const formData = form.getValues();
+      const stageData = {
+        officeReviews: formData.officeReviews,
+        trainingFollowups: formData.trainingFollowups,
+      };
+      
+      return await apiRequest('POST', `/api/appraisals/${appraisalId}/submit-stage3`, {
+        data: stageData,
+        submittedBy: 'Current User',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/appraisals'] });
+      toast({ title: 'Stage 3 Submitted', description: 'Office review (Part G) submitted successfully. Form is now locked.' });
+      onClose();
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message || 'Failed to submit Stage 3', variant: 'destructive' });
+    },
+  });
+
+  // Shared handler for stage submissions (auto-saves draft if needed)
+  const handleStageSubmission = async (stage: 'stage1' | 'stage2' | 'stage3') => {
+    // If no appraisalId, save as draft first
+    if (!appraisalId) {
+      const formData = form.getValues();
+      try {
+        const result = await saveAppraisalMutation.mutateAsync({ data: formData, status: 'draft' });
+        if (result && result.id) {
+          // ID is set via onSuccess callback, give it a moment
+          setTimeout(() => {
+            if (appraisalId) {
+              triggerStageMutation(stage, appraisalId);
+            }
+          }, 100);
+        }
+      } catch (error) {
+        toast({ title: 'Error', description: 'Failed to save draft. Please try again.', variant: 'destructive' });
+        return;
+      }
+    } else {
+      triggerStageMutation(stage, appraisalId);
+    }
+  };
+
+  const triggerStageMutation = (stage: 'stage1' | 'stage2' | 'stage3', id: number) => {
+    if (stage === 'stage1') {
+      stage1Mutation.mutate(id);
+    } else if (stage === 'stage2') {
+      stage2Mutation.mutate(id);
+    } else if (stage === 'stage3') {
+      stage3Mutation.mutate(id);
+    }
+  };
 
   const onSubmit = (data: AppraisalFormData) => {
     console.log('🔵 onSubmit called with data:', data);
