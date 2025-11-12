@@ -266,7 +266,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
   const toggleFieldVisibility = (fieldName: string) => {
     setFieldVisibility(prev => ({
       ...prev,
-      [fieldName]: !prev[fieldName]
+      [fieldName]: !prev[fieldName as keyof typeof prev]
     }));
   };
   
@@ -274,7 +274,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
   const toggleSectionVisibility = (sectionName: string) => {
     setSectionVisibility(prev => ({
       ...prev,
-      [sectionName]: !prev[sectionName]
+      [sectionName]: !prev[sectionName as keyof typeof prev]
     }));
   };
 
@@ -952,7 +952,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
     const newRecommendation = {
       id: newRecommendationId,
       question: "Add new recommendation",
-      answer: "Yes",
+      answer: "Yes" as const,
       comment: "",
       isCustom: true // Mark as custom/additional recommendation
     };
