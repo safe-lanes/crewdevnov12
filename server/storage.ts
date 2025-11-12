@@ -97,6 +97,8 @@ export interface IStorage {
   getCrewDashboardSummary(crewId: string): Promise<CrewDashboardSummary | undefined>;
   // ID Generation
   getNextCrewId(): Promise<string>;
+  // Recruitment to Crew Transfer
+  transferRecruitedCandidate(candidateId: string): Promise<{ crewMember: CrewMember; crewId: string }>;
   // Rotation Plans
   getRotationPlans(): Promise<RotationPlan[]>;
   getRotationPlan(id: number): Promise<RotationPlan | undefined>;
@@ -1685,6 +1687,56 @@ export class MemStorage implements IStorage {
 
   async deleteRecruitmentCandidate(id: string): Promise<boolean> {
     return this.recruitmentCandidates.delete(id);
+  }
+
+  async transferRecruitedCandidate(candidateId: string): Promise<{ crewMember: CrewMember; crewId: string }> {
+    const candidate = this.recruitmentCandidates.get(candidateId);
+    if (!candidate) {
+      throw new Error(`Recruitment candidate with ID ${candidateId} not found`);
+    }
+
+    if (candidate.status !== 'Recruited') {
+      throw new Error(`Candidate must have status 'Recruited' to be transferred. Current status: ${candidate.status}`);
+    }
+
+    const crewId = await this.getNextCrewId();
+
+    let applicationData: any = null;
+    if (candidate.applicationData) {
+      try {
+        applicationData = typeof candidate.applicationData === 'string' 
+          ? JSON.parse(candidate.applicationData) 
+          : candidate.applicationData;
+      } catch (e) {
+        console.warn('Failed to parse applicationData:', e);
+      }
+    }
+
+    const crewMemberData: InsertCrewMember = {
+      id: crewId,
+      firstName: candidate.firstName,
+      middleName: candidate.middleName || null,
+      familyName: candidate.familyName,
+      dateOfBirth: candidate.dob,
+      nationality: candidate.nationality,
+      presentRank: candidate.rankAppliedFor,
+      rankAppliedFor: candidate.rankAppliedFor,
+      presentVessel: applicationData?.presentVessel || 'Unassigned',
+      vesselType: candidate.vesselType,
+      status: 'Available',
+      age: applicationData?.ageInYears || null,
+      nativeLanguage: applicationData?.nativeLanguage || null,
+      foreignLanguages: applicationData?.foreignLanguages || null,
+      englishProficiency: applicationData?.englishProficiency || null,
+      manningAgent: applicationData?.manningAgent || null,
+      empNo: candidate.fileNo,
+    };
+
+    const crewMember = await this.createCrewMember(crewMemberData);
+    
+    console.log(`✅ Transferred recruited candidate ${candidate.fileNo} to crew database with ID ${crewId}`);
+    
+    return { crewMember, crewId };
   }
 
   // Data Masters Methods (stub implementations for MemStorage)
@@ -3833,6 +3885,56 @@ export class PersistentFileStorage implements IStorage {
     const result = this.recruitmentCandidates.delete(id);
     if (result) this.saveToFile(); // SAVE TO FILE AFTER EVERY DELETE!
     return result;
+  }
+
+  async transferRecruitedCandidate(candidateId: string): Promise<{ crewMember: CrewMember; crewId: string }> {
+    const candidate = this.recruitmentCandidates.get(candidateId);
+    if (!candidate) {
+      throw new Error(`Recruitment candidate with ID ${candidateId} not found`);
+    }
+
+    if (candidate.status !== 'Recruited') {
+      throw new Error(`Candidate must have status 'Recruited' to be transferred. Current status: ${candidate.status}`);
+    }
+
+    const crewId = await this.getNextCrewId();
+
+    let applicationData: any = null;
+    if (candidate.applicationData) {
+      try {
+        applicationData = typeof candidate.applicationData === 'string' 
+          ? JSON.parse(candidate.applicationData) 
+          : candidate.applicationData;
+      } catch (e) {
+        console.warn('Failed to parse applicationData:', e);
+      }
+    }
+
+    const crewMemberData: InsertCrewMember = {
+      id: crewId,
+      firstName: candidate.firstName,
+      middleName: candidate.middleName || null,
+      familyName: candidate.familyName,
+      dateOfBirth: candidate.dob,
+      nationality: candidate.nationality,
+      presentRank: candidate.rankAppliedFor,
+      rankAppliedFor: candidate.rankAppliedFor,
+      presentVessel: applicationData?.presentVessel || 'Unassigned',
+      vesselType: candidate.vesselType,
+      status: 'Available',
+      age: applicationData?.ageInYears || null,
+      nativeLanguage: applicationData?.nativeLanguage || null,
+      foreignLanguages: applicationData?.foreignLanguages || null,
+      englishProficiency: applicationData?.englishProficiency || null,
+      manningAgent: applicationData?.manningAgent || null,
+      empNo: candidate.fileNo,
+    };
+
+    const crewMember = await this.createCrewMember(crewMemberData);
+    
+    console.log(`✅ Transferred recruited candidate ${candidate.fileNo} to crew database with ID ${crewId}`);
+    
+    return { crewMember, crewId };
   }
 
   // Vessel Planning Methods
