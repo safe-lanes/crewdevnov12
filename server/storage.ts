@@ -1724,6 +1724,7 @@ export class MemStorage implements IStorage {
 
     const crewMemberData: InsertCrewMember = {
       id: crewId,
+      employeeId: crewId,
       firstName: candidate.firstName,
       middleName: candidate.middleName || null,
       familyName: candidate.familyName,
@@ -3932,6 +3933,7 @@ export class PersistentFileStorage implements IStorage {
 
     const crewMemberData: InsertCrewMember = {
       id: crewId,
+      employeeId: crewId,
       firstName: candidate.firstName,
       middleName: candidate.middleName || null,
       familyName: candidate.familyName,
