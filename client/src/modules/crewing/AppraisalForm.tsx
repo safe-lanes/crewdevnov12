@@ -2,8 +2,10 @@ import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { ArrowLeft, Save, Send, Plus, MessageSquare, Edit2, Trash2, Check, ChevronsUpDown } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -244,6 +246,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
     }
   }, [formConfig, crewMember?.rank]);
 
+  const { toast } = useToast();
+
   const form = useForm<AppraisalFormData>({
     resolver: zodResolver(appraisalSchema),
     defaultValues: {
@@ -316,10 +320,56 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
     },
   });
 
+  // Mutation for saving appraisal
+  const saveAppraisalMutation = useMutation({
+    mutationFn: async (payload: { data: AppraisalFormData; status: string }) => {
+      if (!crewMember?.id) {
+        throw new Error('Crew member ID is required to save appraisal');
+      }
+
+      // Transform form data to backend schema
+      const appraisalPayload = {
+        crewMemberId: crewMember.id,
+        formId: 1, // Default form ID
+        appraisalType: payload.data.appraisalType,
+        appraisalDate: new Date().toISOString().split('T')[0],
+        appraisalData: payload.data, // Send as object, backend will handle JSON serialization
+        competenceRating: null,
+        behavioralRating: null,
+        overallRating: null,
+        submittedBy: "Current User", // TODO: Replace with actual user
+        status: payload.status,
+      };
+
+      return await apiRequest('POST', '/api/appraisals', appraisalPayload);
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/appraisals'] });
+      toast({
+        title: variables.status === 'draft' ? 'Draft Saved' : 'Appraisal Submitted',
+        description: variables.status === 'draft' 
+          ? 'Your appraisal draft has been saved successfully.' 
+          : 'Your appraisal has been submitted successfully.',
+      });
+      onClose();
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to save appraisal. Please try again.',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const onSubmit = (data: AppraisalFormData) => {
-    console.log("Appraisal form submitted:", data);
-    // Handle form submission here
-    onClose();
+    saveAppraisalMutation.mutate({ data, status: 'draft' });
+  };
+
+  const onSubmitAppraisal = () => {
+    form.handleSubmit((data) => {
+      saveAppraisalMutation.mutate({ data, status: 'submitted' });
+    })();
   };
 
   // Helper function to show confirmation dialog
