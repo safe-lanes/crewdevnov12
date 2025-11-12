@@ -56,8 +56,8 @@ const YesNoRenderer = (params: ICellRendererParams) => {
 
   const isYes = value === true || value === 'Yes';
   return (
-    <div className="flex items-center justify-center h-full py-0.5">
-      <span className={`px-3 py-0.5 rounded font-medium ${
+    <div className="flex items-center justify-center h-full py-0">
+      <span className={`px-3 py-0 rounded font-medium ${
         isYes 
           ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' 
           : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
@@ -84,13 +84,13 @@ const BadgeRenderer = (params: ICellRendererParams) => {
 
   // Return empty div with preserved alignment for zero values
   if (isZero) {
-    return <div className="flex items-center justify-center h-full py-0.5"></div>;
+    return <div className="flex items-center justify-center h-full py-0"></div>;
   }
 
   return (
-    <div className="flex items-center justify-center h-full py-0.5">
+    <div className="flex items-center justify-center h-full py-0">
       <span 
-        className="px-3 py-0.5 rounded font-semibold min-w-[32px] text-center bg-pink-100 text-red-600 cursor-pointer hover:bg-pink-200 transition-colors" 
+        className="px-3 py-0 rounded font-semibold min-w-[32px] text-center bg-pink-100 text-red-600 cursor-pointer hover:bg-pink-200 transition-colors" 
         style={{ fontSize: '13px' }}
         onClick={handleClick}
         data-testid={`button-nc-${params.data?.crewMemberId}`}
@@ -111,13 +111,13 @@ const PredictedBadgeRenderer = (params: ICellRendererParams) => {
 
   // Return empty div with preserved alignment for zero values
   if (isZero) {
-    return <div className="flex items-center justify-center h-full py-0.5"></div>;
+    return <div className="flex items-center justify-center h-full py-0"></div>;
   }
 
   return (
-    <div className="flex items-center justify-center h-full py-0.5">
+    <div className="flex items-center justify-center h-full py-0">
       <span 
-        className="px-3 py-0.5 rounded font-semibold min-w-[32px] text-center bg-gray-200 text-gray-700" 
+        className="px-3 py-0 rounded font-semibold min-w-[32px] text-center bg-gray-200 text-gray-700" 
         style={{ fontSize: '13px' }}
       >
         {value}
@@ -160,18 +160,18 @@ const ViolationsWithDatesRenderer = (params: ICellRendererParams) => {
 
   // Return empty div with preserved alignment for zero values
   if (isZero) {
-    return <div className="flex items-center justify-center h-full py-0.5"></div>;
+    return <div className="flex items-center justify-center h-full py-0"></div>;
   }
 
   // Show tooltip if we have violation dates
   if (violationDates.length > 0) {
     return (
-      <div className="flex items-center justify-center h-full py-0.5">
+      <div className="flex items-center justify-center h-full py-0">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <span 
-                className="px-3 py-0.5 rounded font-semibold min-w-[32px] text-center bg-pink-100 text-red-600 cursor-pointer hover:bg-pink-200 transition-colors" 
+                className="px-3 py-0 rounded font-semibold min-w-[32px] text-center bg-pink-100 text-red-600 cursor-pointer hover:bg-pink-200 transition-colors" 
                 style={{ fontSize: '13px' }}
                 onClick={handleClick}
               >
@@ -193,9 +193,9 @@ const ViolationsWithDatesRenderer = (params: ICellRendererParams) => {
   }
 
   return (
-    <div className="flex items-center justify-center h-full py-0.5">
+    <div className="flex items-center justify-center h-full py-0">
       <span 
-        className="px-3 py-0.5 rounded font-semibold min-w-[32px] text-center bg-pink-100 text-red-600 cursor-pointer hover:bg-pink-200 transition-colors" 
+        className="px-3 py-0 rounded font-semibold min-w-[32px] text-center bg-pink-100 text-red-600 cursor-pointer hover:bg-pink-200 transition-colors" 
         style={{ fontSize: '13px' }}
         onClick={handleClick}
       >
@@ -240,18 +240,18 @@ const PredictedViolationsWithDatesRenderer = (params: ICellRendererParams) => {
 
   // Return empty div with preserved alignment for zero values
   if (isZero) {
-    return <div className="flex items-center justify-center h-full py-0.5"></div>;
+    return <div className="flex items-center justify-center h-full py-0"></div>;
   }
 
   // Show tooltip if we have predicted violation dates
   if (predictedDates.length > 0) {
     return (
-      <div className="flex items-center justify-center h-full py-0.5">
+      <div className="flex items-center justify-center h-full py-0">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <span 
-                className="px-3 py-0.5 rounded font-semibold min-w-[32px] text-center bg-gray-200 text-gray-700 cursor-pointer hover:bg-gray-300 transition-colors" 
+                className="px-3 py-0 rounded font-semibold min-w-[32px] text-center bg-gray-200 text-gray-700 cursor-pointer hover:bg-gray-300 transition-colors" 
                 style={{ fontSize: '13px' }}
                 onClick={handleClick}
               >
@@ -273,9 +273,9 @@ const PredictedViolationsWithDatesRenderer = (params: ICellRendererParams) => {
   }
 
   return (
-    <div className="flex items-center justify-center h-full py-0.5">
+    <div className="flex items-center justify-center h-full py-0">
       <span 
-        className="px-3 py-0.5 rounded font-semibold min-w-[32px] text-center bg-gray-200 text-gray-700 cursor-pointer hover:bg-gray-300 transition-colors" 
+        className="px-3 py-0 rounded font-semibold min-w-[32px] text-center bg-gray-200 text-gray-700 cursor-pointer hover:bg-gray-300 transition-colors" 
         style={{ fontSize: '13px' }}
         onClick={handleClick}
       >
