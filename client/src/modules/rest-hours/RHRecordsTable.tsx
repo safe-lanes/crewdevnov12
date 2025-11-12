@@ -77,7 +77,7 @@ const YesNoRenderer = (params: ICellRendererParams) => {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="px-3 py-1 rounded font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 cursor-help" style={{ fontSize: '13px' }}>
+              <span className="px-3 py-0.5 rounded font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 cursor-help" style={{ fontSize: '13px' }}>
                 Yes
               </span>
             </TooltipTrigger>
@@ -100,7 +100,7 @@ const YesNoRenderer = (params: ICellRendererParams) => {
   // Default Yes/No badge without tooltip
   return (
     <div className="flex items-center justify-center h-full py-2">
-      <span className={`px-3 py-1 rounded font-medium ${
+      <span className={`px-3 py-0.5 rounded font-medium ${
         isYes 
           ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' 
           : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
@@ -162,7 +162,7 @@ const ViolationsRenderer = (params: ICellRendererParams) => {
           <Tooltip>
             <TooltipTrigger asChild>
               <span 
-                className="px-3 py-1 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center cursor-pointer hover:bg-pink-200 transition-colors" 
+                className="px-3 py-0.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center cursor-pointer hover:bg-pink-200 transition-colors" 
                 style={{ fontSize: '13px' }}
                 onClick={handleClick}
               >
@@ -184,7 +184,7 @@ const ViolationsRenderer = (params: ICellRendererParams) => {
         </TooltipProvider>
       ) : (
         <span 
-          className="px-3 py-1 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center cursor-pointer hover:bg-pink-200 transition-colors" 
+          className="px-3 py-0.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center cursor-pointer hover:bg-pink-200 transition-colors" 
           style={{ fontSize: '13px' }}
           onClick={handleClick}
         >
@@ -256,7 +256,7 @@ const NCsRenderer = (params: ICellRendererParams) => {
   return (
     <div className="flex items-center justify-center gap-3 h-full py-2">
       <span 
-        className="px-3 py-1 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center cursor-pointer hover:bg-pink-200 transition-colors" 
+        className="px-3 py-0.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center cursor-pointer hover:bg-pink-200 transition-colors" 
         style={{ fontSize: '13px' }}
         onClick={handleClick}
       >
@@ -327,7 +327,7 @@ const PredictedNCsRenderer = (params: ICellRendererParams) => {
   return (
     <div className="flex items-center justify-center gap-3 h-full py-2">
       <span 
-        className="px-3 py-1 rounded font-semibold bg-gray-200 text-gray-700 min-w-[32px] text-center cursor-pointer hover:bg-gray-300 transition-colors" 
+        className="px-3 py-0.5 rounded font-semibold bg-gray-200 text-gray-700 min-w-[32px] text-center cursor-pointer hover:bg-gray-300 transition-colors" 
         style={{ fontSize: '13px' }}
         onClick={handleClick}
       >
@@ -377,7 +377,7 @@ const BadgeRenderer = (params: ICellRendererParams) => {
 
   return (
     <div className="flex items-center justify-center h-full py-2">
-      <span className="px-3 py-1 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
+      <span className="px-3 py-0.5 rounded font-semibold bg-pink-100 text-red-600 min-w-[32px] text-center" style={{ fontSize: '13px' }}>
         {value}
       </span>
     </div>
@@ -435,7 +435,7 @@ const PredictedViolationsRenderer = (params: ICellRendererParams) => {
           <Tooltip>
             <TooltipTrigger asChild>
               <span 
-                className="px-3 py-1 rounded font-semibold bg-gray-200 text-gray-700 min-w-[32px] text-center cursor-pointer hover:bg-gray-300 transition-colors" 
+                className="px-3 py-0.5 rounded font-semibold bg-gray-200 text-gray-700 min-w-[32px] text-center cursor-pointer hover:bg-gray-300 transition-colors" 
                 style={{ fontSize: '13px' }}
                 onClick={handleClick}
               >
@@ -454,7 +454,7 @@ const PredictedViolationsRenderer = (params: ICellRendererParams) => {
         </TooltipProvider>
       ) : (
         <span 
-          className="px-3 py-1 rounded font-semibold bg-gray-200 text-gray-700 min-w-[32px] text-center cursor-pointer hover:bg-gray-300 transition-colors" 
+          className="px-3 py-0.5 rounded font-semibold bg-gray-200 text-gray-700 min-w-[32px] text-center cursor-pointer hover:bg-gray-300 transition-colors" 
           style={{ fontSize: '13px' }}
           onClick={handleClick}
         >
@@ -542,7 +542,7 @@ const VesselReviewRenderer = (params: ICellRendererParams) => {
   return (
     <div className="flex items-center justify-center h-full py-2">
       <span 
-        className={`px-4 py-1 rounded font-medium min-w-[70px] text-center ${getStatusStyles()} ${isClickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`} 
+        className={`px-4 py-0.5 rounded font-medium min-w-[70px] text-center ${getStatusStyles()} ${isClickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`} 
         style={{ fontSize: '13px' }}
         onClick={handleClick}
         title={status}
@@ -599,7 +599,7 @@ const OfficeReviewRenderer = (params: ICellRendererParams) => {
   return (
     <div className="flex items-center justify-center h-full py-2">
       <span 
-        className={`px-4 py-1 rounded font-medium min-w-[70px] text-center ${getStatusStyles()} ${isClickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`} 
+        className={`px-4 py-0.5 rounded font-medium min-w-[70px] text-center ${getStatusStyles()} ${isClickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`} 
         style={{ fontSize: '13px' }}
         onClick={handleClick}
         title={status}
