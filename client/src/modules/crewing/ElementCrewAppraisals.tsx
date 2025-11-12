@@ -41,11 +41,43 @@ interface CrewAppraisalData {
   signOn: string;
   appraisalType: string;
   appraisalDate: string;
+  status: string;
   competenceRating: { value: string; color: string };
   behavioralRating: { value: string; color: string };
   overallRating: { value: string; color: string };
   appraisalId?: number;
 }
+
+// Status badge component - moved outside component to avoid hooks issues
+const StatusBadge = ({ status }: { status: string }) => {
+  let bgColor = '';
+  let textColor = '';
+  let displayText = '';
+
+  if (status === 'preliminary') {
+    bgColor = 'bg-blue-100';
+    textColor = 'text-blue-700';
+    displayText = 'Preliminary';
+  } else if (status === 'submitted') {
+    bgColor = 'bg-amber-100';
+    textColor = 'text-amber-700';
+    displayText = 'Submitted';
+  } else if (status === 'reviewed') {
+    bgColor = 'bg-green-100';
+    textColor = 'text-green-700';
+    displayText = 'Reviewed';
+  } else {
+    bgColor = 'bg-gray-100';
+    textColor = 'text-gray-700';
+    displayText = status || 'N/A';
+  }
+
+  return (
+    <Badge className={`rounded-md px-2.5 py-1 font-semibold ${bgColor} ${textColor} min-w-[90px] text-center`}>
+      {displayText}
+    </Badge>
+  );
+};
 
 // Rating badge component - moved outside component to avoid hooks issues
 const RatingBadge = ({ value, color }: { value: string; color: string }) => {
@@ -76,6 +108,12 @@ const RatingBadge = ({ value, color }: { value: string; color: string }) => {
 };
 
 // Cell renderers moved outside component to avoid hooks issues
+const StatusCellRenderer = (params: ICellRendererParams) => {
+  // Defensive guard for AG Grid initialization
+  if (!params.colDef || !params.data) return null;
+  return <StatusBadge status={params.value || 'N/A'} />;
+};
+
 const RatingCellRenderer = (params: ICellRendererParams) => {
   // Defensive guard for AG Grid initialization
   if (!params.colDef || !params.data) return null;
@@ -253,6 +291,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
         signOn: crewDTO.signOnDate || crewDTO.joiningDate || "",
         appraisalType: appraisal?.appraisalType || "Not Started",
         appraisalDate: appraisal?.appraisalDate || "N/A",
+        status: appraisal?.status || "N/A",
         competenceRating: {
           value: appraisal?.competenceRating || "N/A",
           color: appraisal?.competenceRating ? getRatingColor(appraisal.competenceRating) : "bg-gray-400 text-white",
@@ -423,6 +462,16 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       resizable: true
     },
     {
+      headerName: 'Status',
+      field: 'status',
+      flex: 0.9,
+      cellRenderer: StatusCellRenderer,
+      cellClass: 'flex items-center justify-center',
+      filter: 'agSetColumnFilter',
+      sortable: true,
+      resizable: true
+    },
+    {
       headerName: 'Comp. Rating',
       field: 'competenceRating.value',
       flex: 0.9,
@@ -432,7 +481,8 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       sortable: true,
       resizable: true,
       enableValue: true,
-      aggFunc: 'avg'
+      aggFunc: 'avg',
+      hide: true
     },
     {
       headerName: 'Behav. Rating',
@@ -444,7 +494,8 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       sortable: true,
       resizable: true,
       enableValue: true,
-      aggFunc: 'avg'
+      aggFunc: 'avg',
+      hide: true
     },
     {
       headerName: 'Overall',
