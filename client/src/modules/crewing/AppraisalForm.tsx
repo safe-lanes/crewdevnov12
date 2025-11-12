@@ -368,11 +368,16 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
   });
 
   const onSubmit = (data: AppraisalFormData) => {
+    console.log('🔵 onSubmit called with data:', data);
+    console.log('🔵 Mutation isPending:', saveAppraisalMutation.isPending);
     saveAppraisalMutation.mutate({ data, status: 'draft' });
   };
 
   const onSubmitAppraisal = () => {
+    console.log('🟢 onSubmitAppraisal called');
+    console.log('🟢 Form errors:', form.formState.errors);
     form.handleSubmit((data) => {
+      console.log('🟢 Submit handler called with data:', data);
       saveAppraisalMutation.mutate({ data, status: 'submitted' });
     })();
   };
