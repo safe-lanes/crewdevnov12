@@ -1203,60 +1203,11 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
               </div>
             </div>
 
-            {/* Rank Experience */}
+            {/* Rank Experience - Placeholder */}
             <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-rank">
               <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Rank</h3>
-              <div className="space-y-3">
-                <div className="space-y-1" data-testid="rank-c-e">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">C/E</span>
-                    <span className="font-medium">{careerProgressionData?.chiefEngineer !== undefined ? careerProgressionData.chiefEngineer.toFixed(1) : '—'}</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-blue-500 h-2 rounded-full" style={{ 
-                      width: `${careerProgressionData?.chiefEngineer ? Math.min(careerProgressionData.chiefEngineer * 16.67, 100) : 0}%` 
-                    }}></div>
-                  </div>
-                </div>
-                <div className="space-y-1" data-testid="rank-2-e">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">2/E</span>
-                    <span className="font-medium">{careerProgressionData?.secondEngineer !== undefined ? careerProgressionData.secondEngineer.toFixed(1) : '—'}</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-blue-500 h-2 rounded-full" style={{ 
-                      width: `${careerProgressionData?.secondEngineer ? Math.min(careerProgressionData.secondEngineer * 16.67, 100) : 0}%` 
-                    }}></div>
-                  </div>
-                </div>
-                <div className="space-y-1" data-testid="rank-3-e">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">3/E</span>
-                    <span className="font-medium">{careerProgressionData?.thirdEngineer !== undefined ? careerProgressionData.thirdEngineer.toFixed(1) : '—'}</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-blue-500 h-2 rounded-full" style={{ 
-                      width: `${careerProgressionData?.thirdEngineer ? Math.min(careerProgressionData.thirdEngineer * 16.67, 100) : 0}%` 
-                    }}></div>
-                  </div>
-                </div>
-                <div className="space-y-1" data-testid="rank-4-e">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">4/E</span>
-                    <span className="font-medium">{careerProgressionData?.fourthEngineer !== undefined ? careerProgressionData.fourthEngineer.toFixed(1) : '—'}</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-blue-500 h-2 rounded-full" style={{ 
-                      width: `${careerProgressionData?.fourthEngineer ? Math.min(careerProgressionData.fourthEngineer * 16.67, 100) : 0}%` 
-                    }}></div>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-3 flex justify-between text-xs text-gray-500">
-                <span>0</span>
-                <span>2</span>
-                <span>4</span>
-                <span>6</span>
+              <div className="text-center text-gray-500 py-8">
+                Rank experience data not available
               </div>
             </div>
 
@@ -1343,35 +1294,39 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                 
                 {serviceTimelineData && serviceTimelineData.length > 0 ? (
                   <div className="space-y-2">
-                    {serviceTimelineData.map((assignment, index) => (
-                      <div key={index} className="relative h-8">
-                        <div 
-                          className={`h-4 rounded relative ${assignment.status === 'active' ? 'bg-red-500' : 'bg-white border-2 border-gray-400'}`}
-                          style={{ 
-                            width: `${assignment.duration}%`, 
-                            marginLeft: `${assignment.startPosition}%`, 
-                            marginBottom: '4px' 
-                          }}
-                          data-testid={`timeline-bar-${assignment.vessel.toLowerCase().replace(/\s+/g, '-')}`}>
-                          <div className={`absolute left-2 top-0 text-xs font-medium ${assignment.status === 'active' ? 'text-white' : 'text-gray-600'}`}
-                               data-testid={`vessel-label-${assignment.vessel.toLowerCase().replace(/\s+/g, '-')}`}>
-                            {assignment.vessel}
+                    {serviceTimelineData.map((assignment, index) => {
+                      const duration = ((assignment.endMonth - assignment.startMonth + 1) / 12) * 100;
+                      const startPosition = (assignment.startMonth / 12) * 100;
+                      return (
+                        <div key={index} className="relative h-8">
+                          <div 
+                            className={`h-4 rounded relative ${assignment.type === 'active' ? 'bg-red-500' : 'bg-white border-2 border-gray-400'}`}
+                            style={{ 
+                              width: `${duration}%`, 
+                              marginLeft: `${startPosition}%`, 
+                              marginBottom: '4px' 
+                            }}
+                            data-testid={`timeline-bar-${assignment.vessel.toLowerCase().replace(/\s+/g, '-')}`}>
+                            <div className={`absolute left-2 top-0 text-xs font-medium ${assignment.type === 'active' ? 'text-white' : 'text-gray-600'}`}
+                                 data-testid={`vessel-label-${assignment.vessel.toLowerCase().replace(/\s+/g, '-')}`}>
+                              {assignment.vessel}
+                            </div>
                           </div>
+                          
+                          {assignment.type === 'active' && (
+                            <div className="absolute right-0 top-0 flex flex-col space-y-1">
+                              <div className="bg-green-500 text-white px-2 py-1 rounded text-xs font-medium">App'd</div>
+                              <div className="bg-yellow-500 text-white px-2 py-1 rounded text-xs font-medium">Req'd</div>
+                            </div>
+                          )}
                         </div>
-                        
-                        {assignment.status === 'active' && (
-                          <div className="absolute right-0 top-0 flex flex-col space-y-1">
-                            <div className="bg-green-500 text-white px-2 py-1 rounded text-xs font-medium">App'd</div>
-                            <div className="bg-yellow-500 text-white px-2 py-1 rounded text-xs font-medium">Req'd</div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                     
                     <div className="flex items-center gap-4 text-xs mt-4">
                       {serviceTimelineData.map((assignment, index) => (
                         <div key={index} className="flex items-center gap-1">
-                          <div className={`w-3 h-3 rounded ${assignment.status === 'active' ? 'bg-red-500' : 'border-2 border-gray-400 bg-white'}`}></div>
+                          <div className={`w-3 h-3 rounded ${assignment.type === 'active' ? 'bg-red-500' : 'border-2 border-gray-400 bg-white'}`}></div>
                           <span className="text-gray-600">{assignment.vessel}</span>
                         </div>
                       ))}
