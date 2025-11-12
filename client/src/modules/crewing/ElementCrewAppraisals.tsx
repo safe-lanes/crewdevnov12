@@ -154,6 +154,23 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     },
   });
 
+  // Fetch master data for filters
+  const { data: availableRanks = [] } = useQuery<Array<{ id: number; name: string; category: string }>>({
+    queryKey: ["/api/available-ranks"],
+  });
+
+  const { data: vesselMasterData = [] } = useQuery<Array<{ entryId: string; name: string }>>({
+    queryKey: ["/api/masters/014/data"],
+  });
+
+  const { data: vesselTypeMasterData = [] } = useQuery<Array<{ entryId: string; name: string; vesselType?: string }>>({
+    queryKey: ["/api/masters/015/data"],
+  });
+
+  const { data: nationalityMasterData = [] } = useQuery<Array<{ entryId: string; name: string; countryName?: string }>>({
+    queryKey: ["/api/masters/001/data"],
+  });
+
   const handleEditClick = useCallback((crewMember: CrewAppraisalData) => {
     setSelectedCrewMember(crewMember);
     setShowAppraisalForm(true);
@@ -480,16 +497,11 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                   <SelectValue placeholder="Rank" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Captain">Captain</SelectItem>
-                  <SelectItem value="Chief Officer">Chief Officer</SelectItem>
-                  <SelectItem value="Second Officer">Second Officer</SelectItem>
-                  <SelectItem value="Chief Engineer">Chief Engineer</SelectItem>
-                  <SelectItem value="Second Engineer">Second Engineer</SelectItem>
-                  <SelectItem value="Third Engineer">Third Engineer</SelectItem>
-                  <SelectItem value="Bosun">Bosun</SelectItem>
-                  <SelectItem value="AB">AB</SelectItem>
-                  <SelectItem value="OS">OS</SelectItem>
-                  <SelectItem value="Cook">Cook</SelectItem>
+                  {availableRanks.map((rank) => (
+                    <SelectItem key={rank.id} value={rank.name}>
+                      {rank.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 
@@ -498,9 +510,11 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                   <SelectValue placeholder="Vessel" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="MV Ocean Star">MV Ocean Star</SelectItem>
-                  <SelectItem value="MV Sea Explorer">MV Sea Explorer</SelectItem>
-                  <SelectItem value="MV Atlantic Queen">MV Atlantic Queen</SelectItem>
+                  {vesselMasterData.map((vessel) => (
+                    <SelectItem key={vessel.entryId} value={vessel.name}>
+                      {vessel.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 
@@ -509,10 +523,11 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                   <SelectValue placeholder="Vessel Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Container">Container</SelectItem>
-                  <SelectItem value="Bulk Carrier">Bulk Carrier</SelectItem>
-                  <SelectItem value="Tanker">Tanker</SelectItem>
-                  <SelectItem value="General Cargo">General Cargo</SelectItem>
+                  {vesselTypeMasterData.map((vesselType) => (
+                    <SelectItem key={vesselType.entryId} value={vesselType.vesselType || vesselType.name}>
+                      {vesselType.vesselType || vesselType.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 
@@ -521,11 +536,11 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                   <SelectValue placeholder="Nationality" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Philippines">Philippines</SelectItem>
-                  <SelectItem value="India">India</SelectItem>
-                  <SelectItem value="Ukraine">Ukraine</SelectItem>
-                  <SelectItem value="Romania">Romania</SelectItem>
-                  <SelectItem value="Poland">Poland</SelectItem>
+                  {nationalityMasterData.map((nationality) => (
+                    <SelectItem key={nationality.entryId} value={nationality.countryName || nationality.name}>
+                      {nationality.countryName || nationality.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 
