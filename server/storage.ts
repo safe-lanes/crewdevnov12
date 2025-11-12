@@ -16,7 +16,7 @@ export interface IStorage {
   createRankGroup(rankGroup: InsertRankGroup): Promise<RankGroup>;
   updateRankGroup(id: number, rankGroup: Partial<InsertRankGroup>): Promise<RankGroup | undefined>;
   deleteRankGroup(id: number): Promise<boolean>;
-  getFormForRank(rankLabel: string, category?: string): Promise<Form | undefined>;
+  getFormForRank(rankLabel: string, category: string): Promise<Form | undefined>;
   getAvailableRanks(): Promise<AvailableRank[]>;
   createAvailableRank(rank: InsertAvailableRank): Promise<AvailableRank>;
   updateAvailableRank(id: number, rank: Partial<InsertAvailableRank>): Promise<AvailableRank | undefined>;
@@ -377,61 +377,7 @@ export class MemStorage implements IStorage {
       updatedAt: new Date("2025-02-01")
     });
 
-    this.crewMembers.set("2025-03-12", {
-      id: "2025-03-12",
-      firstName: "Anna",
-      middleName: "Marie",
-      familyName: "Johnson",
-      presentRank: "Chief Engineer",
-      nationality: "British",
-      presentVessel: "MT Sail Ten",
-      vesselType: "LPG Tanker",
-      signOnDate: "01-Jan-2025",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-
-    this.crewMembers.set("2025-02-12", {
-      id: "2025-02-12",
-      firstName: "David",
-      middleName: "Lee",
-      familyName: "Brown",
-      presentRank: "Able Seaman",
-      nationality: "Indian",
-      presentVessel: "MT Sail Two",
-      vesselType: "Container",
-      signOnDate: "01-Feb-2025",
-      createdAt: new Date("2025-02-01"),
-      updatedAt: new Date("2025-02-01")
-    });
-
-    this.crewMembers.set("2025-05-14-2", {
-      id: "2025-05-14-2",
-      firstName: "Emily",
-      middleName: "Grace",
-      familyName: "Davis",
-      presentRank: "Chief Mate",
-      nationality: "Indian",
-      presentVessel: "MT Sail Five",
-      vesselType: "Bulk",
-      signOnDate: "01-Jan-2025",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
-    });
-
-    this.crewMembers.set("2025-03-12-2", {
-      id: "2025-03-12-2",
-      firstName: "John",
-      middleName: "Paul",
-      familyName: "Williams",
-      presentRank: "Electrician",
-      nationality: "Indian",
-      vessel: "MT Sail Eight",
-      vesselType: "Bulk",
-      signOnDate: "01-Feb-2025",
-      createdAt: new Date("2025-02-01"),
-      updatedAt: new Date("2025-02-01")
-    });
+    // REMOVED: Duplicate incomplete crew member seed data (380-433) - complete versions exist elsewhere
 
     // Initialize with sample recruitment candidates
     this.recruitmentCandidates.set("2025-09-23-1758595508955", {
@@ -532,7 +478,9 @@ export class MemStorage implements IStorage {
       overallRating: "4.7",
       submittedBy: "admin",
       status: "submitted",
-      submittedAt: new Date("2025-06-06")
+      submittedAt: new Date("2025-06-06"),
+      stageStatuses: null,
+      stagePayloads: null
     });
 
     this.appraisalResults.set(2, {
@@ -547,7 +495,9 @@ export class MemStorage implements IStorage {
       overallRating: "4.0",
       submittedBy: "admin",
       status: "submitted",
-      submittedAt: new Date("2025-05-07")
+      submittedAt: new Date("2025-05-07"),
+      stageStatuses: null,
+      stagePayloads: null
     });
 
     this.appraisalResults.set(3, {
@@ -562,7 +512,9 @@ export class MemStorage implements IStorage {
       overallRating: "3.0",
       submittedBy: "admin",
       status: "submitted",
-      submittedAt: new Date("2025-06-06")
+      submittedAt: new Date("2025-06-06"),
+      stageStatuses: null,
+      stagePayloads: null
     });
 
     this.appraisalResults.set(4, {
@@ -577,7 +529,9 @@ export class MemStorage implements IStorage {
       overallRating: "4.0",
       submittedBy: "admin",
       status: "submitted",
-      submittedAt: new Date("2025-05-07")
+      submittedAt: new Date("2025-05-07"),
+      stageStatuses: null,
+      stagePayloads: null
     });
 
     this.appraisalResults.set(5, {
@@ -592,7 +546,9 @@ export class MemStorage implements IStorage {
       overallRating: "3.5",
       submittedBy: "admin",
       status: "submitted",
-      submittedAt: new Date("2025-06-06")
+      submittedAt: new Date("2025-06-06"),
+      stageStatuses: null,
+      stagePayloads: null
     });
 
     this.currentAppraisalResultId = 6;
@@ -794,8 +750,8 @@ export class MemStorage implements IStorage {
     return result;
   }
 
-  async getFormForRank(rankLabel: string, category?: string): Promise<Form | undefined> {
-    for (const rankGroup of this.rankGroups.values()) {
+  async getFormForRank(rankLabel: string, category: string): Promise<Form | undefined> {
+    for (const rankGroup of Array.from(this.rankGroups.values())) {
       try {
         const ranks = JSON.parse(rankGroup.ranks);
         if (Array.isArray(ranks) && ranks.includes(rankLabel)) {
@@ -3375,8 +3331,8 @@ export class PersistentFileStorage implements IStorage {
     return result;
   }
 
-  async getFormForRank(rankLabel: string, category?: string): Promise<Form | undefined> {
-    for (const rankGroup of this.rankGroups.values()) {
+  async getFormForRank(rankLabel: string, category: string): Promise<Form | undefined> {
+    for (const rankGroup of Array.from(this.rankGroups.values())) {
       try {
         const ranks = JSON.parse(rankGroup.ranks);
         if (Array.isArray(ranks) && ranks.includes(rankLabel)) {
