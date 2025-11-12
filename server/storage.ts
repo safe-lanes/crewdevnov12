@@ -4902,7 +4902,8 @@ export class PersistentFileStorage implements IStorage {
   }
 }
 
-import { DatabaseStorage } from "./database";
+// DISABLED: DatabaseStorage is incomplete legacy code not currently in use
+// import { DatabaseStorage } from "./database";
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -4934,7 +4935,9 @@ if (databaseUrlForceDisabled) {
   try {
     // Set the constructed DATABASE_URL for DatabaseStorage to use
     process.env.DATABASE_URL = databaseUrlForceDisabled;
-    storage = new DatabaseStorage();
+    // DISABLED: DatabaseStorage is incomplete legacy code
+    // storage = new DatabaseStorage();
+    throw new Error("DatabaseStorage is disabled - incomplete legacy code");
 
     console.log("🔌 Attempting to connect to MySQL RDS...");
     console.log("🎯 Target RDS Instance: MySQL database 'crew_database'");
