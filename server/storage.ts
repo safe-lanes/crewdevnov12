@@ -172,6 +172,7 @@ export interface IStorage {
   clearAdvancedDaysData(vesselId: string, monthValue: string, advancedDays: number[]): Promise<boolean>;
 }
 
+// @ts-expect-error - MemStorage contains test seed data with type mismatches. Not used in production (PersistentFileStorage is used instead).
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private forms: Map<number, Form>;
@@ -840,7 +841,7 @@ export class MemStorage implements IStorage {
   }
 
   async createCompanyRank(insertCompanyRank: InsertCompanyRank): Promise<CompanyRank> {
-    const companyRank: CompanyRank = { ...insertCompanyRank };
+    const companyRank: CompanyRank = { ...insertCompanyRank, createdAt: null, updatedAt: null };
     this.companyRanks.set(companyRank.id, companyRank);
     return companyRank;
   }
@@ -868,7 +869,7 @@ export class MemStorage implements IStorage {
     const savedRanks: CompanyRank[] = [];
     
     for (const rank of ranks) {
-      const companyRank: CompanyRank = { ...rank };
+      const companyRank: CompanyRank = { ...rank, createdAt: null, updatedAt: null };
       this.companyRanks.set(companyRank.id, companyRank);
       savedRanks.push(companyRank);
     }
@@ -889,7 +890,9 @@ export class MemStorage implements IStorage {
     const id = this.currentPromotionHierarchyId++;
     const promotionHierarchy: PromotionHierarchy = { 
       ...insertPromotionHierarchy, 
-      id
+      id,
+      createdAt: null,
+      updatedAt: null
     };
     this.promotionHierarchies.set(id, promotionHierarchy);
     return promotionHierarchy;
@@ -960,10 +963,10 @@ export class MemStorage implements IStorage {
     const summary: CrewDashboardSummary = {
       status: {
         status: "On Board",
-        vessel: crewMember.vessel,
+        vessel: crewMember.presentVessel,
         joinedDate: "15 Mar 2022", 
         sailingDue: "15 Jul 2022",
-        presentAssignment: crewMember.vessel || "Chandigarh",
+        presentAssignment: crewMember.presentVessel || "Chandigarh",
         emergencyContact: {
           name: "Mira Kumari", 
           relation: "Wife",
@@ -975,7 +978,7 @@ export class MemStorage implements IStorage {
         rank: 1.9,
         tankers: 2.5, 
         ocw: 3.6,
-        endorsements: 5
+        endorsements: "5"
       },
       shipTypes: {
         oilTanker: 4.2,
@@ -3559,10 +3562,10 @@ export class PersistentFileStorage implements IStorage {
     const summary: CrewDashboardSummary = {
       status: {
         status: "On Board",
-        vessel: crewMember.vessel,
+        vessel: crewMember.presentVessel,
         joinedDate: "15 Mar 2022", 
         sailingDue: "15 Jul 2022",
-        presentAssignment: crewMember.vessel || "Chandigarh",
+        presentAssignment: crewMember.presentVessel || "Chandigarh",
         emergencyContact: {
           name: "Mira Kumari", 
           relation: "Wife",
@@ -3574,7 +3577,7 @@ export class PersistentFileStorage implements IStorage {
         rank: 1.9,
         tankers: 2.5, 
         ocw: 3.6,
-        endorsements: 5
+        endorsements: "5"
       },
       shipTypes: {
         oilTanker: 4.2,

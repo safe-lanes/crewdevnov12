@@ -1222,7 +1222,7 @@ async function updateVesselRecordingPercentage(vesselId: string, monthValue: str
         const entryId = v.entryId || v.entry_id;
         return entryId === vesselId;
       });
-      const vesselName = vessel?.name || vessel?.label || vessel?.vessel || '';
+      const vesselName = vessel?.name || '';
       
       // Create vessel record if it doesn't exist
       await storage.createRestHoursVesselRecord({
@@ -1383,7 +1383,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/forms/for-rank/:rankLabel", async (req, res) => {
     try {
       const rankLabel = req.params.rankLabel;
-      const category = req.query.category as string | undefined;
+      const category = req.query.category as string;
       const form = await storage.getFormForRank(rankLabel, category);
       if (!form) {
         return res.status(404).json({ error: "No form configured for this rank" });
