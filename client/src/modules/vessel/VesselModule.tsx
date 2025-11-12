@@ -28,6 +28,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { ComplianceMatrixDialog } from './ComplianceMatrixDialog';
+import { AppraisalForm } from '@/modules/crewing/AppraisalForm';
 
 // Hook to fetch vessels from Master Data (ID 014)
 const useVessels = () => {
@@ -810,6 +811,10 @@ export const VesselModule = (): JSX.Element => {
     // Compliance Matrix dialog state
     const [complianceDialogOpen, setComplianceDialogOpen] = useState(false);
 
+    // Appraisal Form dialog state
+    const [showAppraisalForm, setShowAppraisalForm] = useState(false);
+    const [selectedCrewForAppraisal, setSelectedCrewForAppraisal] = useState<any>(null);
+
     const gridApiRef = useRef<GridApi | null>(null);
 
     // Fetch vessels and crew members
@@ -861,6 +866,31 @@ export const VesselModule = (): JSX.Element => {
         if (vessel) {
             setSelectedVessel(vessel);
         }
+    };
+
+    const handleAppraisalEditClick = (crew: any) => {
+        // Transform crew data to match AppraisalForm expected structure
+        const crewForAppraisal = {
+            id: crew.id,
+            employeeId: crew.employeeId,
+            name: {
+                first: crew.firstName || '',
+                middle: crew.middleName || '',
+                last: crew.familyName || crew.lastName || ''
+            },
+            rank: crew.presentRank || crew.rank || '',
+            nationality: crew.nationality || '',
+            vessel: selectedVessel?.name || crew.presentVessel || '',
+            vesselType: selectedVessel?.vesselType || '',
+            signOn: crew.joiningDate || '',
+        };
+        setSelectedCrewForAppraisal(crewForAppraisal);
+        setShowAppraisalForm(true);
+    };
+
+    const handleCloseAppraisalForm = () => {
+        setShowAppraisalForm(false);
+        setSelectedCrewForAppraisal(null);
     };
 
     // Calculate crew on board for each vessel
@@ -1137,7 +1167,15 @@ export const VesselModule = (): JSX.Element => {
                                                                 
                                                             </TableCell>
                                                             <TableCell className="text-xs text-gray-700" data-testid={`cell-appraisal-${index + 1}`}>
-                                                                
+                                                                <Button 
+                                                                    variant="ghost" 
+                                                                    size="sm" 
+                                                                    className="h-7 text-xs px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                                                    onClick={() => handleAppraisalEditClick(crew)}
+                                                                    data-testid={`button-appraisal-edit-${index + 1}`}
+                                                                >
+                                                                    Edit
+                                                                </Button>
                                                             </TableCell>
                                                             <TableCell className="text-xs text-gray-700" data-testid={`cell-handover-${index + 1}`}>
                                                                 
@@ -1852,6 +1890,13 @@ export const VesselModule = (): JSX.Element => {
                 open={complianceDialogOpen}
                 onOpenChange={setComplianceDialogOpen}
             />
+
+            {showAppraisalForm && selectedCrewForAppraisal && (
+                <AppraisalForm
+                    crewMember={selectedCrewForAppraisal}
+                    onClose={handleCloseAppraisalForm}
+                />
+            )}
         </>
     );
 };
