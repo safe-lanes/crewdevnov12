@@ -1,0 +1,183 @@
+~/workspace$ npx tsc --noEmit
+server/db.ts:1:34 - error TS2307: Cannot find module '@neondatabase/serverless' or its corresponding type declarations.
+
+1 import { Pool, neonConfig } from '@neondatabase/serverless';
+                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+server/storage.ts:3464:53 - error TS2345: Argument of type '{ id: number; vesselId: string; vesselName: string; month: string; monthValue: string; totalCrew: number; recordingStatusPercent: number; activityConflicting: boolean; totalViolations: number; ... 8 more ...; updatedAt: any; }' is not assignable to parameter of type '{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; vesselName: string; month: string; monthValue: string; totalCrew: number; recordingStatusPercent: number; ... 18 more ...; officeReviewSubmittedDate: Date | null; }'.
+  Type '{ id: number; vesselId: string; vesselName: string; month: string; monthValue: string; totalCrew: number; recordingStatusPercent: number; activityConflicting: boolean; totalViolations: number; ... 8 more ...; updatedAt: any; }' is missing the following properties from type '{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; vesselName: string; month: string; monthValue: string; totalCrew: number; recordingStatusPercent: number; ... 18 more ...; officeReviewSubmittedDate: Date | null; }': crewWithActivityConflicts, crewWithActivityConflictsDetails, crewWithViolationsDetails, crewWithNCsDetails, and 6 more.
+
+3464         this.restHoursVesselRecords.set(rhRecordId, {
+                                                         ~
+3465           id: rhRecordId,
+     ~~~~~~~~~~~~~~~~~~~~~~~~~
+ ... 
+3482           updatedAt: null as any // new Date()
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+3483         });
+     ~~~~~~~~~
+
+server/storage.ts:3516:11 - error TS2322: Type '{ id: number; name: string; rankGroup: string; versionNo: string; versionDate: string; category?: string | undefined; configuration?: string | null | undefined; }' is not assignable to type '{ id: number; name: string; category: string; rankGroup: string; versionNo: string; versionDate: string; configuration: string | null; }'.
+  Types of property 'category' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+
+3516     const form: Form = { ...insertForm, id: this.currentFormId++ };
+               ~~~~
+
+server/storage.ts:3689:11 - error TS2739: Type '{ id: string; rankId: string; rank: string; role?: string | null | undefined; originalRankId?: string | null | undefined; isRoleRow?: boolean | null | undefined; officer?: boolean | null | undefined; ... 13 more ...; emtOfficer?: boolean | ... 1 more ... | undefined; }' is missing the following properties from type '{ id: string; rankId: string; rank: string; role: string | null; originalRankId: string | null; isRoleRow: boolean | null; officer: boolean | null; rating: boolean | null; seniorOfficer: boolean | null; ... 13 more ...; updatedAt: Date | null; }': createdAt, updatedAt
+
+3689     const companyRank: CompanyRank = { ...insertCompanyRank };
+               ~~~~~~~~~~~
+
+server/storage.ts:3729:13 - error TS2739: Type '{ id: string; rankId: string; rank: string; role?: string | null | undefined; originalRankId?: string | null | undefined; isRoleRow?: boolean | null | undefined; officer?: boolean | null | undefined; ... 13 more ...; emtOfficer?: boolean | ... 1 more ... | undefined; }' is missing the following properties from type '{ id: string; rankId: string; rank: string; role: string | null; originalRankId: string | null; isRoleRow: boolean | null; officer: boolean | null; rating: boolean | null; seniorOfficer: boolean | null; ... 13 more ...; updatedAt: Date | null; }': createdAt, updatedAt
+
+3729       const companyRank: CompanyRank = { ...rank };
+                 ~~~~~~~~~~~
+
+server/storage.ts:3750:11 - error TS2739: Type '{ id: number; groupName: string; rankPath: string; isActive?: boolean | null | undefined; }' is missing the following properties from type '{ id: number; createdAt: Date | null; updatedAt: Date | null; groupName: string; rankPath: string; isActive: boolean | null; }': createdAt, updatedAt
+
+3750     const promotionHierarchy: PromotionHierarchy = {
+               ~~~~~~~~~~~~~~~~~~
+
+server/storage.ts:3791:11 - error TS2739: Type '{ id: string; firstName: string; nationality: string; presentRank: string; presentVessel: string; vesselType: string; status?: string | null | undefined; empNo?: string | null | undefined; ... 55 more ...; children?: string | ... 1 more ... | undefined; }' is missing the following properties from type '{ id: string; status: string | null; createdAt: Date | null; updatedAt: Date | null; empNo: string | null; firstName: string; middleName: string | null; familyName: string | null; ... 57 more ...; children: string | null; }': createdAt, updatedAt
+
+3791     const crewMember: CrewMember = { ...insertCrewMember, id: uniqueId };
+               ~~~~~~~~~~
+
+server/storage.ts:3923:53 - error TS2345: Argument of type '{ id: number; vesselId: string; vesselName: string; month: string; monthValue: string; totalCrew: number; recordingStatusPercent: number; activityConflicting: boolean; totalViolations: number; ... 8 more ...; updatedAt: any; }' is not assignable to parameter of type '{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; vesselName: string; month: string; monthValue: string; totalCrew: number; recordingStatusPercent: number; ... 18 more ...; officeReviewSubmittedDate: Date | null; }'.
+  Type '{ id: number; vesselId: string; vesselName: string; month: string; monthValue: string; totalCrew: number; recordingStatusPercent: number; activityConflicting: boolean; totalViolations: number; ... 8 more ...; updatedAt: any; }' is missing the following properties from type '{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; vesselName: string; month: string; monthValue: string; totalCrew: number; recordingStatusPercent: number; ... 18 more ...; officeReviewSubmittedDate: Date | null; }': crewWithActivityConflicts, crewWithActivityConflictsDetails, crewWithViolationsDetails, crewWithNCsDetails, and 6 more.
+
+3923         this.restHoursVesselRecords.set(rhRecordId, {
+                                                         ~
+3924           id: rhRecordId,
+     ~~~~~~~~~~~~~~~~~~~~~~~~~
+ ... 
+3941           updatedAt: null as any // new Date()
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+3942         });
+     ~~~~~~~~~
+
+server/storage.ts:3954:30 - error TS2802: Type 'MapIterator<{ id: string; status: string | null; createdAt: Date | null; updatedAt: Date | null; empNo: string | null; firstName: string; middleName: string | null; familyName: string | null; ... 57 more ...; children: string | null; }>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+
+3954     for (const crewMember of this.crewMembers.values()) {
+                                  ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+server/storage.ts:3987:11 - error TS2322: Type '{ id: number; createdAt: null; updatedAt: any; name: string; vesselIds: string; description?: string | null | undefined; }' is not assignable to type '{ id: number; name: string; createdAt: Date | null; updatedAt: Date | null; description: string | null; vesselIds: string; }'.
+  Types of property 'description' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+
+3987     const vesselGroup: VesselGroup = {
+               ~~~~~~~~~~~
+
+server/storage.ts:4035:11 - error TS2322: Type '{ id: number; createdAt: null; updatedAt: any; vesselId: string; draftData: string; revision?: string | undefined; }' is not assignable to type '{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; revision: string; draftData: string; }'.
+  Types of property 'revision' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+
+4035     const vesselDraft: VesselDraft = {
+               ~~~~~~~~~~~
+
+server/storage.ts:4108:11 - error TS2741: Property 'submittedAt' is missing in type '{ id: number; formId: number; crewMemberId: string; appraisalType: string; appraisalDate: string; appraisalData: string; submittedBy: string; status?: string | undefined; competenceRating?: string | ... 1 more ... | undefined; behavioralRating?: string | ... 1 more ... | undefined; overallRating?: string | ... 1 mor...' but required in type '{ id: number; status: string; formId: number; crewMemberId: string; appraisalType: string; appraisalDate: string; appraisalData: string; competenceRating: string | null; behavioralRating: string | null; ... 4 more ...; stagePayloads: string | null; }'.
+
+4108     const appraisalResult: AppraisalResult = { ...insertAppraisalResult, id: this.currentAppraisalResultId++ };
+               ~~~~~~~~~~~~~~~
+
+server/storage.ts:4266:7 - error TS2353: Object literal may only specify known properties, and 'id' does not exist in type '{ firstName: string; nationality: string; presentRank: string; presentVessel: string; vesselType: string; status?: string | null | undefined; empNo?: string | null | undefined; middleName?: string | ... 1 more ... | undefined; ... 54 more ...; children?: string | ... 1 more ... | undefined; }'.
+
+4266       id: crewId,
+           ~~
+
+server/storage.ts:4304:11 - error TS2741: Property 'crewMemberId' is missing in type '{ id: number; onBoardCrewId: string | null; onBoardCrewName: string | null; reliefDue: string | null; signOffDate: string | null; signOffPort: string | null; reliefStatus: string | null; ... 16 more ...; applicableDocsChecked?: boolean | ... 1 more ... | undefined; }' but required in type '{ id: number; rankId: string; rank: string; createdAt: Date | null; updatedAt: Date | null; joiningDate: string | null; signOffDate: string | null; reliefDue: string | null; ... 16 more ...; applicableDocsChecked: boolean | null; }'.
+
+4304     const vesselPlanning: VesselPlanning = {
+               ~~~~~~~~~~~~~~
+
+server/storage.ts:4357:11 - error TS2322: Type '{ id: number; planStatus: string; createdAt: null; updatedAt: null; createdBy: string; draftId: string; lastEdited: string; vessels: string; crew: string; planFromDate: string; planToDate: string; proposedBy?: string | ... 1 more ... | undefined; proposedDate?: string | ... 1 more ... | undefined; assignments?: stri...' is not assignable to type '{ id: number; createdAt: Date | null; updatedAt: Date | null; createdBy: string; draftId: string; lastEdited: string; vessels: string; crew: string; planFromDate: string; planToDate: string; planStatus: string; proposedBy: string | null; proposedDate: string | null; assignments: string | null; }'.
+  Types of property 'proposedBy' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+
+4357     const rotationPlan: RotationPlan = {
+               ~~~~~~~~~~~~
+
+server/storage.ts:4579:34 - error TS2802: Type 'MapIterator<[number, { id: number; rankId: string; rank: string; createdAt: Date | null; updatedAt: Date | null; joiningDate: string | null; signOffDate: string | null; reliefDue: string | null; ... 16 more ...; applicableDocsChecked: boolean | null; }]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+
+4579     for (const [id, planning] of this.vesselPlanning.entries()) {
+                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+server/storage.ts:4654:24 - error TS2802: Type 'MapIterator<{ id: number; createdAt: Date | null; updatedAt: Date | null; createdBy: string; draftId: string; lastEdited: string; vessels: string; crew: string; planFromDate: string; planToDate: string; planStatus: string; proposedBy: string | null; proposedDate: string | null; assignments: string | null; }>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+
+4654     for (const plan of this.rotationPlans.values()) {
+                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+server/storage.ts:4716:11 - error TS2322: Type '{ id: number; createdAt: null; updatedAt: null; vesselId: string; testType: string; description?: string | null | undefined; alcoholDrugType?: string | null | undefined; placeLocation?: string | null | undefined; ... 22 more ...; attachmentFile?: string | ... 1 more ... | undefined; }' is not assignable to type '{ id: number; createdAt: Date | null; updatedAt: Date | null; description: string | null; vesselId: string; testType: string; alcoholDrugType: string | null; placeLocation: string | null; ... 22 more ...; attachmentFile: string | null; }'.
+  Types of property 'description' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+
+4716     const record: DrugAlcoholTestRecord = {
+               ~~~~~~
+
+server/storage.ts:4772:11 - error TS2322: Type '{ id: number; createdAt: null; updatedAt: null; vesselId: string; vesselName: string; month: string; monthValue: string; totalCrew?: number | undefined; recordingStatusPercent?: number | undefined; ... 18 more ...; officeReviewSubmittedDate?: Date | ... 1 more ... | undefined; }' is not assignable to type '{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; vesselName: string; month: string; monthValue: string; totalCrew: number; recordingStatusPercent: number; ... 18 more ...; officeReviewSubmittedDate: Date | null; }'.
+  Types of property 'totalCrew' are incompatible.
+    Type 'number | undefined' is not assignable to type 'number'.
+      Type 'undefined' is not assignable to type 'number'.
+
+4772     const record: RestHoursVesselRecord = {
+               ~~~~~~
+
+server/storage.ts:4840:11 - error TS2322: Type '{ id: number; createdAt: null; updatedAt: null; name: string; rank: string; crewMemberId: string; vesselId: string; vesselName: string; month: string; monthValue: string; recordingStatusPercent?: number | undefined; ... 5 more ...; signOnOffInfo?: string | ... 1 more ... | undefined; }' is not assignable to type '{ id: number; name: string; rank: string; createdAt: Date | null; updatedAt: Date | null; crewMemberId: string; vesselId: string; vesselName: string; month: string; monthValue: string; ... 6 more ...; signOnOffInfo: string | null; }'.
+  Types of property 'recordingStatusPercent' are incompatible.
+    Type 'number | undefined' is not assignable to type 'number'.
+      Type 'undefined' is not assignable to type 'number'.
+
+4840     const record: RestHoursCrewRecord = {
+               ~~~~~~
+
+server/storage.ts:4923:11 - error TS2322: Type '{ id: number; createdAt: null; updatedAt: null; name: string; rank: string; crewMemberId: string; vesselId: string; monthYear: string; dailyRecords: string; showPlanning?: boolean | null | undefined; opaMode?: boolean | ... 1 more ... | undefined; }' is not assignable to type '{ id: number; name: string; rank: string; createdAt: Date | null; updatedAt: Date | null; crewMemberId: string; vesselId: string; monthYear: string; dailyRecords: string; showPlanning: boolean | null; opaMode: boolean | null; }'.
+  Types of property 'showPlanning' are incompatible.
+    Type 'boolean | null | undefined' is not assignable to type 'boolean | null'.
+      Type 'undefined' is not assignable to type 'boolean | null'.
+
+4923     const record: RestHoursDailyRecord = {
+               ~~~~~~
+
+server/storage.ts:4979:11 - error TS2322: Type '{ id: number; status: string; startDateTime: string; finishDateTime: string; startDateTimeSort: string; finishDateTimeSort: string; task: string; crewInvolved: number; recordType: string; statusType: string; ... 7 more ...; crewInvolvedDetails?: string | ... 1 more ... | undefined; }' is not assignable to type '{ id: number; status: string; vesselId: string | null; comments: string | null; startDateTime: string; finishDateTime: string; startDateTimeSort: string; finishDateTimeSort: string; task: string; ... 8 more ...; crewInvolvedDetails: string | null; }'.
+  Types of property 'vesselId' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+
+4979     const task: VariableTask = {
+               ~~~~
+
+server/storage.ts:5045:11 - error TS2739: Type '{ id: number; name: string; rank: string; crewMemberId: string; vesselId: string; monthYear: string; seaHours: string; portHours: string; }' is missing the following properties from type '{ id: number; name: string; rank: string; createdAt: Date | null; updatedAt: Date | null; crewMemberId: string; vesselId: string; monthYear: string; seaHours: string; portHours: string; }': createdAt, updatedAt
+
+5045     const task: FixedTask = {
+               ~~~~
+
+server/storage.ts:5208:5 - error TS2740: Type '(Anonymous class)' is missing the following properties from type 'IStorage': getFormForRank, updateRankOrders, getCompanyRanks, getCompanyRank, and 91 more.
+
+5208     storage = new (class implements IStorage {
+         ~~~~~~~
+
+server/storage.ts:5208:20 - error TS2420: Class '(Anonymous class)' incorrectly implements interface 'IStorage'.
+  Type '(Anonymous class)' is missing the following properties from type 'IStorage': getFormForRank, updateRankOrders, getCompanyRanks, getCompanyRank, and 91 more.
+
+5208     storage = new (class implements IStorage {
+                        ~~~~~
+
+server/vite.ts:39:5 - error TS2322: Type '{ middlewareMode: boolean; hmr: { server: Server<typeof IncomingMessage, typeof ServerResponse>; }; allowedHosts: boolean; }' is not assignable to type 'ServerOptions$1 | ResolvedServerOptions | undefined'.
+  Type '{ middlewareMode: boolean; hmr: { server: Server<typeof IncomingMessage, typeof ServerResponse>; }; allowedHosts: boolean; }' is missing the following properties from type 'ResolvedServerOptions': fs, sourcemapIgnoreList, open, headers, and 6 more.
+
+39     server: serverOptions,
+       ~~~~~~
+
+
+Found 26 errors in 3 files.
+
+Errors  Files
+     1  server/db.ts:1
+    24  server/storage.ts:3464
+     1  server/vite.ts:39
