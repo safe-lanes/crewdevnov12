@@ -171,6 +171,41 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     queryKey: ["/api/masters/001/data"],
   });
 
+  // Extract unique values from crew data for filters that have empty master data
+  const uniqueNationalities = useMemo(() => {
+    if (nationalityMasterData.length > 0) return nationalityMasterData;
+    
+    const nationalities = new Set<string>();
+    crewMembers.forEach(crew => {
+      const crewDTO = fromStorageCrew(crew);
+      if (crewDTO.nationality) {
+        nationalities.add(crewDTO.nationality);
+      }
+    });
+    return Array.from(nationalities).sort().map((nat, index) => ({
+      entryId: `NAT-${index}`,
+      name: nat,
+      countryName: nat
+    }));
+  }, [nationalityMasterData, crewMembers]);
+
+  const uniqueVesselTypes = useMemo(() => {
+    if (vesselTypeMasterData.length > 0) return vesselTypeMasterData;
+    
+    const vesselTypes = new Set<string>();
+    crewMembers.forEach(crew => {
+      const crewDTO = fromStorageCrew(crew);
+      if (crewDTO.vesselType) {
+        vesselTypes.add(crewDTO.vesselType);
+      }
+    });
+    return Array.from(vesselTypes).sort().map((vt, index) => ({
+      entryId: `VT-${index}`,
+      name: vt,
+      vesselType: vt
+    }));
+  }, [vesselTypeMasterData, crewMembers]);
+
   const handleEditClick = useCallback((crewMember: CrewAppraisalData) => {
     setSelectedCrewMember(crewMember);
     setShowAppraisalForm(true);
@@ -523,7 +558,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                   <SelectValue placeholder="Vessel Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {vesselTypeMasterData.map((vesselType) => (
+                  {uniqueVesselTypes.map((vesselType) => (
                     <SelectItem key={vesselType.entryId} value={vesselType.vesselType || vesselType.name}>
                       {vesselType.vesselType || vesselType.name}
                     </SelectItem>
@@ -536,7 +571,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                   <SelectValue placeholder="Nationality" />
                 </SelectTrigger>
                 <SelectContent>
-                  {nationalityMasterData.map((nationality) => (
+                  {uniqueNationalities.map((nationality) => (
                     <SelectItem key={nationality.entryId} value={nationality.countryName || nationality.name}>
                       {nationality.countryName || nationality.name}
                     </SelectItem>

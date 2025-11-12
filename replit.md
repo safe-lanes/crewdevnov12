@@ -34,6 +34,15 @@ The application employs a modern web stack with a module-first architecture for 
 - **Rotation Module**: Manages crew rotation planning with "Due" and "Plan" sections, visual timelines, and comprehensive filters.
 - **Promotion Hierarchy System**: Configurable promotion paths, integrated with a Promotions module for filtering and "Next Promotion Rank" calculation. Includes a multi-part Promotion Review Form and a detailed Promotion Checklist Form.
 - **Forms Configuration - Company Rank Integration**: Uses company-specific rank labels for rank group creation and automatically matches forms to crew member ranks during appraisals.
+- **Crew Appraisals Module**: Comprehensive crew appraisal management with AG Grid table display and advanced filtering.
+    - **Master Data Integration**: Filters connected to master data sources with intelligent fallback:
+        - Rank filter: `/api/available-ranks` (Available Ranks Master)
+        - Vessel filter: `/api/masters/014/data` (Vessel Master)
+        - Vessel Type filter: `/api/masters/015/data` with fallback to unique values extracted from crew data
+        - Nationality filter: `/api/masters/001/data` with fallback to unique values extracted from crew data
+    - **Intelligent Fallback**: When master data endpoints return empty arrays, the system automatically extracts unique values from existing crew member data to populate filters
+    - **Appraisal Workflow**: Supports draft and submitted status, with comprehensive form for performance evaluation
+    - **Filter Functionality**: Combined filter support with case-insensitive matching across all filter criteria
 - **Drugs & Alcohol Testing Module**: Tracks six test types with comprehensive filtering, AG Grid tables, and a Summary View. Features a D&A Test Form with dynamic sections and digital signature.
 - **Rest Hours Module**: Manages seafarer work and rest hours in compliance with maritime regulations.
     - **PeriodFilter Component**: Reusable period selection component with year/quarter/month or date range modes.
