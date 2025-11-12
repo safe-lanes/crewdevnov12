@@ -377,8 +377,8 @@ export class MemStorage implements IStorage {
       preJoiningMedicals: null,
       doctorVisits: null,
       children: null,
-      createdAt: new Date("2025-02-01"),
-      updatedAt: new Date("2025-02-01")
+      createdAt: null,
+      updatedAt: null as any // new Date("2025-02-01")
     });
 
     // REMOVED: Duplicate incomplete crew member seed data (380-433) - complete versions exist elsewhere
@@ -397,8 +397,8 @@ export class MemStorage implements IStorage {
       vesselType: "Oil Tanker",
       status: "Applied",
       applicationData: "{\"firstName\":\"Mark\",\"middleName\":\"Tan\",\"familyName\":\"Twait\",\"nationality\":\"Malaysian\",\"presentRank\":\"Master\",\"dateOfBirth\":\"1981-01-04\",\"placeOfBirthCity\":\"\",\"placeOfBirthCountry\":\"Malaysia\",\"ageInYears\":\"44\",\"heightCm\":\"\",\"weightKg\":\"\",\"nativeLanguage\":\"English\",\"foreignLanguages\":\"Spanish\",\"englishProficiency\":\"Good\",\"rankAppliedFor\":\"Master\",\"manningAgent\":\"ABC \",\"fileNo\":\"M2025-955\",\"b1AgeMeetsCriteria\":\"Yes\",\"b1RankMeetsCriteria\":\"Yes\",\"b1CertificatesValid\":\"No\",\"b1Shortlisted\":\"Yes\",\"b2ReferenceChecksCompleted\":\"Yes\",\"b2CurrentEmployerFeedback\":\"Good feedback\"}",
-      createdAt: new Date("2025-09-23"),
-      updatedAt: new Date("2025-09-23")
+      createdAt: null,
+      updatedAt: null as any // new Date("2025-09-23")
     });
 
     this.recruitmentCandidates.set("RC-2025-001", {
@@ -414,8 +414,8 @@ export class MemStorage implements IStorage {
       vesselType: "Container",
       status: "Applied",
       applicationData: null,
-      createdAt: new Date("2025-09-23"),
-      updatedAt: new Date("2025-09-23")
+      createdAt: null,
+      updatedAt: null as any // new Date("2025-09-23")
     });
 
     this.recruitmentCandidates.set("RC-2025-002", {
@@ -431,8 +431,8 @@ export class MemStorage implements IStorage {
       vesselType: "Oil Tanker",
       status: "Screening",
       applicationData: null,
-      createdAt: new Date("2025-09-23"),
-      updatedAt: new Date("2025-09-23")
+      createdAt: null,
+      updatedAt: null as any // new Date("2025-09-23")
     });
 
     this.recruitmentCandidates.set("RC-2025-003", {
@@ -448,8 +448,8 @@ export class MemStorage implements IStorage {
       vesselType: "Bulk Carrier",
       status: "For Approval",
       applicationData: null,
-      createdAt: new Date("2025-09-23"),
-      updatedAt: new Date("2025-09-23")
+      createdAt: null,
+      updatedAt: null as any // new Date("2025-09-23")
     });
 
     this.recruitmentCandidates.set("RC-2025-004", {
@@ -465,8 +465,8 @@ export class MemStorage implements IStorage {
       vesselType: "LPG Tanker",
       status: "Applied",
       applicationData: null,
-      createdAt: new Date("2025-09-23"),
-      updatedAt: new Date("2025-09-23")
+      createdAt: null,
+      updatedAt: null as any // new Date("2025-09-23")
     });
 
     // Initialize with sample appraisal results
@@ -571,8 +571,8 @@ export class MemStorage implements IStorage {
       proposedBy: null,
       proposedDate: null,
       assignments: null,
-      createdAt: new Date("2024-01-10"),
-      updatedAt: new Date("2024-01-10")
+      createdAt: null,
+      updatedAt: null as any // new Date("2024-01-10")
     });
 
     this.rotationPlans.set(2, {
@@ -588,8 +588,8 @@ export class MemStorage implements IStorage {
       proposedBy: null,
       proposedDate: null,
       assignments: null,
-      createdAt: new Date("2024-02-15"),
-      updatedAt: new Date("2024-02-15")
+      createdAt: null,
+      updatedAt: null as any // new Date("2024-02-15")
     });
 
     this.rotationPlans.set(3, {
@@ -605,8 +605,8 @@ export class MemStorage implements IStorage {
       proposedBy: null,
       proposedDate: null,
       assignments: null,
-      createdAt: new Date("2024-03-22"),
-      updatedAt: new Date("2024-03-22")
+      createdAt: null,
+      updatedAt: null as any // new Date("2024-03-22")
     });
 
     this.currentRotationPlanId = 4;
@@ -931,8 +931,8 @@ export class MemStorage implements IStorage {
       ...insertCrewMember,
       middleName: insertCrewMember.middleName || null,
       familyName: insertCrewMember.familyName || null,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      createdAt: null,
+      updatedAt: null as any // new Date()
     };
     this.crewMembers.set(crewMember.id, crewMember);
     return crewMember;
@@ -945,7 +945,7 @@ export class MemStorage implements IStorage {
     const updatedCrewMember: CrewMember = { 
       ...existingCrewMember, 
       ...crewMemberData,
-      updatedAt: new Date()
+      updatedAt: null as any // new Date()
     };
     this.crewMembers.set(id, updatedCrewMember);
     return updatedCrewMember;
@@ -1049,8 +1049,8 @@ export class MemStorage implements IStorage {
     const vesselGroup: VesselGroup = { 
       ...insertVesselGroup, 
       id,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      createdAt: null,
+      updatedAt: null as any // new Date()
     };
     this.vesselGroups.set(id, vesselGroup);
     return vesselGroup;
@@ -1063,7 +1063,7 @@ export class MemStorage implements IStorage {
     const updatedVesselGroup: VesselGroup = { 
       ...existingVesselGroup, 
       ...vesselGroupData,
-      updatedAt: new Date()
+      updatedAt: null as any // new Date()
     };
     this.vesselGroups.set(id, updatedVesselGroup);
     return updatedVesselGroup;
@@ -1091,8 +1091,8 @@ export class MemStorage implements IStorage {
     const vesselDraft: VesselDraft = { 
       ...insertVesselDraft, 
       id,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      createdAt: null,
+      updatedAt: null as any // new Date()
     };
     this.vesselDrafts.set(id, vesselDraft);
     return vesselDraft;
@@ -1105,7 +1105,7 @@ export class MemStorage implements IStorage {
     const updatedVesselDraft: VesselDraft = { 
       ...existingVesselDraft, 
       ...vesselDraftData,
-      updatedAt: new Date()
+      updatedAt: null as any // new Date()
     };
     this.vesselDrafts.set(id, updatedVesselDraft);
     return updatedVesselDraft;
@@ -1133,7 +1133,7 @@ export class MemStorage implements IStorage {
     const vesselRevision: VesselRevision = { 
       ...insertVesselRevision, 
       id,
-      createdAt: new Date()
+      createdAt: null as any // new Date()
     };
     this.vesselRevisions.set(id, vesselRevision);
     return vesselRevision;
@@ -1164,8 +1164,8 @@ export class MemStorage implements IStorage {
       joiningDate: insertPlanning.joiningDate || null,
       joiningPort: insertPlanning.joiningPort || null,
       joiningStatus: insertPlanning.joiningStatus || null,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      createdAt: null,
+      updatedAt: null as any // new Date()
     };
     this.vesselPlanning.set(id, vesselPlanning);
     return vesselPlanning;
@@ -1178,7 +1178,7 @@ export class MemStorage implements IStorage {
     const updatedPlanning: VesselPlanning = { 
       ...existingPlanning, 
       ...planningData,
-      updatedAt: new Date()
+      updatedAt: null as any // new Date()
     };
     this.vesselPlanning.set(id, updatedPlanning);
     return updatedPlanning;
@@ -1203,8 +1203,8 @@ export class MemStorage implements IStorage {
       ...insertPlan,
       id,
       planStatus: insertPlan.planStatus || "In Draft",
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: null,
+      updatedAt: null,
     };
     this.rotationPlans.set(id, rotationPlan);
     return rotationPlan;
@@ -1217,7 +1217,7 @@ export class MemStorage implements IStorage {
     const updatedPlan: RotationPlan = {
       ...existingPlan,
       ...updateData,
-      updatedAt: new Date(),
+      updatedAt: null,
     };
     this.rotationPlans.set(id, updatedPlan);
     return updatedPlan;
@@ -1237,7 +1237,7 @@ export class MemStorage implements IStorage {
       planStatus: "Proposed",
       proposedBy,
       proposedDate: new Date().toISOString().split('T')[0],
-      updatedAt: new Date()
+      updatedAt: null as any // new Date()
     };
     this.rotationPlans.set(id, updatedPlan);
     return updatedPlan;
@@ -1316,7 +1316,7 @@ export class MemStorage implements IStorage {
                   
                   currentCrew = {
                     id: crewOnBoard.id,
-                    name: `${crewOnBoard.firstName} ${crewOnBoard.middleName || ''} ${crewOnBoard.familyName || crewOnBoard.lastName || ''}`.replace(/\s+/g, ' ').trim(),
+                    name: `${crewOnBoard.firstName} ${crewOnBoard.middleName || ''} ${crewOnBoard.familyName || crewOnBoard.familyName || ''}`.replace(/\s+/g, ' ').trim(),
                     contractStartDate: planning.joiningDate || crewOnBoard.joiningDate || '',
                     contractEndDate: planning.reliefDue,
                     rangeStartDate: rangeStartDate.toISOString().split('T')[0],
@@ -1330,7 +1330,7 @@ export class MemStorage implements IStorage {
                   
                   currentCrew = {
                     id: crewOnBoard.id,
-                    name: `${crewOnBoard.firstName} ${crewOnBoard.middleName || ''} ${crewOnBoard.familyName || crewOnBoard.lastName || ''}`.replace(/\s+/g, ' ').trim(),
+                    name: `${crewOnBoard.firstName} ${crewOnBoard.middleName || ''} ${crewOnBoard.familyName || crewOnBoard.familyName || ''}`.replace(/\s+/g, ' ').trim(),
                     contractStartDate: crewOnBoard.joiningDate,
                     contractEndDate: crewOnBoard.reliefDue,
                     rangeStartDate: crewOnBoard.reliefDue,
@@ -1390,7 +1390,7 @@ export class MemStorage implements IStorage {
     const updatedPlan: RotationPlan = {
       ...plan,
       assignments: JSON.stringify(assignments),
-      updatedAt: new Date()
+      updatedAt: null as any // new Date()
     };
     this.rotationPlans.set(planId, updatedPlan);
 
@@ -1458,7 +1458,7 @@ export class MemStorage implements IStorage {
       ...plan,
       assignments: JSON.stringify(assignments),
       planStatus,
-      updatedAt: new Date()
+      updatedAt: null as any // new Date()
     };
     this.rotationPlans.set(planId, updatedPlan);
     return updatedPlan;
@@ -1542,8 +1542,8 @@ export class MemStorage implements IStorage {
     const record: DrugAlcoholTestRecord = {
       ...insertRecord,
       id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: null,
+      updatedAt: null,
     };
     this.drugAlcoholTestRecords.set(id, record);
     return record;
@@ -1556,7 +1556,7 @@ export class MemStorage implements IStorage {
     const updatedRecord: DrugAlcoholTestRecord = {
       ...existingRecord,
       ...updateData,
-      updatedAt: new Date(),
+      updatedAt: null,
     };
     this.drugAlcoholTestRecords.set(id, updatedRecord);
     return updatedRecord;
@@ -1684,8 +1684,8 @@ export class MemStorage implements IStorage {
       middleName: insertCandidate.middleName || null,
       applicationData: insertCandidate.applicationData || null,
       status: insertCandidate.status || "Applied",
-      createdAt: new Date(),
-      updatedAt: new Date()
+      createdAt: null,
+      updatedAt: null as any // new Date()
     };
     this.recruitmentCandidates.set(candidate.id, candidate);
     return candidate;
@@ -1698,7 +1698,7 @@ export class MemStorage implements IStorage {
     const updatedCandidate: RecruitmentCandidate = { 
       ...existingCandidate, 
       ...candidateData,
-      updatedAt: new Date()
+      updatedAt: null as any // new Date()
     };
     this.recruitmentCandidates.set(id, updatedCandidate);
     return updatedCandidate;
@@ -1849,8 +1849,8 @@ export class MemStorage implements IStorage {
     const record: RestHoursVesselRecord = {
       ...insertRecord,
       id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: null,
+      updatedAt: null,
     };
     this.restHoursVesselRecords.set(id, record);
     return record;
@@ -1863,7 +1863,7 @@ export class MemStorage implements IStorage {
     const updatedRecord: RestHoursVesselRecord = {
       ...existingRecord,
       ...updateData,
-      updatedAt: new Date(),
+      updatedAt: null,
     };
     this.restHoursVesselRecords.set(id, updatedRecord);
     return updatedRecord;
@@ -1913,8 +1913,8 @@ export class MemStorage implements IStorage {
     const record: RestHoursCrewRecord = {
       ...insertRecord,
       id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: null,
+      updatedAt: null,
     };
     this.restHoursCrewRecords.set(id, record);
     return record;
@@ -1927,7 +1927,7 @@ export class MemStorage implements IStorage {
     const updatedRecord: RestHoursCrewRecord = {
       ...existingRecord,
       ...updateData,
-      updatedAt: new Date(),
+      updatedAt: null,
     };
     this.restHoursCrewRecords.set(id, updatedRecord);
     return updatedRecord;
@@ -1980,7 +1980,7 @@ export class MemStorage implements IStorage {
         ...insertRecord,
         id: existing.id, // Keep the original ID
         createdAt: existing.createdAt, // Keep the original creation date
-        updatedAt: new Date(),
+        updatedAt: null,
       };
       this.restHoursDailyRecords.set(existing.id, updatedRecord);
       return updatedRecord;
@@ -1991,8 +1991,8 @@ export class MemStorage implements IStorage {
     const record: RestHoursDailyRecord = {
       ...insertRecord,
       id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: null,
+      updatedAt: null,
     };
     this.restHoursDailyRecords.set(id, record);
     return record;
@@ -2005,7 +2005,7 @@ export class MemStorage implements IStorage {
     const updatedRecord: RestHoursDailyRecord = {
       ...existingRecord,
       ...updateData,
-      updatedAt: new Date(),
+      updatedAt: null,
     };
     this.restHoursDailyRecords.set(id, updatedRecord);
     return updatedRecord;
@@ -2046,8 +2046,8 @@ export class MemStorage implements IStorage {
     const task: FixedTask = {
       ...insertTask,
       id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: null,
+      updatedAt: null,
     };
     this.fixedTasks.set(id, task);
     return task;
@@ -2060,7 +2060,7 @@ export class MemStorage implements IStorage {
     const updatedTask: FixedTask = {
       ...existingTask,
       ...updateData,
-      updatedAt: new Date(),
+      updatedAt: null,
     };
     this.fixedTasks.set(id, updatedTask);
     return updatedTask;
@@ -2086,8 +2086,8 @@ export class MemStorage implements IStorage {
       // Update existing comment
       const updated: VesselViolationComment = {
         ...existing,
-        comment: insertComment.comment,
-        updatedAt: new Date(),
+        comment: insertComment.comment ?? null,
+        updatedAt: null,
       };
       this.vesselViolationComments.set(existing.id, updated);
       return updated;
@@ -2097,8 +2097,8 @@ export class MemStorage implements IStorage {
       const newComment: VesselViolationComment = {
         id,
         ...insertComment,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: null,
+        updatedAt: null,
       };
       this.vesselViolationComments.set(id, newComment);
       return newComment;
@@ -2124,7 +2124,7 @@ export class MemStorage implements IStorage {
         ...insertComment,
         id: existing.id,
         createdAt: existing.createdAt,
-        updatedAt: new Date(),
+        updatedAt: null,
       };
       this.officeViolationComments.set(existing.id, updated);
       return updated;
@@ -2134,8 +2134,8 @@ export class MemStorage implements IStorage {
       const newComment: OfficeViolationComment = {
         id,
         ...insertComment,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: null,
+        updatedAt: null,
       };
       this.officeViolationComments.set(id, newComment);
       return newComment;
@@ -2173,7 +2173,7 @@ export class MemStorage implements IStorage {
         ...insertReport,
         id: existing.id,
         createdAt: existing.createdAt,
-        updatedAt: new Date(),
+        updatedAt: null,
       };
       this.ncReports.set(existing.id, updated);
       return updated;
@@ -2183,8 +2183,8 @@ export class MemStorage implements IStorage {
       const newReport: NCReport = {
         id,
         ...insertReport,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: null,
+        updatedAt: null,
       };
       this.ncReports.set(id, newReport);
       return newReport;
@@ -2210,7 +2210,7 @@ export class MemStorage implements IStorage {
         ...insertAdjustment,
         id: existing.id,
         createdAt: existing.createdAt,
-        updatedAt: new Date(),
+        updatedAt: null,
       };
       this.vesselDateLineAdjustments.set(existing.id, updated);
       return updated;
@@ -2219,8 +2219,8 @@ export class MemStorage implements IStorage {
       const newAdjustment: VesselDateLineAdjustment = {
         id,
         ...insertAdjustment,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: null,
+        updatedAt: null,
       };
       this.vesselDateLineAdjustments.set(id, newAdjustment);
       return newAdjustment;
@@ -2518,8 +2518,8 @@ export class PersistentFileStorage implements IStorage {
       // Update existing comment
       const updated: VesselViolationComment = {
         ...existing,
-        comment: insertComment.comment,
-        updatedAt: new Date(),
+        comment: insertComment.comment ?? null,
+        updatedAt: null,
       };
       this.vesselViolationComments.set(existing.id, updated);
       this.saveToFile();
@@ -2530,8 +2530,8 @@ export class PersistentFileStorage implements IStorage {
       const newComment: VesselViolationComment = {
         id,
         ...insertComment,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: null,
+        updatedAt: null,
       };
       this.vesselViolationComments.set(id, newComment);
       this.saveToFile();
@@ -2558,7 +2558,7 @@ export class PersistentFileStorage implements IStorage {
         ...insertComment,
         id: existing.id,
         createdAt: existing.createdAt,
-        updatedAt: new Date(),
+        updatedAt: null,
       };
       this.officeViolationComments.set(existing.id, updated);
       this.saveToFile();
@@ -2569,8 +2569,8 @@ export class PersistentFileStorage implements IStorage {
       const newComment: OfficeViolationComment = {
         id,
         ...insertComment,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: null,
+        updatedAt: null,
       };
       this.officeViolationComments.set(id, newComment);
       this.saveToFile();
@@ -2607,7 +2607,7 @@ export class PersistentFileStorage implements IStorage {
         ...insertReport,
         id: existing.id,
         createdAt: existing.createdAt,
-        updatedAt: new Date(),
+        updatedAt: null,
       };
       this.ncReports.set(existing.id, updated);
       this.saveToFile();
@@ -2617,8 +2617,8 @@ export class PersistentFileStorage implements IStorage {
       const newReport: NCReport = {
         id,
         ...insertReport,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: null,
+        updatedAt: null,
       };
       this.ncReports.set(id, newReport);
       this.saveToFile();
@@ -2645,7 +2645,7 @@ export class PersistentFileStorage implements IStorage {
         ...insertAdjustment,
         id: existing.id,
         createdAt: existing.createdAt,
-        updatedAt: new Date(),
+        updatedAt: null,
       };
       this.vesselDateLineAdjustments.set(existing.id, updated);
       this.saveToFile();
@@ -2655,8 +2655,8 @@ export class PersistentFileStorage implements IStorage {
       const newAdjustment: VesselDateLineAdjustment = {
         id,
         ...insertAdjustment,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: null,
+        updatedAt: null,
       };
       this.vesselDateLineAdjustments.set(id, newAdjustment);
       this.saveToFile();
@@ -2928,6 +2928,7 @@ export class PersistentFileStorage implements IStorage {
     this.forms.set(1, {
       id: 1,
       name: "Crew Appraisal Form",
+      category: "Appraisal",
       rankGroup: "Senior Officers",
       versionNo: "01",
       versionDate: "01-Jan-2025",
@@ -2975,8 +2976,8 @@ export class PersistentFileStorage implements IStorage {
         manningAgent: "ABC ",
         fileNo: "M2025-955"
       }),
-      createdAt: new Date('2025-09-23T10:00:00Z'),
-      updatedAt: new Date('2025-09-23T10:00:00Z'),
+      createdAt: null,
+      updatedAt: null,
     };
 
     this.recruitmentCandidates.set(sampleCandidate.id, sampleCandidate);
@@ -2995,8 +2996,8 @@ export class PersistentFileStorage implements IStorage {
       vesselType: "Oil Tanker",
       status: "Screening",
       applicationData: null,
-      createdAt: new Date("2025-09-23"),
-      updatedAt: new Date("2025-09-23")
+      createdAt: null,
+      updatedAt: null as any // new Date("2025-09-23")
     });
 
     this.recruitmentCandidates.set("RC-2025-003", {
@@ -3012,8 +3013,8 @@ export class PersistentFileStorage implements IStorage {
       vesselType: "Bulk Carrier",
       status: "For Approval",
       applicationData: null,
-      createdAt: new Date("2025-09-23"),
-      updatedAt: new Date("2025-09-23")
+      createdAt: null,
+      updatedAt: null as any // new Date("2025-09-23")
     });
 
     this.recruitmentCandidates.set("RC-2025-004", {
@@ -3029,8 +3030,8 @@ export class PersistentFileStorage implements IStorage {
       vesselType: "LPG Tanker",
       status: "Applied",
       applicationData: null,
-      createdAt: new Date("2025-09-23"),
-      updatedAt: new Date("2025-09-23")
+      createdAt: null,
+      updatedAt: null as any // new Date("2025-09-23")
     });
 
     this.recruitmentCandidates.set("RC-2025-005", {
@@ -3046,8 +3047,8 @@ export class PersistentFileStorage implements IStorage {
       vesselType: "Container",
       status: "Recruited",
       applicationData: null,
-      createdAt: new Date("2025-09-23"),
-      updatedAt: new Date("2025-09-23")
+      createdAt: null,
+      updatedAt: null as any // new Date("2025-09-23")
     });
 
     // Initialize with sample crew member data (from original MemStorage)
@@ -3058,11 +3059,66 @@ export class PersistentFileStorage implements IStorage {
       familyName: "Wilson",
       presentRank: "Master",
       nationality: "British",
-      vessel: "MT Sail One",
+      presentVessel: "MT Sail One",
       vesselType: "Oil Tanker",
       signOnDate: "01-Feb-2025",
-      createdAt: new Date("2025-02-01"),
-      updatedAt: new Date("2025-02-01")
+      createdAt: null,
+      updatedAt: null,
+      status: null,
+      empNo: null,
+      dateOfBirth: null,
+      age: null,
+      rankAppliedFor: null,
+      employeeId: null,
+      lastVessel: null,
+      joiningDate: null,
+      signOffDate: null,
+      contractPeriod: null,
+      reliefDue: null,
+      reason: null,
+      availability: null,
+      email: null,
+      mobile: null,
+      contactLandline: null,
+      countryOfResidence: null,
+      nearestAirport: null,
+      residentialAddressLine1: null,
+      residentialAddressLine2: null,
+      placeOfBirthCity: null,
+      placeOfBirthCountry: null,
+      heightCm: null,
+      weightKg: null,
+      bmi: null,
+      nativeLanguage: null,
+      foreignLanguages: null,
+      englishProficiency: null,
+      maritalStatus: null,
+      numberOfDependentChildren: null,
+      fatherName: null,
+      motherName: null,
+      spouseFirstName: null,
+      spouseMiddleName: null,
+      spouseFamilyName: null,
+      spouseDateOfBirth: null,
+      nokFirstName: null,
+      nokMiddleName: null,
+      nokFamilyName: null,
+      nokTelephone: null,
+      nokEmail: null,
+      nokAddress: null,
+      nokRelationship: null,
+      manningAgent: null,
+      vesselTypes: null,
+      documents: null,
+      visas: null,
+      education: null,
+      licenses: null,
+      trainingCourses: null,
+      currentCompanySeaService: null,
+      externalSeaService: null,
+      preJoiningMedicals: null,
+      doctorVisits: null,
+      children: null
     });
 
     this.crewMembers.set("2025-03-12", {
@@ -3075,8 +3131,63 @@ export class PersistentFileStorage implements IStorage {
       presentVessel: "MT Sail Ten",
       vesselType: "LPG Tanker",
       signOnDate: "01-Jan-2025",
-      createdAt: new Date("2025-01-01"),
-      updatedAt: new Date("2025-01-01")
+      createdAt: null,
+      updatedAt: null,
+      status: null,
+      empNo: null,
+      dateOfBirth: null,
+      age: null,
+      rankAppliedFor: null,
+      employeeId: null,
+      lastVessel: null,
+      joiningDate: null,
+      signOffDate: null,
+      contractPeriod: null,
+      reliefDue: null,
+      reason: null,
+      availability: null,
+      email: null,
+      mobile: null,
+      contactLandline: null,
+      countryOfResidence: null,
+      nearestAirport: null,
+      residentialAddressLine1: null,
+      residentialAddressLine2: null,
+      placeOfBirthCity: null,
+      placeOfBirthCountry: null,
+      heightCm: null,
+      weightKg: null,
+      bmi: null,
+      nativeLanguage: null,
+      foreignLanguages: null,
+      englishProficiency: null,
+      maritalStatus: null,
+      numberOfDependentChildren: null,
+      fatherName: null,
+      motherName: null,
+      spouseFirstName: null,
+      spouseMiddleName: null,
+      spouseFamilyName: null,
+      spouseDateOfBirth: null,
+      nokFirstName: null,
+      nokMiddleName: null,
+      nokFamilyName: null,
+      nokTelephone: null,
+      nokEmail: null,
+      nokAddress: null,
+      nokRelationship: null,
+      manningAgent: null,
+      vesselTypes: null,
+      documents: null,
+      visas: null,
+      education: null,
+      licenses: null,
+      trainingCourses: null,
+      currentCompanySeaService: null,
+      externalSeaService: null,
+      preJoiningMedicals: null,
+      doctorVisits: null,
+      children: null
     });
 
     this.crewMembers.set("2025-02-12", {
@@ -3089,8 +3200,63 @@ export class PersistentFileStorage implements IStorage {
       presentVessel: "MT Sail Two",
       vesselType: "Container",
       signOnDate: "01-Feb-2025",
-      createdAt: new Date("2025-02-01"),
-      updatedAt: new Date("2025-02-01")
+      createdAt: null,
+      updatedAt: null,
+      status: null,
+      empNo: null,
+      dateOfBirth: null,
+      age: null,
+      rankAppliedFor: null,
+      employeeId: null,
+      lastVessel: null,
+      joiningDate: null,
+      signOffDate: null,
+      contractPeriod: null,
+      reliefDue: null,
+      reason: null,
+      availability: null,
+      email: null,
+      mobile: null,
+      contactLandline: null,
+      countryOfResidence: null,
+      nearestAirport: null,
+      residentialAddressLine1: null,
+      residentialAddressLine2: null,
+      placeOfBirthCity: null,
+      placeOfBirthCountry: null,
+      heightCm: null,
+      weightKg: null,
+      bmi: null,
+      nativeLanguage: null,
+      foreignLanguages: null,
+      englishProficiency: null,
+      maritalStatus: null,
+      numberOfDependentChildren: null,
+      fatherName: null,
+      motherName: null,
+      spouseFirstName: null,
+      spouseMiddleName: null,
+      spouseFamilyName: null,
+      spouseDateOfBirth: null,
+      nokFirstName: null,
+      nokMiddleName: null,
+      nokFamilyName: null,
+      nokTelephone: null,
+      nokEmail: null,
+      nokAddress: null,
+      nokRelationship: null,
+      manningAgent: null,
+      vesselTypes: null,
+      documents: null,
+      visas: null,
+      education: null,
+      licenses: null,
+      trainingCourses: null,
+      currentCompanySeaService: null,
+      externalSeaService: null,
+      preJoiningMedicals: null,
+      doctorVisits: null,
+      children: null
     });
 
     this.crewMembers.set("2025-04-18", {
@@ -3098,13 +3264,68 @@ export class PersistentFileStorage implements IStorage {
       firstName: "Carlos",
       middleName: "Miguel",
       familyName: "Santos",
-      rank: "2nd Officer",
+      presentRank: "2nd Officer",
       nationality: "Filipino",
-      vessel: "MT Sail Three",
-      vesselType: "Chemical Tanker",
+      presentVessel: "MT Sail Three",
+      vesselType: "Container",
       signOnDate: "15-Mar-2025",
-      createdAt: new Date("2025-03-15"),
-      updatedAt: new Date("2025-03-15")
+      createdAt: null,
+      updatedAt: null,
+      status: null,
+      empNo: null,
+      dateOfBirth: null,
+      age: null,
+      rankAppliedFor: null,
+      employeeId: null,
+      lastVessel: null,
+      joiningDate: null,
+      signOffDate: null,
+      contractPeriod: null,
+      reliefDue: null,
+      reason: null,
+      availability: null,
+      email: null,
+      mobile: null,
+      contactLandline: null,
+      countryOfResidence: null,
+      nearestAirport: null,
+      residentialAddressLine1: null,
+      residentialAddressLine2: null,
+      placeOfBirthCity: null,
+      placeOfBirthCountry: null,
+      heightCm: null,
+      weightKg: null,
+      bmi: null,
+      nativeLanguage: null,
+      foreignLanguages: null,
+      englishProficiency: null,
+      maritalStatus: null,
+      numberOfDependentChildren: null,
+      fatherName: null,
+      motherName: null,
+      spouseFirstName: null,
+      spouseMiddleName: null,
+      spouseFamilyName: null,
+      spouseDateOfBirth: null,
+      nokFirstName: null,
+      nokMiddleName: null,
+      nokFamilyName: null,
+      nokTelephone: null,
+      nokEmail: null,
+      nokAddress: null,
+      nokRelationship: null,
+      manningAgent: null,
+      vesselTypes: null,
+      documents: null,
+      visas: null,
+      education: null,
+      licenses: null,
+      trainingCourses: null,
+      currentCompanySeaService: null,
+      externalSeaService: null,
+      preJoiningMedicals: null,
+      doctorVisits: null,
+      children: null
     });
 
     // Initialize with sample appraisal results
@@ -3119,8 +3340,12 @@ export class PersistentFileStorage implements IStorage {
       behavioralRating: "4.5",
       overallRating: "4.7",
       submittedBy: "admin",
-      createdAt: new Date("2025-06-06"),
-      updatedAt: new Date("2025-06-06")
+      status: "Reviewed",
+      submittedAt: new Date("2025-06-06"),
+      stage1Data: null,
+      stage2Data: null,
+      stage3Data: null,
+      stagePayloads: null
     });
 
     this.appraisalResults.set(2, {
@@ -3134,8 +3359,12 @@ export class PersistentFileStorage implements IStorage {
       behavioralRating: "4.5",
       overallRating: "4.0",
       submittedBy: "admin",
-      createdAt: new Date("2025-05-07"),
-      updatedAt: new Date("2025-05-07")
+      status: "Reviewed",
+      submittedAt: new Date("2025-05-07"),
+      stage1Data: null,
+      stage2Data: null,
+      stage3Data: null,
+      stagePayloads: null
     });
 
     this.appraisalResults.set(3, {
@@ -3149,8 +3378,12 @@ export class PersistentFileStorage implements IStorage {
       behavioralRating: "3.5",
       overallRating: "3.0",
       submittedBy: "admin",
-      createdAt: new Date("2025-06-06"),
-      updatedAt: new Date("2025-06-06")
+      status: "Reviewed",
+      submittedAt: new Date("2025-06-06"),
+      stage1Data: null,
+      stage2Data: null,
+      stage3Data: null,
+      stagePayloads: null
     });
 
     this.appraisalResults.set(4, {
@@ -3164,8 +3397,12 @@ export class PersistentFileStorage implements IStorage {
       behavioralRating: "4.2",
       overallRating: "4.0",
       submittedBy: "admin",
-      createdAt: new Date("2025-05-07"),
-      updatedAt: new Date("2025-05-07")
+      status: "Reviewed",
+      submittedAt: new Date("2025-05-07"),
+      stage1Data: null,
+      stage2Data: null,
+      stage3Data: null,
+      stagePayloads: null
     });
 
     this.currentAppraisalResultId = 5;
@@ -3223,8 +3460,8 @@ export class PersistentFileStorage implements IStorage {
           predictedNCs,
           crewWithPredictedNCs,
           officeReviewStatus,
-          createdAt: new Date(),
-          updatedAt: new Date()
+          createdAt: null,
+          updatedAt: null as any // new Date()
         });
         rhRecordId++;
       });
@@ -3682,8 +3919,8 @@ export class PersistentFileStorage implements IStorage {
           predictedNCs,
           crewWithPredictedNCs,
           officeReviewStatus,
-          createdAt: new Date(),
-          updatedAt: new Date()
+          createdAt: null,
+          updatedAt: null as any // new Date()
         });
         rhRecordId++;
       });
@@ -3732,8 +3969,8 @@ export class PersistentFileStorage implements IStorage {
     const vesselGroup: VesselGroup = { 
       ...insertVesselGroup, 
       id,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      createdAt: null,
+      updatedAt: null as any // new Date()
     };
     this.vesselGroups.set(id, vesselGroup);
     this.saveToFile(); // Persist the changes
@@ -3747,7 +3984,7 @@ export class PersistentFileStorage implements IStorage {
     const updatedVesselGroup: VesselGroup = { 
       ...existingVesselGroup, 
       ...vesselGroupData,
-      updatedAt: new Date()
+      updatedAt: null as any // new Date()
     };
     this.vesselGroups.set(id, updatedVesselGroup);
     this.saveToFile(); // Persist the changes
@@ -3780,8 +4017,8 @@ export class PersistentFileStorage implements IStorage {
     const vesselDraft: VesselDraft = { 
       ...insertVesselDraft, 
       id,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      createdAt: null,
+      updatedAt: null as any // new Date()
     };
     this.vesselDrafts.set(id, vesselDraft);
     this.saveToFile(); // Persist the changes
@@ -3795,7 +4032,7 @@ export class PersistentFileStorage implements IStorage {
     const updatedVesselDraft: VesselDraft = { 
       ...existingVesselDraft, 
       ...vesselDraftData,
-      updatedAt: new Date()
+      updatedAt: null as any // new Date()
     };
     this.vesselDrafts.set(id, updatedVesselDraft);
     this.saveToFile(); // Persist the changes
@@ -3828,7 +4065,7 @@ export class PersistentFileStorage implements IStorage {
     const vesselRevision: VesselRevision = { 
       ...insertVesselRevision, 
       id,
-      createdAt: new Date()
+      createdAt: null as any // new Date()
     };
     this.vesselRevisions.set(id, vesselRevision);
     this.saveToFile(); // Persist the changes
@@ -3946,8 +4183,8 @@ export class PersistentFileStorage implements IStorage {
       middleName: insertCandidate.middleName || null,
       applicationData: insertCandidate.applicationData || null,
       status: insertCandidate.status || "Applied",
-      createdAt: new Date(),
-      updatedAt: new Date()
+      createdAt: null,
+      updatedAt: null as any // new Date()
     };
     this.recruitmentCandidates.set(candidate.id, candidate);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY CREATE!
@@ -3961,7 +4198,7 @@ export class PersistentFileStorage implements IStorage {
     const updatedCandidate: RecruitmentCandidate = { 
       ...existingCandidate, 
       ...candidateData,
-      updatedAt: new Date()
+      updatedAt: null as any // new Date()
     };
     this.recruitmentCandidates.set(id, updatedCandidate);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY UPDATE!
@@ -4060,8 +4297,8 @@ export class PersistentFileStorage implements IStorage {
       joiningDate: insertPlanning.joiningDate || null,
       joiningPort: insertPlanning.joiningPort || null,
       joiningStatus: insertPlanning.joiningStatus || null,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      createdAt: null,
+      updatedAt: null as any // new Date()
     };
     this.vesselPlanning.set(id, vesselPlanning);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY CREATE!
@@ -4075,7 +4312,7 @@ export class PersistentFileStorage implements IStorage {
     const updatedPlanning: VesselPlanning = { 
       ...existingPlanning, 
       ...planningData,
-      updatedAt: new Date()
+      updatedAt: null as any // new Date()
     };
     this.vesselPlanning.set(id, updatedPlanning);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY UPDATE!
@@ -4103,8 +4340,8 @@ export class PersistentFileStorage implements IStorage {
       ...insertPlan,
       id,
       planStatus: insertPlan.planStatus || "In Draft",
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: null,
+      updatedAt: null,
     };
     this.rotationPlans.set(id, rotationPlan);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY CREATE!
@@ -4118,7 +4355,7 @@ export class PersistentFileStorage implements IStorage {
     const updatedPlan: RotationPlan = {
       ...existingPlan,
       ...updateData,
-      updatedAt: new Date(),
+      updatedAt: null,
     };
     this.rotationPlans.set(id, updatedPlan);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY UPDATE!
@@ -4153,7 +4390,7 @@ export class PersistentFileStorage implements IStorage {
       planStatus: "Proposed",
       proposedBy,
       proposedDate: new Date().toISOString().split('T')[0],
-      updatedAt: new Date()
+      updatedAt: null as any // new Date()
     };
     this.rotationPlans.set(id, updatedPlan);
     this.saveToFile(); // SAVE TO FILE!
@@ -4233,7 +4470,7 @@ export class PersistentFileStorage implements IStorage {
                   
                   currentCrew = {
                     id: crewOnBoard.id,
-                    name: `${crewOnBoard.firstName} ${crewOnBoard.middleName || ''} ${crewOnBoard.familyName || crewOnBoard.lastName || ''}`.replace(/\s+/g, ' ').trim(),
+                    name: `${crewOnBoard.firstName} ${crewOnBoard.middleName || ''} ${crewOnBoard.familyName || crewOnBoard.familyName || ''}`.replace(/\s+/g, ' ').trim(),
                     contractStartDate: planning.joiningDate || crewOnBoard.joiningDate || '',
                     contractEndDate: planning.reliefDue,
                     rangeStartDate: rangeStartDate.toISOString().split('T')[0],
@@ -4247,7 +4484,7 @@ export class PersistentFileStorage implements IStorage {
                   
                   currentCrew = {
                     id: crewOnBoard.id,
-                    name: `${crewOnBoard.firstName} ${crewOnBoard.middleName || ''} ${crewOnBoard.familyName || crewOnBoard.lastName || ''}`.replace(/\s+/g, ' ').trim(),
+                    name: `${crewOnBoard.firstName} ${crewOnBoard.middleName || ''} ${crewOnBoard.familyName || crewOnBoard.familyName || ''}`.replace(/\s+/g, ' ').trim(),
                     contractStartDate: crewOnBoard.joiningDate,
                     contractEndDate: crewOnBoard.reliefDue,
                     rangeStartDate: crewOnBoard.reliefDue,
@@ -4307,7 +4544,7 @@ export class PersistentFileStorage implements IStorage {
     const updatedPlan: RotationPlan = {
       ...plan,
       assignments: JSON.stringify(assignments),
-      updatedAt: new Date()
+      updatedAt: null as any // new Date()
     };
     this.rotationPlans.set(planId, updatedPlan);
     this.saveToFile(); // SAVE TO FILE!
@@ -4376,7 +4613,7 @@ export class PersistentFileStorage implements IStorage {
       ...plan,
       assignments: JSON.stringify(assignments),
       planStatus,
-      updatedAt: new Date()
+      updatedAt: null as any // new Date()
     };
     this.rotationPlans.set(planId, updatedPlan);
     this.saveToFile(); // SAVE TO FILE!
@@ -4461,8 +4698,8 @@ export class PersistentFileStorage implements IStorage {
     const record: DrugAlcoholTestRecord = {
       ...insertRecord,
       id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: null,
+      updatedAt: null,
     };
     this.drugAlcoholTestRecords.set(id, record);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY CREATE!
@@ -4476,7 +4713,7 @@ export class PersistentFileStorage implements IStorage {
     const updatedRecord: DrugAlcoholTestRecord = {
       ...existingRecord,
       ...updateData,
-      updatedAt: new Date(),
+      updatedAt: null,
     };
     this.drugAlcoholTestRecords.set(id, updatedRecord);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY UPDATE!
@@ -4517,8 +4754,8 @@ export class PersistentFileStorage implements IStorage {
     const record: RestHoursVesselRecord = {
       ...insertRecord,
       id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: null,
+      updatedAt: null,
     };
     this.restHoursVesselRecords.set(id, record);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY CREATE!
@@ -4532,7 +4769,7 @@ export class PersistentFileStorage implements IStorage {
     const updatedRecord: RestHoursVesselRecord = {
       ...existingRecord,
       ...updateData,
-      updatedAt: new Date(),
+      updatedAt: null,
     };
     this.restHoursVesselRecords.set(id, updatedRecord);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY UPDATE!
@@ -4585,8 +4822,8 @@ export class PersistentFileStorage implements IStorage {
     const record: RestHoursCrewRecord = {
       ...insertRecord,
       id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: null,
+      updatedAt: null,
     };
     this.restHoursCrewRecords.set(id, record);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY CREATE!
@@ -4600,7 +4837,7 @@ export class PersistentFileStorage implements IStorage {
     const updatedRecord: RestHoursCrewRecord = {
       ...existingRecord,
       ...updateData,
-      updatedAt: new Date(),
+      updatedAt: null,
     };
     this.restHoursCrewRecords.set(id, updatedRecord);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY UPDATE!
@@ -4656,7 +4893,7 @@ export class PersistentFileStorage implements IStorage {
         ...insertRecord,
         id: existing.id, // Keep the original ID
         createdAt: existing.createdAt, // Keep the original creation date
-        updatedAt: new Date(),
+        updatedAt: null,
       };
       this.restHoursDailyRecords.set(existing.id, updatedRecord);
       this.saveToFile(); // SAVE TO FILE AFTER UPDATE!
@@ -4668,8 +4905,8 @@ export class PersistentFileStorage implements IStorage {
     const record: RestHoursDailyRecord = {
       ...insertRecord,
       id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: null,
+      updatedAt: null,
     };
     this.restHoursDailyRecords.set(id, record);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY CREATE!
@@ -4683,7 +4920,7 @@ export class PersistentFileStorage implements IStorage {
     const updatedRecord: RestHoursDailyRecord = {
       ...existingRecord,
       ...updateData,
-      updatedAt: new Date(),
+      updatedAt: null,
     };
     this.restHoursDailyRecords.set(id, updatedRecord);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY UPDATE!
@@ -4832,7 +5069,7 @@ export class PersistentFileStorage implements IStorage {
     try {
       // Filter entries by masterId
       const filteredEntries: any[] = [];
-      for (const [key, entry] of this.masterDataEntries) {
+      for (const [key, entry] of Array.from(this.masterDataEntries)) {
         if (entry.masterId === masterId) {
           filteredEntries.push(entry);
         }
