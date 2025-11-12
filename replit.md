@@ -41,7 +41,13 @@ The application employs a modern web stack with a module-first architecture for 
         - Vessel Type filter: `/api/masters/015/data` with fallback to unique values extracted from crew data
         - Nationality filter: `/api/masters/001/data` with fallback to unique values extracted from crew data
     - **Intelligent Fallback**: When master data endpoints return empty arrays, the system automatically extracts unique values from existing crew member data to populate filters
-    - **Appraisal Workflow**: Supports draft and submitted status, with comprehensive form for performance evaluation
+    - **3-Stage Appraisal Workflow**: Independent stage submissions with status progression (Draft → Preliminary → Submitted → Reviewed)
+        - **Stage 1** (Parts A & B - Target Setting): Sets appraisal period, personality index, trainings, and targets. Part B evaluation fields are optional and can be left blank.
+        - **Stage 2** (Parts C-F - Performance Assessment): Fills Part B evaluations and completes competence/behavioral assessments, training needs, and recommendations.
+        - **Stage 3** (Part G - Office Review): Final office review and training follow-ups. Locks form after submission.
+    - **Conditional UI**: Part B Evaluation columns hidden during Draft/Preliminary status, visible during Submitted/Reviewed status
+    - **Appraisal Editing**: Full support for reopening and editing existing appraisals with automatic form hydration from persisted data
+    - **Optional Fields**: Part A fields (appraisalPeriodTo, personalityIndexCategory) and Part B evaluation fields are optional in Stage 1
     - **Filter Functionality**: Combined filter support with case-insensitive matching across all filter criteria
 - **Drugs & Alcohol Testing Module**: Tracks six test types with comprehensive filtering, AG Grid tables, and a Summary View. Features a D&A Test Form with dynamic sections and digital signature.
 - **Rest Hours Module**: Manages seafarer work and rest hours in compliance with maritime regulations.

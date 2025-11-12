@@ -44,6 +44,7 @@ const NATIONALITIES = [
 ];
 
 // Training and Target schemas
+// Full schemas with evaluation required (for Stage 2+)
 const trainingSchema = z.object({
   id: z.string(),
   training: z.string().min(1, "Training name is required"),
@@ -55,6 +56,21 @@ const targetSchema = z.object({
   id: z.string(),
   targetSetting: z.string().min(1, "Target setting is required"),
   evaluation: z.string().min(1, "Evaluation is required"),
+  comment: z.string().optional(),
+});
+
+// Stage 1 schemas with evaluation optional and training/target optional (blank Part B allowed)
+const trainingStage1Schema = z.object({
+  id: z.string(),
+  training: z.string().optional(),
+  evaluation: z.string().optional(),
+  comment: z.string().optional(),
+});
+
+const targetStage1Schema = z.object({
+  id: z.string(),
+  targetSetting: z.string().optional(),
+  evaluation: z.string().optional(),
   comment: z.string().optional(),
 });
 
@@ -137,10 +153,16 @@ const partASchema = z.object({
   primaryAppraiser: z.string().optional(),
 });
 
-// Part B schema
+// Part B schema (for full form validation)
 const partBSchema = z.object({
   trainings: z.array(trainingSchema).default([]),
   targets: z.array(targetSchema).default([]),
+});
+
+// Part B schema for Stage 1 (evaluation optional, empty arrays allowed)
+const partBStage1Schema = z.object({
+  trainings: z.array(trainingStage1Schema).default([]),
+  targets: z.array(targetStage1Schema).default([]),
 });
 
 // Part C schema
@@ -172,8 +194,8 @@ const partGSchema = z.object({
 });
 
 // Stage-specific schemas for validation
-// Stage 1: Parts A & B (Target Setting)
-const stage1Schema = partASchema.merge(partBSchema);
+// Stage 1: Parts A & B (Target Setting) - evaluation optional, empty arrays allowed
+const stage1Schema = partASchema.merge(partBStage1Schema);
 
 // Stage 2: Parts C, D, E, F (Performance Assessment)
 const stage2Schema = partCSchema.merge(partDSchema).merge(partESchema).merge(partFSchema);
@@ -230,10 +252,12 @@ interface AppraisalFormProps {
     signOn?: string;
     vesselType?: string;
   };
+  appraisalId?: number;
+  initialStatus?: 'draft' | 'preliminary' | 'submitted' | 'reviewed';
   onClose: () => void;
 }
 
-export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClose }) => {
+export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, appraisalId: propAppraisalId, initialStatus = 'draft', onClose }) => {
   const [activeSection, setActiveSection] = useState("A");
   const [activeContinuousSection1, setActiveContinuousSection1] = useState('A'); // For A&B continuous scroll
   const [activeContinuousSection2, setActiveContinuousSection2] = useState('C'); // For C-F continuous scroll
@@ -250,7 +274,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
   const [editingSeafarerComment, setEditingSeafarerComment] = useState<string | null>(null);
   const [nationalityOpen, setNationalityOpen] = useState(false);
   const [editingOfficeReview, setEditingOfficeReview] = useState<string | null>(null);
-  const [appraisalId, setAppraisalId] = useState<number | null>(null);
+  const [appraisalId, setAppraisalId] = useState<number | null>(propAppraisalId || null);
+  const [appraisalStatus, setAppraisalStatus] = useState<'draft' | 'preliminary' | 'submitted' | 'reviewed'>(initialStatus);
+  
+  // Derive whether to show evaluation column in Part B
+  const showEvaluation = ['submitted', 'reviewed'].includes(appraisalStatus);
   
   // Section references using canonical Part IDs
   const partARef = useRef<HTMLDivElement>(null);
@@ -305,6 +333,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
       console.log('✅ Form configuration loaded for rank:', crewMember?.rank, formConfig);
     }
   }, [formConfig, crewMember?.rank]);
+
+  // Fetch existing appraisal data when editing
+  const { data: existingAppraisal } = useQuery({
+    queryKey: ['/api/appraisals', appraisalId],
+    enabled: !!appraisalId,
+  });
 
   const { toast } = useToast();
 
@@ -458,8 +492,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
       });
     },
     onSuccess: () => {
+      setAppraisalStatus('preliminary');
       queryClient.invalidateQueries({ queryKey: ['/api/appraisals'] });
-      toast({ title: 'Stage 1 Submitted', description: 'Target setting (Parts A & B) submitted successfully.' });
+      queryClient.invalidateQueries({ queryKey: ['/api/appraisals', appraisalId] });
+      toast({ title: 'Stage 1 submitted' });
       onClose();
     },
     onError: (error: any) => {
@@ -486,7 +522,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
       });
     },
     onSuccess: () => {
+      setAppraisalStatus('submitted');
       queryClient.invalidateQueries({ queryKey: ['/api/appraisals'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/appraisals', appraisalId] });
       toast({ title: 'Stage 2 Submitted', description: 'Performance assessment (Parts C-F) submitted successfully.' });
       onClose();
     },
@@ -510,7 +548,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
       });
     },
     onSuccess: () => {
+      setAppraisalStatus('reviewed');
       queryClient.invalidateQueries({ queryKey: ['/api/appraisals'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/appraisals', appraisalId] });
       toast({ title: 'Stage 3 Submitted', description: 'Office review (Part G) submitted successfully. Form is now locked.' });
       onClose();
     },
@@ -518,6 +558,34 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
       toast({ title: 'Error', description: error.message || 'Failed to submit Stage 3', variant: 'destructive' });
     },
   });
+
+  // Hydrate form and status when editing existing appraisal
+  useEffect(() => {
+    if (existingAppraisal && existingAppraisal.appraisalData) {
+      try {
+        const parsedData = typeof existingAppraisal.appraisalData === 'string' 
+          ? JSON.parse(existingAppraisal.appraisalData) 
+          : existingAppraisal.appraisalData;
+        
+        // Reset form with existing data
+        form.reset(parsedData);
+        
+        // Update status from fetched data
+        if (existingAppraisal.status && ['draft', 'preliminary', 'submitted', 'reviewed'].includes(existingAppraisal.status)) {
+          setAppraisalStatus(existingAppraisal.status as 'draft' | 'preliminary' | 'submitted' | 'reviewed');
+        }
+        
+        console.log('✅ Hydrated form with existing appraisal data:', existingAppraisal);
+      } catch (error) {
+        console.error('❌ Failed to parse appraisal data:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load appraisal data. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    }
+  }, [existingAppraisal, form, toast]);
 
   // Shared handler for stage submissions (auto-saves draft if needed)
   const handleStageSubmission = async (stage: 'stage1' | 'stage2' | 'stage3') => {
@@ -1437,7 +1505,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                           <tr>
                             <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
                             <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
-                            <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>
+                            {showEvaluation && <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>}
                             <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
                           </tr>
                         </thead>
@@ -1454,23 +1522,25 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                   className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                                 />
                               </td>
-                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                <Select
-                                  value={training.evaluation}
-                                  onValueChange={(value) => updateTraining(training.id, "evaluation", value)}
-                                >
-                                  <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
-                                    <SelectValue placeholder="Select Rating" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="5-exceeded-expectations">5- Exceeded Expectations</SelectItem>
-                                    <SelectItem value="4-meets-expectations">4- Meets Expectations</SelectItem>
-                                    <SelectItem value="3-somewhat-meets-expectations">3- Somewhat Meets Expectations</SelectItem>
-                                    <SelectItem value="2-below-expectations">2- Below Expectations</SelectItem>
-                                    <SelectItem value="1-significantly-below-expectations">1- Significantly Below Expectations</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </td>
+                              {showEvaluation && (
+                                <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                  <Select
+                                    value={training.evaluation}
+                                    onValueChange={(value) => updateTraining(training.id, "evaluation", value)}
+                                  >
+                                    <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                                      <SelectValue placeholder="Select Rating" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="5-exceeded-expectations">5- Exceeded Expectations</SelectItem>
+                                      <SelectItem value="4-meets-expectations">4- Meets Expectations</SelectItem>
+                                      <SelectItem value="3-somewhat-meets-expectations">3- Somewhat Meets Expectations</SelectItem>
+                                      <SelectItem value="2-below-expectations">2- Below Expectations</SelectItem>
+                                      <SelectItem value="1-significantly-below-expectations">1- Significantly Below Expectations</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </td>
+                              )}
                               <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                                 <div className="flex gap-2 justify-center">
                                   <Button
@@ -1578,7 +1648,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                         <tr>
                           <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
                           <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Target Setting</th>
-                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>
+                          {showEvaluation && <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>}
                           <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
                         </tr>
                       </thead>
@@ -1595,23 +1665,25 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                   className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                                 />
                               </td>
-                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                <Select
-                                  value={target.evaluation}
-                                  onValueChange={(value) => updateTarget(target.id, "evaluation", value)}
-                                >
-                                  <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
-                                    <SelectValue placeholder="Select Rating" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="5-exceeded-set-target">5- Exceeded Set Target</SelectItem>
-                                    <SelectItem value="4-fully-met-target">4- Fully Met Target</SelectItem>
-                                    <SelectItem value="3-missed-target-small-margin">3- Missed Target by a Small Margin</SelectItem>
-                                    <SelectItem value="2-missed-target-significant-margin">2- Missed Target by a Significant Margin</SelectItem>
-                                    <SelectItem value="1-failed-to-achieve-target">1- Failed to Achieve Target</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </td>
+                              {showEvaluation && (
+                                <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                  <Select
+                                    value={target.evaluation}
+                                    onValueChange={(value) => updateTarget(target.id, "evaluation", value)}
+                                  >
+                                    <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                                      <SelectValue placeholder="Select Rating" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="5-exceeded-set-target">5- Exceeded Set Target</SelectItem>
+                                      <SelectItem value="4-fully-met-target">4- Fully Met Target</SelectItem>
+                                      <SelectItem value="3-missed-target-small-margin">3- Missed Target by a Small Margin</SelectItem>
+                                      <SelectItem value="2-missed-target-significant-margin">2- Missed Target by a Significant Margin</SelectItem>
+                                      <SelectItem value="1-failed-to-achieve-target">1- Failed to Achieve Target</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </td>
+                              )}
                               <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                                 <div className="flex gap-2 justify-center">
                                   <Button
@@ -3145,7 +3217,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                 <tr>
                                   <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
                                   <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>
+                                  {showEvaluation && <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>}
                                   <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
                                 </tr>
                               </thead>
@@ -3162,23 +3234,25 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                         className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                                       />
                                     </td>
-                                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                      <Select
-                                        value={training.evaluation}
-                                        onValueChange={(value) => updateTraining(training.id, "evaluation", value)}
-                                      >
-                                        <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
-                                          <SelectValue placeholder="Select Rating" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="5-exceeded-expectations">5- Exceeded Expectations</SelectItem>
-                                          <SelectItem value="4-meets-expectations">4- Meets Expectations</SelectItem>
-                                          <SelectItem value="3-somewhat-meets-expectations">3- Somewhat Meets Expectations</SelectItem>
-                                          <SelectItem value="2-below-expectations">2- Below Expectations</SelectItem>
-                                          <SelectItem value="1-significantly-below-expectations">1- Significantly Below Expectations</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </td>
+                                    {showEvaluation && (
+                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                        <Select
+                                          value={training.evaluation}
+                                          onValueChange={(value) => updateTraining(training.id, "evaluation", value)}
+                                        >
+                                          <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                                            <SelectValue placeholder="Select Rating" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="5-exceeded-expectations">5- Exceeded Expectations</SelectItem>
+                                            <SelectItem value="4-meets-expectations">4- Meets Expectations</SelectItem>
+                                            <SelectItem value="3-somewhat-meets-expectations">3- Somewhat Meets Expectations</SelectItem>
+                                            <SelectItem value="2-below-expectations">2- Below Expectations</SelectItem>
+                                            <SelectItem value="1-significantly-below-expectations">1- Significantly Below Expectations</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </td>
+                                    )}
                                     <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                                       <div className="flex gap-2 justify-center">
                                         <Button
@@ -3286,7 +3360,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                               <tr>
                                 <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
                                 <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Target Setting</th>
-                                <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>
+                                {showEvaluation && <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>}
                                 <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
                               </tr>
                             </thead>
@@ -3303,23 +3377,25 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                         className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                                       />
                                     </td>
-                                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                      <Select
-                                        value={target.evaluation}
-                                        onValueChange={(value) => updateTarget(target.id, "evaluation", value)}
-                                      >
-                                        <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
-                                          <SelectValue placeholder="Select Rating" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="5-exceeded-set-target">5- Exceeded Set Target</SelectItem>
-                                          <SelectItem value="4-fully-met-target">4- Fully Met Target</SelectItem>
-                                          <SelectItem value="3-missed-target-small-margin">3- Missed Target by a Small Margin</SelectItem>
-                                          <SelectItem value="2-missed-target-significant-margin">2- Missed Target by a Significant Margin</SelectItem>
-                                          <SelectItem value="1-failed-to-achieve-target">1- Failed to Achieve Target</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </td>
+                                    {showEvaluation && (
+                                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                                        <Select
+                                          value={target.evaluation}
+                                          onValueChange={(value) => updateTarget(target.id, "evaluation", value)}
+                                        >
+                                          <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                                            <SelectValue placeholder="Select Rating" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="5-exceeded-set-target">5- Exceeded Set Target</SelectItem>
+                                            <SelectItem value="4-fully-met-target">4- Fully Met Target</SelectItem>
+                                            <SelectItem value="3-missed-target-small-margin">3- Missed Target by a Small Margin</SelectItem>
+                                            <SelectItem value="2-missed-target-significant-margin">2- Missed Target by a Significant Margin</SelectItem>
+                                            <SelectItem value="1-failed-to-achieve-target">1- Failed to Achieve Target</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </td>
+                                    )}
                                     <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                                       <div className="flex gap-2 justify-center">
                                         <Button

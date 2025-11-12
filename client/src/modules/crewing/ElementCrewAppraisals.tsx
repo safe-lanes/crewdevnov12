@@ -720,6 +720,8 @@ export const ElementCrewAppraisals = (): JSX.Element => {
         {showAppraisalForm && selectedCrewMember && (
           <AppraisalForm
             crewMember={selectedCrewMember}
+            appraisalId={selectedCrewMember.appraisalId}
+            initialStatus={selectedCrewMember.status as 'draft' | 'preliminary' | 'submitted' | 'reviewed'}
             onClose={handleCloseForm}
           />
         )}
