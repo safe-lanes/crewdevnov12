@@ -3351,7 +3351,7 @@ export class PersistentFileStorage implements IStorage {
     });
 
     // Initialize with sample appraisal results
-    this.appraisalResults.set(1, {
+    const appraisal1: AppraisalResult = {
       id: 1,
       crewMemberId: "2025-05-14",
       formId: 1,
@@ -3364,10 +3364,12 @@ export class PersistentFileStorage implements IStorage {
       submittedBy: "admin",
       status: "Reviewed",
       submittedAt: new Date("2025-06-06"),
-      stagePayloads: null
-    });
+      stagePayloads: null,
+      stageStatuses: null
+    };
+    this.appraisalResults.set(1, appraisal1);
 
-    this.appraisalResults.set(2, {
+    const appraisal2: AppraisalResult = {
       id: 2,
       crewMemberId: "2025-03-12",
       formId: 1,
@@ -3380,10 +3382,12 @@ export class PersistentFileStorage implements IStorage {
       submittedBy: "admin",
       status: "Reviewed",
       submittedAt: new Date("2025-05-07"),
-      stagePayloads: null
-    });
+      stagePayloads: null,
+      stageStatuses: null
+    };
+    this.appraisalResults.set(2, appraisal2);
 
-    this.appraisalResults.set(3, {
+    const appraisal3: AppraisalResult = {
       id: 3,
       crewMemberId: "2025-02-12",
       formId: 1,
@@ -3396,10 +3400,12 @@ export class PersistentFileStorage implements IStorage {
       submittedBy: "admin",
       status: "Reviewed",
       submittedAt: new Date("2025-06-06"),
-      stagePayloads: null
-    });
+      stagePayloads: null,
+      stageStatuses: null
+    };
+    this.appraisalResults.set(3, appraisal3);
 
-    this.appraisalResults.set(4, {
+    const appraisal4: AppraisalResult = {
       id: 4,
       crewMemberId: "2025-04-18",
       formId: 1,
@@ -3412,8 +3418,10 @@ export class PersistentFileStorage implements IStorage {
       submittedBy: "admin",
       status: "Reviewed",
       submittedAt: new Date("2025-05-07"),
-      stagePayloads: null
-    });
+      stagePayloads: null,
+      stageStatuses: null
+    };
+    this.appraisalResults.set(4, appraisal4);
 
     this.currentAppraisalResultId = 5;
 
