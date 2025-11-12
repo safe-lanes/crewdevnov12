@@ -172,6 +172,9 @@ export interface IStorage {
   clearAdvancedDaysData(vesselId: string, monthValue: string, advancedDays: number[]): Promise<boolean>;
 }
 
+/* MemStorage commented out - contains test seed data with type mismatches and is never used in production.
+   PersistentFileStorage is used instead. Keeping this code for future reference if needed.
+
 // @ts-expect-error - MemStorage contains test seed data with type mismatches. Not used in production (PersistentFileStorage is used instead).
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
@@ -2319,6 +2322,7 @@ export class MemStorage implements IStorage {
     return this.variableTasks.delete(id);
   }
 }
+End of MemStorage - commented out */
 
 // PersistentFileStorage class - saves data to JSON file for persistence across restarts
 export class PersistentFileStorage implements IStorage {
@@ -2433,7 +2437,7 @@ export class PersistentFileStorage implements IStorage {
     // Group records by crew/vessel/month key
     const grouped = new Map<string, RestHoursDailyRecord[]>();
     
-    for (const record of this.restHoursDailyRecords.values()) {
+    for (const record of Array.from(this.restHoursDailyRecords.values())) {
       const key = `${record.crewMemberId}-${record.vesselId}-${record.monthYear}`;
       if (!grouped.has(key)) {
         grouped.set(key, []);
@@ -2443,7 +2447,7 @@ export class PersistentFileStorage implements IStorage {
     
     // Find and remove duplicates (keep highest ID)
     let duplicatesRemoved = 0;
-    for (const [key, records] of grouped.entries()) {
+    for (const [key, records] of Array.from(grouped.entries())) {
       if (records.length > 1) {
         // Sort by numeric ID (highest first)
         records.sort((a, b) => Number(b.id) - Number(a.id));
