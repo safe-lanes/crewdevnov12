@@ -274,6 +274,7 @@ export class MemStorage implements IStorage {
     this.forms.set(1, {
       id: 1,
       name: "Crew Appraisal Form",
+      category: "Appraisal",
       rankGroup: "Senior Officers",
       versionNo: "01",
       versionDate: "01-Jan-2025",
