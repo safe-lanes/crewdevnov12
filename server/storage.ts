@@ -2529,7 +2529,9 @@ export class PersistentFileStorage implements IStorage {
       const id = this.currentVesselViolationCommentId++;
       const newComment: VesselViolationComment = {
         id,
-        ...insertComment,
+        vesselId: insertComment.vesselId,
+        monthValue: insertComment.monthValue,
+        comment: insertComment.comment ?? null,
         createdAt: null,
         updatedAt: null,
       };
@@ -2568,7 +2570,12 @@ export class PersistentFileStorage implements IStorage {
       const id = this.currentOfficeViolationCommentId++;
       const newComment: OfficeViolationComment = {
         id,
-        ...insertComment,
+        vesselId: insertComment.vesselId,
+        monthValue: insertComment.monthValue,
+        comment: insertComment.comment ?? null,
+        reviewerName: insertComment.reviewerName ?? null,
+        reviewerPosition: insertComment.reviewerPosition ?? null,
+        reviewDate: insertComment.reviewDate ?? null,
         createdAt: null,
         updatedAt: null,
       };
@@ -2616,7 +2623,22 @@ export class PersistentFileStorage implements IStorage {
       const id = this.currentNCReportId++;
       const newReport: NCReport = {
         id,
-        ...insertReport,
+        crewMemberId: insertReport.crewMemberId,
+        vesselId: insertReport.vesselId,
+        monthValue: insertReport.monthValue,
+        rank: insertReport.rank,
+        status: insertReport.status ?? "Open",
+        ncReference: insertReport.ncReference ?? "STCW/MLC/ILO",
+        identifiedRootCause: insertReport.identifiedRootCause ?? null,
+        immediateCorrectiveAction: insertReport.immediateCorrectiveAction ?? null,
+        preventiveAction: insertReport.preventiveAction ?? null,
+        preventiveActionStatus: insertReport.preventiveActionStatus ?? "Pending",
+        preventiveActionDueDate: insertReport.preventiveActionDueDate ?? null,
+        preventiveActionDateCompleted: insertReport.preventiveActionDateCompleted ?? null,
+        officeClosureVerifiedByName: insertReport.officeClosureVerifiedByName ?? null,
+        officeClosureVerifiedByPosition: insertReport.officeClosureVerifiedByPosition ?? null,
+        officeClosureDate: insertReport.officeClosureDate ?? null,
+        submissionStatus: insertReport.submissionStatus ?? "draft",
         createdAt: null,
         updatedAt: null,
       };
@@ -3342,9 +3364,6 @@ export class PersistentFileStorage implements IStorage {
       submittedBy: "admin",
       status: "Reviewed",
       submittedAt: new Date("2025-06-06"),
-      stage1Data: null,
-      stage2Data: null,
-      stage3Data: null,
       stagePayloads: null
     });
 
@@ -3361,9 +3380,6 @@ export class PersistentFileStorage implements IStorage {
       submittedBy: "admin",
       status: "Reviewed",
       submittedAt: new Date("2025-05-07"),
-      stage1Data: null,
-      stage2Data: null,
-      stage3Data: null,
       stagePayloads: null
     });
 
@@ -3380,9 +3396,6 @@ export class PersistentFileStorage implements IStorage {
       submittedBy: "admin",
       status: "Reviewed",
       submittedAt: new Date("2025-06-06"),
-      stage1Data: null,
-      stage2Data: null,
-      stage3Data: null,
       stagePayloads: null
     });
 
@@ -3399,9 +3412,6 @@ export class PersistentFileStorage implements IStorage {
       submittedBy: "admin",
       status: "Reviewed",
       submittedAt: new Date("2025-05-07"),
-      stage1Data: null,
-      stage2Data: null,
-      stage3Data: null,
       stagePayloads: null
     });
 
@@ -5000,6 +5010,11 @@ export class PersistentFileStorage implements IStorage {
     return Array.from(this.fixedTasks.values()).map(task => this.parseFixedTaskData(task));
   }
 
+  async getFixedTask(id: number): Promise<FixedTask | undefined> {
+    const task = this.fixedTasks.get(id);
+    return task ? this.parseFixedTaskData(task) : undefined;
+  }
+
   async getFixedTasksByVesselAndMonth(vesselId: string, monthYear: string): Promise<FixedTask[]> {
     const allTasks = Array.from(this.fixedTasks.values());
     return allTasks
@@ -5039,6 +5054,12 @@ export class PersistentFileStorage implements IStorage {
     this.fixedTasks.set(id, updatedTask);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY UPDATE!
     return this.parseFixedTaskData(updatedTask);
+  }
+
+  async deleteFixedTask(id: number): Promise<boolean> {
+    const result = this.fixedTasks.delete(id);
+    if (result) this.saveToFile(); // SAVE TO FILE AFTER EVERY DELETE!
+    return result;
   }
 
   // Data Masters methods (return empty array for frontend compatibility)
