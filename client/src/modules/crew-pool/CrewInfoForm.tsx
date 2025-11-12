@@ -1368,7 +1368,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                         <div 
                           className="bg-blue-500 w-full rounded-t"
                           style={{ height: `${(point.score / 40) * 100}%` }}
-                          title={`${point.date}: ${point.score}`}
+                          title={`${point.year}: ${point.score}`}
                         ></div>
                       </div>
                     ))}

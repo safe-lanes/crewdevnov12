@@ -60,29 +60,23 @@ export async function fetchCrewMember(id: string): Promise<CrewMemberResponse> {
  * Create a new crew member
  */
 export async function createCrewMember(data: any): Promise<CrewMemberResponse> {
-  return apiRequest(`/api/crew-members`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  const response = await apiRequest('POST', `/api/crew-members`, data);
+  return response.json();
 }
 
 /**
  * Update an existing crew member
  */
 export async function updateCrewMember(id: string, data: any): Promise<CrewMemberResponse> {
-  return apiRequest(`/api/crew-members/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
+  const response = await apiRequest('PATCH', `/api/crew-members/${id}`, data);
+  return response.json();
 }
 
 /**
  * Delete a crew member
  */
 export async function deleteCrewMember(id: string): Promise<void> {
-  return apiRequest(`/api/crew-members/${id}`, {
-    method: 'DELETE',
-  });
+  await apiRequest('DELETE', `/api/crew-members/${id}`);
 }
 
 /**
@@ -112,45 +106,37 @@ export async function fetchAppraisal(id: number): Promise<AppraisalResponse> {
  * Create a new appraisal
  */
 export async function createAppraisal(data: any): Promise<AppraisalResponse> {
-  return apiRequest(`/api/appraisals`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  const response = await apiRequest('POST', `/api/appraisals`, data);
+  return response.json();
 }
 
 /**
  * Update an existing appraisal
  */
 export async function updateAppraisal(id: number, data: any): Promise<AppraisalResponse> {
-  return apiRequest(`/api/appraisals/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
+  const response = await apiRequest('PATCH', `/api/appraisals/${id}`, data);
+  return response.json();
 }
 
 /**
  * Delete an appraisal
  */
 export async function deleteAppraisal(id: number): Promise<void> {
-  return apiRequest(`/api/appraisals/${id}`, {
-    method: 'DELETE',
-  });
+  await apiRequest('DELETE', `/api/appraisals/${id}`);
 }
 
 /**
  * Submit an appraisal
  */
 export async function submitAppraisal(id: number): Promise<AppraisalResponse> {
-  return apiRequest(`/api/appraisals/${id}/submit`, {
-    method: 'POST',
-  });
+  const response = await apiRequest('POST', `/api/appraisals/${id}/submit`);
+  return response.json();
 }
 
 /**
  * Approve an appraisal
  */
 export async function approveAppraisal(id: number): Promise<AppraisalResponse> {
-  return apiRequest(`/api/appraisals/${id}/approve`, {
-    method: 'POST',
-  });
+  const response = await apiRequest('POST', `/api/appraisals/${id}/approve`);
+  return response.json();
 }
