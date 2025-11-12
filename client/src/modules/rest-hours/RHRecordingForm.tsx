@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -336,16 +336,37 @@ export const RHRecordingForm = ({
   }, [previousMonthDateLineAdjustment]);
 
   // Apply retarded day logic to initialized records when adjustments are loaded (for new forms)
+  // Use ref to track if we've already applied this logic to prevent infinite loops
+  const retardedDaysAppliedRef = useRef(false);
+  const lastAdjustmentsHashRef = useRef<string>('');
+  
   useEffect(() => {
-    if (!open || existingRecord) return; // Skip if loading existing data (handled elsewhere)
+    if (!open || existingRecord) {
+      retardedDaysAppliedRef.current = false;
+      lastAdjustmentsHashRef.current = '';
+      return;
+    }
+    
     if (dailyRecords.length === 0 || parsedDateLineAdjustments.length === 0) return;
+    
+    // Create a hash of adjustments to detect when they change
+    const adjustmentsHash = JSON.stringify(parsedDateLineAdjustments.map(a => `${a.day}-${a.type}`));
+    
+    // Reset the applied flag if adjustments have changed
+    if (lastAdjustmentsHashRef.current !== adjustmentsHash) {
+      retardedDaysAppliedRef.current = false;
+      lastAdjustmentsHashRef.current = adjustmentsHash;
+    }
     
     // Check if we need to add duplicate records for retarded days
     const retardedDays = parsedDateLineAdjustments
       .filter(adj => adj.type === 'retarded')
       .map(adj => adj.day);
     
-    if (retardedDays.length === 0) return;
+    if (retardedDays.length === 0) {
+      retardedDaysAppliedRef.current = true;
+      return;
+    }
     
     // Check if any retarded day is missing its duplicate record
     const needsUpdate = retardedDays.some(day => {
@@ -355,10 +376,22 @@ export const RHRecordingForm = ({
       return !duplicateExists;
     });
     
+    // If duplicates are missing, reset the flag and apply the logic
+    // This handles cases like handleClear() where records are reset but adjustments remain
+    if (needsUpdate) {
+      retardedDaysAppliedRef.current = false;
+    }
+    
+    // Skip if already applied AND no update needed
+    if (retardedDaysAppliedRef.current) return;
+    
+    // Apply the logic if needed
     if (needsUpdate) {
       const updatedRecords = ensureRetardedDayRecords(dailyRecords, parsedDateLineAdjustments);
       setDailyRecords(updatedRecords);
     }
+    
+    retardedDaysAppliedRef.current = true;
   }, [parsedDateLineAdjustments, open, existingRecord, dailyRecords]);
 
   // Helper function: Ensure retarded days have TWO separate records
