@@ -273,17 +273,18 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Crew ID',
       field: 'employeeId',
-      flex: 0.8,
+      flex: 0.7,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agTextColumnFilter',
       sortable: true,
       resizable: true,
-      pinned: 'left'
+      pinned: 'left',
+      hide: true
     },
     {
       headerName: 'Name',
       field: 'fullName',
-      flex: 1.5,
+      flex: 1.2,
       valueGetter: (params) => `${params.data.name.first} ${params.data.name.middle} ${params.data.name.last}`,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agTextColumnFilter',
@@ -294,7 +295,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Rank',
       field: 'rank',
-      flex: 1,
+      flex: 0.8,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agSetColumnFilter',
       sortable: true,
@@ -304,7 +305,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Nationality',
       field: 'nationality',
-      flex: 1,
+      flex: 0.8,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agSetColumnFilter',
       sortable: true,
@@ -314,7 +315,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Age',
       field: 'age',
-      flex: 0.6,
+      flex: 0.5,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agNumberColumnFilter',
       sortable: true,
@@ -324,7 +325,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Vessel',
       field: 'vessel',
-      flex: 1.3,
+      flex: 1,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agSetColumnFilter',
       sortable: true,
@@ -332,9 +333,9 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       enableRowGroup: false
     },
     {
-      headerName: 'Vessel Type',
+      headerName: 'Type',
       field: 'vesselType',
-      flex: 1,
+      flex: 0.7,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agSetColumnFilter',
       sortable: true,
@@ -344,16 +345,16 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Sign-On',
       field: 'signOn',
-      flex: 0.9,
+      flex: 0.8,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agDateColumnFilter',
       sortable: true,
       resizable: true
     },
     {
-      headerName: 'Appraisal Type',
+      headerName: 'App. Type',
       field: 'appraisalType',
-      flex: 1.1,
+      flex: 0.9,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agSetColumnFilter',
       sortable: true,
@@ -361,18 +362,18 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       enableRowGroup: false
     },
     {
-      headerName: 'Appraisal Date',
+      headerName: 'App. Date',
       field: 'appraisalDate',
-      flex: 1,
+      flex: 0.8,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agDateColumnFilter',
       sortable: true,
       resizable: true
     },
     {
-      headerName: 'Competence Rating',
+      headerName: 'Comp. Rating',
       field: 'competenceRating.value',
-      flex: 1.1,
+      flex: 0.9,
       cellRenderer: RatingCellRenderer,
       cellClass: 'flex items-center justify-center',
       filter: 'agNumberColumnFilter',
@@ -382,9 +383,9 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       aggFunc: 'avg'
     },
     {
-      headerName: 'Behavioral Rating',
+      headerName: 'Behav. Rating',
       field: 'behavioralRating.value',
-      flex: 1.1,
+      flex: 0.9,
       cellRenderer: RatingCellRenderer,
       cellClass: 'flex items-center justify-center',
       filter: 'agNumberColumnFilter',
@@ -394,9 +395,9 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       aggFunc: 'avg'
     },
     {
-      headerName: 'Overall Rating',
+      headerName: 'Overall',
       field: 'overallRating.value',
-      flex: 1,
+      flex: 0.7,
       cellRenderer: RatingCellRenderer,
       cellClass: 'flex items-center justify-center',
       filter: 'agNumberColumnFilter',
@@ -408,7 +409,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     {
       headerName: 'Actions',
       field: 'actions',
-      flex: 0.8,
+      flex: 0.6,
       cellRenderer: ActionsCellRenderer,
       sortable: false,
       filter: false,
