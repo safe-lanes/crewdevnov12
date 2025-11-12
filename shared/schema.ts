@@ -142,7 +142,9 @@ export const appraisalResults = pgTable("appraisal_results", {
   overallRating: text("overall_rating"),
   submittedAt: timestamp("submitted_at").defaultNow(),
   submittedBy: text("submitted_by").notNull(),
-  status: text("status").notNull().default("draft"), // draft, submitted, approved
+  status: text("status").notNull().default("draft"), // draft, preliminary, submitted, reviewed
+  stageStatuses: text("stage_statuses"), // JSON: {stage1: {status, submittedAt, submittedBy}, stage2: {...}, stage3: {...}}
+  stagePayloads: text("stage_payloads"), // JSON: {stage1: {...}, stage2: {...}, stage3: {...}}
 });
 
 export const recruitmentCandidates = pgTable("recruitment_candidates", {
@@ -785,6 +787,8 @@ export const insertAppraisalResultSchema = createInsertSchema(appraisalResults).
   overallRating: true,
   submittedBy: true,
   status: true,
+  stageStatuses: true,
+  stagePayloads: true,
 });
 
 export const insertRecruitmentCandidateSchema = createInsertSchema(recruitmentCandidates).pick({

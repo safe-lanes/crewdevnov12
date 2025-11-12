@@ -50,6 +50,7 @@ export interface IStorage {
   createAppraisalResult(appraisalResult: InsertAppraisalResult): Promise<AppraisalResult>;
   updateAppraisalResult(id: number, appraisalResult: Partial<InsertAppraisalResult>): Promise<AppraisalResult | undefined>;
   deleteAppraisalResult(id: number): Promise<boolean>;
+  submitAppraisalStage(id: number, stage: 'stage1' | 'stage2' | 'stage3', data: any, submittedBy: string): Promise<AppraisalResult | undefined>;
   // Recruitment Candidates
   getRecruitmentCandidates(): Promise<RecruitmentCandidate[]>;
   getRecruitmentCandidate(id: string): Promise<RecruitmentCandidate | undefined>;
@@ -1604,7 +1605,8 @@ export class MemStorage implements IStorage {
 
   // Appraisal Results Methods
   async getAppraisalResults(): Promise<AppraisalResult[]> {
-    return Array.from(this.appraisalResults.values());
+    // Filter out drafts - only return preliminary, submitted, reviewed
+    return Array.from(this.appraisalResults.values()).filter(ar => ar.status !== 'draft');
   }
 
   async getAppraisalResult(id: number): Promise<AppraisalResult | undefined> {
@@ -1644,6 +1646,49 @@ export class MemStorage implements IStorage {
 
   async deleteAppraisalResult(id: number): Promise<boolean> {
     return this.appraisalResults.delete(id);
+  }
+
+  async submitAppraisalStage(id: number, stage: 'stage1' | 'stage2' | 'stage3', data: any, submittedBy: string): Promise<AppraisalResult | undefined> {
+    const existingAppraisal = this.appraisalResults.get(id);
+    if (!existingAppraisal) return undefined;
+
+    // Parse existing stage statuses
+    const stageStatuses = existingAppraisal.stageStatuses ? JSON.parse(existingAppraisal.stageStatuses) : {};
+    
+    // Update stage status
+    stageStatuses[stage] = {
+      status: 'submitted',
+      submittedAt: new Date().toISOString(),
+      submittedBy: submittedBy
+    };
+
+    // Determine overall status based on completed stages
+    let newStatus = existingAppraisal.status;
+    if (stage === 'stage1') {
+      newStatus = 'preliminary';
+    } else if (stage === 'stage2') {
+      newStatus = 'submitted';
+    } else if (stage === 'stage3') {
+      newStatus = 'reviewed';
+    }
+
+    // Parse existing appraisal data
+    const appraisalData = existingAppraisal.appraisalData ? JSON.parse(existingAppraisal.appraisalData) : {};
+    
+    // Merge stage data into appraisal data
+    const updatedData = { ...appraisalData, ...data };
+
+    const updatedAppraisal: AppraisalResult = {
+      ...existingAppraisal,
+      appraisalData: JSON.stringify(updatedData),
+      stageStatuses: JSON.stringify(stageStatuses),
+      status: newStatus,
+      submittedBy: submittedBy,
+      submittedAt: new Date()
+    };
+
+    this.appraisalResults.set(id, updatedAppraisal);
+    return updatedAppraisal;
   }
 
   // Recruitment Candidates Methods
@@ -3817,7 +3862,8 @@ export class PersistentFileStorage implements IStorage {
 
   // Appraisal Result methods (same as MemStorage)
   async getAppraisalResults(): Promise<AppraisalResult[]> {
-    return Array.from(this.appraisalResults.values());
+    // Filter out drafts - only return preliminary, submitted, reviewed
+    return Array.from(this.appraisalResults.values()).filter(ar => ar.status !== 'draft');
   }
 
   async getAppraisalResult(id: number): Promise<AppraisalResult | undefined> {
@@ -3849,6 +3895,50 @@ export class PersistentFileStorage implements IStorage {
     const result = this.appraisalResults.delete(id);
     if (result) this.saveToFile();
     return result;
+  }
+
+  async submitAppraisalStage(id: number, stage: 'stage1' | 'stage2' | 'stage3', data: any, submittedBy: string): Promise<AppraisalResult | undefined> {
+    const existingAppraisal = this.appraisalResults.get(id);
+    if (!existingAppraisal) return undefined;
+
+    // Parse existing stage statuses
+    const stageStatuses = existingAppraisal.stageStatuses ? JSON.parse(existingAppraisal.stageStatuses) : {};
+    
+    // Update stage status
+    stageStatuses[stage] = {
+      status: 'submitted',
+      submittedAt: new Date().toISOString(),
+      submittedBy: submittedBy
+    };
+
+    // Determine overall status based on completed stages
+    let newStatus = existingAppraisal.status;
+    if (stage === 'stage1') {
+      newStatus = 'preliminary';
+    } else if (stage === 'stage2') {
+      newStatus = 'submitted';
+    } else if (stage === 'stage3') {
+      newStatus = 'reviewed';
+    }
+
+    // Parse existing appraisal data
+    const appraisalData = existingAppraisal.appraisalData ? JSON.parse(existingAppraisal.appraisalData) : {};
+    
+    // Merge stage data into appraisal data
+    const updatedData = { ...appraisalData, ...data };
+
+    const updatedAppraisal: AppraisalResult = {
+      ...existingAppraisal,
+      appraisalData: JSON.stringify(updatedData),
+      stageStatuses: JSON.stringify(stageStatuses),
+      status: newStatus,
+      submittedBy: submittedBy,
+      submittedAt: new Date()
+    };
+
+    this.appraisalResults.set(id, updatedAppraisal);
+    this.saveToFile();
+    return updatedAppraisal;
   }
 
   // Recruitment Candidate methods - THE IMPORTANT ONES FOR YOUR FORM!
@@ -4892,6 +4982,7 @@ if (databaseUrlForceDisabled) {
       async createAppraisalResult(): Promise<any> { this.throwConnectionError(); }
       async updateAppraisalResult(): Promise<any> { this.throwConnectionError(); }
       async deleteAppraisalResult(): Promise<any> { this.throwConnectionError(); }
+      async submitAppraisalStage(): Promise<any> { this.throwConnectionError(); }
       async getRecruitmentCandidates(): Promise<any> { this.throwConnectionError(); }
       async getRecruitmentCandidate(): Promise<any> { this.throwConnectionError(); }
       async getRecruitmentCandidatesByStatus(): Promise<any> { this.throwConnectionError(); }

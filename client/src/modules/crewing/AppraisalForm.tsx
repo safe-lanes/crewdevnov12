@@ -123,6 +123,65 @@ const trainingFollowupSchema = z.object({
   comment: z.string().optional(),
 });
 
+// Part A schema
+const partASchema = z.object({
+  seafarersName: z.string().min(1, "Seafarer's name is required"),
+  seafarersRank: z.string().min(1, "Seafarer's rank is required"),
+  nationality: z.string().min(1, "Nationality is required"),
+  vessel: z.string().min(1, "Vessel is required"),
+  signOn: z.string().optional(),
+  appraisalType: z.string().min(1, "Appraisal type is required"),
+  appraisalPeriodFrom: z.string().optional(),
+  appraisalPeriodTo: z.string().optional(),
+  personalityIndexCategory: z.string().optional(),
+  primaryAppraiser: z.string().optional(),
+});
+
+// Part B schema
+const partBSchema = z.object({
+  trainings: z.array(trainingSchema).default([]),
+  targets: z.array(targetSchema).default([]),
+});
+
+// Part C schema
+const partCSchema = z.object({
+  competenceAssessments: z.array(competenceAssessmentSchema).default([]),
+});
+
+// Part D schema
+const partDSchema = z.object({
+  behaviouralAssessments: z.array(behaviouralAssessmentSchema).default([]),
+});
+
+// Part E schema
+const partESchema = z.object({
+  trainingNeeds: z.array(trainingNeedsSchema).default([]),
+});
+
+// Part F schema
+const partFSchema = z.object({
+  recommendations: z.array(recommendationSchema).default([]),
+  appraiserComments: z.array(appraiserCommentSchema).default([]),
+  seafarerComments: z.array(seafarerCommentSchema).default([]),
+});
+
+// Part G schema
+const partGSchema = z.object({
+  officeReviews: z.array(officeReviewSchema).default([]),
+  trainingFollowups: z.array(trainingFollowupSchema).default([]),
+});
+
+// Stage-specific schemas for validation
+// Stage 1: Parts A & B (Target Setting)
+const stage1Schema = partASchema.merge(partBSchema);
+
+// Stage 2: Parts C, D, E, F (Performance Assessment)
+const stage2Schema = partCSchema.merge(partDSchema).merge(partESchema).merge(partFSchema);
+
+// Stage 3: Part G (Office Review)
+const stage3Schema = partGSchema;
+
+// Full appraisal schema (for draft saves and full validation)
 const appraisalSchema = z.object({
   // Part A: Seafarer's Information
   seafarersName: z.string().min(1, "Seafarer's name is required"),

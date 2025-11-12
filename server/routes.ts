@@ -5092,6 +5092,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Stage-specific submission endpoints
+  app.post("/api/appraisals/:id/submit-stage1", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { data, submittedBy } = req.body;
+      
+      const appraisal = await storage.submitAppraisalStage(id, 'stage1', data, submittedBy || 'Unknown');
+      if (!appraisal) {
+        return res.status(404).json({ error: "Appraisal not found" });
+      }
+      res.json(appraisal);
+    } catch (error: any) {
+      console.error('Stage 1 submission error:', error);
+      res.status(500).json({ error: "Failed to submit stage 1", details: error.message });
+    }
+  });
+
+  app.post("/api/appraisals/:id/submit-stage2", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { data, submittedBy } = req.body;
+      
+      const appraisal = await storage.submitAppraisalStage(id, 'stage2', data, submittedBy || 'Unknown');
+      if (!appraisal) {
+        return res.status(404).json({ error: "Appraisal not found" });
+      }
+      res.json(appraisal);
+    } catch (error: any) {
+      console.error('Stage 2 submission error:', error);
+      res.status(500).json({ error: "Failed to submit stage 2", details: error.message });
+    }
+  });
+
+  app.post("/api/appraisals/:id/submit-stage3", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { data, submittedBy } = req.body;
+      
+      const appraisal = await storage.submitAppraisalStage(id, 'stage3', data, submittedBy || 'Unknown');
+      if (!appraisal) {
+        return res.status(404).json({ error: "Appraisal not found" });
+      }
+      res.json(appraisal);
+    } catch (error: any) {
+      console.error('Stage 3 submission error:', error);
+      res.status(500).json({ error: "Failed to submit stage 3", details: error.message });
+    }
+  });
+
   // Recruitment Candidates API routes
   app.get("/api/recruitment-candidates", async (req, res) => {
     try {
