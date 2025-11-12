@@ -311,8 +311,11 @@ export const ElementCrewAppraisals = (): JSX.Element => {
   // Filter crew data based on filter state
   const crewData = useMemo(() =>
     allCrewData.filter((crew) => {
-      // Show all crew members with appraisals (including Stage 1 submissions with N/A ratings)
-      // Status column will communicate progress
+      // Only show crew members who have at least Stage 1 submitted (status: Preliminary, Submitted, or Reviewed)
+      const status = crew.status.toLowerCase();
+      if (!['preliminary', 'submitted', 'reviewed'].includes(status)) {
+        return false;
+      }
       
       const fullName = `${crew.name.first} ${crew.name.middle} ${crew.name.last}`.toLowerCase();
 

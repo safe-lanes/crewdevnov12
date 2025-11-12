@@ -75,6 +75,14 @@ const useVesselPlanning = (vesselId: string | null) => {
     });
 };
 
+// Hook to fetch appraisals
+const useAppraisals = () => {
+    return useQuery({
+        queryKey: ['/api/appraisals'],
+        select: (data: any[]) => data
+    });
+};
+
 // Form schema for Relief Status
 const reliefStatusFormSchema = z.object({
     relieverCrewName: z.string().optional(),
@@ -840,6 +848,40 @@ export const VesselModule = (): JSX.Element => {
     
     // Fetch vessel planning for selected vessel (use vessel ID, e.g., VSL-003)
     const { data: vesselPlanning = [], isLoading: planningLoading } = useVesselPlanning(selectedVessel?.vesselId || null);
+    
+    // Fetch all appraisals to determine button state
+    const { data: allAppraisals = [] } = useAppraisals();
+
+    // Helper function to get the latest appraisal for a crew member
+    const getLatestAppraisal = (crewId: string) => {
+        const crewAppraisals = allAppraisals
+            .filter((a: any) => a.crewMemberId === crewId)
+            .sort((a: any, b: any) => {
+                const dateA = a.appraisalDate ? new Date(a.appraisalDate).getTime() : 0;
+                const dateB = b.appraisalDate ? new Date(b.appraisalDate).getTime() : 0;
+                return dateB - dateA;
+            });
+        return crewAppraisals[0] || null;
+    };
+
+    // Helper function to determine button text and action
+    const getAppraisalButtonConfig = (crewId: string) => {
+        const latestAppraisal = getLatestAppraisal(crewId);
+        
+        if (!latestAppraisal) {
+            return { text: 'Add', appraisalId: undefined, status: undefined };
+        }
+        
+        const status = latestAppraisal.status?.toLowerCase();
+        
+        // Show "Edit" for Draft or Preliminary (vessel is still working on it)
+        if (status === 'draft' || status === 'preliminary') {
+            return { text: 'Edit', appraisalId: latestAppraisal.id, status: latestAppraisal.status };
+        }
+        
+        // Show "Add" for Submitted or Reviewed (vessel completed, new appraisal can be created)
+        return { text: 'Add', appraisalId: undefined, status: undefined };
+    };
 
     const handleClearFilters = () => {
         setVesselValue("");
@@ -868,7 +910,7 @@ export const VesselModule = (): JSX.Element => {
         }
     };
 
-    const handleAppraisalEditClick = (crew: any) => {
+    const handleAppraisalClick = (crew: any, buttonConfig: { text: string; appraisalId?: number; status?: string }) => {
         // Transform crew data to match AppraisalForm expected structure
         const crewForAppraisal = {
             id: crew.id,
@@ -883,6 +925,9 @@ export const VesselModule = (): JSX.Element => {
             vessel: selectedVessel?.name || crew.presentVessel || '',
             vesselType: selectedVessel?.vesselType || '',
             signOn: crew.joiningDate || '',
+            // Store button config separately for prop passing
+            _appraisalId: buttonConfig.appraisalId,
+            _initialStatus: buttonConfig.status,
         };
         setSelectedCrewForAppraisal(crewForAppraisal);
         setShowAppraisalForm(true);
@@ -1167,15 +1212,20 @@ export const VesselModule = (): JSX.Element => {
                                                                 
                                                             </TableCell>
                                                             <TableCell className="text-xs text-gray-700" data-testid={`cell-appraisal-${index + 1}`}>
-                                                                <Button 
-                                                                    variant="ghost" 
-                                                                    size="sm" 
-                                                                    className="h-7 text-xs px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                                                    onClick={() => handleAppraisalEditClick(crew)}
-                                                                    data-testid={`button-appraisal-edit-${index + 1}`}
-                                                                >
-                                                                    Edit
-                                                                </Button>
+                                                                {(() => {
+                                                                    const buttonConfig = getAppraisalButtonConfig(crew.id);
+                                                                    return (
+                                                                        <Button 
+                                                                            variant="ghost" 
+                                                                            size="sm" 
+                                                                            className="h-7 text-xs px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                                                            onClick={() => handleAppraisalClick(crew, buttonConfig)}
+                                                                            data-testid={`button-appraisal-${buttonConfig.text.toLowerCase()}-${index + 1}`}
+                                                                        >
+                                                                            {buttonConfig.text}
+                                                                        </Button>
+                                                                    );
+                                                                })()}
                                                             </TableCell>
                                                             <TableCell className="text-xs text-gray-700" data-testid={`cell-handover-${index + 1}`}>
                                                                 
@@ -1894,6 +1944,8 @@ export const VesselModule = (): JSX.Element => {
             {showAppraisalForm && selectedCrewForAppraisal && (
                 <AppraisalForm
                     crewMember={selectedCrewForAppraisal}
+                    appraisalId={selectedCrewForAppraisal._appraisalId}
+                    initialStatus={selectedCrewForAppraisal._initialStatus as 'draft' | 'preliminary' | 'submitted' | 'reviewed' | undefined}
                     onClose={handleCloseAppraisalForm}
                 />
             )}
