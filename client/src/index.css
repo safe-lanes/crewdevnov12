@@ -16,6 +16,8 @@
   font-size: 12px !important;
   font-weight: normal !important;
   border-right: none !important;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
 }
 
 .ag-theme-alpine .ag-header-cell-text {
@@ -23,6 +25,19 @@
   font-size: 13px !important;
   font-weight: 500 !important;
   text-shadow: 0 0 1px rgba(0, 0, 0, 0.3);
+}
+
+/* Reduce spacing between header text and icons */
+.ag-theme-alpine .ag-header-cell-label {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  gap: 2px !important;
+}
+
+/* Compact header icons */
+.ag-theme-alpine .ag-header-icon {
+  margin-left: 2px !important;
+  margin-right: 0 !important;
 }
 
 /* Filter icons styling */
