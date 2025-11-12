@@ -220,6 +220,11 @@ export const ElementCrewAppraisals = (): JSX.Element => {
   // Filter crew data based on filter state
   const crewData = useMemo(() =>
     allCrewData.filter((crew) => {
+      // Only show crew members with appraisals (exclude those with N/A ratings)
+      if (crew.overallRating.value === "N/A") {
+        return false;
+      }
+
       const fullName = `${crew.name.first} ${crew.name.middle} ${crew.name.last}`.toLowerCase();
 
       // Name search filter
