@@ -130,8 +130,8 @@ const appraisalSchema = z.object({
   signOn: z.string().min(1, "Sign On date is required"),
   appraisalType: z.string().min(1, "Appraisal type is required"),
   appraisalPeriodFrom: z.string().min(1, "Appraisal period from is required"),
-  appraisalPeriodTo: z.string().min(1, "Appraisal period to is required"),
-  personalityIndexCategory: z.string().min(1, "Personality Index category is required"),
+  appraisalPeriodTo: z.string().optional(),
+  personalityIndexCategory: z.string().optional(),
   primaryAppraiser: z.string().min(1, "Primary appraiser is required"),
   
   // Part B: Information at Start of Appraisal Period
@@ -252,7 +252,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
       nationality: crewMember?.nationality || "",
       vessel: crewMember?.vessel || "",
       signOn: crewMember?.signOn || "",
-      appraisalType: "",
+      appraisalType: "draft",
       appraisalPeriodFrom: crewMember?.signOn || "",
       appraisalPeriodTo: "",
       personalityIndexCategory: "",
@@ -1045,6 +1045,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
+                            <SelectItem value="draft">Draft</SelectItem>
                             <SelectItem value="end-of-contract">End of Contract</SelectItem>
                             <SelectItem value="mid-term">Mid Term</SelectItem>
                             <SelectItem value="special">Special</SelectItem>
@@ -2734,6 +2735,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, onClos
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
+                                  <SelectItem value="draft">Draft</SelectItem>
                                   <SelectItem value="end-of-contract">End of Contract</SelectItem>
                                   <SelectItem value="mid-term">Mid Term</SelectItem>
                                   <SelectItem value="special">Special</SelectItem>
