@@ -1671,8 +1671,12 @@ export class DatabaseStorage implements IStorage {
   private parseVariableTask(task: VariableTask): VariableTask {
     return {
       ...task,
-      selectedTasks: task.selectedTasks ? JSON.parse(task.selectedTasks as any) : null,
-      crewInvolvedDetails: task.crewInvolvedDetails ? JSON.parse(task.crewInvolvedDetails as any) : null
+      selectedTasks: task.selectedTasks 
+        ? (typeof task.selectedTasks === 'string' ? JSON.parse(task.selectedTasks) : task.selectedTasks)
+        : null,
+      crewInvolvedDetails: task.crewInvolvedDetails 
+        ? (typeof task.crewInvolvedDetails === 'string' ? JSON.parse(task.crewInvolvedDetails) : task.crewInvolvedDetails)
+        : null
     };
   }
 
@@ -1690,8 +1694,12 @@ export class DatabaseStorage implements IStorage {
   private parseFixedTask(task: FixedTask): FixedTask {
     return {
       ...task,
-      seaHours: task.seaHours ? JSON.parse(task.seaHours as any) : null,
-      portHours: task.portHours ? JSON.parse(task.portHours as any) : null
+      seaHours: task.seaHours 
+        ? (typeof task.seaHours === 'string' ? JSON.parse(task.seaHours) : task.seaHours)
+        : null,
+      portHours: task.portHours 
+        ? (typeof task.portHours === 'string' ? JSON.parse(task.portHours) : task.portHours)
+        : null
     };
   }
 
@@ -1709,11 +1717,21 @@ export class DatabaseStorage implements IStorage {
   private parseDrugAlcoholTestRecord(record: DrugAlcoholTestRecord): DrugAlcoholTestRecord {
     return {
       ...record,
-      alcoholDrugType: record.alcoholDrugType ? JSON.parse(record.alcoholDrugType as any) : null,
-      testingEquipment: record.testingEquipment ? JSON.parse(record.testingEquipment as any) : null,
-      testHistory: record.testHistory ? JSON.parse(record.testHistory as any) : null,
-      personnelTested: record.personnelTested ? JSON.parse(record.personnelTested as any) : null,
-      masterDeputySignature: record.masterDeputySignature ? JSON.parse(record.masterDeputySignature as any) : null
+      alcoholDrugType: record.alcoholDrugType 
+        ? (typeof record.alcoholDrugType === 'string' ? JSON.parse(record.alcoholDrugType) : record.alcoholDrugType)
+        : null,
+      testingEquipment: record.testingEquipment 
+        ? (typeof record.testingEquipment === 'string' ? JSON.parse(record.testingEquipment) : record.testingEquipment)
+        : null,
+      testHistory: record.testHistory 
+        ? (typeof record.testHistory === 'string' ? JSON.parse(record.testHistory) : record.testHistory)
+        : null,
+      personnelTested: record.personnelTested 
+        ? (typeof record.personnelTested === 'string' ? JSON.parse(record.personnelTested) : record.personnelTested)
+        : null,
+      masterDeputySignature: record.masterDeputySignature 
+        ? (typeof record.masterDeputySignature === 'string' ? JSON.parse(record.masterDeputySignature) : record.masterDeputySignature)
+        : null
     };
   }
 

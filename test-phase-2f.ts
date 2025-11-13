@@ -51,9 +51,16 @@ async function runPhase2FTests() {
     console.log("\n3. getVariableTask(id)");
     const foundVariableTask = await db.getVariableTask(newVariableTask.id);
     if (foundVariableTask && foundVariableTask.id === newVariableTask.id) {
+      // Type assertions to verify JSON normalization
+      if (!Array.isArray(foundVariableTask.selectedTasks)) {
+        throw new Error(`❌ selectedTasks is not an array! Type: ${typeof foundVariableTask.selectedTasks}`);
+      }
+      if (!Array.isArray(foundVariableTask.crewInvolvedDetails)) {
+        throw new Error(`❌ crewInvolvedDetails is not an array! Type: ${typeof foundVariableTask.crewInvolvedDetails}`);
+      }
       console.log(`✅ Found Variable Task ID ${foundVariableTask.id}`);
-      console.log(`   Selected Tasks: ${JSON.stringify(foundVariableTask.selectedTasks)}`);
-      console.log(`   Crew Involved: ${foundVariableTask.crewInvolvedDetails?.length || 0} members`);
+      console.log(`   Selected Tasks: ${JSON.stringify(foundVariableTask.selectedTasks)} [Array ✓]`);
+      console.log(`   Crew Involved: ${foundVariableTask.crewInvolvedDetails?.length || 0} members [Array ✓]`);
       testsPassed++;
     } else {
       console.log(`❌ Failed to retrieve Variable Task by ID`);
@@ -118,9 +125,16 @@ async function runPhase2FTests() {
     console.log("\n8. getFixedTask(id)");
     const foundFixedTask = await db.getFixedTask(newFixedTask.id);
     if (foundFixedTask && foundFixedTask.id === newFixedTask.id) {
+      // Type assertions to verify JSON normalization
+      if (typeof foundFixedTask.seaHours !== 'object' || foundFixedTask.seaHours === null) {
+        throw new Error(`❌ seaHours is not an object! Type: ${typeof foundFixedTask.seaHours}`);
+      }
+      if (typeof foundFixedTask.portHours !== 'object' || foundFixedTask.portHours === null) {
+        throw new Error(`❌ portHours is not an object! Type: ${typeof foundFixedTask.portHours}`);
+      }
       console.log(`✅ Found Fixed Task ID ${foundFixedTask.id}`);
-      console.log(`   Sea Hours slots: ${Object.keys(foundFixedTask.seaHours || {}).length}`);
-      console.log(`   Port Hours slots: ${Object.keys(foundFixedTask.portHours || {}).length}`);
+      console.log(`   Sea Hours slots: ${Object.keys(foundFixedTask.seaHours || {}).length} [Object ✓]`);
+      console.log(`   Port Hours slots: ${Object.keys(foundFixedTask.portHours || {}).length} [Object ✓]`);
       testsPassed++;
     } else {
       console.log(`❌ Failed to retrieve Fixed Task by ID`);
@@ -208,7 +222,14 @@ async function runPhase2FTests() {
     console.log("\n14. getDrugAlcoholTestRecord(id)");
     const foundDrugTest = await db.getDrugAlcoholTestRecord(newDrugTest.id);
     if (foundDrugTest && foundDrugTest.id === newDrugTest.id) {
-      console.log(`✅ Found Drug Test ID ${foundDrugTest.id}`);
+      // Type assertions to verify JSON normalization
+      if (!Array.isArray(foundDrugTest.alcoholDrugType)) {
+        throw new Error(`❌ alcoholDrugType is not an array! Type: ${typeof foundDrugTest.alcoholDrugType}`);
+      }
+      if (!Array.isArray(foundDrugTest.personnelTested)) {
+        throw new Error(`❌ personnelTested is not an array! Type: ${typeof foundDrugTest.personnelTested}`);
+      }
+      console.log(`✅ Found Drug Test ID ${foundDrugTest.id} [Arrays ✓]`);
       console.log(`   Location: ${foundDrugTest.placeLocation}`);
       console.log(`   Comments: ${foundDrugTest.comments}`);
       testsPassed++;
