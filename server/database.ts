@@ -10,6 +10,11 @@ import {
   crewMembers, 
   appraisalResults,
   recruitmentCandidates,
+  vesselGroups,
+  vesselDrafts,
+  vesselRevisions,
+  vesselPlanning,
+  rotationPlans,
   dataMasters,
   masterDataEntries,
   type User,
@@ -30,6 +35,16 @@ import {
   type InsertAppraisalResult,
   type RecruitmentCandidate,
   type InsertRecruitmentCandidate,
+  type VesselGroup,
+  type InsertVesselGroup,
+  type VesselDraft,
+  type InsertVesselDraft,
+  type VesselRevision,
+  type InsertVesselRevision,
+  type VesselPlanning,
+  type InsertVesselPlanning,
+  type RotationPlan,
+  type InsertRotationPlan,
   type DataMaster,
   type InsertDataMaster,
   type MasterDataEntry,
@@ -1061,6 +1076,129 @@ export class DatabaseStorage implements IStorage {
     });
     
     return crewMember;
+  }
+
+  // Vessel Groups Methods
+  async getVesselGroups(): Promise<VesselGroup[]> {
+    return await this.db.select().from(vesselGroups);
+  }
+
+  async getVesselGroup(id: number): Promise<VesselGroup | null> {
+    const result = await this.db.select().from(vesselGroups).where(eq(vesselGroups.id, id));
+    return result[0] || null;
+  }
+
+  async createVesselGroup(group: InsertVesselGroup): Promise<VesselGroup> {
+    const [created] = await this.db.insert(vesselGroups).values(group).returning();
+    return created;
+  }
+
+  async updateVesselGroup(id: number, group: Partial<InsertVesselGroup>): Promise<VesselGroup | null> {
+    const result = await this.db.update(vesselGroups).set(group).where(eq(vesselGroups.id, id)).returning();
+    return result[0] || null;
+  }
+
+  async deleteVesselGroup(id: number): Promise<boolean> {
+    const result = await this.db.delete(vesselGroups).where(eq(vesselGroups.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Vessel Drafts Methods
+  async getVesselDrafts(): Promise<VesselDraft[]> {
+    return await this.db.select().from(vesselDrafts);
+  }
+
+  async getVesselDraft(id: number): Promise<VesselDraft | null> {
+    const result = await this.db.select().from(vesselDrafts).where(eq(vesselDrafts.id, id));
+    return result[0] || null;
+  }
+
+  async getVesselDraftsByVessel(vesselId: string): Promise<VesselDraft[]> {
+    return await this.db.select().from(vesselDrafts).where(eq(vesselDrafts.vesselId, vesselId));
+  }
+
+  async createVesselDraft(draft: InsertVesselDraft): Promise<VesselDraft> {
+    const [created] = await this.db.insert(vesselDrafts).values(draft).returning();
+    return created;
+  }
+
+  async updateVesselDraft(id: number, draft: Partial<InsertVesselDraft>): Promise<VesselDraft | null> {
+    const result = await this.db.update(vesselDrafts).set(draft).where(eq(vesselDrafts.id, id)).returning();
+    return result[0] || null;
+  }
+
+  async deleteVesselDraft(id: number): Promise<boolean> {
+    const result = await this.db.delete(vesselDrafts).where(eq(vesselDrafts.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Vessel Revisions Methods
+  async getVesselRevisions(): Promise<VesselRevision[]> {
+    return await this.db.select().from(vesselRevisions);
+  }
+
+  async getVesselRevision(id: number): Promise<VesselRevision | null> {
+    const result = await this.db.select().from(vesselRevisions).where(eq(vesselRevisions.id, id));
+    return result[0] || null;
+  }
+
+  async getVesselRevisionsByVessel(vesselId: string): Promise<VesselRevision[]> {
+    return await this.db.select().from(vesselRevisions).where(eq(vesselRevisions.vesselId, vesselId));
+  }
+
+  async createVesselRevision(revision: InsertVesselRevision): Promise<VesselRevision> {
+    const [created] = await this.db.insert(vesselRevisions).values(revision).returning();
+    return created;
+  }
+
+  // Vessel Planning Methods
+  async getVesselPlanningByVessel(vesselId: string): Promise<VesselPlanning[]> {
+    return await this.db.select().from(vesselPlanning).where(eq(vesselPlanning.vesselId, vesselId));
+  }
+
+  async getVesselPlanningById(id: number): Promise<VesselPlanning | null> {
+    const result = await this.db.select().from(vesselPlanning).where(eq(vesselPlanning.id, id));
+    return result[0] || null;
+  }
+
+  async createVesselPlanning(planning: InsertVesselPlanning): Promise<VesselPlanning> {
+    const [created] = await this.db.insert(vesselPlanning).values(planning).returning();
+    return created;
+  }
+
+  async updateVesselPlanning(id: number, planning: Partial<InsertVesselPlanning>): Promise<VesselPlanning | null> {
+    const result = await this.db.update(vesselPlanning).set(planning).where(eq(vesselPlanning.id, id)).returning();
+    return result[0] || null;
+  }
+
+  async deleteVesselPlanning(id: number): Promise<boolean> {
+    const result = await this.db.delete(vesselPlanning).where(eq(vesselPlanning.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Rotation Plans Methods
+  async getRotationPlans(): Promise<RotationPlan[]> {
+    return await this.db.select().from(rotationPlans);
+  }
+
+  async getRotationPlan(id: number): Promise<RotationPlan | null> {
+    const result = await this.db.select().from(rotationPlans).where(eq(rotationPlans.id, id));
+    return result[0] || null;
+  }
+
+  async createRotationPlan(plan: InsertRotationPlan): Promise<RotationPlan> {
+    const [created] = await this.db.insert(rotationPlans).values(plan).returning();
+    return created;
+  }
+
+  async updateRotationPlan(id: number, plan: Partial<InsertRotationPlan>): Promise<RotationPlan | null> {
+    const result = await this.db.update(rotationPlans).set(plan).where(eq(rotationPlans.id, id)).returning();
+    return result[0] || null;
+  }
+
+  async deleteRotationPlan(id: number): Promise<boolean> {
+    const result = await this.db.delete(rotationPlans).where(eq(rotationPlans.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
   }
 
   // Data Masters Methods

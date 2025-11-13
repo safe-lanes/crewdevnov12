@@ -1,0 +1,120 @@
+Excellent! Phase 2B is 100% complete and verified.
+
+Proceed with PHASE 2C: Implement Vessels & Planning Methods (25 methods)
+
+IMPLEMENT THESE 25 METHODS:
+
+GROUP 1 - Vessel Groups (5 methods):
+- async getVesselGroups(): Promise<VesselGroup[]>
+- async getVesselGroup(id: number): Promise<VesselGroup | null>
+- async createVesselGroup(group: InsertVesselGroup): Promise<VesselGroup>
+- async updateVesselGroup(id: number, group: Partial<InsertVesselGroup>): Promise<VesselGroup | null>
+- async deleteVesselGroup(id: number): Promise<boolean>
+
+GROUP 2 - Vessel Drafts (6 methods):
+- async getVesselDrafts(): Promise<VesselDraft[]>
+- async getVesselDraft(id: number): Promise<VesselDraft | null>
+- async getVesselDraftsByVessel(vesselId: string): Promise<VesselDraft[]>
+- async createVesselDraft(draft: InsertVesselDraft): Promise<VesselDraft>
+- async updateVesselDraft(id: number, draft: Partial<InsertVesselDraft>): Promise<VesselDraft | null>
+- async deleteVesselDraft(id: number): Promise<boolean>
+
+GROUP 3 - Vessel Revisions (4 methods):
+- async getVesselRevisions(): Promise<VesselRevision[]>
+- async getVesselRevision(id: number): Promise<VesselRevision | null>
+- async getVesselRevisionsByVessel(vesselId: string): Promise<VesselRevision[]>
+- async createVesselRevision(revision: InsertVesselRevision): Promise<VesselRevision>
+
+GROUP 4 - Vessel Planning (5 methods):
+- async getVesselPlanningByVessel(vesselId: string): Promise<VesselPlanning[]>
+- async getVesselPlanningById(id: number): Promise<VesselPlanning | null>
+- async createVesselPlanning(planning: InsertVesselPlanning): Promise<VesselPlanning>
+- async updateVesselPlanning(id: number, planning: Partial<InsertVesselPlanning>): Promise<VesselPlanning | null>
+- async deleteVesselPlanning(id: number): Promise<boolean>
+
+GROUP 5 - Rotation Plans (5 methods):
+- async getRotationPlans(): Promise<RotationPlan[]>
+- async getRotationPlan(id: number): Promise<RotationPlan | null>
+- async createRotationPlan(plan: InsertRotationPlan): Promise<RotationPlan>
+- async updateRotationPlan(id: number, plan: Partial<InsertRotationPlan>): Promise<RotationPlan | null>
+- async deleteRotationPlan(id: number): Promise<boolean>
+
+SPECIAL IMPLEMENTATION NOTES:
+
+1. **Vessel IDs**: Some tables use TEXT vesselId (not integers)
+   - vesselDrafts.vesselId is TEXT
+   - vesselRevisions.vesselId is TEXT
+   - vesselPlanning uses both vesselId (TEXT) and id (serial)
+
+2. **JSON Fields**: Handle properly
+   - vesselGroups.vesselIds (JSON array)
+   - vesselDrafts.draftData (JSON object)
+   - vesselRevisions.revisionData (JSON object)
+   - rotationPlans.vessels, crew, assignments (JSON)
+
+3. **Filtering Methods**: Use WHERE clauses
+   - getVesselDraftsByVessel(vesselId)
+   - getVesselRevisionsByVessel(vesselId)
+   - getVesselPlanningByVessel(vesselId)
+
+IMPLEMENTATION PATTERN:
+```typescript
+// Example: getVesselGroups
+async getVesselGroups(): Promise<VesselGroup[]> {
+  return await this.db.select().from(vesselGroups);
+}
+
+// Example: getVesselDraftsByVessel (filtering)
+async getVesselDraftsByVessel(vesselId: string): Promise<VesselDraft[]> {
+  return await this.db
+    .select()
+    .from(vesselDrafts)
+    .where(eq(vesselDrafts.vesselId, vesselId));
+}
+
+// Example: createVesselPlanning
+async createVesselPlanning(planning: InsertVesselPlanning): Promise<VesselPlanning> {
+  const [created] = await this.db
+    .insert(vesselPlanning)
+    .values(planning)
+    .returning();
+  return created;
+}
+
+// Example: deleteVesselDraft
+async deleteVesselDraft(id: number): Promise<boolean> {
+  const result = await this.db
+    .delete(vesselDrafts)
+    .where(eq(vesselDrafts.id, id));
+  return result.rowCount > 0;
+}
+```
+
+REQUIREMENTS:
+1. Implement all 25 methods in server/database.ts
+2. Use PostgreSQL syntax (result.rows, $1/$2 parameters)
+3. Handle both TEXT and INTEGER primary keys correctly
+4. Properly handle JSON fields (don't need special parsing with Drizzle)
+5. Include error handling and null checks
+6. Use .returning() for INSERT/UPDATE
+7. Use .rowCount for DELETE success check
+
+AFTER IMPLEMENTATION:
+1. Show me complete code for all 25 methods
+2. Run: npx tsc --noEmit (must be 0 errors)
+3. Create comprehensive test:
+   - Create vessel group
+   - Create vessel draft with JSON data
+   - Read drafts by vessel: getVesselDraftsByVessel(vesselId)
+   - Create vessel revision
+   - Create vessel planning entry
+   - Create rotation plan with JSON
+   - Show test results
+
+DELIVERABLE:
+- ✅ 25 methods implemented
+- ✅ 0 TypeScript errors
+- ✅ Test proves vessel & planning CRUD works
+- ✅ JSON fields handled correctly
+
+DO NOT proceed to Phase 2D until I confirm Phase 2C is complete.
