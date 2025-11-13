@@ -5,6 +5,8 @@ import {
   forms, 
   rankGroups, 
   availableRanks, 
+  companyRanks,
+  promotionHierarchies,
   crewMembers, 
   appraisalResults,
   recruitmentCandidates,
@@ -18,6 +20,10 @@ import {
   type InsertRankGroup,
   type AvailableRank,
   type InsertAvailableRank,
+  type CompanyRank,
+  type InsertCompanyRank,
+  type PromotionHierarchy,
+  type InsertPromotionHierarchy,
   type CrewMember,
   type InsertCrewMember,
   type AppraisalResult,
@@ -29,7 +35,7 @@ import {
   type MasterDataEntry,
   type InsertMasterDataEntry
 } from "@shared/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { type IStorage } from "./storage";
 
 export class DatabaseStorage implements IStorage {
@@ -688,19 +694,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   // User methods
-  async getUser(id: number): Promise<User | undefined> {
+  async getUser(id: number): Promise<User | null> {
     const result = await this.db.select().from(users).where(eq(users.id, id));
-    return result[0];
+    return result[0] || null;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
+  async getUserByUsername(username: string): Promise<User | null> {
     const result = await this.db.select().from(users).where(eq(users.username, username));
-    return result[0];
+    return result[0] || null;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    await this.db.insert(users).values(insertUser);
-    return await this.getUserByUsername(insertUser.username) as User;
+    const [created] = await this.db.insert(users).values(insertUser).returning();
+    return created;
   }
 
   // Form methods
@@ -708,48 +714,44 @@ export class DatabaseStorage implements IStorage {
     return await this.db.select().from(forms);
   }
 
-  async getForm(id: number): Promise<Form | undefined> {
+  async getForm(id: number): Promise<Form | null> {
     const result = await this.db.select().from(forms).where(eq(forms.id, id));
-    return result[0];
+    return result[0] || null;
   }
 
   async createForm(insertForm: InsertForm): Promise<Form> {
-    const result = await this.db.insert(forms).values(insertForm);
-    const insertId = (result as any).insertId;
-    return await this.getForm(insertId) as Form;
+    const [created] = await this.db.insert(forms).values(insertForm).returning();
+    return created;
   }
 
-  async updateForm(id: number, formData: Partial<InsertForm>): Promise<Form | undefined> {
-    await this.db.update(forms).set(formData).where(eq(forms.id, id));
-    return await this.getForm(id);
+  async updateForm(id: number, formData: Partial<InsertForm>): Promise<Form | null> {
+    const result = await this.db.update(forms).set(formData).where(eq(forms.id, id)).returning();
+    return result[0] || null;
   }
 
   async deleteForm(id: number): Promise<boolean> {
     const result = await this.db.delete(forms).where(eq(forms.id, id));
-    return (result as any).affectedRows > 0;
+    return result.rowCount !== null && result.rowCount > 0;
   }
 
   // Rank Group methods
-  async getRankGroups(formId: number): Promise<RankGroup[]> {
-    return await this.db.select().from(rankGroups).where(eq(rankGroups.formId, formId));
+  async getRankGroups(): Promise<RankGroup[]> {
+    return await this.db.select().from(rankGroups);
   }
 
   async createRankGroup(insertRankGroup: InsertRankGroup): Promise<RankGroup> {
-    const result = await this.db.insert(rankGroups).values(insertRankGroup);
-    const insertId = (result as any).insertId;
-    const rankGroup = await this.db.select().from(rankGroups).where(eq(rankGroups.id, insertId));
-    return rankGroup[0];
+    const [created] = await this.db.insert(rankGroups).values(insertRankGroup).returning();
+    return created;
   }
 
-  async updateRankGroup(id: number, rankGroupData: Partial<InsertRankGroup>): Promise<RankGroup | undefined> {
-    await this.db.update(rankGroups).set(rankGroupData).where(eq(rankGroups.id, id));
-    const rankGroup = await this.db.select().from(rankGroups).where(eq(rankGroups.id, id));
-    return rankGroup[0];
+  async updateRankGroup(id: number, rankGroupData: Partial<InsertRankGroup>): Promise<RankGroup | null> {
+    const result = await this.db.update(rankGroups).set(rankGroupData).where(eq(rankGroups.id, id)).returning();
+    return result[0] || null;
   }
 
   async deleteRankGroup(id: number): Promise<boolean> {
     const result = await this.db.delete(rankGroups).where(eq(rankGroups.id, id));
-    return (result as any).affectedRows > 0;
+    return result.rowCount !== null && result.rowCount > 0;
   }
 
   // Available Rank methods
@@ -758,59 +760,97 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAvailableRank(insertAvailableRank: InsertAvailableRank): Promise<AvailableRank> {
-    const result = await this.db.insert(availableRanks).values(insertAvailableRank);
-    const insertId = (result as any).insertId;
-    const availableRank = await this.db.select().from(availableRanks).where(eq(availableRanks.id, insertId));
-    return availableRank[0];
+    const [created] = await this.db.insert(availableRanks).values(insertAvailableRank).returning();
+    return created;
   }
 
-  async updateAvailableRank(id: number, rankData: Partial<InsertAvailableRank>): Promise<AvailableRank | undefined> {
-    await this.db.update(availableRanks).set(rankData).where(eq(availableRanks.id, id));
-    const availableRank = await this.db.select().from(availableRanks).where(eq(availableRanks.id, id));
-    return availableRank[0];
+  async updateAvailableRank(id: number, rankData: Partial<InsertAvailableRank>): Promise<AvailableRank | null> {
+    const result = await this.db.update(availableRanks).set(rankData).where(eq(availableRanks.id, id)).returning();
+    return result[0] || null;
   }
 
   async deleteAvailableRank(id: number): Promise<boolean> {
-    try {
-      // First check if the rank exists
-      const existing = await this.db.select().from(availableRanks).where(eq(availableRanks.id, id));
-      if (existing.length === 0) {
-        return false;
-      }
-      
-      const result = await this.db.delete(availableRanks).where(eq(availableRanks.id, id));
-      
-      // Check different possible properties for affected rows
-      const affectedRows = (result as any).affectedRows || (result as any).rowsAffected || (result as any).changes;
-      
-      // If we can't determine affected rows, check if the rank still exists
-      let success = affectedRows > 0;
-      if (affectedRows === undefined) {
-        const afterDelete = await this.db.select().from(availableRanks).where(eq(availableRanks.id, id));
-        success = afterDelete.length === 0; // Success if rank no longer exists
-      }
-      
-      return success;
-    } catch (error) {
-      console.error(`Failed to delete rank ${id}:`, error);
-      throw error;
-    }
+    const result = await this.db.delete(availableRanks).where(eq(availableRanks.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
   }
 
   async clearAllAvailableRanks(): Promise<boolean> {
-    try {
-      // Delete all ranks first
-      const result = await this.db.delete(availableRanks);
-      
-      // Reset the AUTO_INCREMENT counter to start from 1 using proper MySQL syntax
-      const dbName = process.env.DB_NAME || 'crew_database';
-      await this.pool.query(`ALTER TABLE \`${dbName}\`.\`available_ranks\` AUTO_INCREMENT = 1`);
-      
-      return true;
-    } catch (error) {
-      console.error('Failed to clear all ranks:', error);
-      throw error;
+    await this.db.delete(availableRanks);
+    await this.pool.query(`ALTER SEQUENCE available_ranks_id_seq RESTART WITH 1`);
+    return true;
+  }
+
+  async updateRankOrders(rankOrders: { id: number; sortOrder: number }[]): Promise<boolean> {
+    for (const { id, sortOrder } of rankOrders) {
+      await this.db.update(availableRanks)
+        .set({ sortOrder })
+        .where(eq(availableRanks.id, id));
     }
+    return true;
+  }
+
+  // Company Rank methods
+  async getCompanyRanks(): Promise<CompanyRank[]> {
+    return await this.db.select().from(companyRanks);
+  }
+
+  async getCompanyRank(id: string): Promise<CompanyRank | null> {
+    const result = await this.db.select().from(companyRanks).where(eq(companyRanks.id, id));
+    return result[0] || null;
+  }
+
+  async createCompanyRank(rank: InsertCompanyRank): Promise<CompanyRank> {
+    const [created] = await this.db.insert(companyRanks).values(rank).returning();
+    return created;
+  }
+
+  async updateCompanyRank(id: string, rank: Partial<InsertCompanyRank>): Promise<CompanyRank | null> {
+    const result = await this.db.update(companyRanks).set(rank).where(eq(companyRanks.id, id)).returning();
+    return result[0] || null;
+  }
+
+  async deleteCompanyRank(id: string): Promise<boolean> {
+    const result = await this.db.delete(companyRanks).where(eq(companyRanks.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async clearAllCompanyRanks(): Promise<boolean> {
+    await this.db.delete(companyRanks);
+    return true;
+  }
+
+  async saveAllCompanyRanks(ranks: InsertCompanyRank[]): Promise<CompanyRank[]> {
+    await this.db.delete(companyRanks);
+    if (ranks.length > 0) {
+      const result = await this.db.insert(companyRanks).values(ranks).returning();
+      return result;
+    }
+    return [];
+  }
+
+  // Promotion Hierarchy methods
+  async getPromotionHierarchies(): Promise<PromotionHierarchy[]> {
+    return await this.db.select().from(promotionHierarchies);
+  }
+
+  async getPromotionHierarchy(id: number): Promise<PromotionHierarchy | null> {
+    const result = await this.db.select().from(promotionHierarchies).where(eq(promotionHierarchies.id, id));
+    return result[0] || null;
+  }
+
+  async createPromotionHierarchy(hierarchy: InsertPromotionHierarchy): Promise<PromotionHierarchy> {
+    const [created] = await this.db.insert(promotionHierarchies).values(hierarchy).returning();
+    return created;
+  }
+
+  async updatePromotionHierarchy(id: number, hierarchy: Partial<InsertPromotionHierarchy>): Promise<PromotionHierarchy | null> {
+    const result = await this.db.update(promotionHierarchies).set(hierarchy).where(eq(promotionHierarchies.id, id)).returning();
+    return result[0] || null;
+  }
+
+  async deletePromotionHierarchy(id: number): Promise<boolean> {
+    const result = await this.db.delete(promotionHierarchies).where(eq(promotionHierarchies.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
   }
 
   // Crew Member methods
