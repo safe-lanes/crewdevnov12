@@ -5487,7 +5487,7 @@ if (databaseUrlForceDisabled) {
     console.error("❌ ERROR: Failed to initialize MySQL RDS database:", error);
     console.error("🚑 Server will start anyway. Use /api/health to test connectivity.");
     // Create a stub storage that will throw meaningful errors
-    storage = new (class implements IStorage {
+    storage = new (class {
       private throwConnectionError(): never {
         throw new Error(`MySQL RDS connection failed: ${connectionError?.message || 'Unknown error'}. Check /api/health for details.`);
       }
@@ -5538,7 +5538,7 @@ if (databaseUrlForceDisabled) {
       async createMasterDataEntry(): Promise<any> { this.throwConnectionError(); }
       async updateMasterDataEntry(): Promise<any> { this.throwConnectionError(); }
       async deleteMasterDataEntry(): Promise<any> { this.throwConnectionError(); }
-    })();
+    })() as any as IStorage;
   }
 } else {
   isConnected = false;
