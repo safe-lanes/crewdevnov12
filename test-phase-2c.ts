@@ -184,7 +184,12 @@ async function testPhase2C() {
         "V002": { "Master": "A0003" }
       }
     });
-    console.log(`✅ updateRotationPlan(): Status=${updatedRotationPlan?.planStatus}`);
+    // Verify update persisted by re-querying from database
+    const reQueriedPlan = await db.getRotationPlan(rotationPlan.id);
+    if (reQueriedPlan?.planStatus !== "Approved") {
+      throw new Error(`❌ updateRotationPlan persistence failed: expected planStatus=Approved after re-query, got ${reQueriedPlan?.planStatus}`);
+    }
+    console.log(`✅ updateRotationPlan(): Status=${reQueriedPlan.planStatus} (verified persistence)`);
     
     console.log();
 
