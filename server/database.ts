@@ -1,5 +1,5 @@
-import { drizzle } from "drizzle-orm/mysql2";
-import mysql from "mysql2/promise";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import { 
   users, 
   forms, 
@@ -34,27 +34,22 @@ import { type IStorage } from "./storage";
 
 export class DatabaseStorage implements IStorage {
   private db: ReturnType<typeof drizzle>;
-  private pool: mysql.Pool;
+  private pool: Pool;
   private columnCache: Map<string, Set<string>> = new Map(); // Cache existing column names per table
 
   constructor() {
-    // Use direct environment variables approach that works
-    const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME } = process.env;
+    const { DATABASE_URL } = process.env;
     
-    if (!DB_HOST || !DB_USER || !DB_PASSWORD) {
-      throw new Error("DB_HOST, DB_USER, and DB_PASSWORD environment variables are required");
+    if (!DATABASE_URL) {
+      throw new Error("DATABASE_URL environment variable is required for PostgreSQL connection");
     }
     
-    this.pool = mysql.createPool({
-      host: DB_HOST,
-      port: parseInt(DB_PORT || '3306'),
-      user: DB_USER,
-      password: DB_PASSWORD,
-      database: DB_NAME || 'crew_database',
+    this.pool = new Pool({
+      connectionString: DATABASE_URL,
       ssl: {
-        rejectUnauthorized: false // Required for RDS connections
+        rejectUnauthorized: false
       },
-      connectionLimit: 10,
+      max: 10,
     });
     this.db = drizzle(this.pool);
     
