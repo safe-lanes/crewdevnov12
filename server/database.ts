@@ -95,11 +95,18 @@ export class DatabaseStorage implements IStorage {
       throw new Error("DATABASE_URL environment variable is required for PostgreSQL connection");
     }
     
+    // Determine SSL configuration based on DATABASE_URL
+    // Neon/external PostgreSQL requires SSL, Replit internal doesn't
+    const requiresSsl = DATABASE_URL.includes('sslmode=require') || DATABASE_URL.includes('ssl=true');
+    
+    console.log(`🔐 SSL Configuration: ${requiresSsl ? 'ENABLED (required by connection string)' : 'DISABLED (internal database)'}`);
+    
     this.pool = new Pool({
       connectionString: DATABASE_URL,
-      ssl: {
-        rejectUnauthorized: false
-      },
+      ssl: requiresSsl ? {
+        rejectUnauthorized: false,
+        checkServerIdentity: () => undefined
+      } : false,
       max: 10,
     });
     this.db = drizzle(this.pool);

@@ -5414,45 +5414,49 @@ export class PersistentFileStorage implements IStorage {
   }
 }
 
-// DISABLED: DatabaseStorage is incomplete legacy code not currently in use
-// import { DatabaseStorage } from "./database";
+// DatabaseStorage - PostgreSQL backend (Phase 4: ENABLED!)
+import { DatabaseStorage } from "./database";
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Construct DATABASE_URL from RDS connection details
+// Get DATABASE_URL with proper priority
 function constructDatabaseUrl(): string | null {
-  const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD } = process.env;
-
-  if (DB_HOST && DB_PORT && DB_USER && DB_PASSWORD) {
-    // URL-encode the password to handle special characters
-    const encodedPassword = encodeURIComponent(DB_PASSWORD);
-    return `mysql://${DB_USER}:${encodedPassword}@${DB_HOST}:${DB_PORT}/crew_database`;
+  // PRIORITY 1: Use DATABASE_URL if set directly (Replit PostgreSQL)
+  if (process.env.DATABASE_URL) {
+    console.log("🔗 Using DATABASE_URL from environment (Replit PostgreSQL)");
+    return process.env.DATABASE_URL;
   }
 
-  // Fallback to DATABASE_URL if set directly
-  return process.env.DATABASE_URL || null;
+  // PRIORITY 2: Construct from DB_HOST/DB_PORT (legacy MySQL RDS)
+  const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD } = process.env;
+  if (DB_HOST && DB_PORT && DB_USER && DB_PASSWORD) {
+    console.log("🔗 Constructing DATABASE_URL from DB_HOST/DB_PORT (legacy setup)");
+    const encodedPassword = encodeURIComponent(DB_PASSWORD);
+    return `postgresql://${DB_USER}:${encodedPassword}@${DB_HOST}:${DB_PORT}/crew_database`;
+  }
+
+  return null;
 }
 
-// Initialize MySQL RDS storage with improved error handling
+// Initialize PostgreSQL storage with improved error handling
 let storage: IStorage;
 let isConnected = false;
 let connectionError: Error | null = null;
 
 const databaseUrl = constructDatabaseUrl();
 
-// TEMPORARY: Force MemStorage for frontend development
-// User requested to disconnect from crew_database for frontend development
-const databaseUrlForceDisabled: string | undefined = false ? (databaseUrl || undefined) : undefined;
+// Phase 4: PostgreSQL Backend ENABLED!
+// Switch from PersistentFileStorage to DatabaseStorage
+const databaseUrlForceDisabled: string | undefined = true ? (databaseUrl || undefined) : undefined;
 if (databaseUrlForceDisabled) {
   try {
     // Set the constructed DATABASE_URL for DatabaseStorage to use
     process.env.DATABASE_URL = databaseUrlForceDisabled;
-    // DISABLED: DatabaseStorage is incomplete legacy code
-    // storage = new DatabaseStorage();
-    throw new Error("DatabaseStorage is disabled - incomplete legacy code");
+    // Phase 4: DatabaseStorage ENABLED!
+    storage = new DatabaseStorage();
 
-    console.log("🔌 Attempting to connect to MySQL RDS...");
-    console.log("🎯 Target RDS Instance: MySQL database 'crew_database'");
+    console.log("🔌 Attempting to connect to PostgreSQL...");
+    console.log("🎯 Target Database: PostgreSQL 'crew_database'");
 
     // Database connection test only - seeding completely disabled per user request
     (async () => {
@@ -5462,20 +5466,17 @@ if (databaseUrlForceDisabled) {
         // await (storage as DatabaseStorage).seedDatabase(); // DISABLED PER USER REQUEST
         isConnected = true;
         connectionError = null;
-        console.log("✅ SUCCESS: MySQL RDS database connected successfully!");
-        console.log("🚀 Application is ready to serve requests with persistent MySQL storage");
+        console.log("✅ SUCCESS: PostgreSQL database connected successfully!");
+        console.log("✅ DatabaseStorage (PostgreSQL) initialized successfully!");
+        console.log("🚀 Application is ready to serve requests with persistent PostgreSQL storage");
       } catch (error) {
         isConnected = false;
         connectionError = error as Error;
-        console.error("⚠️  WARNING: Failed to seed MySQL RDS database:", error);
+        console.error("⚠️  WARNING: Failed to connect to PostgreSQL database:", error);
         console.error("🔍 Connection Details:");
-        console.error(`   • Host: ${process.env.DB_HOST}`);
-        console.error(`   • Port: ${process.env.DB_PORT}`);
-        console.error(`   • Database: crew_database`);
-        console.error(`   • User: ${process.env.DB_USER}`);
+        console.error(`   • DATABASE_URL: ${process.env.DATABASE_URL ? 'Set' : 'Not set'}`);
         console.error("📊 This could be due to:");
-        console.error("   • RDS security group not allowing connections from this environment");
-        console.error("   • Database 'crew_database' does not exist yet");
+        console.error("   • PostgreSQL database not accessible");
         console.error("   • Network connectivity issues");
         console.error("   • Incorrect credentials");
         console.error("🚑 Server will start anyway. Use /api/health to test connectivity.");
@@ -5484,12 +5485,12 @@ if (databaseUrlForceDisabled) {
   } catch (error) {
     isConnected = false;
     connectionError = error as Error;
-    console.error("❌ ERROR: Failed to initialize MySQL RDS database:", error);
+    console.error("❌ ERROR: Failed to initialize PostgreSQL database:", error);
     console.error("🚑 Server will start anyway. Use /api/health to test connectivity.");
     // Create a stub storage that will throw meaningful errors
     storage = new (class {
       private throwConnectionError(): never {
-        throw new Error(`MySQL RDS connection failed: ${connectionError?.message || 'Unknown error'}. Check /api/health for details.`);
+        throw new Error(`PostgreSQL connection failed: ${connectionError?.message || 'Unknown error'}. Check /api/health for details.`);
       }
       async getUser(): Promise<any> { this.throwConnectionError(); }
       async getUserByUsername(): Promise<any> { this.throwConnectionError(); }
