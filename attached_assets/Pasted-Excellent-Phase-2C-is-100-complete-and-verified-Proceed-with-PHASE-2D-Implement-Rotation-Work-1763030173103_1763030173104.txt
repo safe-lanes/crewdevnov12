@@ -1,0 +1,170 @@
+Excellent! Phase 2C is 100% complete and verified.
+
+Proceed with PHASE 2D: Implement Rotation Workflow Methods (5 methods)
+
+These are COMPLEX workflow methods that manage rotation plan approvals and deployments.
+
+IMPLEMENT THESE 5 METHODS:
+
+1. async proposeRotationPlan(id: number, proposedBy: string): Promise<RotationPlan | null>
+   - Update rotation plan status to "Proposed"
+   - Set proposedBy field
+   - Update lastEdited timestamp
+   - Return updated plan
+
+2. async getProposedAssignments(filters: any): Promise<any[]>
+   - Query rotation plans with status "Proposed"
+   - Filter by date range (planFromDate, planToDate)
+   - Extract assignments from JSON field
+   - Return array of proposed assignments
+
+3. async deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<boolean>
+   - Get rotation plan by ID
+   - Update specific assignment in assignments JSON array at assignmentIndex
+   - Set assignment status to "Deployed"
+   - Set deployedBy and deployedAt fields
+   - Save updated plan
+   - Return success status
+
+4. async rejectAssignment(planId: number, assignmentIndex: number): Promise<boolean>
+   - Get rotation plan by ID
+   - Update specific assignment in assignments JSON array at assignmentIndex
+   - Set assignment status to "Rejected"
+   - Save updated plan
+   - Return success status
+
+5. async checkAssignmentConflicts(crewMemberId: string, vesselId: string, startDate: string, endDate: string): Promise<any[]>
+   - Query vesselPlanning table
+   - Find overlapping assignments for same crew member
+   - Check date ranges for conflicts
+   - Return array of conflicting assignments
+
+SPECIAL IMPLEMENTATION NOTES:
+
+**Working with JSON fields in PostgreSQL:**
+```typescript
+// Reading JSON field
+const plan = await this.db
+  .select()
+  .from(rotationPlans)
+  .where(eq(rotationPlans.id, planId));
+
+const assignments = JSON.parse(plan[0].assignments || '[]');
+
+// Modifying JSON array element
+assignments[assignmentIndex] = {
+  ...assignments[assignmentIndex],
+  status: 'Deployed',
+  deployedBy: deployedBy,
+  deployedAt: new Date().toISOString()
+};
+
+// Updating JSON field
+await this.db
+  .update(rotationPlans)
+  .set({ 
+    assignments: JSON.stringify(assignments),
+    lastEdited: new Date()
+  })
+  .where(eq(rotationPlans.id, planId));
+```
+
+**Date overlap logic for conflicts:**
+```typescript
+// Check if date ranges overlap
+// Conflict exists if:
+// (startDate <= existing.endDate) AND (endDate >= existing.startDate)
+
+const conflicts = await this.db
+  .select()
+  .from(vesselPlanning)
+  .where(
+    and(
+      eq(vesselPlanning.crewMemberId, crewMemberId),
+      // Add date overlap conditions here
+    )
+  );
+```
+
+IMPLEMENTATION PATTERN:
+```typescript
+// Example: proposeRotationPlan
+async proposeRotationPlan(id: number, proposedBy: string): Promise<RotationPlan | null> {
+  const [updated] = await this.db
+    .update(rotationPlans)
+    .set({
+      proposedBy: proposedBy,
+      lastEdited: new Date()
+      // Note: May need to update status field if it exists in schema
+    })
+    .where(eq(rotationPlans.id, id))
+    .returning();
+  
+  return updated || null;
+}
+
+// Example: deployAssignment
+async deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<boolean> {
+  try {
+    // Get current plan
+    const plans = await this.db
+      .select()
+      .from(rotationPlans)
+      .where(eq(rotationPlans.id, planId));
+    
+    if (!plans[0]) return false;
+    
+    // Parse and update assignments
+    const assignments = JSON.parse(plans[0].assignments || '[]');
+    if (!assignments[assignmentIndex]) return false;
+    
+    assignments[assignmentIndex] = {
+      ...assignments[assignmentIndex],
+      status: 'Deployed',
+      deployedBy: deployedBy,
+      deployedAt: new Date().toISOString()
+    };
+    
+    // Save updated assignments
+    await this.db
+      .update(rotationPlans)
+      .set({ 
+        assignments: JSON.stringify(assignments),
+        lastEdited: new Date()
+      })
+      .where(eq(rotationPlans.id, planId));
+    
+    return true;
+  } catch (error) {
+    console.error('Error deploying assignment:', error);
+    return false;
+  }
+}
+```
+
+REQUIREMENTS:
+1. Implement all 5 methods in server/database.ts
+2. Properly handle JSON field updates (parse, modify, stringify)
+3. Use PostgreSQL transactions for complex updates if needed
+4. Handle array index validation (check assignmentIndex exists)
+5. Include proper error handling for JSON operations
+6. Use date comparison logic for conflict checking
+
+AFTER IMPLEMENTATION:
+1. Show me complete code for all 5 methods
+2. Run: npx tsc --noEmit (must be 0 errors)
+3. Create workflow test:
+   - Create rotation plan with assignments JSON
+   - Propose plan: proposeRotationPlan(id, 'manager')
+   - Deploy assignment: deployAssignment(planId, 0, 'admin')
+   - Reject assignment: rejectAssignment(planId, 1)
+   - Check conflicts: checkAssignmentConflicts(crewId, vesselId, startDate, endDate)
+   - Show test results
+
+DELIVERABLE:
+- ✅ 5 workflow methods implemented
+- ✅ 0 TypeScript errors
+- ✅ JSON field manipulation works correctly
+- ✅ Test proves workflow operations work
+
+DO NOT proceed to Phase 2E until I confirm Phase 2D is complete.

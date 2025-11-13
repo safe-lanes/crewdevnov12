@@ -1201,6 +1201,274 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount !== null && result.rowCount > 0;
   }
 
+  // Rotation Workflow Methods
+  async proposeRotationPlan(id: number, proposedBy: string): Promise<RotationPlan | undefined> {
+    const now = new Date().toISOString();
+    const [updated] = await this.db
+      .update(rotationPlans)
+      .set({
+        planStatus: "Proposed",
+        proposedBy: proposedBy,
+        proposedDate: now,
+        lastEdited: now
+      })
+      .where(eq(rotationPlans.id, id))
+      .returning();
+    
+    return updated;
+  }
+
+  async getProposedAssignments(filters?: { vessels?: string[]; ranks?: string[]; draftId?: string; dateFrom?: string; dateTo?: string }): Promise<any[]> {
+    // Get plans with "Proposed" or "Partially Approved" status
+    const plans = await this.db
+      .select()
+      .from(rotationPlans);
+    
+    // Filter for Proposed or Partially Approved status
+    const relevantPlans = plans.filter(plan => 
+      plan.planStatus === "Proposed" || plan.planStatus === "Partially Approved"
+    );
+    
+    // Extract and flatten assignments from all proposed/partially approved plans
+    const proposedAssignments: any[] = [];
+    
+    for (const plan of relevantPlans) {
+      // Apply draftId filter
+      if (filters?.draftId && plan.draftId !== filters.draftId) continue;
+      
+      // Apply date filters with proper date parsing (handles ISO timestamps)
+      if (filters?.dateFrom) {
+        const planToDate = new Date(plan.planToDate);
+        const filterFromDate = new Date(filters.dateFrom);
+        if (planToDate < filterFromDate) continue;
+      }
+      if (filters?.dateTo) {
+        const planFromDate = new Date(plan.planFromDate);
+        const filterToDate = new Date(filters.dateTo);
+        if (planFromDate > filterToDate) continue;
+      }
+      
+      // Parse assignments JSON
+      const assignments = plan.assignments ? JSON.parse(plan.assignments) : [];
+      
+      // Add plan context to each assignment
+      for (const assignment of assignments) {
+        // Apply vessel filter
+        if (filters?.vessels && !filters.vessels.includes(assignment.vesselName)) continue;
+        
+        // Apply rank filter
+        if (filters?.ranks && !filters.ranks.includes(assignment.rank)) continue;
+        
+        proposedAssignments.push({
+          ...assignment,
+          planId: plan.id,
+          planFromDate: plan.planFromDate,
+          planToDate: plan.planToDate,
+          proposedBy: plan.proposedBy,
+          proposedDate: plan.proposedDate
+        });
+      }
+    }
+    
+    return proposedAssignments;
+  }
+
+  async deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[] }> {
+    try {
+      // Get current plan
+      const plans = await this.db
+        .select()
+        .from(rotationPlans)
+        .where(eq(rotationPlans.id, planId));
+      
+      if (!plans[0]) return { success: false };
+      
+      // Parse assignments
+      const assignments = plans[0].assignments ? JSON.parse(plans[0].assignments) : [];
+      if (!assignments[assignmentIndex]) return { success: false };
+      
+      const assignment = assignments[assignmentIndex];
+      
+      // Check for conflicts before deployment
+      const conflicts = await this.checkAssignmentConflicts(
+        assignment.crewId,
+        assignment.joiningDate,
+        assignment.contractPeriod || 6,
+        planId,
+        assignmentIndex
+      );
+      
+      if (conflicts.length > 0) {
+        return { success: false, conflicts };
+      }
+      
+      // Update assignment
+      assignments[assignmentIndex] = {
+        ...assignment,
+        status: 'Deployed',
+        deployedBy: deployedBy,
+        deployedAt: new Date().toISOString()
+      };
+      
+      // Save updated assignments
+      await this.db
+        .update(rotationPlans)
+        .set({ 
+          assignments: JSON.stringify(assignments),
+          lastEdited: new Date().toISOString()
+        })
+        .where(eq(rotationPlans.id, planId));
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error deploying assignment:', error);
+      return { success: false };
+    }
+  }
+
+  async rejectAssignment(planId: number, assignmentIndex: number): Promise<RotationPlan | undefined> {
+    try {
+      // Get current plan
+      const plans = await this.db
+        .select()
+        .from(rotationPlans)
+        .where(eq(rotationPlans.id, planId));
+      
+      if (!plans[0]) return undefined;
+      
+      // Parse and update assignments
+      const assignments = plans[0].assignments ? JSON.parse(plans[0].assignments) : [];
+      if (!assignments[assignmentIndex]) return undefined;
+      
+      assignments[assignmentIndex] = {
+        ...assignments[assignmentIndex],
+        status: 'Rejected',
+        rejectedAt: new Date().toISOString()
+      };
+      
+      // Save updated assignments and return updated plan
+      const [updated] = await this.db
+        .update(rotationPlans)
+        .set({ 
+          assignments: JSON.stringify(assignments),
+          lastEdited: new Date().toISOString()
+        })
+        .where(eq(rotationPlans.id, planId))
+        .returning();
+      
+      return updated;
+    } catch (error) {
+      console.error('Error rejecting assignment:', error);
+      return undefined;
+    }
+  }
+
+  async checkAssignmentConflicts(
+    crewId: string, 
+    joiningDate: string, 
+    contractPeriod: number,
+    excludePlanId?: number,
+    excludeAssignmentIndex?: number
+  ): Promise<any[]> {
+    // Calculate end date from joining date + contract period (months)
+    const joiningDateObj = new Date(joiningDate);
+    const endDateObj = new Date(joiningDateObj);
+    endDateObj.setMonth(endDateObj.getMonth() + contractPeriod);
+    const endDate = endDateObj.toISOString().split('T')[0];
+    
+    const conflicts: any[] = [];
+    
+    // Check 1: Conflicts in vesselPlanning table (deployed assignments)
+    const vesselPlanningEntries = await this.db
+      .select()
+      .from(vesselPlanning)
+      .where(eq(vesselPlanning.crewMemberId, crewId));
+    
+    for (const planning of vesselPlanningEntries) {
+      // Calculate planning end date if available
+      const planStart = planning.plannedDate || planning.joiningDate;
+      if (!planStart) continue;
+      
+      // Use endDate if available, otherwise calculate from contract period
+      let planEnd = planning.endDate;
+      if (!planEnd && planning.contractPeriod) {
+        const planStartObj = new Date(planStart);
+        const planEndObj = new Date(planStartObj);
+        planEndObj.setMonth(planEndObj.getMonth() + planning.contractPeriod);
+        planEnd = planEndObj.toISOString().split('T')[0];
+      } else if (!planEnd) {
+        // Default to 6 months if no contract period specified
+        const planStartObj = new Date(planStart);
+        const planEndObj = new Date(planStartObj);
+        planEndObj.setMonth(planEndObj.getMonth() + 6);
+        planEnd = planEndObj.toISOString().split('T')[0];
+      }
+      
+      // Check date overlap
+      const hasOverlap = joiningDate <= planEnd && endDate >= planStart;
+      
+      if (hasOverlap) {
+        conflicts.push({
+          source: 'vesselPlanning',
+          planningId: planning.id,
+          crewId: planning.crewMemberId,
+          vesselId: planning.vesselId,
+          rank: planning.rank,
+          startDate: planStart,
+          endDate: planEnd,
+          conflictType: 'deployed_assignment'
+        });
+      }
+    }
+    
+    // Check 2: Conflicts in rotation plans (proposed/pending assignments)
+    const allPlans = await this.db.select().from(rotationPlans);
+    
+    for (const plan of allPlans) {
+      // Skip the plan we're checking against
+      if (excludePlanId && plan.id === excludePlanId) continue;
+      
+      // Parse assignments
+      const assignments = plan.assignments ? JSON.parse(plan.assignments) : [];
+      
+      for (let i = 0; i < assignments.length; i++) {
+        const assignment = assignments[i];
+        
+        // Skip the specific assignment we're checking
+        if (excludePlanId && plan.id === excludePlanId && excludeAssignmentIndex === i) continue;
+        
+        // Check if it's the same crew member
+        if (assignment.crewId !== crewId) continue;
+        
+        // Skip rejected assignments
+        if (assignment.status === 'Rejected') continue;
+        
+        // Calculate assignment end date
+        const assignmentStart = assignment.joiningDate;
+        const assignmentPeriod = assignment.contractPeriod || 6;
+        const assignmentStartObj = new Date(assignmentStart);
+        const assignmentEndObj = new Date(assignmentStartObj);
+        assignmentEndObj.setMonth(assignmentEndObj.getMonth() + assignmentPeriod);
+        const assignmentEnd = assignmentEndObj.toISOString().split('T')[0];
+        
+        // Check date overlap: ranges overlap if start1 <= end2 AND end1 >= start2
+        const hasOverlap = joiningDate <= assignmentEnd && endDate >= assignmentStart;
+        
+        if (hasOverlap) {
+          conflicts.push({
+            source: 'rotationPlan',
+            ...assignment,
+            planId: plan.id,
+            assignmentIndex: i,
+            conflictType: 'date_overlap'
+          });
+        }
+      }
+    }
+    
+    return conflicts;
+  }
+
   // Data Masters Methods
   async getDataMasters(): Promise<DataMaster[]> {
     return await this.db.select().from(dataMasters);
