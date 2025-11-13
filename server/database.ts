@@ -753,14 +753,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   // User methods
-  async getUser(id: number): Promise<User | null> {
+  async getUser(id: number): Promise<User | undefined> {
     const result = await this.db.select().from(users).where(eq(users.id, id));
-    return result[0] || null;
+    return result[0] || undefined;
   }
 
-  async getUserByUsername(username: string): Promise<User | null> {
+  async getUserByUsername(username: string): Promise<User | undefined> {
     const result = await this.db.select().from(users).where(eq(users.username, username));
-    return result[0] || null;
+    return result[0] || undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
@@ -773,9 +773,9 @@ export class DatabaseStorage implements IStorage {
     return await this.db.select().from(forms);
   }
 
-  async getForm(id: number): Promise<Form | null> {
+  async getForm(id: number): Promise<Form | undefined> {
     const result = await this.db.select().from(forms).where(eq(forms.id, id));
-    return result[0] || null;
+    return result[0] || undefined;
   }
 
   async createForm(insertForm: InsertForm): Promise<Form> {
@@ -783,9 +783,9 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateForm(id: number, formData: Partial<InsertForm>): Promise<Form | null> {
+  async updateForm(id: number, formData: Partial<InsertForm>): Promise<Form | undefined> {
     const result = await this.db.update(forms).set(formData).where(eq(forms.id, id)).returning();
-    return result[0] || null;
+    return result[0] || undefined;
   }
 
   async deleteForm(id: number): Promise<boolean> {
@@ -803,9 +803,9 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateRankGroup(id: number, rankGroupData: Partial<InsertRankGroup>): Promise<RankGroup | null> {
+  async updateRankGroup(id: number, rankGroupData: Partial<InsertRankGroup>): Promise<RankGroup | undefined> {
     const result = await this.db.update(rankGroups).set(rankGroupData).where(eq(rankGroups.id, id)).returning();
-    return result[0] || null;
+    return result[0] || undefined;
   }
 
   async deleteRankGroup(id: number): Promise<boolean> {
@@ -823,9 +823,9 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateAvailableRank(id: number, rankData: Partial<InsertAvailableRank>): Promise<AvailableRank | null> {
+  async updateAvailableRank(id: number, rankData: Partial<InsertAvailableRank>): Promise<AvailableRank | undefined> {
     const result = await this.db.update(availableRanks).set(rankData).where(eq(availableRanks.id, id)).returning();
-    return result[0] || null;
+    return result[0] || undefined;
   }
 
   async deleteAvailableRank(id: number): Promise<boolean> {
@@ -853,9 +853,9 @@ export class DatabaseStorage implements IStorage {
     return await this.db.select().from(companyRanks);
   }
 
-  async getCompanyRank(id: string): Promise<CompanyRank | null> {
+  async getCompanyRank(id: string): Promise<CompanyRank | undefined> {
     const result = await this.db.select().from(companyRanks).where(eq(companyRanks.id, id));
-    return result[0] || null;
+    return result[0] || undefined;
   }
 
   async createCompanyRank(rank: InsertCompanyRank): Promise<CompanyRank> {
@@ -863,9 +863,9 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateCompanyRank(id: string, rank: Partial<InsertCompanyRank>): Promise<CompanyRank | null> {
+  async updateCompanyRank(id: string, rank: Partial<InsertCompanyRank>): Promise<CompanyRank | undefined> {
     const result = await this.db.update(companyRanks).set(rank).where(eq(companyRanks.id, id)).returning();
-    return result[0] || null;
+    return result[0] || undefined;
   }
 
   async deleteCompanyRank(id: string): Promise<boolean> {
@@ -892,9 +892,9 @@ export class DatabaseStorage implements IStorage {
     return await this.db.select().from(promotionHierarchies);
   }
 
-  async getPromotionHierarchy(id: number): Promise<PromotionHierarchy | null> {
+  async getPromotionHierarchy(id: number): Promise<PromotionHierarchy | undefined> {
     const result = await this.db.select().from(promotionHierarchies).where(eq(promotionHierarchies.id, id));
-    return result[0] || null;
+    return result[0] || undefined;
   }
 
   async createPromotionHierarchy(hierarchy: InsertPromotionHierarchy): Promise<PromotionHierarchy> {
@@ -902,9 +902,9 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updatePromotionHierarchy(id: number, hierarchy: Partial<InsertPromotionHierarchy>): Promise<PromotionHierarchy | null> {
+  async updatePromotionHierarchy(id: number, hierarchy: Partial<InsertPromotionHierarchy>): Promise<PromotionHierarchy | undefined> {
     const result = await this.db.update(promotionHierarchies).set(hierarchy).where(eq(promotionHierarchies.id, id)).returning();
-    return result[0] || null;
+    return result[0] || undefined;
   }
 
   async deletePromotionHierarchy(id: number): Promise<boolean> {
@@ -917,9 +917,9 @@ export class DatabaseStorage implements IStorage {
     return await this.db.select().from(crewMembers);
   }
 
-  async getCrewMember(id: string): Promise<CrewMember | null> {
+  async getCrewMember(id: string): Promise<CrewMember | undefined> {
     const result = await this.db.select().from(crewMembers).where(eq(crewMembers.id, id));
-    return result[0] || null;
+    return result[0] || undefined;
   }
 
   async createCrewMember(insertCrewMember: InsertCrewMember): Promise<CrewMember> {
@@ -927,9 +927,9 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateCrewMember(id: string, crewMemberData: Partial<InsertCrewMember>): Promise<CrewMember | null> {
+  async updateCrewMember(id: string, crewMemberData: Partial<InsertCrewMember>): Promise<CrewMember | undefined> {
     const result = await this.db.update(crewMembers).set(crewMemberData).where(eq(crewMembers.id, id)).returning();
-    return result[0] || null;
+    return result[0] || undefined;
   }
 
   async deleteCrewMember(id: string): Promise<boolean> {
@@ -978,9 +978,9 @@ export class DatabaseStorage implements IStorage {
     return await this.db.select().from(appraisalResults);
   }
 
-  async getAppraisalResult(id: number): Promise<AppraisalResult | null> {
+  async getAppraisalResult(id: number): Promise<AppraisalResult | undefined> {
     const result = await this.db.select().from(appraisalResults).where(eq(appraisalResults.id, id));
-    return result[0] || null;
+    return result[0] || undefined;
   }
 
   async getAppraisalResultsByCrewMember(crewMemberId: string): Promise<AppraisalResult[]> {
@@ -992,9 +992,9 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateAppraisalResult(id: number, appraisalResultData: Partial<InsertAppraisalResult>): Promise<AppraisalResult | null> {
+  async updateAppraisalResult(id: number, appraisalResultData: Partial<InsertAppraisalResult>): Promise<AppraisalResult | undefined> {
     const result = await this.db.update(appraisalResults).set(appraisalResultData).where(eq(appraisalResults.id, id)).returning();
-    return result[0] || null;
+    return result[0] || undefined;
   }
 
   async deleteAppraisalResult(id: number): Promise<boolean> {
@@ -1002,7 +1002,7 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount !== null && result.rowCount > 0;
   }
 
-  async submitAppraisalStage(id: number, stage: string, data: any, submittedBy: string): Promise<AppraisalResult | null> {
+  async submitAppraisalStage(id: number, stage: string, data: any, submittedBy: string): Promise<AppraisalResult | undefined> {
     // Map stage to status
     const statusMap: Record<string, string> = {
       'stage1': 'Preliminary',
@@ -1015,7 +1015,7 @@ export class DatabaseStorage implements IStorage {
     // Get current appraisal
     const current = await this.getAppraisalResult(id);
     if (!current) {
-      return null;
+      return undefined;
     }
     
     // Merge new data into existing appraisal data
@@ -1037,7 +1037,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(appraisalResults.id, id))
       .returning();
     
-    return result[0] || null;
+    return result[0] || undefined;
   }
 
   // Recruitment Candidates Methods
@@ -1045,9 +1045,9 @@ export class DatabaseStorage implements IStorage {
     return await this.db.select().from(recruitmentCandidates);
   }
 
-  async getRecruitmentCandidate(id: string): Promise<RecruitmentCandidate | null> {
+  async getRecruitmentCandidate(id: string): Promise<RecruitmentCandidate | undefined> {
     const results = await this.db.select().from(recruitmentCandidates).where(eq(recruitmentCandidates.id, id));
-    return results[0] || null;
+    return results[0] || undefined;
   }
 
   async getRecruitmentCandidatesByStatus(status: string): Promise<RecruitmentCandidate[]> {
@@ -1059,13 +1059,13 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateRecruitmentCandidate(id: string, candidateData: Partial<InsertRecruitmentCandidate>): Promise<RecruitmentCandidate | null> {
+  async updateRecruitmentCandidate(id: string, candidateData: Partial<InsertRecruitmentCandidate>): Promise<RecruitmentCandidate | undefined> {
     const result = await this.db.update(recruitmentCandidates)
       .set({ ...candidateData, updatedAt: new Date() })
       .where(eq(recruitmentCandidates.id, id))
       .returning();
     
-    return result[0] || null;
+    return result[0] || undefined;
   }
 
   async deleteRecruitmentCandidate(id: string): Promise<boolean> {
@@ -1120,9 +1120,9 @@ export class DatabaseStorage implements IStorage {
     return await this.db.select().from(vesselGroups);
   }
 
-  async getVesselGroup(id: number): Promise<VesselGroup | null> {
+  async getVesselGroup(id: number): Promise<VesselGroup | undefined> {
     const result = await this.db.select().from(vesselGroups).where(eq(vesselGroups.id, id));
-    return result[0] || null;
+    return result[0] || undefined;
   }
 
   async createVesselGroup(group: InsertVesselGroup): Promise<VesselGroup> {
@@ -1130,9 +1130,9 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateVesselGroup(id: number, group: Partial<InsertVesselGroup>): Promise<VesselGroup | null> {
+  async updateVesselGroup(id: number, group: Partial<InsertVesselGroup>): Promise<VesselGroup | undefined> {
     const result = await this.db.update(vesselGroups).set(group).where(eq(vesselGroups.id, id)).returning();
-    return result[0] || null;
+    return result[0] || undefined;
   }
 
   async deleteVesselGroup(id: number): Promise<boolean> {
@@ -1145,9 +1145,9 @@ export class DatabaseStorage implements IStorage {
     return await this.db.select().from(vesselDrafts);
   }
 
-  async getVesselDraft(id: number): Promise<VesselDraft | null> {
+  async getVesselDraft(id: number): Promise<VesselDraft | undefined> {
     const result = await this.db.select().from(vesselDrafts).where(eq(vesselDrafts.id, id));
-    return result[0] || null;
+    return result[0] || undefined;
   }
 
   async getVesselDraftsByVessel(vesselId: string): Promise<VesselDraft[]> {
@@ -1159,9 +1159,9 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateVesselDraft(id: number, draft: Partial<InsertVesselDraft>): Promise<VesselDraft | null> {
+  async updateVesselDraft(id: number, draft: Partial<InsertVesselDraft>): Promise<VesselDraft | undefined> {
     const result = await this.db.update(vesselDrafts).set(draft).where(eq(vesselDrafts.id, id)).returning();
-    return result[0] || null;
+    return result[0] || undefined;
   }
 
   async deleteVesselDraft(id: number): Promise<boolean> {
@@ -1174,9 +1174,9 @@ export class DatabaseStorage implements IStorage {
     return await this.db.select().from(vesselRevisions);
   }
 
-  async getVesselRevision(id: number): Promise<VesselRevision | null> {
+  async getVesselRevision(id: number): Promise<VesselRevision | undefined> {
     const result = await this.db.select().from(vesselRevisions).where(eq(vesselRevisions.id, id));
-    return result[0] || null;
+    return result[0] || undefined;
   }
 
   async getVesselRevisionsByVessel(vesselId: string): Promise<VesselRevision[]> {
@@ -1193,9 +1193,9 @@ export class DatabaseStorage implements IStorage {
     return await this.db.select().from(vesselPlanning).where(eq(vesselPlanning.vesselId, vesselId));
   }
 
-  async getVesselPlanningById(id: number): Promise<VesselPlanning | null> {
+  async getVesselPlanningById(id: number): Promise<VesselPlanning | undefined> {
     const result = await this.db.select().from(vesselPlanning).where(eq(vesselPlanning.id, id));
-    return result[0] || null;
+    return result[0] || undefined;
   }
 
   async createVesselPlanning(planning: InsertVesselPlanning): Promise<VesselPlanning> {
@@ -1203,9 +1203,9 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateVesselPlanning(id: number, planning: Partial<InsertVesselPlanning>): Promise<VesselPlanning | null> {
+  async updateVesselPlanning(id: number, planning: Partial<InsertVesselPlanning>): Promise<VesselPlanning | undefined> {
     const result = await this.db.update(vesselPlanning).set(planning).where(eq(vesselPlanning.id, id)).returning();
-    return result[0] || null;
+    return result[0] || undefined;
   }
 
   async deleteVesselPlanning(id: number): Promise<boolean> {
@@ -1218,9 +1218,9 @@ export class DatabaseStorage implements IStorage {
     return await this.db.select().from(rotationPlans);
   }
 
-  async getRotationPlan(id: number): Promise<RotationPlan | null> {
+  async getRotationPlan(id: number): Promise<RotationPlan | undefined> {
     const result = await this.db.select().from(rotationPlans).where(eq(rotationPlans.id, id));
-    return result[0] || null;
+    return result[0] || undefined;
   }
 
   async createRotationPlan(plan: InsertRotationPlan): Promise<RotationPlan> {
@@ -1228,9 +1228,9 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateRotationPlan(id: number, plan: Partial<InsertRotationPlan>): Promise<RotationPlan | null> {
+  async updateRotationPlan(id: number, plan: Partial<InsertRotationPlan>): Promise<RotationPlan | undefined> {
     const result = await this.db.update(rotationPlans).set(plan).where(eq(rotationPlans.id, id)).returning();
-    return result[0] || null;
+    return result[0] || undefined;
   }
 
   async deleteRotationPlan(id: number): Promise<boolean> {
@@ -1511,12 +1511,12 @@ export class DatabaseStorage implements IStorage {
     return await this.db.select().from(restHoursVesselRecords);
   }
 
-  async getRestHoursVesselRecord(id: number): Promise<RestHoursVesselRecord | null> {
+  async getRestHoursVesselRecord(id: number): Promise<RestHoursVesselRecord | undefined> {
     const results = await this.db
       .select()
       .from(restHoursVesselRecords)
       .where(eq(restHoursVesselRecords.id, id));
-    return results[0] || null;
+    return results[0] || undefined;
   }
 
   async getRestHoursVesselRecordsByFilters(filters: { vesselIds?: string[]; monthValue?: string }): Promise<RestHoursVesselRecord[]> {
@@ -1547,13 +1547,13 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateRestHoursVesselRecord(id: number, record: Partial<InsertRestHoursVesselRecord>): Promise<RestHoursVesselRecord | null> {
+  async updateRestHoursVesselRecord(id: number, record: Partial<InsertRestHoursVesselRecord>): Promise<RestHoursVesselRecord | undefined> {
     const [updated] = await this.db
       .update(restHoursVesselRecords)
       .set(record)
       .where(eq(restHoursVesselRecords.id, id))
       .returning();
-    return updated || null;
+    return updated || undefined;
   }
 
   async deleteRestHoursVesselRecord(id: number): Promise<boolean> {
@@ -1568,12 +1568,12 @@ export class DatabaseStorage implements IStorage {
     return await this.db.select().from(restHoursCrewRecords);
   }
 
-  async getRestHoursCrewRecord(id: number): Promise<RestHoursCrewRecord | null> {
+  async getRestHoursCrewRecord(id: number): Promise<RestHoursCrewRecord | undefined> {
     const results = await this.db
       .select()
       .from(restHoursCrewRecords)
       .where(eq(restHoursCrewRecords.id, id));
-    return results[0] || null;
+    return results[0] || undefined;
   }
 
   async getRestHoursCrewRecordsByFilters(filters: { vesselIds?: string[]; monthValue?: string; ranks?: string[]; search?: string }): Promise<RestHoursCrewRecord[]> {
@@ -1615,13 +1615,13 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateRestHoursCrewRecord(id: number, record: Partial<InsertRestHoursCrewRecord>): Promise<RestHoursCrewRecord | null> {
+  async updateRestHoursCrewRecord(id: number, record: Partial<InsertRestHoursCrewRecord>): Promise<RestHoursCrewRecord | undefined> {
     const [updated] = await this.db
       .update(restHoursCrewRecords)
       .set(record)
       .where(eq(restHoursCrewRecords.id, id))
       .returning();
-    return updated || null;
+    return updated || undefined;
   }
 
   async deleteRestHoursCrewRecord(id: number): Promise<boolean> {
@@ -1636,19 +1636,19 @@ export class DatabaseStorage implements IStorage {
     return await this.db.select().from(restHoursDailyRecords);
   }
 
-  async getRestHoursDailyRecord(id: number): Promise<RestHoursDailyRecord | null> {
+  async getRestHoursDailyRecord(id: number): Promise<RestHoursDailyRecord | undefined> {
     const results = await this.db
       .select()
       .from(restHoursDailyRecords)
       .where(eq(restHoursDailyRecords.id, id));
-    return results[0] || null;
+    return results[0] || undefined;
   }
 
   async getRestHoursDailyRecordByKey(
     crewMemberId: string,
     vesselId: string,
     monthYear: string
-  ): Promise<RestHoursDailyRecord | null> {
+  ): Promise<RestHoursDailyRecord | undefined> {
     const results = await this.db
       .select()
       .from(restHoursDailyRecords)
@@ -1659,7 +1659,7 @@ export class DatabaseStorage implements IStorage {
           eq(restHoursDailyRecords.monthYear, monthYear)
         )
       );
-    return results[0] || null;
+    return results[0] || undefined;
   }
 
   async createRestHoursDailyRecord(record: InsertRestHoursDailyRecord): Promise<RestHoursDailyRecord> {
@@ -1670,13 +1670,13 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateRestHoursDailyRecord(id: number, record: Partial<InsertRestHoursDailyRecord>): Promise<RestHoursDailyRecord | null> {
+  async updateRestHoursDailyRecord(id: number, record: Partial<InsertRestHoursDailyRecord>): Promise<RestHoursDailyRecord | undefined> {
     const [updated] = await this.db
       .update(restHoursDailyRecords)
       .set(record)
       .where(eq(restHoursDailyRecords.id, id))
       .returning();
-    return updated || null;
+    return updated || undefined;
   }
 
   async deleteRestHoursDailyRecord(id: number): Promise<boolean> {
@@ -1780,7 +1780,7 @@ export class DatabaseStorage implements IStorage {
     return tasks.map(task => this.parseVariableTask(task));
   }
 
-  async getVariableTask(id: number): Promise<VariableTask | null> {
+  async getVariableTask(id: number): Promise<VariableTask | undefined> {
     const results = await this.db
       .select()
       .from(variableTasks)
@@ -1816,7 +1816,7 @@ export class DatabaseStorage implements IStorage {
     return this.parseVariableTask(created);
   }
 
-  async updateVariableTask(id: number, task: Partial<InsertVariableTask>): Promise<VariableTask | null> {
+  async updateVariableTask(id: number, task: Partial<InsertVariableTask>): Promise<VariableTask | undefined> {
     const stringified = this.stringifyVariableTaskInput(task);
     const [updated] = await this.db
       .update(variableTasks)
@@ -1839,7 +1839,7 @@ export class DatabaseStorage implements IStorage {
     return tasks.map(task => this.parseFixedTask(task));
   }
 
-  async getFixedTask(id: number): Promise<FixedTask | null> {
+  async getFixedTask(id: number): Promise<FixedTask | undefined> {
     const results = await this.db
       .select()
       .from(fixedTasks)
@@ -1864,7 +1864,7 @@ export class DatabaseStorage implements IStorage {
     crewMemberId: string,
     vesselId: string,
     monthYear: string
-  ): Promise<FixedTask | null> {
+  ): Promise<FixedTask | undefined> {
     const results = await this.db
       .select()
       .from(fixedTasks)
@@ -1887,7 +1887,7 @@ export class DatabaseStorage implements IStorage {
     return this.parseFixedTask(created);
   }
 
-  async updateFixedTask(id: number, task: Partial<InsertFixedTask>): Promise<FixedTask | null> {
+  async updateFixedTask(id: number, task: Partial<InsertFixedTask>): Promise<FixedTask | undefined> {
     const stringified = this.stringifyFixedTaskInput(task);
     const [updated] = await this.db
       .update(fixedTasks)
@@ -1910,7 +1910,7 @@ export class DatabaseStorage implements IStorage {
     return records.map(record => this.parseDrugAlcoholTestRecord(record));
   }
 
-  async getDrugAlcoholTestRecord(id: number): Promise<DrugAlcoholTestRecord | null> {
+  async getDrugAlcoholTestRecord(id: number): Promise<DrugAlcoholTestRecord | undefined> {
     const results = await this.db
       .select()
       .from(drugAlcoholTestRecords)
@@ -1939,7 +1939,7 @@ export class DatabaseStorage implements IStorage {
     return this.parseDrugAlcoholTestRecord(created);
   }
 
-  async updateDrugAlcoholTestRecord(id: number, record: Partial<InsertDrugAlcoholTestRecord>): Promise<DrugAlcoholTestRecord | null> {
+  async updateDrugAlcoholTestRecord(id: number, record: Partial<InsertDrugAlcoholTestRecord>): Promise<DrugAlcoholTestRecord | undefined> {
     const stringified = this.stringifyDrugAlcoholTestRecordInput(record);
     const [updated] = await this.db
       .update(drugAlcoholTestRecords)
@@ -1957,7 +1957,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Vessel Violation Comments Methods
-  async getVesselViolationComment(vesselId: string, monthValue: string): Promise<VesselViolationComment | null> {
+  async getVesselViolationComment(vesselId: string, monthValue: string): Promise<VesselViolationComment | undefined> {
     const results = await this.db
       .select()
       .from(vesselViolationComments)
@@ -1967,7 +1967,7 @@ export class DatabaseStorage implements IStorage {
           eq(vesselViolationComments.monthValue, monthValue)
         )
       );
-    return results[0] || null;
+    return results[0] || undefined;
   }
 
   async saveVesselViolationComment(comment: InsertVesselViolationComment): Promise<VesselViolationComment> {
@@ -1998,7 +1998,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Office Violation Comments Methods
-  async getOfficeViolationComment(vesselId: string, monthValue: string): Promise<OfficeViolationComment | null> {
+  async getOfficeViolationComment(vesselId: string, monthValue: string): Promise<OfficeViolationComment | undefined> {
     const results = await this.db
       .select()
       .from(officeViolationComments)
@@ -2008,7 +2008,7 @@ export class DatabaseStorage implements IStorage {
           eq(officeViolationComments.monthValue, monthValue)
         )
       );
-    return results[0] || null;
+    return results[0] || undefined;
   }
 
   async saveOfficeViolationComment(comment: InsertOfficeViolationComment): Promise<OfficeViolationComment> {
@@ -2043,7 +2043,7 @@ export class DatabaseStorage implements IStorage {
     return await this.db.select().from(ncReports);
   }
 
-  async getNCReport(crewMemberId: string, vesselId: string, monthValue: string): Promise<NCReport | null> {
+  async getNCReport(crewMemberId: string, vesselId: string, monthValue: string): Promise<NCReport | undefined> {
     const results = await this.db
       .select()
       .from(ncReports)
@@ -2054,7 +2054,7 @@ export class DatabaseStorage implements IStorage {
           eq(ncReports.monthValue, monthValue)
         )
       );
-    return results[0] || null;
+    return results[0] || undefined;
   }
 
   async saveNCReport(report: InsertNCReport): Promise<NCReport> {
@@ -2086,7 +2086,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Date Line Adjustments Methods
-  async getVesselDateLineAdjustment(vesselId: string, monthValue: string): Promise<VesselDateLineAdjustment | null> {
+  async getVesselDateLineAdjustment(vesselId: string, monthValue: string): Promise<VesselDateLineAdjustment | undefined> {
     const results = await this.db
       .select()
       .from(vesselDateLineAdjustments)
@@ -2096,7 +2096,7 @@ export class DatabaseStorage implements IStorage {
           eq(vesselDateLineAdjustments.monthValue, monthValue)
         )
       );
-    return results[0] || null;
+    return results[0] || undefined;
   }
 
   async saveVesselDateLineAdjustment(adjustment: InsertVesselDateLineAdjustment): Promise<VesselDateLineAdjustment> {
@@ -2168,7 +2168,7 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getFormForRank(rankLabel: string, category?: string): Promise<Form | null> {
+  async getFormForRank(rankLabel: string, category?: string): Promise<Form | undefined> {
     const rankGroupResults = await this.db
       .select()
       .from(rankGroups)
@@ -2188,7 +2188,7 @@ export class DatabaseStorage implements IStorage {
       .from(forms)
       .where(and(...conditions));
     
-    return results[0] || null;
+    return results[0] || undefined;
   }
 
   // Data Masters Methods
@@ -2196,9 +2196,9 @@ export class DatabaseStorage implements IStorage {
     return await this.db.select().from(dataMasters);
   }
 
-  async getDataMaster(id: string): Promise<DataMaster | null> {
+  async getDataMaster(id: string): Promise<DataMaster | undefined> {
     const results = await this.db.select().from(dataMasters).where(eq(dataMasters.id, id));
-    return results[0] || null;
+    return results[0] || undefined;
   }
 
   async createDataMaster(insertMaster: InsertDataMaster): Promise<DataMaster> {
@@ -2209,13 +2209,13 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateDataMaster(id: string, masterData: Partial<InsertDataMaster>): Promise<DataMaster | null> {
+  async updateDataMaster(id: string, masterData: Partial<InsertDataMaster>): Promise<DataMaster | undefined> {
     const [updated] = await this.db
       .update(dataMasters)
       .set({ ...masterData, updatedAt: new Date() })
       .where(eq(dataMasters.id, id))
       .returning();
-    return updated || null;
+    return updated || undefined;
   }
 
   async deleteDataMaster(id: string): Promise<boolean> {
@@ -2234,14 +2234,14 @@ export class DatabaseStorage implements IStorage {
     return results;
   }
 
-  async getMasterDataEntry(id: number): Promise<MasterDataEntry | null> {
+  async getMasterDataEntry(id: number): Promise<MasterDataEntry | undefined> {
     // Use raw SQL to avoid Drizzle schema column issues
     const existingColumns = await this.getExistingColumns('master_data_entries');
     const selectColumns = Array.from(existingColumns).join(', ');
     const selectSql = `SELECT ${selectColumns} FROM master_data_entries WHERE id = ?`;
     
     const [results]: any = await this.pool.query(selectSql, [id]);
-    return results[0] || null;
+    return results[0] || undefined;
   }
 
   async createMasterDataEntry(insertEntry: InsertMasterDataEntry): Promise<MasterDataEntry> {
@@ -2292,7 +2292,7 @@ export class DatabaseStorage implements IStorage {
     return fallbackResult.rows[0];
   }
 
-  async updateMasterDataEntry(id: number, entryData: Partial<InsertMasterDataEntry>): Promise<MasterDataEntry | null> {
+  async updateMasterDataEntry(id: number, entryData: Partial<InsertMasterDataEntry>): Promise<MasterDataEntry | undefined> {
     // Filter payload to only include existing columns
     const filteredEntry = await this.filterPayloadByExistingColumns(entryData, 'master_data_entries');
     
@@ -2316,7 +2316,7 @@ export class DatabaseStorage implements IStorage {
     const selectSql = `SELECT ${selectColumns} FROM master_data_entries WHERE id = ?`;
     
     const [selectResults]: any = await this.pool.query(selectSql, [id]);
-    return selectResults[0] || null;
+    return selectResults[0] || undefined;
   }
 
   async deleteMasterDataEntry(id: number): Promise<boolean> {

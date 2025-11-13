@@ -4611,6 +4611,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mappedData.employeeId = await storage.getNextCrewId();
       }
       
+      // Ensure id field is set for database (required as primary key)
+      if (!mappedData.id) {
+        mappedData.id = mappedData.employeeId || await storage.getNextCrewId();
+      }
+      
       const result = insertCrewMemberSchema.safeParse(mappedData);
       if (!result.success) {
         return res.status(400).json({ error: "Invalid crew member data", details: result.error.issues });

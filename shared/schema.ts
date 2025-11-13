@@ -688,6 +688,9 @@ export const updateAvailableRankSchema = createInsertSchema(availableRanks).pick
 }).partial();
 
 export const insertCrewMemberSchema = createInsertSchema(crewMembers).pick({
+  // Primary Key
+  id: true,
+  
   // Basic Personal Information
   empNo: true,
   firstName: true,
