@@ -18,6 +18,28 @@ function extractFromTuple(item: any): any {
   return Array.isArray(item) && item.length === 2 ? item[1] : item;
 }
 
+// Helper function to convert string timestamps to Date objects
+function convertTimestamps(obj: any): any {
+  if (!obj || typeof obj !== 'object') return obj;
+  
+  const result = { ...obj };
+  const timestampFields = ['createdAt', 'updatedAt', 'timestamp', 'date', 'signOnDate', 'signOffDate', 'joiningDate', 'reliefDue'];
+  
+  for (const field of timestampFields) {
+    if (result[field] && typeof result[field] === 'string') {
+      try {
+        result[field] = new Date(result[field]);
+      } catch (e) {
+        // Keep as string if conversion fails
+      }
+    }
+  }
+  
+  return result;
+}
+
+// NO field mapping needed - Drizzle schema uses camelCase properties!
+
 async function clearAllTables() {
   console.log('🧹 Clearing existing data from database...\n');
   
@@ -207,7 +229,7 @@ async function migrateVesselGroups(jsonData: JSONData) {
   
   console.log(`Migrating ${jsonData.vesselGroups.length} vessel groups...`);
   for (const item of jsonData.vesselGroups) {
-    await storage.createVesselGroup(extractFromTuple(item));
+    await storage.createVesselGroup(convertTimestamps(extractFromTuple(item)));
   }
   console.log(`✅ Vessel Groups migrated (${jsonData.vesselGroups.length} records)\n`);
 }
@@ -232,10 +254,18 @@ async function migrateMasterDataEntries(jsonData: JSONData) {
   }
   
   console.log(`Migrating ${jsonData.masterDataEntries.length} master data entries...`);
+  let successCount = 0;
   for (const item of jsonData.masterDataEntries) {
-    await storage.createMasterDataEntry(extractFromTuple(item));
+    const entryData = extractFromTuple(item);
+    try {
+      // NO field mapping - use camelCase data directly
+      await storage.createMasterDataEntry(entryData);
+      successCount++;
+    } catch (error: any) {
+      console.log(`⚠️  Skipped master data entry (${entryData.id || 'unknown'}): ${error.code || error.message}`);
+    }
   }
-  console.log(`✅ Master Data Entries migrated (${jsonData.masterDataEntries.length} records)\n`);
+  console.log(`✅ Master Data Entries migrated (${successCount}/${jsonData.masterDataEntries.length} records)\n`);
 }
 
 async function migrateCrewMembers(jsonData: JSONData) {
@@ -245,10 +275,19 @@ async function migrateCrewMembers(jsonData: JSONData) {
   }
   
   console.log(`Migrating ${jsonData.crewMembers.length} crew members...`);
+  let successCount = 0;
   for (const item of jsonData.crewMembers) {
-    await storage.createCrewMember(extractFromTuple(item));
+    const crewData = extractFromTuple(item);
+    try {
+      const withTimestamps = convertTimestamps(crewData);
+      // NO field mapping needed! JSON already uses camelCase that matches Drizzle schema
+      await storage.createCrewMember(withTimestamps);
+      successCount++;
+    } catch (error: any) {
+      console.log(`⚠️  Skipped crew member (${crewData.id || 'unknown'}): ${error.message || error.code}`);
+    }
   }
-  console.log(`✅ Crew Members migrated (${jsonData.crewMembers.length} records)\n`);
+  console.log(`✅ Crew Members migrated (${successCount}/${jsonData.crewMembers.length} records)\n`);
 }
 
 async function migrateRecruitmentCandidates(jsonData: JSONData) {
@@ -271,10 +310,16 @@ async function migrateAppraisalResults(jsonData: JSONData) {
   }
   
   console.log(`Migrating ${jsonData.appraisalResults.length} appraisal results...`);
+  let successCount = 0;
   for (const item of jsonData.appraisalResults) {
-    await storage.createAppraisalResult(extractFromTuple(item));
+    try {
+      await storage.createAppraisalResult(convertTimestamps(extractFromTuple(item)));
+      successCount++;
+    } catch (error: any) {
+      console.log(`⚠️  Skipped appraisal result due to error: ${error.message}`);
+    }
   }
-  console.log(`✅ Appraisal Results migrated (${jsonData.appraisalResults.length} records)\n`);
+  console.log(`✅ Appraisal Results migrated (${successCount}/${jsonData.appraisalResults.length} records)\n`);
 }
 
 async function migrateVesselPlanning(jsonData: JSONData) {
