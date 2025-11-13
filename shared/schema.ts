@@ -688,9 +688,6 @@ export const updateAvailableRankSchema = createInsertSchema(availableRanks).pick
 }).partial();
 
 export const insertCrewMemberSchema = createInsertSchema(crewMembers).pick({
-  // Primary Key
-  id: true,
-  
   // Basic Personal Information
   empNo: true,
   firstName: true,
@@ -777,6 +774,8 @@ export const insertCrewMemberSchema = createInsertSchema(crewMembers).pick({
   preJoiningMedicals: true,
   doctorVisits: true,
   children: true,
+}).extend({
+  id: z.string().optional(), // Make id optional, will be auto-generated if not provided
 });
 
 export const insertAppraisalResultSchema = createInsertSchema(appraisalResults).pick({
