@@ -1,0 +1,162 @@
+Excellent! Phase 2D is 100% complete with impressive conflict detection logic.
+
+Proceed with PHASE 2E: Implement Rest Hours Tracking Methods (18 methods)
+
+Rest hours compliance is a 3-level hierarchy:
+- Vessel Records (monthly summaries per vessel)
+- Crew Records (monthly records per crew member)
+- Daily Records (daily detailed hours per crew member)
+
+IMPLEMENT THESE 18 METHODS:
+
+GROUP 1 - Rest Hours Vessel Records (6 methods):
+- async getRestHoursVesselRecords(): Promise<RestHoursVesselRecord[]>
+- async getRestHoursVesselRecord(id: number): Promise<RestHoursVesselRecord | null>
+- async getRestHoursVesselRecordsByFilters(filters: { vesselId?: string, month?: string }): Promise<RestHoursVesselRecord[]>
+- async createRestHoursVesselRecord(record: InsertRestHoursVesselRecord): Promise<RestHoursVesselRecord>
+- async updateRestHoursVesselRecord(id: number, record: Partial<InsertRestHoursVesselRecord>): Promise<RestHoursVesselRecord | null>
+- async deleteRestHoursVesselRecord(id: number): Promise<boolean>
+
+GROUP 2 - Rest Hours Crew Records (6 methods):
+- async getRestHoursCrewRecords(): Promise<RestHoursCrewRecord[]>
+- async getRestHoursCrewRecord(id: number): Promise<RestHoursCrewRecord | null>
+- async getRestHoursCrewRecordsByFilters(filters: { vesselId?: string, crewMemberId?: string, month?: string }): Promise<RestHoursCrewRecord[]>
+- async createRestHoursCrewRecord(record: InsertRestHoursCrewRecord): Promise<RestHoursCrewRecord>
+- async updateRestHoursCrewRecord(id: number, record: Partial<InsertRestHoursCrewRecord>): Promise<RestHoursCrewRecord | null>
+- async deleteRestHoursCrewRecord(id: number): Promise<boolean>
+
+GROUP 3 - Rest Hours Daily Records (6 methods):
+- async getRestHoursDailyRecords(): Promise<RestHoursDailyRecord[]>
+- async getRestHoursDailyRecord(id: number): Promise<RestHoursDailyRecord | null>
+- async getRestHoursDailyRecordByKey(crewMemberId: string, vesselId: string, monthYear: string): Promise<RestHoursDailyRecord | null>
+- async createRestHoursDailyRecord(record: InsertRestHoursDailyRecord): Promise<RestHoursDailyRecord>
+- async updateRestHoursDailyRecord(id: number, record: Partial<InsertRestHoursDailyRecord>): Promise<RestHoursDailyRecord | null>
+- async deleteRestHoursDailyRecord(id: number): Promise<boolean>
+
+SPECIAL IMPLEMENTATION NOTES:
+
+1. **Filtering Methods**: Multiple WHERE conditions
+```typescript
+   // getRestHoursVesselRecordsByFilters
+   const conditions = [];
+   if (filters.vesselId) {
+     conditions.push(eq(restHoursVesselRecords.vesselId, filters.vesselId));
+   }
+   if (filters.month) {
+     conditions.push(eq(restHoursVesselRecords.month, filters.month));
+   }
+   
+   return await this.db
+     .select()
+     .from(restHoursVesselRecords)
+     .where(conditions.length > 0 ? and(...conditions) : undefined);
+```
+
+2. **Composite Key Lookup**: getRestHoursDailyRecordByKey
+```typescript
+   // Find record by 3-part composite key
+   return await this.db
+     .select()
+     .from(restHoursDailyRecords)
+     .where(
+       and(
+         eq(restHoursDailyRecords.crewMemberId, crewMemberId),
+         eq(restHoursDailyRecords.vesselId, vesselId),
+         eq(restHoursDailyRecords.monthYear, monthYear)
+       )
+     );
+```
+
+3. **JSON Fields**: Handle dailyRecords properly
+   - restHoursDailyRecords.dailyRecords is JSON (30/31 days of data)
+   - No special handling needed with Drizzle, it auto-converts
+
+IMPLEMENTATION PATTERN:
+```typescript
+// Example: getRestHoursVesselRecords
+async getRestHoursVesselRecords(): Promise<RestHoursVesselRecord[]> {
+  return await this.db.select().from(restHoursVesselRecords);
+}
+
+// Example: getRestHoursCrewRecordsByFilters
+async getRestHoursCrewRecordsByFilters(filters: any): Promise<RestHoursCrewRecord[]> {
+  const conditions = [];
+  
+  if (filters.vesselId) {
+    conditions.push(eq(restHoursCrewRecords.vesselId, filters.vesselId));
+  }
+  if (filters.crewMemberId) {
+    conditions.push(eq(restHoursCrewRecords.crewMemberId, filters.crewMemberId));
+  }
+  if (filters.month) {
+    conditions.push(eq(restHoursCrewRecords.month, filters.month));
+  }
+  
+  if (conditions.length === 0) {
+    return await this.db.select().from(restHoursCrewRecords);
+  }
+  
+  return await this.db
+    .select()
+    .from(restHoursCrewRecords)
+    .where(and(...conditions));
+}
+
+// Example: getRestHoursDailyRecordByKey
+async getRestHoursDailyRecordByKey(
+  crewMemberId: string, 
+  vesselId: string, 
+  monthYear: string
+): Promise<RestHoursDailyRecord | null> {
+  const results = await this.db
+    .select()
+    .from(restHoursDailyRecords)
+    .where(
+      and(
+        eq(restHoursDailyRecords.crewMemberId, crewMemberId),
+        eq(restHoursDailyRecords.vesselId, vesselId),
+        eq(restHoursDailyRecords.monthYear, monthYear)
+      )
+    );
+  
+  return results[0] || null;
+}
+
+// Example: createRestHoursVesselRecord
+async createRestHoursVesselRecord(record: InsertRestHoursVesselRecord): Promise<RestHoursVesselRecord> {
+  const [created] = await this.db
+    .insert(restHoursVesselRecords)
+    .values(record)
+    .returning();
+  return created;
+}
+```
+
+REQUIREMENTS:
+1. Implement all 18 methods in server/database.ts
+2. Use PostgreSQL syntax throughout
+3. Handle optional filter parameters properly
+4. Implement composite key lookup correctly
+5. Handle JSON fields (dailyRecords) - auto-handled by Drizzle
+6. Use .returning() for INSERT/UPDATE
+7. Use .rowCount for DELETE
+
+AFTER IMPLEMENTATION:
+1. Show me complete code for all 18 methods
+2. Run: npx tsc --noEmit (must be 0 errors)
+3. Create comprehensive test:
+   - Create vessel record for vessel "VESSEL-001" and month "2025-01"
+   - Create crew record for crewId "A0001", vesselId "VESSEL-001", month "2025-01"
+   - Create daily record with composite key (crewId, vesselId, monthYear)
+   - Test filtering: getRestHoursCrewRecordsByFilters({ vesselId: "VESSEL-001" })
+   - Test composite key lookup: getRestHoursDailyRecordByKey("A0001", "VESSEL-001", "2025-01")
+   - Show test results
+
+DELIVERABLE:
+- ✅ 18 rest hours methods implemented
+- ✅ 0 TypeScript errors
+- ✅ Filtering with multiple optional parameters works
+- ✅ Composite key lookup works correctly
+- ✅ Test proves all 3 levels of hierarchy work
+
+DO NOT proceed to Phase 2F until I confirm Phase 2E is complete.

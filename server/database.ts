@@ -15,6 +15,9 @@ import {
   vesselRevisions,
   vesselPlanning,
   rotationPlans,
+  restHoursVesselRecords,
+  restHoursCrewRecords,
+  restHoursDailyRecords,
   dataMasters,
   masterDataEntries,
   type User,
@@ -45,12 +48,18 @@ import {
   type InsertVesselPlanning,
   type RotationPlan,
   type InsertRotationPlan,
+  type RestHoursVesselRecord,
+  type InsertRestHoursVesselRecord,
+  type RestHoursCrewRecord,
+  type InsertRestHoursCrewRecord,
+  type RestHoursDailyRecord,
+  type InsertRestHoursDailyRecord,
   type DataMaster,
   type InsertDataMaster,
   type MasterDataEntry,
   type InsertMasterDataEntry
 } from "@shared/schema";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, and, inArray, or } from "drizzle-orm";
 import { type IStorage } from "./storage";
 
 export class DatabaseStorage implements IStorage {
@@ -1467,6 +1476,186 @@ export class DatabaseStorage implements IStorage {
     }
     
     return conflicts;
+  }
+
+  // Rest Hours Vessel Records Methods
+  async getRestHoursVesselRecords(): Promise<RestHoursVesselRecord[]> {
+    return await this.db.select().from(restHoursVesselRecords);
+  }
+
+  async getRestHoursVesselRecord(id: number): Promise<RestHoursVesselRecord | null> {
+    const results = await this.db
+      .select()
+      .from(restHoursVesselRecords)
+      .where(eq(restHoursVesselRecords.id, id));
+    return results[0] || null;
+  }
+
+  async getRestHoursVesselRecordsByFilters(filters: { vesselIds?: string[]; monthValue?: string }): Promise<RestHoursVesselRecord[]> {
+    const conditions = [];
+    
+    if (filters.vesselIds && filters.vesselIds.length > 0) {
+      conditions.push(inArray(restHoursVesselRecords.vesselId, filters.vesselIds));
+    }
+    if (filters.monthValue) {
+      conditions.push(eq(restHoursVesselRecords.monthValue, filters.monthValue));
+    }
+    
+    if (conditions.length === 0) {
+      return await this.db.select().from(restHoursVesselRecords);
+    }
+    
+    return await this.db
+      .select()
+      .from(restHoursVesselRecords)
+      .where(and(...conditions));
+  }
+
+  async createRestHoursVesselRecord(record: InsertRestHoursVesselRecord): Promise<RestHoursVesselRecord> {
+    const [created] = await this.db
+      .insert(restHoursVesselRecords)
+      .values(record)
+      .returning();
+    return created;
+  }
+
+  async updateRestHoursVesselRecord(id: number, record: Partial<InsertRestHoursVesselRecord>): Promise<RestHoursVesselRecord | null> {
+    const [updated] = await this.db
+      .update(restHoursVesselRecords)
+      .set(record)
+      .where(eq(restHoursVesselRecords.id, id))
+      .returning();
+    return updated || null;
+  }
+
+  async deleteRestHoursVesselRecord(id: number): Promise<boolean> {
+    const result = await this.db
+      .delete(restHoursVesselRecords)
+      .where(eq(restHoursVesselRecords.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Rest Hours Crew Records Methods
+  async getRestHoursCrewRecords(): Promise<RestHoursCrewRecord[]> {
+    return await this.db.select().from(restHoursCrewRecords);
+  }
+
+  async getRestHoursCrewRecord(id: number): Promise<RestHoursCrewRecord | null> {
+    const results = await this.db
+      .select()
+      .from(restHoursCrewRecords)
+      .where(eq(restHoursCrewRecords.id, id));
+    return results[0] || null;
+  }
+
+  async getRestHoursCrewRecordsByFilters(filters: { vesselIds?: string[]; monthValue?: string; ranks?: string[]; search?: string }): Promise<RestHoursCrewRecord[]> {
+    const conditions = [];
+    
+    if (filters.vesselIds && filters.vesselIds.length > 0) {
+      conditions.push(inArray(restHoursCrewRecords.vesselId, filters.vesselIds));
+    }
+    if (filters.monthValue) {
+      conditions.push(eq(restHoursCrewRecords.monthValue, filters.monthValue));
+    }
+    if (filters.ranks && filters.ranks.length > 0) {
+      conditions.push(inArray(restHoursCrewRecords.rank, filters.ranks));
+    }
+    if (filters.search) {
+      conditions.push(
+        or(
+          sql`${restHoursCrewRecords.crewMemberId} ILIKE ${`%${filters.search}%`}`,
+          sql`${restHoursCrewRecords.name} ILIKE ${`%${filters.search}%`}`
+        )
+      );
+    }
+    
+    if (conditions.length === 0) {
+      return await this.db.select().from(restHoursCrewRecords);
+    }
+    
+    return await this.db
+      .select()
+      .from(restHoursCrewRecords)
+      .where(and(...conditions));
+  }
+
+  async createRestHoursCrewRecord(record: InsertRestHoursCrewRecord): Promise<RestHoursCrewRecord> {
+    const [created] = await this.db
+      .insert(restHoursCrewRecords)
+      .values(record)
+      .returning();
+    return created;
+  }
+
+  async updateRestHoursCrewRecord(id: number, record: Partial<InsertRestHoursCrewRecord>): Promise<RestHoursCrewRecord | null> {
+    const [updated] = await this.db
+      .update(restHoursCrewRecords)
+      .set(record)
+      .where(eq(restHoursCrewRecords.id, id))
+      .returning();
+    return updated || null;
+  }
+
+  async deleteRestHoursCrewRecord(id: number): Promise<boolean> {
+    const result = await this.db
+      .delete(restHoursCrewRecords)
+      .where(eq(restHoursCrewRecords.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Rest Hours Daily Records Methods
+  async getRestHoursDailyRecords(): Promise<RestHoursDailyRecord[]> {
+    return await this.db.select().from(restHoursDailyRecords);
+  }
+
+  async getRestHoursDailyRecord(id: number): Promise<RestHoursDailyRecord | null> {
+    const results = await this.db
+      .select()
+      .from(restHoursDailyRecords)
+      .where(eq(restHoursDailyRecords.id, id));
+    return results[0] || null;
+  }
+
+  async getRestHoursDailyRecordByKey(
+    crewMemberId: string,
+    vesselId: string,
+    monthYear: string
+  ): Promise<RestHoursDailyRecord | null> {
+    const results = await this.db
+      .select()
+      .from(restHoursDailyRecords)
+      .where(
+        and(
+          eq(restHoursDailyRecords.crewMemberId, crewMemberId),
+          eq(restHoursDailyRecords.vesselId, vesselId),
+          eq(restHoursDailyRecords.monthYear, monthYear)
+        )
+      );
+    return results[0] || null;
+  }
+
+  async createRestHoursDailyRecord(record: InsertRestHoursDailyRecord): Promise<RestHoursDailyRecord> {
+    const [created] = await this.db
+      .insert(restHoursDailyRecords)
+      .values(record)
+      .returning();
+    return created;
+  }
+
+  async updateRestHoursDailyRecord(id: number, record: Partial<InsertRestHoursDailyRecord>): Promise<RestHoursDailyRecord | null> {
+    const [updated] = await this.db
+      .update(restHoursDailyRecords)
+      .set(record)
+      .where(eq(restHoursDailyRecords.id, id))
+      .returning();
+    return updated || null;
+  }
+
+  async deleteRestHoursDailyRecord(id: number): Promise<boolean> {
+    const result = await this.db
+      .delete(restHoursDailyRecords)
+      .where(eq(restHoursDailyRecords.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
   }
 
   // Data Masters Methods
