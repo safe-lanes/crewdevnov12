@@ -205,16 +205,31 @@ async function migratePromotionHierarchies(jsonData: JSONData) {
 }
 
 async function migrateDataMasters(jsonData: JSONData) {
-  if (!jsonData.dataMasters || jsonData.dataMasters.length === 0) {
-    console.log('⏭️  No data masters to migrate\n');
-    return;
-  }
+  // Seed required data masters programmatically to satisfy FK constraints
+  const requiredMasters = [
+    { id: '001', name: 'Nationality Master', description: 'Nationality reference data', fields: JSON.stringify([{name: 'name', type: 'text'}]) },
+    { id: '014', name: 'Vessel Master', description: 'Vessel Master Data', fields: JSON.stringify([{name: 'name', type: 'text'}, {name: 'vesselType', type: 'text'}]) },
+    { id: '015', name: 'Vessel Type Master', description: 'Vessel Type reference data', fields: JSON.stringify([{name: 'name', type: 'text'}]) }
+  ];
   
-  console.log(`Migrating ${jsonData.dataMasters.length} data masters...`);
-  for (const item of jsonData.dataMasters) {
-    await storage.createDataMaster(extractFromTuple(item));
+  console.log(`Seeding ${requiredMasters.length} required data masters...`);
+  for (const master of requiredMasters) {
+    try {
+      await storage.createDataMaster(master);
+    } catch (error: any) {
+      // Skip if already exists (duplicate key error)
+    }
   }
-  console.log(`✅ Data Masters migrated (${jsonData.dataMasters.length} records)\n`);
+  console.log(`✅ Data Masters seeded\n`);
+  
+  // Also migrate any additional masters from JSON
+  if (jsonData.dataMasters && jsonData.dataMasters.length > 0) {
+    console.log(`Migrating ${jsonData.dataMasters.length} additional data masters from JSON...`);
+    for (const item of jsonData.dataMasters) {
+      await storage.createDataMaster(extractFromTuple(item));
+    }
+    console.log(`✅ Additional Data Masters migrated\n`);
+  }
 }
 
 async function migrateVessels(jsonData: JSONData) {

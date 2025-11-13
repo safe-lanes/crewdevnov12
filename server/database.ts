@@ -2249,42 +2249,40 @@ export class DatabaseStorage implements IStorage {
     console.log('🔧 [DB] Filtered entry for database insert:', filteredEntry);
     
     // Step 3: Use raw SQL to bypass Drizzle schema enforcement
-    const columns = Object.keys(filteredEntry).join(', ');
-    const placeholders = Object.keys(filteredEntry).map(() => '?').join(', ');
-    const values = Object.values(filteredEntry).map(value => value === undefined ? null : value);
+    // Exclude created_at and updated_at from the payload - we'll add them explicitly
+    const { created_at, updated_at, ...payloadWithoutTimestamps } = filteredEntry as any;
+    console.log('🔍 [DEBUG] After destructuring, payloadWithoutTimestamps keys:', Object.keys(payloadWithoutTimestamps));
+    console.log('🔍 [DEBUG] created_at extracted:', created_at);
+    console.log('🔍 [DEBUG] updated_at extracted:', updated_at);
     
-    const insertSql = `INSERT INTO master_data_entries (${columns}, created_at, updated_at) VALUES (${placeholders}, NOW(), NOW())`;
+    // Quote column names to preserve case in PostgreSQL
+    const columns = Object.keys(payloadWithoutTimestamps).map(col => `"${col}"`).join(', ');
+    const values = Object.values(payloadWithoutTimestamps).map(value => value === undefined ? null : value);
+    // PostgreSQL uses $1, $2, $3 style placeholders
+    const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+    
+    const insertSql = `INSERT INTO master_data_entries (${columns}, "created_at", "updated_at") VALUES (${placeholders}, NOW(), NOW()) RETURNING *`;
     console.log('🔧 [DB] Raw SQL:', insertSql);
     console.log('🔧 [DB] Values:', values);
     
-    const [result]: any = await this.pool.query(insertSql, values);
+    const result: any = await this.pool.query(insertSql, values);
     console.log('📤 [DB] Insert result:', result);
     
-    // Extract insertId from raw MySQL result
-    const insertId = result.insertId;
-    console.log('🔍 [DB] Extracted insertId:', insertId);
-    
-    if (!insertId) {
-      console.error('❌ [DB] No insertId found in result, trying alternative approach');
-      // Fallback: find the most recent entry for this master using raw SQL
-      const existingColumns = await this.getExistingColumns('master_data_entries');
-      const selectColumns = Array.from(existingColumns).join(', ');
-      const fallbackSql = `SELECT ${selectColumns} FROM master_data_entries WHERE master_id = ? ORDER BY id DESC LIMIT 1`;
-      
-      const [fallbackResults]: any = await this.pool.query(fallbackSql, [entryWithName.masterId]);
-      console.log('🔄 [DB] Fallback query result:', fallbackResults[0]);
-      return fallbackResults[0];
+    // PostgreSQL returns {rows: [...], ...}, get the first row from RETURNING *
+    if (result.rows && result.rows.length > 0) {
+      console.log('✅ [DB] Successfully created master data entry:', result.rows[0]);
+      return result.rows[0];
     }
     
-    // Fetch the created record using raw SQL with existing columns only
+    // Fallback if RETURNING didn't work - fetch by master_id
+    console.error('❌ [DB] No rows returned, trying alternative approach');
     const existingColumns = await this.getExistingColumns('master_data_entries');
-    const selectColumns = Array.from(existingColumns).join(', ');
-    const selectSql = `SELECT ${selectColumns} FROM master_data_entries WHERE id = ?`;
+    const selectColumns = Array.from(existingColumns).map(col => `"${col}"`).join(', ');
+    const fallbackSql = `SELECT ${selectColumns} FROM master_data_entries WHERE "master_id" = $1 ORDER BY "id" DESC LIMIT 1`;
     
-    console.log('🔧 [DB] Select SQL:', selectSql);
-    const [selectResults]: any = await this.pool.query(selectSql, [insertId]);
-    console.log('✅ [DB] Fetched created entry:', selectResults[0]);
-    return selectResults[0];
+    const fallbackResult: any = await this.pool.query(fallbackSql, [entryWithName.masterId]);
+    console.log('🔄 [DB] Fallback query result:', fallbackResult.rows[0]);
+    return fallbackResult.rows[0];
   }
 
   async updateMasterDataEntry(id: number, entryData: Partial<InsertMasterDataEntry>): Promise<MasterDataEntry | null> {

@@ -1,0 +1,633 @@
+✅ Schema migrations handled by Drizzle/PostgreSQL migrations
+🚀 PHASE 3: JSON → PostgreSQL Migration
+
+Reading test-data.json...
+✅ Loaded 45 entity types
+
+============================================================
+MIGRATION IN PROGRESS
+============================================================
+
+🧹 Clearing existing data from database...
+
+✅ All existing tables cleared
+
+⏭️  No users to migrate
+
+Migrating 3 forms...
+✅ Forms migrated (3 records)
+
+Migrating 17 available ranks...
+✅ Available Ranks migrated (17 records)
+
+Migrating 33 company ranks...
+✅ Company Ranks migrated (33 records)
+
+Migrating 3 promotion hierarchies...
+✅ Promotion Hierarchies migrated (3 records)
+
+⏭️  No data masters to migrate
+
+⏭️  Vessels (handled by master data)
+
+Migrating 2 vessel groups...
+✅ Vessel Groups migrated (2 records)
+
+Migrating 4 rank groups...
+✅ Rank Groups migrated (4 records)
+
+Migrating 6 master data entries...
+🔧 [DB] Creating master data entry (NEW IMPLEMENTATION): {
+  id: 1,
+  masterId: '014',
+  entryId: 'VSL-001',
+  name: 'MV Atlantic Pioneer',
+  description: '9245678',
+  vesselType: 'Container Vessel',
+  isActive: true,
+  isDeleted: false,
+  createdBy: 'admin',
+  createdAt: '2025-01-01T00:00:00.000Z',
+  updatedAt: '2025-01-01T00:00:00.000Z'
+}
+🚢 [DB] After name fallback: {
+  id: 1,
+  masterId: '014',
+  entryId: 'VSL-001',
+  name: 'MV Atlantic Pioneer',
+  description: '9245678',
+  vesselType: 'Container Vessel',
+  isActive: true,
+  isDeleted: false,
+  createdBy: 'admin',
+  createdAt: '2025-01-01T00:00:00.000Z',
+  updatedAt: '2025-01-01T00:00:00.000Z'
+}
+📋 Cached columns for master_data_entries: [
+  'id',           'master_id',           'entry_id',
+  'nuid',         'name',                'description',
+  'countryName',  'country',             'cid',
+  'countryCode',  'nationality',         'countryRefId',
+  'vtuid',        'vesselType',          'tanker',
+  'oilTanker',    'gasTanker',           'chemicalTanker',
+  'bulk',         'isActive',            'isDeleted',
+  'createdBy',    'domain',              'orderBy',
+  'fuid',         'managerId',           'aguid',
+  'userId',       'vesselIds',           'vouid',
+  'address',      'email',               'phone',
+  'company',      'nameOfContactPerson', 'duid',
+  'shortCode',    'type',                'department',
+  'uuid',         'lastname',            'firstname',
+  'addressLine1', 'addressLine2',        'addressLine3',
+  'city',         'state',               'zipcode',
+  'loginId',      'roleId',              'designationId',
+  'profilePic',   'userType',            'departmentId',
+  'created_at',   'updated_at'
+]
+🔧 [FIELD MAP] id -> id, exists: true
+🔧 [FIELD MAP] masterId -> master_id, exists: true
+🔧 [FIELD MAP] entryId -> entry_id, exists: true
+🔧 [FIELD MAP] name -> name, exists: true
+🔧 [FIELD MAP] description -> description, exists: true
+🔧 [FIELD MAP] vesselType -> vesselType, exists: true
+🔧 [FIELD MAP] isActive -> isActive, exists: true
+🔧 [FIELD MAP] isDeleted -> isDeleted, exists: true
+🔧 [FIELD MAP] createdBy -> createdBy, exists: true
+🔧 [FIELD MAP] createdAt -> created_at, exists: true
+🔧 [FIELD MAP] updatedAt -> updated_at, exists: true
+✅ Final filtered payload for master_data_entries: {
+  id: 1,
+  master_id: '014',
+  entry_id: 'VSL-001',
+  name: 'MV Atlantic Pioneer',
+  description: '9245678',
+  vesselType: 'Container Vessel',
+  isActive: true,
+  isDeleted: false,
+  createdBy: 'admin',
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z'
+}
+🔧 [DB] Filtered entry for database insert: {
+  id: 1,
+  master_id: '014',
+  entry_id: 'VSL-001',
+  name: 'MV Atlantic Pioneer',
+  description: '9245678',
+  vesselType: 'Container Vessel',
+  isActive: true,
+  isDeleted: false,
+  createdBy: 'admin',
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z'
+}
+🔧 [DB] Raw SQL: INSERT INTO master_data_entries (id, master_id, entry_id, name, description, vesselType, isActive, isDeleted, createdBy, created_at, updated_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+🔧 [DB] Values: [
+  1,
+  '014',
+  'VSL-001',
+  'MV Atlantic Pioneer',
+  '9245678',
+  'Container Vessel',
+  true,
+  false,
+  'admin',
+  '2025-01-01T00:00:00.000Z',
+  '2025-01-01T00:00:00.000Z'
+]
+⚠️  Skipped master data entry (1): 42601
+🔧 [DB] Creating master data entry (NEW IMPLEMENTATION): {
+  id: 2,
+  masterId: '014',
+  entryId: 'VSL-002',
+  name: 'MV Ocean Explorer',
+  description: '9234567',
+  vesselType: 'Bulk Carrier',
+  isActive: true,
+  isDeleted: false,
+  createdBy: 'admin',
+  createdAt: '2025-01-01T00:00:00.000Z',
+  updatedAt: '2025-01-01T00:00:00.000Z'
+}
+🚢 [DB] After name fallback: {
+  id: 2,
+  masterId: '014',
+  entryId: 'VSL-002',
+  name: 'MV Ocean Explorer',
+  description: '9234567',
+  vesselType: 'Bulk Carrier',
+  isActive: true,
+  isDeleted: false,
+  createdBy: 'admin',
+  createdAt: '2025-01-01T00:00:00.000Z',
+  updatedAt: '2025-01-01T00:00:00.000Z'
+}
+🔧 [FIELD MAP] id -> id, exists: true
+🔧 [FIELD MAP] masterId -> master_id, exists: true
+🔧 [FIELD MAP] entryId -> entry_id, exists: true
+🔧 [FIELD MAP] name -> name, exists: true
+🔧 [FIELD MAP] description -> description, exists: true
+🔧 [FIELD MAP] vesselType -> vesselType, exists: true
+🔧 [FIELD MAP] isActive -> isActive, exists: true
+🔧 [FIELD MAP] isDeleted -> isDeleted, exists: true
+🔧 [FIELD MAP] createdBy -> createdBy, exists: true
+🔧 [FIELD MAP] createdAt -> created_at, exists: true
+🔧 [FIELD MAP] updatedAt -> updated_at, exists: true
+✅ Final filtered payload for master_data_entries: {
+  id: 2,
+  master_id: '014',
+  entry_id: 'VSL-002',
+  name: 'MV Ocean Explorer',
+  description: '9234567',
+  vesselType: 'Bulk Carrier',
+  isActive: true,
+  isDeleted: false,
+  createdBy: 'admin',
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z'
+}
+🔧 [DB] Filtered entry for database insert: {
+  id: 2,
+  master_id: '014',
+  entry_id: 'VSL-002',
+  name: 'MV Ocean Explorer',
+  description: '9234567',
+  vesselType: 'Bulk Carrier',
+  isActive: true,
+  isDeleted: false,
+  createdBy: 'admin',
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z'
+}
+🔧 [DB] Raw SQL: INSERT INTO master_data_entries (id, master_id, entry_id, name, description, vesselType, isActive, isDeleted, createdBy, created_at, updated_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+🔧 [DB] Values: [
+  2,
+  '014',
+  'VSL-002',
+  'MV Ocean Explorer',
+  '9234567',
+  'Bulk Carrier',
+  true,
+  false,
+  'admin',
+  '2025-01-01T00:00:00.000Z',
+  '2025-01-01T00:00:00.000Z'
+]
+⚠️  Skipped master data entry (2): 42601
+🔧 [DB] Creating master data entry (NEW IMPLEMENTATION): {
+  id: 3,
+  masterId: '014',
+  entryId: 'VSL-003',
+  name: 'MT Nordic Star',
+  description: '9156789',
+  vesselType: 'Oil Tanker',
+  tanker: true,
+  oilTanker: true,
+  isActive: true,
+  isDeleted: false,
+  createdBy: 'admin',
+  createdAt: '2025-01-01T00:00:00.000Z',
+  updatedAt: '2025-01-01T00:00:00.000Z'
+}
+🚢 [DB] After name fallback: {
+  id: 3,
+  masterId: '014',
+  entryId: 'VSL-003',
+  name: 'MT Nordic Star',
+  description: '9156789',
+  vesselType: 'Oil Tanker',
+  tanker: true,
+  oilTanker: true,
+  isActive: true,
+  isDeleted: false,
+  createdBy: 'admin',
+  createdAt: '2025-01-01T00:00:00.000Z',
+  updatedAt: '2025-01-01T00:00:00.000Z'
+}
+🔧 [FIELD MAP] id -> id, exists: true
+🔧 [FIELD MAP] masterId -> master_id, exists: true
+🔧 [FIELD MAP] entryId -> entry_id, exists: true
+🔧 [FIELD MAP] name -> name, exists: true
+🔧 [FIELD MAP] description -> description, exists: true
+🔧 [FIELD MAP] vesselType -> vesselType, exists: true
+🔧 [FIELD MAP] tanker -> tanker, exists: true
+🔧 [FIELD MAP] oilTanker -> oilTanker, exists: true
+🔧 [FIELD MAP] isActive -> isActive, exists: true
+🔧 [FIELD MAP] isDeleted -> isDeleted, exists: true
+🔧 [FIELD MAP] createdBy -> createdBy, exists: true
+🔧 [FIELD MAP] createdAt -> created_at, exists: true
+🔧 [FIELD MAP] updatedAt -> updated_at, exists: true
+✅ Final filtered payload for master_data_entries: {
+  id: 3,
+  master_id: '014',
+  entry_id: 'VSL-003',
+  name: 'MT Nordic Star',
+  description: '9156789',
+  vesselType: 'Oil Tanker',
+  tanker: true,
+  oilTanker: true,
+  isActive: true,
+  isDeleted: false,
+  createdBy: 'admin',
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z'
+}
+🔧 [DB] Filtered entry for database insert: {
+  id: 3,
+  master_id: '014',
+  entry_id: 'VSL-003',
+  name: 'MT Nordic Star',
+  description: '9156789',
+  vesselType: 'Oil Tanker',
+  tanker: true,
+  oilTanker: true,
+  isActive: true,
+  isDeleted: false,
+  createdBy: 'admin',
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z'
+}
+🔧 [DB] Raw SQL: INSERT INTO master_data_entries (id, master_id, entry_id, name, description, vesselType, tanker, oilTanker, isActive, isDeleted, createdBy, created_at, updated_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+🔧 [DB] Values: [
+  3,
+  '014',
+  'VSL-003',
+  'MT Nordic Star',
+  '9156789',
+  'Oil Tanker',
+  true,
+  true,
+  true,
+  false,
+  'admin',
+  '2025-01-01T00:00:00.000Z',
+  '2025-01-01T00:00:00.000Z'
+]
+⚠️  Skipped master data entry (3): 42601
+🔧 [DB] Creating master data entry (NEW IMPLEMENTATION): {
+  id: 4,
+  masterId: '014',
+  entryId: 'VSL-004',
+  name: 'MV Pacific Voyager',
+  description: '9178901',
+  vesselType: 'General Cargo',
+  isActive: true,
+  isDeleted: false,
+  createdBy: 'admin',
+  createdAt: '2025-01-01T00:00:00.000Z',
+  updatedAt: '2025-01-01T00:00:00.000Z'
+}
+🚢 [DB] After name fallback: {
+  id: 4,
+  masterId: '014',
+  entryId: 'VSL-004',
+  name: 'MV Pacific Voyager',
+  description: '9178901',
+  vesselType: 'General Cargo',
+  isActive: true,
+  isDeleted: false,
+  createdBy: 'admin',
+  createdAt: '2025-01-01T00:00:00.000Z',
+  updatedAt: '2025-01-01T00:00:00.000Z'
+}
+🔧 [FIELD MAP] id -> id, exists: true
+🔧 [FIELD MAP] masterId -> master_id, exists: true
+🔧 [FIELD MAP] entryId -> entry_id, exists: true
+🔧 [FIELD MAP] name -> name, exists: true
+🔧 [FIELD MAP] description -> description, exists: true
+🔧 [FIELD MAP] vesselType -> vesselType, exists: true
+🔧 [FIELD MAP] isActive -> isActive, exists: true
+🔧 [FIELD MAP] isDeleted -> isDeleted, exists: true
+🔧 [FIELD MAP] createdBy -> createdBy, exists: true
+🔧 [FIELD MAP] createdAt -> created_at, exists: true
+🔧 [FIELD MAP] updatedAt -> updated_at, exists: true
+✅ Final filtered payload for master_data_entries: {
+  id: 4,
+  master_id: '014',
+  entry_id: 'VSL-004',
+  name: 'MV Pacific Voyager',
+  description: '9178901',
+  vesselType: 'General Cargo',
+  isActive: true,
+  isDeleted: false,
+  createdBy: 'admin',
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z'
+}
+🔧 [DB] Filtered entry for database insert: {
+  id: 4,
+  master_id: '014',
+  entry_id: 'VSL-004',
+  name: 'MV Pacific Voyager',
+  description: '9178901',
+  vesselType: 'General Cargo',
+  isActive: true,
+  isDeleted: false,
+  createdBy: 'admin',
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z'
+}
+🔧 [DB] Raw SQL: INSERT INTO master_data_entries (id, master_id, entry_id, name, description, vesselType, isActive, isDeleted, createdBy, created_at, updated_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+🔧 [DB] Values: [
+  4,
+  '014',
+  'VSL-004',
+  'MV Pacific Voyager',
+  '9178901',
+  'General Cargo',
+  true,
+  false,
+  'admin',
+  '2025-01-01T00:00:00.000Z',
+  '2025-01-01T00:00:00.000Z'
+]
+⚠️  Skipped master data entry (4): 42601
+🔧 [DB] Creating master data entry (NEW IMPLEMENTATION): {
+  id: 5,
+  masterId: '014',
+  entryId: 'VSL-005',
+  name: 'MT Liberty Gas',
+  description: '9189012',
+  vesselType: 'LPG Tanker',
+  tanker: true,
+  gasTanker: true,
+  isActive: true,
+  isDeleted: false,
+  createdBy: 'admin',
+  createdAt: '2025-01-01T00:00:00.000Z',
+  updatedAt: '2025-01-01T00:00:00.000Z'
+}
+🚢 [DB] After name fallback: {
+  id: 5,
+  masterId: '014',
+  entryId: 'VSL-005',
+  name: 'MT Liberty Gas',
+  description: '9189012',
+  vesselType: 'LPG Tanker',
+  tanker: true,
+  gasTanker: true,
+  isActive: true,
+  isDeleted: false,
+  createdBy: 'admin',
+  createdAt: '2025-01-01T00:00:00.000Z',
+  updatedAt: '2025-01-01T00:00:00.000Z'
+}
+🔧 [FIELD MAP] id -> id, exists: true
+🔧 [FIELD MAP] masterId -> master_id, exists: true
+🔧 [FIELD MAP] entryId -> entry_id, exists: true
+🔧 [FIELD MAP] name -> name, exists: true
+🔧 [FIELD MAP] description -> description, exists: true
+🔧 [FIELD MAP] vesselType -> vesselType, exists: true
+🔧 [FIELD MAP] tanker -> tanker, exists: true
+🔧 [FIELD MAP] gasTanker -> gasTanker, exists: true
+🔧 [FIELD MAP] isActive -> isActive, exists: true
+🔧 [FIELD MAP] isDeleted -> isDeleted, exists: true
+🔧 [FIELD MAP] createdBy -> createdBy, exists: true
+🔧 [FIELD MAP] createdAt -> created_at, exists: true
+🔧 [FIELD MAP] updatedAt -> updated_at, exists: true
+✅ Final filtered payload for master_data_entries: {
+  id: 5,
+  master_id: '014',
+  entry_id: 'VSL-005',
+  name: 'MT Liberty Gas',
+  description: '9189012',
+  vesselType: 'LPG Tanker',
+  tanker: true,
+  gasTanker: true,
+  isActive: true,
+  isDeleted: false,
+  createdBy: 'admin',
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z'
+}
+🔧 [DB] Filtered entry for database insert: {
+  id: 5,
+  master_id: '014',
+  entry_id: 'VSL-005',
+  name: 'MT Liberty Gas',
+  description: '9189012',
+  vesselType: 'LPG Tanker',
+  tanker: true,
+  gasTanker: true,
+  isActive: true,
+  isDeleted: false,
+  createdBy: 'admin',
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z'
+}
+🔧 [DB] Raw SQL: INSERT INTO master_data_entries (id, master_id, entry_id, name, description, vesselType, tanker, gasTanker, isActive, isDeleted, createdBy, created_at, updated_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+🔧 [DB] Values: [
+  5,
+  '014',
+  'VSL-005',
+  'MT Liberty Gas',
+  '9189012',
+  'LPG Tanker',
+  true,
+  true,
+  true,
+  false,
+  'admin',
+  '2025-01-01T00:00:00.000Z',
+  '2025-01-01T00:00:00.000Z'
+]
+⚠️  Skipped master data entry (5): 42601
+🔧 [DB] Creating master data entry (NEW IMPLEMENTATION): {
+  id: 6,
+  masterId: '014',
+  entryId: 'VSL-006',
+  name: 'MV Global Trader',
+  description: '9201234',
+  vesselType: 'Container Vessel',
+  isActive: true,
+  isDeleted: false,
+  createdBy: 'admin',
+  createdAt: '2025-01-01T00:00:00.000Z',
+  updatedAt: '2025-01-01T00:00:00.000Z'
+}
+🚢 [DB] After name fallback: {
+  id: 6,
+  masterId: '014',
+  entryId: 'VSL-006',
+  name: 'MV Global Trader',
+  description: '9201234',
+  vesselType: 'Container Vessel',
+  isActive: true,
+  isDeleted: false,
+  createdBy: 'admin',
+  createdAt: '2025-01-01T00:00:00.000Z',
+  updatedAt: '2025-01-01T00:00:00.000Z'
+}
+🔧 [FIELD MAP] id -> id, exists: true
+🔧 [FIELD MAP] masterId -> master_id, exists: true
+🔧 [FIELD MAP] entryId -> entry_id, exists: true
+🔧 [FIELD MAP] name -> name, exists: true
+🔧 [FIELD MAP] description -> description, exists: true
+🔧 [FIELD MAP] vesselType -> vesselType, exists: true
+🔧 [FIELD MAP] isActive -> isActive, exists: true
+🔧 [FIELD MAP] isDeleted -> isDeleted, exists: true
+🔧 [FIELD MAP] createdBy -> createdBy, exists: true
+🔧 [FIELD MAP] createdAt -> created_at, exists: true
+🔧 [FIELD MAP] updatedAt -> updated_at, exists: true
+✅ Final filtered payload for master_data_entries: {
+  id: 6,
+  master_id: '014',
+  entry_id: 'VSL-006',
+  name: 'MV Global Trader',
+  description: '9201234',
+  vesselType: 'Container Vessel',
+  isActive: true,
+  isDeleted: false,
+  createdBy: 'admin',
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z'
+}
+🔧 [DB] Filtered entry for database insert: {
+  id: 6,
+  master_id: '014',
+  entry_id: 'VSL-006',
+  name: 'MV Global Trader',
+  description: '9201234',
+  vesselType: 'Container Vessel',
+  isActive: true,
+  isDeleted: false,
+  createdBy: 'admin',
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z'
+}
+🔧 [DB] Raw SQL: INSERT INTO master_data_entries (id, master_id, entry_id, name, description, vesselType, isActive, isDeleted, createdBy, created_at, updated_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+🔧 [DB] Values: [
+  6,
+  '014',
+  'VSL-006',
+  'MV Global Trader',
+  '9201234',
+  'Container Vessel',
+  true,
+  false,
+  'admin',
+  '2025-01-01T00:00:00.000Z',
+  '2025-01-01T00:00:00.000Z'
+]
+⚠️  Skipped master data entry (6): 42601
+✅ Master Data Entries migrated (0/6 records)
+
+Migrating 139 crew members...
+⚠️  Skipped crew member (2025-02-12): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (2025-04-18): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (unknown): null value in column "id" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000266): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000268): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000270): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000272): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000274): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000276): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000282): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000284): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000286): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000288): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000292): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000294): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000296): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000298): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000300): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000306): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000308): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000310): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000312): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000322): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000324): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000330): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000332): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000334): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000336): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000342): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000344): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000346): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000348): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000354): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000356): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000358): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000360): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000374): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000376): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000378): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000380): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000382): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000384): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000386): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000388): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000390): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000404): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000406): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000408): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000410): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000412): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000414): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000416): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000418): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000420): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000426): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000428): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000430): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000432): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000438): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000440): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000442): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000444): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000458): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000460): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000462): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000464): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000466): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000468): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000470): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000472): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000474): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000480): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000482): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000484): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000486): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000492): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000494): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
+⚠️  Skipped crew member (A000496): null value in column "present_vessel" of relation "crew_members" violates not-null constraint
