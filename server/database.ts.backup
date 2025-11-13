@@ -145,7 +145,7 @@ export class DatabaseStorage implements IStorage {
       console.log("🔧 Checking master_data_entries schema...");
       
       // Check which columns exist
-      const [rows]: any = await this.pool.query(
+      const [rows]: any = await this.pool.execute(
         "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'master_data_entries'",
         [process.env.DB_NAME || 'crew_database']
       );
@@ -229,7 +229,7 @@ export class DatabaseStorage implements IStorage {
       for (const column of newColumns) {
         if (!existingColumns.has(column.name)) {
           console.log(`➕ Adding column: ${column.name}`);
-          await this.pool.query(`ALTER TABLE master_data_entries ${column.ddl}`);
+          await this.pool.execute(`ALTER TABLE master_data_entries ${column.ddl}`);
         }
       }
       
@@ -250,7 +250,7 @@ export class DatabaseStorage implements IStorage {
       console.log("🚢 Checking for Port master data migration from ID '005' to ID '018'...");
       
       // Check if there are any existing entries with master_id='005'
-      const [existingId005Entries]: any = await this.pool.query(
+      const [existingId005Entries]: any = await this.pool.execute(
         "SELECT COUNT(*) as count FROM master_data_entries WHERE master_id = '005'"
       );
       
@@ -261,7 +261,7 @@ export class DatabaseStorage implements IStorage {
         console.log("🔄 Migrating Port master entries from ID '005' to ID '018'...");
         
         // Update all entries from master_id='005' to master_id='018'
-        await this.pool.query(
+        await this.pool.execute(
           "UPDATE master_data_entries SET master_id = '018' WHERE master_id = '005'"
         );
         
@@ -271,13 +271,13 @@ export class DatabaseStorage implements IStorage {
       }
       
       // Also ensure the data_masters table doesn't have the duplicate entry with ID '005'
-      const [existingMaster005]: any = await this.pool.query(
+      const [existingMaster005]: any = await this.pool.execute(
         "SELECT COUNT(*) as count FROM data_masters WHERE id = '005'"
       );
       
       if (existingMaster005[0].count > 0) {
         console.log("🗑️ Removing duplicate Port master with ID '005' from data_masters table...");
-        await this.pool.query("DELETE FROM data_masters WHERE id = '005'");
+        await this.pool.execute("DELETE FROM data_masters WHERE id = '005'");
         console.log("✅ Duplicate Port master with ID '005' removed from data_masters table");
       }
     } catch (error) {
@@ -292,7 +292,7 @@ export class DatabaseStorage implements IStorage {
       console.log("🌍 Checking nationality master data...");
       
       // Check if we have any nationality entries with the new enhanced structure (NAT001-NAT020)
-      const [existingNationalityEntries]: any = await this.pool.query(
+      const [existingNationalityEntries]: any = await this.pool.execute(
         "SELECT COUNT(*) as count FROM master_data_entries WHERE master_id = '001' AND entry_id LIKE 'NAT%'"
       );
       
@@ -305,7 +305,7 @@ export class DatabaseStorage implements IStorage {
         console.log("🗂️ Seeding enhanced nationality master data...");
         
         // Clear existing nationality entries to avoid conflicts and ensure fresh accurate data
-        await this.pool.query("DELETE FROM master_data_entries WHERE master_id = '001'");
+        await this.pool.execute("DELETE FROM master_data_entries WHERE master_id = '001'");
         
         // Major Maritime Nations with enhanced structure (NAT001-NAT020)
         const nationalityData = [
@@ -333,7 +333,7 @@ export class DatabaseStorage implements IStorage {
         
         // Insert each nationality entry with enhanced structure
         for (const nationality of nationalityData) {
-          await this.pool.query(
+          await this.pool.execute(
             `INSERT INTO master_data_entries 
              (master_id, entry_id, name, description, countryName, country, isActive, isDeleted, created_at, updated_at) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
@@ -357,7 +357,7 @@ export class DatabaseStorage implements IStorage {
       console.log("🔧 Checking for nationality data inconsistencies...");
       
       // Check for problematic entries that need correction
-      const [problematicEntries]: any = await this.pool.query(
+      const [problematicEntries]: any = await this.pool.execute(
         "SELECT entry_id, countryName FROM master_data_entries WHERE master_id = '001' AND (entry_id = 'NAT013' OR entry_id = 'NAT015')"
       );
       
@@ -377,12 +377,12 @@ export class DatabaseStorage implements IStorage {
         console.log("🛠️ Fixing nationality data inconsistencies...");
         
         // Fix NAT013: Myanmar -> Burmese
-        await this.pool.query(
+        await this.pool.execute(
           "UPDATE master_data_entries SET name = 'Burmese', countryName = 'Burmese' WHERE master_id = '001' AND entry_id = 'NAT013'"
         );
         
         // Fix NAT015: Bangladesh -> Bangladeshi  
-        await this.pool.query(
+        await this.pool.execute(
           "UPDATE master_data_entries SET name = 'Bangladeshi', countryName = 'Bangladeshi' WHERE master_id = '001' AND entry_id = 'NAT015'"
         );
         
@@ -402,7 +402,7 @@ export class DatabaseStorage implements IStorage {
       console.log("🌎 Checking country master data...");
       
       // Check if we have any country entries with enhanced structure
-      const [existingCountryEntries]: any = await this.pool.query(
+      const [existingCountryEntries]: any = await this.pool.execute(
         "SELECT COUNT(*) as count FROM master_data_entries WHERE master_id = '002' AND entry_id RLIKE '^[0-9]+$'"
       );
       
@@ -414,7 +414,7 @@ export class DatabaseStorage implements IStorage {
         console.log("🗂️ Seeding enhanced country master data...");
         
         // Clear existing country entries to ensure clean enhanced structure
-        await this.pool.query("DELETE FROM master_data_entries WHERE master_id = '002'");
+        await this.pool.execute("DELETE FROM master_data_entries WHERE master_id = '002'");
         
         // Country data with enhanced structure (as per attached specification)
         const countryData = [
@@ -472,7 +472,7 @@ export class DatabaseStorage implements IStorage {
         
         // Insert each country entry with enhanced structure
         for (const country of countryData) {
-          await this.pool.query(
+          await this.pool.execute(
             `INSERT INTO master_data_entries 
              (master_id, entry_id, name, description, countryName, countryCode, nationality, cid, countryRefId, isActive, isDeleted, created_at, updated_at) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
@@ -497,7 +497,7 @@ export class DatabaseStorage implements IStorage {
       return; // Skip automatic seeding completely
       
       // Check if we have any vessel type entries with enhanced structure
-      const [existingVesselTypeEntries]: any = await this.pool.query(
+      const [existingVesselTypeEntries]: any = await this.pool.execute(
         "SELECT COUNT(*) as count FROM master_data_entries WHERE master_id = '004' AND entry_id RLIKE '^VT[0-9]+$'"
       );
       
@@ -526,14 +526,14 @@ export class DatabaseStorage implements IStorage {
         for (const vesselType of vesselTypeData) {
           try {
             // Check if entry already exists by master_id and entry_id
-            const [existing]: any = await this.pool.query(
+            const [existing]: any = await this.pool.execute(
               "SELECT COUNT(*) as count FROM master_data_entries WHERE master_id = '004' AND entry_id = ?",
               [vesselType.entryId]
             );
             
             if (existing[0].count === 0) {
               console.log(`🚢 Creating vessel type entry: ${vesselType.entryId} - ${vesselType.name}`);
-              await this.pool.query(
+              await this.pool.execute(
                 `INSERT INTO master_data_entries 
                  (master_id, entry_id, name, description, vtuid, vesselType, tanker, oilTanker, gasTanker, chemicalTanker, bulk, isActive, isDeleted, created_at, updated_at) 
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
@@ -564,7 +564,7 @@ export class DatabaseStorage implements IStorage {
       console.log("🌐 Checking language master data...");
       
       // Check if we have any language entries with enhanced structure
-      const [existingLanguageEntries]: any = await this.pool.query(
+      const [existingLanguageEntries]: any = await this.pool.execute(
         "SELECT COUNT(*) as count FROM master_data_entries WHERE master_id = '003' AND entry_id RLIKE '^LNG[0-9]+$'"
       );
       
@@ -576,7 +576,7 @@ export class DatabaseStorage implements IStorage {
         console.log("🗂️ Cleaning and seeding enhanced language master data...");
         
         // Clear ALL existing entries in master_id '003' to remove vessel type pollution
-        await this.pool.query("DELETE FROM master_data_entries WHERE master_id = '003'");
+        await this.pool.execute("DELETE FROM master_data_entries WHERE master_id = '003'");
         console.log("🧹 Removed vessel type pollution from Language master (003)");
         
         // Common maritime languages with ISO codes
@@ -605,7 +605,7 @@ export class DatabaseStorage implements IStorage {
         
         // Insert each language entry with simple structure (name = language, description = ISO code)
         for (const language of languageData) {
-          await this.pool.query(
+          await this.pool.execute(
             `INSERT INTO master_data_entries 
              (master_id, entry_id, name, description, isActive, isDeleted, created_at, updated_at) 
              VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
@@ -629,7 +629,7 @@ export class DatabaseStorage implements IStorage {
       console.log("🏰 Checking port master data...");
       
       // Check if we have any port entries with enhanced structure (PORT001-PORT020)
-      const [existingPortEntries]: any = await this.pool.query(
+      const [existingPortEntries]: any = await this.pool.execute(
         "SELECT COUNT(*) as count FROM master_data_entries WHERE master_id = '018' AND entry_id RLIKE '^PORT[0-9]+$'"
       );
       
@@ -641,7 +641,7 @@ export class DatabaseStorage implements IStorage {
         console.log("🗂️ Seeding enhanced port master data...");
         
         // Clear existing port entries to ensure clean enhanced structure
-        await this.pool.query("DELETE FROM master_data_entries WHERE master_id = '018'");
+        await this.pool.execute("DELETE FROM master_data_entries WHERE master_id = '018'");
         
         // Major international maritime ports with enhanced structure
         const portData = [
@@ -669,7 +669,7 @@ export class DatabaseStorage implements IStorage {
         
         // Insert each port entry with enhanced structure
         for (const port of portData) {
-          await this.pool.query(
+          await this.pool.execute(
             `INSERT INTO master_data_entries 
              (master_id, entry_id, name, description, portCode, portName, latitude, longitude, countryId, region, timeZone, harborType, facilities, isActive, isDeleted, created_at, updated_at) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
@@ -804,7 +804,7 @@ export class DatabaseStorage implements IStorage {
       
       // Reset the AUTO_INCREMENT counter to start from 1 using proper MySQL syntax
       const dbName = process.env.DB_NAME || 'crew_database';
-      await this.pool.query(`ALTER TABLE \`${dbName}\`.\`available_ranks\` AUTO_INCREMENT = 1`);
+      await this.pool.execute(`ALTER TABLE \`${dbName}\`.\`available_ranks\` AUTO_INCREMENT = 1`);
       
       return true;
     } catch (error) {
@@ -949,7 +949,7 @@ export class DatabaseStorage implements IStorage {
     const selectColumns = Array.from(existingColumns).join(', ');
     const selectSql = `SELECT ${selectColumns} FROM master_data_entries WHERE master_id = ?`;
     
-    const [results]: any = await this.pool.query(selectSql, [masterId]);
+    const [results]: any = await this.pool.execute(selectSql, [masterId]);
     return results;
   }
 
@@ -959,7 +959,7 @@ export class DatabaseStorage implements IStorage {
     const selectColumns = Array.from(existingColumns).join(', ');
     const selectSql = `SELECT ${selectColumns} FROM master_data_entries WHERE id = ?`;
     
-    const [results]: any = await this.pool.query(selectSql, [id]);
+    const [results]: any = await this.pool.execute(selectSql, [id]);
     return results[0];
   }
 
@@ -983,7 +983,7 @@ export class DatabaseStorage implements IStorage {
     console.log('🔧 [DB] Raw SQL:', insertSql);
     console.log('🔧 [DB] Values:', values);
     
-    const [result]: any = await this.pool.query(insertSql, values);
+    const [result]: any = await this.pool.execute(insertSql, values);
     console.log('📤 [DB] Insert result:', result);
     
     // Extract insertId from raw MySQL result
@@ -997,7 +997,7 @@ export class DatabaseStorage implements IStorage {
       const selectColumns = Array.from(existingColumns).join(', ');
       const fallbackSql = `SELECT ${selectColumns} FROM master_data_entries WHERE master_id = ? ORDER BY id DESC LIMIT 1`;
       
-      const [fallbackResults]: any = await this.pool.query(fallbackSql, [entryWithName.masterId]);
+      const [fallbackResults]: any = await this.pool.execute(fallbackSql, [entryWithName.masterId]);
       console.log('🔄 [DB] Fallback query result:', fallbackResults[0]);
       return fallbackResults[0];
     }
@@ -1008,7 +1008,7 @@ export class DatabaseStorage implements IStorage {
     const selectSql = `SELECT ${selectColumns} FROM master_data_entries WHERE id = ?`;
     
     console.log('🔧 [DB] Select SQL:', selectSql);
-    const [selectResults]: any = await this.pool.query(selectSql, [insertId]);
+    const [selectResults]: any = await this.pool.execute(selectSql, [insertId]);
     console.log('✅ [DB] Fetched created entry:', selectResults[0]);
     return selectResults[0];
   }
@@ -1025,7 +1025,7 @@ export class DatabaseStorage implements IStorage {
     const values = Object.values(filteredEntry).map(value => value === undefined ? null : value);
     const updateSql = `UPDATE master_data_entries SET ${columns} WHERE id = ?`;
     
-    const [result]: any = await this.pool.query(updateSql, [...values, id]);
+    const [result]: any = await this.pool.execute(updateSql, [...values, id]);
     
     if (result.affectedRows === 0) {
       return undefined;
@@ -1036,7 +1036,7 @@ export class DatabaseStorage implements IStorage {
     const selectColumns = Array.from(existingColumns).join(', ');
     const selectSql = `SELECT ${selectColumns} FROM master_data_entries WHERE id = ?`;
     
-    const [selectResults]: any = await this.pool.query(selectSql, [id]);
+    const [selectResults]: any = await this.pool.execute(selectSql, [id]);
     return selectResults[0];
   }
 
@@ -1047,18 +1047,43 @@ export class DatabaseStorage implements IStorage {
     
     // Execute delete using raw SQL
     const deleteSql = `DELETE FROM master_data_entries WHERE id = ?`;
-    await this.pool.query(deleteSql, [id]);
+    await this.pool.execute(deleteSql, [id]);
     
     // Return true since entry existed (delete should succeed)
     return true;
   }
 
-  // Create database if it doesn't exist (PostgreSQL databases are typically created externally)
+  // Create database if it doesn't exist
   async createDatabaseIfNotExists(): Promise<void> {
-    // For PostgreSQL, database creation is handled externally via cloud provider or psql
-    // This method is kept for interface compatibility but does nothing
-    console.log("ℹ️ PostgreSQL database should be created externally (via cloud provider or psql)");
-    console.log("ℹ️ Assuming database specified in DATABASE_URL already exists");
+    try {
+      // Connect without specifying database to create it
+      const url = new URL(process.env.DATABASE_URL!);
+      const adminPool = mysql.createPool({
+        host: url.hostname,
+        port: parseInt(url.port) || 3306,
+        user: url.username,
+        password: url.password,
+        // Don't specify database - connect to MySQL server directly
+        ssl: {
+          rejectUnauthorized: false
+        },
+        connectionLimit: 1
+      });
+      
+      console.log("🔧 Creating 'crew_database' database if it doesn't exist...");
+      
+      // Create database if not exists
+      await adminPool.execute("CREATE DATABASE IF NOT EXISTS crew_database CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+      
+      console.log("✅ Database 'crew_database' ensured to exist");
+      
+      // Close admin connection
+      await adminPool.end();
+      
+    } catch (error) {
+      console.error("❌ Failed to create database:", error);
+      throw error;
+    }
   }
 
   // Seed data for initial setup
@@ -1180,7 +1205,7 @@ export class DatabaseStorage implements IStorage {
       for (const entry of sampleMasterEntries) {
         try {
           // Check if entry already exists by master_id and entry_id
-          const [existing]: any = await this.pool.query(
+          const [existing]: any = await this.pool.execute(
             "SELECT COUNT(*) as count FROM master_data_entries WHERE master_id = ? AND entry_id = ?",
             [entry.masterId, entry.entryId]
           );
