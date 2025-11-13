@@ -1,0 +1,161 @@
+Excellent! Phase 2E is 100% complete with perfect 3-level hierarchy implementation.
+
+Proceed with PHASE 2F: Implement Tasks & Drug Testing Methods (19 methods)
+
+IMPLEMENT THESE 19 METHODS:
+
+GROUP 1 - Variable Tasks (6 methods):
+- async getVariableTasks(): Promise<VariableTask[]>
+- async getVariableTask(id: number): Promise<VariableTask | null>
+- async getVariableTasksByFilters(filters: { vesselId?: string, periodValue?: string, status?: string }): Promise<VariableTask[]>
+- async createVariableTask(task: InsertVariableTask): Promise<VariableTask>
+- async updateVariableTask(id: number, task: Partial<InsertVariableTask>): Promise<VariableTask | null>
+- async deleteVariableTask(id: number): Promise<boolean>
+
+GROUP 2 - Fixed Tasks (7 methods):
+- async getFixedTasks(): Promise<FixedTask[]>
+- async getFixedTask(id: number): Promise<FixedTask | null>
+- async getFixedTasksByVesselAndMonth(vesselId: string, monthYear: string): Promise<FixedTask[]>
+- async getFixedTaskByKey(crewMemberId: string, vesselId: string, monthYear: string): Promise<FixedTask | null>
+- async createFixedTask(task: InsertFixedTask): Promise<FixedTask>
+- async updateFixedTask(id: number, task: Partial<InsertFixedTask>): Promise<FixedTask | null>
+- async deleteFixedTask(id: number): Promise<boolean>
+
+GROUP 3 - Drug & Alcohol Testing (6 methods):
+- async getDrugAlcoholTestRecords(): Promise<DrugAlcoholTestRecord[]>
+- async getDrugAlcoholTestRecord(id: number): Promise<DrugAlcoholTestRecord | null>
+- async getDrugAlcoholTestRecordsByVessel(vesselId: string, testType?: string): Promise<DrugAlcoholTestRecord[]>
+- async createDrugAlcoholTestRecord(record: InsertDrugAlcoholTestRecord): Promise<DrugAlcoholTestRecord>
+- async updateDrugAlcoholTestRecord(id: number, record: Partial<InsertDrugAlcoholTestRecord>): Promise<DrugAlcoholTestRecord | null>
+- async deleteDrugAlcoholTestRecord(id: number): Promise<boolean>
+
+SPECIAL IMPLEMENTATION NOTES:
+
+1. **Variable Tasks Filtering**:
+```typescript
+   // Multiple optional filters
+   async getVariableTasksByFilters(filters: any): Promise<VariableTask[]> {
+     const conditions = [];
+     if (filters.vesselId) {
+       conditions.push(eq(variableTasks.vesselId, filters.vesselId));
+     }
+     if (filters.periodValue) {
+       conditions.push(eq(variableTasks.periodValue, filters.periodValue));
+     }
+     if (filters.status) {
+       conditions.push(eq(variableTasks.status, filters.status));
+     }
+     
+     if (conditions.length === 0) return await this.db.select().from(variableTasks);
+     return await this.db.select().from(variableTasks).where(and(...conditions));
+   }
+```
+
+2. **Fixed Tasks Composite Key**:
+```typescript
+   // getFixedTaskByKey with 3-part composite key
+   async getFixedTaskByKey(crewMemberId: string, vesselId: string, monthYear: string): Promise<FixedTask | null> {
+     const results = await this.db
+       .select()
+       .from(fixedTasks)
+       .where(
+         and(
+           eq(fixedTasks.crewMemberId, crewMemberId),
+           eq(fixedTasks.vesselId, vesselId),
+           eq(fixedTasks.monthYear, monthYear)
+         )
+       );
+     return results[0] || null;
+   }
+```
+
+3. **Drug Testing Optional Filter**:
+```typescript
+   // getDrugAlcoholTestRecordsByVessel with optional testType
+   async getDrugAlcoholTestRecordsByVessel(vesselId: string, testType?: string): Promise<DrugAlcoholTestRecord[]> {
+     const conditions = [eq(drugAlcoholTestRecords.vesselId, vesselId)];
+     if (testType) {
+       conditions.push(eq(drugAlcoholTestRecords.testType, testType));
+     }
+     return await this.db
+       .select()
+       .from(drugAlcoholTestRecords)
+       .where(and(...conditions));
+   }
+```
+
+4. **JSON Fields**: 
+   - variableTasks.selectedTasks (JSON array)
+   - variableTasks.crewInvolvedDetails (JSON array)
+   - fixedTasks.seaHours (JSON object)
+   - fixedTasks.portHours (JSON object)
+   - Auto-handled by Drizzle
+
+IMPLEMENTATION PATTERN:
+```typescript
+// Example: getVariableTasks
+async getVariableTasks(): Promise<VariableTask[]> {
+  return await this.db.select().from(variableTasks);
+}
+
+// Example: getFixedTasksByVesselAndMonth
+async getFixedTasksByVesselAndMonth(vesselId: string, monthYear: string): Promise<FixedTask[]> {
+  return await this.db
+    .select()
+    .from(fixedTasks)
+    .where(
+      and(
+        eq(fixedTasks.vesselId, vesselId),
+        eq(fixedTasks.monthYear, monthYear)
+      )
+    );
+}
+
+// Example: createDrugAlcoholTestRecord
+async createDrugAlcoholTestRecord(record: InsertDrugAlcoholTestRecord): Promise<DrugAlcoholTestRecord> {
+  const [created] = await this.db
+    .insert(drugAlcoholTestRecords)
+    .values(record)
+    .returning();
+  return created;
+}
+
+// Example: deleteVariableTask
+async deleteVariableTask(id: number): Promise<boolean> {
+  const result = await this.db
+    .delete(variableTasks)
+    .where(eq(variableTasks.id, id));
+  return result.rowCount > 0;
+}
+```
+
+REQUIREMENTS:
+1. Implement all 19 methods in server/database.ts
+2. Use PostgreSQL syntax throughout
+3. Handle optional filter parameters correctly
+4. Implement composite key lookups (fixedTasks)
+5. Handle JSON fields - auto-handled by Drizzle
+6. Use .returning() for INSERT/UPDATE
+7. Use .rowCount for DELETE
+
+AFTER IMPLEMENTATION:
+1. Show me complete code for all 19 methods
+2. Run: npx tsc --noEmit (must be 0 errors)
+3. Create comprehensive test:
+   - Create variable task with filters test
+   - Create fixed task with composite key lookup test
+   - Create drug test record
+   - Test getVariableTasksByFilters({ vesselId: "V001", status: "Pending" })
+   - Test getFixedTaskByKey("A0001", "V001", "2025-01")
+   - Test getDrugAlcoholTestRecordsByVessel("V001", "Alcohol")
+   - Show test results
+
+DELIVERABLE:
+- ✅ 19 methods implemented
+- ✅ 0 TypeScript errors
+- ✅ Multiple filtering parameters work
+- ✅ Composite key lookup works
+- ✅ Optional parameters handled correctly
+- ✅ Test proves all task & testing operations work
+
+DO NOT proceed to Phase 2G until I confirm Phase 2F is complete.

@@ -18,6 +18,9 @@ import {
   restHoursVesselRecords,
   restHoursCrewRecords,
   restHoursDailyRecords,
+  variableTasks,
+  fixedTasks,
+  drugAlcoholTestRecords,
   dataMasters,
   masterDataEntries,
   type User,
@@ -54,6 +57,12 @@ import {
   type InsertRestHoursCrewRecord,
   type RestHoursDailyRecord,
   type InsertRestHoursDailyRecord,
+  type VariableTask,
+  type InsertVariableTask,
+  type FixedTask,
+  type InsertFixedTask,
+  type DrugAlcoholTestRecord,
+  type InsertDrugAlcoholTestRecord,
   type DataMaster,
   type InsertDataMaster,
   type MasterDataEntry,
@@ -1655,6 +1664,176 @@ export class DatabaseStorage implements IStorage {
     const result = await this.db
       .delete(restHoursDailyRecords)
       .where(eq(restHoursDailyRecords.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Variable Tasks Methods
+  async getVariableTasks(): Promise<VariableTask[]> {
+    return await this.db.select().from(variableTasks);
+  }
+
+  async getVariableTask(id: number): Promise<VariableTask | null> {
+    const results = await this.db
+      .select()
+      .from(variableTasks)
+      .where(eq(variableTasks.id, id));
+    return results[0] || null;
+  }
+
+  async getVariableTasksByFilters(filters: { vesselId?: string, periodValue?: string, status?: string }): Promise<VariableTask[]> {
+    const conditions = [];
+    if (filters.vesselId) {
+      conditions.push(eq(variableTasks.vesselId, filters.vesselId));
+    }
+    if (filters.periodValue) {
+      conditions.push(eq(variableTasks.periodValue, filters.periodValue));
+    }
+    if (filters.status) {
+      conditions.push(eq(variableTasks.status, filters.status));
+    }
+    
+    if (conditions.length === 0) {
+      return await this.db.select().from(variableTasks);
+    }
+    return await this.db.select().from(variableTasks).where(and(...conditions));
+  }
+
+  async createVariableTask(task: InsertVariableTask): Promise<VariableTask> {
+    const [created] = await this.db
+      .insert(variableTasks)
+      .values(task)
+      .returning();
+    return created;
+  }
+
+  async updateVariableTask(id: number, task: Partial<InsertVariableTask>): Promise<VariableTask | null> {
+    const [updated] = await this.db
+      .update(variableTasks)
+      .set(task)
+      .where(eq(variableTasks.id, id))
+      .returning();
+    return updated || null;
+  }
+
+  async deleteVariableTask(id: number): Promise<boolean> {
+    const result = await this.db
+      .delete(variableTasks)
+      .where(eq(variableTasks.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Fixed Tasks Methods
+  async getFixedTasks(): Promise<FixedTask[]> {
+    return await this.db.select().from(fixedTasks);
+  }
+
+  async getFixedTask(id: number): Promise<FixedTask | null> {
+    const results = await this.db
+      .select()
+      .from(fixedTasks)
+      .where(eq(fixedTasks.id, id));
+    return results[0] || null;
+  }
+
+  async getFixedTasksByVesselAndMonth(vesselId: string, monthYear: string): Promise<FixedTask[]> {
+    return await this.db
+      .select()
+      .from(fixedTasks)
+      .where(
+        and(
+          eq(fixedTasks.vesselId, vesselId),
+          eq(fixedTasks.monthYear, monthYear)
+        )
+      );
+  }
+
+  async getFixedTaskByKey(
+    crewMemberId: string,
+    vesselId: string,
+    monthYear: string
+  ): Promise<FixedTask | null> {
+    const results = await this.db
+      .select()
+      .from(fixedTasks)
+      .where(
+        and(
+          eq(fixedTasks.crewMemberId, crewMemberId),
+          eq(fixedTasks.vesselId, vesselId),
+          eq(fixedTasks.monthYear, monthYear)
+        )
+      );
+    return results[0] || null;
+  }
+
+  async createFixedTask(task: InsertFixedTask): Promise<FixedTask> {
+    const [created] = await this.db
+      .insert(fixedTasks)
+      .values(task)
+      .returning();
+    return created;
+  }
+
+  async updateFixedTask(id: number, task: Partial<InsertFixedTask>): Promise<FixedTask | null> {
+    const [updated] = await this.db
+      .update(fixedTasks)
+      .set(task)
+      .where(eq(fixedTasks.id, id))
+      .returning();
+    return updated || null;
+  }
+
+  async deleteFixedTask(id: number): Promise<boolean> {
+    const result = await this.db
+      .delete(fixedTasks)
+      .where(eq(fixedTasks.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Drug & Alcohol Testing Methods
+  async getDrugAlcoholTestRecords(): Promise<DrugAlcoholTestRecord[]> {
+    return await this.db.select().from(drugAlcoholTestRecords);
+  }
+
+  async getDrugAlcoholTestRecord(id: number): Promise<DrugAlcoholTestRecord | null> {
+    const results = await this.db
+      .select()
+      .from(drugAlcoholTestRecords)
+      .where(eq(drugAlcoholTestRecords.id, id));
+    return results[0] || null;
+  }
+
+  async getDrugAlcoholTestRecordsByVessel(vesselId: string, testType?: string): Promise<DrugAlcoholTestRecord[]> {
+    const conditions = [eq(drugAlcoholTestRecords.vesselId, vesselId)];
+    if (testType) {
+      conditions.push(eq(drugAlcoholTestRecords.testType, testType));
+    }
+    return await this.db
+      .select()
+      .from(drugAlcoholTestRecords)
+      .where(and(...conditions));
+  }
+
+  async createDrugAlcoholTestRecord(record: InsertDrugAlcoholTestRecord): Promise<DrugAlcoholTestRecord> {
+    const [created] = await this.db
+      .insert(drugAlcoholTestRecords)
+      .values(record)
+      .returning();
+    return created;
+  }
+
+  async updateDrugAlcoholTestRecord(id: number, record: Partial<InsertDrugAlcoholTestRecord>): Promise<DrugAlcoholTestRecord | null> {
+    const [updated] = await this.db
+      .update(drugAlcoholTestRecords)
+      .set(record)
+      .where(eq(drugAlcoholTestRecords.id, id))
+      .returning();
+    return updated || null;
+  }
+
+  async deleteDrugAlcoholTestRecord(id: number): Promise<boolean> {
+    const result = await this.db
+      .delete(drugAlcoholTestRecords)
+      .where(eq(drugAlcoholTestRecords.id, id));
     return result.rowCount !== null && result.rowCount > 0;
   }
 
