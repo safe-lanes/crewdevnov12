@@ -1,0 +1,225 @@
+🎉 Excellent! Phase 2F complete with outstanding JSON normalization!
+
+Proceed with PHASE 2G: Implement Reports & Master Data Methods (23 methods - FINAL PHASE!)
+
+This is the LAST implementation phase before data migration!
+
+IMPLEMENT THESE 23 METHODS:
+
+GROUP 1 - Vessel Violation Comments (2 methods):
+- async getVesselViolationComment(vesselId: string, monthValue: string): Promise<VesselViolationComment | null>
+- async saveVesselViolationComment(comment: InsertVesselViolationComment): Promise<VesselViolationComment>
+
+GROUP 2 - Office Violation Comments (2 methods):
+- async getOfficeViolationComment(vesselId: string, monthValue: string): Promise<OfficeViolationComment | null>
+- async saveOfficeViolationComment(comment: InsertOfficeViolationComment): Promise<OfficeViolationComment>
+
+GROUP 3 - NC Reports (3 methods):
+- async getAllNCReports(): Promise<NCReport[]>
+- async getNCReport(crewMemberId: string, vesselId: string, monthValue: string): Promise<NCReport | null>
+- async saveNCReport(report: InsertNCReport): Promise<NCReport>
+
+GROUP 4 - Date Line Adjustments (4 methods):
+- async getVesselDateLineAdjustment(vesselId: string, monthValue: string): Promise<VesselDateLineAdjustment | null>
+- async saveVesselDateLineAdjustment(adjustment: InsertVesselDateLineAdjustment): Promise<VesselDateLineAdjustment>
+- async deleteVesselDateLineAdjustment(vesselId: string, monthValue: string): Promise<boolean>
+- async clearAdvancedDaysData(vesselId: string, monthValue: string, advancedDays: number): Promise<boolean>
+
+GROUP 5 - Master Data (10 methods):
+- async getDataMasters(): Promise<DataMaster[]>
+- async getDataMaster(id: string): Promise<DataMaster | null>
+- async createDataMaster(master: InsertDataMaster): Promise<DataMaster>
+- async updateDataMaster(id: string, master: Partial<InsertDataMaster>): Promise<DataMaster | null>
+- async deleteDataMaster(id: string): Promise<boolean>
+- async getMasterDataEntries(): Promise<MasterDataEntry[]>
+- async getMasterDataEntry(id: number): Promise<MasterDataEntry | null>
+- async createMasterDataEntry(entry: InsertMasterDataEntry): Promise<MasterDataEntry>
+- async updateMasterDataEntry(id: number, entry: Partial<InsertMasterDataEntry>): Promise<MasterDataEntry | null>
+- async deleteMasterDataEntry(id: number): Promise<boolean>
+
+GROUP 6 - Dashboard & Utilities (2 methods):
+- async getCrewDashboardSummary(crewId: string): Promise<any>
+- async getFormForRank(rankLabel: string, category?: string): Promise<Form | null>
+
+SPECIAL IMPLEMENTATION NOTES:
+
+1. **Upsert Pattern for save*() Methods**:
+```typescript
+   // saveVesselViolationComment - Insert or Update based on composite key
+   async saveVesselViolationComment(comment: InsertVesselViolationComment): Promise<VesselViolationComment> {
+     // Check if exists
+     const existing = await this.db
+       .select()
+       .from(vesselViolationComments)
+       .where(
+         and(
+           eq(vesselViolationComments.vesselId, comment.vesselId),
+           eq(vesselViolationComments.monthValue, comment.monthValue)
+         )
+       );
+     
+     if (existing[0]) {
+       // UPDATE
+       const [updated] = await this.db
+         .update(vesselViolationComments)
+         .set(comment)
+         .where(eq(vesselViolationComments.id, existing[0].id))
+         .returning();
+       return updated;
+     } else {
+       // INSERT
+       const [created] = await this.db
+         .insert(vesselViolationComments)
+         .values(comment)
+         .returning();
+       return created;
+     }
+   }
+```
+
+2. **Composite Key Lookups**:
+```typescript
+   // getVesselViolationComment
+   async getVesselViolationComment(vesselId: string, monthValue: string): Promise<VesselViolationComment | null> {
+     const results = await this.db
+       .select()
+       .from(vesselViolationComments)
+       .where(
+         and(
+           eq(vesselViolationComments.vesselId, vesselId),
+           eq(vesselViolationComments.monthValue, monthValue)
+         )
+       );
+     return results[0] || null;
+   }
+```
+
+3. **clearAdvancedDaysData - Special Logic**:
+```typescript
+   // Update specific field in existing record
+   async clearAdvancedDaysData(vesselId: string, monthValue: string, advancedDays: number): Promise<boolean> {
+     // Find the adjustment
+     const existing = await this.getVesselDateLineAdjustment(vesselId, monthValue);
+     if (!existing) return false;
+     
+     // Update to clear advanced days (set to 0 or remove field)
+     const result = await this.db
+       .update(vesselDateLineAdjustments)
+       .set({ advancedDays: 0 })  // Or however you want to "clear" it
+       .where(
+         and(
+           eq(vesselDateLineAdjustments.vesselId, vesselId),
+           eq(vesselDateLineAdjustments.monthValue, monthValue)
+         )
+       );
+     return result.rowCount > 0;
+   }
+```
+
+4. **getCrewDashboardSummary - Aggregation**:
+```typescript
+   // Query multiple tables and aggregate
+   async getCrewDashboardSummary(crewId: string): Promise<any> {
+     const crew = await this.getCrewMember(crewId);
+     const appraisals = await this.getAppraisalResultsByCrewMember(crewId);
+     const planning = await this.db
+       .select()
+       .from(vesselPlanning)
+       .where(eq(vesselPlanning.crewMemberId, crewId));
+     
+     return {
+       crew,
+       totalAppraisals: appraisals.length,
+       latestAppraisal: appraisals[0] || null,
+       currentAssignment: planning[0] || null
+     };
+   }
+```
+
+5. **getFormForRank - Conditional Query**:
+```typescript
+   // Query with optional category filter
+   async getFormForRank(rankLabel: string, category?: string): Promise<Form | null> {
+     // Query forms, then check rank groups for matching rank
+     // This may require joining or two queries
+     const rankGroups = await this.db
+       .select()
+       .from(rankGroups)
+       .where(like(rankGroups.ranks, `%${rankLabel}%`));  // Simple contains check
+     
+     if (rankGroups.length === 0) return null;
+     
+     const formIds = rankGroups.map(rg => rg.formId);
+     
+     const conditions = [inArray(forms.id, formIds)];
+     if (category) {
+       conditions.push(eq(forms.category, category));
+     }
+     
+     const results = await this.db
+       .select()
+       .from(forms)
+       .where(and(...conditions));
+     
+     return results[0] || null;
+   }
+```
+
+IMPLEMENTATION PATTERN:
+```typescript
+// Example: getAllNCReports
+async getAllNCReports(): Promise<NCReport[]> {
+  return await this.db.select().from(ncReports);
+}
+
+// Example: getDataMaster (TEXT primary key)
+async getDataMaster(id: string): Promise<DataMaster | null> {
+  const results = await this.db
+    .select()
+    .from(dataMasters)
+    .where(eq(dataMasters.id, id));
+  return results[0] || null;
+}
+
+// Example: deleteVesselDateLineAdjustment
+async deleteVesselDateLineAdjustment(vesselId: string, monthValue: string): Promise<boolean> {
+  const result = await this.db
+    .delete(vesselDateLineAdjustments)
+    .where(
+      and(
+        eq(vesselDateLineAdjustments.vesselId, vesselId),
+        eq(vesselDateLineAdjustments.monthValue, monthValue)
+      )
+    );
+  return result.rowCount > 0;
+}
+```
+
+REQUIREMENTS:
+1. Implement all 23 methods in server/database.ts
+2. Use UPSERT pattern for save*() methods
+3. Handle composite key lookups properly
+4. Implement aggregation for dashboard summary
+5. Handle optional parameters (category in getFormForRank)
+6. Use .returning() for INSERT/UPDATE
+7. Use .rowCount for DELETE
+
+AFTER IMPLEMENTATION:
+1. Show me complete code for all 23 methods
+2. Run: npx tsc --noEmit (must be 0 errors)
+3. Create comprehensive test:
+   - Test upsert: saveVesselViolationComment (insert then update)
+   - Test composite key: getNCReport(crewId, vesselId, monthValue)
+   - Test dashboard: getCrewDashboardSummary(crewId)
+   - Test form lookup: getFormForRank("Master", "appraisal")
+   - Test master data CRUD
+   - Show test results
+
+DELIVERABLE:
+- ✅ 23 methods implemented (FINAL METHODS!)
+- ✅ 0 TypeScript errors
+- ✅ UPSERT patterns work correctly
+- ✅ Dashboard aggregation works
+- ✅ All 140 IStorage methods now complete!
+
+🎉 After this phase, Phase 2 is COMPLETE and we move to Phase 3 (Data Migration)!

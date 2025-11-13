@@ -21,6 +21,10 @@ import {
   variableTasks,
   fixedTasks,
   drugAlcoholTestRecords,
+  vesselViolationComments,
+  officeViolationComments,
+  ncReports,
+  vesselDateLineAdjustments,
   dataMasters,
   masterDataEntries,
   type User,
@@ -63,12 +67,20 @@ import {
   type InsertFixedTask,
   type DrugAlcoholTestRecord,
   type InsertDrugAlcoholTestRecord,
+  type VesselViolationComment,
+  type InsertVesselViolationComment,
+  type OfficeViolationComment,
+  type InsertOfficeViolationComment,
+  type NCReport,
+  type InsertNCReport,
+  type VesselDateLineAdjustment,
+  type InsertVesselDateLineAdjustment,
   type DataMaster,
   type InsertDataMaster,
   type MasterDataEntry,
   type InsertMasterDataEntry
 } from "@shared/schema";
-import { eq, desc, sql, and, inArray, or } from "drizzle-orm";
+import { eq, desc, sql, and, inArray, or, like } from "drizzle-orm";
 import { type IStorage } from "./storage";
 
 export class DatabaseStorage implements IStorage {
@@ -1937,39 +1949,271 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount !== null && result.rowCount > 0;
   }
 
+  // Vessel Violation Comments Methods
+  async getVesselViolationComment(vesselId: string, monthValue: string): Promise<VesselViolationComment | null> {
+    const results = await this.db
+      .select()
+      .from(vesselViolationComments)
+      .where(
+        and(
+          eq(vesselViolationComments.vesselId, vesselId),
+          eq(vesselViolationComments.monthValue, monthValue)
+        )
+      );
+    return results[0] || null;
+  }
+
+  async saveVesselViolationComment(comment: InsertVesselViolationComment): Promise<VesselViolationComment> {
+    const existing = await this.db
+      .select()
+      .from(vesselViolationComments)
+      .where(
+        and(
+          eq(vesselViolationComments.vesselId, comment.vesselId),
+          eq(vesselViolationComments.monthValue, comment.monthValue)
+        )
+      );
+    
+    if (existing[0]) {
+      const [updated] = await this.db
+        .update(vesselViolationComments)
+        .set(comment)
+        .where(eq(vesselViolationComments.id, existing[0].id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await this.db
+        .insert(vesselViolationComments)
+        .values(comment)
+        .returning();
+      return created;
+    }
+  }
+
+  // Office Violation Comments Methods
+  async getOfficeViolationComment(vesselId: string, monthValue: string): Promise<OfficeViolationComment | null> {
+    const results = await this.db
+      .select()
+      .from(officeViolationComments)
+      .where(
+        and(
+          eq(officeViolationComments.vesselId, vesselId),
+          eq(officeViolationComments.monthValue, monthValue)
+        )
+      );
+    return results[0] || null;
+  }
+
+  async saveOfficeViolationComment(comment: InsertOfficeViolationComment): Promise<OfficeViolationComment> {
+    const existing = await this.db
+      .select()
+      .from(officeViolationComments)
+      .where(
+        and(
+          eq(officeViolationComments.vesselId, comment.vesselId),
+          eq(officeViolationComments.monthValue, comment.monthValue)
+        )
+      );
+    
+    if (existing[0]) {
+      const [updated] = await this.db
+        .update(officeViolationComments)
+        .set(comment)
+        .where(eq(officeViolationComments.id, existing[0].id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await this.db
+        .insert(officeViolationComments)
+        .values(comment)
+        .returning();
+      return created;
+    }
+  }
+
+  // NC Reports Methods
+  async getAllNCReports(): Promise<NCReport[]> {
+    return await this.db.select().from(ncReports);
+  }
+
+  async getNCReport(crewMemberId: string, vesselId: string, monthValue: string): Promise<NCReport | null> {
+    const results = await this.db
+      .select()
+      .from(ncReports)
+      .where(
+        and(
+          eq(ncReports.crewMemberId, crewMemberId),
+          eq(ncReports.vesselId, vesselId),
+          eq(ncReports.monthValue, monthValue)
+        )
+      );
+    return results[0] || null;
+  }
+
+  async saveNCReport(report: InsertNCReport): Promise<NCReport> {
+    const existing = await this.db
+      .select()
+      .from(ncReports)
+      .where(
+        and(
+          eq(ncReports.crewMemberId, report.crewMemberId),
+          eq(ncReports.vesselId, report.vesselId),
+          eq(ncReports.monthValue, report.monthValue)
+        )
+      );
+    
+    if (existing[0]) {
+      const [updated] = await this.db
+        .update(ncReports)
+        .set(report)
+        .where(eq(ncReports.id, existing[0].id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await this.db
+        .insert(ncReports)
+        .values(report)
+        .returning();
+      return created;
+    }
+  }
+
+  // Date Line Adjustments Methods
+  async getVesselDateLineAdjustment(vesselId: string, monthValue: string): Promise<VesselDateLineAdjustment | null> {
+    const results = await this.db
+      .select()
+      .from(vesselDateLineAdjustments)
+      .where(
+        and(
+          eq(vesselDateLineAdjustments.vesselId, vesselId),
+          eq(vesselDateLineAdjustments.monthValue, monthValue)
+        )
+      );
+    return results[0] || null;
+  }
+
+  async saveVesselDateLineAdjustment(adjustment: InsertVesselDateLineAdjustment): Promise<VesselDateLineAdjustment> {
+    const existing = await this.db
+      .select()
+      .from(vesselDateLineAdjustments)
+      .where(
+        and(
+          eq(vesselDateLineAdjustments.vesselId, adjustment.vesselId),
+          eq(vesselDateLineAdjustments.monthValue, adjustment.monthValue)
+        )
+      );
+    
+    if (existing[0]) {
+      const [updated] = await this.db
+        .update(vesselDateLineAdjustments)
+        .set(adjustment)
+        .where(eq(vesselDateLineAdjustments.id, existing[0].id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await this.db
+        .insert(vesselDateLineAdjustments)
+        .values(adjustment)
+        .returning();
+      return created;
+    }
+  }
+
+  async deleteVesselDateLineAdjustment(vesselId: string, monthValue: string): Promise<boolean> {
+    const result = await this.db
+      .delete(vesselDateLineAdjustments)
+      .where(
+        and(
+          eq(vesselDateLineAdjustments.vesselId, vesselId),
+          eq(vesselDateLineAdjustments.monthValue, monthValue)
+        )
+      );
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async clearAdvancedDaysData(vesselId: string, monthValue: string, advancedDays: number[]): Promise<boolean> {
+    const result = await this.db
+      .update(vesselDateLineAdjustments)
+      .set({ advancedDays: 0 })
+      .where(
+        and(
+          eq(vesselDateLineAdjustments.vesselId, vesselId),
+          eq(vesselDateLineAdjustments.monthValue, monthValue)
+        )
+      );
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Dashboard & Utilities Methods
+  async getCrewDashboardSummary(crewId: string): Promise<any> {
+    const crew = await this.getCrewMember(crewId);
+    const appraisals = await this.getAppraisalResultsByCrewMember(crewId);
+    const planning = await this.db
+      .select()
+      .from(vesselPlanning)
+      .where(eq(vesselPlanning.crewMemberId, crewId));
+    
+    return {
+      crew,
+      totalAppraisals: appraisals.length,
+      latestAppraisal: appraisals[0] || null,
+      currentAssignment: planning[0] || null
+    };
+  }
+
+  async getFormForRank(rankLabel: string, category?: string): Promise<Form | null> {
+    const rankGroupResults = await this.db
+      .select()
+      .from(rankGroups)
+      .where(like(rankGroups.ranks, `%${rankLabel}%`));
+    
+    if (rankGroupResults.length === 0) return null;
+    
+    const formIds = rankGroupResults.map(rg => rg.formId);
+    
+    const conditions = [inArray(forms.id, formIds)];
+    if (category) {
+      conditions.push(eq(forms.category, category));
+    }
+    
+    const results = await this.db
+      .select()
+      .from(forms)
+      .where(and(...conditions));
+    
+    return results[0] || null;
+  }
+
   // Data Masters Methods
   async getDataMasters(): Promise<DataMaster[]> {
     return await this.db.select().from(dataMasters);
   }
 
-  async getDataMaster(id: string): Promise<DataMaster | undefined> {
+  async getDataMaster(id: string): Promise<DataMaster | null> {
     const results = await this.db.select().from(dataMasters).where(eq(dataMasters.id, id));
-    return results[0];
+    return results[0] || null;
   }
 
   async createDataMaster(insertMaster: InsertDataMaster): Promise<DataMaster> {
-    await this.db.insert(dataMasters).values(insertMaster);
-    // Fetch the created record
-    const results = await this.db.select().from(dataMasters).where(eq(dataMasters.id, insertMaster.id));
-    return results[0];
+    const [created] = await this.db
+      .insert(dataMasters)
+      .values(insertMaster)
+      .returning();
+    return created;
   }
 
-  async updateDataMaster(id: string, masterData: Partial<InsertDataMaster>): Promise<DataMaster | undefined> {
-    const result = await this.db.update(dataMasters)
+  async updateDataMaster(id: string, masterData: Partial<InsertDataMaster>): Promise<DataMaster | null> {
+    const [updated] = await this.db
+      .update(dataMasters)
       .set({ ...masterData, updatedAt: new Date() })
-      .where(eq(dataMasters.id, id));
-    
-    if ((result as any).affectedRows === 0) {
-      return undefined;
-    }
-    
-    const results = await this.db.select().from(dataMasters).where(eq(dataMasters.id, id));
-    return results[0];
+      .where(eq(dataMasters.id, id))
+      .returning();
+    return updated || null;
   }
 
   async deleteDataMaster(id: string): Promise<boolean> {
     const result = await this.db.delete(dataMasters).where(eq(dataMasters.id, id));
-    return (result as any).affectedRows > 0;
+    return result.rowCount !== null && result.rowCount > 0;
   }
 
   // Master Data Entries Methods
@@ -1983,14 +2227,14 @@ export class DatabaseStorage implements IStorage {
     return results;
   }
 
-  async getMasterDataEntry(id: number): Promise<MasterDataEntry | undefined> {
+  async getMasterDataEntry(id: number): Promise<MasterDataEntry | null> {
     // Use raw SQL to avoid Drizzle schema column issues
     const existingColumns = await this.getExistingColumns('master_data_entries');
     const selectColumns = Array.from(existingColumns).join(', ');
     const selectSql = `SELECT ${selectColumns} FROM master_data_entries WHERE id = ?`;
     
     const [results]: any = await this.pool.query(selectSql, [id]);
-    return results[0];
+    return results[0] || null;
   }
 
   async createMasterDataEntry(insertEntry: InsertMasterDataEntry): Promise<MasterDataEntry> {
@@ -2043,7 +2287,7 @@ export class DatabaseStorage implements IStorage {
     return selectResults[0];
   }
 
-  async updateMasterDataEntry(id: number, entryData: Partial<InsertMasterDataEntry>): Promise<MasterDataEntry | undefined> {
+  async updateMasterDataEntry(id: number, entryData: Partial<InsertMasterDataEntry>): Promise<MasterDataEntry | null> {
     // Filter payload to only include existing columns
     const filteredEntry = await this.filterPayloadByExistingColumns(entryData, 'master_data_entries');
     
@@ -2058,7 +2302,7 @@ export class DatabaseStorage implements IStorage {
     const [result]: any = await this.pool.query(updateSql, [...values, id]);
     
     if (result.affectedRows === 0) {
-      return undefined;
+      return null;
     }
     
     // Use raw SQL for SELECT
@@ -2067,7 +2311,7 @@ export class DatabaseStorage implements IStorage {
     const selectSql = `SELECT ${selectColumns} FROM master_data_entries WHERE id = ?`;
     
     const [selectResults]: any = await this.pool.query(selectSql, [id]);
-    return selectResults[0];
+    return selectResults[0] || null;
   }
 
   async deleteMasterDataEntry(id: number): Promise<boolean> {
