@@ -1403,7 +1403,7 @@ export class MemStorage implements IStorage {
 
     // Find existing vessel planning record for this vessel + rank
     let existingPlanningId: number | null = null;
-    for (const [id, planning] of this.vesselPlanning.entries()) {
+    for (const [id, planning] of Array.from(this.vesselPlanning.entries())) {
       if (planning.vesselId === assignment.vesselId && planning.rankId === assignment.rankId) {
         existingPlanningId = id;
         break;
@@ -1477,7 +1477,7 @@ export class MemStorage implements IStorage {
     contractEndDate.setMonth(contractEndDate.getMonth() + contractPeriod);
 
     // Check all proposed assignments
-    for (const plan of this.rotationPlans.values()) {
+    for (const plan of Array.from(this.rotationPlans.values())) {
       if (plan.assignments) {
         const assignments = JSON.parse(plan.assignments);
         for (let i = 0; i < assignments.length; i++) {
@@ -3513,7 +3513,16 @@ export class PersistentFileStorage implements IStorage {
   }
 
   async createForm(insertForm: InsertForm): Promise<Form> {
-    const form: Form = { ...insertForm, id: this.currentFormId++ };
+    const id = this.currentFormId++;
+    const form: Form = {
+      id,
+      name: insertForm.name,
+      category: insertForm.category ?? "",
+      rankGroup: insertForm.rankGroup,
+      versionNo: insertForm.versionNo,
+      versionDate: insertForm.versionDate,
+      configuration: insertForm.configuration ?? null
+    };
     this.forms.set(form.id, form);
     this.saveToFile();
     return form;
@@ -3686,7 +3695,31 @@ export class PersistentFileStorage implements IStorage {
   }
 
   async createCompanyRank(insertCompanyRank: InsertCompanyRank): Promise<CompanyRank> {
-    const companyRank: CompanyRank = { ...insertCompanyRank };
+    const companyRank: CompanyRank = {
+      id: insertCompanyRank.id,
+      rankId: insertCompanyRank.rankId,
+      rank: insertCompanyRank.rank,
+      role: insertCompanyRank.role ?? null,
+      originalRankId: insertCompanyRank.originalRankId ?? null,
+      isRoleRow: insertCompanyRank.isRoleRow ?? null,
+      officer: insertCompanyRank.officer ?? null,
+      rating: insertCompanyRank.rating ?? null,
+      seniorOfficer: insertCompanyRank.seniorOfficer ?? null,
+      deckOfficer: insertCompanyRank.deckOfficer ?? null,
+      engOfficer: insertCompanyRank.engOfficer ?? null,
+      pettyOfficer: insertCompanyRank.pettyOfficer ?? null,
+      deckRating: insertCompanyRank.deckRating ?? null,
+      engineRating: insertCompanyRank.engineRating ?? null,
+      generalRating: insertCompanyRank.generalRating ?? null,
+      cateringRating: insertCompanyRank.cateringRating ?? null,
+      safetyOfficer: insertCompanyRank.safetyOfficer ?? null,
+      sso: insertCompanyRank.sso ?? null,
+      medicalOfficer: insertCompanyRank.medicalOfficer ?? null,
+      navigatingOfficer: insertCompanyRank.navigatingOfficer ?? null,
+      emtOfficer: insertCompanyRank.emtOfficer ?? null,
+      createdAt: null,
+      updatedAt: null
+    };
     this.companyRanks.set(companyRank.id, companyRank);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY CREATE!
     console.log(`💾 [COMPANY-RANK] Created and saved: ${companyRank.id} - ${companyRank.rank}${companyRank.role ? ` (${companyRank.role})` : ''}`);
@@ -3726,7 +3759,31 @@ export class PersistentFileStorage implements IStorage {
     const savedRanks: CompanyRank[] = [];
     
     for (const rank of ranks) {
-      const companyRank: CompanyRank = { ...rank };
+      const companyRank: CompanyRank = {
+        id: rank.id,
+        rankId: rank.rankId,
+        rank: rank.rank,
+        role: rank.role ?? null,
+        originalRankId: rank.originalRankId ?? null,
+        isRoleRow: rank.isRoleRow ?? null,
+        officer: rank.officer ?? null,
+        rating: rank.rating ?? null,
+        seniorOfficer: rank.seniorOfficer ?? null,
+        deckOfficer: rank.deckOfficer ?? null,
+        engOfficer: rank.engOfficer ?? null,
+        pettyOfficer: rank.pettyOfficer ?? null,
+        deckRating: rank.deckRating ?? null,
+        engineRating: rank.engineRating ?? null,
+        generalRating: rank.generalRating ?? null,
+        cateringRating: rank.cateringRating ?? null,
+        safetyOfficer: rank.safetyOfficer ?? null,
+        sso: rank.sso ?? null,
+        medicalOfficer: rank.medicalOfficer ?? null,
+        navigatingOfficer: rank.navigatingOfficer ?? null,
+        emtOfficer: rank.emtOfficer ?? null,
+        createdAt: null,
+        updatedAt: null
+      };
       this.companyRanks.set(companyRank.id, companyRank);
       savedRanks.push(companyRank);
     }
@@ -3747,9 +3804,13 @@ export class PersistentFileStorage implements IStorage {
 
   async createPromotionHierarchy(insertPromotionHierarchy: InsertPromotionHierarchy): Promise<PromotionHierarchy> {
     const id = this.currentPromotionHierarchyId++;
-    const promotionHierarchy: PromotionHierarchy = { 
-      ...insertPromotionHierarchy, 
-      id
+    const promotionHierarchy: PromotionHierarchy = {
+      id,
+      groupName: insertPromotionHierarchy.groupName,
+      rankPath: insertPromotionHierarchy.rankPath,
+      isActive: insertPromotionHierarchy.isActive ?? null,
+      createdAt: null,
+      updatedAt: null
     };
     this.promotionHierarchies.set(id, promotionHierarchy);
     this.saveToFile();
@@ -3788,7 +3849,12 @@ export class PersistentFileStorage implements IStorage {
 
   async createCrewMember(insertCrewMember: InsertCrewMember): Promise<CrewMember> {
     const uniqueId = await this.getNextCrewId();
-    const crewMember: CrewMember = { ...insertCrewMember, id: uniqueId };
+    const crewMember: CrewMember = {
+      ...insertCrewMember,
+      id: uniqueId,
+      createdAt: null,
+      updatedAt: null
+    };
     this.crewMembers.set(uniqueId, crewMember);
     this.saveToFile();
     return crewMember;
@@ -3798,7 +3864,9 @@ export class PersistentFileStorage implements IStorage {
     const existingCrewMember = this.crewMembers.get(id);
     if (!existingCrewMember) return undefined;
 
-    const updatedCrewMember: CrewMember = { ...existingCrewMember, ...crewMemberData };
+    // Sanitize input - remove id if present since it's read-only
+    const { id: _omitId, ...sanitizedData } = crewMemberData as any;
+    const updatedCrewMember: CrewMember = { ...existingCrewMember, ...sanitizedData };
     this.crewMembers.set(id, updatedCrewMember);
     this.saveToFile();
     return updatedCrewMember;
@@ -3951,7 +4019,7 @@ export class PersistentFileStorage implements IStorage {
     let maxCounter = 0;
     
     // Scan existing crew members for A-series IDs in employeeId field
-    for (const crewMember of this.crewMembers.values()) {
+    for (const crewMember of Array.from(this.crewMembers.values())) {
       if (crewMember.employeeId) {
         const match = crewMember.employeeId.match(/^A(\d{6})$/);
         if (match) {
@@ -3984,11 +4052,13 @@ export class PersistentFileStorage implements IStorage {
 
   async createVesselGroup(insertVesselGroup: InsertVesselGroup): Promise<VesselGroup> {
     const id = this.currentVesselGroupId++;
-    const vesselGroup: VesselGroup = { 
-      ...insertVesselGroup, 
+    const vesselGroup: VesselGroup = {
       id,
+      name: insertVesselGroup.name,
+      vesselIds: insertVesselGroup.vesselIds,
+      description: insertVesselGroup.description ?? null,
       createdAt: null,
-      updatedAt: null as any // new Date()
+      updatedAt: null
     };
     this.vesselGroups.set(id, vesselGroup);
     this.saveToFile(); // Persist the changes
@@ -4032,11 +4102,13 @@ export class PersistentFileStorage implements IStorage {
 
   async createVesselDraft(insertVesselDraft: InsertVesselDraft): Promise<VesselDraft> {
     const id = this.currentVesselDraftId++;
-    const vesselDraft: VesselDraft = { 
-      ...insertVesselDraft, 
+    const vesselDraft: VesselDraft = {
       id,
+      vesselId: insertVesselDraft.vesselId,
+      revision: insertVesselDraft.revision ?? "",
+      draftData: insertVesselDraft.draftData,
       createdAt: null,
-      updatedAt: null as any // new Date()
+      updatedAt: null
     };
     this.vesselDrafts.set(id, vesselDraft);
     this.saveToFile(); // Persist the changes
@@ -4105,7 +4177,23 @@ export class PersistentFileStorage implements IStorage {
   }
 
   async createAppraisalResult(insertAppraisalResult: InsertAppraisalResult): Promise<AppraisalResult> {
-    const appraisalResult: AppraisalResult = { ...insertAppraisalResult, id: this.currentAppraisalResultId++ };
+    const id = this.currentAppraisalResultId++;
+    const appraisalResult: AppraisalResult = {
+      id,
+      formId: insertAppraisalResult.formId,
+      crewMemberId: insertAppraisalResult.crewMemberId,
+      appraisalType: insertAppraisalResult.appraisalType,
+      appraisalDate: insertAppraisalResult.appraisalDate,
+      appraisalData: insertAppraisalResult.appraisalData,
+      submittedBy: insertAppraisalResult.submittedBy,
+      status: insertAppraisalResult.status ?? "draft",
+      competenceRating: insertAppraisalResult.competenceRating ?? null,
+      behavioralRating: insertAppraisalResult.behavioralRating ?? null,
+      overallRating: insertAppraisalResult.overallRating ?? null,
+      submittedAt: new Date(),
+      stagePayloads: insertAppraisalResult.stagePayloads ?? null,
+      stageStatuses: insertAppraisalResult.stageStatuses ?? null
+    };
     this.appraisalResults.set(appraisalResult.id, appraisalResult);
     this.saveToFile();
     return appraisalResult;
@@ -4576,7 +4664,7 @@ export class PersistentFileStorage implements IStorage {
 
     // Find existing vessel planning record for this vessel + rank
     let existingPlanningId: number | null = null;
-    for (const [id, planning] of this.vesselPlanning.entries()) {
+    for (const [id, planning] of Array.from(this.vesselPlanning.entries())) {
       if (planning.vesselId === assignment.vesselId && planning.rankId === assignment.rankId) {
         existingPlanningId = id;
         break;
@@ -4651,7 +4739,7 @@ export class PersistentFileStorage implements IStorage {
     contractEndDate.setMonth(contractEndDate.getMonth() + contractPeriod);
 
     // Check all proposed assignments
-    for (const plan of this.rotationPlans.values()) {
+    for (const plan of Array.from(this.rotationPlans.values())) {
       if (plan.assignments) {
         const assignments = JSON.parse(plan.assignments);
         for (let i = 0; i < assignments.length; i++) {
@@ -5043,8 +5131,16 @@ export class PersistentFileStorage implements IStorage {
   async createFixedTask(insertTask: InsertFixedTask): Promise<FixedTask> {
     const id = this.currentFixedTaskId++;
     const task: FixedTask = {
-      ...insertTask,
       id,
+      name: insertTask.name,
+      rank: insertTask.rank,
+      crewMemberId: insertTask.crewMemberId,
+      vesselId: insertTask.vesselId,
+      monthYear: insertTask.monthYear,
+      seaHours: insertTask.seaHours,
+      portHours: insertTask.portHours,
+      createdAt: null,
+      updatedAt: null
     };
     this.fixedTasks.set(id, task);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY CREATE!
