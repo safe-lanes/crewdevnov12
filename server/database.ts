@@ -858,24 +858,53 @@ export class DatabaseStorage implements IStorage {
     return await this.db.select().from(crewMembers);
   }
 
-  async getCrewMember(id: string): Promise<CrewMember | undefined> {
+  async getCrewMember(id: string): Promise<CrewMember | null> {
     const result = await this.db.select().from(crewMembers).where(eq(crewMembers.id, id));
-    return result[0];
+    return result[0] || null;
   }
 
   async createCrewMember(insertCrewMember: InsertCrewMember): Promise<CrewMember> {
-    await this.db.insert(crewMembers).values(insertCrewMember);
-    return await this.getCrewMember(insertCrewMember.id) as CrewMember;
+    const [created] = await this.db.insert(crewMembers).values(insertCrewMember).returning();
+    return created;
   }
 
-  async updateCrewMember(id: string, crewMemberData: Partial<InsertCrewMember>): Promise<CrewMember | undefined> {
-    await this.db.update(crewMembers).set(crewMemberData).where(eq(crewMembers.id, id));
-    return await this.getCrewMember(id);
+  async updateCrewMember(id: string, crewMemberData: Partial<InsertCrewMember>): Promise<CrewMember | null> {
+    const result = await this.db.update(crewMembers).set(crewMemberData).where(eq(crewMembers.id, id)).returning();
+    return result[0] || null;
   }
 
   async deleteCrewMember(id: string): Promise<boolean> {
     const result = await this.db.delete(crewMembers).where(eq(crewMembers.id, id));
-    return (result as any).affectedRows > 0;
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async getNextCrewId(): Promise<string> {
+    // Check if id_counters table has crew_id_counter
+    const result = await this.pool.query(
+      'SELECT counter_value FROM id_counters WHERE counter_name = $1',
+      ['crew_id_counter']
+    );
+    
+    let currentValue = 0;
+    if (result.rows.length > 0) {
+      currentValue = result.rows[0].counter_value;
+    } else {
+      // Initialize counter if it doesn't exist
+      await this.pool.query(
+        'INSERT INTO id_counters (counter_name, counter_value) VALUES ($1, $2)',
+        ['crew_id_counter', 0]
+      );
+    }
+    
+    const nextValue = currentValue + 1;
+    
+    // Update counter
+    await this.pool.query(
+      'UPDATE id_counters SET counter_value = $1 WHERE counter_name = $2',
+      [nextValue, 'crew_id_counter']
+    );
+    
+    return `A${nextValue.toString().padStart(4, '0')}`;
   }
 
   // Appraisal Result methods
@@ -883,9 +912,9 @@ export class DatabaseStorage implements IStorage {
     return await this.db.select().from(appraisalResults);
   }
 
-  async getAppraisalResult(id: number): Promise<AppraisalResult | undefined> {
+  async getAppraisalResult(id: number): Promise<AppraisalResult | null> {
     const result = await this.db.select().from(appraisalResults).where(eq(appraisalResults.id, id));
-    return result[0];
+    return result[0] || null;
   }
 
   async getAppraisalResultsByCrewMember(crewMemberId: string): Promise<AppraisalResult[]> {
@@ -893,19 +922,56 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAppraisalResult(insertAppraisalResult: InsertAppraisalResult): Promise<AppraisalResult> {
-    const result = await this.db.insert(appraisalResults).values(insertAppraisalResult);
-    const insertId = (result as any).insertId;
-    return await this.getAppraisalResult(insertId) as AppraisalResult;
+    const [created] = await this.db.insert(appraisalResults).values(insertAppraisalResult).returning();
+    return created;
   }
 
-  async updateAppraisalResult(id: number, appraisalResultData: Partial<InsertAppraisalResult>): Promise<AppraisalResult | undefined> {
-    await this.db.update(appraisalResults).set(appraisalResultData).where(eq(appraisalResults.id, id));
-    return await this.getAppraisalResult(id);
+  async updateAppraisalResult(id: number, appraisalResultData: Partial<InsertAppraisalResult>): Promise<AppraisalResult | null> {
+    const result = await this.db.update(appraisalResults).set(appraisalResultData).where(eq(appraisalResults.id, id)).returning();
+    return result[0] || null;
   }
 
   async deleteAppraisalResult(id: number): Promise<boolean> {
     const result = await this.db.delete(appraisalResults).where(eq(appraisalResults.id, id));
-    return (result as any).affectedRows > 0;
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async submitAppraisalStage(id: number, stage: string, data: any, submittedBy: string): Promise<AppraisalResult | null> {
+    // Map stage to status
+    const statusMap: Record<string, string> = {
+      'stage1': 'Preliminary',
+      'stage2': 'Submitted',
+      'stage3': 'Reviewed'
+    };
+    
+    const newStatus = statusMap[stage] || 'Draft';
+    
+    // Get current appraisal
+    const current = await this.getAppraisalResult(id);
+    if (!current) {
+      return null;
+    }
+    
+    // Merge new data into existing appraisal data
+    const updatedData = {
+      ...(current.appraisalData as any || {}),
+      ...data,
+      [`${stage}SubmittedBy`]: submittedBy,
+      [`${stage}SubmittedAt`]: new Date().toISOString()
+    };
+    
+    // Update appraisal with new data and status
+    const result = await this.db
+      .update(appraisalResults)
+      .set({
+        appraisalData: updatedData,
+        status: newStatus,
+        submittedAt: new Date()
+      })
+      .where(eq(appraisalResults.id, id))
+      .returning();
+    
+    return result[0] || null;
   }
 
   // Recruitment Candidates Methods
@@ -913,9 +979,9 @@ export class DatabaseStorage implements IStorage {
     return await this.db.select().from(recruitmentCandidates);
   }
 
-  async getRecruitmentCandidate(id: string): Promise<RecruitmentCandidate | undefined> {
+  async getRecruitmentCandidate(id: string): Promise<RecruitmentCandidate | null> {
     const results = await this.db.select().from(recruitmentCandidates).where(eq(recruitmentCandidates.id, id));
-    return results[0];
+    return results[0] || null;
   }
 
   async getRecruitmentCandidatesByStatus(status: string): Promise<RecruitmentCandidate[]> {
@@ -923,28 +989,61 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createRecruitmentCandidate(insertCandidate: InsertRecruitmentCandidate): Promise<RecruitmentCandidate> {
-    await this.db.insert(recruitmentCandidates).values(insertCandidate);
-    // Since MySQL doesn't support RETURNING, fetch the created record
-    const results = await this.db.select().from(recruitmentCandidates).where(eq(recruitmentCandidates.id, insertCandidate.id));
-    return results[0];
+    const [created] = await this.db.insert(recruitmentCandidates).values(insertCandidate).returning();
+    return created;
   }
 
-  async updateRecruitmentCandidate(id: string, candidateData: Partial<InsertRecruitmentCandidate>): Promise<RecruitmentCandidate | undefined> {
+  async updateRecruitmentCandidate(id: string, candidateData: Partial<InsertRecruitmentCandidate>): Promise<RecruitmentCandidate | null> {
     const result = await this.db.update(recruitmentCandidates)
       .set({ ...candidateData, updatedAt: new Date() })
-      .where(eq(recruitmentCandidates.id, id));
+      .where(eq(recruitmentCandidates.id, id))
+      .returning();
     
-    if ((result as any).affectedRows === 0) {
-      return undefined;
-    }
-    
-    const results = await this.db.select().from(recruitmentCandidates).where(eq(recruitmentCandidates.id, id));
-    return results[0];
+    return result[0] || null;
   }
 
   async deleteRecruitmentCandidate(id: string): Promise<boolean> {
     const result = await this.db.delete(recruitmentCandidates).where(eq(recruitmentCandidates.id, id));
-    return (result as any).affectedRows > 0;
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async transferRecruitedCandidate(candidateId: string): Promise<CrewMember> {
+    // Get the candidate
+    const candidate = await this.getRecruitmentCandidate(candidateId);
+    if (!candidate) {
+      throw new Error(`Recruitment candidate ${candidateId} not found`);
+    }
+    
+    // Generate new crew ID
+    const newCrewId = await this.getNextCrewId();
+    
+    // Create crew member from candidate data
+    const crewMemberData: InsertCrewMember = {
+      id: newCrewId,
+      empNo: candidate.empNo || '',
+      firstName: candidate.firstName,
+      middleName: candidate.middleName,
+      familyName: candidate.familyName,
+      dateOfBirth: candidate.dateOfBirth,
+      nationality: candidate.nationality,
+      rankAppliedFor: candidate.rankAppliedFor,
+      email: candidate.email,
+      mobile: candidate.mobile,
+      residentialAddressLine1: candidate.residentialAddressLine1,
+      residentialAddressLine2: candidate.residentialAddressLine2,
+      status: 'Active'
+    };
+    
+    // Create the crew member
+    const crewMember = await this.createCrewMember(crewMemberData);
+    
+    // Update candidate status to "Recruited"
+    await this.updateRecruitmentCandidate(candidateId, {
+      status: 'Recruited',
+      transferredToCrewId: newCrewId
+    });
+    
+    return crewMember;
   }
 
   // Data Masters Methods

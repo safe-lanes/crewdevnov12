@@ -1,0 +1,122 @@
+Excellent! Phase 2A is 100% complete and verified.
+
+Proceed with PHASE 2B: Implement Crew Management Methods (20 methods)
+
+IMPLEMENT THESE 20 METHODS:
+
+GROUP 1 - Crew Members (6 methods):
+- async getCrewMembers(): Promise<CrewMember[]>
+- async getCrewMember(id: string): Promise<CrewMember | null>
+- async createCrewMember(member: InsertCrewMember): Promise<CrewMember>
+- async updateCrewMember(id: string, member: Partial<InsertCrewMember>): Promise<CrewMember | null>
+- async deleteCrewMember(id: string): Promise<boolean>
+- async getNextCrewId(): Promise<string>
+
+GROUP 2 - Appraisal Results (7 methods):
+- async getAppraisalResults(): Promise<AppraisalResult[]>
+- async getAppraisalResult(id: number): Promise<AppraisalResult | null>
+- async getAppraisalResultsByCrewMember(crewMemberId: string): Promise<AppraisalResult[]>
+- async createAppraisalResult(result: InsertAppraisalResult): Promise<AppraisalResult>
+- async updateAppraisalResult(id: number, result: Partial<InsertAppraisalResult>): Promise<AppraisalResult | null>
+- async deleteAppraisalResult(id: number): Promise<boolean>
+- async submitAppraisalStage(id: number, stage: string, data: any, submittedBy: string): Promise<AppraisalResult | null>
+
+GROUP 3 - Recruitment Candidates (7 methods):
+- async getRecruitmentCandidates(): Promise<RecruitmentCandidate[]>
+- async getRecruitmentCandidate(id: string): Promise<RecruitmentCandidate | null>
+- async getRecruitmentCandidatesByStatus(status: string): Promise<RecruitmentCandidate[]>
+- async createRecruitmentCandidate(candidate: InsertRecruitmentCandidate): Promise<RecruitmentCandidate>
+- async updateRecruitmentCandidate(id: string, candidate: Partial<InsertRecruitmentCandidate>): Promise<RecruitmentCandidate | null>
+- async deleteRecruitmentCandidate(id: string): Promise<boolean>
+- async transferRecruitedCandidate(candidateId: string): Promise<CrewMember>
+
+SPECIAL IMPLEMENTATION NOTES:
+
+1. **getNextCrewId()**: 
+   - Query id_counters table for crew_id_counter
+   - Format: "A" + padded number (e.g., "A0001", "A0002")
+   - Increment and update counter
+   - Use PostgreSQL pattern with RETURNING
+
+2. **submitAppraisalStage()**:
+   - Update appraisal_data JSON field
+   - Set status based on stage
+   - Update submittedAt timestamp
+   - Use PostgreSQL jsonb operations if needed
+
+3. **transferRecruitedCandidate()**:
+   - Read candidate data
+   - Create crew member from candidate
+   - Update candidate status to "Recruited"
+   - Return new crew member
+   - Consider using PostgreSQL transaction
+
+IMPLEMENTATION PATTERN:
+```typescript
+// Example: getCrewMembers
+async getCrewMembers(): Promise<CrewMember[]> {
+  return await this.db.select().from(crewMembers);
+}
+
+// Example: getCrewMember
+async getCrewMember(id: string): Promise<CrewMember | null> {
+  const results = await this.db
+    .select()
+    .from(crewMembers)
+    .where(eq(crewMembers.id, id));
+  return results[0] || null;
+}
+
+// Example: getAppraisalResultsByCrewMember
+async getAppraisalResultsByCrewMember(crewMemberId: string): Promise<AppraisalResult[]> {
+  return await this.db
+    .select()
+    .from(appraisalResults)
+    .where(eq(appraisalResults.crewMemberId, crewMemberId));
+}
+
+// Example: getNextCrewId
+async getNextCrewId(): Promise<string> {
+  const result = await this.pool.query(
+    'SELECT counter_value FROM id_counters WHERE counter_name = $1',
+    ['crew_id_counter']
+  );
+  
+  const currentValue = result.rows[0]?.counter_value || 0;
+  const nextValue = currentValue + 1;
+  
+  await this.pool.query(
+    'UPDATE id_counters SET counter_value = $1 WHERE counter_name = $2',
+    [nextValue, 'crew_id_counter']
+  );
+  
+  return `A${nextValue.toString().padStart(4, '0')}`;
+}
+```
+
+REQUIREMENTS:
+1. Implement all 20 methods in server/database.ts
+2. Use PostgreSQL syntax (result.rows, $1/$2 parameters)
+3. Handle TEXT primary keys (crew_members.id is string, not number)
+4. Properly handle JSON fields (appraisal_data, application_data)
+5. Include error handling and null checks
+
+AFTER IMPLEMENTATION:
+1. Show me complete code for all 20 methods
+2. Run: npx tsc --noEmit (must be 0 errors)
+3. Create comprehensive test:
+   - Create crew member: createCrewMember({ id: await getNextCrewId(), ... })
+   - Read crew member: getCrewMember(id)
+   - Create appraisal: createAppraisalResult({ crewMemberId: id, ... })
+   - Read appraisals: getAppraisalResultsByCrewMember(id)
+   - Create candidate: createRecruitmentCandidate({ ... })
+   - Transfer candidate: transferRecruitedCandidate(candidateId)
+   - Show test results
+
+DELIVERABLE:
+- ✅ 20 methods implemented
+- ✅ 0 TypeScript errors
+- ✅ Test proves crew management CRUD works
+- ✅ Special methods (getNextCrewId, transferRecruitedCandidate) tested
+
+DO NOT proceed to Phase 2C until I confirm Phase 2B is complete.
