@@ -1742,7 +1742,6 @@ export class MemStorage implements IStorage {
     }
 
     const crewMemberData: InsertCrewMember = {
-      id: crewId,
       employeeId: crewId,
       firstName: candidate.firstName,
       middleName: candidate.middleName || null,
@@ -3463,6 +3462,8 @@ export class PersistentFileStorage implements IStorage {
 
         this.restHoursVesselRecords.set(rhRecordId, {
           id: rhRecordId,
+          createdAt: null,
+          updatedAt: null,
           vesselId: vessel.id,
           vesselName: vessel.name,
           month: monthLabel.replace(' ', '-'),
@@ -3470,16 +3471,24 @@ export class PersistentFileStorage implements IStorage {
           totalCrew,
           recordingStatusPercent: recordingPercent,
           activityConflicting,
+          crewWithActivityConflicts: 0,
+          crewWithActivityConflictsDetails: null,
           totalViolations,
           crewWithViolations,
+          crewWithViolationsDetails: null,
           totalNCs,
           crewWithNCs,
+          crewWithNCsDetails: null,
           predictedViolations,
+          crewWithPredictedViolations: 0,
+          crewWithPredictedViolationsDetails: null,
           predictedNCs,
           crewWithPredictedNCs,
+          crewWithPredictedNCsDetails: null,
+          vesselReviewStatus: "Due",
+          vesselReviewSubmittedDate: null,
           officeReviewStatus,
-          createdAt: null,
-          updatedAt: null as any // new Date()
+          officeReviewSubmittedDate: null
         });
         rhRecordId++;
       });
@@ -3850,10 +3859,72 @@ export class PersistentFileStorage implements IStorage {
   async createCrewMember(insertCrewMember: InsertCrewMember): Promise<CrewMember> {
     const uniqueId = await this.getNextCrewId();
     const crewMember: CrewMember = {
-      ...insertCrewMember,
       id: uniqueId,
+      status: insertCrewMember.status ?? null,
       createdAt: null,
-      updatedAt: null
+      updatedAt: null,
+      empNo: insertCrewMember.empNo ?? null,
+      firstName: insertCrewMember.firstName,
+      middleName: insertCrewMember.middleName ?? null,
+      familyName: insertCrewMember.familyName ?? null,
+      dateOfBirth: insertCrewMember.dateOfBirth ?? null,
+      age: insertCrewMember.age ?? null,
+      nationality: insertCrewMember.nationality,
+      presentRank: insertCrewMember.presentRank,
+      rankAppliedFor: insertCrewMember.rankAppliedFor ?? null,
+      employeeId: insertCrewMember.employeeId ?? null,
+      presentVessel: insertCrewMember.presentVessel,
+      vesselType: insertCrewMember.vesselType,
+      lastVessel: insertCrewMember.lastVessel ?? null,
+      joiningDate: insertCrewMember.joiningDate ?? null,
+      signOnDate: insertCrewMember.signOnDate ?? null,
+      signOffDate: insertCrewMember.signOffDate ?? null,
+      contractPeriod: insertCrewMember.contractPeriod ?? null,
+      reliefDue: insertCrewMember.reliefDue ?? null,
+      reason: insertCrewMember.reason ?? null,
+      availability: insertCrewMember.availability ?? null,
+      email: insertCrewMember.email ?? null,
+      mobile: insertCrewMember.mobile ?? null,
+      contactLandline: insertCrewMember.contactLandline ?? null,
+      countryOfResidence: insertCrewMember.countryOfResidence ?? null,
+      nearestAirport: insertCrewMember.nearestAirport ?? null,
+      residentialAddressLine1: insertCrewMember.residentialAddressLine1 ?? null,
+      residentialAddressLine2: insertCrewMember.residentialAddressLine2 ?? null,
+      placeOfBirthCity: insertCrewMember.placeOfBirthCity ?? null,
+      placeOfBirthCountry: insertCrewMember.placeOfBirthCountry ?? null,
+      heightCm: insertCrewMember.heightCm ?? null,
+      weightKg: insertCrewMember.weightKg ?? null,
+      bmi: insertCrewMember.bmi ?? null,
+      nativeLanguage: insertCrewMember.nativeLanguage ?? null,
+      foreignLanguages: insertCrewMember.foreignLanguages ?? null,
+      englishProficiency: insertCrewMember.englishProficiency ?? null,
+      maritalStatus: insertCrewMember.maritalStatus ?? null,
+      numberOfDependentChildren: insertCrewMember.numberOfDependentChildren ?? null,
+      fatherName: insertCrewMember.fatherName ?? null,
+      motherName: insertCrewMember.motherName ?? null,
+      spouseFirstName: insertCrewMember.spouseFirstName ?? null,
+      spouseMiddleName: insertCrewMember.spouseMiddleName ?? null,
+      spouseFamilyName: insertCrewMember.spouseFamilyName ?? null,
+      spouseDateOfBirth: insertCrewMember.spouseDateOfBirth ?? null,
+      nokFirstName: insertCrewMember.nokFirstName ?? null,
+      nokMiddleName: insertCrewMember.nokMiddleName ?? null,
+      nokFamilyName: insertCrewMember.nokFamilyName ?? null,
+      nokTelephone: insertCrewMember.nokTelephone ?? null,
+      nokEmail: insertCrewMember.nokEmail ?? null,
+      nokAddress: insertCrewMember.nokAddress ?? null,
+      nokRelationship: insertCrewMember.nokRelationship ?? null,
+      manningAgent: insertCrewMember.manningAgent ?? null,
+      vesselTypes: insertCrewMember.vesselTypes ?? null,
+      documents: insertCrewMember.documents ?? null,
+      visas: insertCrewMember.visas ?? null,
+      education: insertCrewMember.education ?? null,
+      licenses: insertCrewMember.licenses ?? null,
+      trainingCourses: insertCrewMember.trainingCourses ?? null,
+      currentCompanySeaService: insertCrewMember.currentCompanySeaService ?? null,
+      externalSeaService: insertCrewMember.externalSeaService ?? null,
+      preJoiningMedicals: insertCrewMember.preJoiningMedicals ?? null,
+      doctorVisits: insertCrewMember.doctorVisits ?? null,
+      children: insertCrewMember.children ?? null
     };
     this.crewMembers.set(uniqueId, crewMember);
     this.saveToFile();
@@ -3990,6 +4061,8 @@ export class PersistentFileStorage implements IStorage {
 
         this.restHoursVesselRecords.set(rhRecordId, {
           id: rhRecordId,
+          createdAt: null,
+          updatedAt: null,
           vesselId: vessel.id,
           vesselName: vessel.name,
           month: monthLabel.replace(' ', '-'),
@@ -3997,16 +4070,24 @@ export class PersistentFileStorage implements IStorage {
           totalCrew,
           recordingStatusPercent: recordingPercent,
           activityConflicting,
+          crewWithActivityConflicts: 0,
+          crewWithActivityConflictsDetails: null,
           totalViolations,
           crewWithViolations,
+          crewWithViolationsDetails: null,
           totalNCs,
           crewWithNCs,
+          crewWithNCsDetails: null,
           predictedViolations,
+          crewWithPredictedViolations: 0,
+          crewWithPredictedViolationsDetails: null,
           predictedNCs,
           crewWithPredictedNCs,
+          crewWithPredictedNCsDetails: null,
+          vesselReviewStatus: "Due",
+          vesselReviewSubmittedDate: null,
           officeReviewStatus,
-          createdAt: null,
-          updatedAt: null as any // new Date()
+          officeReviewSubmittedDate: null
         });
         rhRecordId++;
       });
@@ -4351,7 +4432,6 @@ export class PersistentFileStorage implements IStorage {
     }
 
     const crewMemberData: InsertCrewMember = {
-      id: crewId,
       employeeId: crewId,
       firstName: candidate.firstName,
       middleName: candidate.middleName || null,
@@ -4390,21 +4470,31 @@ export class PersistentFileStorage implements IStorage {
   async createVesselPlanning(insertPlanning: InsertVesselPlanning): Promise<VesselPlanning> {
     const id = this.currentVesselPlanningId++;
     const vesselPlanning: VesselPlanning = { 
-      ...insertPlanning,
       id,
-      onBoardCrewId: insertPlanning.onBoardCrewId || null,
-      onBoardCrewName: insertPlanning.onBoardCrewName || null,
-      reliefDue: insertPlanning.reliefDue || null,
-      signOffDate: insertPlanning.signOffDate || null,
-      signOffPort: insertPlanning.signOffPort || null,
-      reliefStatus: insertPlanning.reliefStatus || null,
-      relieverCrewId: insertPlanning.relieverCrewId || null,
-      relieverCrewName: insertPlanning.relieverCrewName || null,
-      joiningDate: insertPlanning.joiningDate || null,
-      joiningPort: insertPlanning.joiningPort || null,
-      joiningStatus: insertPlanning.joiningStatus || null,
+      vesselId: insertPlanning.vesselId,
+      rankId: insertPlanning.rankId,
+      rank: insertPlanning.rank,
+      crewMemberId: null,
+      onBoardCrewId: insertPlanning.onBoardCrewId ?? null,
+      onBoardCrewName: insertPlanning.onBoardCrewName ?? null,
+      onBoardCrewNationality: insertPlanning.onBoardCrewNationality ?? null,
+      reliefDue: insertPlanning.reliefDue ?? null,
+      signOffDate: insertPlanning.signOffDate ?? null,
+      signOffPort: insertPlanning.signOffPort ?? null,
+      reliefStatus: insertPlanning.reliefStatus ?? null,
+      relieverCrewId: insertPlanning.relieverCrewId ?? null,
+      relieverCrewName: insertPlanning.relieverCrewName ?? null,
+      relieverNationality: insertPlanning.relieverNationality ?? null,
+      joiningDate: insertPlanning.joiningDate ?? null,
+      joiningPort: insertPlanning.joiningPort ?? null,
+      joiningStatus: insertPlanning.joiningStatus ?? null,
+      contractPeriodMonths: insertPlanning.contractPeriodMonths ?? null,
+      contractEndRangeStartMonths: insertPlanning.contractEndRangeStartMonths ?? null,
+      contractEndRangeEndMonths: insertPlanning.contractEndRangeEndMonths ?? null,
+      deploymentChecklistCompleted: insertPlanning.deploymentChecklistCompleted ?? null,
+      applicableDocsChecked: insertPlanning.applicableDocsChecked ?? null,
       createdAt: null,
-      updatedAt: null as any // new Date()
+      updatedAt: null
     };
     this.vesselPlanning.set(id, vesselPlanning);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY CREATE!
@@ -4443,11 +4533,20 @@ export class PersistentFileStorage implements IStorage {
   async createRotationPlan(insertPlan: InsertRotationPlan): Promise<RotationPlan> {
     const id = this.currentRotationPlanId++;
     const rotationPlan: RotationPlan = {
-      ...insertPlan,
       id,
-      planStatus: insertPlan.planStatus || "In Draft",
       createdAt: null,
       updatedAt: null,
+      createdBy: insertPlan.createdBy,
+      draftId: insertPlan.draftId,
+      lastEdited: insertPlan.lastEdited,
+      vessels: insertPlan.vessels,
+      crew: insertPlan.crew,
+      planFromDate: insertPlan.planFromDate,
+      planToDate: insertPlan.planToDate,
+      planStatus: insertPlan.planStatus ?? "In Draft",
+      proposedBy: insertPlan.proposedBy ?? null,
+      proposedDate: insertPlan.proposedDate ?? null,
+      assignments: insertPlan.assignments ?? null
     };
     this.rotationPlans.set(id, rotationPlan);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY CREATE!
@@ -4802,10 +4901,37 @@ export class PersistentFileStorage implements IStorage {
   async createDrugAlcoholTestRecord(insertRecord: InsertDrugAlcoholTestRecord): Promise<DrugAlcoholTestRecord> {
     const id = this.currentDrugAlcoholTestRecordId++;
     const record: DrugAlcoholTestRecord = {
-      ...insertRecord,
       id,
+      vesselId: insertRecord.vesselId,
+      testType: insertRecord.testType,
+      alcoholDrugType: insertRecord.alcoholDrugType ?? null,
+      placeLocation: insertRecord.placeLocation ?? null,
+      dateTimeTestCompleted: insertRecord.dateTimeTestCompleted ?? null,
+      externalTestResultsDate: insertRecord.externalTestResultsDate ?? null,
+      incidentId: insertRecord.incidentId ?? null,
+      testingEquipment: insertRecord.testingEquipment ?? null,
+      equipmentNotApplicable: insertRecord.equipmentNotApplicable ?? false,
+      testHistory: insertRecord.testHistory ?? null,
+      frequencyMonths: insertRecord.frequencyMonths ?? 12,
+      plannedPort: insertRecord.plannedPort ?? null,
+      plannedDate: insertRecord.plannedDate ?? null,
+      plannedComments: insertRecord.plannedComments ?? null,
+      incidentTitle: insertRecord.incidentTitle ?? null,
+      incidentDateTime: insertRecord.incidentDateTime ?? null,
+      alcoholTestDateTime: insertRecord.alcoholTestDateTime ?? null,
+      drugTestDateTime: insertRecord.drugTestDateTime ?? null,
+      violations: insertRecord.violations ?? 0,
+      testDateTime: insertRecord.testDateTime ?? null,
+      otherTestType: insertRecord.otherTestType ?? null,
+      reasonForTesting: insertRecord.reasonForTesting ?? null,
+      description: insertRecord.description ?? null,
+      initiatedBy: insertRecord.initiatedBy ?? null,
+      personnelTested: insertRecord.personnelTested ?? null,
+      comments: insertRecord.comments ?? null,
+      masterDeputySignature: insertRecord.masterDeputySignature ?? null,
+      attachmentFile: insertRecord.attachmentFile ?? null,
       createdAt: null,
-      updatedAt: null,
+      updatedAt: null
     };
     this.drugAlcoholTestRecords.set(id, record);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY CREATE!
@@ -4858,10 +4984,34 @@ export class PersistentFileStorage implements IStorage {
   async createRestHoursVesselRecord(insertRecord: InsertRestHoursVesselRecord): Promise<RestHoursVesselRecord> {
     const id = this.currentRestHoursVesselRecordId++;
     const record: RestHoursVesselRecord = {
-      ...insertRecord,
       id,
       createdAt: null,
       updatedAt: null,
+      vesselId: insertRecord.vesselId,
+      vesselName: insertRecord.vesselName,
+      month: insertRecord.month,
+      monthValue: insertRecord.monthValue,
+      totalCrew: insertRecord.totalCrew ?? 0,
+      recordingStatusPercent: insertRecord.recordingStatusPercent ?? 0,
+      activityConflicting: insertRecord.activityConflicting ?? false,
+      crewWithActivityConflicts: insertRecord.crewWithActivityConflicts ?? 0,
+      crewWithActivityConflictsDetails: insertRecord.crewWithActivityConflictsDetails ?? null,
+      totalViolations: insertRecord.totalViolations ?? 0,
+      crewWithViolations: insertRecord.crewWithViolations ?? 0,
+      crewWithViolationsDetails: insertRecord.crewWithViolationsDetails ?? null,
+      totalNCs: insertRecord.totalNCs ?? 0,
+      crewWithNCs: insertRecord.crewWithNCs ?? 0,
+      crewWithNCsDetails: insertRecord.crewWithNCsDetails ?? null,
+      predictedViolations: insertRecord.predictedViolations ?? 0,
+      crewWithPredictedViolations: insertRecord.crewWithPredictedViolations ?? 0,
+      crewWithPredictedViolationsDetails: insertRecord.crewWithPredictedViolationsDetails ?? null,
+      predictedNCs: insertRecord.predictedNCs ?? 0,
+      crewWithPredictedNCs: insertRecord.crewWithPredictedNCs ?? 0,
+      crewWithPredictedNCsDetails: insertRecord.crewWithPredictedNCsDetails ?? null,
+      vesselReviewStatus: insertRecord.vesselReviewStatus ?? "Due",
+      vesselReviewSubmittedDate: insertRecord.vesselReviewSubmittedDate ?? null,
+      officeReviewStatus: insertRecord.officeReviewStatus ?? "Due",
+      officeReviewSubmittedDate: insertRecord.officeReviewSubmittedDate ?? null
     };
     this.restHoursVesselRecords.set(id, record);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY CREATE!
@@ -4926,10 +5076,23 @@ export class PersistentFileStorage implements IStorage {
   async createRestHoursCrewRecord(insertRecord: InsertRestHoursCrewRecord): Promise<RestHoursCrewRecord> {
     const id = this.currentRestHoursCrewRecordId++;
     const record: RestHoursCrewRecord = {
-      ...insertRecord,
       id,
+      vesselId: insertRecord.vesselId,
+      vesselName: insertRecord.vesselName,
+      crewMemberId: insertRecord.crewMemberId,
+      rank: insertRecord.rank,
+      name: insertRecord.name,
+      month: insertRecord.month,
+      monthValue: insertRecord.monthValue,
+      signOnOffInfo: insertRecord.signOnOffInfo ?? null,
+      recordingStatusPercent: insertRecord.recordingStatusPercent ?? 0,
+      activityConflicting: insertRecord.activityConflicting ?? false,
+      totalViolations: insertRecord.totalViolations ?? 0,
+      totalNCs: insertRecord.totalNCs ?? 0,
+      predictedViolations: insertRecord.predictedViolations ?? 0,
+      predictedNCs: insertRecord.predictedNCs ?? 0,
       createdAt: null,
-      updatedAt: null,
+      updatedAt: null
     };
     this.restHoursCrewRecords.set(id, record);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY CREATE!
@@ -5009,10 +5172,17 @@ export class PersistentFileStorage implements IStorage {
     // Create new record if none exists
     const id = this.currentRestHoursDailyRecordId++;
     const record: RestHoursDailyRecord = {
-      ...insertRecord,
       id,
+      crewMemberId: insertRecord.crewMemberId,
+      vesselId: insertRecord.vesselId,
+      rank: insertRecord.rank,
+      name: insertRecord.name,
+      monthYear: insertRecord.monthYear,
+      dailyRecords: insertRecord.dailyRecords,
+      showPlanning: insertRecord.showPlanning ?? null,
+      opaMode: insertRecord.opaMode ?? null,
       createdAt: null,
-      updatedAt: null,
+      updatedAt: null
     };
     this.restHoursDailyRecords.set(id, record);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY CREATE!
@@ -5065,8 +5235,24 @@ export class PersistentFileStorage implements IStorage {
   async createVariableTask(insertTask: InsertVariableTask): Promise<VariableTask> {
     const id = this.currentVariableTaskId++;
     const task: VariableTask = {
-      ...insertTask,
       id,
+      startDateTime: insertTask.startDateTime,
+      finishDateTime: insertTask.finishDateTime,
+      startDateTimeSort: insertTask.startDateTimeSort,
+      finishDateTimeSort: insertTask.finishDateTimeSort,
+      task: insertTask.task,
+      status: insertTask.status,
+      crewInvolved: insertTask.crewInvolved,
+      remarks: insertTask.remarks ?? null,
+      periodValue: insertTask.periodValue ?? null,
+      vesselId: insertTask.vesselId ?? null,
+      isDraft: insertTask.isDraft ?? true,
+      recordType: insertTask.recordType,
+      statusType: insertTask.statusType,
+      selectedTasks: insertTask.selectedTasks ?? null,
+      otherTask: insertTask.otherTask ?? null,
+      crewInvolvedDetails: insertTask.crewInvolvedDetails ?? null,
+      comments: insertTask.comments ?? null
     };
     this.variableTasks.set(id, task);
     this.saveToFile(); // SAVE TO FILE AFTER EVERY CREATE!
