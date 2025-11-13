@@ -33,11 +33,11 @@ export const RestHoursDashboard = (): JSX.Element => {
   const [chart6Toolbar, setChart6Toolbar] = useState<JSX.Element | null>(null);
   
   // Wrap toolbar setters in useCallback to prevent infinite re-render loops
-  const handleSetChart2Toolbar = useCallback((toolbar: JSX.Element) => setChart2Toolbar(toolbar), []);
-  const handleSetRankViolationsToolbar = useCallback((toolbar: JSX.Element) => setRankViolationsToolbar(toolbar), []);
-  const handleSetChart4Toolbar = useCallback((toolbar: JSX.Element) => setChart4Toolbar(toolbar), []);
-  const handleSetChart5Toolbar = useCallback((toolbar: JSX.Element) => setChart5Toolbar(toolbar), []);
-  const handleSetChart6Toolbar = useCallback((toolbar: JSX.Element) => setChart6Toolbar(toolbar), []);
+  const handleSetChart2Toolbar = useCallback((toolbar: JSX.Element | null) => setChart2Toolbar(toolbar), []);
+  const handleSetRankViolationsToolbar = useCallback((toolbar: JSX.Element | null) => setRankViolationsToolbar(toolbar), []);
+  const handleSetChart4Toolbar = useCallback((toolbar: JSX.Element | null) => setChart4Toolbar(toolbar), []);
+  const handleSetChart5Toolbar = useCallback((toolbar: JSX.Element | null) => setChart5Toolbar(toolbar), []);
+  const handleSetChart6Toolbar = useCallback((toolbar: JSX.Element | null) => setChart6Toolbar(toolbar), []);
   
   // Default to current year and current month
   const currentYear = new Date().getFullYear();
