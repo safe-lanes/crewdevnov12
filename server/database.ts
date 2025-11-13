@@ -147,6 +147,12 @@ export class DatabaseStorage implements IStorage {
 
   // Self-migration to ensure master_data_entries has enhanced nationality schema
   private async ensureMasterDataEntriesSchema(): Promise<void> {
+    // DISABLED: This method used MySQL syntax and is not needed for PostgreSQL
+    // The PostgreSQL schema migration already includes all required columns
+    console.log("✅ Schema migrations handled by Drizzle/PostgreSQL migrations");
+    return;
+    
+    /* MySQL-specific code disabled
     try {
       console.log("🔧 Checking master_data_entries schema...");
       
@@ -248,6 +254,7 @@ export class DatabaseStorage implements IStorage {
       console.error("❌ Failed to update master_data_entries schema:", error);
       // Don't throw - allow app to start even if schema update fails
     }
+    */
   }
 
   // Migrate Port master data from ID '005' to ID '018' (consolidation fix)
@@ -879,20 +886,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getNextCrewId(): Promise<string> {
-    // Check if id_counters table has crew_id_counter
+    // Check if id_counters table has crew_id counter
     const result = await this.pool.query(
-      'SELECT counter_value FROM id_counters WHERE counter_name = $1',
-      ['crew_id_counter']
+      'SELECT current_value, prefix, format FROM id_counters WHERE counter_type = $1',
+      ['crew_id']
     );
     
     let currentValue = 0;
+    let prefix = 'A';
+    let format = '0000';
+    
     if (result.rows.length > 0) {
-      currentValue = result.rows[0].counter_value;
+      currentValue = result.rows[0].current_value;
+      prefix = result.rows[0].prefix;
+      format = result.rows[0].format;
     } else {
       // Initialize counter if it doesn't exist
       await this.pool.query(
-        'INSERT INTO id_counters (counter_name, counter_value) VALUES ($1, $2)',
-        ['crew_id_counter', 0]
+        'INSERT INTO id_counters (counter_type, current_value, prefix, format) VALUES ($1, $2, $3, $4)',
+        ['crew_id', 0, 'A', '0000']
       );
     }
     
@@ -900,11 +912,13 @@ export class DatabaseStorage implements IStorage {
     
     // Update counter
     await this.pool.query(
-      'UPDATE id_counters SET counter_value = $1 WHERE counter_name = $2',
-      [nextValue, 'crew_id_counter']
+      'UPDATE id_counters SET current_value = $1, updated_at = NOW() WHERE counter_type = $2',
+      [nextValue, 'crew_id']
     );
     
-    return `A${nextValue.toString().padStart(4, '0')}`;
+    // Use the format length to determine padding
+    const paddingLength = format.length;
+    return `${prefix}${nextValue.toString().padStart(paddingLength, '0')}`;
   }
 
   // Appraisal Result methods
@@ -1026,6 +1040,9 @@ export class DatabaseStorage implements IStorage {
       familyName: candidate.familyName,
       dateOfBirth: candidate.dateOfBirth,
       nationality: candidate.nationality,
+      presentRank: candidate.rankAppliedFor,
+      presentVessel: 'Unassigned',
+      vesselType: 'General',
       rankAppliedFor: candidate.rankAppliedFor,
       email: candidate.email,
       mobile: candidate.mobile,
