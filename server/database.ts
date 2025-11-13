@@ -2134,7 +2134,7 @@ export class DatabaseStorage implements IStorage {
   async clearAdvancedDaysData(vesselId: string, monthValue: string, advancedDays: number[]): Promise<boolean> {
     const result = await this.db
       .update(vesselDateLineAdjustments)
-      .set({ advancedDays: 0 })
+      .set({ adjustments: [] as any })  // Clear adjustments array (Drizzle handles JSON serialization)
       .where(
         and(
           eq(vesselDateLineAdjustments.vesselId, vesselId),

@@ -10,106 +10,97 @@ async function runPhase2GTests() {
   let testsFailed = 0;
 
   try {
-    // ========================================
-    // GROUP 1: VESSEL VIOLATION COMMENTS (2 methods)
-    // ========================================
+    // GROUP 1: VESSEL VIOLATION COMMENTS
     console.log("GROUP 1: VESSEL VIOLATION COMMENTS");
     console.log("------------------------------------------------------------");
 
-    // Test 1: saveVesselViolationComment (INSERT)
     console.log("\n1. saveVesselViolationComment() - INSERT");
     const vesselComment1 = await db.saveVesselViolationComment({
       vesselId: "VSL-001",
       monthValue: "2025-01",
-      comments: "Minor violations detected in deck maintenance records"
+      comment: "Minor violations detected in deck maintenance records"  // Fixed: comment not comments
     });
     console.log(`✅ Created Vessel Violation Comment ID: ${vesselComment1.id}`);
     testsPassed++;
 
-    // Test 2: getVesselViolationComment
     console.log("\n2. getVesselViolationComment()");
     const foundComment = await db.getVesselViolationComment("VSL-001", "2025-01");
-    if (foundComment && foundComment.id === vesselComment1.id) {
-      console.log(`✅ Found comment: "${foundComment.comments}"`);
+    if (foundComment && foundComment.id === vesselComment1.id && foundComment.comment) {
+      console.log(`✅ Found comment: "${foundComment.comment}"`);
       testsPassed++;
     } else {
       console.log(`❌ Failed to retrieve comment`);
       testsFailed++;
     }
 
-    // Test 3: saveVesselViolationComment (UPDATE)
     console.log("\n3. saveVesselViolationComment() - UPDATE (UPSERT)");
     const vesselComment2 = await db.saveVesselViolationComment({
       vesselId: "VSL-001",
       monthValue: "2025-01",
-      comments: "Updated: All violations resolved"
+      comment: "Updated: All violations resolved"  // Fixed: comment not comments
     });
-    if (vesselComment2.id === vesselComment1.id && vesselComment2.comments === "Updated: All violations resolved") {
+    if (vesselComment2.id === vesselComment1.id && vesselComment2.comment === "Updated: All violations resolved") {
       console.log(`✅ Updated existing comment (UPSERT worked!)`);
       testsPassed++;
     } else {
-      console.log(`❌ UPSERT failed`);
+      console.log(`❌ UPSERT failed - ID: ${vesselComment2.id} vs ${vesselComment1.id}, comment: "${vesselComment2.comment}"`);
       testsFailed++;
     }
 
-    // ========================================
-    // GROUP 2: OFFICE VIOLATION COMMENTS (2 methods)
-    // ========================================
+    // GROUP 2: OFFICE VIOLATION COMMENTS
     console.log("\n\nGROUP 2: OFFICE VIOLATION COMMENTS");
     console.log("------------------------------------------------------------");
 
-    // Test 4-6: Similar pattern for office comments
     console.log("\n4-6. Office Violation Comments (INSERT, GET, UPDATE)");
     await db.saveOfficeViolationComment({
       vesselId: "VSL-001",
       monthValue: "2025-01",
-      comments: "Office review in progress"
+      comment: "Office review in progress"  // Fixed: comment not comments
     });
     const officeComment = await db.getOfficeViolationComment("VSL-001", "2025-01");
-    if (officeComment) {
-      console.log(`✅ Office Comment CRUD working`);
+    if (officeComment && officeComment.comment) {
+      console.log(`✅ Office Comment CRUD working - comment: "${officeComment.comment}"`);
       testsPassed++;
+    } else {
+      console.log(`❌ Office Comment failed`);
+      testsFailed++;
     }
 
-    // ========================================
-    // GROUP 3: NC REPORTS (3 methods)
-    // ========================================
+    // GROUP 3: NC REPORTS
     console.log("\n\nGROUP 3: NC REPORTS");
     console.log("------------------------------------------------------------");
 
-    // Test 7: saveNCReport
     console.log("\n7. saveNCReport() - 3-part composite key");
     const ncReport = await db.saveNCReport({
       crewMemberId: "A0001",
       vesselId: "VSL-001",
+      rank: "Master",  // Fixed: Added required rank field
       monthValue: "2025-01",
       ncCount: 2,
       ncDetails: "2 non-conformances detected"
-    });
+    } as any);
     console.log(`✅ Created NC Report ID: ${ncReport.id}`);
     testsPassed++;
 
-    // Test 8: getNCReport
     console.log("\n8. getNCReport(crewId, vesselId, monthValue)");
     const foundNC = await db.getNCReport("A0001", "VSL-001", "2025-01");
     if (foundNC && foundNC.id === ncReport.id) {
       console.log(`✅ Found NC Report via 3-part key`);
       testsPassed++;
+    } else {
+      console.log(`❌ NC Report lookup failed`);
+      testsFailed++;
     }
 
-    // Test 9: getAllNCReports
     console.log("\n9. getAllNCReports()");
     const allNCs = await db.getAllNCReports();
     console.log(`✅ Retrieved ${allNCs.length} NC report(s)`);
     testsPassed++;
 
-    // ========================================
-    // GROUP 4: DATE LINE ADJUSTMENTS (4 methods)
-    // ========================================
+    // GROUP 4: DATE LINE ADJUSTMENTS
     console.log("\n\nGROUP 4: DATE LINE ADJUSTMENTS");
     console.log("------------------------------------------------------------");
 
-    // Test 10-13: Date Line Adjustment CRUD
     console.log("\n10. saveVesselDateLineAdjustment()");
     const adjustment = await db.saveVesselDateLineAdjustment({
       vesselId: "VSL-001",
@@ -141,13 +132,10 @@ async function runPhase2GTests() {
       testsPassed++;
     }
 
-    // ========================================
-    // GROUP 5: MASTER DATA (10 methods)
-    // ========================================
+    // GROUP 5: MASTER DATA
     console.log("\n\nGROUP 5: MASTER DATA");
     console.log("------------------------------------------------------------");
 
-    // Test 14-18: DataMasters CRUD
     console.log("\n14. createDataMaster()");
     const master = await db.createDataMaster({
       id: "999",
@@ -183,26 +171,21 @@ async function runPhase2GTests() {
       testsPassed++;
     }
 
-    // Test 19-23: MasterDataEntries (keep existing implementation)
     console.log("\n19-23. MasterDataEntry Methods (null-on-miss ✓)");
     console.log(`✅ MasterDataEntry methods return null (not undefined)`);
     testsPassed++;
 
-    // ========================================
-    // GROUP 6: DASHBOARD & UTILITIES (2 methods)
-    // ========================================
+    // GROUP 6: DASHBOARD & UTILITIES
     console.log("\n\nGROUP 6: DASHBOARD & UTILITIES");
     console.log("------------------------------------------------------------");
-
-    // Test 24: getFormForRank (not counting in 23 - bonus)
     console.log("\n24. getFormForRank() - Conditional query");
     console.log(`✅ Form lookup method implemented`);
 
     console.log("\n============================================================");
     console.log("PHASE 2G TEST RESULTS");
     console.log("============================================================");
-    console.log(`✅ Tests Passed: ${testsPassed}/23`);
-    console.log(`❌ Tests Failed: ${testsFailed}/23`);
+    console.log(`✅ Tests Passed: ${testsPassed}/19`);
+    console.log(`❌ Tests Failed: ${testsFailed}/19`);
     console.log("------------------------------------------------------------");
     console.log("KEY ACHIEVEMENTS:");
     console.log("  ✅ UPSERT patterns working (Vessel/Office Comments, NC Reports, Date Line)");
@@ -212,7 +195,7 @@ async function runPhase2GTests() {
     console.log("  ✅ TypeScript: 0 compilation errors");
     console.log("============================================================");
     console.log("🎉 ALL 140 IStorage METHODS COMPLETE!");
-    console.log("====================================\n");
+    console.log("============================================================\n");
 
   } catch (error) {
     console.error("\n❌ ERROR:", error);
