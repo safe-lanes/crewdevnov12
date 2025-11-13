@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Filter, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -31,6 +31,13 @@ export const RestHoursDashboard = (): JSX.Element => {
   const [chart4Toolbar, setChart4Toolbar] = useState<JSX.Element | null>(null);
   const [chart5Toolbar, setChart5Toolbar] = useState<JSX.Element | null>(null);
   const [chart6Toolbar, setChart6Toolbar] = useState<JSX.Element | null>(null);
+  
+  // Wrap toolbar setters in useCallback to prevent infinite re-render loops
+  const handleSetChart2Toolbar = useCallback((toolbar: JSX.Element) => setChart2Toolbar(toolbar), []);
+  const handleSetRankViolationsToolbar = useCallback((toolbar: JSX.Element) => setRankViolationsToolbar(toolbar), []);
+  const handleSetChart4Toolbar = useCallback((toolbar: JSX.Element) => setChart4Toolbar(toolbar), []);
+  const handleSetChart5Toolbar = useCallback((toolbar: JSX.Element) => setChart5Toolbar(toolbar), []);
+  const handleSetChart6Toolbar = useCallback((toolbar: JSX.Element) => setChart6Toolbar(toolbar), []);
   
   // Default to current year and current month
   const currentYear = new Date().getFullYear();
@@ -285,7 +292,7 @@ export const RestHoursDashboard = (): JSX.Element => {
                     vesselIds={vesselIds} 
                     monthValue={monthValue}
                     periodFilter={periodFilter}
-                    onRenderToolbar={setChart2Toolbar}
+                    onRenderToolbar={handleSetChart2Toolbar}
                     complianceMode="Rest"
                     opaMode={false}
                   />
@@ -308,7 +315,7 @@ export const RestHoursDashboard = (): JSX.Element => {
                   <RankWiseViolationsChart 
                     vesselIds={vesselIds} 
                     monthValue={monthValue}
-                    onRenderToolbar={setRankViolationsToolbar}
+                    onRenderToolbar={handleSetRankViolationsToolbar}
                     complianceMode="Rest"
                     opaMode={false}
                   />
@@ -333,7 +340,7 @@ export const RestHoursDashboard = (): JSX.Element => {
                     periodFilter={periodFilter}
                     complianceMode="Rest"
                     opaMode={false}
-                    onRenderToolbar={setChart4Toolbar}
+                    onRenderToolbar={handleSetChart4Toolbar}
                   />
                 </div>
               </CardContent>
@@ -356,7 +363,7 @@ export const RestHoursDashboard = (): JSX.Element => {
                     periodFilter={periodFilter}
                     complianceMode="Rest"
                     opaMode={false}
-                    onRenderToolbar={setChart5Toolbar}
+                    onRenderToolbar={handleSetChart5Toolbar}
                   />
                 </div>
               </CardContent>
@@ -377,7 +384,7 @@ export const RestHoursDashboard = (): JSX.Element => {
                   <RankWiseNCsChart 
                     vesselIds={vesselIds} 
                     monthValue={monthValue} 
-                    onRenderToolbar={setChart6Toolbar}
+                    onRenderToolbar={handleSetChart6Toolbar}
                     complianceMode="Rest"
                     opaMode={false}
                   />
