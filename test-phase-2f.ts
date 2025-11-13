@@ -16,7 +16,7 @@ async function runPhase2FTests() {
     console.log("GROUP 1: VARIABLE TASKS METHODS");
     console.log("------------------------------------------------------------");
 
-    // Test 1: Create Variable Task
+    // Test 1: Create Variable Task (using native objects - JSON normalization test)
     console.log("\n1. createVariableTask()");
     const newVariableTask = await db.createVariableTask({
       startDateTime: "2025-01-15 08:00",
@@ -31,11 +31,11 @@ async function runPhase2FTests() {
       vesselId: "VSL-001",
       periodValue: "2025-01",
       isDraft: false,
-      selectedTasks: JSON.stringify(["Deck Maintenance", "Safety Drill"]),
-      crewInvolvedDetails: JSON.stringify([
+      selectedTasks: ["Deck Maintenance", "Safety Drill"] as any, // Native array - will be stringified
+      crewInvolvedDetails: [
         { crewMemberId: "A0001", name: "John Smith", rank: "Master" },
         { crewMemberId: "A0002", name: "Jane Doe", rank: "Chief Officer" }
-      ])
+      ] as any // Native array - will be stringified
     });
     console.log(`✅ Created Variable Task ID: ${newVariableTask.id}`);
     console.log(`   Vessel: ${newVariableTask.vesselId}, Period: ${newVariableTask.periodValue}, Status: ${newVariableTask.status}`);
@@ -92,7 +92,7 @@ async function runPhase2FTests() {
     console.log("\n\nGROUP 2: FIXED TASKS METHODS");
     console.log("------------------------------------------------------------");
 
-    // Test 6: Create Fixed Task
+    // Test 6: Create Fixed Task (using native objects - JSON normalization test)
     console.log("\n6. createFixedTask()");
     const newFixedTask = await db.createFixedTask({
       crewMemberId: "A0001",
@@ -100,8 +100,8 @@ async function runPhase2FTests() {
       rank: "Master",
       name: "John Smith",
       monthYear: "2025-01",
-      seaHours: { "00:00": "R", "00:30": "R", "01:00": "R" },
-      portHours: { "00:00": "W", "00:30": "W", "01:00": "W" }
+      seaHours: { "00:00": "R", "00:30": "R", "01:00": "R" } as any, // Native object - will be stringified
+      portHours: { "00:00": "W", "00:30": "W", "01:00": "W" } as any // Native object - will be stringified
     });
     console.log(`✅ Created Fixed Task ID: ${newFixedTask.id}`);
     console.log(`   Crew: ${newFixedTask.name} (${newFixedTask.rank})`);
@@ -165,18 +165,18 @@ async function runPhase2FTests() {
     console.log("\n\nGROUP 3: DRUG & ALCOHOL TESTING METHODS");
     console.log("------------------------------------------------------------");
 
-    // Test 12: Create Drug & Alcohol Test Record
+    // Test 12: Create Drug & Alcohol Test Record (using native objects - JSON normalization test)
     console.log("\n12. createDrugAlcoholTestRecord()");
     const newDrugTest = await db.createDrugAlcoholTestRecord({
       vesselId: "VSL-001",
       testType: "annual",
-      alcoholDrugType: JSON.stringify(["Alcohol", "Drug"]),
+      alcoholDrugType: ["Alcohol", "Drug"] as any, // Native array - will be stringified
       placeLocation: "Port of Singapore",
       dateTimeTestCompleted: "15 Jan 2025 - 1000 Hours",
       comments: "Annual routine test - all clear",
-      personnelTested: JSON.stringify([
+      personnelTested: [
         { id: "A0001", rank: "Master", name: "John Smith", alcoholResults: "Negative", drugResults: "Negative" }
-      ])
+      ] as any // Native array - will be stringified
     });
     console.log(`✅ Created Drug Test ID: ${newDrugTest.id}`);
     console.log(`   Type: ${newDrugTest.testType}, Location: ${newDrugTest.placeLocation}`);
@@ -187,13 +187,13 @@ async function runPhase2FTests() {
     const alcoholTest = await db.createDrugAlcoholTestRecord({
       vesselId: "VSL-001",
       testType: "monthly",
-      alcoholDrugType: JSON.stringify(["Alcohol"]),
+      alcoholDrugType: ["Alcohol"] as any, // Native array - will be stringified
       placeLocation: "Port of Dubai",
       dateTimeTestCompleted: "20 Jan 2025 - 1400 Hours",
       comments: "Monthly spot check",
-      personnelTested: JSON.stringify([
+      personnelTested: [
         { id: "A0002", rank: "Chief Officer", name: "Jane Doe", alcoholResults: "Negative" }
-      ])
+      ] as any // Native array - will be stringified
     });
     console.log(`✅ Created second test ID: ${alcoholTest.id} (type: ${alcoholTest.testType})`);
     testsPassed++;

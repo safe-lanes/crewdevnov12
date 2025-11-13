@@ -1667,9 +1667,80 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount !== null && result.rowCount > 0;
   }
 
+  // JSON Normalization Helpers for Phase 2F
+  private parseVariableTask(task: VariableTask): VariableTask {
+    return {
+      ...task,
+      selectedTasks: task.selectedTasks ? JSON.parse(task.selectedTasks as any) : null,
+      crewInvolvedDetails: task.crewInvolvedDetails ? JSON.parse(task.crewInvolvedDetails as any) : null
+    };
+  }
+
+  private stringifyVariableTaskInput(task: any): any {
+    const result = { ...task };
+    if (task.selectedTasks !== undefined) {
+      result.selectedTasks = task.selectedTasks ? JSON.stringify(task.selectedTasks) : null;
+    }
+    if (task.crewInvolvedDetails !== undefined) {
+      result.crewInvolvedDetails = task.crewInvolvedDetails ? JSON.stringify(task.crewInvolvedDetails) : null;
+    }
+    return result;
+  }
+
+  private parseFixedTask(task: FixedTask): FixedTask {
+    return {
+      ...task,
+      seaHours: task.seaHours ? JSON.parse(task.seaHours as any) : null,
+      portHours: task.portHours ? JSON.parse(task.portHours as any) : null
+    };
+  }
+
+  private stringifyFixedTaskInput(task: any): any {
+    const result = { ...task };
+    if (task.seaHours !== undefined) {
+      result.seaHours = task.seaHours ? JSON.stringify(task.seaHours) : null;
+    }
+    if (task.portHours !== undefined) {
+      result.portHours = task.portHours ? JSON.stringify(task.portHours) : null;
+    }
+    return result;
+  }
+
+  private parseDrugAlcoholTestRecord(record: DrugAlcoholTestRecord): DrugAlcoholTestRecord {
+    return {
+      ...record,
+      alcoholDrugType: record.alcoholDrugType ? JSON.parse(record.alcoholDrugType as any) : null,
+      testingEquipment: record.testingEquipment ? JSON.parse(record.testingEquipment as any) : null,
+      testHistory: record.testHistory ? JSON.parse(record.testHistory as any) : null,
+      personnelTested: record.personnelTested ? JSON.parse(record.personnelTested as any) : null,
+      masterDeputySignature: record.masterDeputySignature ? JSON.parse(record.masterDeputySignature as any) : null
+    };
+  }
+
+  private stringifyDrugAlcoholTestRecordInput(record: any): any {
+    const result = { ...record };
+    if (record.alcoholDrugType !== undefined) {
+      result.alcoholDrugType = record.alcoholDrugType ? JSON.stringify(record.alcoholDrugType) : null;
+    }
+    if (record.testingEquipment !== undefined) {
+      result.testingEquipment = record.testingEquipment ? JSON.stringify(record.testingEquipment) : null;
+    }
+    if (record.testHistory !== undefined) {
+      result.testHistory = record.testHistory ? JSON.stringify(record.testHistory) : null;
+    }
+    if (record.personnelTested !== undefined) {
+      result.personnelTested = record.personnelTested ? JSON.stringify(record.personnelTested) : null;
+    }
+    if (record.masterDeputySignature !== undefined) {
+      result.masterDeputySignature = record.masterDeputySignature ? JSON.stringify(record.masterDeputySignature) : null;
+    }
+    return result;
+  }
+
   // Variable Tasks Methods
   async getVariableTasks(): Promise<VariableTask[]> {
-    return await this.db.select().from(variableTasks);
+    const tasks = await this.db.select().from(variableTasks);
+    return tasks.map(task => this.parseVariableTask(task));
   }
 
   async getVariableTask(id: number): Promise<VariableTask | null> {
@@ -1677,7 +1748,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(variableTasks)
       .where(eq(variableTasks.id, id));
-    return results[0] || null;
+    return results[0] ? this.parseVariableTask(results[0]) : null;
   }
 
   async getVariableTasksByFilters(filters: { vesselId?: string, periodValue?: string, status?: string }): Promise<VariableTask[]> {
@@ -1692,27 +1763,30 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(variableTasks.status, filters.status));
     }
     
-    if (conditions.length === 0) {
-      return await this.db.select().from(variableTasks);
-    }
-    return await this.db.select().from(variableTasks).where(and(...conditions));
+    const tasks = conditions.length === 0
+      ? await this.db.select().from(variableTasks)
+      : await this.db.select().from(variableTasks).where(and(...conditions));
+    
+    return tasks.map(task => this.parseVariableTask(task));
   }
 
   async createVariableTask(task: InsertVariableTask): Promise<VariableTask> {
+    const stringified = this.stringifyVariableTaskInput(task);
     const [created] = await this.db
       .insert(variableTasks)
-      .values(task)
+      .values(stringified)
       .returning();
-    return created;
+    return this.parseVariableTask(created);
   }
 
   async updateVariableTask(id: number, task: Partial<InsertVariableTask>): Promise<VariableTask | null> {
+    const stringified = this.stringifyVariableTaskInput(task);
     const [updated] = await this.db
       .update(variableTasks)
-      .set(task)
+      .set(stringified)
       .where(eq(variableTasks.id, id))
       .returning();
-    return updated || null;
+    return updated ? this.parseVariableTask(updated) : null;
   }
 
   async deleteVariableTask(id: number): Promise<boolean> {
@@ -1724,7 +1798,8 @@ export class DatabaseStorage implements IStorage {
 
   // Fixed Tasks Methods
   async getFixedTasks(): Promise<FixedTask[]> {
-    return await this.db.select().from(fixedTasks);
+    const tasks = await this.db.select().from(fixedTasks);
+    return tasks.map(task => this.parseFixedTask(task));
   }
 
   async getFixedTask(id: number): Promise<FixedTask | null> {
@@ -1732,11 +1807,11 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(fixedTasks)
       .where(eq(fixedTasks.id, id));
-    return results[0] || null;
+    return results[0] ? this.parseFixedTask(results[0]) : null;
   }
 
   async getFixedTasksByVesselAndMonth(vesselId: string, monthYear: string): Promise<FixedTask[]> {
-    return await this.db
+    const tasks = await this.db
       .select()
       .from(fixedTasks)
       .where(
@@ -1745,6 +1820,7 @@ export class DatabaseStorage implements IStorage {
           eq(fixedTasks.monthYear, monthYear)
         )
       );
+    return tasks.map(task => this.parseFixedTask(task));
   }
 
   async getFixedTaskByKey(
@@ -1762,24 +1838,26 @@ export class DatabaseStorage implements IStorage {
           eq(fixedTasks.monthYear, monthYear)
         )
       );
-    return results[0] || null;
+    return results[0] ? this.parseFixedTask(results[0]) : null;
   }
 
   async createFixedTask(task: InsertFixedTask): Promise<FixedTask> {
+    const stringified = this.stringifyFixedTaskInput(task);
     const [created] = await this.db
       .insert(fixedTasks)
-      .values(task)
+      .values(stringified)
       .returning();
-    return created;
+    return this.parseFixedTask(created);
   }
 
   async updateFixedTask(id: number, task: Partial<InsertFixedTask>): Promise<FixedTask | null> {
+    const stringified = this.stringifyFixedTaskInput(task);
     const [updated] = await this.db
       .update(fixedTasks)
-      .set(task)
+      .set(stringified)
       .where(eq(fixedTasks.id, id))
       .returning();
-    return updated || null;
+    return updated ? this.parseFixedTask(updated) : null;
   }
 
   async deleteFixedTask(id: number): Promise<boolean> {
@@ -1791,7 +1869,8 @@ export class DatabaseStorage implements IStorage {
 
   // Drug & Alcohol Testing Methods
   async getDrugAlcoholTestRecords(): Promise<DrugAlcoholTestRecord[]> {
-    return await this.db.select().from(drugAlcoholTestRecords);
+    const records = await this.db.select().from(drugAlcoholTestRecords);
+    return records.map(record => this.parseDrugAlcoholTestRecord(record));
   }
 
   async getDrugAlcoholTestRecord(id: number): Promise<DrugAlcoholTestRecord | null> {
@@ -1799,7 +1878,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(drugAlcoholTestRecords)
       .where(eq(drugAlcoholTestRecords.id, id));
-    return results[0] || null;
+    return results[0] ? this.parseDrugAlcoholTestRecord(results[0]) : null;
   }
 
   async getDrugAlcoholTestRecordsByVessel(vesselId: string, testType?: string): Promise<DrugAlcoholTestRecord[]> {
@@ -1807,27 +1886,30 @@ export class DatabaseStorage implements IStorage {
     if (testType) {
       conditions.push(eq(drugAlcoholTestRecords.testType, testType));
     }
-    return await this.db
+    const records = await this.db
       .select()
       .from(drugAlcoholTestRecords)
       .where(and(...conditions));
+    return records.map(record => this.parseDrugAlcoholTestRecord(record));
   }
 
   async createDrugAlcoholTestRecord(record: InsertDrugAlcoholTestRecord): Promise<DrugAlcoholTestRecord> {
+    const stringified = this.stringifyDrugAlcoholTestRecordInput(record);
     const [created] = await this.db
       .insert(drugAlcoholTestRecords)
-      .values(record)
+      .values(stringified)
       .returning();
-    return created;
+    return this.parseDrugAlcoholTestRecord(created);
   }
 
   async updateDrugAlcoholTestRecord(id: number, record: Partial<InsertDrugAlcoholTestRecord>): Promise<DrugAlcoholTestRecord | null> {
+    const stringified = this.stringifyDrugAlcoholTestRecordInput(record);
     const [updated] = await this.db
       .update(drugAlcoholTestRecords)
-      .set(record)
+      .set(stringified)
       .where(eq(drugAlcoholTestRecords.id, id))
       .returning();
-    return updated || null;
+    return updated ? this.parseDrugAlcoholTestRecord(updated) : null;
   }
 
   async deleteDrugAlcoholTestRecord(id: number): Promise<boolean> {
