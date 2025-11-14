@@ -121,6 +121,11 @@ export class DatabaseStorage implements IStorage {
     await this.pool.end();
   }
 
+  // Public accessor for migration scripts
+  getDb() {
+    return this.db;
+  }
+
   // Column Allow-List Filter Methods
   private async getExistingColumns(tableName: string): Promise<Set<string>> {
     if (this.columnCache.has(tableName)) {
@@ -923,7 +928,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCrewMember(insertCrewMember: InsertCrewMember): Promise<CrewMember> {
-    const [created] = await this.db.insert(crewMembers).values(insertCrewMember).returning();
+    // Ensure id is set (auto-generate if not provided)
+    const dataWithId = {
+      ...insertCrewMember,
+      id: insertCrewMember.id || await this.getNextCrewId()
+    };
+    const [created] = await this.db.insert(crewMembers).values(dataWithId).returning();
     return created;
   }
 
@@ -1073,7 +1083,7 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount !== null && result.rowCount > 0;
   }
 
-  async transferRecruitedCandidate(candidateId: string): Promise<CrewMember> {
+  async transferRecruitedCandidate(candidateId: string): Promise<{ crewMember: CrewMember, candidateId: string }> {
     // Get the candidate
     const candidate = await this.getRecruitmentCandidate(candidateId);
     if (!candidate) {
@@ -1083,23 +1093,33 @@ export class DatabaseStorage implements IStorage {
     // Generate new crew ID
     const newCrewId = await this.getNextCrewId();
     
+    // Parse application data if available
+    let applicationData: any = {};
+    if (candidate.applicationData) {
+      try {
+        applicationData = JSON.parse(candidate.applicationData);
+      } catch (e) {
+        console.error('Failed to parse application data:', e);
+      }
+    }
+    
     // Create crew member from candidate data
     const crewMemberData: InsertCrewMember = {
       id: newCrewId,
-      empNo: candidate.empNo || '',
+      empNo: applicationData.empNo || '',
       firstName: candidate.firstName,
       middleName: candidate.middleName,
       familyName: candidate.familyName,
-      dateOfBirth: candidate.dateOfBirth,
+      dateOfBirth: candidate.dob, // Use dob from candidate
       nationality: candidate.nationality,
       presentRank: candidate.rankAppliedFor,
       presentVessel: 'Unassigned',
-      vesselType: 'General',
+      vesselType: candidate.vesselType || 'General',
       rankAppliedFor: candidate.rankAppliedFor,
-      email: candidate.email,
-      mobile: candidate.mobile,
-      residentialAddressLine1: candidate.residentialAddressLine1,
-      residentialAddressLine2: candidate.residentialAddressLine2,
+      email: applicationData.email || null,
+      mobile: applicationData.mobile || null,
+      residentialAddressLine1: applicationData.residentialAddressLine1 || null,
+      residentialAddressLine2: applicationData.residentialAddressLine2 || null,
       status: 'Active'
     };
     
@@ -1108,11 +1128,10 @@ export class DatabaseStorage implements IStorage {
     
     // Update candidate status to "Recruited"
     await this.updateRecruitmentCandidate(candidateId, {
-      status: 'Recruited',
-      transferredToCrewId: newCrewId
+      status: 'Recruited'
     });
     
-    return crewMember;
+    return { crewMember, crewId: newCrewId };
   }
 
   // Vessel Groups Methods
@@ -1422,18 +1441,18 @@ export class DatabaseStorage implements IStorage {
       .where(eq(vesselPlanning.crewMemberId, crewId));
     
     for (const planning of vesselPlanningEntries) {
-      // Calculate planning end date if available
-      const planStart = planning.plannedDate || planning.joiningDate;
+      // Use joiningDate as start date
+      const planStart = planning.joiningDate;
       if (!planStart) continue;
       
-      // Use endDate if available, otherwise calculate from contract period
-      let planEnd = planning.endDate;
-      if (!planEnd && planning.contractPeriod) {
+      // Calculate end date from contract period
+      let planEnd: string;
+      if (planning.contractPeriodMonths) {
         const planStartObj = new Date(planStart);
         const planEndObj = new Date(planStartObj);
-        planEndObj.setMonth(planEndObj.getMonth() + planning.contractPeriod);
+        planEndObj.setMonth(planEndObj.getMonth() + planning.contractPeriodMonths);
         planEnd = planEndObj.toISOString().split('T')[0];
-      } else if (!planEnd) {
+      } else {
         // Default to 6 months if no contract period specified
         const planStartObj = new Date(planStart);
         const planEndObj = new Date(planStartObj);
@@ -1785,7 +1804,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(variableTasks)
       .where(eq(variableTasks.id, id));
-    return results[0] ? this.parseVariableTask(results[0]) : null;
+    return results[0] ? this.parseVariableTask(results[0]) : undefined;
   }
 
   async getVariableTasksByFilters(filters: { vesselId?: string, periodValue?: string, status?: string }): Promise<VariableTask[]> {
@@ -1823,7 +1842,7 @@ export class DatabaseStorage implements IStorage {
       .set(stringified)
       .where(eq(variableTasks.id, id))
       .returning();
-    return updated ? this.parseVariableTask(updated) : null;
+    return updated ? this.parseVariableTask(updated) : undefined;
   }
 
   async deleteVariableTask(id: number): Promise<boolean> {
@@ -1844,7 +1863,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(fixedTasks)
       .where(eq(fixedTasks.id, id));
-    return results[0] ? this.parseFixedTask(results[0]) : null;
+    return results[0] ? this.parseFixedTask(results[0]) : undefined;
   }
 
   async getFixedTasksByVesselAndMonth(vesselId: string, monthYear: string): Promise<FixedTask[]> {
@@ -1875,7 +1894,7 @@ export class DatabaseStorage implements IStorage {
           eq(fixedTasks.monthYear, monthYear)
         )
       );
-    return results[0] ? this.parseFixedTask(results[0]) : null;
+    return results[0] ? this.parseFixedTask(results[0]) : undefined;
   }
 
   async createFixedTask(task: InsertFixedTask): Promise<FixedTask> {
@@ -1894,7 +1913,7 @@ export class DatabaseStorage implements IStorage {
       .set(stringified)
       .where(eq(fixedTasks.id, id))
       .returning();
-    return updated ? this.parseFixedTask(updated) : null;
+    return updated ? this.parseFixedTask(updated) : undefined;
   }
 
   async deleteFixedTask(id: number): Promise<boolean> {
@@ -1915,7 +1934,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(drugAlcoholTestRecords)
       .where(eq(drugAlcoholTestRecords.id, id));
-    return results[0] ? this.parseDrugAlcoholTestRecord(results[0]) : null;
+    return results[0] ? this.parseDrugAlcoholTestRecord(results[0]) : undefined;
   }
 
   async getDrugAlcoholTestRecordsByVessel(vesselId: string, testType?: string): Promise<DrugAlcoholTestRecord[]> {
@@ -1946,7 +1965,7 @@ export class DatabaseStorage implements IStorage {
       .set(stringified)
       .where(eq(drugAlcoholTestRecords.id, id))
       .returning();
-    return updated ? this.parseDrugAlcoholTestRecord(updated) : null;
+    return updated ? this.parseDrugAlcoholTestRecord(updated) : undefined;
   }
 
   async deleteDrugAlcoholTestRecord(id: number): Promise<boolean> {
@@ -1957,7 +1976,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Vessel Violation Comments Methods
-  async getVesselViolationComment(vesselId: string, monthValue: string): Promise<VesselViolationComment | undefined> {
+  async getVesselViolationComment(vesselId: string, monthValue: string): Promise<VesselViolationComment | null> {
     const results = await this.db
       .select()
       .from(vesselViolationComments)
@@ -1967,7 +1986,7 @@ export class DatabaseStorage implements IStorage {
           eq(vesselViolationComments.monthValue, monthValue)
         )
       );
-    return results[0] || undefined;
+    return results[0] || null;
   }
 
   async saveVesselViolationComment(comment: InsertVesselViolationComment): Promise<VesselViolationComment> {
@@ -1998,7 +2017,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Office Violation Comments Methods
-  async getOfficeViolationComment(vesselId: string, monthValue: string): Promise<OfficeViolationComment | undefined> {
+  async getOfficeViolationComment(vesselId: string, monthValue: string): Promise<OfficeViolationComment | null> {
     const results = await this.db
       .select()
       .from(officeViolationComments)
@@ -2008,7 +2027,7 @@ export class DatabaseStorage implements IStorage {
           eq(officeViolationComments.monthValue, monthValue)
         )
       );
-    return results[0] || undefined;
+    return results[0] || null;
   }
 
   async saveOfficeViolationComment(comment: InsertOfficeViolationComment): Promise<OfficeViolationComment> {
@@ -2043,7 +2062,7 @@ export class DatabaseStorage implements IStorage {
     return await this.db.select().from(ncReports);
   }
 
-  async getNCReport(crewMemberId: string, vesselId: string, monthValue: string): Promise<NCReport | undefined> {
+  async getNCReport(crewMemberId: string, vesselId: string, monthValue: string): Promise<NCReport | null> {
     const results = await this.db
       .select()
       .from(ncReports)
@@ -2054,7 +2073,7 @@ export class DatabaseStorage implements IStorage {
           eq(ncReports.monthValue, monthValue)
         )
       );
-    return results[0] || undefined;
+    return results[0] || null;
   }
 
   async saveNCReport(report: InsertNCReport): Promise<NCReport> {
@@ -2086,7 +2105,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Date Line Adjustments Methods
-  async getVesselDateLineAdjustment(vesselId: string, monthValue: string): Promise<VesselDateLineAdjustment | undefined> {
+  async getVesselDateLineAdjustment(vesselId: string, monthValue: string): Promise<VesselDateLineAdjustment | null> {
     const results = await this.db
       .select()
       .from(vesselDateLineAdjustments)
@@ -2096,7 +2115,7 @@ export class DatabaseStorage implements IStorage {
           eq(vesselDateLineAdjustments.monthValue, monthValue)
         )
       );
-    return results[0] || undefined;
+    return results[0] || null;
   }
 
   async saveVesselDateLineAdjustment(adjustment: InsertVesselDateLineAdjustment): Promise<VesselDateLineAdjustment> {
@@ -2174,7 +2193,7 @@ export class DatabaseStorage implements IStorage {
       .from(rankGroups)
       .where(like(rankGroups.ranks, `%${rankLabel}%`));
     
-    if (rankGroupResults.length === 0) return null;
+    if (rankGroupResults.length === 0) return undefined;
     
     const formIds = rankGroupResults.map(rg => rg.formId);
     
@@ -2307,7 +2326,7 @@ export class DatabaseStorage implements IStorage {
     const [result]: any = await this.pool.query(updateSql, [...values, id]);
     
     if (result.affectedRows === 0) {
-      return null;
+      return undefined;
     }
     
     // Use raw SQL for SELECT
@@ -2517,10 +2536,10 @@ export class DatabaseStorage implements IStorage {
           id: "2025-05-14",
           firstName: "James",
           middleName: "Michael",
-          lastName: "",
-          rank: "Master",
+          familyName: "",
+          presentRank: "Master",
           nationality: "British",
-          vessel: "MT Sail One",
+          presentVessel: "MT Sail One",
           vesselType: "Oil Tanker",
           signOnDate: "01-Feb-2025",
         },
@@ -2528,10 +2547,10 @@ export class DatabaseStorage implements IStorage {
           id: "2025-03-12",
           firstName: "Anna",
           middleName: "Marie",
-          lastName: "Johnson",
-          rank: "Chief Engineer",
+          familyName: "Johnson",
+          presentRank: "Chief Engineer",
           nationality: "British",
-          vessel: "MT Sail Ten",
+          presentVessel: "MT Sail Ten",
           vesselType: "LPG Tanker",
           signOnDate: "01-Jan-2025",
         },
@@ -2539,10 +2558,10 @@ export class DatabaseStorage implements IStorage {
           id: "2025-02-12",
           firstName: "David",
           middleName: "Lee",
-          lastName: "Brown",
-          rank: "Able Seaman",
+          familyName: "Brown",
+          presentRank: "Able Seaman",
           nationality: "Indian",
-          vessel: "MT Sail Two",
+          presentVessel: "MT Sail Two",
           vesselType: "Container",
           signOnDate: "01-Feb-2025",
         },

@@ -58,7 +58,7 @@ async function clearAllTables() {
   
   for (const table of tablesToClear) {
     try {
-      await storage.db.execute(`TRUNCATE TABLE ${table} CASCADE`);
+      await storage.getDb().execute(`TRUNCATE TABLE ${table} CASCADE`);
     } catch (error: any) {
       // Skip if table doesn't exist
       if (error.code !== '42P01') {
@@ -345,7 +345,7 @@ async function migrateVesselPlanning(jsonData: JSONData) {
   
   console.log(`Migrating ${jsonData.vesselPlanning.length} vessel planning records...`);
   for (const item of jsonData.vesselPlanning) {
-    await storage.createVesselPlanningEntry(extractFromTuple(item));
+    await storage.createVesselPlanning(extractFromTuple(item));
   }
   console.log(`✅ Vessel Planning migrated (${jsonData.vesselPlanning.length} records)\n`);
 }

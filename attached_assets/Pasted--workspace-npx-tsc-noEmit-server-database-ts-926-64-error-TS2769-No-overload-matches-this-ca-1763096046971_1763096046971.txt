@@ -1,0 +1,211 @@
+~/workspace$ npx tsc --noEmit
+server/database.ts:926:64 - error TS2769: No overload matches this call.
+  Overload 1 of 2, '(value: { id: string | SQL<unknown> | Placeholder<string, any>; firstName: string | SQL<unknown> | Placeholder<string, any>; nationality: string | SQL<unknown> | Placeholder<...>; ... 62 more ...; updatedAt?: SQL<...> | ... 3 more ... | undefined; }): PgInsertBase<...>', gave the following error.
+    Argument of type '{ firstName: string; nationality: string; presentRank: string; presentVessel: string; vesselType: string; id?: string | undefined; empNo?: string | null | undefined; middleName?: string | null | undefined; ... 55 more ...; children?: string | ... 1 more ... | undefined; }' is not assignable to parameter of type '{ id: string | SQL<unknown> | Placeholder<string, any>; firstName: string | SQL<unknown> | Placeholder<string, any>; nationality: string | SQL<unknown> | Placeholder<...>; ... 62 more ...; updatedAt?: SQL<...> | ... 3 more ... | undefined; }'.
+      Types of property 'id' are incompatible.
+        Type 'string | undefined' is not assignable to type 'string | SQL<unknown> | Placeholder<string, any>'.
+          Type 'undefined' is not assignable to type 'string | SQL<unknown> | Placeholder<string, any>'.
+  Overload 2 of 2, '(values: { id: string | SQL<unknown> | Placeholder<string, any>; firstName: string | SQL<unknown> | Placeholder<string, any>; nationality: string | SQL<unknown> | Placeholder<...>; ... 62 more ...; updatedAt?: SQL<...> | ... 3 more ... | undefined; }[]): PgInsertBase<...>', gave the following error.
+    Argument of type '{ firstName: string; nationality: string; presentRank: string; presentVessel: string; vesselType: string; id?: string | undefined; empNo?: string | null | undefined; middleName?: string | null | undefined; ... 55 more ...; children?: string | ... 1 more ... | undefined; }' is not assignable to parameter of type '{ id: string | SQL<unknown> | Placeholder<string, any>; firstName: string | SQL<unknown> | Placeholder<string, any>; nationality: string | SQL<unknown> | Placeholder<...>; ... 62 more ...; updatedAt?: SQL<...> | ... 3 more ... | undefined; }[]'.
+      Type '{ firstName: string; nationality: string; presentRank: string; presentVessel: string; vesselType: string; id?: string | undefined; empNo?: string | null | undefined; middleName?: string | null | undefined; ... 55 more ...; children?: string | ... 1 more ... | undefined; }' is missing the following properties from type '{ id: string | SQL<unknown> | Placeholder<string, any>; firstName: string | SQL<unknown> | Placeholder<string, any>; nationality: string | SQL<unknown> | Placeholder<...>; ... 62 more ...; updatedAt?: SQL<...> | ... 3 more ... | undefined; }[]': length, pop, push, concat, and 35 more.
+
+926     const [created] = await this.db.insert(crewMembers).values(insertCrewMember).returning();
+                                                                   ~~~~~~~~~~~~~~~~
+
+
+server/database.ts:1076:9 - error TS2416: Property 'transferRecruitedCandidate' in type 'DatabaseStorage' is not assignable to the same property in base type 'IStorage'.
+  Type '(candidateId: string) => Promise<{ id: string; empNo: string | null; firstName: string; middleName: string | null; familyName: string | null; dateOfBirth: string | null; age: string | null; ... 58 more ...; updatedAt: Date | null; }>' is not assignable to type '(candidateId: string) => Promise<{ crewMember: { id: string; empNo: string | null; firstName: string; middleName: string | null; familyName: string | null; dateOfBirth: string | null; age: string | null; ... 58 more ...; updatedAt: Date | null; }; crewId: string; }>'.
+    Type 'Promise<{ id: string; empNo: string | null; firstName: string; middleName: string | null; familyName: string | null; dateOfBirth: string | null; age: string | null; nationality: string; presentRank: string; ... 56 more ...; updatedAt: Date | null; }>' is not assignable to type 'Promise<{ crewMember: { id: string; empNo: string | null; firstName: string; middleName: string | null; familyName: string | null; dateOfBirth: string | null; age: string | null; nationality: string; ... 57 more ...; updatedAt: Date | null; }; crewId: string; }>'.
+      Type '{ id: string; empNo: string | null; firstName: string; middleName: string | null; familyName: string | null; dateOfBirth: string | null; age: string | null; nationality: string; presentRank: string; ... 56 more ...; updatedAt: Date | null; }' is missing the following properties from type '{ crewMember: { id: string; empNo: string | null; firstName: string; middleName: string | null; familyName: string | null; dateOfBirth: string | null; age: string | null; nationality: string; ... 57 more ...; updatedAt: Date | null; }; crewId: string; }': crewMember, crewId
+
+1076   async transferRecruitedCandidate(candidateId: string): Promise<CrewMember> {
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+server/database.ts:1089:24 - error TS2339: Property 'empNo' does not exist on type '{ id: string; firstName: string; middleName: string | null; familyName: string; nationality: string; presentRank: string; rankAppliedFor: string; vesselType: string; status: string; createdAt: Date | null; updatedAt: Date | null; fileNo: string; dob: string; applicationData: string | null; }'.
+
+1089       empNo: candidate.empNo || '',
+                            ~~~~~
+
+server/database.ts:1093:30 - error TS2339: Property 'dateOfBirth' does not exist on type '{ id: string; firstName: string; middleName: string | null; familyName: string; nationality: string; presentRank: string; rankAppliedFor: string; vesselType: string; status: string; createdAt: Date | null; updatedAt: Date | null; fileNo: string; dob: string; applicationData: string | null; }'.
+
+1093       dateOfBirth: candidate.dateOfBirth,
+                                  ~~~~~~~~~~~
+
+server/database.ts:1099:24 - error TS2339: Property 'email' does not exist on type '{ id: string; firstName: string; middleName: string | null; familyName: string; nationality: string; presentRank: string; rankAppliedFor: string; vesselType: string; status: string; createdAt: Date | null; updatedAt: Date | null; fileNo: string; dob: string; applicationData: string | null; }'.
+
+1099       email: candidate.email,
+                            ~~~~~
+
+server/database.ts:1100:25 - error TS2339: Property 'mobile' does not exist on type '{ id: string; firstName: string; middleName: string | null; familyName: string; nationality: string; presentRank: string; rankAppliedFor: string; vesselType: string; status: string; createdAt: Date | null; updatedAt: Date | null; fileNo: string; dob: string; applicationData: string | null; }'.
+
+1100       mobile: candidate.mobile,
+                             ~~~~~~
+
+server/database.ts:1101:42 - error TS2339: Property 'residentialAddressLine1' does not exist on type '{ id: string; firstName: string; middleName: string | null; familyName: string; nationality: string; presentRank: string; rankAppliedFor: string; vesselType: string; status: string; createdAt: Date | null; updatedAt: Date | null; fileNo: string; dob: string; applicationData: string | null; }'.
+
+1101       residentialAddressLine1: candidate.residentialAddressLine1,
+                                              ~~~~~~~~~~~~~~~~~~~~~~~
+
+server/database.ts:1102:42 - error TS2339: Property 'residentialAddressLine2' does not exist on type '{ id: string; firstName: string; middleName: string | null; familyName: string; nationality: string; presentRank: string; rankAppliedFor: string; vesselType: string; status: string; createdAt: Date | null; updatedAt: Date | null; fileNo: string; dob: string; applicationData: string | null; }'.
+
+1102       residentialAddressLine2: candidate.residentialAddressLine2,
+                                              ~~~~~~~~~~~~~~~~~~~~~~~
+
+server/database.ts:1112:7 - error TS2353: Object literal may only specify known properties, and 'transferredToCrewId' does not exist in type 'Partial<{ id: string; firstName: string; familyName: string; nationality: string; presentRank: string; rankAppliedFor: string; vesselType: string; fileNo: string; dob: string; middleName?: string | null | undefined; status?: string | undefined; applicationData?: string | ... 1 more ... | undefined; }>'.
+
+1112       transferredToCrewId: newCrewId
+           ~~~~~~~~~~~~~~~~~~~
+
+server/database.ts:1426:34 - error TS2339: Property 'plannedDate' does not exist on type '{ id: number; vesselId: string; rankId: string; rank: string; crewMemberId: string | null; onBoardCrewId: string | null; onBoardCrewName: string | null; onBoardCrewNationality: string | null; ... 16 more ...; updatedAt: Date | null; }'.
+
+1426       const planStart = planning.plannedDate || planning.joiningDate;
+                                      ~~~~~~~~~~~
+
+server/database.ts:1430:30 - error TS2339: Property 'endDate' does not exist on type '{ id: number; vesselId: string; rankId: string; rank: string; crewMemberId: string | null; onBoardCrewId: string | null; onBoardCrewName: string | null; onBoardCrewNationality: string | null; ... 16 more ...; updatedAt: Date | null; }'.
+
+1430       let planEnd = planning.endDate;
+                                  ~~~~~~~
+
+server/database.ts:1431:32 - error TS2339: Property 'contractPeriod' does not exist on type '{ id: number; vesselId: string; rankId: string; rank: string; crewMemberId: string | null; onBoardCrewId: string | null; onBoardCrewName: string | null; onBoardCrewNationality: string | null; ... 16 more ...; updatedAt: Date | null; }'.
+
+1431       if (!planEnd && planning.contractPeriod) {
+                                    ~~~~~~~~~~~~~~
+
+server/database.ts:1434:62 - error TS2339: Property 'contractPeriod' does not exist on type '{ id: number; vesselId: string; rankId: string; rank: string; crewMemberId: string | null; onBoardCrewId: string | null; onBoardCrewName: string | null; onBoardCrewNationality: string | null; ... 16 more ...; updatedAt: Date | null; }'.
+
+1434         planEndObj.setMonth(planEndObj.getMonth() + planning.contractPeriod);
+                                                                  ~~~~~~~~~~~~~~
+
+server/database.ts:1788:5 - error TS2322: Type '{ id: number; status: string; vesselId: string | null; comments: string | null; startDateTime: string; finishDateTime: string; startDateTimeSort: string; finishDateTimeSort: string; task: string; ... 8 more ...; crewInvolvedDetails: string | null; } | null' is not assignable to type '{ id: number; status: string; vesselId: string | null; comments: string | null; startDateTime: string; finishDateTime: string; startDateTimeSort: string; finishDateTimeSort: string; task: string; ... 8 more ...; crewInvolvedDetails: string | null; } | undefined'.
+  Type 'null' is not assignable to type '{ id: number; status: string; vesselId: string | null; comments: string | null; startDateTime: string; finishDateTime: string; startDateTimeSort: string; finishDateTimeSort: string; task: string; ... 8 more ...; crewInvolvedDetails: string | null; } | undefined'.
+
+1788     return results[0] ? this.parseVariableTask(results[0]) : null;
+         ~~~~~~
+
+server/database.ts:1826:5 - error TS2322: Type '{ id: number; status: string; vesselId: string | null; comments: string | null; startDateTime: string; finishDateTime: string; startDateTimeSort: string; finishDateTimeSort: string; task: string; ... 8 more ...; crewInvolvedDetails: string | null; } | null' is not assignable to type '{ id: number; status: string; vesselId: string | null; comments: string | null; startDateTime: string; finishDateTime: string; startDateTimeSort: string; finishDateTimeSort: string; task: string; ... 8 more ...; crewInvolvedDetails: string | null; } | undefined'.
+  Type 'null' is not assignable to type '{ id: number; status: string; vesselId: string | null; comments: string | null; startDateTime: string; finishDateTime: string; startDateTimeSort: string; finishDateTimeSort: string; task: string; ... 8 more ...; crewInvolvedDetails: string | null; } | undefined'.
+
+1826     return updated ? this.parseVariableTask(updated) : null;
+         ~~~~~~
+
+server/database.ts:1847:5 - error TS2322: Type '{ id: number; name: string; createdAt: Date | null; updatedAt: Date | null; crewMemberId: string; vesselId: string; rank: string; monthYear: string; seaHours: string; portHours: string; } | null' is not assignable to type '{ id: number; name: string; createdAt: Date | null; updatedAt: Date | null; crewMemberId: string; vesselId: string; rank: string; monthYear: string; seaHours: string; portHours: string; } | undefined'.
+  Type 'null' is not assignable to type '{ id: number; name: string; createdAt: Date | null; updatedAt: Date | null; crewMemberId: string; vesselId: string; rank: string; monthYear: string; seaHours: string; portHours: string; } | undefined'.
+
+1847     return results[0] ? this.parseFixedTask(results[0]) : null;
+         ~~~~~~
+
+server/database.ts:1878:5 - error TS2322: Type '{ id: number; name: string; createdAt: Date | null; updatedAt: Date | null; crewMemberId: string; vesselId: string; rank: string; monthYear: string; seaHours: string; portHours: string; } | null' is not assignable to type '{ id: number; name: string; createdAt: Date | null; updatedAt: Date | null; crewMemberId: string; vesselId: string; rank: string; monthYear: string; seaHours: string; portHours: string; } | undefined'.
+  Type 'null' is not assignable to type '{ id: number; name: string; createdAt: Date | null; updatedAt: Date | null; crewMemberId: string; vesselId: string; rank: string; monthYear: string; seaHours: string; portHours: string; } | undefined'.
+
+1878     return results[0] ? this.parseFixedTask(results[0]) : null;
+         ~~~~~~
+
+server/database.ts:1897:5 - error TS2322: Type '{ id: number; name: string; createdAt: Date | null; updatedAt: Date | null; crewMemberId: string; vesselId: string; rank: string; monthYear: string; seaHours: string; portHours: string; } | null' is not assignable to type '{ id: number; name: string; createdAt: Date | null; updatedAt: Date | null; crewMemberId: string; vesselId: string; rank: string; monthYear: string; seaHours: string; portHours: string; } | undefined'.
+  Type 'null' is not assignable to type '{ id: number; name: string; createdAt: Date | null; updatedAt: Date | null; crewMemberId: string; vesselId: string; rank: string; monthYear: string; seaHours: string; portHours: string; } | undefined'.
+
+1897     return updated ? this.parseFixedTask(updated) : null;
+         ~~~~~~
+
+server/database.ts:1918:5 - error TS2322: Type '{ id: number; createdAt: Date | null; updatedAt: Date | null; description: string | null; vesselId: string; testType: string; alcoholDrugType: string | null; placeLocation: string | null; ... 22 more ...; attachmentFile: string | null; } | null' is not assignable to type '{ id: number; createdAt: Date | null; updatedAt: Date | null; description: string | null; vesselId: string; testType: string; alcoholDrugType: string | null; placeLocation: string | null; ... 22 more ...; attachmentFile: string | null; } | undefined'.
+  Type 'null' is not assignable to type '{ id: number; createdAt: Date | null; updatedAt: Date | null; description: string | null; vesselId: string; testType: string; alcoholDrugType: string | null; placeLocation: string | null; ... 22 more ...; attachmentFile: string | null; } | undefined'.
+
+1918     return results[0] ? this.parseDrugAlcoholTestRecord(results[0]) : null;
+         ~~~~~~
+
+server/database.ts:1949:5 - error TS2322: Type '{ id: number; createdAt: Date | null; updatedAt: Date | null; description: string | null; vesselId: string; testType: string; alcoholDrugType: string | null; placeLocation: string | null; ... 22 more ...; attachmentFile: string | null; } | null' is not assignable to type '{ id: number; createdAt: Date | null; updatedAt: Date | null; description: string | null; vesselId: string; testType: string; alcoholDrugType: string | null; placeLocation: string | null; ... 22 more ...; attachmentFile: string | null; } | undefined'.
+  Type 'null' is not assignable to type '{ id: number; createdAt: Date | null; updatedAt: Date | null; description: string | null; vesselId: string; testType: string; alcoholDrugType: string | null; placeLocation: string | null; ... 22 more ...; attachmentFile: string | null; } | undefined'.
+
+1949     return updated ? this.parseDrugAlcoholTestRecord(updated) : null;
+         ~~~~~~
+
+server/database.ts:1960:9 - error TS2416: Property 'getVesselViolationComment' in type 'DatabaseStorage' is not assignable to the same property in base type 'IStorage'.
+  Type '(vesselId: string, monthValue: string) => Promise<{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; monthValue: string; comment: string | null; } | undefined>' is not assignable to type '(vesselId: string, monthValue: string) => Promise<{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; monthValue: string; comment: string | null; } | null>'.
+    Type 'Promise<{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; monthValue: string; comment: string | null; } | undefined>' is not assignable to type 'Promise<{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; monthValue: string; comment: string | null; } | null>'.
+      Type '{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; monthValue: string; comment: string | null; } | undefined' is not assignable to type '{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; monthValue: string; comment: string | null; } | null'.
+        Type 'undefined' is not assignable to type '{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; monthValue: string; comment: string | null; } | null'.
+
+1960   async getVesselViolationComment(vesselId: string, monthValue: string): Promise<VesselViolationComment | undefined> {
+             ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+server/database.ts:2001:9 - error TS2416: Property 'getOfficeViolationComment' in type 'DatabaseStorage' is not assignable to the same property in base type 'IStorage'.
+  Type '(vesselId: string, monthValue: string) => Promise<{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; monthValue: string; comment: string | null; reviewerName: string | null; reviewerPosition: string | null; reviewDate: Date | null; } | undefined>' is not assignable to type '(vesselId: string, monthValue: string) => Promise<{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; monthValue: string; comment: string | null; reviewerName: string | null; reviewerPosition: string | null; reviewDate: Date | null; } | null>'.
+    Type 'Promise<{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; monthValue: string; comment: string | null; reviewerName: string | null; reviewerPosition: string | null; reviewDate: Date | null; } | undefined>' is not assignable to type 'Promise<{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; monthValue: string; comment: string | null; reviewerName: string | null; reviewerPosition: string | null; reviewDate: Date | null; } | null>'.
+      Type '{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; monthValue: string; comment: string | null; reviewerName: string | null; reviewerPosition: string | null; reviewDate: Date | null; } | undefined' is not assignable to type '{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; monthValue: string; comment: string | null; reviewerName: string | null; reviewerPosition: string | null; reviewDate: Date | null; } | null'.
+        Type 'undefined' is not assignable to type '{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; monthValue: string; comment: string | null; reviewerName: string | null; reviewerPosition: string | null; reviewDate: Date | null; } | null'.
+
+2001   async getOfficeViolationComment(vesselId: string, monthValue: string): Promise<OfficeViolationComment | undefined> {
+             ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+server/database.ts:2046:9 - error TS2416: Property 'getNCReport' in type 'DatabaseStorage' is not assignable to the same property in base type 'IStorage'.
+  Type '(crewMemberId: string, vesselId: string, monthValue: string) => Promise<{ id: number; status: string; createdAt: Date | null; updatedAt: Date | null; crewMemberId: string; ... 13 more ...; submissionStatus: string; } | undefined>' is not assignable to type '(crewMemberId: string, vesselId: string, monthValue: string) => Promise<{ id: number; status: string; createdAt: Date | null; updatedAt: Date | null; crewMemberId: string; ... 13 more ...; submissionStatus: string; } | null>'.
+    Type 'Promise<{ id: number; status: string; createdAt: Date | null; updatedAt: Date | null; crewMemberId: string; vesselId: string; rank: string; monthValue: string; ncReference: string; ... 9 more ...; submissionStatus: string; } | undefined>' is not assignable to type 'Promise<{ id: number; status: string; createdAt: Date | null; updatedAt: Date | null; crewMemberId: string; vesselId: string; rank: string; monthValue: string; ncReference: string; ... 9 more ...; submissionStatus: string; } | null>'.
+      Type '{ id: number; status: string; createdAt: Date | null; updatedAt: Date | null; crewMemberId: string; vesselId: string; rank: string; monthValue: string; ncReference: string; identifiedRootCause: string | null; ... 8 more ...; submissionStatus: string; } | undefined' is not assignable to type '{ id: number; status: string; createdAt: Date | null; updatedAt: Date | null; crewMemberId: string; vesselId: string; rank: string; monthValue: string; ncReference: string; identifiedRootCause: string | null; ... 8 more ...; submissionStatus: string; } | null'.
+        Type 'undefined' is not assignable to type '{ id: number; status: string; createdAt: Date | null; updatedAt: Date | null; crewMemberId: string; vesselId: string; rank: string; monthValue: string; ncReference: string; identifiedRootCause: string | null; ... 8 more ...; submissionStatus: string; } | null'.
+
+2046   async getNCReport(crewMemberId: string, vesselId: string, monthValue: string): Promise<NCReport | undefined> {
+             ~~~~~~~~~~~
+
+server/database.ts:2089:9 - error TS2416: Property 'getVesselDateLineAdjustment' in type 'DatabaseStorage' is not assignable to the same property in base type 'IStorage'.
+  Type '(vesselId: string, monthValue: string) => Promise<{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; monthValue: string; adjustments: string; } | undefined>' is not assignable to type '(vesselId: string, monthValue: string) => Promise<{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; monthValue: string; adjustments: string; } | null>'.
+    Type 'Promise<{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; monthValue: string; adjustments: string; } | undefined>' is not assignable to type 'Promise<{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; monthValue: string; adjustments: string; } | null>'.
+      Type '{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; monthValue: string; adjustments: string; } | undefined' is not assignable to type '{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; monthValue: string; adjustments: string; } | null'.
+        Type 'undefined' is not assignable to type '{ id: number; createdAt: Date | null; updatedAt: Date | null; vesselId: string; monthValue: string; adjustments: string; } | null'.
+
+2089   async getVesselDateLineAdjustment(vesselId: string, monthValue: string): Promise<VesselDateLineAdjustment | undefined> {
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+server/database.ts:2177:40 - error TS2322: Type 'null' is not assignable to type '{ id: number; name: string; category: string; rankGroup: string; versionNo: string; versionDate: string; configuration: string | null; } | undefined'.
+
+2177     if (rankGroupResults.length === 0) return null;
+                                            ~~~~~~
+
+server/database.ts:2310:7 - error TS2322: Type 'null' is not assignable to type '{ id: number; name: string; nationality: string | null; vesselType: string | null; email: string | null; createdAt: Date | null; updatedAt: Date | null; description: string | null; ... 47 more ...; departmentId: string | null; } | undefined'.
+
+2310       return null;
+           ~~~~~~
+
+server/database.ts:2520:11 - error TS2353: Object literal may only specify known properties, and 'lastName' does not exist in type '{ firstName: string; nationality: string; presentRank: string; presentVessel: string; vesselType: string; id?: string | undefined; empNo?: string | null | undefined; middleName?: string | null | undefined; ... 55 more ...; children?: string | ... 1 more ... | undefined; }'.
+
+2520           lastName: "",
+               ~~~~~~~~
+
+server/database.ts:2531:11 - error TS2353: Object literal may only specify known properties, and 'lastName' does not exist in type '{ firstName: string; nationality: string; presentRank: string; presentVessel: string; vesselType: string; id?: string | undefined; empNo?: string | null | undefined; middleName?: string | null | undefined; ... 55 more ...; children?: string | ... 1 more ... | undefined; }'.
+
+2531           lastName: "Johnson",
+               ~~~~~~~~
+
+server/database.ts:2542:11 - error TS2353: Object literal may only specify known properties, and 'lastName' does not exist in type '{ firstName: string; nationality: string; presentRank: string; presentVessel: string; vesselType: string; id?: string | undefined; empNo?: string | null | undefined; middleName?: string | null | undefined; ... 55 more ...; children?: string | ... 1 more ... | undefined; }'.
+
+2542           lastName: "Brown",
+               ~~~~~~~~
+
+server/migrate-json-to-postgres.ts:61:21 - error TS2341: Property 'db' is private and only accessible within class 'DatabaseStorage'.
+
+61       await storage.db.execute(`TRUNCATE TABLE ${table} CASCADE`);
+                       ~~
+
+server/migrate-json-to-postgres.ts:348:19 - error TS2551: Property 'createVesselPlanningEntry' does not exist on type 'DatabaseStorage'. Did you mean 'createVesselPlanning'?
+
+348     await storage.createVesselPlanningEntry(extractFromTuple(item));
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  server/database.ts:1201:9
+    1201   async createVesselPlanning(planning: InsertVesselPlanning): Promise<VesselPlanning> {
+                 ~~~~~~~~~~~~~~~~~~~~
+    'createVesselPlanning' is declared here.
+
+server/storage.ts:5456:5 - error TS2322: Type 'DatabaseStorage' is not assignable to type 'IStorage'.
+  The types returned by 'transferRecruitedCandidate(...)' are incompatible between these types.
+    Type 'Promise<{ id: string; empNo: string | null; firstName: string; middleName: string | null; familyName: string | null; dateOfBirth: string | null; age: string | null; nationality: string; presentRank: string; ... 56 more ...; updatedAt: Date | null; }>' is not assignable to type 'Promise<{ crewMember: { id: string; empNo: string | null; firstName: string; middleName: string | null; familyName: string | null; dateOfBirth: string | null; age: string | null; nationality: string; ... 57 more ...; updatedAt: Date | null; }; crewId: string; }>'.
+      Type '{ id: string; empNo: string | null; firstName: string; middleName: string | null; familyName: string | null; dateOfBirth: string | null; age: string | null; nationality: string; presentRank: string; ... 56 more ...; updatedAt: Date | null; }' is missing the following properties from type '{ crewMember: { id: string; empNo: string | null; firstName: string; middleName: string | null; familyName: string | null; dateOfBirth: string | null; age: string | null; nationality: string; ... 57 more ...; updatedAt: Date | null; }; crewId: string; }': crewMember, crewId
+
+5456     storage = new DatabaseStorage();
+         ~~~~~~~
+
+
+Found 32 errors in 3 files.
+
+Errors  Files
+    29  server/database.ts:926
+     2  server/migrate-json-to-postgres.ts:61
+     1  server/storage.ts:5456
