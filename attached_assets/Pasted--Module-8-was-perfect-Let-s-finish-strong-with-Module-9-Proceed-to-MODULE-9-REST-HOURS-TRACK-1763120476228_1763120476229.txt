@@ -1,0 +1,491 @@
+🎉 Module 8 was perfect! Let's finish strong with Module 9!
+
+Proceed to MODULE 9: REST HOURS TRACKING - COMPREHENSIVE TESTING
+
+Rest Hours has 3 main sections:
+1. **Dashboard** - Analytics, charts, violations tracking
+2. **Records** - Vessel records, crew records, daily records (3-level hierarchy)
+3. **Plan** - Rest hours planning (if implemented)
+
+PART 1: REST HOURS DASHBOARD & ANALYTICS
+=========================================
+
+**A. Dashboard Charts & Statistics**
+
+Test: GET /api/rest-hours/dashboard
+Or GET /api/rest-hours/statistics
+
+Expected data:
+- [ ] Total violations count
+- [ ] Total NCs (Non-Conformities) count
+- [ ] Predicted NCs count
+- [ ] Number of vessels with violations
+- [ ] Number of vessels with NCs
+
+Test: GET /api/rest-hours-violations-by-rank
+
+Expected:
+- [ ] Returns 200 OK
+- [ ] Returns violations grouped by rank
+- [ ] Empty array if no data (acceptable)
+
+Test: GET /api/rest-hours-ncs-by-rank
+
+Expected:
+- [ ] Returns 200 OK
+- [ ] Returns NCs grouped by rank
+- [ ] Empty array if no data (acceptable)
+
+**B. Periodic Analysis**
+
+Test: GET /api/rest-hours/periodic-analysis?period=yearly
+Test: GET /api/rest-hours/periodic-analysis?period=quarterly
+Test: GET /api/rest-hours/periodic-analysis?period=monthly
+
+Expected:
+- [ ] Returns time-series data
+- [ ] Format suitable for charts
+- [ ] Both violations and NCs data
+
+**C. Vessel Analysis**
+
+Test: GET /api/rest-hours/vessel-analysis?month=2025-11
+
+Expected:
+- [ ] Returns analysis by vessel
+- [ ] Shows compliance status
+- [ ] Returns empty or zero values if no data
+
+PART 2: REST HOURS RECORDS (3-Level Hierarchy)
+==============================================
+
+**DATABASE INITIAL STATE:**
+```sql
+SELECT COUNT(*) FROM rest_hours_vessel_records;
+SELECT COUNT(*) FROM rest_hours_crew_records;
+SELECT COUNT(*) FROM rest_hours_daily_records;
+SELECT COUNT(*) FROM crew_members;
+SELECT COUNT(*) FROM master_data_entries WHERE master_id = '014';
+```
+
+**LEVEL 1: VESSEL RECORDS (Office Overview Table)**
+
+This is what appears in the "RH Records - Office Overview" screen.
+
+   A. CREATE - Vessel Record
+   --------------------------
+   Test: POST /api/rest-hours-vessel-records
+   
+   Payload:
+```json
+   {
+     "vesselId": "VSL-001",
+     "monthValue": "2025-11",
+     "totalCrew": 23,
+     "status": "Draft",
+     "activityConflicts": "No",
+     "violationsPerCrew": 0,
+     "ncsPerCrew": 0,
+     "predictedViolations": 0,
+     "predictedNcs": 0,
+     "vesselReviewStatus": "Pending",
+     "submittedBy": "master@example.com"
+   }
+```
+   
+   Expected:
+   - [ ] Returns 201 Created
+   - [ ] Auto-generated ID (sequence)
+   - [ ] Record appears in vessel records table
+   
+   B. READ - All Vessel Records (for Office Overview)
+   ---------------------------------------------------
+   Test: GET /api/rest-hours-vessel-records
+   
+   Expected:
+   - [ ] Returns 200 OK
+   - [ ] Returns array with all vessel records
+   - [ ] Shows all columns from screenshot:
+     * vessel_id, month_value, total_crew
+     * status, activity_conflicts
+     * violations_per_crew, ncs_per_crew
+     * predicted_violations, predicted_ncs
+     * vessel_review_status
+   
+   C. READ - Filter by Vessel
+   ---------------------------
+   Test: GET /api/rest-hours-vessel-records?vesselId=VSL-001
+   
+   Expected:
+   - [ ] Returns records for specific vessel
+   
+   D. READ - Filter by Month
+   --------------------------
+   Test: GET /api/rest-hours-vessel-records?monthValue=2025-11
+   
+   Expected:
+   - [ ] Returns records for specific month
+   
+   E. READ - Combined Filters
+   ---------------------------
+   Test: GET /api/rest-hours-vessel-records?vesselId=VSL-001&monthValue=2025-11
+   
+   Expected:
+   - [ ] Returns specific vessel-month record
+   
+   F. UPDATE - Modify Vessel Record
+   ---------------------------------
+   Test: PUT /api/rest-hours-vessel-records/:id
+   
+   Payload:
+```json
+   {
+     "violationsPerCrew": 2,
+     "ncsPerCrew": 1,
+     "status": "Submitted",
+     "vesselReviewStatus": "Under Review"
+   }
+```
+   
+   Expected:
+   - [ ] Returns 200 OK
+   - [ ] Changes persist
+   
+   G. DELETE - Remove Vessel Record
+   ---------------------------------
+   Test: DELETE /api/rest-hours-vessel-records/:id
+   
+   Expected:
+   - [ ] Returns 200 OK
+
+**LEVEL 2: CREW RECORDS (Per Crew Member)**
+
+   A. CREATE - Crew Record
+   ------------------------
+   Test: POST /api/rest-hours-crew-records
+   
+   Payload:
+```json
+   {
+     "crewMemberId": "A000264",
+     "vesselId": "VSL-001",
+     "monthValue": "2025-11",
+     "rank": "Master",
+     "totalHoursWorked": 300,
+     "totalHoursRested": 444,
+     "violationsCount": 1,
+     "ncsCount": 0,
+     "complianceRate": 96.7,
+     "status": "Draft"
+   }
+```
+   
+   Expected:
+   - [ ] Returns 201 Created
+   - [ ] Auto-generated ID
+   
+   B. READ - All Crew Records
+   ---------------------------
+   Test: GET /api/rest-hours-crew-records
+   
+   Expected:
+   - [ ] Returns 200 OK
+   - [ ] Returns array of records
+   
+   C. READ - Filter by Multiple Parameters
+   ----------------------------------------
+   Test: GET /api/rest-hours-crew-records?vesselId=VSL-001&monthValue=2025-11
+   Test: GET /api/rest-hours-crew-records?crewMemberId=A000264
+   Test: GET /api/rest-hours-crew-records?vesselId=VSL-001&rank=Master
+   
+   Expected:
+   - [ ] All filter combinations work
+   - [ ] Returns filtered results
+   
+   D. UPDATE - Modify Crew Record
+   -------------------------------
+   Test: PUT /api/rest-hours-crew-records/:id
+   
+   Payload:
+```json
+   {
+     "status": "Submitted",
+     "violationsCount": 2,
+     "complianceRate": 93.3
+   }
+```
+   
+   Expected:
+   - [ ] Returns 200 OK
+   
+   E. DELETE - Remove Crew Record
+   -------------------------------
+   Test: DELETE /api/rest-hours-crew-records/:id
+   
+   Expected:
+   - [ ] Returns 200 OK
+
+**LEVEL 3: DAILY RECORDS (Daily Hours Detail)**
+
+   A. CREATE - Daily Record
+   -------------------------
+   Test: POST /api/rest-hours-daily-records
+   
+   Payload:
+```json
+   {
+     "crewMemberId": "A000264",
+     "vesselId": "VSL-001",
+     "monthYear": "2025-11",
+     "dailyRecords": {
+       "day01": {
+         "date": "2025-11-01",
+         "workHours": 10,
+         "restHours": 14,
+         "compliant": true
+       },
+       "day02": {
+         "date": "2025-11-02",
+         "workHours": 12,
+         "restHours": 12,
+         "compliant": true
+       },
+       "day15": {
+         "date": "2025-11-15",
+         "workHours": 15,
+         "restHours": 9,
+         "compliant": false,
+         "violationType": "Insufficient 10-hour rest",
+         "severity": "High"
+       }
+     }
+   }
+```
+   
+   Expected:
+   - [ ] Returns 201 Created
+   - [ ] Auto-generated ID
+   - [ ] dailyRecords JSON stored correctly (can have up to 31 days)
+   
+   B. READ - All Daily Records
+   ----------------------------
+   Test: GET /api/rest-hours-daily-records
+   
+   Expected:
+   - [ ] Returns 200 OK
+   - [ ] dailyRecords JSON parsed into objects
+   
+   C. READ - By Composite Key
+   ---------------------------
+   Test: GET /api/rest-hours-daily-records/key?crewMemberId=A000264&vesselId=VSL-001&monthYear=2025-11
+   
+   Expected:
+   - [ ] Returns 200 OK
+   - [ ] Returns specific record for crew/vessel/month
+   - [ ] Composite key lookup works
+   
+   D. UPDATE - Modify Daily Record
+   --------------------------------
+   Test: PUT /api/rest-hours-daily-records/:id
+   
+   Payload: Update specific days in dailyRecords JSON
+```json
+   {
+     "dailyRecords": {
+       "day15": {
+         "date": "2025-11-15",
+         "workHours": 14,
+         "restHours": 10,
+         "compliant": true,
+         "correctionNote": "Hours corrected after review"
+       },
+       "day16": {
+         "date": "2025-11-16",
+         "workHours": 8,
+         "restHours": 16,
+         "compliant": true
+       }
+     }
+   }
+```
+   
+   Expected:
+   - [ ] Returns 200 OK
+   - [ ] Specific days updated in JSON
+   - [ ] Other days preserved
+   
+   E. DELETE - Remove Daily Record
+   --------------------------------
+   Test: DELETE /api/rest-hours-daily-records/:id
+   
+   Expected:
+   - [ ] Returns 200 OK
+
+**HIERARCHY INTEGRITY TEST:**
+
+Create complete 3-level hierarchy for VSL-001, Nov-2025:
+Level 1: Vessel Record (VSL-001, 2025-11, 23 crew) ├── Level 2: Crew Record (A000264, VSL-001, 2025-11, Master) │ └── Level 3: Daily Record (A000264, VSL-001, 2025-11, 30 days) └── Level 2: Crew Record (A000278, VSL-001, 2025-11, Chief Officer) └── Level 3: Daily Record (A000278, VSL-001, 2025-11, 30 days)
+
+Verify:
+- [ ] All 3 levels created successfully
+- [ ] Can query each level independently
+- [ ] Filtering works at each level
+- [ ] Parent-child relationships logical
+
+PART 3: REST HOURS PLAN (If Implemented)
+=========================================
+
+Check if plan endpoints exist:
+
+Test: GET /api/rest-hours/plans
+Test: GET /api/rest-hours-planning
+
+Expected:
+- [ ] Returns 200 OK with data, OR
+- [ ] Returns 404 (not implemented yet)
+
+If implemented:
+- [ ] Test CRUD operations
+- [ ] Test plan creation
+- [ ] Test plan approval workflow
+
+PART 4: COMPREHENSIVE TESTING
+==============================
+
+**A. PERSISTENCE TEST**
+
+1. Create vessel record (VSL-001, 2025-11)
+2. Create crew record (A000264, VSL-001, 2025-11)
+3. Create daily record with 30 days of data
+4. Update violations and NCs counts
+5. Restart server
+6. Verify all 3 levels persist
+7. Verify dailyRecords JSON intact (all 30 days)
+8. Verify violation counts accurate
+
+**B. DASHBOARD DATA FLOW**
+
+1. Create vessel records with violations
+2. Test GET /api/rest-hours-violations-by-rank
+3. Verify dashboard shows correct counts
+4. Test GET /api/rest-hours-ncs-by-rank
+5. Verify NCs appear in dashboard
+
+**C. JSON HANDLING (dailyRecords)**
+
+Test complex 30-day structure:
+- [ ] All 30 days stored correctly
+- [ ] Nested objects preserved
+- [ ] Can update specific days without losing others
+- [ ] Partial updates work (merge, don't replace)
+- [ ] Can handle missing days (day03, day04 missing = OK)
+
+**D. FILTERING COMBINATIONS**
+
+Vessel Records:
+- [ ] By vesselId only
+- [ ] By monthValue only
+- [ ] By vesselId + monthValue
+- [ ] By status (Draft, Submitted, Approved)
+
+Crew Records:
+- [ ] By vesselId only
+- [ ] By crewMemberId only
+- [ ] By monthValue only
+- [ ] By rank only
+- [ ] vesselId + monthValue
+- [ ] vesselId + rank
+- [ ] All 4 parameters combined
+
+Daily Records:
+- [ ] By composite key (crew/vessel/month)
+- [ ] By crewMemberId only (all months)
+- [ ] By vesselId only (all crew)
+
+**E. VALIDATION**
+
+Test invalid data at each level:
+
+Vessel Record:
+```json
+{
+  "vesselId": "",
+  "monthValue": "invalid-month"
+}
+```
+
+Crew Record:
+```json
+{
+  "crewMemberId": "",
+  "violationsCount": "not-a-number"
+}
+```
+
+Daily Record:
+```json
+{
+  "monthYear": "invalid",
+  "dailyRecords": "not-json"
+}
+```
+
+Expected for all:
+- [ ] Returns 400 Bad Request
+- [ ] Detailed validation errors
+- [ ] No database records created
+
+**F. EDGE CASES**
+
+- [ ] Invalid IDs → 404
+- [ ] Composite key not found → 404 or null
+- [ ] Empty dailyRecords object → accepted
+- [ ] Month formats: "2025-11" vs "11-2025" vs "NOV-2025"
+- [ ] Duplicate vessel-month record → handle gracefully
+- [ ] Negative violation counts → validate
+
+**G. PERFORMANCE**
+
+- [ ] List all vessel records (6 vessels): < 1s
+- [ ] Filter crew records by vessel: < 500ms
+- [ ] Composite key lookup: < 300ms
+- [ ] With 30-day dailyRecords JSON: < 500ms
+- [ ] Dashboard charts: < 1s
+
+REPORT FORMAT:
+MODULE 9: REST HOURS TRACKING
+PART 1: Dashboard & Analytics
+Violations by Rank: ✅/❌ NCs by Rank: ✅/❌ Periodic Analysis: ✅/❌ Vessel Analysis: ✅/❌
+PART 2: Records (3-Level Hierarchy)
+Level 1 - Vessel Records: CREATE/READ/UPDATE/DELETE: ✅/❌ Filtering (vessel, month, status): ✅/❌ Office Overview Table: ✅/❌
+Level 2 - Crew Records: CREATE/READ/UPDATE/DELETE: ✅/❌ Filtering (crew, vessel, month, rank): ✅/❌ Multiple filter combinations: ✅/❌
+Level 3 - Daily Records: CREATE/READ/UPDATE/DELETE: ✅/❌ Composite key lookup: ✅/❌ dailyRecords JSON (30 days): ✅/❌ Partial day updates: ✅/❌
+PART 3: Rest Hours Plan
+Plan endpoints: ✅/❌/Not Implemented
+3-Level Hierarchy: Complete hierarchy created: ✅/❌ All levels queryable: ✅/❌ Filtering at each level: ✅/❌
+Dashboard Integration: Violation counts accurate: ✅/❌ NCs counts accurate: ✅/❌ Charts populate: ✅/❌
+PERSISTENCE: All 3 levels persist: ✅/❌ 30-day JSON intact: ✅/❌ Violation counts preserved: ✅/❌
+PERFORMANCE: Vessel records: Xms ✅ Crew records: Xms ✅ Daily records: Xms ✅ Dashboard charts: Xms ✅
+ISSUES FOUND: [List any issues]
+STATUS: ✅ WORKING / ⚠️ ISSUES / ❌ BROKEN
+
+CRITICAL CHECKS:
+- ✅ 3-level hierarchy integrity (vessel → crew → daily)
+- ✅ Composite key lookup (crewId/vesselId/monthYear)
+- ✅ dailyRecords JSON (up to 31 days of nested objects)
+- ✅ Multiple filtering combinations (vessel, crew, month, rank, status)
+- ✅ Month value format consistency ("2025-11" vs "NOV-2025")
+- ✅ Dashboard charts get correct data
+- ✅ Office Overview table shows all vessels
+- ✅ Violation and NC counting logic
+
+This is the MOST COMPLEX module with:
+- 3-level hierarchy
+- Dashboard analytics
+- Complex JSON (31 days)
+- Multiple filtering options
+
+Test thoroughly at all 3 levels!
+
+After completing Module 9, report comprehensive results and wait for approval.
+
