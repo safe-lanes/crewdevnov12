@@ -1447,11 +1447,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/rank-groups", async (req, res) => {
     try {
+      console.log('📥 [POST /api/rank-groups] Request body:', JSON.stringify(req.body, null, 2));
       const validatedData = insertRankGroupSchema.parse(req.body);
+      console.log('✅ [POST /api/rank-groups] Validation passed:', JSON.stringify(validatedData, null, 2));
       const rankGroup = await storage.createRankGroup(validatedData);
+      console.log('✅ [POST /api/rank-groups] Created rank group:', JSON.stringify(rankGroup, null, 2));
       res.status(201).json(rankGroup);
     } catch (error) {
-      res.status(400).json({ error: "Invalid rank group data" });
+      console.error('❌ [POST /api/rank-groups] Error:', error);
+      if (error instanceof z.ZodError) {
+        console.error('❌ [POST /api/rank-groups] Validation errors:', JSON.stringify(error.errors, null, 2));
+      }
+      res.status(400).json({ error: "Invalid rank group data", details: error instanceof z.ZodError ? error.errors : undefined });
     }
   });
 
