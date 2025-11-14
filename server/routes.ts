@@ -5268,7 +5268,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const candidate = await storage.createRecruitmentCandidate(result.data);
       res.status(201).json(candidate);
-    } catch (error) {
+    } catch (error: any) {
+      // Check for PostgreSQL UNIQUE constraint violation (error code 23505)
+      if (error.code === '23505' || error.message?.includes('duplicate key') || error.message?.includes('unique constraint')) {
+        return res.status(400).json({ 
+          error: "Duplicate data", 
+          message: "A recruitment candidate with this fileNo already exists" 
+        });
+      }
+      console.error('Error creating recruitment candidate:', error);
       res.status(500).json({ error: "Failed to create recruitment candidate" });
     }
   });
