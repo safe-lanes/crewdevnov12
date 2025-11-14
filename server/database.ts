@@ -1083,7 +1083,7 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount !== null && result.rowCount > 0;
   }
 
-  async transferRecruitedCandidate(candidateId: string): Promise<{ crewMember: CrewMember, candidateId: string }> {
+  async transferRecruitedCandidate(candidateId: string): Promise<{ crewMember: CrewMember; crewId: string }> {
     // Get the candidate
     const candidate = await this.getRecruitmentCandidate(candidateId);
     if (!candidate) {
