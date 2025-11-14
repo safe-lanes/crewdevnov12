@@ -1,0 +1,183 @@
+chunk-NXESFFTV.js?v=537bfaad:21609 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+AgGridTable.tsx:41 AG Grid Enterprise license key not found. Please set VITE_AG_GRID_LICENSE_KEY environment variable.
+(anonymous) @ AgGridTable.tsx:41
+agCharts.ts:9 AG Charts Enterprise license key not found. Using same key as AG Grid (VITE_AG_GRID_LICENSE_KEY).
+(anonymous) @ agCharts.ts:9
+ag-grid-enterprise.js?v=537bfaad:809 ****************************************************************************************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ************************************************ AG Grid Enterprise License ************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ************************************************** License Key Not Found ***************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:812 * All AG Grid Enterprise features are unlocked for trial.                                                                  *
+padAndOutput @ ag-grid-enterprise.js?v=537bfaad:812
+ag-grid-enterprise.js?v=537bfaad:812 * If you want to hide the watermark please email info@ag-grid.com for a trial license key.                                 *
+padAndOutput @ ag-grid-enterprise.js?v=537bfaad:812
+ag-grid-enterprise.js?v=537bfaad:809 ****************************************************************************************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ****************************************************************************************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+chunk-3CSLRWZP.js?v=537bfaad:1063 AG Grid: invalid gridOptions property 'data-replit-metadata' did you mean any of these: resetRowDataOnUpdate, treeDataParentIdField, detailCellRendererParams, getDataPath, treeDataDisplayType, dataTypeDefinitions, createChartContainer, onRangeDeleteStart.
+If you are trying to annotate gridOptions with application data, use the 'gridOptions.context' property instead.
+(anonymous) @ chunk-3CSLRWZP.js?v=537bfaad:1063
+chunk-3CSLRWZP.js?v=537bfaad:1063 AG Grid: invalid gridOptions property 'data-component-name' did you mean any of these: onComponentStateChanged, dragAndDropImageComponentParams, loadingOverlayComponentParams, noRowsOverlayComponentParams, components, navigateToNextHeader, dragAndDropImageComponent, reactiveCustomComponents.
+If you are trying to annotate gridOptions with application data, use the 'gridOptions.context' property instead.
+(anonymous) @ chunk-3CSLRWZP.js?v=537bfaad:1063
+chunk-3CSLRWZP.js?v=537bfaad:1063 AG Grid: to see all the valid gridOptions properties please check: https://www.ag-grid.com/react-data-grid/grid-options/
+(anonymous) @ chunk-3CSLRWZP.js?v=537bfaad:1063
+api/rest-hours-crew-records?monthValue=2025-06&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2025-07&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2025-08&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2025-09&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2025-10&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2024-01&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2024-02&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2024-03&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2024-04&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2024-05&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2024-06&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2024-07&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2024-08&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2024-09&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2024-10&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2024-11&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2024-12&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2023-01&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2023-02&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2023-03&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2023-04&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2023-05&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2023-06&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2023-07&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2023-08&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2023-09&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2023-10&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2023-11&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2023-12&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2022-01&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2022-02&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2022-03&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2022-04&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2022-05&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2022-06&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2022-07&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2022-08&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2022-09&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2022-10&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2022-11&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2022-12&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-violations-by-rank?monthValue=2025-11&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-vessel-records?monthValue=2025-11&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-crew-records?monthValue=2025-12&complianceMode=Rest&opaMode=false:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+api/rest-hours-ncs-by-rank?monthValue=2025-11:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+favicon.ico:1  Failed to load resource: net::ERR_NETWORK_CHANGED
+ag-grid-enterprise.js?v=537bfaad:809 ****************************************************************************************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ************************************************ AG Grid Enterprise License ************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ************************************************** License Key Not Found ***************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:812 * All AG Grid Enterprise features are unlocked for trial.                                                                  *
+padAndOutput @ ag-grid-enterprise.js?v=537bfaad:812
+ag-grid-enterprise.js?v=537bfaad:812 * If you want to hide the watermark please email info@ag-grid.com for a trial license key.                                 *
+padAndOutput @ ag-grid-enterprise.js?v=537bfaad:812
+ag-grid-enterprise.js?v=537bfaad:809 ****************************************************************************************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ****************************************************************************************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ****************************************************************************************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ************************************************ AG Grid Enterprise License ************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ************************************************** License Key Not Found ***************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:812 * All AG Grid Enterprise features are unlocked for trial.                                                                  *
+padAndOutput @ ag-grid-enterprise.js?v=537bfaad:812
+ag-grid-enterprise.js?v=537bfaad:812 * If you want to hide the watermark please email info@ag-grid.com for a trial license key.                                 *
+padAndOutput @ ag-grid-enterprise.js?v=537bfaad:812
+ag-grid-enterprise.js?v=537bfaad:809 ****************************************************************************************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ****************************************************************************************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ****************************************************************************************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ************************************************ AG Grid Enterprise License ************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ************************************************** License Key Not Found ***************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:812 * All AG Grid Enterprise features are unlocked for trial.                                                                  *
+padAndOutput @ ag-grid-enterprise.js?v=537bfaad:812
+ag-grid-enterprise.js?v=537bfaad:812 * If you want to hide the watermark please email info@ag-grid.com for a trial license key.                                 *
+padAndOutput @ ag-grid-enterprise.js?v=537bfaad:812
+ag-grid-enterprise.js?v=537bfaad:809 ****************************************************************************************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ****************************************************************************************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ****************************************************************************************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ************************************************ AG Grid Enterprise License ************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ************************************************** License Key Not Found ***************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:812 * All AG Grid Enterprise features are unlocked for trial.                                                                  *
+padAndOutput @ ag-grid-enterprise.js?v=537bfaad:812
+ag-grid-enterprise.js?v=537bfaad:812 * If you want to hide the watermark please email info@ag-grid.com for a trial license key.                                 *
+padAndOutput @ ag-grid-enterprise.js?v=537bfaad:812
+ag-grid-enterprise.js?v=537bfaad:809 ****************************************************************************************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ****************************************************************************************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ****************************************************************************************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ************************************************ AG Grid Enterprise License ************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ************************************************** License Key Not Found ***************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:812 * All AG Grid Enterprise features are unlocked for trial.                                                                  *
+padAndOutput @ ag-grid-enterprise.js?v=537bfaad:812
+ag-grid-enterprise.js?v=537bfaad:812 * If you want to hide the watermark please email info@ag-grid.com for a trial license key.                                 *
+padAndOutput @ ag-grid-enterprise.js?v=537bfaad:812
+ag-grid-enterprise.js?v=537bfaad:809 ****************************************************************************************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ****************************************************************************************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ****************************************************************************************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ************************************************ AG Grid Enterprise License ************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ************************************************** License Key Not Found ***************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:812 * All AG Grid Enterprise features are unlocked for trial.                                                                  *
+padAndOutput @ ag-grid-enterprise.js?v=537bfaad:812
+ag-grid-enterprise.js?v=537bfaad:812 * If you want to hide the watermark please email info@ag-grid.com for a trial license key.                                 *
+padAndOutput @ ag-grid-enterprise.js?v=537bfaad:812
+ag-grid-enterprise.js?v=537bfaad:809 ****************************************************************************************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ****************************************************************************************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ****************************************************************************************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ************************************************ AG Grid Enterprise License ************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ************************************************** License Key Not Found ***************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:812 * All AG Grid Enterprise features are unlocked for trial.                                                                  *
+padAndOutput @ ag-grid-enterprise.js?v=537bfaad:812
+ag-grid-enterprise.js?v=537bfaad:812 * If you want to hide the watermark please email info@ag-grid.com for a trial license key.                                 *
+padAndOutput @ ag-grid-enterprise.js?v=537bfaad:812
+ag-grid-enterprise.js?v=537bfaad:809 ****************************************************************************************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ag-grid-enterprise.js?v=537bfaad:809 ****************************************************************************************************************************
+centerPadAndOutput @ ag-grid-enterprise.js?v=537bfaad:809
+ElementCrewAppraisals.tsx:534 AG Grid: error #26 Grid API function sizeColumnsToFit() cannot be called as the grid has been destroyed.
+ Either clear local references to the grid api, when it is destroyed, or check gridApi.isDestroyed() to avoid calling methods against a destroyed grid.
+ To run logic when the grid is about to be destroyed use the gridPreDestroy event. See: https://www.ag-grid.com/react-data-grid/grid-lifecycle/#grid-pre-destroyed 
+See https://www.ag-grid.com/react-data-grid/errors/26?_version_=34.1.0&fnName=sizeColumnsToFit&preDestroyLink=https%3A%2F%2Fwww.ag-grid.com%2Freact-data-grid%2Fgrid-lifecycle%2F%23grid-pre-destroyed
+(anonymous) @ chunk-3CSLRWZP.js?v=537bfaad:1063
+_doOnce @ chunk-3CSLRWZP.js?v=537bfaad:1054
+_warnOnce @ chunk-3CSLRWZP.js?v=537bfaad:1063
+getMsgOrDefault @ chunk-3CSLRWZP.js?v=537bfaad:1159
+_warn @ chunk-3CSLRWZP.js?v=537bfaad:1223
+apiNotFound @ chunk-3CSLRWZP.js?v=537bfaad:22059
+sizeColumnsToFit @ chunk-3CSLRWZP.js?v=537bfaad:22052
+(anonymous) @ ElementCrewAppraisals.tsx:534
