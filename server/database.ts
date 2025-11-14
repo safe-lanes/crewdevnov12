@@ -1217,6 +1217,10 @@ export class DatabaseStorage implements IStorage {
     return result[0] || undefined;
   }
 
+  async getAllVesselPlanning(): Promise<VesselPlanning[]> {
+    return await this.db.select().from(vesselPlanning);
+  }
+
   async createVesselPlanning(planning: InsertVesselPlanning): Promise<VesselPlanning> {
     const [created] = await this.db.insert(vesselPlanning).values(planning).returning();
     return created;
@@ -1329,7 +1333,7 @@ export class DatabaseStorage implements IStorage {
     return proposedAssignments;
   }
 
-  async deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[] }> {
+  async deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[]; vesselPlanningId?: number }> {
     try {
       // Get current plan
       const plans = await this.db
@@ -1345,11 +1349,29 @@ export class DatabaseStorage implements IStorage {
       
       const assignment = assignments[assignmentIndex];
       
+      // Map assignment fields correctly (fromDate→joiningDate, toDate→reliefDue)
+      const crewMemberId = assignment.crewMemberId || assignment.crewId;
+      const joiningDate = assignment.fromDate || assignment.joiningDate;
+      const reliefDue = assignment.toDate || assignment.reliefDue;
+      
+      if (!crewMemberId || !joiningDate || !reliefDue) {
+        console.error('Missing required assignment fields:', { crewMemberId, joiningDate, reliefDue });
+        return { success: false };
+      }
+      
+      // Calculate contract period in months
+      const fromDateObj = new Date(joiningDate);
+      const toDateObj = new Date(reliefDue);
+      const contractPeriodMonths = Math.max(1, 
+        (toDateObj.getFullYear() - fromDateObj.getFullYear()) * 12 + 
+        (toDateObj.getMonth() - fromDateObj.getMonth())
+      );
+      
       // Check for conflicts before deployment
       const conflicts = await this.checkAssignmentConflicts(
-        assignment.crewId,
-        assignment.joiningDate,
-        assignment.contractPeriod || 6,
+        crewMemberId,
+        joiningDate,
+        contractPeriodMonths,
         planId,
         assignmentIndex
       );
@@ -1358,7 +1380,22 @@ export class DatabaseStorage implements IStorage {
         return { success: false, conflicts };
       }
       
-      // Update assignment
+      // Create vessel_planning record
+      const [vesselPlanningRecord] = await this.db
+        .insert(vesselPlanning)
+        .values({
+          vesselId: assignment.vesselId,
+          rankId: assignment.rank || 'Unknown',
+          rank: assignment.rank,
+          crewMemberId: crewMemberId,
+          reliefDue: reliefDue,
+          joiningDate: joiningDate,
+          contractPeriodMonths: contractPeriodMonths,
+          reliefStatus: 'Deployed'
+        })
+        .returning();
+      
+      // Update assignment status in rotation plan
       assignments[assignmentIndex] = {
         ...assignment,
         status: 'Deployed',
@@ -1375,7 +1412,10 @@ export class DatabaseStorage implements IStorage {
         })
         .where(eq(rotationPlans.id, planId));
       
-      return { success: true };
+      return { 
+        success: true, 
+        vesselPlanningId: vesselPlanningRecord?.id 
+      };
     } catch (error) {
       console.error('Error deploying assignment:', error);
       return { success: false };

@@ -2231,6 +2231,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Vessel Planning API routes
+  app.get("/api/vessel-planning", async (req, res) => {
+    try {
+      const { vesselId, crewMemberId, status } = req.query;
+      
+      // Get base dataset - use vessel-filtered or all records
+      let planning = vesselId 
+        ? await storage.getVesselPlanningByVessel(vesselId as string)
+        : await storage.getAllVesselPlanning();
+      
+      // Apply additional optional filters to the base dataset
+      if (crewMemberId) {
+        planning = planning.filter(p => p.crewMemberId === crewMemberId);
+      }
+      if (status) {
+        planning = planning.filter(p => p.reliefStatus === status);
+      }
+      
+      res.json(planning || []);
+    } catch (error) {
+      console.error("Get vessel planning error:", error);
+      res.status(500).json({ error: "Failed to get vessel planning records" });
+    }
+  });
+
   app.get("/api/vessel-planning/vessel/:vesselId", async (req, res) => {
     try {
       const { vesselId } = req.params;
@@ -2500,7 +2524,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Failed to deploy assignment" });
       }
       
-      res.json({ success: true });
+      res.json({ 
+        success: true, 
+        vesselPlanningId: result.vesselPlanningId,
+        message: 'Assignment deployed successfully' 
+      });
     } catch (error) {
       console.error("Failed to deploy assignment:", error);
       res.status(500).json({ error: "Failed to deploy assignment" });
@@ -2526,14 +2554,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/rotation/proposals/conflicts", async (req, res) => {
     try {
-      const { crewId, joiningDate, contractPeriod } = req.query;
-      if (!crewId || !joiningDate || !contractPeriod) {
-        return res.status(400).json({ error: "crewId, joiningDate, and contractPeriod are required" });
+      const { 
+        crewMemberId, crewId, 
+        startDate, joiningDate,
+        endDate, reliefDue,
+        contractPeriod, vesselId
+      } = req.query;
+      
+      // Accept both parameter formats (crewMemberId OR crewId)
+      const crew = (crewMemberId || crewId) as string;
+      
+      // Accept both date formats (startDate OR joiningDate)
+      const start = (startDate || joiningDate) as string;
+      
+      // Calculate end date from endDate OR reliefDue OR contractPeriod
+      let end: string;
+      if (endDate || reliefDue) {
+        end = (endDate || reliefDue) as string;
+      } else if (start && contractPeriod) {
+        // Calculate end date from start + contractPeriod (months)
+        const startObj = new Date(start);
+        startObj.setMonth(startObj.getMonth() + parseInt(contractPeriod as string));
+        end = startObj.toISOString().split('T')[0];
+      } else {
+        return res.status(400).json({ 
+          error: "Required parameters: (crewMemberId OR crewId), (startDate OR joiningDate), and (endDate OR reliefDue OR contractPeriod)" 
+        });
       }
+      
+      if (!crew || !start) {
+        return res.status(400).json({ 
+          error: "Required parameters: (crewMemberId OR crewId), (startDate OR joiningDate), and (endDate OR reliefDue OR contractPeriod)" 
+        });
+      }
+      
+      // Calculate contract period in months for conflict check
+      const startObj = new Date(start);
+      const endObj = new Date(end);
+      const months = Math.max(1,
+        (endObj.getFullYear() - startObj.getFullYear()) * 12 + 
+        (endObj.getMonth() - startObj.getMonth())
+      );
+      
       const conflicts = await storage.checkAssignmentConflicts(
-        crewId as string,
-        joiningDate as string,
-        parseInt(contractPeriod as string)
+        crew,
+        start,
+        months
       );
       res.json(conflicts);
     } catch (error) {

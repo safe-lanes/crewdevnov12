@@ -1,0 +1,200 @@
+Good work on Module 6 testing! Core functionality works, but we found 3 issues with the deployment workflow.
+
+TASK: Fix the 3 Moderate Issues in Module 6
+
+**ISSUE 1: Deploy Assignment Endpoint - Missing Fields**
+
+Problem: POST /api/rotation/proposals/deploy expects fields not in assignment structure
+- Expected: crewId, joiningDate, contractPeriod
+- Provided: crewMemberId, fromDate, toDate
+
+Solution: Update the deploy endpoint to map assignment fields correctly
+
+In server/routes.ts, find the deploy assignment endpoint and fix the field mapping:
+```typescript
+// POST /api/rotation/proposals/deploy
+app.post('/api/rotation/proposals/deploy', async (req, res) => {
+  try {
+    const { planId, assignmentIndex, deployedBy } = req.body;
+    
+    // Get rotation plan
+    const plan = await storage.getRotationPlan(planId);
+    if (!plan) {
+      return res.status(404).json({ error: 'Rotation plan not found' });
+    }
+    
+    // Parse assignments
+    const assignments = typeof plan.assignments === 'string' 
+      ? JSON.parse(plan.assignments) 
+      : plan.assignments;
+    
+    const assignment = assignments[assignmentIndex];
+    if (!assignment) {
+      return res.status(400).json({ error: 'Invalid assignment index' });
+    }
+    
+    // Check for conflicts BEFORE deploying
+    const conflicts = await storage.checkAssignmentConflicts(
+      assignment.crewMemberId,
+      assignment.vesselId,
+      assignment.fromDate,
+      assignment.toDate
+    );
+    
+    if (conflicts && conflicts.length > 0) {
+      return res.status(409).json({ 
+        error: 'Assignment conflict detected',
+        conflicts: conflicts 
+      });
+    }
+    
+    // Create vessel planning record with field mapping
+    const vesselPlanningData = {
+      crewMemberId: assignment.crewMemberId,
+      vesselId: assignment.vesselId,
+      rank: assignment.rank,
+      joiningDate: assignment.fromDate,  // Map fromDate → joiningDate
+      reliefDue: assignment.toDate,      // Map toDate → reliefDue
+      contractPeriod: calculateMonths(assignment.fromDate, assignment.toDate), // Calculate months
+      status: 'Deployed',
+      deployedBy: deployedBy,
+      deployedAt: new Date().toISOString()
+    };
+    
+    // Create vessel planning record
+    const vesselPlanning = await storage.createVesselPlanning(vesselPlanningData);
+    
+    // Update assignment status in rotation plan
+    assignments[assignmentIndex].status = 'Deployed';
+    assignments[assignmentIndex].deployedBy = deployedBy;
+    assignments[assignmentIndex].deployedAt = new Date().toISOString();
+    
+    await storage.updateRotationPlan(planId, {
+      assignments: JSON.stringify(assignments)
+    });
+    
+    res.json({ 
+      success: true, 
+      vesselPlanningId: vesselPlanning.id,
+      message: 'Assignment deployed successfully' 
+    });
+    
+  } catch (error) {
+    console.error('Deploy assignment error:', error);
+    res.status(400).json({ error: 'Failed to deploy assignment' });
+  }
+});
+
+// Helper function to calculate contract period in months
+function calculateMonths(fromDate: string, toDate: string): number {
+  const from = new Date(fromDate);
+  const to = new Date(toDate);
+  const months = (to.getFullYear() - from.getFullYear()) * 12 + 
+                 (to.getMonth() - from.getMonth());
+  return Math.max(1, months); // At least 1 month
+}
+```
+
+**ISSUE 2: Check Conflicts Endpoint - Parameter Name Mismatch**
+
+Problem: Endpoint expects different parameter names than what we're sending
+
+Solution: Update the conflicts endpoint to accept standard field names
+```typescript
+// GET /api/rotation/proposals/conflicts
+app.get('/api/rotation/proposals/conflicts', async (req, res) => {
+  try {
+    const { 
+      crewMemberId,     // Accept crewMemberId (standard)
+      crewId,           // Also accept crewId (alternative)
+      vesselId, 
+      startDate,        // Accept startDate (standard)
+      endDate,          // Accept endDate (standard)
+      joiningDate,      // Also accept joiningDate (alternative)
+      contractPeriod    // Also accept contractPeriod (alternative)
+    } = req.query;
+    
+    // Use crewMemberId OR crewId
+    const crew = crewMemberId || crewId;
+    
+    // Calculate endDate if contractPeriod provided
+    let end = endDate;
+    if (!end && joiningDate && contractPeriod) {
+      const joining = new Date(joiningDate as string);
+      joining.setMonth(joining.getMonth() + parseInt(contractPeriod as string));
+      end = joining.toISOString().split('T')[0];
+    }
+    
+    const start = startDate || joiningDate;
+    
+    if (!crew || !vesselId || !start || !end) {
+      return res.status(400).json({ 
+        error: 'Required parameters: crewMemberId (or crewId), vesselId, startDate (or joiningDate), endDate (or contractPeriod)' 
+      });
+    }
+    
+    const conflicts = await storage.checkAssignmentConflicts(
+      crew as string,
+      vesselId as string,
+      start as string,
+      end as string
+    );
+    
+    res.json(conflicts || []);
+    
+  } catch (error) {
+    console.error('Check conflicts error:', error);
+    res.status(500).json({ error: 'Failed to check conflicts' });
+  }
+});
+```
+
+**ISSUE 3: Vessel Planning Root Endpoint**
+
+Problem: GET /api/vessel-planning doesn't exist (only filtered endpoints)
+
+Solution: Add root endpoint for listing all vessel planning records
+```typescript
+// GET /api/vessel-planning - List all vessel planning records
+app.get('/api/vessel-planning', async (req, res) => {
+  try {
+    // Get query parameters for filtering
+    const { vesselId, crewMemberId, status } = req.query;
+    
+    // If filters provided, use existing filtered methods
+    if (vesselId) {
+      const planning = await storage.getVesselPlanningByVessel(vesselId as string);
+      return res.json(planning || []);
+    }
+    
+    // Otherwise, get all vessel planning records
+    // Note: You may need to add a getAllVesselPlanning() method to DatabaseStorage
+    // For now, return empty array or implement the method
+    const allPlanning = await storage.getAllVesselPlanning();
+    res.json(allPlanning || []);
+    
+  } catch (error) {
+    console.error('Get vessel planning error:', error);
+    res.status(500).json({ error: 'Failed to get vessel planning records' });
+  }
+});
+```
+
+**If getAllVesselPlanning() doesn't exist, add it to server/database.ts:**
+```typescript
+async getAllVesselPlanning(): Promise<VesselPlanning[]> {
+  return await this.db.select().from(vesselPlanning);
+}
+```
+
+AFTER FIXING:
+
+1. Restart server
+2. Re-test all 3 scenarios:
+   - Deploy assignment (should create vessel_planning record)
+   - Check conflicts (should accept both parameter formats)
+   - GET /api/vessel-planning (should return all records)
+3. Show test results
+4. Confirm all issues resolved
+
+Then report completion and we'll proceed to MODULE 7.
