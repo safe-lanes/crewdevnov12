@@ -1,0 +1,379 @@
+🎉 Perfect! Module 5 (Vessels) is working flawlessly!
+
+Proceed to MODULE 6: ROTATION PLANS Testing
+
+Test the Rotation Plans module - this is a complex workflow module!
+
+ROTATION PLANS MODULE TESTING
+==============================
+
+Rotation plans manage crew rotation assignments, proposals, approvals, and deployments.
+
+**DATABASE INITIAL STATE:**
+```sql
+SELECT COUNT(*) FROM rotation_plans;
+-- Expected: 0 (no rotation plans yet)
+
+SELECT COUNT(*) FROM vessel_planning;
+-- Expected: 0 (no vessel planning records yet)
+
+-- Check if we have crew and vessels to work with
+SELECT COUNT(*) FROM crew_members;  -- Should be 49
+SELECT COUNT(*) FROM master_data_entries WHERE master_id = '014';  -- Should be 6
+```
+
+**1. ROTATION PLANS - BASIC CRUD OPERATIONS**
+
+   A. CREATE - Create Rotation Plan
+   ---------------------------------
+   Test: POST /api/rotation-plans
+   
+   Payload:
+```json
+   {
+     "planName": "Q1 2025 Rotation Plan",
+     "planFromDate": "2025-01-01",
+     "planToDate": "2025-03-31",
+     "status": "Draft",
+     "assignments": [
+       {
+         "crewMemberId": "A000264",
+         "vesselId": "VSL-001",
+         "rank": "Master",
+         "fromDate": "2025-01-15",
+         "toDate": "2025-04-15",
+         "status": "Proposed"
+       },
+       {
+         "crewMemberId": "A000278",
+         "vesselId": "VSL-002",
+         "rank": "Chief Officer",
+         "fromDate": "2025-02-01",
+         "toDate": "2025-05-01",
+         "status": "Proposed"
+       }
+     ],
+     "createdBy": "admin@example.com"
+   }
+```
+   
+   Expected:
+   - [ ] Returns 201 Created
+   - [ ] Auto-generated ID (sequence)
+   - [ ] assignments stored as JSON
+   - [ ] Data appears in database
+   
+   SQL Verify:
+```sql
+   SELECT * FROM rotation_plans WHERE plan_name = 'Q1 2025 Rotation Plan';
+   -- Should show 1 row with assignments JSON
+```
+
+   B. READ - Get All Rotation Plans
+   ---------------------------------
+   Test: GET /api/rotation-plans
+   
+   Expected:
+   - [ ] Returns 200 OK
+   - [ ] Returns array with 1 plan
+   - [ ] assignments JSON parsed correctly
+   
+   C. READ - Get Single Rotation Plan
+   -----------------------------------
+   Test: GET /api/rotation-plans/:id
+   
+   Expected:
+   - [ ] Returns 200 OK
+   - [ ] Returns complete plan with assignments array
+   
+   D. UPDATE - Modify Rotation Plan
+   ---------------------------------
+   Test: PUT /api/rotation-plans/:id
+   
+   Payload:
+```json
+   {
+     "status": "Submitted",
+     "assignments": [
+       {
+         "crewMemberId": "A000264",
+         "vesselId": "VSL-001",
+         "rank": "Master",
+         "fromDate": "2025-01-15",
+         "toDate": "2025-04-15",
+         "status": "Approved"
+       }
+     ]
+   }
+```
+   
+   Expected:
+   - [ ] Returns 200 OK
+   - [ ] Status updated
+   - [ ] assignments JSON updated
+   
+   E. DELETE - Remove Rotation Plan
+   ---------------------------------
+   Test: DELETE /api/rotation-plans/:id
+   
+   Expected:
+   - [ ] Returns 200 OK
+   - [ ] Plan removed from database
+
+**2. ROTATION WORKFLOW OPERATIONS** (CRITICAL - Phase 2D methods)
+
+   A. Propose Rotation Plan
+   -------------------------
+   Test: POST /api/rotation-plans/:id/propose
+   
+   Payload:
+```json
+   {
+     "proposedBy": "manager@example.com"
+   }
+```
+   
+   Expected:
+   - [ ] Status changes to "Proposed"
+   - [ ] proposedBy field set
+   - [ ] proposedDate field set
+   - [ ] Returns 200 OK with updated plan
+   
+   SQL Verify:
+```sql
+   SELECT status, proposed_by, proposed_date 
+   FROM rotation_plans WHERE id = :id;
+   -- Should show: Proposed | manager@example.com | <timestamp>
+```
+
+   B. Get Proposed Assignments
+   ----------------------------
+   Test: POST /api/rotation-plans/proposed-assignments
+   
+   Payload:
+```json
+   {
+     "vesselIds": ["VSL-001", "VSL-002"],
+     "planFromDate": "2025-01-01",
+     "planToDate": "2025-03-31"
+   }
+```
+   
+   Expected:
+   - [ ] Returns 200 OK
+   - [ ] Returns array of proposed assignments
+   - [ ] Filters by vessels and date range
+   - [ ] Includes plans with "Proposed" OR "Partially Approved" status
+
+   C. Deploy Assignment
+   --------------------
+   Test: POST /api/rotation-plans/:planId/deploy-assignment
+   
+   Payload:
+```json
+   {
+     "assignmentIndex": 0,
+     "deployedBy": "admin@example.com"
+   }
+```
+   
+   Expected:
+   - [ ] Returns 200 OK
+   - [ ] Assignment status changes to "Deployed"
+   - [ ] deployedBy and deployedAt fields set in assignment
+   - [ ] Creates record in vessel_planning table
+   - [ ] Checks for conflicts before deployment
+   
+   SQL Verify:
+```sql
+   -- Check rotation plan assignment updated
+   SELECT assignments FROM rotation_plans WHERE id = :planId;
+   -- Assignment at index 0 should have status "Deployed"
+   
+   -- Check vessel planning record created
+   SELECT * FROM vessel_planning 
+   WHERE crew_member_id = 'A000264' 
+   AND vessel_id = 'VSL-001';
+   -- Should show 1 row
+```
+
+   D. Reject Assignment
+   --------------------
+   Test: POST /api/rotation-plans/:planId/reject-assignment
+   
+   Payload:
+```json
+   {
+     "assignmentIndex": 1
+   }
+```
+   
+   Expected:
+   - [ ] Returns 200 OK
+   - [ ] Assignment status changes to "Rejected"
+   - [ ] Returns updated plan
+
+   E. Check Assignment Conflicts
+   -----------------------------
+   Test: POST /api/rotation-plans/check-conflicts
+   
+   Payload:
+```json
+   {
+     "crewMemberId": "A000264",
+     "vesselId": "VSL-001",
+     "startDate": "2025-01-15",
+     "endDate": "2025-04-15"
+   }
+```
+   
+   Expected:
+   - [ ] Returns 200 OK
+   - [ ] Returns array of conflicting assignments
+   - [ ] Checks BOTH vessel_planning and rotation_plans
+   - [ ] Detects date overlaps
+   - [ ] Skips rejected assignments
+
+**3. VESSEL PLANNING - CRUD OPERATIONS**
+
+   These records are created by deploying rotation plan assignments.
+   
+   A. READ - Get Vessel Planning
+   ------------------------------
+   Test: GET /api/vessel-planning
+   
+   Expected:
+   - [ ] Returns 200 OK
+   - [ ] Returns deployed assignments
+   
+   B. READ - Filter by Vessel
+   ---------------------------
+   Test: GET /api/vessel-planning?vesselId=VSL-001
+   
+   Expected:
+   - [ ] Returns assignments for specific vessel
+   
+   C. READ - Filter by Crew Member
+   --------------------------------
+   Test: GET /api/vessel-planning?crewMemberId=A000264
+   
+   Expected:
+   - [ ] Returns assignments for specific crew member
+   
+   D. UPDATE - Modify Planning
+   ---------------------------
+   Test: PUT /api/vessel-planning/:id
+   
+   Payload:
+```json
+   {
+     "toDate": "2025-05-15"
+   }
+```
+   
+   Expected:
+   - [ ] Returns 200 OK
+   - [ ] Date extended
+   
+   E. DELETE - Remove Planning
+   ---------------------------
+   Test: DELETE /api/vessel-planning/:id
+   
+   Expected:
+   - [ ] Returns 200 OK
+   - [ ] Record removed
+
+**4. PERSISTENCE TEST**
+
+   - [ ] Create rotation plan with assignments
+   - [ ] Propose the plan
+   - [ ] Deploy one assignment
+   - [ ] Restart server
+   - [ ] Verify rotation plan persists
+   - [ ] Verify deployed assignment in vessel_planning persists
+
+**5. CONFLICT DETECTION TEST**
+
+   - [ ] Deploy assignment for A000264 on VSL-001 (Jan 15 - Apr 15)
+   - [ ] Try to deploy overlapping assignment for same crew
+   - [ ] Verify conflict is detected
+   - [ ] Verify deployment is blocked
+
+**6. JSON HANDLING TEST**
+
+   - [ ] Create plan with assignments JSON
+   - [ ] Update assignments JSON
+   - [ ] Verify JSON parses correctly
+   - [ ] Verify array modifications work
+
+**7. VALIDATION TESTS**
+
+   Test invalid rotation plan:
+```json
+   {
+     "planName": "",
+     "assignments": "not-an-array"
+   }
+```
+   
+   Expected:
+   - [ ] Returns 400 Bad Request
+   - [ ] Validation errors
+
+**8. EDGE CASES**
+
+   A. Invalid Plan ID
+   ------------------
+   - [ ] GET /api/rotation-plans/99999 → 404
+   
+   B. Invalid Assignment Index
+   ----------------------------
+   - [ ] Deploy assignment at index 99 → 400
+   
+   C. Deploy Already Deployed
+   ---------------------------
+   - [ ] Deploy same assignment twice → 400
+
+**9. PERFORMANCE**
+
+   - [ ] GET all rotation plans: < 1 second
+   - [ ] Propose plan: < 500ms
+   - [ ] Deploy assignment: < 1 second (includes conflict check)
+
+TESTING PROCEDURE:
+1. Check initial database state (0 plans, 0 vessel planning)
+2. Create rotation plan with 2 assignments
+3. Test propose workflow
+4. Test get proposed assignments
+5. Test deploy assignment (creates vessel_planning)
+6. Test reject assignment
+7. Test conflict detection
+8. Test vessel planning CRUD
+9. Restart and verify persistence
+10. Test validation and edge cases
+
+REPORT FORMAT:
+MODULE 6: ROTATION PLANS
+Initial State: Rotation Plans: 0 ✅ Vessel Planning: 0 ✅
+Basic CRUD: CREATE ✅/❌: POST /api/rotation-plans → 201 READ ✅/❌: GET /api/rotation-plans → 200 UPDATE ✅/❌: PUT /api/rotation-plans/:id → 200 DELETE ✅/❌: DELETE /api/rotation-plans/:id → 200
+Workflow Operations (Phase 2D): PROPOSE ✅/❌: Status changed to "Proposed" ✅ GET PROPOSED ✅/❌: Returns filtered assignments ✅ DEPLOY ✅/❌: Creates vessel_planning record ✅ REJECT ✅/❌: Status changed to "Rejected" ✅ CHECK CONFLICTS ✅/❌: Detects overlaps ✅
+Vessel Planning: READ ✅/❌: Works FILTER ✅/❌: By vessel and crew works UPDATE ✅/❌: Works DELETE ✅/❌: Works
+JSON Handling: Assignments stored as JSON ✅/❌ Assignments parsed correctly ✅/❌ Array modifications work ✅/❌
+PERSISTENCE ✅/❌: All data persists
+CONFLICTS ✅/❌: Conflict detection works
+PERFORMANCE: List plans: Xms ✅ Deploy: Xms ✅
+ISSUES FOUND: [List any issues]
+STATUS: ✅ WORKING / ⚠️ ISSUES / ❌ BROKEN
+
+CRITICAL CHECKS:
+- JSON assignments handling (parse/stringify)
+- Workflow status transitions
+- Conflict detection logic
+- vessel_planning record creation on deploy
+- Date overlap calculations
+- Phase 2D methods from earlier implementation
+
+This is a COMPLEX module with workflow logic - test thoroughly!
+
+After completing Module 6, report results and wait for approval before Module 7.
+
