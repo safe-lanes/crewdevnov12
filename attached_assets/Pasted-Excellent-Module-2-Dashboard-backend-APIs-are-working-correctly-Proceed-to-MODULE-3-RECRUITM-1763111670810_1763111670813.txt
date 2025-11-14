@@ -1,0 +1,217 @@
+Excellent! Module 2 Dashboard backend APIs are working correctly. ✅
+
+Proceed to MODULE 3: RECRUITMENT Testing
+
+Test the Recruitment module systematically:
+
+RECRUITMENT MODULE TESTING
+==========================
+
+Recruitment manages job candidates before they become crew members.
+
+**DATABASE STATE:**
+First, check current data:
+```sql
+SELECT COUNT(*) FROM recruitment_candidates;
+-- Expected: Some candidates from migration (if any survived)
+
+SELECT * FROM recruitment_candidates LIMIT 3;
+-- Review structure and sample data
+```
+
+**1. RECRUITMENT CANDIDATES - CRUD OPERATIONS**
+
+   A. CREATE - Add New Candidate
+   ----------------------------
+   Test: POST /api/recruitment-candidates
+   
+   Payload:
+```json
+   {
+     "firstName": "Test",
+     "lastName": "Candidate",
+     "email": "test@example.com",
+     "phone": "+1234567890",
+     "appliedPosition": "Third Officer",
+     "status": "Applied",
+     "applicationDate": "2025-01-13",
+     "resumeUrl": "https://example.com/resume.pdf",
+     "notes": "Test candidate for recruitment module"
+   }
+```
+   
+   Expected:
+   - [ ] Returns 201 Created status
+   - [ ] Returns candidate object with auto-generated ID
+   - [ ] Data appears in database
+   
+   SQL Verify:
+```sql
+   SELECT * FROM recruitment_candidates 
+   WHERE email = 'test@example.com';
+```
+
+   B. READ - Get All Candidates
+   ----------------------------
+   Test: GET /api/recruitment-candidates
+   
+   Expected:
+   - [ ] Returns array of candidates
+   - [ ] Includes the test candidate just created
+   - [ ] Returns 200 OK status
+   
+   C. READ - Get Single Candidate
+   ------------------------------
+   Test: GET /api/recruitment-candidates/:id
+   
+   Use the ID from CREATE test above
+   
+   Expected:
+   - [ ] Returns candidate object
+   - [ ] All fields present and correct
+   - [ ] Returns 200 OK status
+
+   D. UPDATE - Modify Candidate
+   ----------------------------
+   Test: PUT /api/recruitment-candidates/:id
+   
+   Payload:
+```json
+   {
+     "status": "Interviewed",
+     "notes": "Passed initial interview - Schedule technical assessment"
+   }
+```
+   
+   Expected:
+   - [ ] Returns 200 OK status
+   - [ ] Returns updated candidate object
+   - [ ] Status changed to "Interviewed"
+   - [ ] Notes updated
+   
+   SQL Verify:
+```sql
+   SELECT status, notes FROM recruitment_candidates 
+   WHERE id = <test_id>;
+```
+
+   E. DELETE - Remove Candidate
+   ----------------------------
+   Test: DELETE /api/recruitment-candidates/:id
+   
+   Expected:
+   - [ ] Returns 200 OK or 204 No Content
+   - [ ] Candidate removed from database
+   
+   SQL Verify:
+```sql
+   SELECT COUNT(*) FROM recruitment_candidates 
+   WHERE id = <test_id>;
+   -- Should return 0
+```
+
+**2. RECRUITMENT WORKFLOW OPERATIONS**
+
+   A. Transfer to Crew Member
+   ---------------------------
+   Test: POST /api/recruitment-candidates/:id/transfer
+   
+   This should convert a candidate to a crew member
+   
+   Expected:
+   - [ ] Creates new crew_members record
+   - [ ] Copies relevant data from candidate
+   - [ ] Updates or removes candidate record
+   - [ ] Returns new crew member object
+   
+   SQL Verify:
+```sql
+   -- Check crew member was created
+   SELECT * FROM crew_members 
+   WHERE first_name = 'Test' AND last_name = 'Candidate';
+   
+   -- Check candidate handling (deleted or marked as transferred)
+   SELECT * FROM recruitment_candidates 
+   WHERE first_name = 'Test' AND last_name = 'Candidate';
+```
+
+   B. Filter by Status
+   -------------------
+   Test: GET /api/recruitment-candidates?status=Interviewed
+   
+   Expected:
+   - [ ] Returns only candidates with "Interviewed" status
+   - [ ] Filtering works correctly
+
+**3. PERSISTENCE TEST**
+   
+   - [ ] Create a recruitment candidate
+   - [ ] Restart server: `npm run dev` (restart)
+   - [ ] GET the candidate by ID
+   - [ ] Verify data still exists
+   
+   Result: Data should persist ✅
+
+**4. DATA VALIDATION**
+
+   Test invalid data:
+```json
+   {
+     "firstName": "",  // Empty name
+     "email": "invalid-email"  // Invalid format
+   }
+```
+   
+   Expected:
+   - [ ] Returns 400 Bad Request
+   - [ ] Returns validation error messages
+   - [ ] Does NOT create record in database
+
+**5. EDGE CASES**
+
+   A. Duplicate Email
+   ------------------
+   Try creating two candidates with same email
+   
+   Expected:
+   - [ ] Should handle gracefully (allow OR reject with error)
+   
+   B. Invalid ID
+   -------------
+   Test: GET /api/recruitment-candidates/99999
+   
+   Expected:
+   - [ ] Returns 404 Not Found
+   - [ ] Returns error message
+
+TESTING PROCEDURE:
+1. Check initial database state
+2. Test CREATE → verify in database
+3. Test READ all → confirm appears
+4. Test UPDATE → verify changes persist
+5. Test DELETE → verify removal
+6. Test transfer workflow (if exists)
+7. Restart server and verify persistence
+8. Test edge cases
+
+REPORT FORMAT:
+MODULE 3: RECRUITMENT
+Initial State: SELECT COUNT(*) FROM recruitment_candidates; -- Result: 0 ✅ (or X if migration brought some)
+CREATE ✅/❌: POST /api/recruitment-candidates → 201 Created Response: {id: 1, firstName: "Test", ...} SQL Verification: SELECT * FROM recruitment_candidates WHERE id = 1; -- Result: 1 row ✅
+READ ✅/❌: GET /api/recruitment-candidates → 200 OK Response: Array with 1 candidate ✅
+UPDATE ✅/❌: PUT /api/recruitment-candidates/1 → 200 OK Status changed from "Applied" to "Interviewed" ✅
+DELETE ✅/❌: DELETE /api/recruitment-candidates/1 → 200 OK SQL Verification: Count = 0 ✅
+PERSIST ✅/❌: Created candidate → Restarted → Still exists ✅
+ISSUES FOUND:
+1.	[List any issues with details]
+API Calls: POST /api/recruitment-candidates → 201 ✅ GET /api/recruitment-candidates → 200 ✅ PUT /api/recruitment-candidates/1 → 200 ✅ DELETE /api/recruitment-candidates/1 → 200 ✅
+STATUS: ✅ WORKING / ⚠️ ISSUES / ❌ BROKEN
+IMPORTANT NOTES:
+- Recruitment candidates have TEXT primary keys (like crew members)
+- No sequence reset needed for this table
+- Check if transfer-to-crew-member workflow exists
+- Verify validation on email format, phone format
+
+After completing Module 3, report results and wait for approval before Module 4.
+
+
