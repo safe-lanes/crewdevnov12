@@ -2246,21 +2246,21 @@ export class DatabaseStorage implements IStorage {
   async getMasterDataEntries(masterId: string): Promise<MasterDataEntry[]> {
     // Use raw SQL to avoid Drizzle schema column issues
     const existingColumns = await this.getExistingColumns('master_data_entries');
-    const selectColumns = Array.from(existingColumns).join(', ');
-    const selectSql = `SELECT ${selectColumns} FROM master_data_entries WHERE master_id = ?`;
+    const selectColumns = Array.from(existingColumns).map(col => `"${col}"`).join(', ');
+    const selectSql = `SELECT ${selectColumns} FROM master_data_entries WHERE "master_id" = $1`;
     
-    const [results]: any = await this.pool.query(selectSql, [masterId]);
-    return results;
+    const result: any = await this.pool.query(selectSql, [masterId]);
+    return result.rows || [];
   }
 
   async getMasterDataEntry(id: number): Promise<MasterDataEntry | undefined> {
     // Use raw SQL to avoid Drizzle schema column issues
     const existingColumns = await this.getExistingColumns('master_data_entries');
-    const selectColumns = Array.from(existingColumns).join(', ');
-    const selectSql = `SELECT ${selectColumns} FROM master_data_entries WHERE id = ?`;
+    const selectColumns = Array.from(existingColumns).map(col => `"${col}"`).join(', ');
+    const selectSql = `SELECT ${selectColumns} FROM master_data_entries WHERE "id" = $1`;
     
-    const [results]: any = await this.pool.query(selectSql, [id]);
-    return results[0] || undefined;
+    const result: any = await this.pool.query(selectSql, [id]);
+    return result.rows?.[0] || undefined;
   }
 
   async createMasterDataEntry(insertEntry: InsertMasterDataEntry): Promise<MasterDataEntry> {
@@ -2318,24 +2318,24 @@ export class DatabaseStorage implements IStorage {
     // Add updated_at timestamp
     filteredEntry.updated_at = new Date();
     
-    // Use raw SQL for UPDATE
-    const columns = Object.keys(filteredEntry).map(col => `${col} = ?`).join(', ');
+    // Use raw SQL for UPDATE - PostgreSQL syntax with $1, $2, etc.
+    const columns = Object.keys(filteredEntry).map((col, i) => `"${col}" = $${i + 1}`).join(', ');
     const values = Object.values(filteredEntry).map(value => value === undefined ? null : value);
-    const updateSql = `UPDATE master_data_entries SET ${columns} WHERE id = ?`;
+    const updateSql = `UPDATE master_data_entries SET ${columns} WHERE "id" = $${values.length + 1}`;
     
-    const [result]: any = await this.pool.query(updateSql, [...values, id]);
+    const result: any = await this.pool.query(updateSql, [...values, id]);
     
-    if (result.affectedRows === 0) {
+    if (result.rowCount === 0) {
       return undefined;
     }
     
     // Use raw SQL for SELECT
     const existingColumns = await this.getExistingColumns('master_data_entries');
-    const selectColumns = Array.from(existingColumns).join(', ');
-    const selectSql = `SELECT ${selectColumns} FROM master_data_entries WHERE id = ?`;
+    const selectColumns = Array.from(existingColumns).map(col => `"${col}"`).join(', ');
+    const selectSql = `SELECT ${selectColumns} FROM master_data_entries WHERE "id" = $1`;
     
-    const [selectResults]: any = await this.pool.query(selectSql, [id]);
-    return selectResults[0] || undefined;
+    const selectResult: any = await this.pool.query(selectSql, [id]);
+    return selectResult.rows?.[0] || undefined;
   }
 
   async deleteMasterDataEntry(id: number): Promise<boolean> {
@@ -2343,8 +2343,8 @@ export class DatabaseStorage implements IStorage {
     const existing = await this.getMasterDataEntry(id);
     if (!existing) return false;
     
-    // Execute delete using raw SQL
-    const deleteSql = `DELETE FROM master_data_entries WHERE id = ?`;
+    // Execute delete using raw SQL - PostgreSQL syntax
+    const deleteSql = `DELETE FROM master_data_entries WHERE "id" = $1`;
     await this.pool.query(deleteSql, [id]);
     
     // Return true since entry existed (delete should succeed)
