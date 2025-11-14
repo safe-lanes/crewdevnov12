@@ -1,0 +1,134 @@
+COMPREHENSIVE MODULE TESTING - PostgreSQL Backend Validation
+
+I need you to perform systematic, in-depth testing of ALL modules to verify PostgreSQL persistence is working correctly. I've noticed some modules save data while others don't (e.g., Admin section unable to save ranks).
+
+TESTING METHODOLOGY:
+
+Test ONE module at a time following this structure:
+
+1. Test CRUD operations (Create, Read, Update, Delete)
+2. Test data persistence across server restarts
+3. Verify foreign key relationships work
+4. Check for any PostgreSQL errors in console
+5. Report results before moving to next module
+
+For EACH module, provide:
+✅ What works correctly
+❌ What fails (with exact error messages)
+⚠️ What needs investigation
+📝 Database query logs (if errors occur)
+
+---
+
+MODULE 1: ADMIN - RANK MANAGEMENT
+==================================
+
+Test these operations in Admin section:
+
+**Available Ranks:**
+- [ ] CREATE: Add new available rank
+- [ ] READ: View list of available ranks (should show 17)
+- [ ] UPDATE: Edit an existing rank
+- [ ] DELETE: Remove a rank
+- [ ] PERSIST: Restart server, verify changes remain
+
+**Company Ranks:**
+- [ ] CREATE: Add new company rank
+- [ ] READ: View company ranks (should show 33)
+- [ ] UPDATE: Edit company rank designation
+- [ ] DELETE: Remove company rank
+- [ ] SAVE ALL: Use "Save All" button functionality
+- [ ] PERSIST: Restart server, verify changes remain
+
+**Rank Groups:**
+- [ ] CREATE: Create new rank group
+- [ ] READ: View rank groups
+- [ ] UPDATE: Modify rank group
+- [ ] DELETE: Remove rank group
+- [ ] PERSIST: Restart server, verify changes remain
+
+**Promotion Hierarchies:**
+- [ ] CREATE: Create promotion path
+- [ ] READ: View promotion hierarchies
+- [ ] UPDATE: Edit promotion path
+- [ ] DELETE: Remove hierarchy
+- [ ] PERSIST: Restart server, verify changes remain
+
+TESTING PROCEDURE:
+1. Open Admin section in UI
+2. Try each operation above
+3. Check browser console for errors
+4. Check server logs for PostgreSQL errors
+5. Use pgAdmin or psql to verify data in database:
+```sql
+   SELECT * FROM available_ranks;
+   SELECT * FROM company_ranks;
+   SELECT * FROM rank_groups;
+   SELECT * FROM promotion_hierarchies;
+```
+
+REPORT FORMAT:
+MODULE 1: ADMIN - RANK MANAGEMENT
+Available Ranks: ✅ CREATE: Works - inserted successfully ❌ UPDATE: FAILS - Error: "column 'sort_order' does not exist" ✅ DELETE: Works ✅ PERSIST: Data remains after restart
+Company Ranks: ❌ SAVE ALL: FAILS - Error: "saveAllCompanyRanks is not defined" [Include full error stack trace]
+SQL Verification: SELECT COUNT() FROM available_ranks; -- Result: 17 ✅ SELECT COUNT() FROM company_ranks; -- Result: 33 ✅
+ISSUES FOUND:
+1.	[Detailed description of issue]
+2.	[Root cause if identified]
+3.	[Recommended fix]
+STATUS: ⚠️ NEEDS FIXES
+---
+
+WAIT FOR MY APPROVAL BEFORE PROCEEDING TO MODULE 2.
+
+After I review Module 1 results, I'll ask you to continue with:
+
+MODULE 2: DASHBOARD
+MODULE 3: RECRUITMENT
+MODULE 4: CREW POOL (Crew Management)
+MODULE 5: VESSELS
+MODULE 6: ROTATION PLANS
+MODULE 7: APPRAISALS
+MODULE 8: DRUG & ALCOHOL TESTING
+MODULE 9: REST HOURS
+MODULE 10: REPORTS
+MODULE 11: ACCOUNTS (Users)
+
+IMPORTANT TESTING NOTES:
+
+1. **Test with REAL UI interactions** - Don't just test API endpoints
+2. **Check browser DevTools Console** - Note any JavaScript errors
+3. **Check server console** - Note any PostgreSQL errors
+4. **Verify in database** - Use SQL queries to confirm data saved
+5. **Test persistence** - Restart server after each module test
+6. **Include error screenshots** - If UI shows errors
+7. **Check network tab** - See if API calls succeed/fail
+
+SPECIFIC ISSUES TO CHECK:
+
+Admin Section (High Priority):
+- Why can't we save ranks?
+- Is it a UI issue or backend issue?
+- Are the API endpoints being called?
+- What HTTP status codes are returned?
+- Are there TypeScript errors in DatabaseStorage methods?
+
+For every failed operation:
+1. Show the API endpoint being called
+2. Show the request payload
+3. Show the response (or error)
+4. Show server console logs
+5. Show the DatabaseStorage method being used
+6. Identify if it's: Frontend issue / API issue / Database issue
+
+DELIVERABLE FOR MODULE 1:
+- Complete test results report
+- List of all errors with stack traces
+- SQL verification queries
+- Root cause analysis for failures
+- Recommended fixes
+- Estimated complexity to fix each issue
+
+Begin with MODULE 1: ADMIN - RANK MANAGEMENT only.
+Report results and wait for my approval before continuing.
+

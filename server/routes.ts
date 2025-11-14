@@ -1494,11 +1494,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/available-ranks", async (req, res) => {
     try {
+      console.log('📥 [POST /api/available-ranks] Request body:', JSON.stringify(req.body, null, 2));
       const validatedData = insertAvailableRankSchema.parse(req.body);
+      console.log('✅ [POST /api/available-ranks] Validation passed:', JSON.stringify(validatedData, null, 2));
       const rank = await storage.createAvailableRank(validatedData);
+      console.log('✅ [POST /api/available-ranks] Created rank:', JSON.stringify(rank, null, 2));
       res.status(201).json(rank);
     } catch (error) {
-      res.status(400).json({ error: "Invalid rank data" });
+      console.error('❌ [POST /api/available-ranks] Error:', error);
+      if (error instanceof z.ZodError) {
+        console.error('❌ [POST /api/available-ranks] Validation errors:', JSON.stringify(error.errors, null, 2));
+      }
+      res.status(400).json({ error: "Invalid rank data", details: error instanceof z.ZodError ? error.errors : undefined });
     }
   });
 
