@@ -5680,6 +5680,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Nationalities endpoint - wrapper for /api/masters/001/data
+  app.get("/api/nationalities", async (req, res) => {
+    try {
+      const entries = await storage.getMasterDataEntries('001');
+      // Extract nationality names from master data entries
+      // Handle both 'nationality' and 'name' fields for flexibility
+      const nationalities = entries.map((entry: any) => 
+        entry.nationality || entry.name || ''
+      ).filter((n: string) => n.length > 0);
+      
+      res.json(nationalities);
+    } catch (error) {
+      console.error("❌ Failed to fetch nationalities:", error);
+      res.status(500).json({ error: "Failed to fetch nationalities" });
+    }
+  });
+
   // Master Data Entries API routes
   app.get("/api/masters/:id/data", async (req, res) => {
     try {
