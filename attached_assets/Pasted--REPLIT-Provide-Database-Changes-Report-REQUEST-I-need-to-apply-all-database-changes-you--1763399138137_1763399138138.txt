@@ -1,0 +1,202 @@
+# REPLIT: Provide Database Changes Report
+
+## REQUEST
+
+I need to apply all database changes you made during Phase 2 to my local database. Please provide a comprehensive report of ALL database changes.
+
+---
+
+## WHAT I NEED
+
+### 1. NEW TABLES CREATED
+
+For each new table, provide:
+- Complete CREATE TABLE statement with all columns
+- Data types for each column
+- All constraints (PRIMARY KEY, FOREIGN KEY, NOT NULL, DEFAULT, etc.)
+- All indexes created for the table
+
+**Format:**
+```sql
+CREATE TABLE table_name (
+  -- complete definition
+);
+
+CREATE INDEX index_name ON table_name(column);
+```
+
+### 2. MODIFIED TABLES
+
+For any existing tables that were modified:
+- ALTER TABLE statements showing what was added/changed
+- New columns added
+- New indexes added
+- New constraints added
+
+**Format:**
+```sql
+ALTER TABLE existing_table ADD COLUMN new_column TYPE;
+CREATE INDEX new_index ON existing_table(column);
+```
+
+### 3. DATA INSERTED
+
+For any data inserted into existing tables:
+- Table name
+- Number of records inserted
+- Complete INSERT statements
+
+**Format:**
+```sql
+INSERT INTO table_name (columns) VALUES (values);
+-- Show all INSERT statements
+```
+
+### 4. INDEXES CREATED
+
+List all indexes created:
+```sql
+CREATE INDEX index_name ON table_name(column);
+-- List all indexes
+```
+
+### 5. FOREIGN KEY CONSTRAINTS
+
+List all foreign key constraints added:
+```sql
+ALTER TABLE table_name 
+  ADD CONSTRAINT constraint_name 
+  FOREIGN KEY (column) REFERENCES other_table(column);
+```
+
+---
+
+## VERIFICATION QUERIES
+
+Also provide queries I can run to verify the changes:
+
+```sql
+-- Example:
+-- Check if table exists
+SELECT * FROM information_schema.tables WHERE table_name = 'new_table';
+
+-- Check table structure
+\d table_name
+
+-- Check inserted data
+SELECT COUNT(*) FROM table_name;
+```
+
+---
+
+## FORMAT REQUEST
+
+Please organize your response as follows:
+
+### SECTION 1: SUMMARY
+- Total new tables created: X
+- Total tables modified: X
+- Total indexes created: X
+- Total data records inserted: X
+- Total foreign keys added: X
+
+### SECTION 2: COMPLETE SQL MIGRATION SCRIPT
+Provide a single, ready-to-run SQL script that includes:
+1. All CREATE TABLE statements
+2. All ALTER TABLE statements (if any)
+3. All CREATE INDEX statements
+4. All INSERT statements (with actual data)
+5. All foreign key constraints
+
+The script should be:
+- Safe to run multiple times (use IF NOT EXISTS)
+- In correct dependency order (parent tables before child tables)
+- Ready to copy-paste into psql
+
+### SECTION 3: VERIFICATION SCRIPT
+Provide SQL queries to verify all changes were applied correctly.
+
+---
+
+## EXAMPLE FORMAT (what I expect)
+
+```sql
+-- ============================================
+-- PHASE 2 DATABASE MIGRATION SCRIPT
+-- ============================================
+-- Date: 2025-11-17
+-- Purpose: Apply all Phase 2 database changes to local environment
+-- Tables Created: 2
+-- Data Inserted: 8 records
+-- Indexes Created: 6
+-- Foreign Keys: 1
+
+-- ============================================
+-- STEP 1: CREATE NEW TABLES
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS table1 (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  column1 VARCHAR(100) NOT NULL,
+  -- ... all columns
+);
+
+CREATE INDEX IF NOT EXISTS idx_table1_column1 ON table1(column1);
+
+-- Repeat for all tables...
+
+-- ============================================
+-- STEP 2: ALTER EXISTING TABLES (if any)
+-- ============================================
+
+-- ALTER TABLE statements here (if any)
+
+-- ============================================
+-- STEP 3: INSERT DATA
+-- ============================================
+
+INSERT INTO table_name (columns) VALUES
+  (value1, value2),
+  (value3, value4);
+
+-- Show all inserts...
+
+-- ============================================
+-- STEP 4: VERIFICATION QUERIES
+-- ============================================
+
+-- Verify tables exist
+SELECT table_name FROM information_schema.tables 
+WHERE table_name IN ('table1', 'table2');
+
+-- Verify data inserted
+SELECT COUNT(*) FROM table_name;
+```
+
+---
+
+## IMPORTANT
+
+Please ensure:
+1. ✅ All SQL uses `IF NOT EXISTS` so it's safe to re-run
+2. ✅ All foreign keys reference existing tables
+3. ✅ Tables are created in dependency order
+4. ✅ All actual data values are included (not placeholders)
+5. ✅ Column names match exactly (snake_case vs camelCase)
+6. ✅ Data types are correct for PostgreSQL
+
+---
+
+## ADDITIONAL REQUEST
+
+After providing the SQL script, please also answer:
+
+1. **Were any existing tables modified?** (columns added, indexes added, etc.)
+2. **What tables have new foreign key relationships?**
+3. **How many records were inserted into which tables?**
+4. **Are there any manual steps required?** (like updating form IDs)
+5. **What's the correct order to run migrations?** (if order matters)
+
+---
+
+Thank you! I need this to synchronize my local database with all changes you made during Phase 2 implementation.
