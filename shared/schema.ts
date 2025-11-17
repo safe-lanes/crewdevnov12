@@ -286,6 +286,37 @@ export const promotionHierarchies = pgTable("promotion_hierarchies", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const companyProcessing = pgTable("company_processing", {
+  id: serial("id").primaryKey(),
+  candidateId: text("candidate_id").notNull(), // References recruitment_candidates or crew_members
+  processType: text("process_type").notNull(), // "recruitment", "onboarding", etc.
+  status: text("status").notNull().default("pending"), // pending, in_progress, approved, rejected, completed
+  b7Data: text("b7_data"), // JSON: {medicalClearance, documentVerification, trainingCompletion, flagStateRequirements, ...}
+  comments: text("comments"), // JSON array: [{text, author, timestamp}, ...]
+  approvals: text("approvals"), // JSON: {stage1: {status, approver, date}, stage2: {...}, ...}
+  attachments: text("attachments"), // JSON array: [{filename, fileType, uploadDate, uploadedBy, fileSize, filePath}, ...]
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const promotionForms = pgTable("promotion_forms", {
+  id: serial("id").primaryKey(),
+  crewMemberId: text("crew_member_id").notNull().references(() => crewMembers.id),
+  currentRank: text("current_rank").notNull(),
+  proposedRank: text("proposed_rank").notNull(),
+  justification: text("justification"), // Why promotion is deserved
+  status: text("status").notNull().default("draft"), // draft, submitted, under_review, approved, rejected
+  submittedAt: timestamp("submitted_at"),
+  submittedBy: text("submitted_by"),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewedBy: text("reviewed_by"),
+  reviewerComments: text("reviewer_comments"),
+  effectiveDate: text("effective_date"), // When promotion takes effect
+  appraisalResultId: integer("appraisal_result_id").references(() => appraisalResults.id), // Optional link to appraisal
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const dataMasters = pgTable("data_masters", {
   id: text("id").primaryKey(), // "001", "002", "003", etc.
   name: text("name").notNull(), // "Nationality Master", "Country Master"
@@ -932,6 +963,40 @@ export const insertPromotionHierarchySchema = createInsertSchema(promotionHierar
   })
 });
 
+export type InsertPromotionHierarchy = z.infer<typeof insertPromotionHierarchySchema>;
+export type PromotionHierarchy = typeof promotionHierarchies.$inferSelect;
+
+export const insertCompanyProcessingSchema = createInsertSchema(companyProcessing).pick({
+  candidateId: true,
+  processType: true,
+  status: true,
+  b7Data: true,
+  comments: true,
+  approvals: true,
+  attachments: true,
+});
+
+export type InsertCompanyProcessing = z.infer<typeof insertCompanyProcessingSchema>;
+export type CompanyProcessing = typeof companyProcessing.$inferSelect;
+
+export const insertPromotionFormSchema = createInsertSchema(promotionForms).pick({
+  crewMemberId: true,
+  currentRank: true,
+  proposedRank: true,
+  justification: true,
+  status: true,
+  submittedAt: true,
+  submittedBy: true,
+  reviewedAt: true,
+  reviewedBy: true,
+  reviewerComments: true,
+  effectiveDate: true,
+  appraisalResultId: true,
+});
+
+export type InsertPromotionForm = z.infer<typeof insertPromotionFormSchema>;
+export type PromotionForm = typeof promotionForms.$inferSelect;
+
 export const insertDataMasterSchema = createInsertSchema(dataMasters).pick({
   id: true,
   name: true,
@@ -1132,8 +1197,6 @@ export type InsertVesselRank = z.infer<typeof insertVesselRankSchema>;
 export type VesselRank = typeof vesselRanks.$inferSelect;
 export type InsertCompanyRank = z.infer<typeof insertCompanyRankSchema>;
 export type CompanyRank = typeof companyRanks.$inferSelect;
-export type InsertPromotionHierarchy = z.infer<typeof insertPromotionHierarchySchema>;
-export type PromotionHierarchy = typeof promotionHierarchies.$inferSelect;
 export type InsertIdCounter = z.infer<typeof insertIdCounterSchema>;
 export type IdCounter = typeof idCounters.$inferSelect;
 export type InsertDataMaster = z.infer<typeof insertDataMasterSchema>;

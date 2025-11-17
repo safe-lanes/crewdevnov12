@@ -37,6 +37,22 @@ export interface IStorage {
   createPromotionHierarchy(hierarchy: InsertPromotionHierarchy): Promise<PromotionHierarchy>;
   updatePromotionHierarchy(id: number, hierarchy: Partial<InsertPromotionHierarchy>): Promise<PromotionHierarchy | undefined>;
   deletePromotionHierarchy(id: number): Promise<boolean>;
+  // Company Processing
+  getCompanyProcessingRecords(): Promise<CompanyProcessing[]>;
+  getCompanyProcessing(id: number): Promise<CompanyProcessing | undefined>;
+  getCompanyProcessingByCandidateId(candidateId: string): Promise<CompanyProcessing[]>;
+  createCompanyProcessing(record: InsertCompanyProcessing): Promise<CompanyProcessing>;
+  updateCompanyProcessing(id: number, record: Partial<InsertCompanyProcessing>): Promise<CompanyProcessing | undefined>;
+  deleteCompanyProcessing(id: number): Promise<boolean>;
+  // Promotion Forms
+  getPromotionForms(): Promise<PromotionForm[]>;
+  getPromotionForm(id: number): Promise<PromotionForm | undefined>;
+  getPromotionFormsByCrewMember(crewMemberId: string): Promise<PromotionForm[]>;
+  createPromotionForm(form: InsertPromotionForm): Promise<PromotionForm>;
+  updatePromotionForm(id: number, form: Partial<InsertPromotionForm>): Promise<PromotionForm | undefined>;
+  deletePromotionForm(id: number): Promise<boolean>;
+  approvePromotionForm(id: number, reviewedBy: string, comments: string, effectiveDate: string): Promise<PromotionForm | undefined>;
+  rejectPromotionForm(id: number, reviewedBy: string, comments: string): Promise<PromotionForm | undefined>;
   // Crew Members
   getCrewMembers(): Promise<CrewMember[]>;
   getCrewMember(id: string): Promise<CrewMember | undefined>;

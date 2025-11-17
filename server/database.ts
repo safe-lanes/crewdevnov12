@@ -7,6 +7,8 @@ import {
   availableRanks, 
   companyRanks,
   promotionHierarchies,
+  companyProcessing,
+  promotionForms,
   crewMembers, 
   appraisalResults,
   recruitmentCandidates,
@@ -39,6 +41,10 @@ import {
   type InsertCompanyRank,
   type PromotionHierarchy,
   type InsertPromotionHierarchy,
+  type CompanyProcessing,
+  type InsertCompanyProcessing,
+  type PromotionForm,
+  type InsertPromotionForm,
   type CrewMember,
   type InsertCrewMember,
   type AppraisalResult,
@@ -915,6 +921,91 @@ export class DatabaseStorage implements IStorage {
   async deletePromotionHierarchy(id: number): Promise<boolean> {
     const result = await this.db.delete(promotionHierarchies).where(eq(promotionHierarchies.id, id));
     return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Company Processing methods
+  async getCompanyProcessingRecords(): Promise<CompanyProcessing[]> {
+    return await this.db.select().from(companyProcessing);
+  }
+
+  async getCompanyProcessing(id: number): Promise<CompanyProcessing | undefined> {
+    const result = await this.db.select().from(companyProcessing).where(eq(companyProcessing.id, id));
+    return result[0] || undefined;
+  }
+
+  async getCompanyProcessingByCandidateId(candidateId: string): Promise<CompanyProcessing[]> {
+    return await this.db.select().from(companyProcessing).where(eq(companyProcessing.candidateId, candidateId));
+  }
+
+  async createCompanyProcessing(record: InsertCompanyProcessing): Promise<CompanyProcessing> {
+    const [created] = await this.db.insert(companyProcessing).values(record).returning();
+    return created;
+  }
+
+  async updateCompanyProcessing(id: number, record: Partial<InsertCompanyProcessing>): Promise<CompanyProcessing | undefined> {
+    const result = await this.db.update(companyProcessing).set(record).where(eq(companyProcessing.id, id)).returning();
+    return result[0] || undefined;
+  }
+
+  async deleteCompanyProcessing(id: number): Promise<boolean> {
+    const result = await this.db.delete(companyProcessing).where(eq(companyProcessing.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Promotion Forms methods
+  async getPromotionForms(): Promise<PromotionForm[]> {
+    return await this.db.select().from(promotionForms);
+  }
+
+  async getPromotionForm(id: number): Promise<PromotionForm | undefined> {
+    const result = await this.db.select().from(promotionForms).where(eq(promotionForms.id, id));
+    return result[0] || undefined;
+  }
+
+  async getPromotionFormsByCrewMember(crewMemberId: string): Promise<PromotionForm[]> {
+    return await this.db.select().from(promotionForms).where(eq(promotionForms.crewMemberId, crewMemberId));
+  }
+
+  async createPromotionForm(form: InsertPromotionForm): Promise<PromotionForm> {
+    const [created] = await this.db.insert(promotionForms).values(form).returning();
+    return created;
+  }
+
+  async updatePromotionForm(id: number, form: Partial<InsertPromotionForm>): Promise<PromotionForm | undefined> {
+    const result = await this.db.update(promotionForms).set(form).where(eq(promotionForms.id, id)).returning();
+    return result[0] || undefined;
+  }
+
+  async deletePromotionForm(id: number): Promise<boolean> {
+    const result = await this.db.delete(promotionForms).where(eq(promotionForms.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async approvePromotionForm(id: number, reviewedBy: string, comments: string, effectiveDate: string): Promise<PromotionForm | undefined> {
+    const result = await this.db.update(promotionForms)
+      .set({
+        status: 'approved',
+        reviewedBy: reviewedBy,
+        reviewedAt: new Date(),
+        reviewerComments: comments,
+        effectiveDate: effectiveDate
+      })
+      .where(eq(promotionForms.id, id))
+      .returning();
+    return result[0] || undefined;
+  }
+
+  async rejectPromotionForm(id: number, reviewedBy: string, comments: string): Promise<PromotionForm | undefined> {
+    const result = await this.db.update(promotionForms)
+      .set({
+        status: 'rejected',
+        reviewedBy: reviewedBy,
+        reviewedAt: new Date(),
+        reviewerComments: comments
+      })
+      .where(eq(promotionForms.id, id))
+      .returning();
+    return result[0] || undefined;
   }
 
   // Crew Member methods
