@@ -54,7 +54,7 @@ export interface IStorage {
   approvePromotionForm(id: number, reviewedBy: string, comments: string, effectiveDate: string): Promise<PromotionForm | undefined>;
   rejectPromotionForm(id: number, reviewedBy: string, comments: string): Promise<PromotionForm | undefined>;
   // Crew Members
-  getCrewMembers(): Promise<CrewMember[]>;
+  getCrewMembers(filters?: { rank?: string; nationality?: string; status?: string; search?: string }): Promise<CrewMember[]>;
   getCrewMember(id: string): Promise<CrewMember | undefined>;
   createCrewMember(crewMember: InsertCrewMember): Promise<CrewMember>;
   updateCrewMember(id: string, crewMember: Partial<InsertCrewMember>): Promise<CrewMember | undefined>;
@@ -107,6 +107,7 @@ export interface IStorage {
   // Vessel Planning
   getVesselPlanningByVessel(vesselId: string): Promise<VesselPlanning[]>;
   getVesselPlanningById(id: number): Promise<VesselPlanning | undefined>;
+  getAllVesselPlanning(): Promise<VesselPlanning[]>;
   createVesselPlanning(planning: InsertVesselPlanning): Promise<VesselPlanning>;
   updateVesselPlanning(id: number, planning: Partial<InsertVesselPlanning>): Promise<VesselPlanning | undefined>;
   deleteVesselPlanning(id: number): Promise<boolean>;
@@ -125,7 +126,7 @@ export interface IStorage {
   // Rotation Approval Workflow
   proposeRotationPlan(id: number, proposedBy: string): Promise<RotationPlan | undefined>;
   getProposedAssignments(filters?: { vessels?: string[]; ranks?: string[]; draftId?: string; dateFrom?: string; dateTo?: string }): Promise<any[]>;
-  deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[] }>;
+  deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[]; vesselPlanningId?: number }>;
   rejectAssignment(planId: number, assignmentIndex: number): Promise<RotationPlan | undefined>;
   checkAssignmentConflicts(crewId: string, joiningDate: string, contractPeriod: number, excludePlanId?: number, excludeAssignmentIndex?: number): Promise<any[]>;
   // Drug/Alcohol Test Records
@@ -1162,6 +1163,10 @@ export class MemStorage implements IStorage {
 
   async getVesselPlanningById(id: number): Promise<VesselPlanning | undefined> {
     return this.vesselPlanning.get(id);
+  }
+
+  async getAllVesselPlanning(): Promise<VesselPlanning[]> {
+    return Array.from(this.vesselPlanning.values());
   }
 
   async createVesselPlanning(insertPlanning: InsertVesselPlanning): Promise<VesselPlanning> {
@@ -4539,6 +4544,10 @@ export class PersistentFileStorage implements IStorage {
 
   async getVesselPlanningById(id: number): Promise<VesselPlanning | undefined> {
     return this.vesselPlanning.get(id);
+  }
+
+  async getAllVesselPlanning(): Promise<VesselPlanning[]> {
+    return Array.from(this.vesselPlanning.values());
   }
 
   async createVesselPlanning(insertPlanning: InsertVesselPlanning): Promise<VesselPlanning> {

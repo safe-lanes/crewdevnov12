@@ -1033,21 +1033,11 @@ export class DatabaseStorage implements IStorage {
     }
     
     if (filters?.search) {
-      // Case-insensitive search across multiple fields with proper parameter binding
-      // Use PostgreSQL's || operator to safely concatenate wildcards with bound parameter
-      const searchConditions = [];
-      
-      searchConditions.push(
-        sql`LOWER(COALESCE(${crewMembers.firstName}, '')) LIKE LOWER('%' || ${filters.search} || '%')`
+      // Case-insensitive search using raw SQL (Drizzle ORM struggles with LOWER + LIKE + OR)
+      const searchPattern = `%${filters.search.toLowerCase()}%`;
+      conditions.push(
+        sql`(LOWER("first_name") LIKE ${searchPattern} OR LOWER("family_name") LIKE ${searchPattern} OR LOWER("employee_id") LIKE ${searchPattern})`
       );
-      searchConditions.push(
-        sql`LOWER(COALESCE(${crewMembers.lastName}, '')) LIKE LOWER('%' || ${filters.search} || '%')`
-      );
-      searchConditions.push(
-        sql`LOWER(COALESCE(${crewMembers.employeeId}, '')) LIKE LOWER('%' || ${filters.search} || '%')`
-      );
-      
-      conditions.push(or(...searchConditions));
     }
     
     if (conditions.length > 0) {

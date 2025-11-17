@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError } from "./storage";
-import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertCompanyProcessingSchema, insertPromotionFormSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertOfficeViolationCommentSchema, insertNCReportSchema, insertVesselDateLineAdjustmentSchema } from "@shared/schema";
+import { type VesselPlanning, insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertCompanyProcessingSchema, insertPromotionFormSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertOfficeViolationCommentSchema, insertNCReportSchema, insertVesselDateLineAdjustmentSchema } from "@shared/schema";
 import { z } from "zod";
 import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew } from "@shared/crew-mapping";
 import { 
@@ -2454,10 +2454,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Apply additional optional filters to the base dataset
       if (crewMemberId) {
-        planning = planning.filter(p => p.crewMemberId === crewMemberId);
+        planning = planning.filter((p: VesselPlanning) => p.crewMemberId === crewMemberId);
       }
       if (status) {
-        planning = planning.filter(p => p.reliefStatus === status);
+        planning = planning.filter((p: VesselPlanning) => p.reliefStatus === status);
       }
       
       res.json(planning || []);
@@ -5748,8 +5748,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate CSV rows
       for (const entry of entries) {
         const row = [
-          `"${entry.vessel || entry.name || ''}"`,
-          `"${entry.imoNumber || entry.description || ''}"`,
+          `"${entry.name || ''}"`,
+          `"${entry.description || ''}"`,
           `"${entry.vesselType || ''}"`,
           `"${entry.isActive ? 'Active' : 'Inactive'}"`
         ];
