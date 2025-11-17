@@ -992,6 +992,9 @@ export const insertPromotionFormSchema = createInsertSchema(promotionForms).pick
   reviewerComments: true,
   effectiveDate: true,
   appraisalResultId: true,
+}).extend({
+  submittedAt: z.string().or(z.date()).optional().transform((val) => val ? (typeof val === 'string' ? new Date(val) : val) : undefined),
+  reviewedAt: z.string().or(z.date()).optional().transform((val) => val ? (typeof val === 'string' ? new Date(val) : val) : undefined),
 });
 
 export type InsertPromotionForm = z.infer<typeof insertPromotionFormSchema>;

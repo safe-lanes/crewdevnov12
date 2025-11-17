@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type DrugAlcoholTestRecord, type InsertDrugAlcoholTestRecord, type RestHoursVesselRecord, type InsertRestHoursVesselRecord, type RestHoursCrewRecord, type InsertRestHoursCrewRecord, type RestHoursDailyRecord, type InsertRestHoursDailyRecord, type FixedTask, type InsertFixedTask, type VariableTask, type InsertVariableTask, type VesselViolationComment, type InsertVesselViolationComment, type OfficeViolationComment, type InsertOfficeViolationComment, type NCReport, type InsertNCReport, type VesselDateLineAdjustment, type InsertVesselDateLineAdjustment, type CrewDashboardSummary } from "@shared/schema";
+import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type CompanyProcessing, type InsertCompanyProcessing, type PromotionForm, type InsertPromotionForm, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type DrugAlcoholTestRecord, type InsertDrugAlcoholTestRecord, type RestHoursVesselRecord, type InsertRestHoursVesselRecord, type RestHoursCrewRecord, type InsertRestHoursCrewRecord, type RestHoursDailyRecord, type InsertRestHoursDailyRecord, type FixedTask, type InsertFixedTask, type VariableTask, type InsertVariableTask, type VesselViolationComment, type InsertVesselViolationComment, type OfficeViolationComment, type InsertOfficeViolationComment, type NCReport, type InsertNCReport, type VesselDateLineAdjustment, type InsertVesselDateLineAdjustment, type CrewDashboardSummary } from "@shared/schema";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -3861,6 +3861,64 @@ export class PersistentFileStorage implements IStorage {
       this.saveToFile();
     }
     return result;
+  }
+
+  // Company Processing methods
+  async getCompanyProcessingRecords(): Promise<CompanyProcessing[]> {
+    return [];
+  }
+
+  async getCompanyProcessing(id: number): Promise<CompanyProcessing | undefined> {
+    return undefined;
+  }
+
+  async getCompanyProcessingByCandidateId(candidateId: string): Promise<CompanyProcessing[]> {
+    return [];
+  }
+
+  async createCompanyProcessing(record: InsertCompanyProcessing): Promise<CompanyProcessing> {
+    throw new Error("Company Processing not implemented in file storage");
+  }
+
+  async updateCompanyProcessing(id: number, record: Partial<InsertCompanyProcessing>): Promise<CompanyProcessing | undefined> {
+    return undefined;
+  }
+
+  async deleteCompanyProcessing(id: number): Promise<boolean> {
+    return false;
+  }
+
+  // Promotion Forms methods
+  async getPromotionForms(): Promise<PromotionForm[]> {
+    return [];
+  }
+
+  async getPromotionForm(id: number): Promise<PromotionForm | undefined> {
+    return undefined;
+  }
+
+  async getPromotionFormsByCrewMember(crewMemberId: string): Promise<PromotionForm[]> {
+    return [];
+  }
+
+  async createPromotionForm(form: InsertPromotionForm): Promise<PromotionForm> {
+    throw new Error("Promotion Forms not implemented in file storage");
+  }
+
+  async updatePromotionForm(id: number, form: Partial<InsertPromotionForm>): Promise<PromotionForm | undefined> {
+    return undefined;
+  }
+
+  async deletePromotionForm(id: number): Promise<boolean> {
+    return false;
+  }
+
+  async approvePromotionForm(id: number, reviewedBy: string, comments: string, effectiveDate: string): Promise<PromotionForm | undefined> {
+    return undefined;
+  }
+
+  async rejectPromotionForm(id: number, reviewedBy: string, comments: string): Promise<PromotionForm | undefined> {
+    return undefined;
   }
 
   // Crew Member methods (same as MemStorage)
