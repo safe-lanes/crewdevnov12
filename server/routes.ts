@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError } from "./storage";
-import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertOfficeViolationCommentSchema, insertNCReportSchema, insertVesselDateLineAdjustmentSchema } from "@shared/schema";
+import { insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertCompanyProcessingSchema, insertPromotionFormSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertOfficeViolationCommentSchema, insertNCReportSchema, insertVesselDateLineAdjustmentSchema } from "@shared/schema";
 import { z } from "zod";
 import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew } from "@shared/crew-mapping";
 import { 
@@ -1682,6 +1682,218 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("❌ Failed to delete promotion hierarchy:", error);
       res.status(500).json({ error: "Failed to delete promotion hierarchy" });
+    }
+  });
+
+  // Company Processing endpoints
+  app.get("/api/company-processing", async (req, res) => {
+    try {
+      const records = await storage.getCompanyProcessingRecords();
+      res.json(records);
+    } catch (error) {
+      console.error("❌ Failed to fetch company processing records:", error);
+      res.status(500).json({ error: "Failed to fetch company processing records" });
+    }
+  });
+
+  app.get("/api/company-processing/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const record = await storage.getCompanyProcessing(id);
+      if (!record) {
+        return res.status(404).json({ error: "Company processing record not found" });
+      }
+      res.json(record);
+    } catch (error) {
+      console.error("❌ Failed to fetch company processing record:", error);
+      res.status(500).json({ error: "Failed to fetch company processing record" });
+    }
+  });
+
+  app.get("/api/company-processing/candidate/:candidateId", async (req, res) => {
+    try {
+      const candidateId = req.params.candidateId;
+      const records = await storage.getCompanyProcessingByCandidateId(candidateId);
+      res.json(records);
+    } catch (error) {
+      console.error("❌ Failed to fetch company processing records for candidate:", error);
+      res.status(500).json({ error: "Failed to fetch company processing records for candidate" });
+    }
+  });
+
+  app.post("/api/company-processing", async (req, res) => {
+    try {
+      const result = insertCompanyProcessingSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid company processing data", details: result.error.issues });
+      }
+      const record = await storage.createCompanyProcessing(result.data);
+      console.log(`✅ [API] Created company processing record ID ${record.id} for candidate ${record.candidateId}`);
+      res.status(201).json(record);
+    } catch (error) {
+      console.error("❌ Failed to create company processing record:", error);
+      res.status(500).json({ error: "Failed to create company processing record" });
+    }
+  });
+
+  app.patch("/api/company-processing/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const result = insertCompanyProcessingSchema.partial().safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid company processing data", details: result.error.issues });
+      }
+      const record = await storage.updateCompanyProcessing(id, result.data);
+      if (!record) {
+        return res.status(404).json({ error: "Company processing record not found" });
+      }
+      console.log(`✅ [API] Updated company processing record ID ${id}`);
+      res.json(record);
+    } catch (error) {
+      console.error("❌ Failed to update company processing record:", error);
+      res.status(500).json({ error: "Failed to update company processing record" });
+    }
+  });
+
+  app.delete("/api/company-processing/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteCompanyProcessing(id);
+      if (!success) {
+        return res.status(404).json({ error: "Company processing record not found" });
+      }
+      console.log(`✅ [API] Deleted company processing record ID ${id}`);
+      res.json({ success: true, message: "Company processing record deleted successfully" });
+    } catch (error) {
+      console.error("❌ Failed to delete company processing record:", error);
+      res.status(500).json({ error: "Failed to delete company processing record" });
+    }
+  });
+
+  // Promotion Forms endpoints
+  app.get("/api/promotions", async (req, res) => {
+    try {
+      const forms = await storage.getPromotionForms();
+      res.json(forms);
+    } catch (error) {
+      console.error("❌ Failed to fetch promotion forms:", error);
+      res.status(500).json({ error: "Failed to fetch promotion forms" });
+    }
+  });
+
+  app.get("/api/promotions/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const form = await storage.getPromotionForm(id);
+      if (!form) {
+        return res.status(404).json({ error: "Promotion form not found" });
+      }
+      res.json(form);
+    } catch (error) {
+      console.error("❌ Failed to fetch promotion form:", error);
+      res.status(500).json({ error: "Failed to fetch promotion form" });
+    }
+  });
+
+  app.get("/api/promotions/crew/:crewMemberId", async (req, res) => {
+    try {
+      const crewMemberId = req.params.crewMemberId;
+      const forms = await storage.getPromotionFormsByCrewMember(crewMemberId);
+      res.json(forms);
+    } catch (error) {
+      console.error("❌ Failed to fetch promotion forms for crew member:", error);
+      res.status(500).json({ error: "Failed to fetch promotion forms for crew member" });
+    }
+  });
+
+  app.post("/api/promotions", async (req, res) => {
+    try {
+      const result = insertPromotionFormSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid promotion form data", details: result.error.issues });
+      }
+      const form = await storage.createPromotionForm(result.data);
+      console.log(`✅ [API] Created promotion form ID ${form.id} for crew ${form.crewMemberId}`);
+      res.status(201).json(form);
+    } catch (error) {
+      console.error("❌ Failed to create promotion form:", error);
+      res.status(500).json({ error: "Failed to create promotion form" });
+    }
+  });
+
+  app.patch("/api/promotions/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const result = insertPromotionFormSchema.partial().safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid promotion form data", details: result.error.issues });
+      }
+      const form = await storage.updatePromotionForm(id, result.data);
+      if (!form) {
+        return res.status(404).json({ error: "Promotion form not found" });
+      }
+      console.log(`✅ [API] Updated promotion form ID ${id}`);
+      res.json(form);
+    } catch (error) {
+      console.error("❌ Failed to update promotion form:", error);
+      res.status(500).json({ error: "Failed to update promotion form" });
+    }
+  });
+
+  app.delete("/api/promotions/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deletePromotionForm(id);
+      if (!success) {
+        return res.status(404).json({ error: "Promotion form not found" });
+      }
+      console.log(`✅ [API] Deleted promotion form ID ${id}`);
+      res.json({ success: true, message: "Promotion form deleted successfully" });
+    } catch (error) {
+      console.error("❌ Failed to delete promotion form:", error);
+      res.status(500).json({ error: "Failed to delete promotion form" });
+    }
+  });
+
+  app.post("/api/promotions/:id/approve", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { reviewedBy, comments, effectiveDate } = req.body;
+      
+      if (!reviewedBy || !comments || !effectiveDate) {
+        return res.status(400).json({ error: "Missing required fields: reviewedBy, comments, effectiveDate" });
+      }
+
+      const form = await storage.approvePromotionForm(id, reviewedBy, comments, effectiveDate);
+      if (!form) {
+        return res.status(404).json({ error: "Promotion form not found" });
+      }
+      console.log(`✅ [API] Approved promotion form ID ${id} by ${reviewedBy}`);
+      res.json(form);
+    } catch (error) {
+      console.error("❌ Failed to approve promotion form:", error);
+      res.status(500).json({ error: "Failed to approve promotion form" });
+    }
+  });
+
+  app.post("/api/promotions/:id/reject", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { reviewedBy, comments } = req.body;
+      
+      if (!reviewedBy || !comments) {
+        return res.status(400).json({ error: "Missing required fields: reviewedBy, comments" });
+      }
+
+      const form = await storage.rejectPromotionForm(id, reviewedBy, comments);
+      if (!form) {
+        return res.status(404).json({ error: "Promotion form not found" });
+      }
+      console.log(`✅ [API] Rejected promotion form ID ${id} by ${reviewedBy}`);
+      res.json(form);
+    } catch (error) {
+      console.error("❌ Failed to reject promotion form:", error);
+      res.status(500).json({ error: "Failed to reject promotion form" });
     }
   });
 
