@@ -5697,6 +5697,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Vessels endpoints - wrapper for /api/masters/014/data
+  app.get("/api/vessels", async (req, res) => {
+    try {
+      const entries = await storage.getMasterDataEntries('014');
+      
+      // Apply filters from query parameters
+      let filteredEntries = entries;
+      
+      // Filter by name/vessel
+      if (req.query.name) {
+        const searchName = (req.query.name as string).toLowerCase();
+        filteredEntries = filteredEntries.filter((entry: any) => {
+          const vesselName = (entry.vessel || entry.name || '').toLowerCase();
+          return vesselName.includes(searchName);
+        });
+      }
+      
+      // Filter by vessel type
+      if (req.query.vesselType) {
+        const searchType = (req.query.vesselType as string).toLowerCase();
+        filteredEntries = filteredEntries.filter((entry: any) => 
+          (entry.vesselType || '').toLowerCase().includes(searchType)
+        );
+      }
+      
+      // Filter by active status
+      if (req.query.isActive !== undefined) {
+        const isActive = req.query.isActive === 'true';
+        filteredEntries = filteredEntries.filter((entry: any) => 
+          entry.isActive === isActive
+        );
+      }
+      
+      res.json(filteredEntries);
+    } catch (error) {
+      console.error("❌ Failed to fetch vessels:", error);
+      res.status(500).json({ error: "Failed to fetch vessels" });
+    }
+  });
+
+  app.get("/api/vessels/export", async (req, res) => {
+    try {
+      const entries = await storage.getMasterDataEntries('014');
+      
+      // Generate CSV header
+      const headers = ['Vessel Name', 'IMO Number', 'Vessel Type', 'Status'];
+      const csvRows = [headers.join(',')];
+      
+      // Generate CSV rows
+      for (const entry of entries) {
+        const row = [
+          `"${entry.vessel || entry.name || ''}"`,
+          `"${entry.imoNumber || entry.description || ''}"`,
+          `"${entry.vesselType || ''}"`,
+          `"${entry.isActive ? 'Active' : 'Inactive'}"`
+        ];
+        csvRows.push(row.join(','));
+      }
+      
+      const csvContent = csvRows.join('\n');
+      
+      // Set headers for CSV download
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="vessels.csv"');
+      res.send(csvContent);
+    } catch (error) {
+      console.error("❌ Failed to export vessels:", error);
+      res.status(500).json({ error: "Failed to export vessels" });
+    }
+  });
+
+  app.get("/api/vessels/:id/office-matrix", async (req, res) => {
+    try {
+      const vesselId = req.params.id;
+      
+      // Get vessel revisions for this vessel
+      const revisions = await storage.getVesselRevisionsByVessel(vesselId);
+      
+      if (!revisions || revisions.length === 0) {
+        return res.json({ 
+          vesselId,
+          message: "No office matrix data available for this vessel",
+          revisions: []
+        });
+      }
+      
+      // Return the latest revision with its rank data
+      const latestRevision = revisions[revisions.length - 1];
+      
+      res.json({
+        vesselId,
+        revision: latestRevision.revision,
+        revisionDate: latestRevision.revisionDate,
+        revisionData: JSON.parse(latestRevision.revisionData),
+        allRevisions: revisions.map((r: any) => ({
+          revision: r.revision,
+          revisionDate: r.revisionDate
+        }))
+      });
+    } catch (error) {
+      console.error("❌ Failed to fetch office matrix:", error);
+      res.status(500).json({ error: "Failed to fetch office matrix data" });
+    }
+  });
+
   // Master Data Entries API routes
   app.get("/api/masters/:id/data", async (req, res) => {
     try {
