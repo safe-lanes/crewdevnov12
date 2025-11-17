@@ -1,4 +1,5 @@
 import { CrewMember, InsertCrewMember } from "./schema";
+import { calculateSeaServicePeriod } from "./seaServiceCalculator";
 
 // Frontend/Table representation with normalized field names
 export interface CrewMemberDTO {
@@ -400,6 +401,9 @@ export function normalizeCrewMemberForTable(crew: CrewMember): CrewMemberDTO {
   }
   
   normalized.vessel = normalized.vessel || normalized.presentVessel;
+  
+  // Calculate sea service period from joining date
+  (normalized as any).seaServicePeriod = calculateSeaServicePeriod(normalized.joiningDate);
   
   return normalized;
 }
