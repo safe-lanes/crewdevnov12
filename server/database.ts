@@ -86,7 +86,7 @@ import {
   type MasterDataEntry,
   type InsertMasterDataEntry
 } from "@shared/schema";
-import { eq, desc, sql, and, inArray, or, like } from "drizzle-orm";
+import { eq, desc, sql, and, inArray, or, like, ilike } from "drizzle-orm";
 import { type IStorage } from "./storage";
 
 export class DatabaseStorage implements IStorage {
@@ -1009,8 +1009,52 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Crew Member methods
-  async getCrewMembers(): Promise<CrewMember[]> {
-    return await this.db.select().from(crewMembers);
+  async getCrewMembers(filters?: {
+    rank?: string;
+    nationality?: string;
+    status?: string;
+    search?: string;
+  }): Promise<CrewMember[]> {
+    let query = this.db.select().from(crewMembers);
+    
+    // Apply filters if provided
+    const conditions: any[] = [];
+    
+    if (filters?.rank) {
+      conditions.push(eq(crewMembers.presentRank, filters.rank));
+    }
+    
+    if (filters?.nationality) {
+      conditions.push(eq(crewMembers.nationality, filters.nationality));
+    }
+    
+    if (filters?.status) {
+      conditions.push(eq(crewMembers.status, filters.status));
+    }
+    
+    if (filters?.search) {
+      // Case-insensitive search across multiple fields with proper parameter binding
+      // Use PostgreSQL's || operator to safely concatenate wildcards with bound parameter
+      const searchConditions = [];
+      
+      searchConditions.push(
+        sql`LOWER(COALESCE(${crewMembers.firstName}, '')) LIKE LOWER('%' || ${filters.search} || '%')`
+      );
+      searchConditions.push(
+        sql`LOWER(COALESCE(${crewMembers.lastName}, '')) LIKE LOWER('%' || ${filters.search} || '%')`
+      );
+      searchConditions.push(
+        sql`LOWER(COALESCE(${crewMembers.employeeId}, '')) LIKE LOWER('%' || ${filters.search} || '%')`
+      );
+      
+      conditions.push(or(...searchConditions));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    return await query;
   }
 
   async getCrewMember(id: string): Promise<CrewMember | undefined> {

@@ -4861,11 +4861,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/crew-members", async (req, res) => {
     try {
-      const crewMembers = await storage.getCrewMembers();
+      // Parse query parameters for filtering
+      const filters: {
+        rank?: string;
+        nationality?: string;
+        status?: string;
+        search?: string;
+      } = {};
+      
+      if (req.query.rank) filters.rank = req.query.rank as string;
+      if (req.query.nationality) filters.nationality = req.query.nationality as string;
+      if (req.query.status) filters.status = req.query.status as string;
+      if (req.query.search) filters.search = req.query.search as string;
+      
+      const crewMembers = await storage.getCrewMembers(Object.keys(filters).length > 0 ? filters : undefined);
       // Normalize crew members for table/frontend consumption
       const normalizedCrewMembers = crewMembers.map(normalizeCrewMemberForTable);
       res.json(normalizedCrewMembers);
     } catch (error) {
+      console.error("❌ Failed to fetch crew members with filters:", error);
       res.status(500).json({ error: "Failed to fetch crew members" });
     }
   });
