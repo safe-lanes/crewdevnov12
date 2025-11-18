@@ -209,6 +209,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
+  // Track the candidate ID for this session (fixes duplicate creation bug)
+  // Initialize from prop (for editing existing) or null (for new candidate)
+  const [currentCandidateId, setCurrentCandidateId] = useState<string | null>(candidate?.id || null);
+  
   // Track if transfer has been completed in this session
   const transferCompletedRef = React.useRef(candidate?.status === 'Recruited');
 
@@ -218,9 +222,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   // Create a save-only mutation (for individual section buttons)
   const saveOnlyMutation = useMutation({
     mutationFn: (candidateData: InsertRecruitmentCandidate) => {
-      if (candidate?.id) {
-        // Update existing candidate
-        return fetch(`/api/recruitment-candidates/${candidate.id}`, {
+      if (currentCandidateId) {
+        // Update existing candidate (PATCH)
+        console.log('🔄 PATCH - Updating existing candidate:', currentCandidateId);
+        return fetch(`/api/recruitment-candidates/${currentCandidateId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(candidateData)
@@ -229,7 +234,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           return res.json();
         });
       } else {
-        // Create new candidate
+        // Create new candidate (POST)
+        console.log('✨ POST - Creating new candidate');
         return fetch('/api/recruitment-candidates', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -241,6 +247,12 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       }
     },
     onSuccess: async (savedCandidate) => {
+      // Store the ID after first creation (fixes duplicate bug)
+      if (!currentCandidateId && savedCandidate.id) {
+        console.log('💾 Storing candidate ID for future updates:', savedCandidate.id);
+        setCurrentCandidateId(savedCandidate.id);
+      }
+      
       toast({
         title: "Success",
         description: "Data saved successfully!",
@@ -299,9 +311,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   // Create mutation for saving recruitment candidate (advances to next section)
   const saveMutation = useMutation({
     mutationFn: (candidateData: InsertRecruitmentCandidate) => {
-      if (candidate?.id) {
-        // Update existing candidate
-        return fetch(`/api/recruitment-candidates/${candidate.id}`, {
+      if (currentCandidateId) {
+        // Update existing candidate (PATCH)
+        console.log('🔄 PATCH - Updating existing candidate:', currentCandidateId);
+        return fetch(`/api/recruitment-candidates/${currentCandidateId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(candidateData)
@@ -310,7 +323,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           return res.json();
         });
       } else {
-        // Create new candidate
+        // Create new candidate (POST)
+        console.log('✨ POST - Creating new candidate');
         return fetch('/api/recruitment-candidates', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -321,7 +335,13 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
         });
       }
     },
-    onSuccess: async () => {
+    onSuccess: async (savedCandidate) => {
+      // Store the ID after first creation (fixes duplicate bug)
+      if (!currentCandidateId && savedCandidate.id) {
+        console.log('💾 Storing candidate ID for future updates:', savedCandidate.id);
+        setCurrentCandidateId(savedCandidate.id);
+      }
+      
       toast({
         title: "Success",
         description: "Candidate saved successfully!",
@@ -405,7 +425,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     const fileNo = candidate?.fileNo || `M${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`;
     
     const candidateData: InsertRecruitmentCandidate = {
-      id: candidate?.id || new Date().toISOString().split('T')[0] + '-' + Date.now(),
+      id: currentCandidateId || new Date().toISOString().split('T')[0] + '-' + Date.now(),
       fileNo: fileNo,
       firstName: formData.firstName,
       middleName: formData.middleName || '',
@@ -444,7 +464,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     const fileNo = candidate?.fileNo || `M${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`;
     
     const candidateData: InsertRecruitmentCandidate = {
-      id: candidate?.id || new Date().toISOString().split('T')[0] + '-' + Date.now(),
+      id: currentCandidateId || new Date().toISOString().split('T')[0] + '-' + Date.now(),
       fileNo: fileNo,
       firstName: formData.firstName,
       middleName: formData.middleName || '',
@@ -477,7 +497,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     const fileNo = candidate?.fileNo || `M${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`;
     
     const candidateData: InsertRecruitmentCandidate = {
-      id: candidate?.id || new Date().toISOString().split('T')[0] + '-' + Date.now(),
+      id: currentCandidateId || new Date().toISOString().split('T')[0] + '-' + Date.now(),
       fileNo: fileNo,
       firstName: formData.firstName,
       middleName: formData.middleName || null,
@@ -512,7 +532,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     const fileNo = candidate?.fileNo || `M${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`;
     
     const candidateData: InsertRecruitmentCandidate = {
-      id: candidate?.id || new Date().toISOString().split('T')[0] + '-' + Date.now(),
+      id: currentCandidateId || new Date().toISOString().split('T')[0] + '-' + Date.now(),
       fileNo: fileNo,
       firstName: formData.firstName,
       middleName: formData.middleName || null,
@@ -529,9 +549,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     console.log('🔥 A5 Submit for Screening - saving form data:', formData);
 
     // Handle the save and navigation manually for A5
-    if (candidate?.id) {
-      // Update existing candidate
-      fetch(`/api/recruitment-candidates/${candidate.id}`, {
+    if (currentCandidateId) {
+      // Update existing candidate (PATCH)
+      console.log('🔄 PATCH - Updating existing candidate:', currentCandidateId);
+      fetch(`/api/recruitment-candidates/${currentCandidateId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(candidateData)
@@ -557,7 +578,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
         });
       });
     } else {
-      // Create new candidate
+      // Create new candidate (POST)
+      console.log('✨ POST - Creating new candidate');
       fetch('/api/recruitment-candidates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -565,7 +587,13 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       }).then(res => {
         if (!res.ok) throw new Error('Failed to create candidate');
         return res.json();
-      }).then(() => {
+      }).then((savedCandidate) => {
+        // Store the ID after first creation (fixes duplicate bug)
+        if (savedCandidate.id) {
+          console.log('💾 Storing candidate ID for future updates:', savedCandidate.id);
+          setCurrentCandidateId(savedCandidate.id);
+        }
+        
         toast({
           title: "Success",
           description: "Candidate submitted for screening successfully!",
