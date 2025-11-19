@@ -27,6 +27,7 @@ interface RecruitmentApplicationFormProps {
 
 interface FormData {
   // A1.1 General Particulars
+  uploadedPhoto: string; // Base64 encoded photo data
   firstName: string;
   middleName: string;
   familyName: string;
@@ -736,6 +737,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
 
   const [formData, setFormData] = useState<FormData>({
     // Initialize with candidate data or empty for new candidates
+    uploadedPhoto: savedData.uploadedPhoto || '', // Load saved photo
     firstName: candidate?.firstName || '',
     middleName: candidate?.middleName || '',
     familyName: candidate?.familyName || '',
@@ -1541,22 +1543,33 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     if (file) {
       // Validate file type
       if (!file.type.startsWith('image/')) {
-        alert('Please select an image file');
+        toast({
+          title: "Invalid File Type",
+          description: "Please select an image file (JPG, PNG, GIF)",
+          variant: "destructive",
+        });
         return;
       }
       
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        alert('File size must be less than 5MB');
+        toast({
+          title: "File Too Large",
+          description: "File size must be less than 5MB",
+          variant: "destructive",
+        });
         return;
       }
       
       setPhotoFile(file);
       
-      // Create preview URL
+      // Create preview URL and save to formData
       const reader = new FileReader();
       reader.onload = (e) => {
-        setUploadedPhoto(e.target?.result as string);
+        const photoData = e.target?.result as string;
+        setUploadedPhoto(photoData);
+        // Save to formData so it persists when saved
+        setFormData(prev => ({ ...prev, uploadedPhoto: photoData }));
       };
       reader.readAsDataURL(file);
     }
@@ -1565,7 +1578,16 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const removePhoto = () => {
     setUploadedPhoto(null);
     setPhotoFile(null);
+    // Also remove from formData
+    setFormData(prev => ({ ...prev, uploadedPhoto: '' }));
   };
+  
+  // Load saved photo when editing existing candidate
+  useEffect(() => {
+    if (formData.uploadedPhoto) {
+      setUploadedPhoto(formData.uploadedPhoto);
+    }
+  }, [candidate?.id]);
 
   // Multi-select language handling
   const handleLanguageSelection = (field: 'nativeLanguage' | 'foreignLanguages', selectedLanguage: string) => {
@@ -2223,7 +2245,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
 
   const renderA21TravelDocs = () => {
     return (
-      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+      <div data-section="A2" className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A2.1 Travel and Identification Docs</h3>
           <Button

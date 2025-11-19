@@ -100,7 +100,20 @@ export const RecruitmentModule = (): JSX.Element => {
   // Actions cell renderer
   const ActionsCellRenderer = useCallback((params: ICellRendererParams) => {
     const handleAttachmentClick = () => {
-      console.log('Attachment clicked for:', params.data.id);
+      // Open the form in view mode and navigate to documents section
+      setSelectedCandidate({
+        ...params.data,
+        middleName: params.data.middleName || ''
+      });
+      setShowApplicationForm(true);
+      
+      // Scroll to A2 (Travel Documents) section after form opens
+      setTimeout(() => {
+        const a2Section = document.querySelector('[data-section="A2"]');
+        if (a2Section) {
+          a2Section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 500);
     };
 
     const handleEditClick = () => {
