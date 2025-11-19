@@ -15,9 +15,19 @@ GET /api/recruitment-candidates 500 in 69ms :: {"error":"Failed to fetch recruiâ
 
 ### Option 1: Quick Fix (Single Command)
 
+**Linux/Mac:**
 ```bash
-# Apply just the missing column
 psql $DATABASE_URL -f migrations/0001_add_is_delete_to_recruitment_candidates.sql
+```
+
+**Windows (Command Prompt):**
+```batch
+psql "%DATABASE_URL%" -f migrations\0001_add_is_delete_to_recruitment_candidates.sql
+```
+
+**Windows (PowerShell):**
+```powershell
+psql $env:DATABASE_URL -f migrations\0001_add_is_delete_to_recruitment_candidates.sql
 ```
 
 **This is safe to run even if the column already exists** - it will skip gracefully.
@@ -26,13 +36,23 @@ psql $DATABASE_URL -f migrations/0001_add_is_delete_to_recruitment_candidates.sq
 
 ### Option 2: Apply All Migrations (Recommended)
 
+**Linux/Mac:**
 ```bash
-# Make script executable
 chmod +x migrations/apply_all_migrations.sh
-
-# Run all migrations
 ./migrations/apply_all_migrations.sh
 ```
+
+**Windows (Batch):**
+```batch
+migrations\apply_all_migrations.bat
+```
+
+**Windows (PowerShell):**
+```powershell
+.\migrations\apply_all_migrations.ps1
+```
+
+**See:** `migrations/OS_SPECIFIC_INSTRUCTIONS.md` for detailed OS setup.
 
 ---
 

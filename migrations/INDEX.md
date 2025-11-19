@@ -14,9 +14,12 @@ This folder contains all database migration files and comprehensive documentatio
 | `0001_add_is_delete_to_recruitment_candidates.sql` | 2025-11-19 | Soft delete column for recruitment candidates | ✅ Applied |
 
 ### Automation Scripts
-| File | Purpose |
-|------|---------|
-| `apply_all_migrations.sh` | Automated script to apply all migrations in order |
+| File | OS | Purpose |
+|------|-----|---------|
+| `apply_all_migrations.sh` | Linux/Mac | Automated script to apply all migrations (Bash) |
+| `apply_all_migrations.bat` | Windows | Automated script to apply all migrations (Batch) |
+| `apply_all_migrations.ps1` | Windows | Automated script to apply all migrations (PowerShell) |
+| `OS_SPECIFIC_INSTRUCTIONS.md` | All | Detailed OS-specific setup guide |
 
 ---
 
@@ -43,8 +46,9 @@ This folder contains all database migration files and comprehensive documentatio
 
 ### New Developer Setup
 
+**Linux/Mac:**
 ```bash
-# 1. Clone repository and navigate to project
+# 1. Navigate to project
 cd seafarer-management
 
 # 2. Apply all migrations
@@ -53,10 +57,33 @@ chmod +x migrations/apply_all_migrations.sh
 
 # 3. Verify
 psql $DATABASE_URL -c "\d recruitment_candidates"
-
-# 4. Start application
-npm run dev
 ```
+
+**Windows (Batch):**
+```batch
+REM 1. Navigate to project
+cd seafarer-management
+
+REM 2. Apply all migrations
+migrations\apply_all_migrations.bat
+
+REM 3. Verify
+psql "%DATABASE_URL%" -c "\d recruitment_candidates"
+```
+
+**Windows (PowerShell):**
+```powershell
+# 1. Navigate to project
+cd seafarer-management
+
+# 2. Apply all migrations
+.\migrations\apply_all_migrations.ps1
+
+# 3. Verify
+psql $env:DATABASE_URL -c "\d recruitment_candidates"
+```
+
+**See:** `migrations/OS_SPECIFIC_INSTRUCTIONS.md` for detailed setup.
 
 ### Fixing 500 Errors
 

@@ -26,17 +26,41 @@ This folder contains all PostgreSQL database migration scripts for the Seafarer 
 
 ## How to Apply Migrations
 
+### Quick Start (All Operating Systems)
+
+**Linux / macOS:**
+```bash
+chmod +x migrations/apply_all_migrations.sh
+./migrations/apply_all_migrations.sh
+```
+
+**Windows (Command Prompt):**
+```batch
+migrations\apply_all_migrations.bat
+```
+
+**Windows (PowerShell):**
+```powershell
+.\migrations\apply_all_migrations.ps1
+```
+
+**See:** `OS_SPECIFIC_INSTRUCTIONS.md` for detailed OS-specific setup.
+
 ### Development Database (Replit PostgreSQL)
 
 ```bash
 # Apply specific migration
 psql $DATABASE_URL -f migrations/0001_add_is_delete_to_recruitment_candidates.sql
 
-# Or apply all migrations in order
-for file in migrations/*.sql; do
-  echo "Applying: $file"
-  psql $DATABASE_URL -f "$file"
-done
+# Or apply all migrations using automated scripts (recommended)
+# Linux/Mac:
+./migrations/apply_all_migrations.sh
+
+# Windows Batch:
+migrations\apply_all_migrations.bat
+
+# Windows PowerShell:
+.\migrations\apply_all_migrations.ps1
 ```
 
 ### Verification
