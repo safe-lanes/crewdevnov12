@@ -50,6 +50,13 @@ The application employs a modern web stack with a module-first architecture for 
     - **Optional Fields**: Part A fields (appraisalPeriodTo, personalityIndexCategory) and Part B evaluation fields are optional in Stage 1
     - **Filter Functionality**: Combined filter support with case-insensitive matching across all filter criteria
 - **Drugs & Alcohol Testing Module**: Tracks six test types with comprehensive filtering, AG Grid tables, and a Summary View. Features a D&A Test Form with dynamic sections and digital signature.
+- **Recruitment Module**: Manages candidate applications and recruitment workflow with AG Grid table display and comprehensive filtering.
+    - **Soft Delete Functionality**: Non-destructive deletion system that preserves candidate records in database while hiding them from UI.
+        - Database: `is_delete` boolean column with index for performance
+        - API: `PATCH /api/recruitment-candidates/:id/soft-delete` endpoint
+        - Frontend: Confirmation dialog and toast notifications for user feedback
+        - Filtering: All GET endpoints automatically exclude soft-deleted records
+        - Data Recovery: Deleted records preserved in database for compliance and audit requirements
 - **Rest Hours Module**: Manages seafarer work and rest hours in compliance with maritime regulations.
     - **PeriodFilter Component**: Reusable period selection component with year/quarter/month or date range modes.
     - **Dashboard (Office)**: Provides fleet-wide overview with AG Charts Enterprise visualizations, performance overview cards with custom gauges, and drill-down functionality to detailed violation and NC overviews. Includes a Vessel Analysis matrix showing violations/NCs by vessel and month.
