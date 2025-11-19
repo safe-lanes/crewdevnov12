@@ -59,9 +59,6 @@ FROM pg_indexes
 WHERE tablename = 'recruitment_candidates' 
 AND indexname = 'idx_recruitment_candidates_is_delete';
 
--- Show current structure of recruitment_candidates
-\d recruitment_candidates
-
 -- ============================================
 -- Migration Complete
 -- ============================================

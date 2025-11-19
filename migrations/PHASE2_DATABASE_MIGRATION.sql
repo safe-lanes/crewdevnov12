@@ -96,10 +96,6 @@ WHERE table_schema = 'public'
   AND table_name IN ('company_processing', 'promotion_forms')
 ORDER BY table_name;
 
--- Verify table structures
-\d company_processing
-\d promotion_forms
-
 -- Verify indexes
 SELECT indexname, tablename 
 FROM pg_indexes 
