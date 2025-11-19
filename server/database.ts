@@ -86,7 +86,7 @@ import {
   type MasterDataEntry,
   type InsertMasterDataEntry
 } from "@shared/schema";
-import { eq, desc, sql, and, inArray, or, like, ilike } from "drizzle-orm";
+import { eq, desc, sql, and, inArray, or, like, ilike, isNull } from "drizzle-orm";
 import { type IStorage } from "./storage";
 
 export class DatabaseStorage implements IStorage {
@@ -1177,16 +1177,46 @@ export class DatabaseStorage implements IStorage {
 
   // Recruitment Candidates Methods
   async getRecruitmentCandidates(): Promise<RecruitmentCandidate[]> {
-    return await this.db.select().from(recruitmentCandidates);
+    return await this.db.select().from(recruitmentCandidates).where(
+      or(
+        eq(recruitmentCandidates.isDelete, false),
+        isNull(recruitmentCandidates.isDelete)
+      )
+    );
   }
 
   async getRecruitmentCandidate(id: string): Promise<RecruitmentCandidate | undefined> {
-    const results = await this.db.select().from(recruitmentCandidates).where(eq(recruitmentCandidates.id, id));
+    const results = await this.db.select().from(recruitmentCandidates).where(
+      and(
+        eq(recruitmentCandidates.id, id),
+        or(
+          eq(recruitmentCandidates.isDelete, false),
+          isNull(recruitmentCandidates.isDelete)
+        )
+      )
+    );
     return results[0] || undefined;
   }
 
   async getRecruitmentCandidatesByStatus(status: string): Promise<RecruitmentCandidate[]> {
-    return await this.db.select().from(recruitmentCandidates).where(eq(recruitmentCandidates.status, status));
+    return await this.db.select().from(recruitmentCandidates).where(
+      and(
+        eq(recruitmentCandidates.status, status),
+        or(
+          eq(recruitmentCandidates.isDelete, false),
+          isNull(recruitmentCandidates.isDelete)
+        )
+      )
+    );
+  }
+
+  async softDeleteRecruitmentCandidate(id: string): Promise<RecruitmentCandidate | undefined> {
+    const result = await this.db.update(recruitmentCandidates)
+      .set({ isDelete: true, updatedAt: new Date() })
+      .where(eq(recruitmentCandidates.id, id))
+      .returning();
+    
+    return result[0] || undefined;
   }
 
   async createRecruitmentCandidate(insertCandidate: InsertRecruitmentCandidate): Promise<RecruitmentCandidate> {

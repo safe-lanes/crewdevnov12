@@ -5590,6 +5590,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/recruitment-candidates/:id/soft-delete", async (req, res) => {
+    try {
+      const id = req.params.id;
+      log(`Soft deleting recruitment candidate: ${id}`, 'api');
+      
+      const candidate = await storage.softDeleteRecruitmentCandidate(id);
+      if (!candidate) {
+        return res.status(404).json({ 
+          error: "Candidate not found",
+          message: `Recruitment candidate with ID ${id} does not exist`
+        });
+      }
+      
+      log(`Successfully soft deleted candidate: ${id}`, 'api');
+      
+      res.json({ 
+        success: true,
+        message: "Recruitment candidate deleted successfully",
+        id: id
+      });
+    } catch (error: any) {
+      console.error('Error soft deleting recruitment candidate:', error);
+      res.status(500).json({ 
+        error: "Failed to delete recruitment candidate",
+        message: error.message 
+      });
+    }
+  });
+
   app.delete("/api/recruitment-candidates/:id", async (req, res) => {
     try {
       const id = req.params.id;

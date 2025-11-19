@@ -74,6 +74,7 @@ export interface IStorage {
   createRecruitmentCandidate(candidate: InsertRecruitmentCandidate): Promise<RecruitmentCandidate>;
   updateRecruitmentCandidate(id: string, candidate: Partial<InsertRecruitmentCandidate>): Promise<RecruitmentCandidate | undefined>;
   deleteRecruitmentCandidate(id: string): Promise<boolean>;
+  softDeleteRecruitmentCandidate(id: string): Promise<RecruitmentCandidate | undefined>;
   // Data Masters
   getDataMasters(): Promise<DataMaster[]>;
   getDataMaster(id: string): Promise<DataMaster | undefined>;
@@ -1705,6 +1706,7 @@ export class MemStorage implements IStorage {
       middleName: insertCandidate.middleName || null,
       applicationData: insertCandidate.applicationData || null,
       status: insertCandidate.status || "Applied",
+      isDelete: false,
       createdAt: null,
       updatedAt: null as any // new Date()
     };
@@ -1727,6 +1729,19 @@ export class MemStorage implements IStorage {
 
   async deleteRecruitmentCandidate(id: string): Promise<boolean> {
     return this.recruitmentCandidates.delete(id);
+  }
+
+  async softDeleteRecruitmentCandidate(id: string): Promise<RecruitmentCandidate | undefined> {
+    const existingCandidate = this.recruitmentCandidates.get(id);
+    if (!existingCandidate) return undefined;
+
+    const updatedCandidate: RecruitmentCandidate = { 
+      ...existingCandidate, 
+      isDelete: true,
+      updatedAt: null as any // new Date()
+    };
+    this.recruitmentCandidates.set(id, updatedCandidate);
+    return updatedCandidate;
   }
 
   async transferRecruitedCandidate(candidateId: string): Promise<{ crewMember: CrewMember; crewId: string }> {
@@ -3018,6 +3033,7 @@ export class PersistentFileStorage implements IStorage {
         manningAgent: "ABC ",
         fileNo: "M2025-955"
       }),
+      isDelete: false,
       createdAt: null,
       updatedAt: null,
     };
@@ -3038,6 +3054,7 @@ export class PersistentFileStorage implements IStorage {
       vesselType: "Oil Tanker",
       status: "Screening",
       applicationData: null,
+      isDelete: false,
       createdAt: null,
       updatedAt: null as any // new Date("2025-09-23")
     });
@@ -3055,6 +3072,7 @@ export class PersistentFileStorage implements IStorage {
       vesselType: "Bulk Carrier",
       status: "For Approval",
       applicationData: null,
+      isDelete: false,
       createdAt: null,
       updatedAt: null as any // new Date("2025-09-23")
     });
@@ -3072,6 +3090,7 @@ export class PersistentFileStorage implements IStorage {
       vesselType: "LPG Tanker",
       status: "Applied",
       applicationData: null,
+      isDelete: false,
       createdAt: null,
       updatedAt: null as any // new Date("2025-09-23")
     });
@@ -3089,6 +3108,7 @@ export class PersistentFileStorage implements IStorage {
       vesselType: "Container",
       status: "Recruited",
       applicationData: null,
+      isDelete: false,
       createdAt: null,
       updatedAt: null as any // new Date("2025-09-23")
     });
@@ -4449,6 +4469,7 @@ export class PersistentFileStorage implements IStorage {
       middleName: insertCandidate.middleName || null,
       applicationData: insertCandidate.applicationData || null,
       status: insertCandidate.status || "Applied",
+      isDelete: false,
       createdAt: null,
       updatedAt: null as any // new Date()
     };
@@ -4475,6 +4496,20 @@ export class PersistentFileStorage implements IStorage {
     const result = this.recruitmentCandidates.delete(id);
     if (result) this.saveToFile(); // SAVE TO FILE AFTER EVERY DELETE!
     return result;
+  }
+
+  async softDeleteRecruitmentCandidate(id: string): Promise<RecruitmentCandidate | undefined> {
+    const existingCandidate = this.recruitmentCandidates.get(id);
+    if (!existingCandidate) return undefined;
+
+    const updatedCandidate: RecruitmentCandidate = { 
+      ...existingCandidate, 
+      isDelete: true,
+      updatedAt: null as any // new Date()
+    };
+    this.recruitmentCandidates.set(id, updatedCandidate);
+    this.saveToFile(); // SAVE TO FILE AFTER SOFT DELETE!
+    return updatedCandidate;
   }
 
   async transferRecruitedCandidate(candidateId: string): Promise<{ crewMember: CrewMember; crewId: string }> {
