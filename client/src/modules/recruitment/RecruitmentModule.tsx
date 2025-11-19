@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { apiRequest } from '@/lib/queryClient';
 import { type RecruitmentCandidate } from '@shared/schema';
+import { useToast } from '@/hooks/use-toast';
 
 // Status mapping for filtering
 const STATUS_MAPPING = {
@@ -36,6 +37,7 @@ export const RecruitmentModule = (): JSX.Element => {
   const [selectedCandidate, setSelectedCandidate] = useState<RecruitmentCandidate | null>(null);
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // Filter state (moved up to fix order)
   const [filters, setFilters] = useState({
@@ -62,18 +64,33 @@ export const RecruitmentModule = (): JSX.Element => {
     refetchOnWindowFocus: false
   });
 
-  // Delete mutation
+  // Soft delete mutation
   const deleteMutation = useMutation({
     mutationFn: (id: string) => {
-      return fetch(`/api/recruitment-candidates/${id}`, {
-        method: 'DELETE'
+      return fetch(`/api/recruitment-candidates/${id}/soft-delete`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       }).then(res => {
         if (!res.ok) throw new Error('Failed to delete candidate');
         return res.json();
       });
     },
     onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Candidate deleted successfully",
+      });
+      // Invalidate all recruitment-related queries
       queryClient.invalidateQueries({ queryKey: ['/api/recruitment-candidates'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: `Failed to delete candidate: ${error.message}`,
+        variant: "destructive",
+      });
     }
   });
 
@@ -96,7 +113,20 @@ export const RecruitmentModule = (): JSX.Element => {
     };
 
     const handleDeleteClick = () => {
-      console.log('Delete clicked for:', params.data.id);
+      const candidateId = params.data.id;
+      const candidateName = `${params.data.firstName} ${params.data.familyName}` || params.data.fileNo;
+      
+      const confirmed = window.confirm(
+        `Are you sure you want to delete "${candidateName}"?\n\n` +
+        `This will remove the candidate from the list.\n` +
+        `File No: ${params.data.fileNo}`
+      );
+      
+      if (!confirmed) {
+        return;
+      }
+      
+      deleteMutation.mutate(candidateId);
     };
 
     return (

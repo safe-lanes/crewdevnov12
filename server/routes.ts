@@ -5593,7 +5593,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/recruitment-candidates/:id/soft-delete", async (req, res) => {
     try {
       const id = req.params.id;
-      log(`Soft deleting recruitment candidate: ${id}`, 'api');
+      console.log(`Soft deleting recruitment candidate: ${id}`);
       
       const candidate = await storage.softDeleteRecruitmentCandidate(id);
       if (!candidate) {
@@ -5603,7 +5603,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      log(`Successfully soft deleted candidate: ${id}`, 'api');
+      console.log(`Successfully soft deleted candidate: ${id}`);
       
       res.json({ 
         success: true,
@@ -5619,6 +5619,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DEPRECATED: Hard delete disabled in favor of soft delete
+  // Use PATCH /api/recruitment-candidates/:id/soft-delete instead
+  /*
   app.delete("/api/recruitment-candidates/:id", async (req, res) => {
     try {
       const id = req.params.id;
@@ -5631,6 +5634,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to delete recruitment candidate" });
     }
   });
+  */
 
   app.post("/api/recruitment-candidates/:id/transfer-to-crew", async (req, res) => {
     try {
