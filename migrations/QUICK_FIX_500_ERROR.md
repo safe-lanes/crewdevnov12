@@ -13,7 +13,28 @@ GET /api/recruitment-candidates 500 in 69ms :: {"error":"Failed to fetch recruiâ
 
 ## Solution: Apply the Migration
 
-### Option 1: Quick Fix (Single Command)
+### Option 1: Fastest Fix (Direct SQL) âš¡
+
+**Linux/Mac:**
+```bash
+psql $DATABASE_URL -f migrations/add_is_delete_column.sql
+```
+
+**Windows (Command Prompt):**
+```batch
+psql "%DATABASE_URL%" -f migrations\add_is_delete_column.sql
+```
+
+**Windows (PowerShell):**
+```powershell
+psql $env:DATABASE_URL -f migrations\add_is_delete_column.sql
+```
+
+**This is the simplest option** - just one SQL file, no scripts needed.
+
+---
+
+### Option 2: Using Full Migration File
 
 **Linux/Mac:**
 ```bash
@@ -34,7 +55,7 @@ psql $env:DATABASE_URL -f migrations\0001_add_is_delete_to_recruitment_candidate
 
 ---
 
-### Option 2: Apply All Migrations (Recommended)
+### Option 3: Apply All Migrations (Comprehensive)
 
 **Linux/Mac:**
 ```bash
@@ -56,7 +77,7 @@ migrations\apply_all_migrations.bat
 
 ---
 
-### Option 3: Manual PostgreSQL Commands
+### Option 4: Manual PostgreSQL Commands
 
 ```sql
 -- Connect to your database
