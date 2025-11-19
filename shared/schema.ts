@@ -160,6 +160,7 @@ export const recruitmentCandidates = pgTable("recruitment_candidates", {
   vesselType: text("vessel_type").notNull(),
   status: text("status").notNull().default("Draft"), // Draft, Applied, Screening, For Approval, Recruited, Waitlisted, Rejected
   applicationData: text("application_data"), // JSON string for comprehensive form data
+  isDelete: boolean("is_delete").default(false), // Soft delete flag
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

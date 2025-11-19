@@ -1,0 +1,639 @@
+# REPLIT: Fix Issue #2 - Add Soft Delete Functionality to Recruitment Module
+
+## 🐛 ISSUE #2: Delete Button Not Working in Recruitment Module
+
+### PROBLEM STATEMENT
+
+The delete button (trash icon) in the Recruitment Module **logs the ID to console but does nothing else**. Records cannot be deleted from the UI.
+
+**Current Behavior:**
+- Click delete button → ID printed to console
+- No API call made
+- Record still visible in table
+- No confirmation popup
+
+**Expected Behavior:**
+- Click delete button → Show confirmation popup
+- User confirms → API call to soft delete
+- Record marked as deleted (isDelete = 1)
+- Record disappears from table
+- Table refreshes automatically
+
+---
+
+## 📸 SCREENSHOTS REFERENCE
+
+From the screenshots provided:
+1. **Recruitment table** showing multiple draft records with delete (trash) icons
+2. **Delete icon highlighted** in red circle - this button needs to work
+3. **Each record has a unique File No** (e.g., M2025-885, M2025-565, etc.)
+
+---
+
+## 🎯 REQUIRED IMPLEMENTATION
+
+### Part 1: Add isDelete Column to Database
+
+**Current Status:** `recruitment_candidates` table does NOT have `isDelete` column
+
+**Required Change:**
+
+```sql
+-- Add isDelete column for soft delete support
+ALTER TABLE recruitment_candidates 
+ADD COLUMN IF NOT EXISTS is_delete BOOLEAN DEFAULT FALSE;
+
+-- Or if using TINYINT
+ALTER TABLE recruitment_candidates 
+ADD COLUMN IF NOT EXISTS is_delete TINYINT(1) DEFAULT 0;
+
+-- Add index for performance (filtering deleted records)
+CREATE INDEX IF NOT EXISTS idx_recruitment_candidates_is_delete 
+ON recruitment_candidates(is_delete);
+
+-- Verify column was added
+SELECT column_name, data_type, column_default 
+FROM information_schema.columns 
+WHERE table_name = 'recruitment_candidates' 
+  AND column_name = 'is_delete';
+```
+
+**Notes:**
+- Use `is_delete` (snake_case) to match PostgreSQL naming convention
+- Default value: `FALSE` or `0` (active records)
+- When deleted: set to `TRUE` or `1`
+
+---
+
+### Part 2: Update Backend API Endpoints
+
+#### 2.1: Modify GET Endpoint to Filter Deleted Records
+
+**File:** `server/routes.ts`
+
+**Current GET endpoint:**
+```typescript
+app.get("/api/recruitment-candidates", async (req, res) => {
+  try {
+    const candidates = await storage.getRecruitmentCandidates();
+    res.json(candidates);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch recruitment candidates" });
+  }
+});
+```
+
+**Updated GET endpoint (filter out deleted):**
+```typescript
+app.get("/api/recruitment-candidates", async (req, res) => {
+  try {
+    // Get all candidates and filter out deleted ones
+    const allCandidates = await storage.getRecruitmentCandidates();
+    
+    // Filter out soft-deleted records (isDelete = true or 1)
+    const activeCandidates = allCandidates.filter(
+      candidate => !candidate.isDelete && candidate.isDelete !== 1
+    );
+    
+    res.json(activeCandidates);
+  } catch (error) {
+    console.error('Error fetching recruitment candidates:', error);
+    res.status(500).json({ error: "Failed to fetch recruitment candidates" });
+  }
+});
+```
+
+**Alternative (filter at database level - PREFERRED):**
+```typescript
+app.get("/api/recruitment-candidates", async (req, res) => {
+  try {
+    // Storage layer should filter deleted records
+    const candidates = await storage.getActiveRecruitmentCandidates();
+    res.json(candidates);
+  } catch (error) {
+    console.error('Error fetching recruitment candidates:', error);
+    res.status(500).json({ error: "Failed to fetch recruitment candidates" });
+  }
+});
+```
+
+#### 2.2: Create/Update Soft Delete Endpoint
+
+**Add PATCH endpoint for soft delete:**
+
+```typescript
+// Soft delete a recruitment candidate (mark as deleted)
+app.patch("/api/recruitment-candidates/:id/delete", async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    log(`Soft deleting recruitment candidate: ${id}`, 'api');
+    
+    // Update the record to set isDelete = 1
+    const updated = await storage.updateRecruitmentCandidate(id, {
+      isDelete: 1,  // or true for BOOLEAN
+      updatedAt: new Date()
+    });
+    
+    if (!updated) {
+      return res.status(404).json({ 
+        error: "Candidate not found",
+        message: `Recruitment candidate with ID ${id} does not exist`
+      });
+    }
+    
+    log(`Successfully soft deleted candidate: ${id}`, 'api');
+    
+    res.json({ 
+      success: true,
+      message: "Recruitment candidate deleted successfully",
+      id: id
+    });
+    
+  } catch (error) {
+    console.error('Error soft deleting recruitment candidate:', error);
+    res.status(500).json({ 
+      error: "Failed to delete recruitment candidate",
+      message: error.message 
+    });
+  }
+});
+
+// Alternative: Use standard PATCH with isDelete in body
+app.patch("/api/recruitment-candidates/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = updateRecruitmentCandidateSchema.safeParse(req.body);
+    
+    if (!result.success) {
+      return res.status(400).json({ 
+        error: "Invalid data", 
+        details: result.error.issues 
+      });
+    }
+    
+    const updated = await storage.updateRecruitmentCandidate(id, result.data);
+    
+    if (!updated) {
+      return res.status(404).json({ error: "Candidate not found" });
+    }
+    
+    // If isDelete was set to 1, log it
+    if (result.data.isDelete === 1 || result.data.isDelete === true) {
+      log(`Candidate ${id} soft deleted`, 'api');
+    }
+    
+    res.json(updated);
+    
+  } catch (error) {
+    console.error('Error updating recruitment candidate:', error);
+    res.status(500).json({ error: "Failed to update recruitment candidate" });
+  }
+});
+```
+
+**Choose one approach:**
+- **Option A:** Dedicated `/delete` endpoint (cleaner, more explicit)
+- **Option B:** Use standard PATCH with `isDelete` in body (more flexible)
+
+---
+
+#### 2.3: Update Schema to Include isDelete Field
+
+**File:** `shared/schema.ts`
+
+**Update the recruitment candidate schema:**
+
+```typescript
+// Add isDelete to the schema
+export const recruitmentCandidates = pgTable('recruitment_candidates', {
+  // ... existing fields
+  isDelete: boolean('is_delete').default(false),
+  // or for TINYINT
+  // isDelete: integer('is_delete').default(0),
+});
+
+// Update the insert schema to exclude isDelete (should default to 0/false)
+export const insertRecruitmentCandidateSchema = createInsertSchema(recruitmentCandidates, {
+  // ... existing validations
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  isDelete: true,  // Don't allow setting this on create
+});
+
+// Update schema to allow isDelete in updates
+export const updateRecruitmentCandidateSchema = insertRecruitmentCandidateSchema
+  .partial()
+  .extend({
+    isDelete: z.union([z.number(), z.boolean()]).optional(),  // Allow 0/1 or true/false
+  });
+```
+
+---
+
+### Part 3: Update Frontend Delete Handler
+
+**File:** `client/src/components/RecruitmentModule.tsx` (or similar)
+
+**Current delete handler (INCORRECT):**
+```typescript
+const handleDeleteClick = (params: any) => {
+  console.log("Delete clicked for ID:", params.data.id);
+  // ❌ No API call
+  // ❌ No confirmation
+  // ❌ No table refresh
+};
+```
+
+**Fixed delete handler (CORRECT):**
+```typescript
+const handleDeleteClick = async (params: any) => {
+  const candidateId = params.data.id;
+  const candidateName = `${params.data.firstName} ${params.data.lastName}` || params.data.fileNo;
+  
+  // Show confirmation dialog
+  const confirmed = window.confirm(
+    `Are you sure you want to delete "${candidateName}"?\n\n` +
+    `This will mark the candidate as deleted and remove them from the list.\n` +
+    `File No: ${params.data.fileNo}`
+  );
+  
+  if (!confirmed) {
+    return; // User cancelled
+  }
+  
+  try {
+    // Call soft delete API
+    const response = await fetch(
+      `/api/recruitment-candidates/${candidateId}/delete`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to delete candidate');
+    }
+    
+    const result = await response.json();
+    
+    // Show success message
+    toast.success(`Candidate deleted successfully`);
+    // or alert(`Candidate deleted successfully`);
+    
+    // Refresh the table to remove the deleted record
+    await refetch(); // If using React Query
+    // or window.location.reload(); // Simple but not ideal
+    // or setRefreshKey(prev => prev + 1); // If using refresh key pattern
+    
+  } catch (error) {
+    console.error('Error deleting candidate:', error);
+    toast.error(`Failed to delete candidate: ${error.message}`);
+    // or alert(`Failed to delete candidate: ${error.message}`);
+  }
+};
+
+// Alternative using standard PATCH with isDelete in body:
+const handleDeleteClick = async (params: any) => {
+  const candidateId = params.data.id;
+  const candidateName = `${params.data.firstName} ${params.data.lastName}` || params.data.fileNo;
+  
+  const confirmed = window.confirm(
+    `Are you sure you want to delete "${candidateName}"?`
+  );
+  
+  if (!confirmed) return;
+  
+  try {
+    const response = await fetch(
+      `/api/recruitment-candidates/${candidateId}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          isDelete: 1  // Mark as deleted
+        })
+      }
+    );
+    
+    if (!response.ok) {
+      throw new Error('Failed to delete candidate');
+    }
+    
+    toast.success('Candidate deleted successfully');
+    refetch(); // Refresh table
+    
+  } catch (error) {
+    console.error('Error deleting candidate:', error);
+    toast.error(`Failed to delete: ${error.message}`);
+  }
+};
+```
+
+---
+
+### Part 4: Update Storage Layer (if needed)
+
+**File:** `server/database.ts` (or `server/storage.ts`)
+
+**Add method to filter active candidates:**
+
+```typescript
+// Get only active (non-deleted) recruitment candidates
+async getActiveRecruitmentCandidates(): Promise<RecruitmentCandidate[]> {
+  const candidates = await db
+    .select()
+    .from(recruitmentCandidates)
+    .where(
+      or(
+        eq(recruitmentCandidates.isDelete, false),
+        isNull(recruitmentCandidates.isDelete)
+      )
+    );
+  
+  return candidates;
+}
+
+// Or modify existing method
+async getRecruitmentCandidates(): Promise<RecruitmentCandidate[]> {
+  const candidates = await db
+    .select()
+    .from(recruitmentCandidates)
+    .where(
+      or(
+        eq(recruitmentCandidates.isDelete, false),
+        isNull(recruitmentCandidates.isDelete)
+      )
+    );
+  
+  return candidates;
+}
+```
+
+---
+
+## 🧪 TESTING STEPS
+
+### Test 1: Verify Column Added
+```sql
+-- Check column exists
+\d recruitment_candidates
+
+-- Should show is_delete column with default 0 or FALSE
+
+-- Check existing records have default value
+SELECT id, file_no, is_delete 
+FROM recruitment_candidates 
+LIMIT 5;
+
+-- All should show is_delete = 0 or FALSE
+```
+
+### Test 2: Test Soft Delete Endpoint
+```bash
+# Get a candidate ID from the table
+CANDIDATE_ID="2025-11-18-1763443726289"
+
+# Test soft delete
+curl -X PATCH http://localhost:5000/api/recruitment-candidates/$CANDIDATE_ID/delete \
+  -H "Content-Type: application/json"
+
+# Should return success message
+
+# Verify in database
+psql -d dbname -c "SELECT id, file_no, is_delete FROM recruitment_candidates WHERE id = '$CANDIDATE_ID';"
+
+# Should show is_delete = 1 or TRUE
+```
+
+### Test 3: Test Frontend Delete Flow
+```
+1. Open Recruitment Module (http://localhost:5000/recruitment)
+2. See list of candidates with delete icons
+3. Click delete icon on any candidate
+   → Should show confirmation popup
+4. Click "Cancel" in popup
+   → Nothing happens, record still visible
+5. Click delete icon again
+6. Click "OK" in popup
+   → API call made
+   → Success message shown
+   → Record disappears from table
+7. Refresh page
+   → Deleted record still not visible
+8. Check database
+   → Record still exists but is_delete = 1
+```
+
+### Test 4: Test GET Endpoint Filtering
+```bash
+# Get active candidates
+curl http://localhost:5000/api/recruitment-candidates
+
+# Should NOT include records where is_delete = 1
+
+# Verify count
+psql -d dbname -c "SELECT COUNT(*) FROM recruitment_candidates WHERE is_delete = 0;"
+# Should match count from API response
+```
+
+### Test 5: Test Multiple Deletes
+```
+1. Delete 3 different candidates
+2. Each should:
+   - Show confirmation
+   - Make API call
+   - Disappear from table
+3. Verify all 3 are marked deleted in database
+4. Verify GET API doesn't return any of them
+```
+
+---
+
+## 📋 IMPLEMENTATION CHECKLIST
+
+### Database
+```
+[ ] Add is_delete column to recruitment_candidates table
+[ ] Set default value to FALSE or 0
+[ ] Add index on is_delete column
+[ ] Verify column added successfully
+[ ] Check existing records have default value
+```
+
+### Backend
+```
+[ ] Update schema.ts to include isDelete field
+[ ] Update GET endpoint to filter deleted records
+[ ] Create PATCH endpoint for soft delete
+[ ] Update storage layer to filter deleted records
+[ ] Test endpoints with curl
+[ ] Verify filtering works correctly
+```
+
+### Frontend
+```
+[ ] Locate RecruitmentModule.tsx file
+[ ] Find handleDeleteClick function
+[ ] Add confirmation dialog
+[ ] Add API call to soft delete endpoint
+[ ] Add error handling
+[ ] Add success message
+[ ] Add table refresh logic
+[ ] Test delete flow
+```
+
+### Testing
+```
+[ ] Test column exists in database
+[ ] Test soft delete API endpoint
+[ ] Test GET endpoint filters deleted records
+[ ] Test frontend delete button
+[ ] Test confirmation popup
+[ ] Test table refresh after delete
+[ ] Test multiple deletes
+[ ] Verify records still in database (soft delete)
+```
+
+---
+
+## 🎯 EXPECTED RESULTS
+
+### Database State
+```sql
+-- Before delete
+SELECT id, file_no, first_name, is_delete FROM recruitment_candidates;
+| id        | file_no    | first_name | is_delete |
+|-----------|------------|------------|-----------|
+| abc-123   | M2025-885  | John       | 0         |
+| def-456   | M2025-565  | Jane       | 0         |
+
+-- After deleting M2025-885
+SELECT id, file_no, first_name, is_delete FROM recruitment_candidates;
+| id        | file_no    | first_name | is_delete |
+|-----------|------------|------------|-----------|
+| abc-123   | M2025-885  | John       | 1         | ← Marked deleted
+| def-456   | M2025-565  | Jane       | 0         |
+```
+
+### API Response
+```json
+// GET /api/recruitment-candidates
+// Should NOT include deleted records
+[
+  {
+    "id": "def-456",
+    "fileNo": "M2025-565",
+    "firstName": "Jane",
+    "isDelete": 0
+  }
+  // M2025-885 (John) not in response - filtered out
+]
+```
+
+### Frontend Table
+```
+Before delete: Shows all candidates including M2025-885
+After delete:  M2025-885 removed from table
+Refresh page:  M2025-885 still not visible (permanent until restored)
+```
+
+---
+
+## 🚨 IMPORTANT NOTES
+
+### 1. Column Naming
+- Database column: `is_delete` (snake_case)
+- TypeScript/API: `isDelete` (camelCase)
+- Ensure proper mapping between formats
+
+### 2. Soft Delete vs Hard Delete
+- ✅ Soft delete: Set `is_delete = 1` (record kept in database)
+- ❌ Hard delete: `DELETE FROM table` (record removed forever)
+- **Use soft delete only** - allows recovery if needed
+
+### 3. Filtering Considerations
+- GET endpoint MUST filter `is_delete = 1` records
+- Consider performance with large datasets
+- Index on `is_delete` column helps performance
+
+### 4. Future Enhancements (Not Required Now)
+- Admin page to view deleted records
+- "Restore" functionality to undelete
+- Permanent delete after X days
+- Audit log of who deleted what
+
+---
+
+## 🎯 SUCCESS CRITERIA
+
+✅ `is_delete` column exists in `recruitment_candidates` table
+✅ Default value is `0` or `FALSE` for new records
+✅ DELETE endpoint marks records as deleted (sets `is_delete = 1`)
+✅ GET endpoint filters out deleted records
+✅ Frontend shows confirmation popup before delete
+✅ Frontend calls correct API endpoint with candidate ID
+✅ Table refreshes automatically after delete
+✅ Deleted records disappear from UI but remain in database
+✅ Multiple deletes work correctly
+✅ No errors in console or logs
+
+---
+
+## 📊 DELIVERABLES
+
+Please provide:
+
+### 1. Database Migration SQL
+```sql
+-- Show the exact SQL you ran
+ALTER TABLE recruitment_candidates ...
+```
+
+### 2. Code Changes
+```typescript
+// Show:
+// 1. Schema updates
+// 2. Backend endpoint changes
+// 3. Frontend handler changes
+```
+
+### 3. Test Results
+```
+✅ Column added: [screenshot or SQL output]
+✅ API tested: [curl output]
+✅ Frontend tested: [screenshot of confirmation popup]
+✅ Table refreshed: [screenshot before/after]
+✅ Database verified: [SQL query showing is_delete = 1]
+```
+
+### 4. Files Modified
+```
+List all files you changed:
+- server/routes.ts
+- shared/schema.ts
+- client/src/components/RecruitmentModule.tsx
+- server/database.ts (if applicable)
+```
+
+---
+
+## ⏱️ ESTIMATED TIME
+
+- Database column addition: 5 minutes
+- Backend endpoint implementation: 20 minutes
+- Frontend handler update: 15 minutes
+- Testing: 15 minutes
+- **Total: ~1 hour**
+
+---
+
+Please implement these changes and provide test results showing the delete functionality working correctly. Let me know if you need any clarification!
