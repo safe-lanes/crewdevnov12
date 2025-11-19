@@ -2,6 +2,33 @@
 
 This folder contains all PostgreSQL database migration scripts for the Seafarer Performance Management System.
 
+## ✅ Automatic Migration System (New!)
+
+**Migrations now run automatically when you start the application!**
+
+```bash
+# Just run the app - migrations apply automatically
+npm run dev
+```
+
+### How It Works
+
+1. **On Startup**: System reads all `.sql` files from `migrations/` folder
+2. **Check Tracking**: Compares with `schema_migrations` table in database
+3. **Apply New**: Runs only new migrations that haven't been applied
+4. **Skip Old**: Automatically skips already-applied migrations
+5. **Start Server**: Application starts after successful migrations
+
+### Adding a New Migration
+
+1. Create a new `.sql` file in `migrations/` folder
+2. Run `npm run dev`
+3. ✅ Done! Migration applied automatically
+
+**See:** `AUTO_MIGRATION_GUIDE.md` for complete documentation.
+
+---
+
 ## Migration Files
 
 ### Initial Schema
@@ -26,7 +53,20 @@ This folder contains all PostgreSQL database migration scripts for the Seafarer 
 
 ## How to Apply Migrations
 
-### Quick Start (All Operating Systems)
+### Automatic (Recommended) ✅
+
+**Migrations run automatically on app startup:**
+
+```bash
+npm run dev
+```
+
+That's it! Migrations are applied automatically before the server starts.
+
+### Manual (Legacy - Not Needed Anymore)
+
+<details>
+<summary>Click to see manual migration methods (for reference only)</summary>
 
 **Linux / macOS:**
 ```bash
@@ -49,19 +89,11 @@ migrations\apply_all_migrations.bat
 ### Development Database (Replit PostgreSQL)
 
 ```bash
-# Apply specific migration
+# Apply specific migration (not needed anymore - automatic!)
 psql $DATABASE_URL -f migrations/0001_add_is_delete_to_recruitment_candidates.sql
-
-# Or apply all migrations using automated scripts (recommended)
-# Linux/Mac:
-./migrations/apply_all_migrations.sh
-
-# Windows Batch:
-migrations\apply_all_migrations.bat
-
-# Windows PowerShell:
-.\migrations\apply_all_migrations.ps1
 ```
+
+</details>
 
 ### Verification
 
@@ -155,10 +187,12 @@ WHERE is_delete = true;
 
 ## Important Notes
 
-1. **Idempotent Migrations**: All migrations use `IF NOT EXISTS` or conditional logic to be safe to run multiple times
-2. **No Data Loss**: Soft delete preserves all data for audit and compliance
-3. **Performance**: Index on `is_delete` ensures fast filtering of active vs deleted records
-4. **Backwards Compatibility**: `OR is_delete IS NULL` handles records created before the column existed
+1. **Automatic Migrations**: Migrations run automatically on `npm run dev` - no manual steps needed
+2. **Idempotent Migrations**: All migrations use `IF NOT EXISTS` or conditional logic to be safe to run multiple times
+3. **Migration Tracking**: System uses `schema_migrations` table to track which migrations have been applied
+4. **No Data Loss**: Soft delete preserves all data for audit and compliance
+5. **Performance**: Index on `is_delete` ensures fast filtering of active vs deleted records
+6. **Backwards Compatibility**: `OR is_delete IS NULL` handles records created before the column existed
 
 ## Meta Folder
 
