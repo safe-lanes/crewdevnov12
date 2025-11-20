@@ -236,7 +236,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   // Crew ID will be auto-assigned by the API during creation
 
   // Get company ranks from shared hook
-  const { data: companyRanks, isLoading: ranksLoading, rankNames } = useCompanyRanks();
+  const { data: companyRanks, isLoading: ranksLoading, rankNames, error: ranksError } = useCompanyRanks();
 
   // Data mappings with proper nullish coalescing
   const statusData = dashboardData?.status;
@@ -1508,9 +1508,17 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                   <SelectValue placeholder="Select rank" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[200px]">
-                  {rankNames.map(rank => (
-                    <SelectItem key={rank} value={rank}>{rank}</SelectItem>
-                  ))}
+                  {ranksLoading ? (
+                    <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
+                  ) : ranksError ? (
+                    <SelectItem value="error" disabled>Failed to load ranks</SelectItem>
+                  ) : rankNames.length === 0 ? (
+                    <SelectItem value="empty" disabled>No ranks available</SelectItem>
+                  ) : (
+                    rankNames.map(rank => (
+                      <SelectItem key={rank} value={rank}>{rank}</SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             ) : (
@@ -2927,11 +2935,19 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                             <SelectValue placeholder="Select rank" />
                           </SelectTrigger>
                           <SelectContent>
-                            {rankNames.map((rank) => (
-                              <SelectItem key={rank} value={rank}>
-                                {rank}
-                              </SelectItem>
-                            ))}
+                            {ranksLoading ? (
+                              <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
+                            ) : ranksError ? (
+                              <SelectItem value="error" disabled>Failed to load ranks</SelectItem>
+                            ) : rankNames.length === 0 ? (
+                              <SelectItem value="empty" disabled>No ranks available</SelectItem>
+                            ) : (
+                              rankNames.map((rank) => (
+                                <SelectItem key={rank} value={rank}>
+                                  {rank}
+                                </SelectItem>
+                              ))
+                            )}
                           </SelectContent>
                         </Select>
                       </td>
@@ -3093,11 +3109,19 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                             <SelectValue placeholder="Select rank" />
                           </SelectTrigger>
                           <SelectContent>
-                            {rankNames.map((rank) => (
-                              <SelectItem key={rank} value={rank}>
-                                {rank}
-                              </SelectItem>
-                            ))}
+                            {ranksLoading ? (
+                              <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
+                            ) : ranksError ? (
+                              <SelectItem value="error" disabled>Failed to load ranks</SelectItem>
+                            ) : rankNames.length === 0 ? (
+                              <SelectItem value="empty" disabled>No ranks available</SelectItem>
+                            ) : (
+                              rankNames.map((rank) => (
+                                <SelectItem key={rank} value={rank}>
+                                  {rank}
+                                </SelectItem>
+                              ))
+                            )}
                           </SelectContent>
                         </Select>
                       </td>
