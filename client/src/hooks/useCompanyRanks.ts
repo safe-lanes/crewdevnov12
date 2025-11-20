@@ -85,18 +85,33 @@ export const useRankMasterData = (options?: { enabled?: boolean }) => {
   };
 };
 
-// Hook to get company-applicable ranks (filtered from rank master data)
+// Hook to get company-applicable ranks (server-filtered)
 export const useCompanyRanks = () => {
-  const { data: rankMasterData, isLoading, error } = useRankMasterData();
-  
-  const companyRanks = rankMasterData?.filter(rank => rank.applicableToCompany) || [];
+  const query = useQuery<AvailableRank[]>({
+    queryKey: ["/api/available-ranks", "companyOnly"],
+    queryFn: async () => {
+      const response = await fetch("/api/available-ranks?companyOnly=true");
+      if (!response.ok) {
+        throw new Error("Failed to fetch company ranks");
+      }
+      return response.json();
+    },
+    // Optimize performance - reasonable cache time
+    staleTime: 5 * 60 * 1000, // 5 minutes - data doesn't change frequently
+    gcTime: 30 * 60 * 1000, // 30 minutes in memory
+    refetchOnMount: false, // Use cache if available
+    refetchOnWindowFocus: false, // Don't refetch on focus
+    refetchOnReconnect: true, // Refetch on reconnect is fine
+  });
+
+  const mappedData = query.data?.map(mapAvailableRankToRankMasterData) || [];
   
   return {
-    data: companyRanks,
-    isLoading,
-    error,
+    data: mappedData,
+    isLoading: query.isLoading,
+    error: query.error,
     // Convenience method to get just the rank names for dropdowns
-    rankNames: companyRanks.map(rank => rank.rank),
+    rankNames: mappedData.map(rank => rank.rank),
   };
 };
 

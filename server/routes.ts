@@ -1492,7 +1492,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Available Ranks API routes
   app.get("/api/available-ranks", async (req, res) => {
     try {
-      const ranks = await storage.getAvailableRanks();
+      const companyOnly = req.query.companyOnly === 'true';
+      let ranks = await storage.getAvailableRanks();
+      
+      // Sort all ranks alphabetically by label (applies to both filtered and unfiltered)
+      ranks = ranks.sort((a, b) => {
+        // Null-safe comparison with fallback to name
+        const labelA = (a.label || a.name || '').toString();
+        const labelB = (b.label || b.name || '').toString();
+        return labelA.localeCompare(labelB, undefined, { sensitivity: 'base' });
+      });
+      
+      // Filter to only company-applicable ranks if requested
+      if (companyOnly) {
+        ranks = ranks.filter(rank => rank.applicableToCompany === true);
+      }
+      
       res.json(ranks);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch available ranks" });
