@@ -212,6 +212,20 @@ interface FormData {
   b8Comments: {[key: string]: Array<{user: string, text: string, id: string}>};
   b8SubmittedBy: string;
   b8SubmittedDate: string;
+
+  // Part C - Approval
+  // C1 Approval fields
+  c1Approvers: Array<{id: string, date: string, approver: string, status: string, approval: string, comments?: string}>;
+  
+  // C2 Suitable for fields
+  c2VesselTypes: string[];
+  c2FleetGroups: string[];
+  
+  // C3 Recruited fields
+  c3RecruitmentStatus: string;
+  c3AssignedGroups: string[];
+  c3SubmittedBy: string;
+  c3SubmittedDate: string;
 }
 
 export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProps> = ({
@@ -417,7 +431,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       return;
     }
 
-    if (!c3RecruitmentStatus) {
+    if (!formData.c3RecruitmentStatus) {
       toast({
         title: "Validation Error",
         description: "Please select a recruitment decision (Yes, Waitlist, or Rejected) before submitting.",
@@ -433,7 +447,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       'Rejected': 'Rejected'
     };
 
-    const finalStatus = statusMapping[c3RecruitmentStatus];
+    const finalStatus = statusMapping[formData.c3RecruitmentStatus];
 
     // Generate file number for new candidates
     const fileNo = candidate?.fileNo || `M${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`;
@@ -452,9 +466,6 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       status: finalStatus, // Set final recruitment status
       applicationData: JSON.stringify({
         ...formData,
-        c3RecruitmentStatus,
-        c3AssignedGroups,
-        c3SubmittedBy,
         c3SubmittedDate: new Date().toLocaleDateString()
       })
     };
@@ -667,18 +678,6 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     'sarah-smith': 'Sarah Smith, Technical Manager'
   };
 
-  // State for Part C - Approval
-  const [c1Approvers, setC1Approvers] = useState<Array<{id: string, date: string, approver: string, status: string, approval: string, comments?: string}>>([
-    { id: '1', date: '', approver: '', status: '', approval: 'Yes', comments: '' }
-  ]);
-
-  const [c2VesselTypes, setC2VesselTypes] = useState<string[]>(candidate ? ['Product Tankers', 'Crude Oil Tankers', 'Chemical Tankers'] : []);
-  const [c2FleetGroups, setC2FleetGroups] = useState<string[]>(candidate ? ['MR Class1 Tankers', 'Chemical JP 20', 'Chemical SS', 'Fleet B', 'Fleet C'] : []);
-
-  const [c3RecruitmentStatus, setC3RecruitmentStatus] = useState<string>(candidate ? 'Yes' : '');
-  const [c3AssignedGroups, setC3AssignedGroups] = useState<string[]>(candidate ? ['Fleet B'] : []);
-  const [c3SubmittedBy, setC3SubmittedBy] = useState<string>(candidate ? 'Roxanne, Crewing Executive' : '');
-
   // Parse saved application data if editing existing candidate
   const savedData = candidate?.applicationData ? (() => {
     try {
@@ -827,7 +826,21 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     b8Shortlisted: savedData.b8Shortlisted || '',
     b8Comments: savedData.b8Comments || {},
     b8SubmittedBy: savedData.b8SubmittedBy || '',
-    b8SubmittedDate: savedData.b8SubmittedDate || ''
+    b8SubmittedDate: savedData.b8SubmittedDate || '',
+
+    // Part C - Approval - load from saved data
+    // C1 Approval
+    c1Approvers: savedData.c1Approvers || [{ id: '1', date: '', approver: '', status: '', approval: 'Yes', comments: '' }],
+    
+    // C2 Suitable for
+    c2VesselTypes: savedData.c2VesselTypes || [],
+    c2FleetGroups: savedData.c2FleetGroups || [],
+    
+    // C3 Recruited
+    c3RecruitmentStatus: savedData.c3RecruitmentStatus || '',
+    c3AssignedGroups: savedData.c3AssignedGroups || [],
+    c3SubmittedBy: savedData.c3SubmittedBy || '',
+    c3SubmittedDate: savedData.c3SubmittedDate || ''
   });
 
   // Handle click outside to auto-save sections
@@ -1295,54 +1308,81 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   // Part C - Approval management functions
   const addC1Approver = () => {
     const newApprover = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       date: '',
       approver: '',
       status: '',
       approval: 'Yes',
       comments: ''
     };
-    setC1Approvers(prev => [...prev, newApprover]);
+    setFormData(prev => ({
+      ...prev,
+      c1Approvers: [...prev.c1Approvers, newApprover]
+    }));
   };
 
   const removeC1Approver = (id: string) => {
-    setC1Approvers(prev => prev.filter(approver => approver.id !== id));
+    setFormData(prev => ({
+      ...prev,
+      c1Approvers: prev.c1Approvers.filter(approver => approver.id !== id)
+    }));
   };
 
   const updateC1Approver = (id: string, field: string, value: string) => {
-    setC1Approvers(prev => prev.map(approver => 
-      approver.id === id ? { ...approver, [field]: value } : approver
-    ));
+    setFormData(prev => ({
+      ...prev,
+      c1Approvers: prev.c1Approvers.map(approver => 
+        approver.id === id ? { ...approver, [field]: value } : approver
+      )
+    }));
   };
 
   const addC2VesselType = (vesselType: string) => {
-    if (!c2VesselTypes.includes(vesselType)) {
-      setC2VesselTypes(prev => [...prev, vesselType]);
+    if (!formData.c2VesselTypes.includes(vesselType)) {
+      setFormData(prev => ({
+        ...prev,
+        c2VesselTypes: [...prev.c2VesselTypes, vesselType]
+      }));
     }
   };
 
   const removeC2VesselType = (vesselType: string) => {
-    setC2VesselTypes(prev => prev.filter(type => type !== vesselType));
+    setFormData(prev => ({
+      ...prev,
+      c2VesselTypes: prev.c2VesselTypes.filter(type => type !== vesselType)
+    }));
   };
 
   const addC2FleetGroup = (fleetGroup: string) => {
-    if (!c2FleetGroups.includes(fleetGroup)) {
-      setC2FleetGroups(prev => [...prev, fleetGroup]);
+    if (!formData.c2FleetGroups.includes(fleetGroup)) {
+      setFormData(prev => ({
+        ...prev,
+        c2FleetGroups: [...prev.c2FleetGroups, fleetGroup]
+      }));
     }
   };
 
   const removeC2FleetGroup = (fleetGroup: string) => {
-    setC2FleetGroups(prev => prev.filter(group => group !== fleetGroup));
+    setFormData(prev => ({
+      ...prev,
+      c2FleetGroups: prev.c2FleetGroups.filter(group => group !== fleetGroup)
+    }));
   };
 
   const addC3AssignedGroup = (group: string) => {
-    if (!c3AssignedGroups.includes(group)) {
-      setC3AssignedGroups(prev => [...prev, group]);
+    if (!formData.c3AssignedGroups.includes(group)) {
+      setFormData(prev => ({
+        ...prev,
+        c3AssignedGroups: [...prev.c3AssignedGroups, group]
+      }));
     }
   };
 
   const removeC3AssignedGroup = (group: string) => {
-    setC3AssignedGroups(prev => prev.filter(g => g !== group));
+    setFormData(prev => ({
+      ...prev,
+      c3AssignedGroups: prev.c3AssignedGroups.filter(g => g !== group)
+    }));
   };
 
   // Additional Information management functions
@@ -6071,7 +6111,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
 
             {/* Approver entries */}
             <div className="ml-4 mb-4 space-y-3">
-              {c1Approvers.map((approver, index) => (
+              {formData.c1Approvers.map((approver, index) => (
                 <div key={approver.id} className="space-y-3">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
@@ -6195,7 +6235,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             <label className="text-xs text-gray-500 tracking-wide mb-2 block">C2.1 Vessel type(s):</label>
             <div className="space-y-3">
               <div className="flex flex-wrap gap-2">
-                {c2VesselTypes.map((vesselType) => (
+                {formData.c2VesselTypes.map((vesselType) => (
                   <div key={vesselType} className="flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-md text-sm">
                     <span>{vesselType}</span>
                     <button
@@ -6215,7 +6255,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   <SelectValue placeholder="Add vessel type..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {vesselTypeMasterData.filter(type => !c2VesselTypes.includes(type)).map((vesselType) => (
+                  {vesselTypeMasterData.filter(type => !formData.c2VesselTypes.includes(type)).map((vesselType) => (
                     <SelectItem key={vesselType} value={vesselType}>
                       {vesselType}
                     </SelectItem>
@@ -6230,7 +6270,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             <label className="text-xs text-gray-500 tracking-wide mb-2 block">C2.2 Vessel Class/ Fleet:</label>
             <div className="space-y-3">
               <div className="flex flex-wrap gap-2">
-                {c2FleetGroups.map((fleetGroup) => (
+                {formData.c2FleetGroups.map((fleetGroup) => (
                   <div key={fleetGroup} className="flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-md text-sm">
                     <span>{fleetGroup}</span>
                     <button
@@ -6251,7 +6291,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 </SelectTrigger>
                 <SelectContent>
                   {[...fleetGroupMasterData, ...additionalGroupMasterData]
-                    .filter(group => !c2FleetGroups.includes(group))
+                    .filter(group => !formData.c2FleetGroups.includes(group))
                     .map((fleetGroup) => (
                       <SelectItem key={fleetGroup} value={fleetGroup}>
                         {fleetGroup}
@@ -6287,8 +6327,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                       type="radio"
                       name="recruitment-status"
                       value="Yes"
-                      checked={c3RecruitmentStatus === 'Yes'}
-                      onChange={(e) => setC3RecruitmentStatus(e.target.value)}
+                      checked={formData.c3RecruitmentStatus === 'Yes'}
+                      onChange={(e) => updateFormData('c3RecruitmentStatus', e.target.value)}
                       className="mr-2"
                     />
                     <span className="text-[13px]">Yes</span>
@@ -6298,8 +6338,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                       type="radio"
                       name="recruitment-status"
                       value="Waitlist"
-                      checked={c3RecruitmentStatus === 'Waitlist'}
-                      onChange={(e) => setC3RecruitmentStatus(e.target.value)}
+                      checked={formData.c3RecruitmentStatus === 'Waitlist'}
+                      onChange={(e) => updateFormData('c3RecruitmentStatus', e.target.value)}
                       className="mr-2"
                     />
                     <span className="text-[13px]">Waitlist</span>
@@ -6309,8 +6349,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                       type="radio"
                       name="recruitment-status"
                       value="Rejected"
-                      checked={c3RecruitmentStatus === 'Rejected'}
-                      onChange={(e) => setC3RecruitmentStatus(e.target.value)}
+                      checked={formData.c3RecruitmentStatus === 'Rejected'}
+                      onChange={(e) => updateFormData('c3RecruitmentStatus', e.target.value)}
                       className="mr-2"
                     />
                     <span className="text-[13px]">Rejected</span>
@@ -6325,7 +6365,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             <label className="text-xs text-gray-500 tracking-wide mb-2 block">C3.2 Vessel, Vessel Class/ Fleet:</label>
             <div className="space-y-3">
               <div className="flex flex-wrap gap-2">
-                {c3AssignedGroups.map((group) => (
+                {formData.c3AssignedGroups.map((group) => (
                   <div key={group} className="flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-md text-sm">
                     <span>{group}</span>
                     <button
@@ -6346,7 +6386,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 </SelectTrigger>
                 <SelectContent>
                   {[...vesselMasterData, ...fleetGroupMasterData, ...additionalGroupMasterData]
-                    .filter(item => !c3AssignedGroups.includes(item))
+                    .filter(item => !formData.c3AssignedGroups.includes(item))
                     .map((item) => (
                       <SelectItem key={item} value={item}>
                         {item}
@@ -6361,7 +6401,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           <div className="mt-6 pt-4 border-t border-gray-200">
             <div className="flex justify-between items-center">
               <div className="text-xs text-gray-500">
-                Submitted by: {c3SubmittedBy}
+                Submitted by: {formData.c3SubmittedBy}
               </div>
               <div className="flex gap-2">
                 <Button
