@@ -14,6 +14,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { toStorageCrew } from '@shared/crew-mapping';
 import type { CrewDashboardSummary } from '@shared/schema';
+import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 
 interface CrewMember {
   id: string;
@@ -234,6 +235,9 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
 
   // Crew ID will be auto-assigned by the API during creation
 
+  // Get company ranks from shared hook
+  const { data: companyRanks, isLoading: ranksLoading, rankNames } = useCompanyRanks();
+
   // Data mappings with proper nullish coalescing
   const statusData = dashboardData?.status;
   const experienceData = dashboardData?.experience;
@@ -329,13 +333,6 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     "Suriname", "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Timor-Leste", "Togo",
     "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom",
     "United States", "Uruguay", "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
-  ];
-
-  const rankNames = [
-    "Master", "Chief Engineer", "Chief Mate", "First Officer", "Second Officer", "Third Officer",
-    "Second Engineer", "Third Engineer", "Fourth Engineer", "Electrical Officer", "Electronics Officer",
-    "Able Seaman", "Ordinary Seaman", "Bosun", "Chief Cook", "Cook", "Messman", "Steward",
-    "Oiler", "Wiper", "Motorman", "Fitter", "Electrician", "Pumpman", "Tank Cleaner"
   ];
 
   const vesselTypeMasterData = VESSEL_TYPES;
