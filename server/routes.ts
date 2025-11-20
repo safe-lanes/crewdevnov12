@@ -2425,7 +2425,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.log(`✅ [SUBMIT] Cleaned up ${deletedDraftsCount} draft(s) for vessel ${vesselId}${failedDraftIds.length > 0 ? `, failed to delete ${failedDraftIds.length} draft(s)` : ''}`);
       
-      // Step 5: Return the created revision with metadata
+      // Step 5: Auto-initialize vessel_planning records for new ranks
+      console.log(`🔗 [VESSEL PLANNING] Syncing vessel_planning records with vessel ranks`);
+      try {
+        // Parse revisionData - it's directly an array of rank objects
+        const parsedRevisionData = typeof revisionData === 'string' ? JSON.parse(revisionData) : revisionData;
+        const ranks = Array.isArray(parsedRevisionData) ? parsedRevisionData : [];
+        
+        console.log(`🔗 [VESSEL PLANNING] Found ${ranks.length} rank(s) in submitted revision for vessel ${vesselId}`);
+        
+        // Get existing vessel planning records for this vessel
+        const existingPlanning = await storage.getVesselPlanningByVessel(vesselId);
+        const existingRankIds = new Set(existingPlanning.map((p: any) => p.rankId));
+        
+        console.log(`🔗 [VESSEL PLANNING] Found ${existingPlanning.length} existing planning record(s), ${existingRankIds.size} unique rank IDs`);
+        
+        let createdPlanningCount = 0;
+        for (const rank of ranks) {
+          const rankId = rank.rankId || rank.id;
+          const rankName = rank.rank || rank.role;
+          
+          // Skip if no rankId or if it's a role row (these are variants, not primary positions)
+          if (!rankId || rank.isRoleRow) {
+            continue;
+          }
+          
+          // Only create planning record if it doesn't already exist for this rank
+          if (!existingRankIds.has(rankId)) {
+            try {
+              await storage.createVesselPlanning({
+                vesselId: vesselId,
+                rankId: rankId,
+                rank: rankName,
+                onBoardCrewId: null,
+                onBoardCrewName: null,
+                reliefDue: null,
+                signOffDate: null,
+                signOffPort: null,
+                reliefStatus: null,
+                relieverCrewId: null,
+                relieverCrewName: null,
+                joiningDate: null,
+                joiningPort: null,
+                joiningStatus: null
+              });
+              createdPlanningCount++;
+              console.log(`🔗 [VESSEL PLANNING] Created planning record for rank: ${rankName} (ID: ${rankId})`);
+            } catch (planningError) {
+              console.warn(`🔗 [VESSEL PLANNING WARNING] Failed to create planning for rank ${rankId}:`, planningError);
+            }
+          } else {
+            console.log(`🔗 [VESSEL PLANNING] Skipping existing rank: ${rankName} (ID: ${rankId})`);
+          }
+        }
+        console.log(`🔗 [VESSEL PLANNING] ✅ Created ${createdPlanningCount} new planning record(s) for vessel ${vesselId}`);
+      } catch (planningError) {
+        console.error(`🔗 [VESSEL PLANNING ERROR] Failed to sync vessel_planning:`, planningError);
+        // Don't fail the entire submission if planning sync fails
+      }
+      
+      // Step 6: Return the created revision with metadata
       res.status(201).json({
         success: true,
         revision: createdRevision,
