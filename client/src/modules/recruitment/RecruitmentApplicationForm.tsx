@@ -159,44 +159,57 @@ interface FormData {
   b1RankMeetsCriteria: string;
   b1CertificatesValid: string;
   b1Shortlisted: string;
-  b1Comments: string;
+  b1Comments: {[key: string]: Array<{user: string, text: string, id: string}>};
   b1SubmittedBy: string;
   b1SubmittedDate: string;
   
   // B2 Reference Checks fields
   b2ReferenceChecksCompleted: string;
   b2CurrentEmployerFeedback: string;
+  b2Comments: {[key: string]: Array<{user: string, text: string, id: string}>};
+  b2References: Array<{id: string, date: string, nameDesignation: string, contactInfo: string}>;
   b2SubmittedBy: string;
   b2SubmittedDate: string;
   
   // B3 Background Security Checks fields
   b3SecurityChecksCompleted: string;
   b3SecurityChecksResults: string;
+  b3Comments: {[key: string]: Array<{user: string, text: string, id: string}>};
+  b3Authorities: Array<{id: string, date: string, authority: string}>;
   b3SubmittedBy: string;
   b3SubmittedDate: string;
   
   // B4 Authentication of Certificates & Documents fields
   b4CertificatesAuthenticated: string;
   b4AuthenticationResults: string;
+  b4Comments: {[key: string]: Array<{user: string, text: string, id: string}>};
+  b4Certificates: Array<{id: string, date: string, certificate: string, authority: string}>;
   b4SubmittedBy: string;
   b4SubmittedDate: string;
   
   // B5 CES/Language Test Results fields
   b5CesTestsCompleted: string;
+  b5Comments: {[key: string]: Array<{user: string, text: string, id: string}>};
+  b5Tests: Array<{id: string, date: string, subject: string, score: string, result: string}>;
   b5SubmittedBy: string;
   b5SubmittedDate: string;
   
   // B6 Interviews fields
   b6InterviewCompleted: string;
+  b6Comments: {[key: string]: Array<{user: string, text: string, id: string}>};
+  b6Interviews: Array<{id: string, date: string, interviewer: string, status: string, result: string, comments: string}>;
+  b6InterviewComments: {[key: string]: string};
   b6SubmittedBy: string;
   b6SubmittedDate: string;
   
   // B7 Training Needs Identified fields
+  b7TrainingNeeds: Array<{id: string, training: string, identifiedBy: string, category: string, dueDate: string, comments: string}>;
   b7SubmittedBy: string;
   b7SubmittedDate: string;
   
   // B8 Short Listing fields
   b8Shortlisted: string;
+  b8Comments: {[key: string]: Array<{user: string, text: string, id: string}>};
   b8SubmittedBy: string;
   b8SubmittedDate: string;
 }
@@ -630,69 +643,22 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
 
-  // State for B1 multiple comments per question
-  const [b1Comments, setB1Comments] = useState<{[key: string]: Array<{user: string, text: string, id: string}>}>(candidate ? {
-    'b1-rank': [
-      {
-        id: '1',
-        user: 'Roxanne, Crewing Executive',
-        text: 'Rank Experience does not meet the requirements. 1 month short'
-      },
-      {
-        id: '2', 
-        user: 'Joseph Hall, Crew Manager',
-        text: 'Exception granted to this candidate as per discussion with Department Manager'
-      }
-    ]
-  } : {});
+  // State for editing/new comment UI only (not for data storage)
   const [editingB1Comment, setEditingB1Comment] = useState<string | null>(null);
   const [newB1Comment, setNewB1Comment] = useState<{[key: string]: string}>({});
-
-  // State for B2 multiple comments per question
-  const [b2Comments, setB2Comments] = useState<{[key: string]: Array<{user: string, text: string, id: string}>}>({});
   const [editingB2Comment, setEditingB2Comment] = useState<string | null>(null);
   const [newB2Comment, setNewB2Comment] = useState<{[key: string]: string}>({});
-  const [b2References, setB2References] = useState<Array<{id: string, date: string, nameDesignation: string, contactInfo: string}>>([
-    { id: '1', date: '', nameDesignation: '', contactInfo: '' }
-  ]);
-
-  // State for B3 multiple comments per question  
-  const [b3Comments, setB3Comments] = useState<{[key: string]: Array<{user: string, text: string, id: string}>}>({});
   const [editingB3Comment, setEditingB3Comment] = useState<string | null>(null);
   const [newB3Comment, setNewB3Comment] = useState<{[key: string]: string}>({});
-  const [b3Authorities, setB3Authorities] = useState<Array<{id: string, date: string, authority: string}>>([
-    { id: '1', date: '', authority: '' }
-  ]);
-
-  // State for B4 multiple comments per question  
-  const [b4Comments, setB4Comments] = useState<{[key: string]: Array<{user: string, text: string, id: string}>}>({});
   const [editingB4Comment, setEditingB4Comment] = useState<string | null>(null);
   const [newB4Comment, setNewB4Comment] = useState<{[key: string]: string}>({});
-  const [b4Certificates, setB4Certificates] = useState<Array<{id: string, date: string, certificate: string, authority: string}>>([
-    { id: '1', date: '', certificate: '', authority: '' }
-  ]);
-
-  // State for B5 multiple comments per question
-  const [b5Comments, setB5Comments] = useState<{[key: string]: Array<{user: string, text: string, id: string}>}>({});
   const [editingB5Comment, setEditingB5Comment] = useState<string | null>(null);
   const [newB5Comment, setNewB5Comment] = useState<{[key: string]: string}>({});
-  const [b5Tests, setB5Tests] = useState<Array<{id: string, date: string, subject: string, score: string, result: string}>>([
-    { id: '1', date: '', subject: '', score: '', result: '' }
-  ]);
-
-  // State for B6 multiple comments per question
-  const [b6Comments, setB6Comments] = useState<{[key: string]: Array<{user: string, text: string, id: string}>}>({});
   const [editingB6Comment, setEditingB6Comment] = useState<string | null>(null);
   const [newB6Comment, setNewB6Comment] = useState<{[key: string]: string}>({});
-  const [b6Interviews, setB6Interviews] = useState<Array<{id: string, date: string, interviewer: string, status: string, result: string, comments: string}>>([
-    { id: '1', date: '', interviewer: '', status: '', result: '', comments: '' }
-  ]);
-  
-  // State for individual interview comments (editable)
-  const [b6InterviewComments, setB6InterviewComments] = useState<{[key: string]: string}>(candidate ? {
-    '1': 'Overall Candidate reflected a strong understanding of the Navigation & cargo operations.'
-  } : {});
   const [editingB6InterviewComment, setEditingB6InterviewComment] = useState<string | null>(candidate ? '1' : null);
+  const [editingB8Comment, setEditingB8Comment] = useState<string | null>(null);
+  const [newB8Comment, setNewB8Comment] = useState<{[key: string]: string}>({});
 
   // Mapping for interviewer values to display names
   const interviewerDisplayNames: {[key: string]: string} = {
@@ -700,19 +666,6 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     'john-doe': 'John Doe, HR Manager', 
     'sarah-smith': 'Sarah Smith, Technical Manager'
   };
-
-  // State for B7 Training Needs
-  const [b7TrainingNeeds, setB7TrainingNeeds] = useState<Array<{id: string, training: string, identifiedBy: string, category: string, dueDate: string, comments: string}>>(
-    candidate ? [
-      { id: '1', training: 'Basic Safety Training', identifiedBy: 'Port State Control', category: 'Mandatory', dueDate: '2024-01-30', comments: 'Required for STCW compliance' },
-      { id: '2', training: 'Advanced Fire Fighting', identifiedBy: 'Safety Officer', category: 'Recommended', dueDate: '2024-03-15', comments: 'Due for renewal' }
-    ] : []
-  );
-
-  // State for B8 multiple comments per question
-  const [b8Comments, setB8Comments] = useState<{[key: string]: Array<{user: string, text: string, id: string}>}>({});
-  const [editingB8Comment, setEditingB8Comment] = useState<string | null>(null);
-  const [newB8Comment, setNewB8Comment] = useState<{[key: string]: string}>({});
 
   // State for Part C - Approval
   const [c1Approvers, setC1Approvers] = useState<Array<{id: string, date: string, approver: string, status: string, approval: string, comments?: string}>>([
@@ -822,44 +775,57 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     b1RankMeetsCriteria: savedData.b1RankMeetsCriteria || '',
     b1CertificatesValid: savedData.b1CertificatesValid || '',
     b1Shortlisted: savedData.b1Shortlisted || '',
-    b1Comments: savedData.b1Comments || '',
+    b1Comments: savedData.b1Comments || {},
     b1SubmittedBy: savedData.b1SubmittedBy || '',
     b1SubmittedDate: savedData.b1SubmittedDate || '',
     
     // B2 Reference Checks - load from saved data
     b2ReferenceChecksCompleted: savedData.b2ReferenceChecksCompleted || '',
     b2CurrentEmployerFeedback: savedData.b2CurrentEmployerFeedback || '',
+    b2Comments: savedData.b2Comments || {},
+    b2References: savedData.b2References || [{ id: '1', date: '', nameDesignation: '', contactInfo: '' }],
     b2SubmittedBy: savedData.b2SubmittedBy || '',
     b2SubmittedDate: savedData.b2SubmittedDate || '',
     
     // B3 Background Security Checks - load from saved data
     b3SecurityChecksCompleted: savedData.b3SecurityChecksCompleted || '',
     b3SecurityChecksResults: savedData.b3SecurityChecksResults || '',
+    b3Comments: savedData.b3Comments || {},
+    b3Authorities: savedData.b3Authorities || [{ id: '1', date: '', authority: '' }],
     b3SubmittedBy: savedData.b3SubmittedBy || '',
     b3SubmittedDate: savedData.b3SubmittedDate || '',
     
     // B4 Authentication of Certificates & Documents - load from saved data
     b4CertificatesAuthenticated: savedData.b4CertificatesAuthenticated || '',
     b4AuthenticationResults: savedData.b4AuthenticationResults || '',
+    b4Comments: savedData.b4Comments || {},
+    b4Certificates: savedData.b4Certificates || [{ id: '1', date: '', certificate: '', authority: '' }],
     b4SubmittedBy: savedData.b4SubmittedBy || '',
     b4SubmittedDate: savedData.b4SubmittedDate || '',
     
     // B5 CES/Language Test Results - load from saved data
     b5CesTestsCompleted: savedData.b5CesTestsCompleted || '',
+    b5Comments: savedData.b5Comments || {},
+    b5Tests: savedData.b5Tests || [{ id: '1', date: '', subject: '', score: '', result: '' }],
     b5SubmittedBy: savedData.b5SubmittedBy || '',
     b5SubmittedDate: savedData.b5SubmittedDate || '',
     
     // B6 Interviews - load from saved data
     b6InterviewCompleted: savedData.b6InterviewCompleted || '',
+    b6Comments: savedData.b6Comments || {},
+    b6Interviews: savedData.b6Interviews || [{ id: '1', date: '', interviewer: '', status: '', result: '', comments: '' }],
+    b6InterviewComments: savedData.b6InterviewComments || {},
     b6SubmittedBy: savedData.b6SubmittedBy || '',
     b6SubmittedDate: savedData.b6SubmittedDate || '',
     
     // B7 Training Needs Identified - load from saved data
+    b7TrainingNeeds: savedData.b7TrainingNeeds || [],
     b7SubmittedBy: savedData.b7SubmittedBy || '',
     b7SubmittedDate: savedData.b7SubmittedDate || '',
     
     // B8 Short Listing - load from saved data
     b8Shortlisted: savedData.b8Shortlisted || '',
+    b8Comments: savedData.b8Comments || {},
     b8SubmittedBy: savedData.b8SubmittedBy || '',
     b8SubmittedDate: savedData.b8SubmittedDate || ''
   });
@@ -1304,17 +1270,26 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       dueDate: '',
       comments: ''
     };
-    setB7TrainingNeeds(prev => [...prev, newTraining]);
+    setFormData(prev => ({
+      ...prev,
+      b7TrainingNeeds: [...prev.b7TrainingNeeds, newTraining]
+    }));
   };
 
   const removeB7TrainingNeed = (id: string) => {
-    setB7TrainingNeeds(prev => prev.filter(training => training.id !== id));
+    setFormData(prev => ({
+      ...prev,
+      b7TrainingNeeds: prev.b7TrainingNeeds.filter(training => training.id !== id)
+    }));
   };
 
   const updateB7TrainingNeed = (id: string, field: string, value: string) => {
-    setB7TrainingNeeds(prev => prev.map(training => 
-      training.id === id ? { ...training, [field]: value } : training
-    ));
+    setFormData(prev => ({
+      ...prev,
+      b7TrainingNeeds: prev.b7TrainingNeeds.map(training => 
+        training.id === id ? { ...training, [field]: value } : training
+      )
+    }));
   };
 
   // Part C - Approval management functions
@@ -3400,10 +3375,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               </div>
 
               {/* Multiple comments for this question */}
-              {(b1Comments[question.id]?.length > 0 || newB1Comment[question.id] !== undefined) && (
+              {(formData.b1Comments[question.id]?.length > 0 || newB1Comment[question.id] !== undefined) && (
                 <div className="ml-4 mb-4 space-y-2">
                   {/* Existing comments */}
-                  {b1Comments[question.id]?.map((comment) => (
+                  {formData.b1Comments[question.id]?.map((comment) => (
                     <div key={comment.id} className="flex justify-between items-start">
                       <div className="flex-1">
                         <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
@@ -3411,11 +3386,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                           <Textarea
                             value={comment.text}
                             onChange={(e) => {
-                              setB1Comments(prev => ({
+                              setFormData(prev => ({
                                 ...prev,
-                                [question.id]: prev[question.id]?.map(c => 
-                                  c.id === comment.id ? { ...c, text: e.target.value } : c
-                                ) || []
+                                b1Comments: {
+                                  ...prev.b1Comments,
+                                  [question.id]: prev.b1Comments[question.id]?.map(c => 
+                                    c.id === comment.id ? { ...c, text: e.target.value } : c
+                                  ) || []
+                                }
                               }));
                             }}
                             onBlur={() => setEditingB1Comment(null)}
@@ -3437,9 +3415,12 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                           variant="ghost"
                           size="sm"
                           onClick={() => {
-                            setB1Comments(prev => ({
+                            setFormData(prev => ({
                               ...prev,
-                              [question.id]: prev[question.id]?.filter(c => c.id !== comment.id) || []
+                              b1Comments: {
+                                ...prev.b1Comments,
+                                [question.id]: prev.b1Comments[question.id]?.filter(c => c.id !== comment.id) || []
+                              }
                             }));
                             // Clear editing state if this comment was being edited
                             if (editingB1Comment === comment.id) {
@@ -3469,16 +3450,19 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                           if (newB1Comment[question.id]?.trim()) {
                             // Add the comment
                             const commentId = Date.now().toString();
-                            setB1Comments(prev => ({
+                            setFormData(prev => ({
                               ...prev,
-                              [question.id]: [
-                                ...(prev[question.id] || []),
-                                {
-                                  id: commentId,
-                                  user: "Roxanne, Crewing Executive",
-                                  text: newB1Comment[question.id]
-                                }
-                              ]
+                              b1Comments: {
+                                ...prev.b1Comments,
+                                [question.id]: [
+                                  ...(prev.b1Comments[question.id] || []),
+                                  {
+                                    id: commentId,
+                                    user: "Roxanne, Crewing Executive",
+                                    text: newB1Comment[question.id]
+                                  }
+                                ]
+                              }
                             }));
                           }
                           // Clear the new comment input
@@ -3608,7 +3592,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             {/* Reference details when Yes is selected */}
             {formData.b2ReferenceChecksCompleted === 'yes' && (
               <div className="ml-4 mb-4 space-y-3">
-                {b2References.map((reference, index) => (
+                {formData.b2References.map((reference, index) => (
                   <div key={reference.id} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <Input
@@ -3617,11 +3601,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         className="text-sm"
                         value={reference.date}
                         onChange={(e) => {
-                          setB2References(prev => prev.map(ref => 
-                            ref.id === reference.id 
-                              ? { ...ref, date: e.target.value }
-                              : ref
-                          ));
+                          setFormData(prev => ({
+                            ...prev,
+                            b2References: prev.b2References.map(ref => 
+                              ref.id === reference.id 
+                                ? { ...ref, date: e.target.value }
+                                : ref
+                            )
+                          }));
                         }}
                       />
                     </div>
@@ -3632,11 +3619,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         className="text-sm"
                         value={reference.nameDesignation}
                         onChange={(e) => {
-                          setB2References(prev => prev.map(ref => 
-                            ref.id === reference.id 
-                              ? { ...ref, nameDesignation: e.target.value }
-                              : ref
-                          ));
+                          setFormData(prev => ({
+                            ...prev,
+                            b2References: prev.b2References.map(ref => 
+                              ref.id === reference.id 
+                                ? { ...ref, nameDesignation: e.target.value }
+                                : ref
+                            )
+                          }));
                         }}
                       />
                     </div>
@@ -3647,46 +3637,55 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         className="text-sm flex-1"
                         value={reference.contactInfo}
                         onChange={(e) => {
-                          setB2References(prev => prev.map(ref => 
-                            ref.id === reference.id 
-                              ? { ...ref, contactInfo: e.target.value }
-                              : ref
-                          ));
+                          setFormData(prev => ({
+                            ...prev,
+                            b2References: prev.b2References.map(ref => 
+                              ref.id === reference.id 
+                                ? { ...ref, contactInfo: e.target.value }
+                                : ref
+                            )
+                          }));
                         }}
                       />
-                      {index === b2References.length - 1 && (
+                      {index === formData.b2References.length - 1 && (
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           className="h-10 w-10 p-0 border-gray-300"
                           onClick={() => {
-                            const newId = (b2References.length + 1).toString();
-                            setB2References(prev => [...prev, { 
-                              id: newId, 
-                              date: '', 
-                              nameDesignation: '', 
-                              contactInfo: '' 
-                            }]);
+                            const newId = (formData.b2References.length + 1).toString();
+                            setFormData(prev => ({
+                              ...prev,
+                              b2References: [...prev.b2References, { 
+                                id: newId, 
+                                date: '', 
+                                nameDesignation: '', 
+                                contactInfo: '' 
+                              }]
+                            }));
                           }}
                         >
                           <Plus className="h-4 w-4" />
                         </Button>
                       )}
-                      {b2References.length > 1 && (
+                      {formData.b2References.length > 1 && (
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           className="h-10 w-10 p-0"
                           onClick={() => {
-                            setB2References(prev => prev.filter(ref => ref.id !== reference.id));
+                            setFormData(prev => ({
+                              ...prev,
+                              b2References: prev.b2References.filter(ref => ref.id !== reference.id)
+                            }));
                           }}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
-                      {b2References.length === 1 && (
+                      {formData.b2References.length === 1 && (
                         <Button
                           type="button"
                           variant="ghost"
@@ -3703,9 +3702,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             )}
 
             {/* Comments for B2.1 */}
-            {(b2Comments['b2-completed']?.length > 0 || newB2Comment['b2-completed'] !== undefined) && (
+            {(formData.b2Comments['b2-completed']?.length > 0 || newB2Comment['b2-completed'] !== undefined) && (
               <div className="ml-4 mb-4 space-y-2">
-                {b2Comments['b2-completed']?.map((comment) => (
+                {formData.b2Comments['b2-completed']?.map((comment) => (
                   <div key={comment.id} className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
@@ -3713,11 +3712,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         <Textarea
                           value={comment.text}
                           onChange={(e) => {
-                            setB2Comments(prev => ({
+                            setFormData(prev => ({
                               ...prev,
-                              'b2-completed': prev['b2-completed']?.map(c => 
-                                c.id === comment.id ? { ...c, text: e.target.value } : c
-                              ) || []
+                              b2Comments: {
+                                ...prev.b2Comments,
+                                'b2-completed': prev.b2Comments['b2-completed']?.map(c => 
+                                  c.id === comment.id ? { ...c, text: e.target.value } : c
+                                ) || []
+                              }
                             }));
                           }}
                           onBlur={() => setEditingB2Comment(null)}
@@ -3739,9 +3741,12 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          setB2Comments(prev => ({
+                          setFormData(prev => ({
                             ...prev,
-                            'b2-completed': prev['b2-completed']?.filter(c => c.id !== comment.id) || []
+                            b2Comments: {
+                              ...prev.b2Comments,
+                              'b2-completed': prev.b2Comments['b2-completed']?.filter(c => c.id !== comment.id) || []
+                            }
                           }));
                           // Clear editing state if this comment was being edited
                           if (editingB2Comment === comment.id) {
@@ -3769,16 +3774,19 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                       onBlur={() => {
                         if (newB2Comment['b2-completed']?.trim()) {
                           const commentId = Date.now().toString();
-                          setB2Comments(prev => ({
+                          setFormData(prev => ({
                             ...prev,
-                            'b2-completed': [
-                              ...(prev['b2-completed'] || []),
-                              {
-                                id: commentId,
-                                user: "Roxanne, Crewing Executive",
-                                text: newB2Comment['b2-completed']
-                              }
-                            ]
+                            b2Comments: {
+                              ...prev.b2Comments,
+                              'b2-completed': [
+                                ...(prev.b2Comments['b2-completed'] || []),
+                                {
+                                  id: commentId,
+                                  user: "Roxanne, Crewing Executive",
+                                  text: newB2Comment['b2-completed']
+                                }
+                              ]
+                            }
                           }));
                         }
                         setNewB2Comment(prev => {
@@ -3847,9 +3855,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
 
             {/* Comments for B2.2 */}
-            {(b2Comments['b2-results']?.length > 0 || newB2Comment['b2-results'] !== undefined) && (
+            {(formData.b2Comments['b2-results']?.length > 0 || newB2Comment['b2-results'] !== undefined) && (
               <div className="ml-4 mb-4 space-y-2">
-                {b2Comments['b2-results']?.map((comment) => (
+                {formData.b2Comments['b2-results']?.map((comment) => (
                   <div key={comment.id} className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
@@ -3857,11 +3865,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         <Textarea
                           value={comment.text}
                           onChange={(e) => {
-                            setB2Comments(prev => ({
+                            setFormData(prev => ({
                               ...prev,
-                              'b2-results': prev['b2-results']?.map(c => 
-                                c.id === comment.id ? { ...c, text: e.target.value } : c
-                              ) || []
+                              b2Comments: {
+                                ...prev.b2Comments,
+                                'b2-results': prev.b2Comments['b2-results']?.map(c => 
+                                  c.id === comment.id ? { ...c, text: e.target.value } : c
+                                ) || []
+                              }
                             }));
                           }}
                           onBlur={() => setEditingB2Comment(null)}
@@ -3883,9 +3894,12 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          setB2Comments(prev => ({
+                          setFormData(prev => ({
                             ...prev,
-                            'b2-results': prev['b2-results']?.filter(c => c.id !== comment.id) || []
+                            b2Comments: {
+                              ...prev.b2Comments,
+                              'b2-results': prev.b2Comments['b2-results']?.filter(c => c.id !== comment.id) || []
+                            }
                           }));
                           // Clear editing state if this comment was being edited
                           if (editingB2Comment === comment.id) {
@@ -3913,16 +3927,19 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                       onBlur={() => {
                         if (newB2Comment['b2-results']?.trim()) {
                           const commentId = Date.now().toString();
-                          setB2Comments(prev => ({
+                          setFormData(prev => ({
                             ...prev,
-                            'b2-results': [
-                              ...(prev['b2-results'] || []),
-                              {
-                                id: commentId,
-                                user: "Roxanne, Crewing Executive",
-                                text: newB2Comment['b2-results']
-                              }
-                            ]
+                            b2Comments: {
+                              ...prev.b2Comments,
+                              'b2-results': [
+                                ...(prev.b2Comments['b2-results'] || []),
+                                {
+                                  id: commentId,
+                                  user: "Roxanne, Crewing Executive",
+                                  text: newB2Comment['b2-results']
+                                }
+                              ]
+                            }
                           }));
                         }
                         setNewB2Comment(prev => {
@@ -4062,7 +4079,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             {/* Authority details when Yes is selected */}
             {formData.b3SecurityChecksCompleted === 'yes' && (
               <div className="ml-4 mb-4 space-y-3">
-                {b3Authorities.map((authority, index) => (
+                {formData.b3Authorities.map((authority, index) => (
                   <div key={authority.id} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Input
@@ -4071,11 +4088,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         className="text-sm"
                         value={authority.date}
                         onChange={(e) => {
-                          setB3Authorities(prev => prev.map(auth => 
-                            auth.id === authority.id 
-                              ? { ...auth, date: e.target.value }
-                              : auth
-                          ));
+                          setFormData(prev => ({
+                            ...prev,
+                            b3Authorities: prev.b3Authorities.map(auth => 
+                              auth.id === authority.id 
+                                ? { ...auth, date: e.target.value }
+                                : auth
+                            )
+                          }));
                         }}
                       />
                     </div>
@@ -4086,45 +4106,54 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         className="text-sm flex-1"
                         value={authority.authority}
                         onChange={(e) => {
-                          setB3Authorities(prev => prev.map(auth => 
-                            auth.id === authority.id 
-                              ? { ...auth, authority: e.target.value }
-                              : auth
-                          ));
+                          setFormData(prev => ({
+                            ...prev,
+                            b3Authorities: prev.b3Authorities.map(auth => 
+                              auth.id === authority.id 
+                                ? { ...auth, authority: e.target.value }
+                                : auth
+                            )
+                          }));
                         }}
                       />
-                      {index === b3Authorities.length - 1 && (
+                      {index === formData.b3Authorities.length - 1 && (
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           className="h-10 w-10 p-0 border-gray-300"
                           onClick={() => {
-                            const newId = (b3Authorities.length + 1).toString();
-                            setB3Authorities(prev => [...prev, { 
-                              id: newId, 
-                              date: '', 
-                              authority: '' 
-                            }]);
+                            const newId = (formData.b3Authorities.length + 1).toString();
+                            setFormData(prev => ({
+                              ...prev,
+                              b3Authorities: [...prev.b3Authorities, { 
+                                id: newId, 
+                                date: '', 
+                                authority: '' 
+                              }]
+                            }));
                           }}
                         >
                           <Plus className="h-4 w-4" />
                         </Button>
                       )}
-                      {b3Authorities.length > 1 && (
+                      {formData.b3Authorities.length > 1 && (
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           className="h-10 w-10 p-0"
                           onClick={() => {
-                            setB3Authorities(prev => prev.filter(auth => auth.id !== authority.id));
+                            setFormData(prev => ({
+                              ...prev,
+                              b3Authorities: prev.b3Authorities.filter(auth => auth.id !== authority.id)
+                            }));
                           }}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
-                      {b3Authorities.length === 1 && (
+                      {formData.b3Authorities.length === 1 && (
                         <Button
                           type="button"
                           variant="ghost"
@@ -4141,9 +4170,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             )}
 
             {/* Comments for B3.1 */}
-            {(b3Comments['b3-completed']?.length > 0 || newB3Comment['b3-completed'] !== undefined) && (
+            {(formData.b3Comments['b3-completed']?.length > 0 || newB3Comment['b3-completed'] !== undefined) && (
               <div className="ml-4 mb-4 space-y-2">
-                {b3Comments['b3-completed']?.map((comment) => (
+                {formData.b3Comments['b3-completed']?.map((comment) => (
                   <div key={comment.id} className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
@@ -4151,11 +4180,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         <Textarea
                           value={comment.text}
                           onChange={(e) => {
-                            setB3Comments(prev => ({
+                            setFormData(prev => ({
                               ...prev,
-                              'b3-completed': prev['b3-completed']?.map(c => 
-                                c.id === comment.id ? { ...c, text: e.target.value } : c
-                              ) || []
+                              b3Comments: {
+                                ...prev.b3Comments,
+                                'b3-completed': prev.b3Comments['b3-completed']?.map(c => 
+                                  c.id === comment.id ? { ...c, text: e.target.value } : c
+                                ) || []
+                              }
                             }));
                           }}
                           onBlur={() => setEditingB3Comment(null)}
@@ -4177,9 +4209,12 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          setB3Comments(prev => ({
+                          setFormData(prev => ({
                             ...prev,
-                            'b3-completed': prev['b3-completed']?.filter(c => c.id !== comment.id) || []
+                            b3Comments: {
+                              ...prev.b3Comments,
+                              'b3-completed': prev.b3Comments['b3-completed']?.filter(c => c.id !== comment.id) || []
+                            }
                           }));
                           if (editingB3Comment === comment.id) {
                             setEditingB3Comment(null);
@@ -4206,16 +4241,19 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                       onBlur={() => {
                         if (newB3Comment['b3-completed']?.trim()) {
                           const commentId = Date.now().toString();
-                          setB3Comments(prev => ({
+                          setFormData(prev => ({
                             ...prev,
-                            'b3-completed': [
-                              ...(prev['b3-completed'] || []),
-                              {
-                                id: commentId,
-                                user: "Roxanne, Crewing Executive",
-                                text: newB3Comment['b3-completed']
-                              }
-                            ]
+                            b3Comments: {
+                              ...prev.b3Comments,
+                              'b3-completed': [
+                                ...(prev.b3Comments['b3-completed'] || []),
+                                {
+                                  id: commentId,
+                                  user: "Roxanne, Crewing Executive",
+                                  text: newB3Comment['b3-completed']
+                                }
+                              ]
+                            }
                           }));
                         }
                         setNewB3Comment(prev => {
@@ -4296,9 +4334,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
 
             {/* Comments for B3.2 */}
-            {(b3Comments['b3-results']?.length > 0 || newB3Comment['b3-results'] !== undefined) && (
+            {(formData.b3Comments['b3-results']?.length > 0 || newB3Comment['b3-results'] !== undefined) && (
               <div className="ml-4 mb-4 space-y-2">
-                {b3Comments['b3-results']?.map((comment) => (
+                {formData.b3Comments['b3-results']?.map((comment) => (
                   <div key={comment.id} className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
@@ -4306,11 +4344,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         <Textarea
                           value={comment.text}
                           onChange={(e) => {
-                            setB3Comments(prev => ({
+                            setFormData(prev => ({
                               ...prev,
-                              'b3-results': prev['b3-results']?.map(c => 
-                                c.id === comment.id ? { ...c, text: e.target.value } : c
-                              ) || []
+                              b3Comments: {
+                                ...prev.b3Comments,
+                                'b3-results': prev.b3Comments['b3-results']?.map(c => 
+                                  c.id === comment.id ? { ...c, text: e.target.value } : c
+                                ) || []
+                              }
                             }));
                           }}
                           onBlur={() => setEditingB3Comment(null)}
@@ -4332,9 +4373,12 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          setB3Comments(prev => ({
+                          setFormData(prev => ({
                             ...prev,
-                            'b3-results': prev['b3-results']?.filter(c => c.id !== comment.id) || []
+                            b3Comments: {
+                              ...prev.b3Comments,
+                              'b3-results': prev.b3Comments['b3-results']?.filter(c => c.id !== comment.id) || []
+                            }
                           }));
                           if (editingB3Comment === comment.id) {
                             setEditingB3Comment(null);
@@ -4361,16 +4405,19 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                       onBlur={() => {
                         if (newB3Comment['b3-results']?.trim()) {
                           const commentId = Date.now().toString();
-                          setB3Comments(prev => ({
+                          setFormData(prev => ({
                             ...prev,
-                            'b3-results': [
-                              ...(prev['b3-results'] || []),
-                              {
-                                id: commentId,
-                                user: "Roxanne, Crewing Executive",
-                                text: newB3Comment['b3-results']
-                              }
-                            ]
+                            b3Comments: {
+                              ...prev.b3Comments,
+                              'b3-results': [
+                                ...(prev.b3Comments['b3-results'] || []),
+                                {
+                                  id: commentId,
+                                  user: "Roxanne, Crewing Executive",
+                                  text: newB3Comment['b3-results']
+                                }
+                              ]
+                            }
                           }));
                         }
                         setNewB3Comment(prev => {
@@ -4510,7 +4557,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             {/* Certificate details when Yes is selected */}
             {formData.b4CertificatesAuthenticated === 'yes' && (
               <div className="ml-4 mb-4 space-y-3">
-                {b4Certificates.map((certificate, index) => (
+                {formData.b4Certificates.map((certificate, index) => (
                   <div key={certificate.id} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <Input
@@ -4519,11 +4566,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         className="text-sm"
                         value={certificate.date}
                         onChange={(e) => {
-                          setB4Certificates(prev => prev.map(cert => 
-                            cert.id === certificate.id 
-                              ? { ...cert, date: e.target.value }
-                              : cert
-                          ));
+                          setFormData(prev => ({
+                            ...prev,
+                            b4Certificates: prev.b4Certificates.map(cert => 
+                              cert.id === certificate.id 
+                                ? { ...cert, date: e.target.value }
+                                : cert
+                            )
+                          }));
                         }}
                       />
                     </div>
@@ -4534,11 +4584,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         className="text-sm"
                         value={certificate.certificate}
                         onChange={(e) => {
-                          setB4Certificates(prev => prev.map(cert => 
-                            cert.id === certificate.id 
-                              ? { ...cert, certificate: e.target.value }
-                              : cert
-                          ));
+                          setFormData(prev => ({
+                            ...prev,
+                            b4Certificates: prev.b4Certificates.map(cert => 
+                              cert.id === certificate.id 
+                                ? { ...cert, certificate: e.target.value }
+                                : cert
+                            )
+                          }));
                         }}
                       />
                     </div>
@@ -4549,46 +4602,55 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         className="text-sm flex-1"
                         value={certificate.authority}
                         onChange={(e) => {
-                          setB4Certificates(prev => prev.map(cert => 
-                            cert.id === certificate.id 
-                              ? { ...cert, authority: e.target.value }
-                              : cert
-                          ));
+                          setFormData(prev => ({
+                            ...prev,
+                            b4Certificates: prev.b4Certificates.map(cert => 
+                              cert.id === certificate.id 
+                                ? { ...cert, authority: e.target.value }
+                                : cert
+                            )
+                          }));
                         }}
                       />
-                      {index === b4Certificates.length - 1 && (
+                      {index === formData.b4Certificates.length - 1 && (
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           className="h-10 w-10 p-0 border-gray-300"
                           onClick={() => {
-                            const newId = (b4Certificates.length + 1).toString();
-                            setB4Certificates(prev => [...prev, { 
-                              id: newId, 
-                              date: '', 
-                              certificate: '',
-                              authority: '' 
-                            }]);
+                            const newId = (formData.b4Certificates.length + 1).toString();
+                            setFormData(prev => ({
+                              ...prev,
+                              b4Certificates: [...prev.b4Certificates, { 
+                                id: newId, 
+                                date: '', 
+                                certificate: '',
+                                authority: '' 
+                              }]
+                            }));
                           }}
                         >
                           <Plus className="h-4 w-4" />
                         </Button>
                       )}
-                      {b4Certificates.length > 1 && (
+                      {formData.b4Certificates.length > 1 && (
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           className="h-10 w-10 p-0"
                           onClick={() => {
-                            setB4Certificates(prev => prev.filter(cert => cert.id !== certificate.id));
+                            setFormData(prev => ({
+                              ...prev,
+                              b4Certificates: prev.b4Certificates.filter(cert => cert.id !== certificate.id)
+                            }));
                           }}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
-                      {b4Certificates.length === 1 && (
+                      {formData.b4Certificates.length === 1 && (
                         <Button
                           type="button"
                           variant="ghost"
@@ -4605,9 +4667,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             )}
 
             {/* Comments for B4.1 */}
-            {(b4Comments['b4-authenticated']?.length > 0 || newB4Comment['b4-authenticated'] !== undefined) && (
+            {(formData.b4Comments['b4-authenticated']?.length > 0 || newB4Comment['b4-authenticated'] !== undefined) && (
               <div className="ml-4 mb-4 space-y-2">
-                {b4Comments['b4-authenticated']?.map((comment) => (
+                {formData.b4Comments['b4-authenticated']?.map((comment) => (
                   <div key={comment.id} className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
@@ -4615,11 +4677,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         <Textarea
                           value={comment.text}
                           onChange={(e) => {
-                            setB4Comments(prev => ({
+                            setFormData(prev => ({
                               ...prev,
-                              'b4-authenticated': prev['b4-authenticated']?.map(c => 
-                                c.id === comment.id ? { ...c, text: e.target.value } : c
-                              ) || []
+                              b4Comments: {
+                                ...prev.b4Comments,
+                                'b4-authenticated': prev.b4Comments['b4-authenticated']?.map(c => 
+                                  c.id === comment.id ? { ...c, text: e.target.value } : c
+                                ) || []
+                              }
                             }));
                           }}
                           onBlur={() => setEditingB4Comment(null)}
@@ -4641,9 +4706,12 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          setB4Comments(prev => ({
+                          setFormData(prev => ({
                             ...prev,
-                            'b4-authenticated': prev['b4-authenticated']?.filter(c => c.id !== comment.id) || []
+                            b4Comments: {
+                              ...prev.b4Comments,
+                              'b4-authenticated': prev.b4Comments['b4-authenticated']?.filter(c => c.id !== comment.id) || []
+                            }
                           }));
                           if (editingB4Comment === comment.id) {
                             setEditingB4Comment(null);
@@ -4670,16 +4738,19 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                       onBlur={() => {
                         if (newB4Comment['b4-authenticated']?.trim()) {
                           const commentId = Date.now().toString();
-                          setB4Comments(prev => ({
+                          setFormData(prev => ({
                             ...prev,
-                            'b4-authenticated': [
-                              ...(prev['b4-authenticated'] || []),
-                              {
-                                id: commentId,
-                                user: "Roxanne, Crewing Executive",
-                                text: newB4Comment['b4-authenticated']
-                              }
-                            ]
+                            b4Comments: {
+                              ...prev.b4Comments,
+                              'b4-authenticated': [
+                                ...(prev.b4Comments['b4-authenticated'] || []),
+                                {
+                                  id: commentId,
+                                  user: "Roxanne, Crewing Executive",
+                                  text: newB4Comment['b4-authenticated']
+                                }
+                              ]
+                            }
                           }));
                         }
                         setNewB4Comment(prev => {
@@ -4760,9 +4831,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
 
             {/* Comments for B4.2 */}
-            {(b4Comments['b4-results']?.length > 0 || newB4Comment['b4-results'] !== undefined) && (
+            {(formData.b4Comments['b4-results']?.length > 0 || newB4Comment['b4-results'] !== undefined) && (
               <div className="ml-4 mb-4 space-y-2">
-                {b4Comments['b4-results']?.map((comment) => (
+                {formData.b4Comments['b4-results']?.map((comment) => (
                   <div key={comment.id} className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
@@ -4770,11 +4841,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         <Textarea
                           value={comment.text}
                           onChange={(e) => {
-                            setB4Comments(prev => ({
+                            setFormData(prev => ({
                               ...prev,
-                              'b4-results': prev['b4-results']?.map(c => 
-                                c.id === comment.id ? { ...c, text: e.target.value } : c
-                              ) || []
+                              b4Comments: {
+                                ...prev.b4Comments,
+                                'b4-results': prev.b4Comments['b4-results']?.map(c => 
+                                  c.id === comment.id ? { ...c, text: e.target.value } : c
+                                ) || []
+                              }
                             }));
                           }}
                           onBlur={() => setEditingB4Comment(null)}
@@ -4796,9 +4870,12 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          setB4Comments(prev => ({
+                          setFormData(prev => ({
                             ...prev,
-                            'b4-results': prev['b4-results']?.filter(c => c.id !== comment.id) || []
+                            b4Comments: {
+                              ...prev.b4Comments,
+                              'b4-results': prev.b4Comments['b4-results']?.filter(c => c.id !== comment.id) || []
+                            }
                           }));
                           if (editingB4Comment === comment.id) {
                             setEditingB4Comment(null);
@@ -4825,16 +4902,19 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                       onBlur={() => {
                         if (newB4Comment['b4-results']?.trim()) {
                           const commentId = Date.now().toString();
-                          setB4Comments(prev => ({
+                          setFormData(prev => ({
                             ...prev,
-                            'b4-results': [
-                              ...(prev['b4-results'] || []),
-                              {
-                                id: commentId,
-                                user: "Roxanne, Crewing Executive",
-                                text: newB4Comment['b4-results']
-                              }
-                            ]
+                            b4Comments: {
+                              ...prev.b4Comments,
+                              'b4-results': [
+                                ...(prev.b4Comments['b4-results'] || []),
+                                {
+                                  id: commentId,
+                                  user: "Roxanne, Crewing Executive",
+                                  text: newB4Comment['b4-results']
+                                }
+                              ]
+                            }
                           }));
                         }
                         setNewB4Comment(prev => {
@@ -4974,7 +5054,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             {/* Test details when Yes is selected */}
             {formData.b5CesTestsCompleted === 'yes' && (
               <div className="ml-4 mb-4 space-y-3">
-                {b5Tests.map((test, index) => (
+                {formData.b5Tests.map((test, index) => (
                   <div key={test.id} className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
                       <Input
@@ -4983,11 +5063,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         className="text-sm"
                         value={test.date}
                         onChange={(e) => {
-                          setB5Tests(prev => prev.map(t => 
-                            t.id === test.id 
-                              ? { ...t, date: e.target.value }
-                              : t
-                          ));
+                          setFormData(prev => ({
+                            ...prev,
+                            b5Tests: prev.b5Tests.map(t => 
+                              t.id === test.id 
+                                ? { ...t, date: e.target.value }
+                                : t
+                            )
+                          }));
                         }}
                       />
                     </div>
@@ -4995,11 +5078,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                       <Select
                         value={test.subject}
                         onValueChange={(value) => {
-                          setB5Tests(prev => prev.map(t => 
-                            t.id === test.id 
-                              ? { ...t, subject: value }
-                              : t
-                          ));
+                          setFormData(prev => ({
+                            ...prev,
+                            b5Tests: prev.b5Tests.map(t => 
+                              t.id === test.id 
+                                ? { ...t, subject: value }
+                                : t
+                            )
+                          }));
                         }}
                       >
                         <SelectTrigger className="text-sm">
@@ -5020,11 +5106,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         className="text-sm"
                         value={test.score}
                         onChange={(e) => {
-                          setB5Tests(prev => prev.map(t => 
-                            t.id === test.id 
-                              ? { ...t, score: e.target.value }
-                              : t
-                          ));
+                          setFormData(prev => ({
+                            ...prev,
+                            b5Tests: prev.b5Tests.map(t => 
+                              t.id === test.id 
+                                ? { ...t, score: e.target.value }
+                                : t
+                            )
+                          }));
                         }}
                       />
                     </div>
@@ -5032,11 +5121,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                       <Select
                         value={test.result}
                         onValueChange={(value) => {
-                          setB5Tests(prev => prev.map(t => 
-                            t.id === test.id 
-                              ? { ...t, result: value }
-                              : t
-                          ));
+                          setFormData(prev => ({
+                            ...prev,
+                            b5Tests: prev.b5Tests.map(t => 
+                              t.id === test.id 
+                                ? { ...t, result: value }
+                                : t
+                            )
+                          }));
                         }}
                       >
                         <SelectTrigger className="text-sm flex-1">
@@ -5048,34 +5140,40 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                           <SelectItem value="pending">Pending</SelectItem>
                         </SelectContent>
                       </Select>
-                      {index === b5Tests.length - 1 && (
+                      {index === formData.b5Tests.length - 1 && (
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           className="h-10 w-10 p-0 border-gray-300"
                           onClick={() => {
-                            const newId = (b5Tests.length + 1).toString();
-                            setB5Tests(prev => [...prev, { 
-                              id: newId, 
-                              date: '', 
-                              subject: '',
-                              score: '',
-                              result: '' 
-                            }]);
+                            const newId = (formData.b5Tests.length + 1).toString();
+                            setFormData(prev => ({
+                              ...prev,
+                              b5Tests: [...prev.b5Tests, { 
+                                id: newId, 
+                                date: '', 
+                                subject: '',
+                                score: '',
+                                result: '' 
+                              }]
+                            }));
                           }}
                         >
                           <Plus className="h-4 w-4" />
                         </Button>
                       )}
-                      {b5Tests.length > 1 && (
+                      {formData.b5Tests.length > 1 && (
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           className="h-10 w-10 p-0"
                           onClick={() => {
-                            setB5Tests(prev => prev.filter(t => t.id !== test.id));
+                            setFormData(prev => ({
+                              ...prev,
+                              b5Tests: prev.b5Tests.filter(t => t.id !== test.id)
+                            }));
                           }}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -5088,9 +5186,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             )}
 
             {/* Comments for B5.1 */}
-            {(b5Comments['b5-completed']?.length > 0 || newB5Comment['b5-completed'] !== undefined) && (
+            {(formData.b5Comments['b5-completed']?.length > 0 || newB5Comment['b5-completed'] !== undefined) && (
               <div className="ml-4 mb-4 space-y-2">
-                {b5Comments['b5-completed']?.map((comment) => (
+                {formData.b5Comments['b5-completed']?.map((comment) => (
                   <div key={comment.id} className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
@@ -5098,11 +5196,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         <Textarea
                           value={comment.text}
                           onChange={(e) => {
-                            setB5Comments(prev => ({
+                            setFormData(prev => ({
                               ...prev,
-                              'b5-completed': prev['b5-completed']?.map(c => 
-                                c.id === comment.id ? { ...c, text: e.target.value } : c
-                              ) || []
+                              b5Comments: {
+                                ...prev.b5Comments,
+                                'b5-completed': prev.b5Comments['b5-completed']?.map(c => 
+                                  c.id === comment.id ? { ...c, text: e.target.value } : c
+                                ) || []
+                              }
                             }));
                           }}
                           onBlur={() => setEditingB5Comment(null)}
@@ -5124,9 +5225,12 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          setB5Comments(prev => ({
+                          setFormData(prev => ({
                             ...prev,
-                            'b5-completed': prev['b5-completed']?.filter(c => c.id !== comment.id) || []
+                            b5Comments: {
+                              ...prev.b5Comments,
+                              'b5-completed': prev.b5Comments['b5-completed']?.filter(c => c.id !== comment.id) || []
+                            }
                           }));
                           if (editingB5Comment === comment.id) {
                             setEditingB5Comment(null);
@@ -5153,16 +5257,19 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                       onBlur={() => {
                         if (newB5Comment['b5-completed']?.trim()) {
                           const commentId = Date.now().toString();
-                          setB5Comments(prev => ({
+                          setFormData(prev => ({
                             ...prev,
-                            'b5-completed': [
-                              ...(prev['b5-completed'] || []),
-                              {
-                                id: commentId,
-                                user: "Roxanne, Crewing Executive",
-                                text: newB5Comment['b5-completed']
-                              }
-                            ]
+                            b5Comments: {
+                              ...prev.b5Comments,
+                              'b5-completed': [
+                                ...(prev.b5Comments['b5-completed'] || []),
+                                {
+                                  id: commentId,
+                                  user: "Roxanne, Crewing Executive",
+                                  text: newB5Comment['b5-completed']
+                                }
+                              ]
+                            }
                           }));
                         }
                         setNewB5Comment(prev => {
@@ -5290,7 +5397,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             {/* Interview details when Yes is selected */}
             {formData.b6InterviewCompleted === 'yes' && (
               <div className="ml-4 mb-4 space-y-3">
-                {b6Interviews.map((interview, index) => (
+                {formData.b6Interviews.map((interview, index) => (
                   <div key={interview.id} className="space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div>
@@ -5300,11 +5407,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                           className="text-sm"
                           value={interview.date}
                           onChange={(e) => {
-                            setB6Interviews(prev => prev.map(int => 
-                              int.id === interview.id 
-                                ? { ...int, date: e.target.value }
-                                : int
-                            ));
+                            setFormData(prev => ({
+                              ...prev,
+                              b6Interviews: prev.b6Interviews.map(int => 
+                                int.id === interview.id 
+                                  ? { ...int, date: e.target.value }
+                                  : int
+                              )
+                            }));
                           }}
                         />
                       </div>
@@ -5312,11 +5422,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         <Select
                           value={interview.interviewer}
                           onValueChange={(value) => {
-                            setB6Interviews(prev => prev.map(int => 
-                              int.id === interview.id 
-                                ? { ...int, interviewer: value }
-                                : int
-                            ));
+                            setFormData(prev => ({
+                              ...prev,
+                              b6Interviews: prev.b6Interviews.map(int => 
+                                int.id === interview.id 
+                                  ? { ...int, interviewer: value }
+                                  : int
+                              )
+                            }));
                           }}
                         >
                           <SelectTrigger className="text-sm">
@@ -5333,11 +5446,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         <Select
                           value={interview.status}
                           onValueChange={(value) => {
-                            setB6Interviews(prev => prev.map(int => 
-                              int.id === interview.id 
-                                ? { ...int, status: value }
-                                : int
-                            ));
+                            setFormData(prev => ({
+                              ...prev,
+                              b6Interviews: prev.b6Interviews.map(int => 
+                                int.id === interview.id 
+                                  ? { ...int, status: value }
+                                  : int
+                              )
+                            }));
                           }}
                         >
                           <SelectTrigger className="text-sm">
@@ -5354,11 +5470,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         <Select
                           value={interview.result}
                           onValueChange={(value) => {
-                            setB6Interviews(prev => prev.map(int => 
-                              int.id === interview.id 
-                                ? { ...int, result: value }
-                                : int
-                            ));
+                            setFormData(prev => ({
+                              ...prev,
+                              b6Interviews: prev.b6Interviews.map(int => 
+                                int.id === interview.id 
+                                  ? { ...int, result: value }
+                                  : int
+                              )
+                            }));
                           }}
                         >
                           <SelectTrigger className="text-sm flex-1">
@@ -5370,26 +5489,28 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                             <SelectItem value="pending">Pending</SelectItem>
                           </SelectContent>
                         </Select>
-                        {index === b6Interviews.length - 1 && (
+                        {index === formData.b6Interviews.length - 1 && (
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
                             className="h-10 w-10 p-0 border-gray-300"
                             onClick={() => {
-                              const newId = (b6Interviews.length + 1).toString();
-                              setB6Interviews(prev => [...prev, { 
-                                id: newId, 
-                                date: '', 
-                                interviewer: '',
-                                status: '',
-                                result: '',
-                                comments: ''
-                              }]);
-                              // Initialize comment state for new interview and set it to editing mode
-                              setB6InterviewComments(prev => ({
+                              const newId = (formData.b6Interviews.length + 1).toString();
+                              setFormData(prev => ({
                                 ...prev,
-                                [newId]: ''
+                                b6Interviews: [...prev.b6Interviews, { 
+                                  id: newId, 
+                                  date: '', 
+                                  interviewer: '',
+                                  status: '',
+                                  result: '',
+                                  comments: ''
+                                }],
+                                b6InterviewComments: {
+                                  ...prev.b6InterviewComments,
+                                  [newId]: ''
+                                }
                               }));
                               setEditingB6InterviewComment(newId);
                             }}
@@ -5397,21 +5518,22 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                             <Plus className="h-4 w-4" />
                           </Button>
                         )}
-                        {b6Interviews.length > 1 && (
+                        {formData.b6Interviews.length > 1 && (
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
                             className="h-10 w-10 p-0"
                             onClick={() => {
-                              setB6Interviews(prev => prev.filter(int => int.id !== interview.id));
-                              // Clean up comment state for deleted interview
-                              setB6InterviewComments(prev => {
-                                const newComments = { ...prev };
+                              setFormData(prev => {
+                                const newComments = { ...prev.b6InterviewComments };
                                 delete newComments[interview.id];
-                                return newComments;
+                                return {
+                                  ...prev,
+                                  b6Interviews: prev.b6Interviews.filter(int => int.id !== interview.id),
+                                  b6InterviewComments: newComments
+                                };
                               });
-                              // Clear editing state if this interview was being edited
                               if (editingB6InterviewComment === interview.id) {
                                 setEditingB6InterviewComment(null);
                               }
@@ -5430,11 +5552,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                       </div>
                       {editingB6InterviewComment === interview.id ? (
                         <Textarea
-                          value={b6InterviewComments[interview.id] || ''}
+                          value={formData.b6InterviewComments[interview.id] || ''}
                           onChange={(e) => {
-                            setB6InterviewComments(prev => ({
+                            setFormData(prev => ({
                               ...prev,
-                              [interview.id]: e.target.value
+                              b6InterviewComments: {
+                                ...prev.b6InterviewComments,
+                                [interview.id]: e.target.value
+                              }
                             }));
                           }}
                           onBlur={() => setEditingB6InterviewComment(null)}
@@ -5448,7 +5573,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                           className="text-blue-600 italic cursor-pointer rounded hover:bg-gray-50 text-[13px] mb-2 p-1"
                           onClick={() => setEditingB6InterviewComment(interview.id)}
                         >
-                          {b6InterviewComments[interview.id] || "Click to add comment..."}
+                          {formData.b6InterviewComments[interview.id] || "Click to add comment..."}
                         </div>
                       )}
                     </div>
@@ -5458,9 +5583,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             )}
 
             {/* Comments for B6.1 */}
-            {(b6Comments['b6-completed']?.length > 0 || newB6Comment['b6-completed'] !== undefined) && (
+            {(formData.b6Comments['b6-completed']?.length > 0 || newB6Comment['b6-completed'] !== undefined) && (
               <div className="ml-4 mb-4 space-y-2">
-                {b6Comments['b6-completed']?.map((comment) => (
+                {formData.b6Comments['b6-completed']?.map((comment) => (
                   <div key={comment.id} className="flex justify-between items-start">
                     <div className="flex-1 text-blue-600 italic text-[13px] p-1">
                       <span className="text-blue-600 italic text-[13px]">{comment.user}: </span>
@@ -5472,9 +5597,12 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          setB6Comments(prev => ({
+                          setFormData(prev => ({
                             ...prev,
-                            'b6-completed': prev['b6-completed']?.filter(c => c.id !== comment.id) || []
+                            b6Comments: {
+                              ...prev.b6Comments,
+                              'b6-completed': prev.b6Comments['b6-completed']?.filter(c => c.id !== comment.id) || []
+                            }
                           }));
                         }}
                       >
@@ -5498,16 +5626,19 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                       onBlur={() => {
                         if (newB6Comment['b6-completed']?.trim()) {
                           const commentId = Date.now().toString();
-                          setB6Comments(prev => ({
+                          setFormData(prev => ({
                             ...prev,
-                            'b6-completed': [
-                              ...(prev['b6-completed'] || []),
-                              {
-                                id: commentId,
-                                user: "Roxanne, Crewing Executive",
-                                text: newB6Comment['b6-completed']
-                              }
-                            ]
+                            b6Comments: {
+                              ...prev.b6Comments,
+                              'b6-completed': [
+                                ...(prev.b6Comments['b6-completed'] || []),
+                                {
+                                  id: commentId,
+                                  user: "Roxanne, Crewing Executive",
+                                  text: newB6Comment['b6-completed']
+                                }
+                              ]
+                            }
                           }));
                         }
                         setNewB6Comment(prev => {
@@ -5603,7 +5734,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               </TableRow>
             </TableHeader>
             <TableBody>
-              {b7TrainingNeeds.map((training) => (
+              {formData.b7TrainingNeeds.map((training) => (
                 <TableRow key={training.id} className="border-b border-gray-200">
                   <TableCell className="p-3">
                     <Input
@@ -5757,9 +5888,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </div>
 
             {/* Comments for B8 */}
-            {(b8Comments['b8-shortlisted']?.length > 0 || newB8Comment['b8-shortlisted'] !== undefined) && (
+            {(formData.b8Comments['b8-shortlisted']?.length > 0 || newB8Comment['b8-shortlisted'] !== undefined) && (
               <div className="ml-4 mb-4 space-y-2">
-                {b8Comments['b8-shortlisted']?.map((comment) => (
+                {formData.b8Comments['b8-shortlisted']?.map((comment) => (
                   <div key={comment.id} className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
@@ -5767,11 +5898,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         <Textarea
                           value={comment.text}
                           onChange={(e) => {
-                            setB8Comments(prev => ({
+                            setFormData(prev => ({
                               ...prev,
-                              'b8-shortlisted': prev['b8-shortlisted']?.map(c => 
-                                c.id === comment.id ? { ...c, text: e.target.value } : c
-                              ) || []
+                              b8Comments: {
+                                ...prev.b8Comments,
+                                'b8-shortlisted': prev.b8Comments['b8-shortlisted']?.map(c => 
+                                  c.id === comment.id ? { ...c, text: e.target.value } : c
+                                ) || []
+                              }
                             }));
                           }}
                           onBlur={() => setEditingB8Comment(null)}
@@ -5793,9 +5927,12 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          setB8Comments(prev => ({
+                          setFormData(prev => ({
                             ...prev,
-                            'b8-shortlisted': prev['b8-shortlisted']?.filter(c => c.id !== comment.id) || []
+                            b8Comments: {
+                              ...prev.b8Comments,
+                              'b8-shortlisted': prev.b8Comments['b8-shortlisted']?.filter(c => c.id !== comment.id) || []
+                            }
                           }));
                           if (editingB8Comment === comment.id) {
                             setEditingB8Comment(null);
@@ -5822,16 +5959,19 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                       onBlur={() => {
                         if (newB8Comment['b8-shortlisted']?.trim()) {
                           const commentId = Date.now().toString();
-                          setB8Comments(prev => ({
+                          setFormData(prev => ({
                             ...prev,
-                            'b8-shortlisted': [
-                              ...(prev['b8-shortlisted'] || []),
-                              {
-                                id: commentId,
-                                user: "Roxanne, Crewing Executive",
-                                text: newB8Comment['b8-shortlisted']
-                              }
-                            ]
+                            b8Comments: {
+                              ...prev.b8Comments,
+                              'b8-shortlisted': [
+                                ...(prev.b8Comments['b8-shortlisted'] || []),
+                                {
+                                  id: commentId,
+                                  user: "Roxanne, Crewing Executive",
+                                  text: newB8Comment['b8-shortlisted']
+                                }
+                              ]
+                            }
                           }));
                         }
                         setNewB8Comment(prev => {
