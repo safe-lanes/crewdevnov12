@@ -647,7 +647,7 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                 // TAKEOVER LOGIC: Secondary crew is taking over as Primary
                 
                 // Step 1: Fetch all planning records for this vessel to find primary and secondary
-                const allPlanning = await apiRequest('GET', `/api/vessel-planning/vessel/${vesselId}`) as any[];
+                const allPlanning = await apiRequest('GET', `/api/vessel-planning/vessel/${vesselId}`) as unknown as any[];
                 
                 // Find primary crew member for this rank
                 const primaryCrew = allPlanning.find((p: any) => 
