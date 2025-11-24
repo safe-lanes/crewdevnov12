@@ -1515,15 +1515,30 @@ export class DatabaseStorage implements IStorage {
       // assignment.vesselId contains vessel NAME (e.g., "Nordic Star")
       // We need to translate to vessel CODE (e.g., "VSL-003")
       const vesselMasterData = await this.getMasterDataEntries('014');
-      const vesselNameToCodeMap = new Map(
-        vesselMasterData.map((v: any) => [v.name, v.nuid || v.id?.toString() || ''])
-      );
-      const vesselCode = vesselNameToCodeMap.get(assignment.vesselId) || assignment.vesselId;
       
-      console.log('🔄 Vessel translation:', { 
+      // Strict validation: only accept canonical vessel codes in VSL-XXX format
+      const vesselNameToCodeMap = new Map<string, string>();
+      for (const v of vesselMasterData) {
+        if (v.name && v.nuid && v.nuid.match(/^VSL-\d+$/)) {
+          vesselNameToCodeMap.set(v.name, v.nuid);
+        }
+      }
+      
+      const vesselCode = vesselNameToCodeMap.get(assignment.vesselId);
+      
+      if (!vesselCode) {
+        // Fail loudly if vessel cannot be translated
+        throw new Error(
+          `Cannot translate vessel name "${assignment.vesselId}" to canonical vessel code. ` +
+          `Vessel must exist in master data (master_id='014') with valid VSL-XXX format nuid. ` +
+          `Available vessels: ${Array.from(vesselNameToCodeMap.keys()).join(', ')}`
+        );
+      }
+      
+      console.log('🔄 Vessel translation (DatabaseStorage):', { 
         vesselName: assignment.vesselId, 
         vesselCode,
-        found: vesselNameToCodeMap.has(assignment.vesselId)
+        found: true
       });
       
       // Map assignment fields correctly (fromDate→joiningDate, toDate→reliefDue)

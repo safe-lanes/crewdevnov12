@@ -1,5 +1,38 @@
 import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type CompanyProcessing, type InsertCompanyProcessing, type PromotionForm, type InsertPromotionForm, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type DrugAlcoholTestRecord, type InsertDrugAlcoholTestRecord, type RestHoursVesselRecord, type InsertRestHoursVesselRecord, type RestHoursCrewRecord, type InsertRestHoursCrewRecord, type RestHoursDailyRecord, type InsertRestHoursDailyRecord, type FixedTask, type InsertFixedTask, type VariableTask, type InsertVariableTask, type VesselViolationComment, type InsertVesselViolationComment, type OfficeViolationComment, type InsertOfficeViolationComment, type NCReport, type InsertNCReport, type VesselDateLineAdjustment, type InsertVesselDateLineAdjustment, type CrewDashboardSummary } from "@shared/schema";
 
+// Static vessel mapping for testing/development (MemStorage/PersistentFileStorage)
+// In production (DatabaseStorage), vessel codes are fetched from master data
+const STATIC_VESSEL_MAPPING: Record<string, string> = {
+  "MV Atlantic Explorer": "VSL-001",
+  "MV Pacific Voyager": "VSL-002",
+  "Nordic Star": "VSL-003",
+  "Oceanic Pride": "VSL-004",
+  "Harbor Master": "VSL-005",
+  "Coastal Guardian": "VSL-006",
+};
+
+//Helper function to translate vessel name to vessel code
+// Provides static mapping for storage backends that don't have master data
+// Throws error if vessel cannot be translated to enforce data integrity
+export function translateVesselNameToCode(vesselName: string): string {
+  const staticCode = STATIC_VESSEL_MAPPING[vesselName];
+  if (staticCode) {
+    return staticCode;
+  }
+  
+  // If already in VSL-XXX format, return it
+  if (vesselName && vesselName.match(/^VSL-\d+$/)) {
+    return vesselName;
+  }
+  
+  // Fail loudly if vessel cannot be translated
+  throw new Error(
+    `Cannot translate vessel name "${vesselName}" to canonical vessel code. ` +
+    `Vessel must be in STATIC_VESSEL_MAPPING or already in VSL-XXX format. ` +
+    `Available vessels: ${Object.keys(STATIC_VESSEL_MAPPING).join(', ')}`
+  );
+}
+
 // modify the interface with any CRUD methods
 // you might need
 
@@ -1380,7 +1413,7 @@ export class MemStorage implements IStorage {
     return assignments;
   }
 
-  async deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[] }> {
+  async deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[]; vesselPlanningId?: number; vesselCode?: string }> {
     const plan = this.rotationPlans.get(planId);
     if (!plan || !plan.assignments) return { success: false };
 
@@ -1424,10 +1457,17 @@ export class MemStorage implements IStorage {
       return { success: false };
     }
 
+    // MemStorage doesn't have master data - use static vessel mapping for testing
+    const vesselCode = translateVesselNameToCode(assignment.vesselId);
+    console.log(`🔄 Vessel translation (MemStorage):`, { 
+      vesselName: assignment.vesselId, 
+      vesselCode
+    });
+
     // Find existing vessel planning record for this vessel + rank
     let existingPlanningId: number | null = null;
     for (const [id, planning] of Array.from(this.vesselPlanning.entries())) {
-      if (planning.vesselId === assignment.vesselId && planning.rankId === assignment.rankId) {
+      if (planning.vesselId === vesselCode && planning.rankId === assignment.rankId) {
         existingPlanningId = id;
         break;
       }
@@ -1447,7 +1487,7 @@ export class MemStorage implements IStorage {
     } else {
       // Create new vessel planning entry if none exists
       const vesselPlanningEntry = {
-        vesselId: assignment.vesselId,
+        vesselId: vesselCode,
         rankId: assignment.rankId,
         rank: assignment.rank,
         relieverCrewId: assignment.crewId,
@@ -1461,7 +1501,7 @@ export class MemStorage implements IStorage {
       await this.createVesselPlanning(vesselPlanningEntry);
     }
 
-    return { success: true };
+    return { success: true, vesselPlanningId: existingPlanningId || undefined, vesselCode };
   }
 
   async rejectAssignment(planId: number, assignmentIndex: number): Promise<RotationPlan | undefined> {
@@ -4887,7 +4927,7 @@ export class PersistentFileStorage implements IStorage {
     return assignments;
   }
 
-  async deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[] }> {
+  async deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[]; vesselPlanningId?: number; vesselCode?: string }> {
     const plan = this.rotationPlans.get(planId);
     if (!plan || !plan.assignments) return { success: false };
 
@@ -4932,10 +4972,17 @@ export class PersistentFileStorage implements IStorage {
       return { success: false };
     }
 
+    // PersistentFileStorage doesn't have master data - use static vessel mapping for testing
+    const vesselCode = translateVesselNameToCode(assignment.vesselId);
+    console.log(`🔄 Vessel translation (PersistentFileStorage):`, { 
+      vesselName: assignment.vesselId, 
+      vesselCode
+    });
+
     // Find existing vessel planning record for this vessel + rank
     let existingPlanningId: number | null = null;
     for (const [id, planning] of Array.from(this.vesselPlanning.entries())) {
-      if (planning.vesselId === assignment.vesselId && planning.rankId === assignment.rankId) {
+      if (planning.vesselId === vesselCode && planning.rankId === assignment.rankId) {
         existingPlanningId = id;
         break;
       }
@@ -4955,7 +5002,7 @@ export class PersistentFileStorage implements IStorage {
     } else {
       // Create new vessel planning entry if none exists
       const vesselPlanningEntry = {
-        vesselId: assignment.vesselId,
+        vesselId: vesselCode,
         rankId: assignment.rankId,
         rank: assignment.rank,
         relieverCrewId: assignment.crewId,
@@ -4969,7 +5016,7 @@ export class PersistentFileStorage implements IStorage {
       await this.createVesselPlanning(vesselPlanningEntry);
     }
 
-    return { success: true };
+    return { success: true, vesselPlanningId: existingPlanningId || undefined, vesselCode };
   }
 
   async rejectAssignment(planId: number, assignmentIndex: number): Promise<RotationPlan | undefined> {
