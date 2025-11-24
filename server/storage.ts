@@ -1362,8 +1362,9 @@ export class MemStorage implements IStorage {
               }
             }
             
+            const { assignmentIndex: _, ...assignmentWithoutIndex } = assignment;
             assignments.push({
-              ...assignment,
+              ...assignmentWithoutIndex,
               planId: plan.id,
               draftId: plan.draftId,
               proposedBy: plan.proposedBy,
@@ -2468,6 +2469,54 @@ export class PersistentFileStorage implements IStorage {
     this.loadFromFile();
   }
 
+  private migrateRotationPlanAssignments(): void {
+    // Fix any rotation plans with assignments that have undefined assignmentIndex
+    let plansFixed = 0;
+    
+    for (const [planId, plan] of Array.from(this.rotationPlans.entries())) {
+      if (plan.assignments) {
+        try {
+          const assignments = JSON.parse(plan.assignments);
+          let needsFix = false;
+          
+          // Check if any assignment has undefined or invalid assignmentIndex
+          for (let i = 0; i < assignments.length; i++) {
+            if (assignments[i].assignmentIndex === undefined || assignments[i].assignmentIndex !== i) {
+              needsFix = true;
+              break;
+            }
+          }
+          
+          if (needsFix) {
+            // Clean up assignments: remove assignmentIndex field and let it be set by index
+            const cleanedAssignments = assignments.map((assignment: any, index: number) => {
+              const { assignmentIndex, ...cleaned } = assignment;
+              return {
+                ...cleaned,
+                proposalStatus: assignment.proposalStatus || "proposed"
+              };
+            });
+            
+            // Update the plan
+            const updatedPlan = {
+              ...plan,
+              assignments: JSON.stringify(cleanedAssignments)
+            };
+            this.rotationPlans.set(planId, updatedPlan);
+            plansFixed++;
+          }
+        } catch (error) {
+          console.error(`Failed to migrate rotation plan ${planId}:`, error);
+        }
+      }
+    }
+    
+    if (plansFixed > 0) {
+      console.log(`🔧 Migrated ${plansFixed} rotation plans to fix assignment indices`);
+      this.saveToFile();
+    }
+  }
+
   private deduplicateDailyRecords(): void {
     // Group records by crew/vessel/month key
     const grouped = new Map<string, RestHoursDailyRecord[]>();
@@ -2869,6 +2918,9 @@ export class PersistentFileStorage implements IStorage {
         this.currentNCReportId = data.currentNCReportId || 1;
         
         console.log("📄 Loaded existing data from test-data.json");
+        
+        // Run data migration to fix rotation plan assignments
+        this.migrateRotationPlanAssignments();
         
         // Initialize rest hours sample data if empty
         if (this.restHoursVesselRecords.size === 0) {
@@ -4817,8 +4869,9 @@ export class PersistentFileStorage implements IStorage {
               }
             }
             
+            const { assignmentIndex: _, ...assignmentWithoutIndex } = assignment;
             assignments.push({
-              ...assignment,
+              ...assignmentWithoutIndex,
               planId: plan.id,
               draftId: plan.draftId,
               proposedBy: plan.proposedBy,

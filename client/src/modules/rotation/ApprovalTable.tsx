@@ -320,13 +320,24 @@ export function ApprovalTable({ selectedVessels, selectedRanks, draftIdFilter, d
   const gridApiRef = useRef<any>(null);
   const { toast } = useToast();
   
-  const { data: proposals = [], isLoading, refetch } = useProposals({
+  const { data: rawProposals = [], isLoading, refetch } = useProposals({
     selectedVessels,
     selectedRanks,
     draftIdFilter,
     dateFrom,
     dateTo,
   });
+
+  // Filter out invalid proposals and log warnings
+  const proposals = useMemo(() => {
+    return rawProposals.filter((proposal: ProposalRow) => {
+      if (typeof proposal.planId !== 'number' || typeof proposal.assignmentIndex !== 'number') {
+        console.warn('Invalid proposal detected, filtering out:', proposal);
+        return false;
+      }
+      return true;
+    });
+  }, [rawProposals]);
 
   // Deploy mutation
   const deployMutation = useMutation({
