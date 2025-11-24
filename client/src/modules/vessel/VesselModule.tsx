@@ -1409,7 +1409,7 @@ export const VesselModule = (): JSX.Element => {
                                                                 {planning.rank || ''}
                                                             </TableCell>
                                                             <TableCell className="text-xs text-gray-700" data-testid={`cell-name-${index + 1}`}>
-                                                                {planning.crewName || ''}
+                                                                {planning.crewName ? `${planning.crewName} ${planning.crewStatus === 'secondary' ? '(S)' : '(P)'}` : ''}
                                                             </TableCell>
                                                             <TableCell className="text-xs text-gray-700" data-testid={`cell-nationality-${index + 1}`}>
                                                                 {planning.nationality || ''}
@@ -1758,8 +1758,10 @@ export const VesselModule = (): JSX.Element => {
                                                         .map((rank: any, index: number) => {
                                                             // Strip suffix from rank name (e.g., "3rd Officer_1" -> "3rd Officer")
                                                             const rankName = (rank.role || rank.rank)?.split('_')[0];
+                                                            // OFFICER MATRIX: Show only PRIMARY crew (filter out secondary)
                                                             const rankPlanningData = vesselPlanning.find((p: any) => 
-                                                                p.rankId === rank.id || p.rankId === rank.rankId || p.rank === rankName
+                                                                (p.rankId === rank.id || p.rankId === rank.rankId || p.rank === rankName) &&
+                                                                p.crewStatus === 'primary'
                                                             );
                                                             
                                                             return (
@@ -1891,8 +1893,19 @@ export const VesselModule = (): JSX.Element => {
                                                         const matchingRecords = vesselPlanning.filter((p: any) => 
                                                             p.rankId === rank.id || p.rankId === rank.rankId || p.rank === rankName
                                                         );
-                                                        // Prioritize records with reliever data, fallback to first match
-                                                        const rankPlanningData = matchingRecords.find((p: any) => p.relieverCrewId) || matchingRecords[0];
+                                                        
+                                                        // Separate primary and secondary crew
+                                                        const primaryCrew = matchingRecords.find((p: any) => p.crewStatus === 'primary');
+                                                        const secondaryCrew = matchingRecords.find((p: any) => p.crewStatus === 'secondary');
+                                                        
+                                                        // For display and editing, prefer primary crew if exists
+                                                        const rankPlanningData = primaryCrew || matchingRecords[0];
+                                                        
+                                                        // Build crew name display with suffixes
+                                                        const crewNameDisplay = [
+                                                            primaryCrew && `${primaryCrew.crewName} (P)`,
+                                                            secondaryCrew && `${secondaryCrew.crewName} (S)`
+                                                        ].filter(Boolean).join('\n');
                                                         
                                                         return (
                                                             <TableRow key={rank.id || index} className="hover:bg-gray-50 border-b border-gray-100">
@@ -1904,8 +1917,8 @@ export const VesselModule = (): JSX.Element => {
                                                                 </TableCell>
                                                                 
                                                                 {/* On Board Status cells */}
-                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-onboard-name-${index + 1}`}>
-                                                                    {rankPlanningData?.crewName || ''}
+                                                                <TableCell className="text-xs text-gray-700 whitespace-pre-line" data-testid={`cell-planning-onboard-name-${index + 1}`}>
+                                                                    {crewNameDisplay || ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-relief-due-${index + 1}`}>
                                                                     {rankPlanningData?.reliefDue || rankPlanningData?.reliefDate || ''}
