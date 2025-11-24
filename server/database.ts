@@ -1512,8 +1512,9 @@ export class DatabaseStorage implements IStorage {
       const assignment = assignments[assignmentIndex];
       
       // Translate vessel name to vessel code
-      // assignment.vesselId contains vessel NAME (e.g., "Nordic Star")
-      // We need to translate to vessel CODE (e.g., "VSL-003")
+      // assignment.vessel contains vessel NAME (e.g., "MT Nordic Star")
+      // assignment.vesselId contains vessel CODE (e.g., "VSL-003") - already canonical
+      // We need to get the canonical vessel CODE
       const vesselMasterData = await this.getMasterDataEntries('014');
       
       // Strict validation: only accept canonical vessel codes in VSL-XXX format
@@ -1526,19 +1527,28 @@ export class DatabaseStorage implements IStorage {
         }
       }
       
-      const vesselCode = vesselNameToCodeMap.get(assignment.vesselId);
+      // Check if assignment already has canonical code, otherwise translate from name
+      let vesselCode: string | undefined;
+      if (assignment.vesselId && assignment.vesselId.match(/^VSL-\d+$/)) {
+        // Already have canonical code
+        vesselCode = assignment.vesselId;
+      } else if (assignment.vessel) {
+        // Translate from vessel name
+        vesselCode = vesselNameToCodeMap.get(assignment.vessel);
+      }
       
       if (!vesselCode) {
         // Fail loudly if vessel cannot be translated
         throw new Error(
-          `Cannot translate vessel name "${assignment.vesselId}" to canonical vessel code. ` +
+          `Cannot determine canonical vessel code from assignment. ` +
+          `Assignment data: vesselId="${assignment.vesselId}", vessel="${assignment.vessel}". ` +
           `Vessel must exist in master data (master_id='014') with valid VSL-XXX format entry_id. ` +
           `Available vessels: ${Array.from(vesselNameToCodeMap.keys()).join(', ')}`
         );
       }
       
       console.log('🔄 Vessel translation (DatabaseStorage):', { 
-        vesselName: assignment.vesselId, 
+        vesselName: assignment.vessel || assignment.vesselId, 
         vesselCode,
         found: true
       });
