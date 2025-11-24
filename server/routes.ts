@@ -2597,7 +2597,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (p.crewMemberId) {
           const crew: any = crewMap.get(p.crewMemberId);
           if (crew) {
-            enriched.crewName = `${crew.firstName || ''} ${crew.lastName || ''}`.trim();
+            // Format as "LastName, FirstName" to match reliever format
+            const lastName = crew.familyName || crew.lastName || '';
+            const firstName = crew.firstName || '';
+            enriched.crewName = lastName && firstName ? `${lastName}, ${firstName}` : (lastName || firstName);
             enriched.nationality = crew.nationality;
             enriched.reliefDue = crew.reliefDue;
             enriched.reliefDate = crew.reliefDue; // Alias for backward compatibility

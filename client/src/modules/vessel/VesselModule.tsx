@@ -209,8 +209,10 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                 // VACANT POSITION LOGIC: If no primary crew exists, promote reliever to primary directly
                 if (!existingPrimary) {
                     // Update existing planning record to convert reliever to primary crew
+                    // Exclude timestamp fields (createdAt, updatedAt) to avoid Date object errors
+                    const { createdAt: _c1, updatedAt: _u1, ...cleanDataForPromote } = planningData || {};
                     const promoteToPrimaryPayload = {
-                        ...planningData,
+                        ...cleanDataForPromote,
                         crewMemberId: planningData.relieverCrewId,
                         crewStatus: "primary",
                         signOnDate: data.joiningDate || planningData.joiningDate,
@@ -249,8 +251,10 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                 await apiRequest('POST', '/api/vessel-planning', secondaryCrewPayload);
                 
                 // Step 2: Update existing planning record to clear reliever fields
+                // Exclude timestamp fields (createdAt, updatedAt) to avoid Date object errors
+                const { createdAt: _c2, updatedAt: _u2, ...cleanDataForClear } = planningData || {};
                 const clearRelieverPayload = {
-                    ...planningData,
+                    ...cleanDataForClear,
                     relieverCrewId: null,
                     relieverCrewName: null,
                     relieverNationality: null,
@@ -267,11 +271,13 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                 return apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, clearRelieverPayload);
             } else {
                 // Normal update flow
+                // Exclude timestamp fields (createdAt, updatedAt) to avoid Date object errors
+                const { createdAt, updatedAt, ...cleanPlanningData } = planningData || {};
                 const payload = {
                     vesselId,
                     rankId,
                     rank,
-                    ...planningData,
+                    ...cleanPlanningData,
                     ...data,
                 };
                 
@@ -708,11 +714,13 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                 }
                 
                 // Step 3: Promote current secondary to primary
+                // Exclude timestamp fields (createdAt, updatedAt) to avoid Date object errors
+                const { createdAt: _1, updatedAt: _2, ...cleanPlanningDataForTakeover } = planningData || {};
                 const promotePayload = {
                     vesselId,
                     rankId,
                     rank,
-                    ...planningData,
+                    ...cleanPlanningDataForTakeover,
                     ...data,
                     crewStatus: "primary", // Change from secondary to primary
                 };
@@ -720,11 +728,13 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                 return apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, promotePayload);
             } else {
                 // Normal update flow
+                // Exclude timestamp fields (createdAt, updatedAt) to avoid Date object errors
+                const { createdAt, updatedAt, ...cleanPlanningData } = planningData || {};
                 const payload = {
                     vesselId,
                     rankId,
                     rank,
-                    ...planningData,
+                    ...cleanPlanningData,
                     ...data,
                 };
                 
