@@ -2858,6 +2858,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ 
         success: true, 
         vesselPlanningId: result.vesselPlanningId,
+        vesselCode: result.vesselCode,  // Return vessel code for cache invalidation
         message: 'Assignment deployed successfully' 
       });
     } catch (error) {

@@ -341,19 +341,20 @@ export function ApprovalTable({ selectedVessels, selectedRanks, draftIdFilter, d
 
   // Deploy mutation
   const deployMutation = useMutation({
-    mutationFn: async ({ planId, assignmentIndex, vesselId }: { planId: number; assignmentIndex: number; vesselId: string }) => {
+    mutationFn: async ({ planId, assignmentIndex }: { planId: number; assignmentIndex: number }) => {
       return await apiRequest('POST', '/api/rotation/proposals/deploy', {
         planId,
         assignmentIndex,
         deployedBy: 'Current User'
       });
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/rotation/proposals'] });
-      // Invalidate vessel-specific planning cache for the affected vessel
-      // Convert vesselId to number to match VesselModule's queryKey format
-      if (variables.vesselId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/vessel-planning/vessel', Number(variables.vesselId)] });
+      // Invalidate vessel-specific planning cache using vesselCode from response
+      // Backend translates vessel name → vessel code and returns it
+      if (data?.vesselCode) {
+        queryClient.invalidateQueries({ queryKey: ['/api/vessel-planning/vessel', data.vesselCode] });
+        console.log('✅ Invalidated cache for vessel:', data.vesselCode);
       }
       toast({
         title: "Success",
@@ -415,12 +416,8 @@ export function ApprovalTable({ selectedVessels, selectedRanks, draftIdFilter, d
 
     selectedAssignments.forEach(key => {
       const [planId, assignmentIndex] = key.split('-').map(Number);
-      // Find the proposal to get the vesselId
-      const proposal = proposals.find((p: ProposalRow) => 
-        p.planId === planId && p.assignmentIndex === assignmentIndex
-      );
-      const vesselId = proposal?.vesselId || '';
-      deployMutation.mutate({ planId, assignmentIndex, vesselId });
+      // Backend will translate vessel name → vessel code and return it for cache invalidation
+      deployMutation.mutate({ planId, assignmentIndex });
     });
   };
 

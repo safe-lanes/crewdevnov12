@@ -127,7 +127,7 @@ export interface IStorage {
   // Rotation Approval Workflow
   proposeRotationPlan(id: number, proposedBy: string): Promise<RotationPlan | undefined>;
   getProposedAssignments(filters?: { vessels?: string[]; ranks?: string[]; draftId?: string; dateFrom?: string; dateTo?: string }): Promise<any[]>;
-  deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[]; vesselPlanningId?: number }>;
+  deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[]; vesselPlanningId?: number; vesselCode?: string }>;
   rejectAssignment(planId: number, assignmentIndex: number): Promise<RotationPlan | undefined>;
   checkAssignmentConflicts(crewId: string, joiningDate: string, contractPeriod: number, excludePlanId?: number, excludeAssignmentIndex?: number): Promise<any[]>;
   // Drug/Alcohol Test Records

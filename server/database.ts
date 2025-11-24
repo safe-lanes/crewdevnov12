@@ -1495,7 +1495,7 @@ export class DatabaseStorage implements IStorage {
     return proposedAssignments;
   }
 
-  async deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[]; vesselPlanningId?: number }> {
+  async deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[]; vesselPlanningId?: number; vesselCode?: string }> {
     try {
       // Get current plan
       const plans = await this.db
@@ -1510,6 +1510,21 @@ export class DatabaseStorage implements IStorage {
       if (!assignments[assignmentIndex]) return { success: false };
       
       const assignment = assignments[assignmentIndex];
+      
+      // Translate vessel name to vessel code
+      // assignment.vesselId contains vessel NAME (e.g., "Nordic Star")
+      // We need to translate to vessel CODE (e.g., "VSL-003")
+      const vesselMasterData = await this.getMasterDataEntries('014');
+      const vesselNameToCodeMap = new Map(
+        vesselMasterData.map((v: any) => [v.name, v.nuid || v.id?.toString() || ''])
+      );
+      const vesselCode = vesselNameToCodeMap.get(assignment.vesselId) || assignment.vesselId;
+      
+      console.log('🔄 Vessel translation:', { 
+        vesselName: assignment.vesselId, 
+        vesselCode,
+        found: vesselNameToCodeMap.has(assignment.vesselId)
+      });
       
       // Map assignment fields correctly (fromDate→joiningDate, toDate→reliefDue)
       const crewMemberId = assignment.crewMemberId || assignment.crewId;
@@ -1553,10 +1568,11 @@ export class DatabaseStorage implements IStorage {
       
       // Create vessel_planning record
       // Note: Deployed rotation assignments are RELIEVERS (incoming crew), not on-board crew
+      // Store vessel CODE (e.g., "VSL-003"), not vessel NAME
       const [vesselPlanningRecord] = await this.db
         .insert(vesselPlanning)
         .values({
-          vesselId: assignment.vesselId,
+          vesselId: vesselCode,
           rankId: assignment.rank || 'Unknown',
           rank: assignment.rank,
           relieverCrewId: crewMemberId,
@@ -1586,7 +1602,8 @@ export class DatabaseStorage implements IStorage {
       
       return { 
         success: true, 
-        vesselPlanningId: vesselPlanningRecord?.id 
+        vesselPlanningId: vesselPlanningRecord?.id,
+        vesselCode: vesselCode  // Return vessel code for cache invalidation
       };
     } catch (error) {
       console.error('Error deploying assignment:', error);
