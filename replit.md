@@ -27,6 +27,10 @@ The application employs a modern web stack with a module-first architecture for 
 ### System Design Choices
 - **Module-First Architecture**: Ensures clear separation of concerns and scalability.
 - **Vessel ID/Name Translation**: Backend uses vessel IDs, UI displays vessel names with a dedicated translation layer.
+- **Canonical Vessel Code Enforcement**: All storage backends strictly enforce VSL-XXX format vessel codes with zero fallback logic.
+    - **DatabaseStorage (Production)**: Only accepts vessels from master data (master_id='014') with valid `nuid` matching `/^VSL-\d+$/` pattern. Rejects vessels with missing nuid or numeric ID fallbacks.
+    - **MemStorage/PersistentFileStorage (Testing)**: Uses `STATIC_VESSEL_MAPPING` for vessel name → code translation. Helper function `translateVesselNameToCode()` throws error on translation failure.
+    - **Data Integrity**: All backends throw descriptive errors when vessel translation fails. No silent data corruption possible. Rotation deployments return canonical `vesselCode` for proper frontend cache invalidation.
 - **Master Data System**: Centralized storage for reference data (e.g., vessels) via a consistent API.
 - **Vessel Revision System**: Manages vessel rank assignments with draft/submission workflows and date validation.
 - **Rank Designation Synchronization**: Supports company and vessel-specific rank designations with inheritance and overrides.
