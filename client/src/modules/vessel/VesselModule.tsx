@@ -184,11 +184,27 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
             // Check if reliever is signing on (joiningStatus = "Signed On")
             const isSigningOn = data.joiningStatus === "Signed On";
             
+            console.log('🚀 Relief status mutation starting:', {
+                joiningStatus: data.joiningStatus,
+                isSigningOn,
+                hasRelieverCrewId: !!planningData?.relieverCrewId,
+                relieverCrewId: planningData?.relieverCrewId,
+                willRunHandover: isSigningOn && !!planningData?.relieverCrewId
+            });
+            
             if (isSigningOn && planningData?.relieverCrewId) {
                 // Special handling for "Signed On" - check if position is vacant
                 
                 // Fetch all planning records for this vessel to check for existing crew
                 const existingRecordsResponse = await fetch(`/api/vessel-planning/vessel/${vesselId}`).then(r => r.json());
+                
+                console.log('🔍 Handover validation:', {
+                    vesselId,
+                    rankId,
+                    rank,
+                    relieverCrewId: planningData.relieverCrewId,
+                    allRecords: existingRecordsResponse.filter((p: any) => p.rank === rank || p.rankId === rankId)
+                });
                 
                 // Check if PRIMARY crew exists for this rank
                 const existingPrimary = existingRecordsResponse.find((p: any) => 
@@ -201,6 +217,11 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                 const existingSecondary = existingRecordsResponse.find((p: any) => 
                     (p.rankId === rankId || p.rank === rank) && p.crewStatus === 'secondary'
                 );
+                
+                console.log('🔍 Validation results:', {
+                    existingPrimary: existingPrimary ? { id: existingPrimary.id, crewMemberId: existingPrimary.crewMemberId } : null,
+                    existingSecondary: existingSecondary ? { id: existingSecondary.id, crewMemberId: existingSecondary.crewMemberId } : null
+                });
                 
                 if (existingSecondary) {
                     throw new Error(`A secondary crew member is already assigned to this rank. Cannot create duplicate secondary record.`);
@@ -294,12 +315,18 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                 title: "Success",
                 description: "Relief status saved successfully",
             });
+            onOpenChange(false);
         },
-        onError: () => {
+        onError: (error: any) => {
+            console.error('Relief status save error:', error);
+            const errorMessage = error instanceof Error ? error.message : 
+                                 typeof error === 'string' ? error :
+                                 error?.message || "Failed to save relief status";
             toast({
                 title: "Error",
-                description: "Failed to save relief status",
+                description: errorMessage,
                 variant: "destructive",
+                duration: 5000,
             });
         }
     });
@@ -311,7 +338,6 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
 
     const handleSubmit = form.handleSubmit((data) => {
         updatePlanningMutation.mutate(data);
-        onOpenChange(false);
     });
 
     return (
@@ -751,12 +777,18 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                 title: "Success",
                 description: "On board status saved successfully",
             });
+            onOpenChange(false);
         },
-        onError: () => {
+        onError: (error: any) => {
+            console.error('On board status save error:', error);
+            const errorMessage = error instanceof Error ? error.message : 
+                                 typeof error === 'string' ? error :
+                                 error?.message || "Failed to save on board status";
             toast({
                 title: "Error",
-                description: "Failed to save on board status",
+                description: errorMessage,
                 variant: "destructive",
+                duration: 5000,
             });
         }
     });
@@ -768,7 +800,6 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
 
     const handleSubmit = form.handleSubmit((data) => {
         updatePlanningMutation.mutate(data);
-        onOpenChange(false);
     });
 
     // Helper to format date from YYYY-MM-DD to dd-mmm-yyyy
