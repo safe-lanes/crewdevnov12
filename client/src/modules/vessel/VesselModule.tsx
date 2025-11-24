@@ -185,10 +185,19 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
             const isSigningOn = data.joiningStatus === "Signed On";
             
             if (isSigningOn && planningData?.relieverCrewId) {
-                // Special handling for "Signed On" - create secondary crew record
+                // Special handling for "Signed On" - check if position is vacant
                 
-                // CRITICAL: Check for existing secondary record to prevent duplicates
+                // Fetch all planning records for this vessel to check for existing crew
                 const existingRecordsResponse = await apiRequest('GET', `/api/vessel-planning/vessel/${vesselId}`) as unknown as any[];
+                
+                // Check if PRIMARY crew exists for this rank
+                const existingPrimary = existingRecordsResponse.find((p: any) => 
+                    (p.rankId === rankId || p.rank === rank) && 
+                    (p.crewStatus === 'primary' || !p.crewStatus) && // Treat NULL as primary for backward compatibility
+                    p.crewMemberId // Has an actual crew member assigned
+                );
+                
+                // Check if SECONDARY already exists (prevent duplicates)
                 const existingSecondary = existingRecordsResponse.find((p: any) => 
                     (p.rankId === rankId || p.rank === rank) && p.crewStatus === 'secondary'
                 );
@@ -197,6 +206,32 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                     throw new Error(`A secondary crew member is already assigned to this rank. Cannot create duplicate secondary record.`);
                 }
                 
+                // VACANT POSITION LOGIC: If no primary crew exists, promote reliever to primary directly
+                if (!existingPrimary) {
+                    // Update existing planning record to convert reliever to primary crew
+                    const promoteToPrimaryPayload = {
+                        ...planningData,
+                        crewMemberId: planningData.relieverCrewId,
+                        crewStatus: "primary",
+                        signOnDate: data.joiningDate || planningData.joiningDate,
+                        joiningPort: data.joiningPort || planningData.joiningPort,
+                        contractPeriodMonths: data.contractPeriodMonths || planningData.contractPeriodMonths,
+                        contractEndRangeStartMonths: data.contractEndRangeStartMonths || planningData.contractEndRangeStartMonths,
+                        contractEndRangeEndMonths: data.contractEndRangeEndMonths || planningData.contractEndRangeEndMonths,
+                        // Clear reliever fields
+                        relieverCrewId: null,
+                        relieverCrewName: null,
+                        relieverNationality: null,
+                        joiningDate: null,
+                        joiningStatus: null,
+                        deploymentChecklistCompleted: false,
+                        applicableDocsChecked: false,
+                    };
+                    
+                    return apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, promoteToPrimaryPayload);
+                }
+                
+                // HANDOVER WORKFLOW: Primary crew exists, create secondary record
                 // Step 1: Create NEW planning record for secondary crew
                 const secondaryCrewPayload = {
                     vesselId,
