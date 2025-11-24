@@ -2526,7 +2526,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? await storage.getVesselPlanningByVessel(vesselId as string)
         : await storage.getAllVesselPlanning();
       
-      // Apply additional optional filters to the base dataset
+      // JOIN with crew members to enrich data
+      const crewMembers = await storage.getCrewMembers();
+      const crewMap = new Map(crewMembers.map((c: any) => [c.id || c.employeeId, c]));
+      
+      // Enrich planning data with crew member information
+      planning = planning.map((p: any) => {
+        const enriched = { ...p };
+        
+        // Enrich on-board crew data
+        if (p.crewMemberId) {
+          const crew: any = crewMap.get(p.crewMemberId);
+          if (crew) {
+            enriched.crewName = `${crew.firstName || ''} ${crew.lastName || ''}`.trim();
+            enriched.nationality = crew.nationality;
+          }
+        }
+        
+        // Enrich reliever crew data
+        if (p.relieverCrewId) {
+          const reliever: any = crewMap.get(p.relieverCrewId);
+          if (reliever) {
+            enriched.relieverCrewName = `${reliever.firstName || ''} ${reliever.lastName || ''}`.trim();
+            enriched.relieverNationality = reliever.nationality;
+          }
+        }
+        
+        return enriched;
+      });
+      
+      // Apply additional optional filters to the enriched dataset
       if (crewMemberId) {
         planning = planning.filter((p: VesselPlanning) => p.crewMemberId === crewMemberId);
       }
@@ -2552,29 +2581,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Enrich planning data with crew member information
       const enrichedPlanning = planning.map((p: any) => {
+        const enriched = { ...p };
+        
+        // Enrich on-board crew data
         if (p.crewMemberId) {
           const crew: any = crewMap.get(p.crewMemberId);
           if (crew) {
-            return {
-              ...p,
-              // Override with data from crew members (single source of truth)
-              crewName: `${crew.firstName || ''} ${crew.lastName || ''}`.trim(),
+            enriched.crewName = `${crew.firstName || ''} ${crew.lastName || ''}`.trim();
+            enriched.nationality = crew.nationality;
+            enriched.reliefDue = crew.reliefDue;
+            enriched.reliefDate = crew.reliefDue; // Alias for backward compatibility
+            enriched.crewMemberData = {
+              id: crew.id,
+              employeeId: crew.employeeId,
+              firstName: crew.firstName,
+              lastName: crew.lastName,
               nationality: crew.nationality,
-              reliefDue: crew.reliefDue,
-              reliefDate: crew.reliefDue, // Alias for backward compatibility
-              // Keep crew member reference for future use
-              crewMemberData: {
-                id: crew.id,
-                employeeId: crew.employeeId,
-                firstName: crew.firstName,
-                lastName: crew.lastName,
-                nationality: crew.nationality,
-                presentRank: crew.presentRank
-              }
+              presentRank: crew.presentRank
             };
           }
         }
-        return p;
+        
+        // Enrich reliever crew data
+        if (p.relieverCrewId) {
+          const reliever: any = crewMap.get(p.relieverCrewId);
+          if (reliever) {
+            enriched.relieverCrewName = `${reliever.firstName || ''} ${reliever.lastName || ''}`.trim();
+            enriched.relieverNationality = reliever.nationality;
+            enriched.relieverData = {
+              id: reliever.id,
+              employeeId: reliever.employeeId,
+              firstName: reliever.firstName,
+              lastName: reliever.lastName,
+              nationality: reliever.nationality,
+              presentRank: reliever.presentRank
+            };
+          }
+        }
+        
+        return enriched;
       });
       
       res.json(enrichedPlanning);

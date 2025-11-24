@@ -1517,26 +1517,25 @@ export class DatabaseStorage implements IStorage {
       let reliefDue = assignment.toDate || assignment.reliefDue;
       let contractPeriodMonths = assignment.contractPeriod || assignment.contractPeriodMonths;
       
-      // If reliefDue is missing but we have joiningDate and contractPeriod, calculate it
-      if (!reliefDue && joiningDate && contractPeriodMonths) {
-        const joiningDateObj = new Date(joiningDate);
-        const reliefDueObj = addMonths(joiningDateObj, contractPeriodMonths);
-        reliefDue = reliefDueObj.toISOString().split('T')[0];
-      }
-      
-      if (!crewMemberId || !joiningDate || !reliefDue) {
-        console.error('Missing required assignment fields:', { crewMemberId, joiningDate, reliefDue, contractPeriod: contractPeriodMonths });
+      // Validate required fields for reliever deployment
+      if (!crewMemberId || !joiningDate) {
+        console.error('Missing required reliever fields:', { crewMemberId, joiningDate });
         return { success: false };
       }
       
-      // Calculate contract period in months if not already set
-      if (!contractPeriodMonths) {
+      // Calculate contract period from reliefDue if contractPeriod not provided
+      if (!contractPeriodMonths && reliefDue) {
         const fromDateObj = new Date(joiningDate);
         const toDateObj = new Date(reliefDue);
         contractPeriodMonths = Math.max(1, 
           (toDateObj.getFullYear() - fromDateObj.getFullYear()) * 12 + 
           (toDateObj.getMonth() - fromDateObj.getMonth())
         );
+      }
+      
+      // Default to 6 months if still not set
+      if (!contractPeriodMonths) {
+        contractPeriodMonths = 6;
       }
       
       // Check for conflicts before deployment
@@ -1553,17 +1552,18 @@ export class DatabaseStorage implements IStorage {
       }
       
       // Create vessel_planning record
+      // Note: Deployed rotation assignments are RELIEVERS (incoming crew), not on-board crew
       const [vesselPlanningRecord] = await this.db
         .insert(vesselPlanning)
         .values({
           vesselId: assignment.vesselId,
           rankId: assignment.rank || 'Unknown',
           rank: assignment.rank,
-          crewMemberId: crewMemberId,
-          reliefDue: reliefDue,
+          relieverCrewId: crewMemberId,
           joiningDate: joiningDate,
+          joiningPort: assignment.joiningPort || null,
+          joiningStatus: 'Deployed',
           contractPeriodMonths: contractPeriodMonths,
-          reliefStatus: 'Deployed'
         })
         .returning();
       
