@@ -1161,26 +1161,22 @@ export const VesselModule = (): JSX.Element => {
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {crewLoading ? (
+                                                {planningLoading ? (
                                                     <TableRow>
                                                         <TableCell colSpan={15} className="text-center text-xs text-gray-500 py-8">
                                                             Loading crew members...
                                                         </TableCell>
                                                     </TableRow>
                                                 ) : (() => {
-                                                    const vesselCrew = crewMembers
-                                                        .filter((crew: any) => 
-                                                            crew.presentVessel === selectedVessel?.name || 
-                                                            crew.presentVessel === selectedVessel?.vesselId
-                                                        )
+                                                    // Use vessel planning data and sort by rank order
+                                                    const vesselCrew = vesselPlanning
+                                                        .filter((planning: any) => planning.crewMemberId)
                                                         .sort((a: any, b: any) => {
                                                             // Strip suffix from rank name (e.g., "3rd Officer_1" -> "3rd Officer")
-                                                            const aRank = a.presentRank || a.rank;
-                                                            const bRank = b.presentRank || b.rank;
-                                                            const aRankBase = aRank?.split('_')[0] || aRank;
-                                                            const bRankBase = bRank?.split('_')[0] || bRank;
-                                                            const aOrder = rankOrderMap.get(aRankBase) ?? 999;
-                                                            const bOrder = rankOrderMap.get(bRankBase) ?? 999;
+                                                            const aRankBase = a.rank?.split('_')[0] || a.rank;
+                                                            const bRankBase = b.rank?.split('_')[0] || b.rank;
+                                                            const aOrder = rankOrderMap.get(aRankBase) ?? 999999;
+                                                            const bOrder = rankOrderMap.get(bRankBase) ?? 999999;
                                                             return aOrder - bOrder;
                                                         });
                                                     
@@ -1194,22 +1190,26 @@ export const VesselModule = (): JSX.Element => {
                                                         );
                                                     }
                                                     
-                                                    return vesselCrew.map((crew: any, index: number) => (
-                                                        <TableRow key={crew.id || index} className="hover:bg-gray-50 border-b border-gray-100">
+                                                    return vesselCrew.map((planning: any, index: number) => {
+                                                        // Use embedded crew member data from planning (already enriched by API)
+                                                        const crewData = planning.crewMemberData;
+                                                        
+                                                        return (
+                                                        <TableRow key={planning.id || index} className="hover:bg-gray-50 border-b border-gray-100">
                                                             <TableCell className="text-xs text-gray-700" data-testid={`cell-sno-${index + 1}`}>
                                                                 {index + 1}.
                                                             </TableCell>
                                                             <TableCell className="text-xs text-gray-700" data-testid={`cell-rank-${index + 1}`}>
-                                                                {crew.presentRank || crew.rank || ''}
+                                                                {planning.rank || ''}
                                                             </TableCell>
                                                             <TableCell className="text-xs text-gray-700" data-testid={`cell-name-${index + 1}`}>
-                                                                {`${crew.familyName || crew.lastName || ''}, ${crew.firstName || ''}`.trim()}
+                                                                {planning.crewName || ''}
                                                             </TableCell>
                                                             <TableCell className="text-xs text-gray-700" data-testid={`cell-nationality-${index + 1}`}>
-                                                                {crew.nationality || ''}
+                                                                {planning.nationality || ''}
                                                             </TableCell>
                                                             <TableCell className="text-xs text-gray-700" data-testid={`cell-joined-${index + 1}`}>
-                                                                {formatDateOnly(crew.joiningDate)}
+                                                                {formatDateOnly(planning.signOnDate)}
                                                             </TableCell>
                                                             <TableCell className="text-xs text-gray-700" data-testid={`cell-doccheck-${index + 1}`}>
                                                                 
@@ -1218,7 +1218,7 @@ export const VesselModule = (): JSX.Element => {
                                                                 
                                                             </TableCell>
                                                             <TableCell className="text-xs text-gray-700" data-testid={`cell-relief-${index + 1}`}>
-                                                                {formatDateOnly(crew.reliefDue)}
+                                                                {formatDateOnly(planning.reliefDue || planning.signOffDate)}
                                                             </TableCell>
                                                             <TableCell className="text-xs text-gray-700" data-testid={`cell-planned-${index + 1}`}>
                                                                 
@@ -1233,14 +1233,23 @@ export const VesselModule = (): JSX.Element => {
                                                                 
                                                             </TableCell>
                                                             <TableCell className="text-xs text-gray-700" data-testid={`cell-appraisal-${index + 1}`}>
-                                                                {(() => {
-                                                                    const buttonConfig = getAppraisalButtonConfig(crew.id);
+                                                                {crewData && (() => {
+                                                                    const buttonConfig = getAppraisalButtonConfig(planning.crewMemberId);
+                                                                    // Reconstruct crew object for appraisal handler using embedded data
+                                                                    const crewForAppraisal = {
+                                                                        id: crewData.id,
+                                                                        employeeId: crewData.employeeId,
+                                                                        firstName: crewData.firstName,
+                                                                        lastName: crewData.lastName,
+                                                                        nationality: crewData.nationality,
+                                                                        presentRank: crewData.presentRank || planning.rank
+                                                                    };
                                                                     return (
                                                                         <Button 
                                                                             variant="ghost" 
                                                                             size="sm" 
                                                                             className="h-7 text-xs px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                                                            onClick={() => handleAppraisalClick(crew, buttonConfig)}
+                                                                            onClick={() => handleAppraisalClick(crewForAppraisal, buttonConfig)}
                                                                             data-testid={`button-appraisal-${buttonConfig.text.toLowerCase()}-${index + 1}`}
                                                                         >
                                                                             {buttonConfig.text}
@@ -1257,7 +1266,7 @@ export const VesselModule = (): JSX.Element => {
                                                                 </Button>
                                                             </TableCell>
                                                         </TableRow>
-                                                    ));
+                                                    )});
                                                 })()}
                                             </TableBody>
                                         </Table>
