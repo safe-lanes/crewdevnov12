@@ -2253,35 +2253,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Parse the revisionData JSON to get the ranks
       const rankData = JSON.parse(latestRevision.revisionData);
       
-      // Merge with current company ranks to ensure designation fields are up-to-date
-      // This handles legacy data that was saved before designation sync was implemented
+      // Merge with current available ranks to get sortOrder (only exists in available_ranks table)
+      // Also merge with company ranks to get designation fields
+      const availableRanks = await storage.getAvailableRanks();
+      const availableRanksMap = new Map(availableRanks.map((ar: any) => [String(ar.id), ar]));
+      
       const companyRanks = await storage.getCompanyRanks();
       const companyRanksMap = new Map(companyRanks.map((cr: any) => [cr.id, cr]));
       
       const mergedRankData = rankData.map((vesselRank: any) => {
         const companyRank: any = companyRanksMap.get(vesselRank.id);
+        const availableRank: any = availableRanksMap.get(vesselRank.id);
         
-        if (companyRank) {
+        if (companyRank || availableRank) {
           return {
             ...vesselRank,
+            // Get sortOrder from available_ranks table (only place it exists)
+            sortOrder: availableRank?.sortOrder ?? vesselRank.sortOrder ?? 0,
             // Update company-only designation fields from current company ranks
-            sortOrder: companyRank.sortOrder ?? vesselRank.sortOrder ?? 0,
-            officer: companyRank.officer ?? vesselRank.officer ?? false,
-            rating: companyRank.rating ?? vesselRank.rating ?? false,
-            seniorOfficer: companyRank.seniorOfficer ?? vesselRank.seniorOfficer ?? false,
-            deckOfficer: companyRank.deckOfficer ?? vesselRank.deckOfficer ?? false,
-            engOfficer: companyRank.engOfficer ?? vesselRank.engOfficer ?? false,
-            pettyOfficer: companyRank.pettyOfficer ?? vesselRank.pettyOfficer ?? false,
-            deckRating: companyRank.deckRating ?? vesselRank.deckRating ?? false,
-            engineRating: companyRank.engineRating ?? vesselRank.engineRating ?? false,
-            generalRating: companyRank.generalRating ?? vesselRank.generalRating ?? false,
-            cateringRating: companyRank.cateringRating ?? vesselRank.cateringRating ?? false,
+            officer: companyRank?.officer ?? vesselRank.officer ?? false,
+            rating: companyRank?.rating ?? vesselRank.rating ?? false,
+            seniorOfficer: companyRank?.seniorOfficer ?? vesselRank.seniorOfficer ?? false,
+            deckOfficer: companyRank?.deckOfficer ?? vesselRank.deckOfficer ?? false,
+            engOfficer: companyRank?.engOfficer ?? vesselRank.engOfficer ?? false,
+            pettyOfficer: companyRank?.pettyOfficer ?? vesselRank.pettyOfficer ?? false,
+            deckRating: companyRank?.deckRating ?? vesselRank.deckRating ?? false,
+            engineRating: companyRank?.engineRating ?? vesselRank.engineRating ?? false,
+            generalRating: companyRank?.generalRating ?? vesselRank.generalRating ?? false,
+            cateringRating: companyRank?.cateringRating ?? vesselRank.cateringRating ?? false,
             // Preserve vessel-specific overrides if they exist
-            safetyOfficer: vesselRank.safetyOfficer ?? companyRank.safetyOfficer ?? false,
-            sso: vesselRank.sso ?? companyRank.sso ?? false,
-            medicalOfficer: vesselRank.medicalOfficer ?? companyRank.medicalOfficer ?? false,
-            navigatingOfficer: vesselRank.navigatingOfficer ?? companyRank.navigatingOfficer ?? false,
-            emtOfficer: vesselRank.emtOfficer ?? companyRank.emtOfficer ?? false,
+            safetyOfficer: vesselRank.safetyOfficer ?? companyRank?.safetyOfficer ?? false,
+            sso: vesselRank.sso ?? companyRank?.sso ?? false,
+            medicalOfficer: vesselRank.medicalOfficer ?? companyRank?.medicalOfficer ?? false,
+            navigatingOfficer: vesselRank.navigatingOfficer ?? companyRank?.navigatingOfficer ?? false,
+            emtOfficer: vesselRank.emtOfficer ?? companyRank?.emtOfficer ?? false,
           };
         }
         return vesselRank;
