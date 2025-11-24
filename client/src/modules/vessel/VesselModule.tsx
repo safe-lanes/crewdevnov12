@@ -187,6 +187,16 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
             if (isSigningOn && planningData?.relieverCrewId) {
                 // Special handling for "Signed On" - create secondary crew record
                 
+                // CRITICAL: Check for existing secondary record to prevent duplicates
+                const existingRecordsResponse = await apiRequest('GET', `/api/vessel-planning/vessel/${vesselId}`) as unknown as any[];
+                const existingSecondary = existingRecordsResponse.find((p: any) => 
+                    (p.rankId === rankId || p.rank === rank) && p.crewStatus === 'secondary'
+                );
+                
+                if (existingSecondary) {
+                    throw new Error(`A secondary crew member is already assigned to this rank. Cannot create duplicate secondary record.`);
+                }
+                
                 // Step 1: Create NEW planning record for secondary crew
                 const secondaryCrewPayload = {
                     vesselId,
@@ -1894,12 +1904,13 @@ export const VesselModule = (): JSX.Element => {
                                                             p.rankId === rank.id || p.rankId === rank.rankId || p.rank === rankName
                                                         );
                                                         
-                                                        // Separate primary and secondary crew
+                                                        // Separate primary and secondary crew - CRITICAL: explicitly select by crew_status
                                                         const primaryCrew = matchingRecords.find((p: any) => p.crewStatus === 'primary');
                                                         const secondaryCrew = matchingRecords.find((p: any) => p.crewStatus === 'secondary');
                                                         
-                                                        // For display and editing, prefer primary crew if exists
-                                                        const rankPlanningData = primaryCrew || matchingRecords[0];
+                                                        // For display and editing, ALWAYS prefer primary crew if exists, otherwise fallback to any record
+                                                        // This ensures edit dialogs target the correct crew member
+                                                        const rankPlanningData = primaryCrew || secondaryCrew || matchingRecords[0];
                                                         
                                                         // Build crew name display with suffixes
                                                         const crewNameDisplay = [
