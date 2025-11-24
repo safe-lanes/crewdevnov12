@@ -5209,13 +5209,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { filterType, vessels, fleet, addGroup, dueIn, rank } = req.query;
       
-      // Fetch vessel master data for ID-to-name translation
+      // Fetch vessel master data for code-to-name translation
+      // Uses canonical vessel codes (VSL-XXX) as keys after recent vessel code enforcement
       const vesselMasterData = await storage.getMasterDataEntries("014");
-      const vesselIdToNameMap = new Map<string, string>();
+      const vesselCodeToNameMap = new Map<string, string>();
       if (vesselMasterData) {
         vesselMasterData.forEach((vessel: any) => {
-          if (vessel.entryId && vessel.name) {
-            vesselIdToNameMap.set(vessel.entryId, vessel.name);
+          // Use entry_id (canonical vessel code) as the key for translation
+          // Master data stores VSL-XXX codes in entry_id field (snake_case from database)
+          if (vessel.entry_id && vessel.name) {
+            vesselCodeToNameMap.set(vessel.entry_id, vessel.name);
           }
         });
       }
@@ -5278,8 +5281,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           return {
             id: crew.id,
-            vesselId: crew.presentVessel, // Keep ID for filtering
-            vessel: vesselIdToNameMap.get(crew.presentVessel || '') || crew.presentVessel, // Translated name for display
+            vesselId: crew.presentVessel, // Keep vessel code for filtering
+            vessel: vesselCodeToNameMap.get(crew.presentVessel || '') || crew.presentVessel, // Translate code to name for display
             rank: crew.presentRank,
             name: `${crew.firstName} ${crew.middleName || ''} ${crew.familyName || ''}`.trim(),
             reliefDue: rawReliefDue,
