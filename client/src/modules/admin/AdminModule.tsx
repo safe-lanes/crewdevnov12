@@ -1169,27 +1169,32 @@ const AdminModuleInner = (): JSX.Element => {
                   const latestDraft = drafts[0];
                   const loadedData: VesselRankData[] = JSON.parse(latestDraft.draftData);
                   
-                  // Merge loaded data with current company ranks to ensure designation fields are up-to-date
-                  const mergedData = loadedData.map(vesselRank => {
-                    const companyRank = companyRankData.find(cr => 
-                      cr.id === vesselRank.id || 
-                      (vesselRank.isRoleRow && cr.id === vesselRank.id && cr.role === vesselRank.role)
-                    );
+                  // Create a lookup map for loaded vessel data by ID and role
+                  const loadedDataMap = new Map<string, VesselRankData>();
+                  loadedData.forEach(vesselRank => {
+                    const key = vesselRank.isRoleRow && vesselRank.role 
+                      ? `${vesselRank.id}_${vesselRank.role}`
+                      : vesselRank.id;
+                    loadedDataMap.set(key, vesselRank);
+                  });
+                  
+                  // Merge: Start with company ranks and overlay vessel-specific data from loaded draft
+                  const mergedData = companyRankData.map(companyRank => {
+                    const key = companyRank.isRoleRow && companyRank.role 
+                      ? `${companyRank.id}_${companyRank.role}`
+                      : companyRank.id;
+                    const vesselRank = loadedDataMap.get(key);
                     
-                    if (companyRank) {
+                    if (vesselRank) {
+                      // Vessel data exists - merge it with company data
                       return {
-                        ...vesselRank,
-                        // Update company-only fields from current company ranks
-                        officer: companyRank.officer,
-                        rating: companyRank.rating,
-                        seniorOfficer: companyRank.seniorOfficer,
-                        deckOfficer: companyRank.deckOfficer,
-                        engOfficer: companyRank.engOfficer,
-                        pettyOfficer: companyRank.pettyOfficer,
-                        deckRating: companyRank.deckRating,
-                        engineRating: companyRank.engineRating,
-                        generalRating: companyRank.generalRating,
-                        cateringRating: companyRank.cateringRating,
+                        ...companyRank,
+                        // Preserve vessel-specific manning data from loaded draft
+                        actualManning: vesselRank.actualManning || [],
+                        actualManningFlag: vesselRank.actualManningFlag || false,
+                        safeManning: vesselRank.safeManning || false,
+                        optimumManning: vesselRank.optimumManning || false,
+                        highWorkloadManning: vesselRank.highWorkloadManning || false,
                         // Preserve vessel-specific overrides if they exist, otherwise use company defaults
                         safetyOfficer: vesselRank.safetyOfficer ?? companyRank.safetyOfficer,
                         sso: vesselRank.sso ?? companyRank.sso,
@@ -1197,8 +1202,18 @@ const AdminModuleInner = (): JSX.Element => {
                         navigatingOfficer: vesselRank.navigatingOfficer ?? companyRank.navigatingOfficer,
                         emtOfficer: vesselRank.emtOfficer ?? companyRank.emtOfficer,
                       };
+                    } else {
+                      // No vessel data for this company rank - create fresh vessel rank
+                      return {
+                        ...companyRank,
+                        // Initialize vessel-specific manning fields as empty
+                        actualManning: [],
+                        actualManningFlag: false,
+                        safeManning: false,
+                        optimumManning: false,
+                        highWorkloadManning: false
+                      };
                     }
-                    return vesselRank;
                   });
                   
                   setVesselRankDataMap(prev => {
@@ -1229,27 +1244,32 @@ const AdminModuleInner = (): JSX.Element => {
                   const latestRevision = sortedRevisions[0];
                   const loadedData: VesselRankData[] = JSON.parse(latestRevision.revisionData);
                   
-                  // Merge loaded data with current company ranks to ensure designation fields are up-to-date
-                  const mergedData = loadedData.map(vesselRank => {
-                    const companyRank = companyRankData.find(cr => 
-                      cr.id === vesselRank.id || 
-                      (vesselRank.isRoleRow && cr.id === vesselRank.id && cr.role === vesselRank.role)
-                    );
+                  // Create a lookup map for loaded vessel data by ID and role
+                  const loadedDataMap = new Map<string, VesselRankData>();
+                  loadedData.forEach(vesselRank => {
+                    const key = vesselRank.isRoleRow && vesselRank.role 
+                      ? `${vesselRank.id}_${vesselRank.role}`
+                      : vesselRank.id;
+                    loadedDataMap.set(key, vesselRank);
+                  });
+                  
+                  // Merge: Start with company ranks and overlay vessel-specific data from loaded revision
+                  const mergedData = companyRankData.map(companyRank => {
+                    const key = companyRank.isRoleRow && companyRank.role 
+                      ? `${companyRank.id}_${companyRank.role}`
+                      : companyRank.id;
+                    const vesselRank = loadedDataMap.get(key);
                     
-                    if (companyRank) {
+                    if (vesselRank) {
+                      // Vessel data exists - merge it with company data
                       return {
-                        ...vesselRank,
-                        // Update company-only fields from current company ranks
-                        officer: companyRank.officer,
-                        rating: companyRank.rating,
-                        seniorOfficer: companyRank.seniorOfficer,
-                        deckOfficer: companyRank.deckOfficer,
-                        engOfficer: companyRank.engOfficer,
-                        pettyOfficer: companyRank.pettyOfficer,
-                        deckRating: companyRank.deckRating,
-                        engineRating: companyRank.engineRating,
-                        generalRating: companyRank.generalRating,
-                        cateringRating: companyRank.cateringRating,
+                        ...companyRank,
+                        // Preserve vessel-specific manning data from loaded revision
+                        actualManning: vesselRank.actualManning || [],
+                        actualManningFlag: vesselRank.actualManningFlag || false,
+                        safeManning: vesselRank.safeManning || false,
+                        optimumManning: vesselRank.optimumManning || false,
+                        highWorkloadManning: vesselRank.highWorkloadManning || false,
                         // Preserve vessel-specific overrides if they exist, otherwise use company defaults
                         safetyOfficer: vesselRank.safetyOfficer ?? companyRank.safetyOfficer,
                         sso: vesselRank.sso ?? companyRank.sso,
@@ -1257,8 +1277,18 @@ const AdminModuleInner = (): JSX.Element => {
                         navigatingOfficer: vesselRank.navigatingOfficer ?? companyRank.navigatingOfficer,
                         emtOfficer: vesselRank.emtOfficer ?? companyRank.emtOfficer,
                       };
+                    } else {
+                      // No vessel data for this company rank - create fresh vessel rank
+                      return {
+                        ...companyRank,
+                        // Initialize vessel-specific manning fields as empty
+                        actualManning: [],
+                        actualManningFlag: false,
+                        safeManning: false,
+                        optimumManning: false,
+                        highWorkloadManning: false
+                      };
                     }
-                    return vesselRank;
                   });
                   
                   setVesselRankDataMap(prev => {
