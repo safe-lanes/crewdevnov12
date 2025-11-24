@@ -2265,6 +2265,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return {
             ...vesselRank,
             // Update company-only designation fields from current company ranks
+            sortOrder: companyRank.sortOrder ?? vesselRank.sortOrder ?? 0,
             officer: companyRank.officer ?? vesselRank.officer ?? false,
             rating: companyRank.rating ?? vesselRank.rating ?? false,
             seniorOfficer: companyRank.seniorOfficer ?? vesselRank.seniorOfficer ?? false,
