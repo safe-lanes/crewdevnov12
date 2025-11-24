@@ -1495,13 +1495,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const companyOnly = req.query.companyOnly === 'true';
       let ranks = await storage.getAvailableRanks();
       
-      // Sort all ranks alphabetically by label (applies to both filtered and unfiltered)
-      ranks = ranks.sort((a, b) => {
-        // Null-safe comparison with fallback to name
-        const labelA = (a.label || a.name || '').toString();
-        const labelB = (b.label || b.name || '').toString();
-        return labelA.localeCompare(labelB, undefined, { sensitivity: 'base' });
-      });
+      // Ranks are already sorted by sortOrder in storage layer (drag-and-drop order)
+      // Do NOT re-sort alphabetically here to preserve user-defined rank order
       
       // Filter to only company-applicable ranks if requested
       if (companyOnly) {
