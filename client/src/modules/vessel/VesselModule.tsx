@@ -83,6 +83,18 @@ const useAppraisals = () => {
     });
 };
 
+// Helper function to format dates (date only, no time)
+const formatDateOnly = (dateString: string | null | undefined): string => {
+    if (!dateString) return '';
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return dateString;
+        return format(date, 'yyyy-MM-dd');
+    } catch {
+        return dateString;
+    }
+};
+
 // Form schema for Relief Status
 const reliefStatusFormSchema = z.object({
     relieverCrewName: z.string().optional(),
@@ -1188,7 +1200,7 @@ export const VesselModule = (): JSX.Element => {
                                                                 {crew.nationality || ''}
                                                             </TableCell>
                                                             <TableCell className="text-xs text-gray-700" data-testid={`cell-joined-${index + 1}`}>
-                                                                {crew.joiningDate || ''}
+                                                                {formatDateOnly(crew.joiningDate)}
                                                             </TableCell>
                                                             <TableCell className="text-xs text-gray-700" data-testid={`cell-doccheck-${index + 1}`}>
                                                                 
@@ -1197,7 +1209,7 @@ export const VesselModule = (): JSX.Element => {
                                                                 
                                                             </TableCell>
                                                             <TableCell className="text-xs text-gray-700" data-testid={`cell-relief-${index + 1}`}>
-                                                                {crew.reliefDue || ''}
+                                                                {formatDateOnly(crew.reliefDue)}
                                                             </TableCell>
                                                             <TableCell className="text-xs text-gray-700" data-testid={`cell-planned-${index + 1}`}>
                                                                 
@@ -1707,7 +1719,7 @@ export const VesselModule = (): JSX.Element => {
                                                                     {rankPlanningData?.relieverCrewName || ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-joining-date-${index + 1}`}>
-                                                                    {rankPlanningData?.joiningDate || ''}
+                                                                    {formatDateOnly(rankPlanningData?.joiningDate)}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-joining-port-${index + 1}`}>
                                                                     {rankPlanningData?.joiningPort || ''}
