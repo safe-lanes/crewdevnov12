@@ -1517,10 +1517,12 @@ export class DatabaseStorage implements IStorage {
       const vesselMasterData = await this.getMasterDataEntries('014');
       
       // Strict validation: only accept canonical vessel codes in VSL-XXX format
+      // Note: Master data stores codes in entry_id field (snake_case from database), not nuid
       const vesselNameToCodeMap = new Map<string, string>();
       for (const v of vesselMasterData) {
-        if (v.name && v.nuid && v.nuid.match(/^VSL-\d+$/)) {
-          vesselNameToCodeMap.set(v.name, v.nuid);
+        const entryId = (v as any).entry_id; // Type assertion needed for snake_case field
+        if (v.name && entryId && entryId.match(/^VSL-\d+$/)) {
+          vesselNameToCodeMap.set(v.name, entryId);
         }
       }
       
@@ -1530,7 +1532,7 @@ export class DatabaseStorage implements IStorage {
         // Fail loudly if vessel cannot be translated
         throw new Error(
           `Cannot translate vessel name "${assignment.vesselId}" to canonical vessel code. ` +
-          `Vessel must exist in master data (master_id='014') with valid VSL-XXX format nuid. ` +
+          `Vessel must exist in master data (master_id='014') with valid VSL-XXX format entry_id. ` +
           `Available vessels: ${Array.from(vesselNameToCodeMap.keys()).join(', ')}`
         );
       }
