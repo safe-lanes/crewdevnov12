@@ -285,6 +285,7 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                                                     <SelectItem value="Planned">Planned</SelectItem>
                                                     <SelectItem value="Confirmed">Confirmed</SelectItem>
                                                     <SelectItem value="In Transit">In Transit</SelectItem>
+                                                    <SelectItem value="Signed On">Signed On</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </FormControl>
