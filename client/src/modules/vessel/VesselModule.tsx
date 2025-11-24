@@ -25,6 +25,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { ComplianceMatrixDialog } from './ComplianceMatrixDialog';
@@ -180,18 +181,60 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
 
     const updatePlanningMutation = useMutation({
         mutationFn: async (data: ReliefStatusFormData) => {
-            const payload = {
-                vesselId,
-                rankId,
-                rank,
-                ...planningData,
-                ...data,
-            };
+            // Check if reliever is signing on (joiningStatus = "Signed On")
+            const isSigningOn = data.joiningStatus === "Signed On";
             
-            if (planningData?.id) {
-                return apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, payload);
+            if (isSigningOn && planningData?.relieverCrewId) {
+                // Special handling for "Signed On" - create secondary crew record
+                
+                // Step 1: Create NEW planning record for secondary crew
+                const secondaryCrewPayload = {
+                    vesselId,
+                    rankId,
+                    rank,
+                    crewMemberId: planningData.relieverCrewId,
+                    crewStatus: "secondary",
+                    signOnDate: data.joiningDate || planningData.joiningDate,
+                    joiningPort: data.joiningPort || planningData.joiningPort,
+                    contractPeriodMonths: data.contractPeriodMonths || planningData.contractPeriodMonths,
+                    contractEndRangeStartMonths: data.contractEndRangeStartMonths || planningData.contractEndRangeStartMonths,
+                    contractEndRangeEndMonths: data.contractEndRangeEndMonths || planningData.contractEndRangeEndMonths,
+                };
+                
+                await apiRequest('POST', '/api/vessel-planning', secondaryCrewPayload);
+                
+                // Step 2: Update existing planning record to clear reliever fields
+                const clearRelieverPayload = {
+                    ...planningData,
+                    relieverCrewId: null,
+                    relieverCrewName: null,
+                    relieverNationality: null,
+                    joiningDate: null,
+                    joiningPort: null,
+                    joiningStatus: null,
+                    contractPeriodMonths: null,
+                    contractEndRangeStartMonths: null,
+                    contractEndRangeEndMonths: null,
+                    deploymentChecklistCompleted: false,
+                    applicableDocsChecked: false,
+                };
+                
+                return apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, clearRelieverPayload);
             } else {
-                return apiRequest('POST', '/api/vessel-planning', payload);
+                // Normal update flow
+                const payload = {
+                    vesselId,
+                    rankId,
+                    rank,
+                    ...planningData,
+                    ...data,
+                };
+                
+                if (planningData?.id) {
+                    return apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, payload);
+                } else {
+                    return apiRequest('POST', '/api/vessel-planning', payload);
+                }
             }
         },
         onSuccess: () => {
@@ -513,10 +556,14 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
 const onBoardStatusFormSchema = z.object({
     onBoardCrewName: z.string().optional(),
     onBoardCrewNationality: z.string().optional(),
+    signOnDate: z.string().optional(),
     reliefDue: z.string().optional(),
     signOffDate: z.string().optional(),
     signOffPort: z.string().optional(),
     reliefStatus: z.string().optional(),
+    takeOverDate: z.string().optional(),
+    takeOverConfirmation: z.boolean().optional(),
+    handOverDate: z.string().optional(),
 });
 
 type OnBoardStatusFormData = z.infer<typeof onBoardStatusFormSchema>;
@@ -540,16 +587,22 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
 }) => {
     const { toast } = useToast();
     const [signOffDateOpen, setSignOffDateOpen] = useState(false);
+    const [signOnDateOpen, setSignOnDateOpen] = useState(false);
+    const [takeOverDateOpen, setTakeOverDateOpen] = useState(false);
     
     const form = useForm<OnBoardStatusFormData>({
         resolver: zodResolver(onBoardStatusFormSchema),
         defaultValues: {
             onBoardCrewName: '',
             onBoardCrewNationality: '',
+            signOnDate: '',
             reliefDue: '',
             signOffDate: '',
             signOffPort: '',
             reliefStatus: '',
+            takeOverDate: '',
+            takeOverConfirmation: false,
+            handOverDate: '',
         }
     });
 
@@ -559,38 +612,82 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
             form.reset({
                 onBoardCrewName: planningData.onBoardCrewName || '',
                 onBoardCrewNationality: planningData.onBoardCrewNationality || '',
+                signOnDate: planningData.signOnDate || '',
                 reliefDue: planningData.reliefDue || '',
                 signOffDate: planningData.signOffDate || '',
                 signOffPort: planningData.signOffPort || '',
                 reliefStatus: planningData.reliefStatus || '',
+                takeOverDate: planningData.takeOverDate || '',
+                takeOverConfirmation: planningData.takeOverConfirmation || false,
+                handOverDate: planningData.handOverDate || '',
             });
         } else if (open && !planningData) {
             // Reset to empty form for new entry
             form.reset({
                 onBoardCrewName: '',
                 onBoardCrewNationality: '',
+                signOnDate: '',
                 reliefDue: '',
                 signOffDate: '',
                 signOffPort: '',
                 reliefStatus: '',
+                takeOverDate: '',
+                takeOverConfirmation: false,
+                handOverDate: '',
             });
         }
     }, [open, planningData, form]);
 
     const updatePlanningMutation = useMutation({
         mutationFn: async (data: OnBoardStatusFormData) => {
-            const payload = {
-                vesselId,
-                rankId,
-                rank,
-                ...planningData,
-                ...data,
-            };
+            // Check if this is a takeover (takeOverConfirmation checked AND takeOverDate set)
+            const isTakeover = data.takeOverConfirmation && data.takeOverDate;
             
-            if (planningData?.id) {
-                return apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, payload);
+            if (isTakeover && planningData?.crewStatus === "secondary") {
+                // TAKEOVER LOGIC: Secondary crew is taking over as Primary
+                
+                // Step 1: Fetch all planning records for this vessel to find primary and secondary
+                const allPlanning = await apiRequest('GET', `/api/vessel-planning/vessel/${vesselId}`) as any[];
+                
+                // Find primary crew member for this rank
+                const primaryCrew = allPlanning.find((p: any) => 
+                    p.rankId === rankId && p.crewStatus === "primary"
+                );
+                
+                // Step 2: If primary exists, demote them to secondary and set handover date
+                if (primaryCrew) {
+                    await apiRequest('PATCH', `/api/vessel-planning/${primaryCrew.id}`, {
+                        crewStatus: "secondary",
+                        handOverDate: data.takeOverDate, // Auto-fill handover date
+                    });
+                }
+                
+                // Step 3: Promote current secondary to primary
+                const promotePayload = {
+                    vesselId,
+                    rankId,
+                    rank,
+                    ...planningData,
+                    ...data,
+                    crewStatus: "primary", // Change from secondary to primary
+                };
+                
+                return apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, promotePayload);
             } else {
-                return apiRequest('POST', '/api/vessel-planning', payload);
+                // Normal update flow
+                const payload = {
+                    vesselId,
+                    rankId,
+                    rank,
+                    ...planningData,
+                    ...data,
+                };
+                
+                if (planningData?.id) {
+                    return apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, payload);
+                } else {
+                    return apiRequest('POST', '/api/vessel-planning', payload);
+                }
             }
         },
         onSuccess: () => {
@@ -776,6 +873,114 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                                 </FormItem>
                             )}
                         />
+
+                        {/* Joining Date (Sign On) - Date Picker */}
+                        <FormField
+                            control={form.control}
+                            name="signOnDate"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Joining Date (S/On)</FormLabel>
+                                        <Popover open={signOnDateOpen} onOpenChange={setSignOnDateOpen}>
+                                            <PopoverTrigger asChild>
+                                                <FormControl>
+                                                    <Button
+                                                        variant="outline"
+                                                        className="w-full justify-start text-left font-normal"
+                                                        data-testid="button-sign-on-date"
+                                                    >
+                                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                                        {field.value ? formatDisplayDate(field.value) : <span className="text-gray-400">dd-mm-yyyy</span>}
+                                                    </Button>
+                                                </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar
+                                                    mode="single"
+                                                    selected={field.value ? parseDate(field.value) : undefined}
+                                                    onSelect={(date) => {
+                                                        if (date) {
+                                                            field.onChange(format(date, 'yyyy-MM-dd'));
+                                                            setSignOnDateOpen(false);
+                                                        }
+                                                    }}
+                                                    initialFocus
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+
+                        {/* Take Over Date - Date Picker */}
+                        <FormField
+                            control={form.control}
+                            name="takeOverDate"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Take Over Date</FormLabel>
+                                        <Popover open={takeOverDateOpen} onOpenChange={setTakeOverDateOpen}>
+                                            <PopoverTrigger asChild>
+                                                <FormControl>
+                                                    <Button
+                                                        variant="outline"
+                                                        className="w-full justify-start text-left font-normal"
+                                                        data-testid="button-take-over-date"
+                                                    >
+                                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                                        {field.value ? formatDisplayDate(field.value) : <span className="text-gray-400">dd-mm-yyyy</span>}
+                                                    </Button>
+                                                </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar
+                                                    mode="single"
+                                                    selected={field.value ? parseDate(field.value) : undefined}
+                                                    onSelect={(date) => {
+                                                        if (date) {
+                                                            field.onChange(format(date, 'yyyy-MM-dd'));
+                                                            setTakeOverDateOpen(false);
+                                                        }
+                                                    }}
+                                                    initialFocus
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+
+                        {/* Take Over Confirmation - Checkbox */}
+                        <FormField
+                            control={form.control}
+                            name="takeOverConfirmation"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Take Over Confirmation</FormLabel>
+                                        <FormControl>
+                                            <div className="flex items-center">
+                                                <Checkbox 
+                                                    checked={field.value || false}
+                                                    onCheckedChange={field.onChange}
+                                                    data-testid="checkbox-take-over-confirmation"
+                                                />
+                                            </div>
+                                        </FormControl>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+
+                        {/* Hand Over Date - Display Only (Auto-filled) */}
+                        <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                            <span className="text-sm text-gray-700">Hand Over Date:</span>
+                            <span className="text-sm text-gray-900">{planningData?.handOverDate ? formatDisplayDate(planningData.handOverDate) : '-'}</span>
+                        </div>
 
                         {/* Action Buttons */}
                         <div className="flex justify-end gap-2 pt-4">
