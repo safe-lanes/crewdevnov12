@@ -1651,9 +1651,12 @@ export const VesselModule = (): JSX.Element => {
                                                     vesselRanks.map((rank: any, index: number) => {
                                                         // Strip suffix from rank name (e.g., "3rd Officer_1" -> "3rd Officer")
                                                         const rankName = (rank.role || rank.rank)?.split('_')[0];
-                                                        const rankPlanningData = vesselPlanning.find((p: any) => 
+                                                        // Find all matching planning records for this rank
+                                                        const matchingRecords = vesselPlanning.filter((p: any) => 
                                                             p.rankId === rank.id || p.rankId === rank.rankId || p.rank === rankName
                                                         );
+                                                        // Prioritize records with reliever data, fallback to first match
+                                                        const rankPlanningData = matchingRecords.find((p: any) => p.relieverCrewId) || matchingRecords[0];
                                                         
                                                         return (
                                                             <TableRow key={rank.id || index} className="hover:bg-gray-50 border-b border-gray-100">
