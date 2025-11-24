@@ -409,14 +409,23 @@ export const vesselPlanning = pgTable("vessel_planning", {
   // Foreign key to crew member - SINGLE SOURCE OF TRUTH
   crewMemberId: text("crew_member_id"), // References crewMembers.id or employeeId
   
+  // Crew Status - for managing primary/secondary during handover
+  crewStatus: text("crew_status").default("primary"), // "primary" | "secondary"
+  
   // On Board Status
   onBoardCrewId: text("on_board_crew_id"), // DEPRECATED - use crewMemberId instead
   onBoardCrewName: text("on_board_crew_name"), // DEPRECATED - join with crewMembers
   onBoardCrewNationality: text("on_board_crew_nationality"), // DEPRECATED - join with crewMembers
+  signOnDate: text("sign_on_date"), // Actual sign-on date when crew boards vessel
   reliefDue: text("relief_due"),
   signOffDate: text("sign_off_date"),
   signOffPort: text("sign_off_port"),
   reliefStatus: text("relief_status"),
+  
+  // Handover Workflow Fields
+  takeOverDate: text("take_over_date"), // Date when secondary takes over as primary
+  takeOverConfirmation: boolean("take_over_confirmation").default(false), // Checkbox confirmation
+  handOverDate: text("hand_over_date"), // Auto-filled when handing over (matches takeOverDate of reliever)
   
   // Reliever Status
   relieverCrewId: text("reliever_crew_id"),
@@ -424,7 +433,7 @@ export const vesselPlanning = pgTable("vessel_planning", {
   relieverNationality: text("reliever_nationality"), // DEPRECATED - join with crewMembers
   joiningDate: text("joining_date"),
   joiningPort: text("joining_port"),
-  joiningStatus: text("joining_status"),
+  joiningStatus: text("joining_status"), // Proposed, Planned, Confirmed, In Transit, Signed On
   contractPeriodMonths: integer("contract_period_months"),
   contractEndRangeStartMonths: integer("contract_end_range_start_months"),
   contractEndRangeEndMonths: integer("contract_end_range_end_months"),
@@ -1074,13 +1083,19 @@ export const insertVesselPlanningSchema = createInsertSchema(vesselPlanning).pic
   vesselId: true,
   rankId: true,
   rank: true,
+  crewMemberId: true,
+  crewStatus: true,
   onBoardCrewId: true,
   onBoardCrewName: true,
   onBoardCrewNationality: true,
+  signOnDate: true,
   reliefDue: true,
   signOffDate: true,
   signOffPort: true,
   reliefStatus: true,
+  takeOverDate: true,
+  takeOverConfirmation: true,
+  handOverDate: true,
   relieverCrewId: true,
   relieverCrewName: true,
   relieverNationality: true,
