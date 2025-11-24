@@ -35,6 +35,11 @@ The application employs a modern web stack with a module-first architecture for 
 - **Vessel Revision System**: Manages vessel rank assignments with draft/submission workflows and date validation.
 - **Rank Designation Synchronization**: Supports company and vessel-specific rank designations with inheritance and overrides.
 - **Vessel Database Module**: Displays vessel data and includes Officer Matrix, Planning, and Training Matrix.
+    - **Crew Handover Workflow**: Manages crew transitions with primary/secondary status system. When a reliever signs on:
+        - If position is vacant (no primary crew): Reliever is promoted directly to primary status
+        - If position is occupied: Reliever becomes secondary crew while existing crew remains primary
+        - Crew names display in "LastName, FirstName" format with status indicator (P/S)
+        - Backend enrichment joins vessel_planning with crew_members table for name display
 - **Rotation Module**: Manages crew rotation planning with "Due" and "Plan" sections, visual timelines, and comprehensive filters.
 - **Promotion Hierarchy System**: Configurable promotion paths, integrated with a Promotions module for filtering and "Next Promotion Rank" calculation. Includes a multi-part Promotion Review Form and a detailed Promotion Checklist Form.
 - **Forms Configuration - Company Rank Integration**: Uses company-specific rank labels for rank group creation and automatically matches forms to crew member ranks during appraisals.
