@@ -184,27 +184,11 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
             // Check if reliever is signing on (joiningStatus = "Signed On")
             const isSigningOn = data.joiningStatus === "Signed On";
             
-            console.log('🚀 Relief status mutation starting:', {
-                joiningStatus: data.joiningStatus,
-                isSigningOn,
-                hasRelieverCrewId: !!planningData?.relieverCrewId,
-                relieverCrewId: planningData?.relieverCrewId,
-                willRunHandover: isSigningOn && !!planningData?.relieverCrewId
-            });
-            
             if (isSigningOn && planningData?.relieverCrewId) {
                 // Special handling for "Signed On" - check if position is vacant
                 
                 // Fetch all planning records for this vessel to check for existing crew
                 const existingRecordsResponse = await fetch(`/api/vessel-planning/vessel/${vesselId}`).then(r => r.json());
-                
-                console.log('🔍 Handover validation:', {
-                    vesselId,
-                    rankId,
-                    rank,
-                    relieverCrewId: planningData.relieverCrewId,
-                    allRecords: existingRecordsResponse.filter((p: any) => p.rank === rank || p.rankId === rankId)
-                });
                 
                 // Check if PRIMARY crew exists for this rank
                 const existingPrimary = existingRecordsResponse.find((p: any) => 
@@ -218,16 +202,8 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                     (p.rankId === rankId || p.rank === rank) && p.crewStatus === 'secondary'
                 );
                 
-                console.log('🔍 Validation results:', {
-                    existingPrimary: existingPrimary ? { id: existingPrimary.id, crewMemberId: existingPrimary.crewMemberId } : null,
-                    existingSecondary: existingSecondary ? { id: existingSecondary.id, crewMemberId: existingSecondary.crewMemberId } : null
-                });
-                
-                if (existingSecondary) {
-                    throw new Error(`A secondary crew member is already assigned to this rank. Cannot create duplicate secondary record.`);
-                }
-                
                 // VACANT POSITION LOGIC: If no primary crew exists, promote reliever to primary directly
+                // NOTE: We allow this even if a secondary exists (reliever becomes new primary, secondary remains)
                 if (!existingPrimary) {
                     // Update existing planning record to convert reliever to primary crew
                     // Exclude timestamp fields (createdAt, updatedAt) to avoid Date object errors
@@ -255,6 +231,11 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                 }
                 
                 // HANDOVER WORKFLOW: Primary crew exists, create secondary record
+                // Validation: Prevent duplicate secondary crew
+                if (existingSecondary) {
+                    throw new Error(`A secondary crew member is already assigned to ${rank}. Only one secondary crew is allowed per rank.`);
+                }
+                
                 // Step 1: Create NEW planning record for secondary crew
                 const secondaryCrewPayload = {
                     vesselId,
