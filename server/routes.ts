@@ -2293,7 +2293,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       
       console.log(`📜 [VESSEL RANKS API] Found ${activeRanks.length} active ranks for vessel ${vesselId} (merged with company ranks)`);
-      res.json(activeRanks);
+      console.log(`📜 [VESSEL RANKS API] Before sort - first 3 ranks:`, activeRanks.slice(0, 3).map((r: any) => `${r.id}:${r.rank}(sortOrder:${r.sortOrder})`));
+      
+      // Sort manually by sortOrder to ensure correct display order
+      const sortedRanks = activeRanks.sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
+      
+      console.log(`📜 [VESSEL RANKS API] After sort - first 3 ranks:`, sortedRanks.slice(0, 3).map((r: any) => `${r.id}:${r.rank}(sortOrder:${r.sortOrder})`));
+      res.json(sortedRanks);
     } catch (error) {
       console.error("Failed to fetch vessel ranks:", error);
       res.status(500).json({ error: "Failed to fetch vessel ranks" });
