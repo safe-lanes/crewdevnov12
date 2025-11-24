@@ -2547,7 +2547,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (p.relieverCrewId) {
           const reliever: any = crewMap.get(p.relieverCrewId);
           if (reliever) {
-            enriched.relieverCrewName = `${reliever.firstName || ''} ${reliever.lastName || ''}`.trim();
+            // Format as "Surname, Given Name" to match column header
+            const lastName = reliever.familyName || reliever.lastName || '';
+            const firstName = reliever.firstName || '';
+            enriched.relieverCrewName = lastName && firstName ? `${lastName}, ${firstName}` : (lastName || firstName);
             enriched.relieverNationality = reliever.nationality;
           }
         }
@@ -2606,7 +2609,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (p.relieverCrewId) {
           const reliever: any = crewMap.get(p.relieverCrewId);
           if (reliever) {
-            enriched.relieverCrewName = `${reliever.firstName || ''} ${reliever.lastName || ''}`.trim();
+            // Format as "Surname, Given Name" to match column header
+            const lastName = reliever.familyName || reliever.lastName || '';
+            const firstName = reliever.firstName || '';
+            enriched.relieverCrewName = lastName && firstName ? `${lastName}, ${firstName}` : (lastName || firstName);
             enriched.relieverNationality = reliever.nationality;
             enriched.relieverData = {
               id: reliever.id,
