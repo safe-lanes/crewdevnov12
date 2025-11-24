@@ -188,7 +188,7 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                 // Special handling for "Signed On" - check if position is vacant
                 
                 // Fetch all planning records for this vessel to check for existing crew
-                const existingRecordsResponse = await apiRequest('GET', `/api/vessel-planning/vessel/${vesselId}`) as unknown as any[];
+                const existingRecordsResponse = await fetch(`/api/vessel-planning/vessel/${vesselId}`).then(r => r.json());
                 
                 // Check if PRIMARY crew exists for this rank
                 const existingPrimary = existingRecordsResponse.find((p: any) => 
