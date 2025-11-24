@@ -1940,7 +1940,11 @@ export const VesselModule = (): JSX.Element => {
                                                         );
                                                         
                                                         // Separate primary and secondary crew - CRITICAL: explicitly select by crew_status
-                                                        const primaryCrew = matchingRecords.find((p: any) => p.crewStatus === 'primary');
+                                                        // PRIORITIZE records with reliever data for display purposes
+                                                        const primaryCrew = matchingRecords.find((p: any) => 
+                                                            p.crewStatus === 'primary' && p.relieverCrewId
+                                                        ) || matchingRecords.find((p: any) => p.crewStatus === 'primary');
+                                                        
                                                         const secondaryCrew = matchingRecords.find((p: any) => p.crewStatus === 'secondary');
                                                         
                                                         // For display and editing, ALWAYS prefer primary crew if exists, otherwise fallback to any record

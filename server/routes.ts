@@ -2616,11 +2616,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (p.relieverCrewId) {
           const reliever: any = crewMap.get(p.relieverCrewId);
           if (reliever) {
-            // Format as "Surname, Given Name" to match column header
-            const lastName = reliever.familyName || reliever.lastName || '';
-            const firstName = reliever.firstName || '';
-            enriched.relieverCrewName = lastName && firstName ? `${lastName}, ${firstName}` : (lastName || firstName);
-            enriched.relieverNationality = reliever.nationality;
+            // Only enrich relieverCrewName if not already populated in database
+            if (!p.relieverCrewName) {
+              const lastName = reliever.familyName || reliever.lastName || '';
+              const firstName = reliever.firstName || '';
+              enriched.relieverCrewName = lastName && firstName ? `${lastName}, ${firstName}` : (lastName || firstName);
+            }
+            // Only enrich relieverNationality if not already populated
+            if (!p.relieverNationality) {
+              enriched.relieverNationality = reliever.nationality;
+            }
             enriched.relieverData = {
               id: reliever.id,
               employeeId: reliever.employeeId,
