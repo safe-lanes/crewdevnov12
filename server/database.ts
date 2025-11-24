@@ -1,5 +1,6 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+import { addMonths } from "date-fns";
 import { 
   users, 
   forms, 
@@ -1513,20 +1514,30 @@ export class DatabaseStorage implements IStorage {
       // Map assignment fields correctly (fromDate→joiningDate, toDate→reliefDue)
       const crewMemberId = assignment.crewMemberId || assignment.crewId;
       const joiningDate = assignment.fromDate || assignment.joiningDate;
-      const reliefDue = assignment.toDate || assignment.reliefDue;
+      let reliefDue = assignment.toDate || assignment.reliefDue;
+      let contractPeriodMonths = assignment.contractPeriod || assignment.contractPeriodMonths;
+      
+      // If reliefDue is missing but we have joiningDate and contractPeriod, calculate it
+      if (!reliefDue && joiningDate && contractPeriodMonths) {
+        const joiningDateObj = new Date(joiningDate);
+        const reliefDueObj = addMonths(joiningDateObj, contractPeriodMonths);
+        reliefDue = reliefDueObj.toISOString().split('T')[0];
+      }
       
       if (!crewMemberId || !joiningDate || !reliefDue) {
-        console.error('Missing required assignment fields:', { crewMemberId, joiningDate, reliefDue });
+        console.error('Missing required assignment fields:', { crewMemberId, joiningDate, reliefDue, contractPeriod: contractPeriodMonths });
         return { success: false };
       }
       
-      // Calculate contract period in months
-      const fromDateObj = new Date(joiningDate);
-      const toDateObj = new Date(reliefDue);
-      const contractPeriodMonths = Math.max(1, 
-        (toDateObj.getFullYear() - fromDateObj.getFullYear()) * 12 + 
-        (toDateObj.getMonth() - fromDateObj.getMonth())
-      );
+      // Calculate contract period in months if not already set
+      if (!contractPeriodMonths) {
+        const fromDateObj = new Date(joiningDate);
+        const toDateObj = new Date(reliefDue);
+        contractPeriodMonths = Math.max(1, 
+          (toDateObj.getFullYear() - fromDateObj.getFullYear()) * 12 + 
+          (toDateObj.getMonth() - fromDateObj.getMonth())
+        );
+      }
       
       // Check for conflicts before deployment
       const conflicts = await this.checkAssignmentConflicts(
