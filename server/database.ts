@@ -87,7 +87,7 @@ import {
   type MasterDataEntry,
   type InsertMasterDataEntry
 } from "@shared/schema";
-import { eq, desc, sql, and, inArray, or, like, ilike, isNull } from "drizzle-orm";
+import { eq, desc, asc, sql, and, inArray, or, like, ilike, isNull } from "drizzle-orm";
 import { type IStorage } from "./storage";
 
 export class DatabaseStorage implements IStorage {
@@ -827,7 +827,7 @@ export class DatabaseStorage implements IStorage {
 
   // Available Rank methods
   async getAvailableRanks(): Promise<AvailableRank[]> {
-    return await this.db.select().from(availableRanks);
+    return await this.db.select().from(availableRanks).orderBy(asc(availableRanks.sortOrder));
   }
 
   async createAvailableRank(insertAvailableRank: InsertAvailableRank): Promise<AvailableRank> {
