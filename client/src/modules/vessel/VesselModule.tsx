@@ -856,7 +856,16 @@ export const VesselModule = (): JSX.Element => {
     }, [availableRanks]);
     
     // Fetch vessel ranks for selected vessel (use vessel ID, e.g., VSL-003)
-    const { data: vesselRanks = [], isLoading: ranksLoading } = useVesselRanks(selectedVessel?.vesselId || null);
+    const { data: vesselRanksRaw = [], isLoading: ranksLoading } = useVesselRanks(selectedVessel?.vesselId || null);
+    
+    // Sort vessel ranks according to Rank Admin order
+    const vesselRanks = useMemo(() => {
+        return [...vesselRanksRaw].sort((a: any, b: any) => {
+            const orderA = rankOrderMap.get(a.rank) ?? 999999;
+            const orderB = rankOrderMap.get(b.rank) ?? 999999;
+            return orderA - orderB;
+        });
+    }, [vesselRanksRaw, rankOrderMap]);
     
     // Fetch vessel planning for selected vessel (use vessel ID, e.g., VSL-003)
     const { data: vesselPlanning = [], isLoading: planningLoading } = useVesselPlanning(selectedVessel?.vesselId || null);
