@@ -1467,16 +1467,22 @@ export class DatabaseStorage implements IStorage {
       const assignments = plan.assignments ? JSON.parse(plan.assignments) : [];
       
       // Add plan context to each assignment
-      for (const assignment of assignments) {
+      for (let i = 0; i < assignments.length; i++) {
+        const assignment = assignments[i];
+        
         // Apply vessel filter
         if (filters?.vessels && !filters.vessels.includes(assignment.vesselName)) continue;
         
         // Apply rank filter
         if (filters?.ranks && !filters.ranks.includes(assignment.rank)) continue;
         
+        // Strip any existing assignmentIndex to ensure correct index from loop
+        const { assignmentIndex: _, ...assignmentWithoutIndex } = assignment;
+        
         proposedAssignments.push({
-          ...assignment,
+          ...assignmentWithoutIndex,
           planId: plan.id,
+          assignmentIndex: i,
           planFromDate: plan.planFromDate,
           planToDate: plan.planToDate,
           proposedBy: plan.proposedBy,
