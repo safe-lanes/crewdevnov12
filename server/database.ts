@@ -1598,6 +1598,12 @@ export class DatabaseStorage implements IStorage {
         return { success: false, conflicts };
       }
       
+      // Fetch crew member data to populate relieverCrewName
+      const crewMember = await this.getCrewMemberById(crewMemberId);
+      const relieverCrewName = crewMember ? 
+        `${crewMember.familyName || crewMember.lastName || ''}, ${crewMember.firstName || ''}`.trim().replace(/^,\s*|,\s*$/g, '') : 
+        null;
+      
       // Create vessel_planning record
       // Note: Deployed rotation assignments are RELIEVERS (incoming crew), not on-board crew
       // Store vessel CODE (e.g., "VSL-003"), not vessel NAME
@@ -1607,10 +1613,12 @@ export class DatabaseStorage implements IStorage {
           vesselId: vesselCode,
           rankId: assignment.rank || 'Unknown',
           rank: assignment.rank,
+          crewStatus: 'primary', // CRITICAL: Set default crew_status to 'primary'
           relieverCrewId: crewMemberId,
+          relieverCrewName: relieverCrewName, // FIXED: Populate reliever name
           joiningDate: joiningDate,
           joiningPort: assignment.joiningPort || null,
-          joiningStatus: 'Deployed',
+          joiningStatus: 'Planned', // FIXED: Set to 'Planned' (was 'Deployed')
           contractPeriodMonths: contractPeriodMonths,
         })
         .returning();
