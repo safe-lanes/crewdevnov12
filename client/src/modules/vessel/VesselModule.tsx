@@ -314,7 +314,40 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
 
     const handleSave = () => {
         const data = form.getValues();
-        updatePlanningMutation.mutate(data);
+        
+        // Validate: If no reliever crew name is assigned, clear all reliever fields before saving
+        if (!data.relieverCrewName || data.relieverCrewName.trim() === '') {
+            // If user tried to save other fields without a crew member, show warning
+            const hasOtherData = data.joiningStatus || data.joiningPort || data.joiningDate || 
+                               data.contractPeriodMonths || data.contractEndRangeStartMonths || 
+                               data.contractEndRangeEndMonths;
+            if (hasOtherData) {
+                toast({
+                    title: "Name Required",
+                    description: "Please assign a crew member first before entering other reliever details.",
+                    variant: "destructive",
+                });
+                return;
+            }
+            
+            // Clear all reliever-related fields since no crew is assigned
+            const clearedData: ReliefStatusFormData = {
+                relieverCrewName: '',
+                relieverNationality: '',
+                joiningStatus: undefined,
+                contractPeriodMonths: undefined,
+                contractEndRangeStartMonths: undefined,
+                contractEndRangeEndMonths: undefined,
+                joiningDate: undefined,
+                joiningPort: undefined,
+                deploymentChecklistCompleted: undefined,
+                applicableDocsChecked: undefined,
+            };
+            
+            updatePlanningMutation.mutate(clearedData);
+        } else {
+            updatePlanningMutation.mutate(data);
+        }
     };
 
     const handleSubmit = form.handleSubmit((data) => {
