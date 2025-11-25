@@ -1969,6 +1969,9 @@ export const VesselModule = (): JSX.Element => {
                                                         const primaryCrew = matchingRecords.find((p: any) => p.crewStatus === 'primary');
                                                         const secondaryCrew = matchingRecords.find((p: any) => p.crewStatus === 'secondary');
                                                         
+                                                        // Flag to indicate both crew types exist (for showing P/S badges)
+                                                        const hasBothCrewTypes = !!(primaryCrew && secondaryCrew);
+                                                        
                                                         // If both primary and secondary exist, create two separate rows
                                                         if (primaryCrew && secondaryCrew) {
                                                             normalizedRows.push({
@@ -1976,48 +1979,54 @@ export const VesselModule = (): JSX.Element => {
                                                                 rank,
                                                                 rankName,
                                                                 crewStatus: 'primary',
-                                                                planningData: primaryCrew
+                                                                planningData: primaryCrew,
+                                                                hasBothCrewTypes
                                                             });
                                                             normalizedRows.push({
                                                                 serialNumber: rankIndex + 1,
                                                                 rank,
                                                                 rankName,
                                                                 crewStatus: 'secondary',
-                                                                planningData: secondaryCrew
+                                                                planningData: secondaryCrew,
+                                                                hasBothCrewTypes
                                                             });
                                                         } else if (primaryCrew) {
-                                                            // Only primary crew exists
+                                                            // Only primary crew exists - no badge needed
                                                             normalizedRows.push({
                                                                 serialNumber: rankIndex + 1,
                                                                 rank,
                                                                 rankName,
                                                                 crewStatus: 'primary',
-                                                                planningData: primaryCrew
+                                                                planningData: primaryCrew,
+                                                                hasBothCrewTypes: false
                                                             });
                                                         } else if (secondaryCrew) {
-                                                            // Only secondary crew exists (edge case)
+                                                            // Only secondary crew exists (edge case) - no badge needed
                                                             normalizedRows.push({
                                                                 serialNumber: rankIndex + 1,
                                                                 rank,
                                                                 rankName,
                                                                 crewStatus: 'secondary',
-                                                                planningData: secondaryCrew
+                                                                planningData: secondaryCrew,
+                                                                hasBothCrewTypes: false
                                                             });
                                                         } else {
-                                                            // No crew assigned to this rank - create empty primary row
+                                                            // No crew assigned to this rank - create empty primary row, no badge
                                                             normalizedRows.push({
                                                                 serialNumber: rankIndex + 1,
                                                                 rank,
                                                                 rankName,
                                                                 crewStatus: 'primary',
-                                                                planningData: matchingRecords[0] || null
+                                                                planningData: matchingRecords[0] || null,
+                                                                hasBothCrewTypes: false
                                                             });
                                                         }
                                                     });
                                                     
                                                     return normalizedRows.map((row, rowIndex) => {
-                                                        const { serialNumber, rank, rankName, crewStatus, planningData } = row;
-                                                        const statusBadge = crewStatus === 'primary' ? ' (P)' : ' (S)';
+                                                        const { serialNumber, rank, rankName, crewStatus, planningData, hasBothCrewTypes } = row;
+                                                        // Only show (P)/(S) badges when BOTH primary and secondary exist for the same rank
+                                                        const statusBadge = hasBothCrewTypes ? (crewStatus === 'primary' ? ' (P)' : ' (S)') : '';
                                                         const displayRank = (rank.role || rank.rank) + statusBadge;
                                                         
                                                         // Show blank instead of "undefined" for vacant positions
