@@ -1595,9 +1595,32 @@ export const VesselModule = (): JSX.Element => {
                                                         );
                                                     }
                                                     
+                                                    // Build a map to determine which ranks have both primary and secondary crew
+                                                    const rankCrewMap = new Map<string, { primary: boolean; secondary: boolean }>();
+                                                    vesselCrew.forEach((planning: any) => {
+                                                        const rankBase = planning.rank?.split('_')[0] || planning.rank;
+                                                        if (!rankCrewMap.has(rankBase)) {
+                                                            rankCrewMap.set(rankBase, { primary: false, secondary: false });
+                                                        }
+                                                        const entry = rankCrewMap.get(rankBase)!;
+                                                        if (planning.crewStatus === 'primary') entry.primary = true;
+                                                        if (planning.crewStatus === 'secondary') entry.secondary = true;
+                                                    });
+                                                    
                                                     return vesselCrew.map((planning: any, index: number) => {
                                                         // Use embedded crew member data from planning (already enriched by API)
                                                         const crewData = planning.crewMemberData;
+                                                        
+                                                        // Strip suffix from rank name (e.g., "3rd Officer_1" -> "3rd Officer")
+                                                        const rankBase = planning.rank?.split('_')[0] || planning.rank;
+                                                        
+                                                        // Check if both primary and secondary exist for this rank
+                                                        const rankEntry = rankCrewMap.get(rankBase);
+                                                        const hasBothCrewTypes = !!(rankEntry?.primary && rankEntry?.secondary);
+                                                        
+                                                        // Only show (P)/(S) badge in Rank column when BOTH crew types exist
+                                                        const statusBadge = hasBothCrewTypes ? (planning.crewStatus === 'secondary' ? ' (S)' : ' (P)') : '';
+                                                        const displayRank = rankBase + statusBadge;
                                                         
                                                         return (
                                                         <TableRow key={planning.id || index} className="hover:bg-gray-50 border-b border-gray-100">
@@ -1605,10 +1628,10 @@ export const VesselModule = (): JSX.Element => {
                                                                 {index + 1}.
                                                             </TableCell>
                                                             <TableCell className="text-xs text-gray-700" data-testid={`cell-rank-${index + 1}`}>
-                                                                {planning.rank || ''}
+                                                                {displayRank}
                                                             </TableCell>
                                                             <TableCell className="text-xs text-gray-700" data-testid={`cell-name-${index + 1}`}>
-                                                                {planning.crewName ? `${planning.crewName} ${planning.crewStatus === 'secondary' ? '(S)' : '(P)'}` : ''}
+                                                                {planning.crewName || ''}
                                                             </TableCell>
                                                             <TableCell className="text-xs text-gray-700" data-testid={`cell-nationality-${index + 1}`}>
                                                                 {planning.nationality || ''}
