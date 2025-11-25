@@ -3,9 +3,33 @@
  */
 
 /**
- * Format a date string to a readable format
+ * Format a date string to DD-MMM-YYYY format (e.g., 15-Dec-2025)
+ * This is the standard date display format across the application
  */
-export function formatDate(dateString: string | Date, options?: Intl.DateTimeFormatOptions): string {
+export function formatDate(dateString: string | Date | null | undefined): string {
+  if (!dateString) {
+    return '';
+  }
+  
+  const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+  
+  if (isNaN(date.getTime())) {
+    return '';
+  }
+
+  const day = date.getDate().toString().padStart(2, '0');
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const month = months[date.getMonth()];
+  const year = date.getFullYear();
+
+  return `${day}-${month}-${year}`;
+}
+
+/**
+ * Format a date string using custom Intl.DateTimeFormat options
+ * Use this only when a different format is explicitly required
+ */
+export function formatDateCustom(dateString: string | Date, options?: Intl.DateTimeFormatOptions): string {
   const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
   
   if (isNaN(date.getTime())) {
