@@ -843,7 +843,12 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     c3SubmittedDate: savedData.c3SubmittedDate || ''
   });
 
+  // Use ref to track editing sections to avoid re-render loops
+  const editingSectionsRef = useRef(editingSections);
+  editingSectionsRef.current = editingSections;
+
   // Handle click outside to auto-save sections
+  // PERFORMANCE FIX: Use ref instead of state in dependency array to prevent infinite loops
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
@@ -857,18 +862,21 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
         return; // Don't auto-save if clicking on dropdown elements
       }
       
+      // Use ref to get current state without causing re-renders
+      const currentEditingSections = editingSectionsRef.current;
+      
       // Check if click is outside section A1.1
-      if (editingSections['A1.1'] && sectionA11Ref.current && !sectionA11Ref.current.contains(target)) {
+      if (currentEditingSections['A1.1'] && sectionA11Ref.current && !sectionA11Ref.current.contains(target)) {
         setEditingSections(prev => ({ ...prev, 'A1.1': false }));
       }
       
       // Check if click is outside section A1.2
-      if (editingSections['A1.2'] && sectionA12Ref.current && !sectionA12Ref.current.contains(target)) {
+      if (currentEditingSections['A1.2'] && sectionA12Ref.current && !sectionA12Ref.current.contains(target)) {
         setEditingSections(prev => ({ ...prev, 'A1.2': false }));
       }
       
       // Check if click is outside section A1.3
-      if (editingSections['A1.3'] && sectionA13Ref.current && !sectionA13Ref.current.contains(target)) {
+      if (currentEditingSections['A1.3'] && sectionA13Ref.current && !sectionA13Ref.current.contains(target)) {
         setEditingSections(prev => ({ ...prev, 'A1.3': false }));
       }
     };
@@ -877,7 +885,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [editingSections]);
+  }, []); // Empty dependency array - uses ref to access current state
 
   // Refs for A1-A5 sections for intersection observer
   const a1Ref = useRef<HTMLDivElement>(null);
