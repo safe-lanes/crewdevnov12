@@ -2201,10 +2201,10 @@ export const VesselModule = (): JSX.Element => {
                                                                     {crewName}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-relief-due-${rowIndex + 1}`}>
-                                                                    {planningData?.reliefDue || planningData?.reliefDate || ''}
+                                                                    {formatDateOnly(planningData?.reliefDue || planningData?.reliefDate)}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-soff-date-${rowIndex + 1}`}>
-                                                                    {planningData?.signOffDate || ''}
+                                                                    {formatDateOnly(planningData?.signOffDate)}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-soff-port-${rowIndex + 1}`}>
                                                                     {planningData?.signOffPort || ''}
