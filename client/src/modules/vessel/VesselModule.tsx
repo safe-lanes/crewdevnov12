@@ -701,6 +701,9 @@ const onBoardStatusFormSchema = z.object({
     takeOverDate: z.string().optional(),
     takeOverConfirmation: z.boolean().optional(),
     handOverDate: z.string().optional(),
+    contractPeriodMonths: z.coerce.number().optional(),
+    contractEndRangeStartMonths: z.coerce.number().optional(),
+    contractEndRangeEndMonths: z.coerce.number().optional(),
 });
 
 type OnBoardStatusFormData = z.infer<typeof onBoardStatusFormSchema>;
@@ -740,6 +743,9 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
             takeOverDate: '',
             takeOverConfirmation: false,
             handOverDate: '',
+            contractPeriodMonths: undefined,
+            contractEndRangeStartMonths: undefined,
+            contractEndRangeEndMonths: undefined,
         }
     });
 
@@ -757,6 +763,9 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                 takeOverDate: planningData.takeOverDate || '',
                 takeOverConfirmation: planningData.takeOverConfirmation || false,
                 handOverDate: planningData.handOverDate || '',
+                contractPeriodMonths: planningData.contractPeriodMonths || undefined,
+                contractEndRangeStartMonths: planningData.contractEndRangeStartMonths || undefined,
+                contractEndRangeEndMonths: planningData.contractEndRangeEndMonths || undefined,
             });
         } else if (open && !planningData) {
             // Reset to empty form for new entry
@@ -771,6 +780,9 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                 takeOverDate: '',
                 takeOverConfirmation: false,
                 handOverDate: '',
+                contractPeriodMonths: undefined,
+                contractEndRangeStartMonths: undefined,
+                contractEndRangeEndMonths: undefined,
             });
         }
     }, [open, planningData, form]);
@@ -903,164 +915,28 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
 
                 <Form {...form}>
                     <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-                        {/* Name - Display only */}
+                        {/* 1. Name - Display only */}
                         <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                             <span className="text-sm text-gray-700">Name:</span>
-                            <span className="text-sm text-gray-900">{planningData?.crewName || planningData?.onBoardCrewName || 'James Wilson'}</span>
+                            <span className="text-sm text-gray-900">{planningData?.crewName || planningData?.onBoardCrewName || '-'}</span>
                         </div>
 
-                        {/* Nationality - Display only */}
+                        {/* 2. Nationality - Display only */}
                         <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                             <span className="text-sm text-gray-700">Nationality:</span>
-                            <span className="text-sm text-gray-900">{planningData?.nationality || planningData?.onBoardCrewNationality || 'British'}</span>
+                            <span className="text-sm text-gray-900">{planningData?.nationality || planningData?.onBoardCrewNationality || '-'}</span>
                         </div>
 
-                        {/* Relief Due - Display only */}
+                        {/* 3. Joining Date (S/On) - Display only (read-only) */}
                         <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                            <span className="text-sm text-gray-700">Relief Due:</span>
-                            <span className="text-sm text-gray-900">{planningData?.reliefDue ? formatDisplayDate(planningData.reliefDue) : '14-Nov-2025'}</span>
+                            <span className="text-sm text-gray-700">Joining Date (S/On):</span>
+                            <div className="flex items-center border rounded-md px-3 py-2 bg-gray-50">
+                                <CalendarIcon className="mr-2 h-4 w-4 text-gray-400" />
+                                <span className="text-sm text-gray-900">{planningData?.signOnDate ? formatDisplayDate(planningData.signOnDate) : '-'}</span>
+                            </div>
                         </div>
 
-                        {/* Sign Off Date - Date Picker */}
-                        <FormField
-                            control={form.control}
-                            name="signOffDate"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                                        <FormLabel className="text-sm text-gray-700">Sign Off Date</FormLabel>
-                                        <Popover open={signOffDateOpen} onOpenChange={setSignOffDateOpen}>
-                                            <PopoverTrigger asChild>
-                                                <FormControl>
-                                                    <Button
-                                                        variant="outline"
-                                                        className="w-full justify-start text-left font-normal"
-                                                        data-testid="button-sign-off-date"
-                                                    >
-                                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {field.value ? formatDisplayDate(field.value) : <span className="text-gray-400">dd-mm-yyyy</span>}
-                                                    </Button>
-                                                </FormControl>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                                <Calendar
-                                                    mode="single"
-                                                    selected={field.value ? parseDate(field.value) : undefined}
-                                                    onSelect={(date) => {
-                                                        if (date) {
-                                                            field.onChange(format(date, 'yyyy-MM-dd'));
-                                                            setSignOffDateOpen(false);
-                                                        }
-                                                    }}
-                                                    initialFocus
-                                                />
-                                            </PopoverContent>
-                                        </Popover>
-                                    </div>
-                                </FormItem>
-                            )}
-                        />
-
-                        {/* Sign Off Port */}
-                        <FormField
-                            control={form.control}
-                            name="signOffPort"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                                        <FormLabel className="text-sm text-gray-700">Sign Off Port</FormLabel>
-                                        <FormControl>
-                                            <Select 
-                                                onValueChange={field.onChange} 
-                                                value={field.value || undefined} 
-                                                data-testid="select-sign-off-port"
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select Port" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="Singapore">Singapore</SelectItem>
-                                                    <SelectItem value="Rotterdam">Rotterdam</SelectItem>
-                                                    <SelectItem value="Dubai">Dubai</SelectItem>
-                                                    <SelectItem value="Hong Kong">Hong Kong</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </FormControl>
-                                    </div>
-                                </FormItem>
-                            )}
-                        />
-
-                        {/* Relief Status */}
-                        <FormField
-                            control={form.control}
-                            name="reliefStatus"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                                        <FormLabel className="text-sm text-gray-700">Relief Status</FormLabel>
-                                        <FormControl>
-                                            <Select 
-                                                onValueChange={field.onChange} 
-                                                value={field.value || undefined} 
-                                                data-testid="select-relief-status"
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select Status" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="Proposed">Proposed</SelectItem>
-                                                    <SelectItem value="Planned">Planned</SelectItem>
-                                                    <SelectItem value="Confirmed">Confirmed</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </FormControl>
-                                    </div>
-                                </FormItem>
-                            )}
-                        />
-
-                        {/* Joining Date (Sign On) - Date Picker */}
-                        <FormField
-                            control={form.control}
-                            name="signOnDate"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                                        <FormLabel className="text-sm text-gray-700">Joining Date (S/On)</FormLabel>
-                                        <Popover open={signOnDateOpen} onOpenChange={setSignOnDateOpen}>
-                                            <PopoverTrigger asChild>
-                                                <FormControl>
-                                                    <Button
-                                                        variant="outline"
-                                                        className="w-full justify-start text-left font-normal"
-                                                        data-testid="button-sign-on-date"
-                                                    >
-                                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {field.value ? formatDisplayDate(field.value) : <span className="text-gray-400">dd-mm-yyyy</span>}
-                                                    </Button>
-                                                </FormControl>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                                <Calendar
-                                                    mode="single"
-                                                    selected={field.value ? parseDate(field.value) : undefined}
-                                                    onSelect={(date) => {
-                                                        if (date) {
-                                                            field.onChange(format(date, 'yyyy-MM-dd'));
-                                                            setSignOnDateOpen(false);
-                                                        }
-                                                    }}
-                                                    initialFocus
-                                                />
-                                            </PopoverContent>
-                                        </Popover>
-                                    </div>
-                                </FormItem>
-                            )}
-                        />
-
-                        {/* Take Over Date - Date Picker */}
+                        {/* 4. Take Over Date - Date Picker */}
                         <FormField
                             control={form.control}
                             name="takeOverDate"
@@ -1100,7 +976,7 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                             )}
                         />
 
-                        {/* Take Over Confirmation - Checkbox */}
+                        {/* 5. Take Over Confirmation - Checkbox */}
                         <FormField
                             control={form.control}
                             name="takeOverConfirmation"
@@ -1122,11 +998,188 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                             )}
                         />
 
-                        {/* Hand Over Date - Display Only (Auto-filled) */}
+                        {/* 6-8. Contract Fields Section (From Relief Status) - Bordered */}
+                        <div className="border border-[#16569e] rounded-md p-4 space-y-4">
+                            {/* 6. Contract Period (Months) */}
+                            <FormField
+                                control={form.control}
+                                name="contractPeriodMonths"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <div className="grid grid-cols-[180px_1fr] items-center gap-4">
+                                            <FormLabel className="text-sm text-gray-700">Contract Period (Months):</FormLabel>
+                                            <FormControl>
+                                                <Input 
+                                                    {...field}
+                                                    type="number" 
+                                                    className="bg-white"
+                                                    data-testid="input-contract-period-onboard"
+                                                    value={field.value ?? ''}
+                                                    onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                                />
+                                            </FormControl>
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />
+
+                            {/* 7. Contract End - Range Start (Months) */}
+                            <FormField
+                                control={form.control}
+                                name="contractEndRangeStartMonths"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <div className="grid grid-cols-[180px_1fr] items-center gap-4">
+                                            <FormLabel className="text-sm text-gray-700">Contract End - Range Start (Months):</FormLabel>
+                                            <FormControl>
+                                                <Input 
+                                                    {...field}
+                                                    type="number" 
+                                                    className="bg-white"
+                                                    data-testid="input-contract-range-start-onboard"
+                                                    value={field.value ?? ''}
+                                                    onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                                />
+                                            </FormControl>
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />
+
+                            {/* 8. Contract End - Range End (Months) */}
+                            <FormField
+                                control={form.control}
+                                name="contractEndRangeEndMonths"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <div className="grid grid-cols-[180px_1fr] items-center gap-4">
+                                            <FormLabel className="text-sm text-gray-700">Contract End - Range End (Months):</FormLabel>
+                                            <FormControl>
+                                                <Input 
+                                                    {...field}
+                                                    type="number" 
+                                                    className="bg-white"
+                                                    data-testid="input-contract-range-end-onboard"
+                                                    value={field.value ?? ''}
+                                                    onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                                />
+                                            </FormControl>
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+
+                        {/* 9. Relief Due - Display only */}
+                        <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                            <span className="text-sm text-gray-700">Relief Due:</span>
+                            <span className="text-sm text-gray-900">{planningData?.reliefDue ? formatDisplayDate(planningData.reliefDue) : '-'}</span>
+                        </div>
+
+                        {/* 10. Relief Status */}
+                        <FormField
+                            control={form.control}
+                            name="reliefStatus"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Relief Status</FormLabel>
+                                        <FormControl>
+                                            <Select 
+                                                onValueChange={field.onChange} 
+                                                value={field.value || undefined} 
+                                                data-testid="select-relief-status"
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select Status" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Proposed">Proposed</SelectItem>
+                                                    <SelectItem value="Planned">Planned</SelectItem>
+                                                    <SelectItem value="Confirmed">Confirmed</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </FormControl>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+
+                        {/* 11. Hand Over Date - Display Only (Auto-filled) */}
                         <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                             <span className="text-sm text-gray-700">Hand Over Date:</span>
                             <span className="text-sm text-gray-900">{planningData?.handOverDate ? formatDisplayDate(planningData.handOverDate) : '-'}</span>
                         </div>
+
+                        {/* 12. Sign Off Date - Date Picker */}
+                        <FormField
+                            control={form.control}
+                            name="signOffDate"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Sign Off Date</FormLabel>
+                                        <Popover open={signOffDateOpen} onOpenChange={setSignOffDateOpen}>
+                                            <PopoverTrigger asChild>
+                                                <FormControl>
+                                                    <Button
+                                                        variant="outline"
+                                                        className="w-full justify-start text-left font-normal"
+                                                        data-testid="button-sign-off-date"
+                                                    >
+                                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                                        {field.value ? formatDisplayDate(field.value) : <span className="text-gray-400">dd-mm-yyyy</span>}
+                                                    </Button>
+                                                </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar
+                                                    mode="single"
+                                                    selected={field.value ? parseDate(field.value) : undefined}
+                                                    onSelect={(date) => {
+                                                        if (date) {
+                                                            field.onChange(format(date, 'yyyy-MM-dd'));
+                                                            setSignOffDateOpen(false);
+                                                        }
+                                                    }}
+                                                    initialFocus
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+
+                        {/* 13. Sign Off Port */}
+                        <FormField
+                            control={form.control}
+                            name="signOffPort"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Sign Off Port</FormLabel>
+                                        <FormControl>
+                                            <Select 
+                                                onValueChange={field.onChange} 
+                                                value={field.value || undefined} 
+                                                data-testid="select-sign-off-port"
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select Port" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Singapore">Singapore</SelectItem>
+                                                    <SelectItem value="Rotterdam">Rotterdam</SelectItem>
+                                                    <SelectItem value="Dubai">Dubai</SelectItem>
+                                                    <SelectItem value="Hong Kong">Hong Kong</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </FormControl>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
 
                         {/* Action Buttons */}
                         <div className="flex justify-end gap-2 pt-4">
