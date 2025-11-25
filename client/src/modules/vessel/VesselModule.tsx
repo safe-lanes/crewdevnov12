@@ -1952,69 +1952,113 @@ export const VesselModule = (): JSX.Element => {
                                                             No positions configured for this vessel. Please configure positions in Admin &gt; Rank Admin &gt; Vessel.
                                                         </TableCell>
                                                     </TableRow>
-                                                ) : (
-                                                    vesselRanks.map((rank: any, index: number) => {
+                                                ) : (() => {
+                                                    // Transform vessel planning data into separate rows for Primary and Secondary crew
+                                                    const normalizedRows: any[] = [];
+                                                    
+                                                    vesselRanks.forEach((rank: any, rankIndex: number) => {
                                                         // Strip suffix from rank name (e.g., "3rd Officer_1" -> "3rd Officer")
                                                         const rankName = (rank.role || rank.rank)?.split('_')[0];
+                                                        
                                                         // Find all matching planning records for this rank
                                                         const matchingRecords = vesselPlanning.filter((p: any) => 
                                                             p.rankId === rank.id || p.rankId === rank.rankId || p.rank === rankName
                                                         );
                                                         
-                                                        // Separate primary and secondary crew - CRITICAL: explicitly select by crew_status
-                                                        // PRIORITIZE records with reliever data for display purposes
-                                                        const primaryCrew = matchingRecords.find((p: any) => 
-                                                            p.crewStatus === 'primary' && p.relieverCrewId
-                                                        ) || matchingRecords.find((p: any) => p.crewStatus === 'primary');
-                                                        
+                                                        // Separate primary and secondary crew by crew_status
+                                                        const primaryCrew = matchingRecords.find((p: any) => p.crewStatus === 'primary');
                                                         const secondaryCrew = matchingRecords.find((p: any) => p.crewStatus === 'secondary');
                                                         
-                                                        // For display and editing, ALWAYS prefer primary crew if exists, otherwise fallback to any record
-                                                        // This ensures edit dialogs target the correct crew member
-                                                        const rankPlanningData = primaryCrew || secondaryCrew || matchingRecords[0];
+                                                        // If both primary and secondary exist, create two separate rows
+                                                        if (primaryCrew && secondaryCrew) {
+                                                            normalizedRows.push({
+                                                                serialNumber: rankIndex + 1,
+                                                                rank,
+                                                                rankName,
+                                                                crewStatus: 'primary',
+                                                                planningData: primaryCrew
+                                                            });
+                                                            normalizedRows.push({
+                                                                serialNumber: rankIndex + 1,
+                                                                rank,
+                                                                rankName,
+                                                                crewStatus: 'secondary',
+                                                                planningData: secondaryCrew
+                                                            });
+                                                        } else if (primaryCrew) {
+                                                            // Only primary crew exists
+                                                            normalizedRows.push({
+                                                                serialNumber: rankIndex + 1,
+                                                                rank,
+                                                                rankName,
+                                                                crewStatus: 'primary',
+                                                                planningData: primaryCrew
+                                                            });
+                                                        } else if (secondaryCrew) {
+                                                            // Only secondary crew exists (edge case)
+                                                            normalizedRows.push({
+                                                                serialNumber: rankIndex + 1,
+                                                                rank,
+                                                                rankName,
+                                                                crewStatus: 'secondary',
+                                                                planningData: secondaryCrew
+                                                            });
+                                                        } else {
+                                                            // No crew assigned to this rank - create empty primary row
+                                                            normalizedRows.push({
+                                                                serialNumber: rankIndex + 1,
+                                                                rank,
+                                                                rankName,
+                                                                crewStatus: 'primary',
+                                                                planningData: matchingRecords[0] || null
+                                                            });
+                                                        }
+                                                    });
+                                                    
+                                                    return normalizedRows.map((row, rowIndex) => {
+                                                        const { serialNumber, rank, rankName, crewStatus, planningData } = row;
+                                                        const statusBadge = crewStatus === 'primary' ? ' (P)' : ' (S)';
+                                                        const displayRank = (rank.role || rank.rank) + statusBadge;
                                                         
-                                                        // Build crew name display with suffixes
-                                                        const crewNameDisplay = [
-                                                            primaryCrew && `${primaryCrew.crewName} (P)`,
-                                                            secondaryCrew && `${secondaryCrew.crewName} (S)`
-                                                        ].filter(Boolean).join('\n');
+                                                        // Show blank instead of "undefined" for vacant positions
+                                                        const crewName = planningData?.crewMemberId ? (planningData.crewName || '') : '';
                                                         
                                                         return (
-                                                            <TableRow key={rank.id || index} className="hover:bg-gray-50 border-b border-gray-100">
-                                                                <TableCell className="text-xs text-gray-700 border-r border-gray-100" data-testid={`cell-planning-sno-${index + 1}`}>
-                                                                    {index + 1}.
+                                                            <TableRow key={`${rank.id}-${crewStatus}-${rowIndex}`} className="hover:bg-gray-50 border-b border-gray-100">
+                                                                <TableCell className="text-xs text-gray-700 border-r border-gray-100" data-testid={`cell-planning-sno-${rowIndex + 1}`}>
+                                                                    {serialNumber}.
                                                                 </TableCell>
-                                                                <TableCell className="text-xs text-gray-700 border-r border-gray-100" data-testid={`cell-planning-rank-${index + 1}`}>
-                                                                    {rank.role || rank.rank}
+                                                                <TableCell className="text-xs text-gray-700 border-r border-gray-100" data-testid={`cell-planning-rank-${rowIndex + 1}`}>
+                                                                    {displayRank}
                                                                 </TableCell>
                                                                 
                                                                 {/* On Board Status cells */}
-                                                                <TableCell className="text-xs text-gray-700 whitespace-pre-line" data-testid={`cell-planning-onboard-name-${index + 1}`}>
-                                                                    {crewNameDisplay || ''}
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-onboard-name-${rowIndex + 1}`}>
+                                                                    {crewName}
                                                                 </TableCell>
-                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-relief-due-${index + 1}`}>
-                                                                    {rankPlanningData?.reliefDue || rankPlanningData?.reliefDate || ''}
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-relief-due-${rowIndex + 1}`}>
+                                                                    {planningData?.reliefDue || planningData?.reliefDate || ''}
                                                                 </TableCell>
-                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-soff-date-${index + 1}`}>
-                                                                    {rankPlanningData?.signOffDate || ''}
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-soff-date-${rowIndex + 1}`}>
+                                                                    {planningData?.signOffDate || ''}
                                                                 </TableCell>
-                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-soff-port-${index + 1}`}>
-                                                                    {rankPlanningData?.signOffPort || ''}
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-soff-port-${rowIndex + 1}`}>
+                                                                    {planningData?.signOffPort || ''}
                                                                 </TableCell>
-                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-relief-status-${index + 1}`}>
-                                                                    {rankPlanningData?.reliefStatus || ''}
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-relief-status-${rowIndex + 1}`}>
+                                                                    {planningData?.reliefStatus || ''}
                                                                 </TableCell>
-                                                                <TableCell className="text-xs border-r-2 border-gray-200" data-testid={`cell-planning-onboard-edit-${index + 1}`}>
+                                                                <TableCell className="text-xs border-r-2 border-gray-200" data-testid={`cell-planning-onboard-edit-${rowIndex + 1}`}>
                                                                     <Button 
                                                                         variant="ghost" 
                                                                         size="sm" 
                                                                         className="h-8 w-8 p-0" 
-                                                                        data-testid={`button-edit-onboard-${index + 1}`}
+                                                                        data-testid={`button-edit-onboard-${rowIndex + 1}`}
                                                                         onClick={() => {
                                                                             setSelectedRankForOnBoard({
-                                                                                rank: rank.rank,
+                                                                                rank: rank.rank || rank.role,
                                                                                 rankId: rank.rankId || rank.id,
-                                                                                planningData: rankPlanningData
+                                                                                planningData: planningData
                                                                             });
                                                                             setOnBoardDialogOpen(true);
                                                                         }}
@@ -2024,29 +2068,29 @@ export const VesselModule = (): JSX.Element => {
                                                                 </TableCell>
                                                                 
                                                                 {/* Reliever Status cells */}
-                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-reliever-name-${index + 1}`}>
-                                                                    {rankPlanningData?.relieverCrewName || ''}
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-reliever-name-${rowIndex + 1}`}>
+                                                                    {planningData?.relieverCrewName || ''}
                                                                 </TableCell>
-                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-joining-date-${index + 1}`}>
-                                                                    {formatDateOnly(rankPlanningData?.joiningDate)}
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-joining-date-${rowIndex + 1}`}>
+                                                                    {formatDateOnly(planningData?.joiningDate)}
                                                                 </TableCell>
-                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-joining-port-${index + 1}`}>
-                                                                    {rankPlanningData?.joiningPort || ''}
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-joining-port-${rowIndex + 1}`}>
+                                                                    {planningData?.joiningPort || ''}
                                                                 </TableCell>
-                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-joining-status-${index + 1}`}>
-                                                                    {rankPlanningData?.joiningStatus || ''}
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-joining-status-${rowIndex + 1}`}>
+                                                                    {planningData?.joiningStatus || ''}
                                                                 </TableCell>
-                                                                <TableCell className="text-xs" data-testid={`cell-planning-reliever-edit-${index + 1}`}>
+                                                                <TableCell className="text-xs" data-testid={`cell-planning-reliever-edit-${rowIndex + 1}`}>
                                                                     <Button 
                                                                         variant="ghost" 
                                                                         size="sm" 
                                                                         className="h-8 w-8 p-0" 
-                                                                        data-testid={`button-edit-reliever-${index + 1}`}
+                                                                        data-testid={`button-edit-reliever-${rowIndex + 1}`}
                                                                         onClick={() => {
                                                                             setSelectedRankForRelief({
                                                                                 rank: rank.role || rank.rank,
-                                                                                rankId: rank.rankId,
-                                                                                planningData: rankPlanningData
+                                                                                rankId: rank.rankId || rank.id,
+                                                                                planningData: planningData
                                                                             });
                                                                             setReliefDialogOpen(true);
                                                                         }}
@@ -2057,7 +2101,7 @@ export const VesselModule = (): JSX.Element => {
                                                             </TableRow>
                                                         );
                                                     })
-                                                )}
+                                                })()}
                                             </TableBody>
                                         </Table>
                                     </ScrollArea>
