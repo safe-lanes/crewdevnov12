@@ -727,7 +727,6 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
 }) => {
     const { toast } = useToast();
     const [signOffDateOpen, setSignOffDateOpen] = useState(false);
-    const [signOnDateOpen, setSignOnDateOpen] = useState(false);
     const [takeOverDateOpen, setTakeOverDateOpen] = useState(false);
     
     const form = useForm<OnBoardStatusFormData>({
@@ -1265,6 +1264,7 @@ export const VesselModule = (): JSX.Element => {
     
     // Sort vessel ranks according to Rank Admin order
     const vesselRanks = useMemo(() => {
+        if (!vesselRanksRaw || !Array.isArray(vesselRanksRaw)) return [];
         return [...vesselRanksRaw].sort((a: any, b: any) => {
             const orderA = rankOrderMap.get(a.rank) ?? 999999;
             const orderB = rankOrderMap.get(b.rank) ?? 999999;
