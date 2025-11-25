@@ -84,13 +84,17 @@ const useAppraisals = () => {
     });
 };
 
-// Helper function to format dates (date only, no time)
+// Helper function to format dates to DD-MMM-YYYY (e.g., 15-Dec-2025)
 const formatDateOnly = (dateString: string | null | undefined): string => {
     if (!dateString) return '';
     try {
         const date = new Date(dateString);
         if (isNaN(date.getTime())) return dateString;
-        return format(date, 'yyyy-MM-dd');
+        const day = date.getDate().toString().padStart(2, '0');
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const month = months[date.getMonth()];
+        const year = date.getFullYear();
+        return `${day}-${month}-${year}`;
     } catch {
         return dateString;
     }
@@ -876,12 +880,17 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
         updatePlanningMutation.mutate(data);
     });
 
-    // Helper to format date from YYYY-MM-DD to dd-mmm-yyyy
+    // Helper to format date to DD-MMM-YYYY (e.g., 15-Dec-2025)
     const formatDisplayDate = (dateStr: string) => {
         if (!dateStr) return '';
         try {
             const date = new Date(dateStr);
-            return format(date, 'dd-MMM-yyyy');
+            if (isNaN(date.getTime())) return dateStr;
+            const day = date.getDate().toString().padStart(2, '0');
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const month = months[date.getMonth()];
+            const year = date.getFullYear();
+            return `${day}-${month}-${year}`;
         } catch {
             return dateStr;
         }
