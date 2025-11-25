@@ -56,8 +56,8 @@ const calculateDueInStatus = (nextDueDate: string | undefined): { label: string;
   if (!nextDueDate) return null;
   
   try {
-    // Parse the date string safely using date-fns parse (format: "dd MMM yyyy")
-    const dueDate = parse(nextDueDate, 'dd MMM yyyy', new Date());
+    // Parse the date string safely using date-fns parse (format: "dd-MMM-yyyy")
+    const dueDate = parse(nextDueDate, 'dd-MMM-yyyy', new Date());
     const today = new Date();
     const daysUntilDue = differenceInDays(dueDate, today);
     const monthsUntilDue = differenceInMonths(dueDate, today);
@@ -242,7 +242,7 @@ export function SummaryTable({ selectedVessel, onAdd }: SummaryTableProps) {
         try {
           const lastDate = new Date(lastTest.date);
           const nextDue = addMonths(lastDate, record.frequencyMonths);
-          nextDueDate = format(nextDue, 'dd MMM yyyy');
+          nextDueDate = format(nextDue, 'dd-MMM-yyyy');
         } catch {
           nextDueDate = undefined;
         }

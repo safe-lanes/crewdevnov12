@@ -69,8 +69,8 @@ const calculateDueInStatus = (nextDueDate: string | undefined): { label: string;
   if (!nextDueDate) return null;
   
   try {
-    // Parse the date string safely using date-fns parse (format: "dd MMM yyyy")
-    const dueDate = parse(nextDueDate, 'dd MMM yyyy', new Date());
+    // Parse the date string safely using date-fns parse (format: "dd-MMM-yyyy")
+    const dueDate = parse(nextDueDate, 'dd-MMM-yyyy', new Date());
     const today = new Date();
     const daysUntilDue = differenceInDays(dueDate, today);
     const monthsUntilDue = differenceInMonths(dueDate, today);
@@ -188,7 +188,7 @@ const NextDueCellRenderer = (params: ICellRendererParams) => {
     }
 
     const calculatedNextDue = addMonths(new Date(lastTestDate), currentFrequency);
-    const formattedDate = format(calculatedNextDue, 'dd MMM yyyy');
+    const formattedDate = format(calculatedNextDue, 'dd-MMM-yyyy');
 
     // Calculate color based on urgency
     const status = calculateDueInStatus(formattedDate);

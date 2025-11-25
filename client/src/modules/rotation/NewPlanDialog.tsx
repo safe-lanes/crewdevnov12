@@ -1753,7 +1753,7 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
               >
                 <span className="truncate flex items-center gap-2">
                   <CalendarIcon className="h-4 w-4" />
-                  {format(dateRange.start, 'MMM dd, yyyy')} - {format(dateRange.end, 'MMM dd, yyyy')}
+                  {format(dateRange.start, 'dd-MMM-yyyy')} - {format(dateRange.end, 'dd-MMM-yyyy')}
                 </span>
                 <ChevronDown className="h-4 w-4 opacity-50 ml-2" />
               </Button>

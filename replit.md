@@ -23,6 +23,7 @@ The application employs a modern web stack with a module-first architecture for 
 ### UI/UX Decisions
 - Consistent layout, alignment, error handling, and loading states.
 - Adherence to SAIL Form Standards for input fields and sections.
+- **Date Display Format**: All dates throughout the application are displayed in DD-MMM-YYYY format (e.g., 15-Dec-2025) unless otherwise specified. Use the `formatDate()` utility from `client/src/utils/format.ts` or inline date-fns `format(date, 'dd-MMM-yyyy')` for consistency.
 
 ### System Design Choices
 - **Module-First Architecture**: Ensures clear separation of concerns and scalability.
