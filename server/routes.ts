@@ -58,6 +58,47 @@ const rankReorderSchema = z.array(z.object({
   sortOrder: z.number().int().nonnegative()
 }));
 
+// Helper function to check if a vessel has rank configurations
+// Returns true if the vessel has at least one configured rank, false otherwise
+async function hasVesselRankConfiguration(vesselId: string): Promise<boolean> {
+  if (!vesselId) return false;
+  
+  try {
+    // Get all revisions for this vessel
+    const vesselRevisions = await storage.getVesselRevisionsByVessel(vesselId);
+    
+    if (vesselRevisions.length === 0) {
+      return false;
+    }
+    
+    // Sort revisions by creation date (most recent first)
+    const sortedRevisions = vesselRevisions.sort((a, b) => {
+      const aDate = new Date(a.createdAt || 0).getTime();
+      const bDate = new Date(b.createdAt || 0).getTime();
+      return bDate - aDate;
+    });
+    
+    const latestRevision = sortedRevisions[0];
+    
+    // Parse the revisionData JSON to get the ranks
+    const rankData = JSON.parse(latestRevision.revisionData);
+    
+    // Filter ranks that have "Actual Manning" checked
+    const activeRanks = rankData.filter((rank: any) => rank.actualManningFlag);
+    
+    return activeRanks.length > 0;
+  } catch (error) {
+    console.error(`Error checking vessel rank configuration for ${vesselId}:`, error);
+    return false;
+  }
+}
+
+// Error message for missing vessel rank configuration
+const VESSEL_RANK_CONFIG_REQUIRED_ERROR = {
+  error: "Vessel rank configuration required",
+  message: "Please configure vessel positions in Admin > Rank Admin > Vessel before adding crew data."
+};
+
 // Stage-specific validation schemas for appraisal submissions
 const stage1SubmissionSchema = z.object({
   data: z.object({
@@ -2676,6 +2717,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!result.success) {
         return res.status(400).json({ error: "Invalid vessel planning data", details: result.error.issues });
       }
+      
+      // GATEKEEPER: Check if vessel has rank configuration before allowing crew data
+      const vesselId = result.data.vesselId;
+      if (vesselId) {
+        const hasRankConfig = await hasVesselRankConfiguration(vesselId);
+        if (!hasRankConfig) {
+          console.log(`⚠️ [VESSEL-PLANNING] Blocked POST - vessel ${vesselId} has no rank configuration`);
+          return res.status(400).json(VESSEL_RANK_CONFIG_REQUIRED_ERROR);
+        }
+      }
+      
       const planning = await storage.createVesselPlanning(result.data);
       res.status(201).json(planning);
     } catch (error) {
@@ -2690,6 +2742,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid planning ID - must be a number" });
       }
+      
+      // GATEKEEPER: Check if vessel has rank configuration before allowing updates
+      // Get vesselId from body, or fetch existing record to get it
+      let vesselId = req.body.vesselId;
+      if (!vesselId) {
+        const existingPlanning = await storage.getVesselPlanningById(id);
+        if (existingPlanning) {
+          vesselId = existingPlanning.vesselId;
+        }
+      }
+      
+      if (vesselId) {
+        const hasRankConfig = await hasVesselRankConfiguration(vesselId);
+        if (!hasRankConfig) {
+          console.log(`⚠️ [VESSEL-PLANNING] Blocked PUT - vessel ${vesselId} has no rank configuration`);
+          return res.status(400).json(VESSEL_RANK_CONFIG_REQUIRED_ERROR);
+        }
+      }
+      
       const planning = await storage.updateVesselPlanning(id, req.body);
       if (!planning) {
         return res.status(404).json({ error: "Vessel planning not found" });
@@ -2707,6 +2778,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid planning ID - must be a number" });
       }
+      
+      // GATEKEEPER: Check if vessel has rank configuration before allowing updates
+      // For PATCH, we may need to get the existing record to check its vesselId
+      const existingPlanning = await storage.getVesselPlanningById(id);
+      const vesselId = req.body.vesselId || existingPlanning?.vesselId;
+      if (vesselId) {
+        const hasRankConfig = await hasVesselRankConfiguration(vesselId);
+        if (!hasRankConfig) {
+          console.log(`⚠️ [VESSEL-PLANNING] Blocked PATCH - vessel ${vesselId} has no rank configuration`);
+          return res.status(400).json(VESSEL_RANK_CONFIG_REQUIRED_ERROR);
+        }
+      }
+      
       const planning = await storage.updateVesselPlanning(id, req.body);
       if (!planning) {
         return res.status(404).json({ error: "Vessel planning not found" });

@@ -96,6 +96,9 @@ const formatDateOnly = (dateString: string | null | undefined): string => {
     }
 };
 
+// Consistent message for when vessel has no rank configuration
+const NO_RANKS_CONFIGURED_MESSAGE = "No positions configured for this vessel. Please configure positions in Admin > Rank Admin > Vessel.";
+
 // Form schema for Relief Status
 const reliefStatusFormSchema = z.object({
     relieverCrewName: z.string().optional(),
@@ -1566,7 +1569,19 @@ export const VesselModule = (): JSX.Element => {
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {planningLoading ? (
+                                                {ranksLoading ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={15} className="text-center text-xs text-gray-500 py-8">
+                                                            Loading vessel positions...
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : vesselRanks.length === 0 ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={15} className="text-center text-xs text-gray-500 py-8">
+                                                            {NO_RANKS_CONFIGURED_MESSAGE}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : planningLoading ? (
                                                     <TableRow>
                                                         <TableCell colSpan={15} className="text-center text-xs text-gray-500 py-8">
                                                             Loading crew members...
@@ -1770,7 +1785,7 @@ export const VesselModule = (): JSX.Element => {
                                                 ) : vesselRanks.length === 0 ? (
                                                     <TableRow>
                                                         <TableCell colSpan={3} className="text-center text-xs text-gray-500 py-8">
-                                                            No positions configured for this vessel. Please configure positions in Admin &gt; Rank Admin &gt; Vessel.
+                                                            {NO_RANKS_CONFIGURED_MESSAGE}
                                                         </TableCell>
                                                     </TableRow>
                                                 ) : (
@@ -1965,7 +1980,7 @@ export const VesselModule = (): JSX.Element => {
                                                 ) : vesselRanks.length === 0 ? (
                                                     <TableRow>
                                                         <TableCell colSpan={16} className="text-center text-xs text-gray-500 py-8">
-                                                            No positions configured for this vessel. Please configure positions in Admin &gt; Rank Admin &gt; Vessel.
+                                                            {NO_RANKS_CONFIGURED_MESSAGE}
                                                         </TableCell>
                                                     </TableRow>
                                                 ) : vesselRanks.filter((r: any) => r.officer === true).length === 0 ? (
@@ -2104,7 +2119,7 @@ export const VesselModule = (): JSX.Element => {
                                                 ) : vesselRanks.length === 0 ? (
                                                     <TableRow>
                                                         <TableCell colSpan={14} className="text-center text-xs text-gray-500 py-8">
-                                                            No positions configured for this vessel. Please configure positions in Admin &gt; Rank Admin &gt; Vessel.
+                                                            {NO_RANKS_CONFIGURED_MESSAGE}
                                                         </TableCell>
                                                     </TableRow>
                                                 ) : (() => {
