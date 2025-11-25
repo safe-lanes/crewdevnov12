@@ -18,7 +18,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import CrewInfoForm from './CrewInfoForm';
-import { normalizeCrewMemberForTable } from '@shared/crew-mapping';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 
 export const CrewPoolModule = (): JSX.Element => {
@@ -58,10 +57,14 @@ export const CrewPoolModule = (): JSX.Element => {
         },
     });
 
-    // Transform API data for table display using mapping layer
+    // Use API data directly - server already returns normalized data with vessel_planning enrichment
+    // No need to re-normalize as the server handles:
+    // 1. Normalization via normalizeCrewMemberForTable
+    // 2. Vessel assignment from vessel_planning (overrides presentVessel)
+    // 3. JoiningDate and ReliefDue from vessel_planning
     const crewData = useMemo(() => {
         if (!rawCrewData || rawCrewData.length === 0) return [];
-        return rawCrewData.map((crew: any) => normalizeCrewMemberForTable(crew));
+        return rawCrewData;
     }, [rawCrewData]);
 
     // Actions cell renderer for edit button

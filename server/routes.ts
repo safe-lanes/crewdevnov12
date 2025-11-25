@@ -5019,8 +5019,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.query.search) filters.search = req.query.search as string;
       
       const crewMembers = await storage.getCrewMembers(Object.keys(filters).length > 0 ? filters : undefined);
+      
+      // Get all vessel planning records to derive vessel assignments
+      const allVesselPlanning = await storage.getAllVesselPlanning();
+      
+      // Build a map of crewMemberId -> vessel assignment (vesselId, crewStatus, joiningDate, reliefDue)
+      // A crew can have multiple assignments (primary on one vessel, secondary on another)
+      // For "Present Vessel" in Crew Database, show the PRIMARY assignment
+      // Note: Convert crewMemberId to string for consistent key matching
+      const crewVesselMap = new Map<string, { vesselId: string; crewStatus: string; joiningDate: string | null; reliefDue: string | null }[]>();
+      
+      for (const planning of allVesselPlanning) {
+        if (planning.crewMemberId) {
+          // Convert to string for consistent key matching (handles both string and number IDs)
+          const crewIdKey = String(planning.crewMemberId);
+          const existing = crewVesselMap.get(crewIdKey) || [];
+          // Normalize crewStatus to lowercase (handles 'Primary', 'primary', 'P', 'Secondary', 'secondary', 'S')
+          const normalizedStatus = (planning.crewStatus || 'primary').toLowerCase();
+          const isPrimary = normalizedStatus === 'primary' || normalizedStatus === 'p';
+          existing.push({
+            vesselId: planning.vesselId,
+            crewStatus: isPrimary ? 'primary' : 'secondary',
+            joiningDate: planning.signOnDate || null,
+            reliefDue: planning.reliefDue || null
+          });
+          crewVesselMap.set(crewIdKey, existing);
+        }
+      }
+      
       // Normalize crew members for table/frontend consumption
-      const normalizedCrewMembers = crewMembers.map(normalizeCrewMemberForTable);
+      // Override presentVessel with vessel assignment from vessel_planning
+      const normalizedCrewMembers = crewMembers.map((crew: any) => {
+        const normalized = normalizeCrewMemberForTable(crew) as any;
+        
+        // Get vessel assignments from vessel_planning (convert crew.id to string for matching)
+        const crewIdKey = String(crew.id);
+        const vesselAssignments = crewVesselMap.get(crewIdKey) || [];
+        
+        if (vesselAssignments.length > 0) {
+          // Find primary assignment first, fallback to first assignment
+          const primaryAssignment = vesselAssignments.find(a => a.crewStatus === 'primary') || vesselAssignments[0];
+          
+          // Override presentVessel with vessel from vessel_planning
+          normalized.presentVessel = primaryAssignment.vesselId;
+          
+          // Include all assignments for display (both P and S)
+          normalized.vesselAssignments = vesselAssignments;
+          
+          // Override joiningDate and reliefDue from vessel_planning if available
+          if (primaryAssignment.joiningDate) {
+            normalized.joiningDate = primaryAssignment.joiningDate;
+          }
+          if (primaryAssignment.reliefDue) {
+            normalized.reliefDue = primaryAssignment.reliefDue;
+          }
+          
+          // Set status to "On Board" for any vessel assignment
+          normalized.status = 'On Board';
+        } else {
+          // No vessel_planning assignment - clear presentVessel
+          normalized.presentVessel = null;
+        }
+        
+        return normalized;
+      });
+      
       res.json(normalizedCrewMembers);
     } catch (error) {
       console.error("❌ Failed to fetch crew members with filters:", error);
