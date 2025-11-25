@@ -354,6 +354,10 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
         updatePlanningMutation.mutate(data);
     });
 
+    // Track if a reliever crew member is assigned - disable fields if not
+    const relieverName = form.watch('relieverCrewName');
+    const isRelieverAssigned = relieverName && relieverName.trim() !== '';
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -377,6 +381,9 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                                             <Input {...field} readOnly className="col-span-2 bg-gray-50" data-testid="input-reliever-name" />
                                         </FormControl>
                                     </div>
+                                    {!isRelieverAssigned && (
+                                        <p className="text-xs text-amber-600 mt-1 col-span-3">Assign a crew member in the Rotation module first to enable reliever fields.</p>
+                                    )}
                                 </FormItem>
                             )}
                         />
@@ -410,8 +417,9 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                                                 onValueChange={field.onChange} 
                                                 value={field.value || undefined} 
                                                 data-testid="select-joining-status"
+                                                disabled={!isRelieverAssigned}
                                             >
-                                                <SelectTrigger className="col-span-2">
+                                                <SelectTrigger className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}>
                                                     <SelectValue placeholder="Select Status" />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -440,10 +448,11 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                                             <Input 
                                                 {...field}
                                                 type="number" 
-                                                className="col-span-2" 
+                                                className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                                 data-testid="input-contract-period"
                                                 value={field.value ?? ''}
                                                 onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                                disabled={!isRelieverAssigned}
                                             />
                                         </FormControl>
                                     </div>
@@ -463,10 +472,11 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                                             <Input 
                                                 {...field}
                                                 type="number" 
-                                                className="col-span-2" 
+                                                className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                                 data-testid="input-contract-range-start"
                                                 value={field.value ?? ''}
                                                 onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                                disabled={!isRelieverAssigned}
                                             />
                                         </FormControl>
                                     </div>
@@ -486,10 +496,11 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                                             <Input 
                                                 {...field}
                                                 type="number" 
-                                                className="col-span-2" 
+                                                className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                                 data-testid="input-contract-range-end"
                                                 value={field.value ?? ''}
                                                 onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                                disabled={!isRelieverAssigned}
                                             />
                                         </FormControl>
                                     </div>
@@ -510,8 +521,9 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                                                 {...field} 
                                                 type="text" 
                                                 placeholder="dd-mm-yyyy" 
-                                                className="col-span-2" 
+                                                className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                                 data-testid="input-joining-date"
+                                                disabled={!isRelieverAssigned}
                                             />
                                         </FormControl>
                                     </div>
@@ -532,8 +544,9 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                                                 onValueChange={field.onChange} 
                                                 value={field.value || undefined} 
                                                 data-testid="select-joining-port"
+                                                disabled={!isRelieverAssigned}
                                             >
-                                                <SelectTrigger className="col-span-2">
+                                                <SelectTrigger className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}>
                                                     <SelectValue placeholder="Select Port" />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -561,16 +574,17 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                                             <RadioGroup 
                                                 onValueChange={(value) => field.onChange(value === 'true')} 
                                                 value={field.value ? 'true' : 'false'}
-                                                className="col-span-2"
+                                                className={`col-span-2 ${!isRelieverAssigned ? 'opacity-50' : ''}`}
                                                 data-testid="radio-deployment-checklist"
+                                                disabled={!isRelieverAssigned}
                                             >
                                                 <div className="flex items-center space-x-4">
                                                     <div className="flex items-center space-x-2">
-                                                        <RadioGroupItem value="true" id="deployment-yes" />
+                                                        <RadioGroupItem value="true" id="deployment-yes" disabled={!isRelieverAssigned} />
                                                         <Label htmlFor="deployment-yes">Yes</Label>
                                                     </div>
                                                     <div className="flex items-center space-x-2">
-                                                        <RadioGroupItem value="false" id="deployment-no" />
+                                                        <RadioGroupItem value="false" id="deployment-no" disabled={!isRelieverAssigned} />
                                                         <Label htmlFor="deployment-no">No</Label>
                                                     </div>
                                                 </div>
@@ -594,19 +608,20 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                                                 <RadioGroup 
                                                     onValueChange={(value) => field.onChange(value === 'true')} 
                                                     value={field.value ? 'true' : 'false'}
-                                                    className="flex items-center space-x-4"
+                                                    className={`flex items-center space-x-4 ${!isRelieverAssigned ? 'opacity-50' : ''}`}
                                                     data-testid="radio-applicable-docs"
+                                                    disabled={!isRelieverAssigned}
                                                 >
                                                     <div className="flex items-center space-x-2">
-                                                        <RadioGroupItem value="true" id="docs-yes" />
+                                                        <RadioGroupItem value="true" id="docs-yes" disabled={!isRelieverAssigned} />
                                                         <Label htmlFor="docs-yes">Yes</Label>
                                                     </div>
                                                     <div className="flex items-center space-x-2">
-                                                        <RadioGroupItem value="false" id="docs-no" />
+                                                        <RadioGroupItem value="false" id="docs-no" disabled={!isRelieverAssigned} />
                                                         <Label htmlFor="docs-no">No</Label>
                                                     </div>
                                                 </RadioGroup>
-                                                <Button type="button" variant="outline" size="sm" data-testid="button-see-checklist">
+                                                <Button type="button" variant="outline" size="sm" data-testid="button-see-checklist" disabled={!isRelieverAssigned}>
                                                     See Checklist
                                                 </Button>
                                             </div>
