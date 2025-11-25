@@ -5,6 +5,7 @@ import AgGridTable from '@/components/AgGrid/AgGridTable';
 import { Button } from '@/components/ui/button';
 import { Edit } from 'lucide-react';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { findNextPromotionRank, shouldShowInPromotionsTable } from './promotionUtils';
 import { PromotionHierarchy } from '@shared/schema';
 import { PromotionReviewForm } from './PromotionReviewForm';
@@ -163,6 +164,9 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
   
   // Vessel lookup for ID to name translation
   const { getVesselName } = useVesselLookup();
+  
+  // Rank normalization for role variants (e.g., 3rd Officer_1 → 3rd Officer)
+  const { normalizeRank, isLoading: isLoadingRanks } = useRankNormalization();
 
   // Fetch crew members from crew pool API
   const { data: crewMembers = [], isLoading } = useQuery({
@@ -181,16 +185,20 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
 
     return members
       .map((crew: any, index: number) => {
-        // Get current rank
+        // Get current rank (could be a role variant like "3rd Officer_1")
         const currentRank = crew.presentRank || crew.rank || '-';
         
-        // Check if crew should be shown in promotions table (has next promotion rank)
-        if (!shouldShowInPromotionsTable(currentRank, hierarchies)) {
+        // Normalize the rank to parent rank (e.g., "3rd Officer_1" → "3rd Officer")
+        // This is needed because promotion hierarchies use parent ranks only
+        const normalizedRank = normalizeRank(currentRank);
+        
+        // Check if crew should be shown in promotions table using normalized parent rank
+        if (!shouldShowInPromotionsTable(normalizedRank, hierarchies)) {
           return null; // Filter out crew without promotion path or at senior position
         }
 
-        // Find next promotion rank
-        const { nextRank } = findNextPromotionRank(currentRank, hierarchies);
+        // Find next promotion rank using normalized parent rank
+        const { nextRank } = findNextPromotionRank(normalizedRank, hierarchies);
         
         // Extract vessel ID from crew data (handle both string and object formats)
         let vesselId = crew.presentVessel || crew.vessel;
@@ -232,7 +240,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         };
       })
       .filter(item => item !== null); // Remove filtered out crew members
-  }, [crewMembers, hierarchies, getVesselName]);
+  }, [crewMembers, hierarchies, getVesselName, normalizeRank]);
 
   // Filter data based on filters
   const filteredData = useMemo(() => {
