@@ -1225,7 +1225,25 @@ const AdminModuleInner = (): JSX.Element => {
                   loadedVesselsRef.current.add(vesselId);
                   console.log(`📥 ✓ Loaded and merged draft for vessel ${vesselId} (${mergedData.length} ranks)`);
                 } else {
-                  console.info(`📥 No draft found for vessel ${vesselId} - will start with latest revision or company structure`);
+                  console.info(`📥 No draft found for vessel ${vesselId} - initializing from company structure`);
+                  // CRITICAL FIX: Initialize vessel data from company structure when no draft exists
+                  const freshData = companyRankData.map(companyRank => ({
+                    ...companyRank,
+                    actualManning: [],
+                    actualManningFlag: false,
+                    safeManning: false,
+                    optimumManning: false,
+                    highWorkloadManning: false
+                  }));
+                  
+                  setVesselRankDataMap(prev => {
+                    const newMap = new Map(prev);
+                    newMap.set(vesselId, freshData);
+                    return newMap;
+                  });
+                  
+                  loadedVesselsRef.current.add(vesselId);
+                  console.log(`📥 ✓ Initialized vessel ${vesselId} from company structure (${freshData.length} ranks)`);
                 }
               }
             } else {
@@ -1309,9 +1327,28 @@ const AdminModuleInner = (): JSX.Element => {
                   
                   loadedVesselsRef.current.add(vesselId);
                   console.log(`📥 ✓ Loaded and merged revision ${latestRevision.revision} for vessel ${vesselId} (${mergedData.length} ranks, date: ${latestRevision.revisionDate})`);
-                } else{
-                  console.info(`📥 No revisions found for vessel ${vesselId} - will use company structure`);
+                } else {
+                  console.info(`📥 No revisions found for vessel ${vesselId} - initializing from company structure`);
                   setFlexDate(''); // Clear date when no revisions exist
+                  
+                  // CRITICAL FIX: Initialize vessel data from company structure when no revisions exist
+                  const freshData = companyRankData.map(companyRank => ({
+                    ...companyRank,
+                    actualManning: [],
+                    actualManningFlag: false,
+                    safeManning: false,
+                    optimumManning: false,
+                    highWorkloadManning: false
+                  }));
+                  
+                  setVesselRankDataMap(prev => {
+                    const newMap = new Map(prev);
+                    newMap.set(vesselId, freshData);
+                    return newMap;
+                  });
+                  
+                  loadedVesselsRef.current.add(vesselId);
+                  console.log(`📥 ✓ Initialized vessel ${vesselId} from company structure (${freshData.length} ranks)`);
                 }
               }
             }
