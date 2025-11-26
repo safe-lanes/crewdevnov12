@@ -2627,7 +2627,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/vessel-planning/vessel/:vesselId", async (req, res) => {
     try {
       const { vesselId } = req.params;
-      const planning = await storage.getVesselPlanningByVessel(vesselId);
+      const { archived } = req.query; // Optional filter: 'true' for archived only, 'false' for active only
+      
+      let planning = await storage.getVesselPlanningByVessel(vesselId);
+      
+      // Apply archived filter if specified
+      if (archived === 'true') {
+        planning = planning.filter((p: VesselPlanning) => p.isArchived === true);
+      } else if (archived === 'false') {
+        planning = planning.filter((p: VesselPlanning) => !p.isArchived);
+      }
+      // If archived param is not provided, return all records (for backward compatibility)
       
       // JOIN with crew members to get complete data from single source of truth
       const crewMembers = await storage.getCrewMembers();
@@ -2779,16 +2789,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid planning ID - must be a number" });
       }
       
-      // GATEKEEPER: Check if vessel has rank configuration before allowing updates
-      // For PATCH, we may need to get the existing record to check its vesselId
+      // Get existing record for validation
       const existingPlanning = await storage.getVesselPlanningById(id);
-      const vesselId = req.body.vesselId || existingPlanning?.vesselId;
+      if (!existingPlanning) {
+        return res.status(404).json({ error: "Vessel planning not found" });
+      }
+      
+      const vesselId = req.body.vesselId || existingPlanning.vesselId;
+      
+      // GATEKEEPER: Check if vessel has rank configuration before allowing updates
       if (vesselId) {
         const hasRankConfig = await hasVesselRankConfiguration(vesselId);
         if (!hasRankConfig) {
           console.log(`⚠️ [VESSEL-PLANNING] Blocked PATCH - vessel ${vesselId} has no rank configuration`);
           return res.status(400).json(VESSEL_RANK_CONFIG_REQUIRED_ERROR);
         }
+      }
+      
+      // SIGN-OFF VALIDATION: Check if this is a sign-off action
+      const isSignOffAction = req.body.reliefStatus === "Signed Off" && req.body.signOffDate;
+      
+      if (isSignOffAction) {
+        // Only validate primary sign-off restrictions - primary cannot sign off when secondary exists
+        if (existingPlanning.crewStatus === "primary") {
+          // Get all planning records for this vessel to check for secondary crew
+          const allVesselPlanning = await storage.getVesselPlanningByVessel(vesselId);
+          const secondaryCrew = allVesselPlanning.find((p: VesselPlanning) => 
+            p.rankId === existingPlanning.rankId && 
+            p.crewStatus === "secondary" && 
+            p.id !== id &&
+            !p.isArchived
+          );
+          
+          if (secondaryCrew) {
+            console.log(`⚠️ [VESSEL-PLANNING] Blocked sign-off - primary crew has active secondary`);
+            return res.status(400).json({ 
+              error: "Cannot sign off primary crew when a secondary (reliever) exists. The reliever must take over first." 
+            });
+          }
+        }
+        
+        // Auto-set isArchived and archivedDate when signing off (for both primary and secondary)
+        req.body.isArchived = true;
+        req.body.archivedDate = req.body.signOffDate;
+        console.log(`✅ [VESSEL-PLANNING] Archiving ${existingPlanning.crewStatus} crew member on sign-off: ${id}`);
       }
       
       const planning = await storage.updateVesselPlanning(id, req.body);
