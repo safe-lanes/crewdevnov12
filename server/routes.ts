@@ -2938,6 +2938,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dateTo: req.query.dateTo as string | undefined,
         archived: req.query.archived === 'true',
       };
+      
+      // For archived view, read from independent archive storage
+      if (filters.archived) {
+        const archivedEntries = await storage.getArchivedAssignments({
+          vessels: filters.vessels,
+          ranks: filters.ranks,
+          dateFrom: filters.dateFrom,
+          dateTo: filters.dateTo,
+        });
+        // Transform archive entries to match the proposal format expected by frontend
+        // Return distinct archiveId and originalAssignmentIndex to avoid index collisions
+        // Also provide assignmentIndex for legacy compatibility (maps to originalAssignmentIndex)
+        const proposals = archivedEntries.map((entry) => ({
+          // Archive-specific identifiers - kept distinct from live plan indices
+          archiveId: entry.id,
+          originalPlanId: entry.originalPlanId,
+          originalAssignmentIndex: entry.originalAssignmentIndex,
+          originalDraftId: entry.originalDraftId,
+          // Legacy compatibility fields
+          planId: entry.originalPlanId,
+          draftId: entry.originalDraftId,
+          assignmentIndex: entry.originalAssignmentIndex, // Legacy compatibility
+          // Core assignment data
+          vessel: entry.vesselName,
+          vesselId: entry.vesselId,
+          rankId: entry.rankId,
+          rank: entry.rank,
+          crewId: entry.crewId,
+          crewName: entry.crewName,
+          crewMemberId: entry.crewMemberId,
+          joiningDate: entry.joiningDate,
+          joiningPort: entry.joiningPort,
+          contractPeriod: entry.contractPeriod,
+          signOffDate: entry.signOffDate,
+          // Proposal metadata
+          proposedBy: entry.proposedBy,
+          proposedDate: entry.proposedDate,
+          // Result and archive metadata
+          result: entry.result,
+          archivedDate: entry.archivedDate,
+          archivedBy: entry.archivedBy,
+          vesselPlanningId: entry.vesselPlanningId,
+          // Full snapshot data for historical reference
+          currentCrew: entry.currentCrewInfo ? JSON.parse(entry.currentCrewInfo) : null,
+          fullAssignmentSnapshot: entry.fullAssignmentSnapshot ? JSON.parse(entry.fullAssignmentSnapshot) : null,
+        }));
+        return res.json(proposals);
+      }
+      
+      // For active proposals, use the existing method
       const proposals = await storage.getProposedAssignments(filters);
       res.json(proposals);
     } catch (error) {

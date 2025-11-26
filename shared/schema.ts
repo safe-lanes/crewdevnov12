@@ -464,6 +464,40 @@ export const rotationPlans = pgTable("rotation_plans", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const rotationArchive = pgTable("rotation_archive", {
+  id: serial("id").primaryKey(),
+  originalPlanId: integer("original_plan_id"), // Reference to original plan (may be null if plan deleted)
+  originalDraftId: text("original_draft_id"), // Keep draftId for reference
+  originalAssignmentIndex: integer("original_assignment_index"), // Index in original plan's assignments array
+  
+  vesselId: text("vessel_id").notNull(), // Vessel code (VSL-XXX format)
+  vesselName: text("vessel_name").notNull(),
+  rankId: text("rank_id"), // Rank ID if available
+  rank: text("rank").notNull(),
+  
+  crewId: text("crew_id").notNull(),
+  crewName: text("crew_name").notNull(),
+  crewMemberId: text("crew_member_id"), // Database crew member ID if different from crewId
+  
+  joiningDate: text("joining_date").notNull(),
+  joiningPort: text("joining_port"),
+  contractPeriod: integer("contract_period").notNull(),
+  signOffDate: text("sign_off_date"), // Planned sign-off date
+  
+  proposedBy: text("proposed_by").notNull(),
+  proposedDate: text("proposed_date").notNull(),
+  result: text("result").notNull(), // "Deployed" or "Rejected"
+  archivedDate: text("archived_date").notNull(), // When deployed/rejected
+  archivedBy: text("archived_by").notNull(), // Who deployed/rejected
+  
+  vesselPlanningId: integer("vessel_planning_id"), // ID of vessel_planning record created (for deployed)
+  
+  currentCrewInfo: text("current_crew_info"), // JSON: {id, name, contractStartDate, contractEndDate, rangeStartDate, rangeEndDate}
+  fullAssignmentSnapshot: text("full_assignment_snapshot"), // Complete JSON snapshot of original assignment
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const drugAlcoholTestRecords = pgTable("drug_alcohol_test_records", {
   id: serial("id").primaryKey(),
   vesselId: text("vessel_id").notNull(), // VSL-XXX format from master data
@@ -1121,6 +1155,11 @@ export const insertRotationPlanSchema = createInsertSchema(rotationPlans).omit({
   updatedAt: true,
 });
 
+export const insertRotationArchiveSchema = createInsertSchema(rotationArchive).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertDrugAlcoholTestRecordSchema = createInsertSchema(drugAlcoholTestRecords).omit({
   id: true,
   createdAt: true,
@@ -1232,6 +1271,8 @@ export type InsertVesselPlanning = z.infer<typeof insertVesselPlanningSchema>;
 export type VesselPlanning = typeof vesselPlanning.$inferSelect;
 export type InsertRotationPlan = z.infer<typeof insertRotationPlanSchema>;
 export type RotationPlan = typeof rotationPlans.$inferSelect;
+export type InsertRotationArchive = z.infer<typeof insertRotationArchiveSchema>;
+export type RotationArchiveEntry = typeof rotationArchive.$inferSelect;
 export type InsertDrugAlcoholTestRecord = z.infer<typeof insertDrugAlcoholTestRecordSchema>;
 export type DrugAlcoholTestRecord = typeof drugAlcoholTestRecords.$inferSelect;
 export type InsertRestHoursVesselRecord = z.infer<typeof insertRestHoursVesselRecordSchema>;

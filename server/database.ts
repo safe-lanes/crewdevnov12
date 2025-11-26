@@ -18,6 +18,7 @@ import {
   vesselRevisions,
   vesselPlanning,
   rotationPlans,
+  rotationArchive,
   restHoursVesselRecords,
   restHoursCrewRecords,
   restHoursDailyRecords,
@@ -62,6 +63,8 @@ import {
   type InsertVesselPlanning,
   type RotationPlan,
   type InsertRotationPlan,
+  type RotationArchiveEntry,
+  type InsertRotationArchive,
   type RestHoursVesselRecord,
   type InsertRestHoursVesselRecord,
   type RestHoursCrewRecord,
@@ -1716,6 +1719,34 @@ export class DatabaseStorage implements IStorage {
         })
         .where(eq(rotationPlans.id, planId));
       
+      // Create independent archive entry for this deployment with full snapshot
+      // Preserve exact source values - use null if not available (no synthetic defaults)
+      const archivedDate = new Date().toISOString().split('T')[0];
+      await this.createArchiveEntry({
+        originalPlanId: planId,
+        originalDraftId: plans[0].draftId || null,
+        originalAssignmentIndex: assignmentIndex,
+        vesselId: vesselCode,
+        vesselName: assignment.vessel || assignment.vesselName || null,
+        rankId: assignment.rankId || null,
+        rank: assignment.rank,
+        crewId: crewMemberId,
+        crewName: relieverCrewName || assignment.crewName,
+        crewMemberId: crewMemberId || null,
+        joiningDate: joiningDate,
+        joiningPort: assignment.joiningPort || null,
+        contractPeriod: contractPeriodMonths,
+        signOffDate: assignment.signOffDate || null,
+        proposedBy: plans[0].proposedBy || null,
+        proposedDate: plans[0].proposedDate || null,
+        result: 'Deployed',
+        archivedDate,
+        archivedBy: deployedBy || null,
+        vesselPlanningId: vesselPlanningRecord?.id || null,
+        currentCrewInfo: assignment.currentCrew ? JSON.stringify(assignment.currentCrew) : null,
+        fullAssignmentSnapshot: JSON.stringify(assignment),
+      });
+      
       return { 
         success: true, 
         vesselPlanningId: vesselPlanningRecord?.id,
@@ -1727,7 +1758,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async rejectAssignment(planId: number, assignmentIndex: number): Promise<RotationPlan | undefined> {
+  async rejectAssignment(planId: number, assignmentIndex: number, rejectedBy?: string): Promise<RotationPlan | undefined> {
     try {
       // Get current plan
       const plans = await this.db
@@ -1741,10 +1772,14 @@ export class DatabaseStorage implements IStorage {
       const assignments = plans[0].assignments ? JSON.parse(plans[0].assignments) : [];
       if (!assignments[assignmentIndex]) return undefined;
       
+      const assignment = assignments[assignmentIndex];
+      
+      // Preserve exact rejectedBy value - use null if not available
       assignments[assignmentIndex] = {
-        ...assignments[assignmentIndex],
+        ...assignment,
         status: 'Rejected',
-        rejectedAt: new Date().toISOString()
+        rejectedAt: new Date().toISOString(),
+        rejectedBy: rejectedBy || null
       };
       
       // Save updated assignments and return updated plan
@@ -1756,6 +1791,34 @@ export class DatabaseStorage implements IStorage {
         })
         .where(eq(rotationPlans.id, planId))
         .returning();
+      
+      // Create independent archive entry for this rejection with full snapshot
+      // Preserve exact source values - use null if not available (no synthetic defaults)
+      const archivedDate = new Date().toISOString().split('T')[0];
+      await this.createArchiveEntry({
+        originalPlanId: planId,
+        originalDraftId: plans[0].draftId || null,
+        originalAssignmentIndex: assignmentIndex,
+        vesselId: assignment.vesselId || assignment.vessel || null,
+        vesselName: assignment.vessel || assignment.vesselName || null,
+        rankId: assignment.rankId || null,
+        rank: assignment.rank,
+        crewId: assignment.crewId,
+        crewName: assignment.crewName,
+        crewMemberId: assignment.crewMemberId || null,
+        joiningDate: assignment.joiningDate,
+        joiningPort: assignment.joiningPort || null,
+        contractPeriod: assignment.contractPeriod || null,
+        signOffDate: assignment.signOffDate || null,
+        proposedBy: plans[0].proposedBy || null,
+        proposedDate: plans[0].proposedDate || null,
+        result: 'Rejected',
+        archivedDate,
+        archivedBy: rejectedBy || null,
+        vesselPlanningId: null,
+        currentCrewInfo: assignment.currentCrew ? JSON.stringify(assignment.currentCrew) : null,
+        fullAssignmentSnapshot: JSON.stringify(assignment),
+      });
       
       return updated;
     } catch (error) {
@@ -1868,6 +1931,49 @@ export class DatabaseStorage implements IStorage {
     }
     
     return conflicts;
+  }
+
+  // Rotation Archive Methods - Independent historical records
+  async getArchivedAssignments(filters?: { vessels?: string[]; ranks?: string[]; dateFrom?: string; dateTo?: string }): Promise<RotationArchiveEntry[]> {
+    let conditions = [];
+    
+    // Apply filters if provided
+    if (filters?.vessels && filters.vessels.length > 0) {
+      conditions.push(inArray(rotationArchive.vesselName, filters.vessels));
+    }
+    if (filters?.ranks && filters.ranks.length > 0) {
+      conditions.push(inArray(rotationArchive.rank, filters.ranks));
+    }
+    if (filters?.dateFrom) {
+      conditions.push(sql`${rotationArchive.archivedDate} >= ${filters.dateFrom}`);
+    }
+    if (filters?.dateTo) {
+      conditions.push(sql`${rotationArchive.archivedDate} <= ${filters.dateTo}`);
+    }
+    
+    let entries;
+    if (conditions.length > 0) {
+      entries = await this.db
+        .select()
+        .from(rotationArchive)
+        .where(and(...conditions))
+        .orderBy(desc(rotationArchive.archivedDate));
+    } else {
+      entries = await this.db
+        .select()
+        .from(rotationArchive)
+        .orderBy(desc(rotationArchive.archivedDate));
+    }
+    
+    return entries;
+  }
+
+  async createArchiveEntry(entry: InsertRotationArchive): Promise<RotationArchiveEntry> {
+    const [created] = await this.db
+      .insert(rotationArchive)
+      .values(entry)
+      .returning();
+    return created;
   }
 
   // Rest Hours Vessel Records Methods

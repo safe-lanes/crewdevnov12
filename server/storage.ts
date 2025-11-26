@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type CompanyProcessing, type InsertCompanyProcessing, type PromotionForm, type InsertPromotionForm, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type DrugAlcoholTestRecord, type InsertDrugAlcoholTestRecord, type RestHoursVesselRecord, type InsertRestHoursVesselRecord, type RestHoursCrewRecord, type InsertRestHoursCrewRecord, type RestHoursDailyRecord, type InsertRestHoursDailyRecord, type FixedTask, type InsertFixedTask, type VariableTask, type InsertVariableTask, type VesselViolationComment, type InsertVesselViolationComment, type OfficeViolationComment, type InsertOfficeViolationComment, type NCReport, type InsertNCReport, type VesselDateLineAdjustment, type InsertVesselDateLineAdjustment, type CrewDashboardSummary } from "@shared/schema";
+import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type CompanyProcessing, type InsertCompanyProcessing, type PromotionForm, type InsertPromotionForm, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type RotationArchiveEntry, type InsertRotationArchive, type DrugAlcoholTestRecord, type InsertDrugAlcoholTestRecord, type RestHoursVesselRecord, type InsertRestHoursVesselRecord, type RestHoursCrewRecord, type InsertRestHoursCrewRecord, type RestHoursDailyRecord, type InsertRestHoursDailyRecord, type FixedTask, type InsertFixedTask, type VariableTask, type InsertVariableTask, type VesselViolationComment, type InsertVesselViolationComment, type OfficeViolationComment, type InsertOfficeViolationComment, type NCReport, type InsertNCReport, type VesselDateLineAdjustment, type InsertVesselDateLineAdjustment, type CrewDashboardSummary } from "@shared/schema";
 
 // Static vessel mapping for testing/development (MemStorage/PersistentFileStorage)
 // In production (DatabaseStorage), vessel codes are fetched from master data
@@ -163,6 +163,9 @@ export interface IStorage {
   deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[]; vesselPlanningId?: number; vesselCode?: string }>;
   rejectAssignment(planId: number, assignmentIndex: number, rejectedBy?: string): Promise<RotationPlan | undefined>;
   checkAssignmentConflicts(crewId: string, joiningDate: string, contractPeriod: number, excludePlanId?: number, excludeAssignmentIndex?: number): Promise<any[]>;
+  // Rotation Archive - Independent historical records
+  getArchivedAssignments(filters?: { vessels?: string[]; ranks?: string[]; dateFrom?: string; dateTo?: string }): Promise<RotationArchiveEntry[]>;
+  createArchiveEntry(entry: InsertRotationArchive): Promise<RotationArchiveEntry>;
   // Drug/Alcohol Test Records
   getDrugAlcoholTestRecords(): Promise<DrugAlcoholTestRecord[]>;
   getDrugAlcoholTestRecord(id: number): Promise<DrugAlcoholTestRecord | undefined>;
@@ -290,6 +293,7 @@ export class MemStorage implements IStorage {
     this.vesselRevisions = new Map();
     this.vesselPlanning = new Map();
     this.rotationPlans = new Map();
+    this.rotationArchive = new Map();
     this.drugAlcoholTestRecords = new Map();
     this.restHoursVesselRecords = new Map();
     this.restHoursCrewRecords = new Map();
@@ -312,6 +316,7 @@ export class MemStorage implements IStorage {
     this.currentVesselRevisionId = 1;
     this.currentVesselPlanningId = 1;
     this.currentRotationPlanId = 1;
+    this.currentRotationArchiveId = 1;
     this.currentDrugAlcoholTestRecordId = 1;
     this.currentRestHoursVesselRecordId = 1;
     this.currentRestHoursCrewRecordId = 1;
@@ -1530,6 +1535,34 @@ export class MemStorage implements IStorage {
       await this.createVesselPlanning(vesselPlanningEntry);
     }
 
+    // Create independent archive entry for this deployment with full snapshot
+    // Preserve exact source values - use null if not available (no synthetic defaults)
+    const archivedDate = new Date().toISOString().split('T')[0];
+    await this.createArchiveEntry({
+      originalPlanId: planId,
+      originalDraftId: plan.draftId || null,
+      originalAssignmentIndex: assignmentIndex,
+      vesselId: vesselCode,
+      vesselName: assignment.vessel || assignment.vesselName || null,
+      rankId: assignment.rankId || null,
+      rank: assignment.rank,
+      crewId: assignment.crewId,
+      crewName: assignment.crewName,
+      crewMemberId: assignment.crewMemberId || null,
+      joiningDate: assignment.joiningDate,
+      joiningPort: assignment.joiningPort || null,
+      contractPeriod: assignment.contractPeriod,
+      signOffDate: assignment.signOffDate || null,
+      proposedBy: plan.proposedBy || null,
+      proposedDate: plan.proposedDate || null,
+      result: 'Deployed',
+      archivedDate,
+      archivedBy: deployedBy || null,
+      vesselPlanningId: existingPlanningId || null,
+      currentCrewInfo: assignment.currentCrew ? JSON.stringify(assignment.currentCrew) : null,
+      fullAssignmentSnapshot: JSON.stringify(assignment),
+    });
+
     return { success: true, vesselPlanningId: existingPlanningId || undefined, vesselCode };
   }
 
@@ -1540,12 +1573,15 @@ export class MemStorage implements IStorage {
     const assignments = JSON.parse(plan.assignments);
     if (!assignments[assignmentIndex]) return undefined;
 
+    const assignment = assignments[assignmentIndex];
+
     // Mark assignment as rejected (instead of removing it, so it can be archived)
+    // Preserve exact rejectedBy value - use null if not available
     assignments[assignmentIndex] = {
-      ...assignments[assignmentIndex],
+      ...assignment,
       proposalStatus: "rejected",
       rejectedDate: new Date().toISOString().split('T')[0],
-      rejectedBy: rejectedBy || 'Current User'
+      rejectedBy: rejectedBy || null
     };
 
     // Check if all assignments are now processed (deployed or rejected)
@@ -1561,6 +1597,39 @@ export class MemStorage implements IStorage {
       updatedAt: null as any // new Date()
     };
     this.rotationPlans.set(planId, updatedPlan);
+
+    // Create independent archive entry for this rejection with full snapshot
+    // Preserve exact source values - use null if not available (no synthetic defaults)
+    const archivedDate = new Date().toISOString().split('T')[0];
+    // Use original vesselId without translation - preserve exact source value
+    const vesselCode = assignment.vesselId || assignment.vessel || null;
+    
+    await this.createArchiveEntry({
+      originalPlanId: planId,
+      originalDraftId: plan.draftId || null,
+      originalAssignmentIndex: assignmentIndex,
+      vesselId: vesselCode,
+      vesselName: assignment.vessel || assignment.vesselName || null,
+      rankId: assignment.rankId || null,
+      rank: assignment.rank,
+      crewId: assignment.crewId,
+      crewName: assignment.crewName,
+      crewMemberId: assignment.crewMemberId || null,
+      joiningDate: assignment.joiningDate,
+      joiningPort: assignment.joiningPort || null,
+      contractPeriod: assignment.contractPeriod,
+      signOffDate: assignment.signOffDate || null,
+      proposedBy: plan.proposedBy || null,
+      proposedDate: plan.proposedDate || null,
+      result: 'Rejected',
+      archivedDate,
+      archivedBy: rejectedBy || null,
+      vesselPlanningId: null,
+      currentCrewInfo: assignment.currentCrew ? JSON.stringify(assignment.currentCrew) : null,
+      fullAssignmentSnapshot: JSON.stringify(assignment),
+    });
+
+    this.saveToFile();
     return updatedPlan;
   }
 
@@ -2493,6 +2562,7 @@ export class PersistentFileStorage implements IStorage {
   private vesselRevisions: Map<number, VesselRevision>;
   private vesselPlanning: Map<number, VesselPlanning>;
   private rotationPlans: Map<number, RotationPlan>;
+  private rotationArchive: Map<number, RotationArchiveEntry>;
   private drugAlcoholTestRecords: Map<number, DrugAlcoholTestRecord>;
   private restHoursVesselRecords: Map<number, RestHoursVesselRecord>;
   private restHoursCrewRecords: Map<number, RestHoursCrewRecord>;
@@ -2515,6 +2585,7 @@ export class PersistentFileStorage implements IStorage {
   private currentVesselRevisionId: number;
   private currentVesselPlanningId: number;
   private currentRotationPlanId: number;
+  private currentRotationArchiveId: number;
   private currentDrugAlcoholTestRecordId: number;
   private currentRestHoursVesselRecordId: number;
   private currentRestHoursCrewRecordId: number;
@@ -2548,6 +2619,7 @@ export class PersistentFileStorage implements IStorage {
     this.vesselRevisions = new Map();
     this.vesselPlanning = new Map();
     this.rotationPlans = new Map();
+    this.rotationArchive = new Map();
     this.drugAlcoholTestRecords = new Map();
     this.restHoursVesselRecords = new Map();
     this.restHoursCrewRecords = new Map();
@@ -2570,6 +2642,7 @@ export class PersistentFileStorage implements IStorage {
     this.currentVesselRevisionId = 1;
     this.currentVesselPlanningId = 1;
     this.currentRotationPlanId = 1;
+    this.currentRotationArchiveId = 1;
     this.currentDrugAlcoholTestRecordId = 1;
     this.currentRestHoursVesselRecordId = 1;
     this.currentRestHoursCrewRecordId = 1;
@@ -2996,6 +3069,10 @@ export class PersistentFileStorage implements IStorage {
         this.rotationPlans = new Map(data.rotationPlans || []);
         this.currentRotationPlanId = data.currentRotationPlanId || 1;
         
+        // Load rotation archive (independent historical records)
+        this.rotationArchive = new Map(data.rotationArchive || []);
+        this.currentRotationArchiveId = data.currentRotationArchiveId || 1;
+        
         // Load drug/alcohol test records and counter
         this.drugAlcoholTestRecords = new Map(data.drugAlcoholTestRecords || []);
         this.currentDrugAlcoholTestRecordId = data.currentDrugAlcoholTestRecordId || 1;
@@ -3072,6 +3149,7 @@ export class PersistentFileStorage implements IStorage {
       vesselRevisions: Array.from(this.vesselRevisions.entries()),
       vesselPlanning: Array.from(this.vesselPlanning.entries()),
       rotationPlans: Array.from(this.rotationPlans.entries()),
+      rotationArchive: Array.from(this.rotationArchive.entries()),
       drugAlcoholTestRecords: Array.from(this.drugAlcoholTestRecords.entries()),
       restHoursVesselRecords: Array.from(this.restHoursVesselRecords.entries()),
       restHoursCrewRecords: Array.from(this.restHoursCrewRecords.entries()),
@@ -3094,6 +3172,7 @@ export class PersistentFileStorage implements IStorage {
       currentVesselRevisionId: this.currentVesselRevisionId,
       currentVesselPlanningId: this.currentVesselPlanningId,
       currentRotationPlanId: this.currentRotationPlanId,
+      currentRotationArchiveId: this.currentRotationArchiveId,
       currentDrugAlcoholTestRecordId: this.currentDrugAlcoholTestRecordId,
       currentRestHoursVesselRecordId: this.currentRestHoursVesselRecordId,
       currentRestHoursCrewRecordId: this.currentRestHoursCrewRecordId,
@@ -5171,6 +5250,34 @@ export class PersistentFileStorage implements IStorage {
       await this.createVesselPlanning(vesselPlanningEntry);
     }
 
+    // Create independent archive entry for this deployment with full snapshot
+    // Preserve exact source values - use null if not available (no synthetic defaults)
+    const archivedDate = new Date().toISOString().split('T')[0];
+    await this.createArchiveEntry({
+      originalPlanId: planId,
+      originalDraftId: plan.draftId || null,
+      originalAssignmentIndex: assignmentIndex,
+      vesselId: vesselCode,
+      vesselName: assignment.vessel || assignment.vesselName || null,
+      rankId: assignment.rankId || null,
+      rank: assignment.rank,
+      crewId: assignment.crewId,
+      crewName: assignment.crewName,
+      crewMemberId: assignment.crewMemberId || null,
+      joiningDate: assignment.joiningDate,
+      joiningPort: assignment.joiningPort || null,
+      contractPeriod: assignment.contractPeriod,
+      signOffDate: assignment.signOffDate || null,
+      proposedBy: plan.proposedBy || null,
+      proposedDate: plan.proposedDate || null,
+      result: 'Deployed',
+      archivedDate,
+      archivedBy: deployedBy || null,
+      vesselPlanningId: existingPlanningId || null,
+      currentCrewInfo: assignment.currentCrew ? JSON.stringify(assignment.currentCrew) : null,
+      fullAssignmentSnapshot: JSON.stringify(assignment),
+    });
+
     return { success: true, vesselPlanningId: existingPlanningId || undefined, vesselCode };
   }
 
@@ -5181,12 +5288,15 @@ export class PersistentFileStorage implements IStorage {
     const assignments = JSON.parse(plan.assignments);
     if (!assignments[assignmentIndex]) return undefined;
 
+    const assignment = assignments[assignmentIndex];
+
     // Mark assignment as rejected (instead of removing it, so it can be archived)
+    // Preserve exact rejectedBy value - use null if not available
     assignments[assignmentIndex] = {
-      ...assignments[assignmentIndex],
+      ...assignment,
       proposalStatus: "rejected",
       rejectedDate: new Date().toISOString().split('T')[0],
-      rejectedBy: rejectedBy || 'Current User'
+      rejectedBy: rejectedBy || null
     };
 
     // Check if all assignments are now processed (deployed or rejected)
@@ -5202,7 +5312,39 @@ export class PersistentFileStorage implements IStorage {
       updatedAt: null as any // new Date()
     };
     this.rotationPlans.set(planId, updatedPlan);
-    this.saveToFile(); // SAVE TO FILE!
+
+    // Create independent archive entry for this rejection with full snapshot
+    // Preserve exact source values - use null if not available (no synthetic defaults)
+    const archivedDate = new Date().toISOString().split('T')[0];
+    // Use original vesselId without translation - preserve exact source value
+    const vesselCode = assignment.vesselId || assignment.vessel || null;
+    
+    await this.createArchiveEntry({
+      originalPlanId: planId,
+      originalDraftId: plan.draftId || null,
+      originalAssignmentIndex: assignmentIndex,
+      vesselId: vesselCode,
+      vesselName: assignment.vessel || assignment.vesselName || null,
+      rankId: assignment.rankId || null,
+      rank: assignment.rank,
+      crewId: assignment.crewId,
+      crewName: assignment.crewName,
+      crewMemberId: assignment.crewMemberId || null,
+      joiningDate: assignment.joiningDate,
+      joiningPort: assignment.joiningPort || null,
+      contractPeriod: assignment.contractPeriod,
+      signOffDate: assignment.signOffDate || null,
+      proposedBy: plan.proposedBy || null,
+      proposedDate: plan.proposedDate || null,
+      result: 'Rejected',
+      archivedDate,
+      archivedBy: rejectedBy || null,
+      vesselPlanningId: null,
+      currentCrewInfo: assignment.currentCrew ? JSON.stringify(assignment.currentCrew) : null,
+      fullAssignmentSnapshot: JSON.stringify(assignment),
+    });
+
+    this.saveToFile();
     return updatedPlan;
   }
 
@@ -5256,6 +5398,63 @@ export class PersistentFileStorage implements IStorage {
     }
 
     return conflicts;
+  }
+
+  // Rotation Archive Methods - Independent historical records
+  async getArchivedAssignments(filters?: { vessels?: string[]; ranks?: string[]; dateFrom?: string; dateTo?: string }): Promise<RotationArchiveEntry[]> {
+    let entries = Array.from(this.rotationArchive.values());
+    
+    // Apply filters if provided
+    if (filters?.vessels && filters.vessels.length > 0) {
+      entries = entries.filter(e => filters.vessels!.includes(e.vesselName));
+    }
+    if (filters?.ranks && filters.ranks.length > 0) {
+      entries = entries.filter(e => filters.ranks!.includes(e.rank));
+    }
+    if (filters?.dateFrom) {
+      entries = entries.filter(e => e.archivedDate >= filters.dateFrom!);
+    }
+    if (filters?.dateTo) {
+      entries = entries.filter(e => e.archivedDate <= filters.dateTo!);
+    }
+    
+    // Sort by archived date, latest first
+    entries.sort((a, b) => new Date(b.archivedDate).getTime() - new Date(a.archivedDate).getTime());
+    
+    return entries;
+  }
+
+  async createArchiveEntry(entry: InsertRotationArchive): Promise<RotationArchiveEntry> {
+    const id = this.currentRotationArchiveId++;
+    const archiveEntry: RotationArchiveEntry = {
+      id,
+      originalPlanId: entry.originalPlanId ?? null,
+      originalDraftId: entry.originalDraftId ?? null,
+      originalAssignmentIndex: entry.originalAssignmentIndex ?? null,
+      vesselId: entry.vesselId,
+      vesselName: entry.vesselName,
+      rankId: entry.rankId ?? null,
+      rank: entry.rank,
+      crewId: entry.crewId,
+      crewName: entry.crewName,
+      crewMemberId: entry.crewMemberId ?? null,
+      joiningDate: entry.joiningDate,
+      joiningPort: entry.joiningPort ?? null,
+      contractPeriod: entry.contractPeriod,
+      signOffDate: entry.signOffDate ?? null,
+      proposedBy: entry.proposedBy,
+      proposedDate: entry.proposedDate,
+      result: entry.result,
+      archivedDate: entry.archivedDate,
+      archivedBy: entry.archivedBy,
+      vesselPlanningId: entry.vesselPlanningId ?? null,
+      currentCrewInfo: entry.currentCrewInfo ?? null,
+      fullAssignmentSnapshot: entry.fullAssignmentSnapshot ?? null,
+      createdAt: new Date(),
+    };
+    this.rotationArchive.set(id, archiveEntry);
+    this.saveToFile();
+    return archiveEntry;
   }
 
   // Drug/Alcohol Test Records Methods
