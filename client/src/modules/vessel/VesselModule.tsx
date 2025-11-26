@@ -2250,9 +2250,10 @@ export const VesselModule = (): JSX.Element => {
                                                         // Strip suffix from rank name (e.g., "3rd Officer_1" -> "3rd Officer")
                                                         const rankName = (rank.role || rank.rank)?.split('_')[0];
                                                         
-                                                        // Find all matching planning records for this rank
+                                                        // Find all matching planning records for this rank (exclude archived)
                                                         const matchingRecords = vesselPlanning.filter((p: any) => 
-                                                            p.rankId === rank.id || p.rankId === rank.rankId || p.rank === rankName
+                                                            (p.rankId === rank.id || p.rankId === rank.rankId || p.rank === rankName) &&
+                                                            !p.isArchived
                                                         );
                                                         
                                                         // Separate primary and secondary crew by crew_status
