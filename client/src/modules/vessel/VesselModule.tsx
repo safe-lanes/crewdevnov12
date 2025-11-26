@@ -27,7 +27,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
+import { format, addMonths, parseISO } from "date-fns";
 import { ComplianceMatrixDialog } from './ComplianceMatrixDialog';
 import { AppraisalForm } from '@/modules/crewing/AppraisalForm';
 
@@ -793,6 +793,35 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
         }
     }, [open, planningData, form]);
 
+    // Watch contractPeriodMonths to calculate Relief Due in real-time
+    const watchedContractPeriod = form.watch('contractPeriodMonths');
+    
+    // Calculate Relief Due = Joining Date (signOnDate) + Contract Period
+    const calculatedReliefDue = React.useMemo(() => {
+        const signOnDate = planningData?.signOnDate || planningData?.joiningDate;
+        if (!signOnDate || !watchedContractPeriod) return null;
+        
+        try {
+            // Parse the date (handle various formats)
+            let baseDate: Date;
+            if (signOnDate.match(/^\d{4}-\d{2}-\d{2}/)) {
+                // YYYY-MM-DD format
+                baseDate = parseISO(signOnDate);
+            } else {
+                // Try parsing dd-MMM-yyyy or other formats
+                const parsed = new Date(signOnDate);
+                if (isNaN(parsed.getTime())) return null;
+                baseDate = parsed;
+            }
+            
+            // Add contract period months
+            const reliefDate = addMonths(baseDate, watchedContractPeriod);
+            return format(reliefDate, 'yyyy-MM-dd');
+        } catch {
+            return null;
+        }
+    }, [planningData?.signOnDate, planningData?.joiningDate, watchedContractPeriod]);
+
     const updatePlanningMutation = useMutation({
         mutationFn: async (data: OnBoardStatusFormData) => {
             // Check if this is a takeover (takeOverConfirmation checked AND takeOverDate set)
@@ -800,6 +829,29 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
             
             // Check if this is a sign-off (Relief Status = "Signed Off" AND Sign Off Date is set)
             const isSignOff = data.reliefStatus === "Signed Off" && data.signOffDate;
+            
+            // Calculate Relief Due = Joining Date + Contract Period (if both are available)
+            let computedReliefDue: string | null = null;
+            const signOnDate = planningData?.signOnDate || planningData?.joiningDate;
+            if (signOnDate && data.contractPeriodMonths) {
+                try {
+                    let baseDate: Date;
+                    if (signOnDate.match(/^\d{4}-\d{2}-\d{2}/)) {
+                        baseDate = parseISO(signOnDate);
+                    } else {
+                        baseDate = new Date(signOnDate);
+                    }
+                    if (!isNaN(baseDate.getTime())) {
+                        const reliefDate = addMonths(baseDate, data.contractPeriodMonths);
+                        computedReliefDue = format(reliefDate, 'yyyy-MM-dd');
+                    }
+                } catch {
+                    // Ignore calculation errors
+                }
+            }
+            
+            // Add computed reliefDue to the data if calculated
+            const dataWithReliefDue = computedReliefDue ? { ...data, reliefDue: computedReliefDue } : data;
             
             // Fetch all planning records for this vessel for validation
             const response = await apiRequest('GET', `/api/vessel-planning/vessel/${vesselId}`);
@@ -829,7 +881,7 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                     rankId,
                     rank,
                     ...cleanPlanningDataForTakeover,
-                    ...data,
+                    ...dataWithReliefDue,
                     crewStatus: "primary", // Change from secondary to primary
                 };
                 
@@ -858,7 +910,7 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                     rankId,
                     rank,
                     ...cleanPlanningData,
-                    ...data,
+                    ...dataWithReliefDue,
                     isArchived: true,
                     archivedDate: data.signOffDate, // Use sign-off date as archive date
                 };
@@ -873,7 +925,7 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                     rankId,
                     rank,
                     ...cleanPlanningData,
-                    ...data,
+                    ...dataWithReliefDue,
                 };
                 
                 if (planningData?.id) {
@@ -1115,10 +1167,14 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                             />
                         </div>
 
-                        {/* 9. Relief Due - Display only */}
+                        {/* 9. Relief Due - Auto-calculated from Joining Date + Contract Period */}
                         <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                             <span className="text-sm text-gray-700">Relief Due:</span>
-                            <span className="text-sm text-gray-900">{planningData?.reliefDue ? formatDisplayDate(planningData.reliefDue) : '-'}</span>
+                            <span className="text-sm text-gray-900">
+                                {calculatedReliefDue 
+                                    ? formatDisplayDate(calculatedReliefDue) 
+                                    : (planningData?.reliefDue ? formatDisplayDate(planningData.reliefDue) : '-')}
+                            </span>
                         </div>
 
                         {/* 10. Relief Status */}
