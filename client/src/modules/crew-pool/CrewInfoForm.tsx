@@ -583,6 +583,11 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             ? JSON.parse(detailedCrewData.doctorVisits) 
             : prev.doctorVisits,
       }));
+      
+      // Also load the uploaded photo from crew data
+      if (detailedCrewData.uploadedPhoto) {
+        setUploadedPhoto(detailedCrewData.uploadedPhoto);
+      }
     }
   }, [detailedCrewData, crewMember?.id]);
 
