@@ -2839,6 +2839,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`✅ [VESSEL-PLANNING] Archiving ${existingPlanning.crewStatus} crew member on sign-off: ${id}`);
       }
       
+      // TAKEOVER DETECTION: Clear reliever fields when appropriate
+      // Helper to check if any RELIEVER-SPECIFIC field is populated
+      // NOTE: joiningDate/joiningPort are dual-purpose (used for both primary on-board status AND reliever planning)
+      //       so they are NOT included in this detection check
+      const hasAnyRelieverData = (planning: any) => !!(
+        planning.relieverCrewId || 
+        planning.relieverCrewName || 
+        planning.relieverNationality ||
+        planning.joiningStatus ||  // "Proposed", "Planned", "Confirmed", etc. - only applies to relievers
+        planning.contractEndRangeStartMonths ||
+        planning.contractEndRangeEndMonths ||
+        planning.deploymentChecklistCompleted ||
+        planning.applicableDocsChecked
+      );
+      
+      // Helper to clear ALL reliever-related fields
+      // joiningDate and joiningPort are cleared here but may be restored for promotion case
+      const clearAllRelieverFields = (body: any) => {
+        body.relieverCrewId = null;
+        body.relieverCrewName = null;
+        body.relieverNationality = null;
+        body.joiningDate = null;
+        body.joiningPort = null;
+        body.joiningStatus = null;
+        body.contractPeriodMonths = null;
+        body.contractEndRangeStartMonths = null;
+        body.contractEndRangeEndMonths = null;
+        body.deploymentChecklistCompleted = null;
+        body.applicableDocsChecked = null;
+      };
+      
+      // Case 1: PRIMARY is being DEMOTED to secondary (the reliever has taken over)
+      //         The old primary's reliever fields should be cleared since those were for the person who took over
+      const isDemotingPrimary = (
+        existingPlanning.crewStatus === "primary" && 
+        req.body.crewStatus === "secondary" &&
+        hasAnyRelieverData(existingPlanning)
+      );
+      
+      // Case 2: SECONDARY is being PROMOTED to primary (explicit takeover confirmation)
+      const isPromotingSecondary = (
+        req.body.takeOverConfirmation === true || 
+        (existingPlanning.crewStatus === "secondary" && req.body.crewStatus === "primary")
+      );
+      
+      if (isDemotingPrimary) {
+        console.log(`🔄 [VESSEL-PLANNING] Primary demotion detected - clearing ALL reliever fields for old primary ${id}`);
+        clearAllRelieverFields(req.body);
+        // Preserve handOverDate if provided in the request (for recording when handover occurred)
+      }
+      
+      if (isPromotingSecondary) {
+        console.log(`🔄 [VESSEL-PLANNING] Secondary promotion detected - clearing reliever fields for new primary ${id}`);
+        // Clear reliever planning fields since this crew is now primary
+        // They don't have a reliever yet (a new reliever needs to be planned)
+        // BUT preserve dual-purpose fields that are needed for the new primary:
+        // - joiningDate/joiningPort: shows when/where the new primary joined
+        // - contractPeriodMonths: needed for Relief Due calculation
+        // - contractEndRangeStartMonths/contractEndRangeEndMonths: contract range for on-board status
+        const preservedJoiningDate = req.body.joiningDate ?? existingPlanning.joiningDate;
+        const preservedJoiningPort = req.body.joiningPort ?? existingPlanning.joiningPort;
+        const preservedContractPeriodMonths = req.body.contractPeriodMonths ?? existingPlanning.contractPeriodMonths;
+        const preservedContractEndRangeStartMonths = req.body.contractEndRangeStartMonths ?? existingPlanning.contractEndRangeStartMonths;
+        const preservedContractEndRangeEndMonths = req.body.contractEndRangeEndMonths ?? existingPlanning.contractEndRangeEndMonths;
+        
+        clearAllRelieverFields(req.body);
+        
+        // Restore dual-purpose fields for On Board Status display and Relief Due calculation
+        req.body.joiningDate = preservedJoiningDate;
+        req.body.joiningPort = preservedJoiningPort;
+        req.body.contractPeriodMonths = preservedContractPeriodMonths;
+        req.body.contractEndRangeStartMonths = preservedContractEndRangeStartMonths;
+        req.body.contractEndRangeEndMonths = preservedContractEndRangeEndMonths;
+        
+        // Set crewStatus to primary if it was secondary
+        if (existingPlanning.crewStatus === "secondary") {
+          req.body.crewStatus = "primary";
+        }
+      }
+      
       const planning = await storage.updateVesselPlanning(id, req.body);
       if (!planning) {
         return res.status(404).json({ error: "Vessel planning not found" });

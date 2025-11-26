@@ -2283,15 +2283,16 @@ export const VesselModule = (): JSX.Element => {
                                                     <TableHead rowSpan={2} className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3] border-r border-white/20">Rank</TableHead>
                                                     
                                                     {/* On Board Status Section */}
-                                                    <TableHead colSpan={6} className="text-white text-xs font-normal text-center sticky top-0 z-30 bg-[#52baf3] border-r-2 border-white/40">On Board Status</TableHead>
+                                                    <TableHead colSpan={7} className="text-white text-xs font-normal text-center sticky top-0 z-30 bg-[#52baf3] border-r-2 border-white/40">On Board Status</TableHead>
                                                     
                                                     {/* Reliever Status Section */}
-                                                    <TableHead colSpan={6} className="text-white text-xs font-normal text-center sticky top-0 z-30 bg-[#52baf3]">Reliever Status</TableHead>
+                                                    <TableHead colSpan={5} className="text-white text-xs font-normal text-center sticky top-0 z-30 bg-[#52baf3]">Reliever Status</TableHead>
                                                 </TableRow>
                                                 <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
                                                     {/* On Board Status columns */}
                                                     <TableHead className="text-white text-xs font-normal sticky top-[41px] z-30 bg-[#52baf3]">Surname, Given Name</TableHead>
                                                     <TableHead className="text-white text-xs font-normal w-28 sticky top-[41px] z-30 bg-[#52baf3]">Relief Due</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-32 sticky top-[41px] z-30 bg-[#52baf3]">Joining Port</TableHead>
                                                     <TableHead className="text-white text-xs font-normal w-28 sticky top-[41px] z-30 bg-[#52baf3]">S/Off Date</TableHead>
                                                     <TableHead className="text-white text-xs font-normal w-32 sticky top-[41px] z-30 bg-[#52baf3]">S/Off Port</TableHead>
                                                     <TableHead className="text-white text-xs font-normal w-28 sticky top-[41px] z-30 bg-[#52baf3]">Relief Status</TableHead>
@@ -2440,6 +2441,9 @@ export const VesselModule = (): JSX.Element => {
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-relief-due-${rowIndex + 1}`}>
                                                                     {formatDateOnly(planningData?.reliefDue || planningData?.reliefDate)}
                                                                 </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-onboard-joining-port-${rowIndex + 1}`}>
+                                                                    {(!planningData?.crewStatus || planningData?.crewStatus === 'primary') ? (planningData?.joiningPort || '') : ''}
+                                                                </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-soff-date-${rowIndex + 1}`}>
                                                                     {formatDateOnly(planningData?.signOffDate)}
                                                                 </TableCell>
@@ -2468,18 +2472,18 @@ export const VesselModule = (): JSX.Element => {
                                                                     </Button>
                                                                 </TableCell>
                                                                 
-                                                                {/* Reliever Status cells */}
+                                                                {/* Reliever Status cells - only show if there's a reliever */}
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-reliever-name-${rowIndex + 1}`}>
-                                                                    {planningData?.relieverCrewName || ''}
+                                                                    {planningData?.relieverCrewId ? (planningData?.relieverCrewName || '') : ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-joining-date-${rowIndex + 1}`}>
-                                                                    {formatDateOnly(planningData?.joiningDate)}
+                                                                    {planningData?.relieverCrewId ? formatDateOnly(planningData?.joiningDate) : ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-joining-port-${rowIndex + 1}`}>
-                                                                    {planningData?.joiningPort || ''}
+                                                                    {planningData?.relieverCrewId ? (planningData?.joiningPort || '') : ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-joining-status-${rowIndex + 1}`}>
-                                                                    {planningData?.joiningStatus || ''}
+                                                                    {planningData?.relieverCrewId ? (planningData?.joiningStatus || '') : ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs" data-testid={`cell-planning-reliever-edit-${rowIndex + 1}`}>
                                                                     <Button 
