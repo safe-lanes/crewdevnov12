@@ -584,12 +584,17 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             : prev.doctorVisits,
       }));
       
-      // Also load the uploaded photo from crew data
-      if (detailedCrewData.uploadedPhoto) {
-        setUploadedPhoto(detailedCrewData.uploadedPhoto);
-      }
+      // Also load the uploaded photo from crew data (or reset if no photo)
+      setUploadedPhoto(detailedCrewData.uploadedPhoto || null);
     }
   }, [detailedCrewData, crewMember?.id]);
+  
+  // Reset photo when crew member changes or form closes
+  useEffect(() => {
+    if (!isOpen || !crewMember?.id) {
+      setUploadedPhoto(null);
+    }
+  }, [isOpen, crewMember?.id]);
 
   // Helper function to calculate BMI
   const calculateBMI = (height: string, weight: string) => {
@@ -997,21 +1002,17 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
 
   // Photo Upload Component for Sidebar
   const renderSidebarPhotoUpload = () => {
-    const isEditing = editingSections['A1.1']; // Photo editing tied to A1.1 section
-    
     return (
       <div className="sticky top-0 bg-gray-50 p-3 border-b border-gray-200">
         <div className="relative">
-          {/* Single hidden input used by both states */}
-          {isEditing && (
-            <input
-              id="sidebar-photo-upload"
-              type="file"
-              accept="image/*"
-              onChange={handlePhotoUpload}
-              className="hidden"
-            />
-          )}
+          {/* Hidden file input for photo upload - always available */}
+          <input
+            id="sidebar-photo-upload"
+            type="file"
+            accept="image/*"
+            onChange={handlePhotoUpload}
+            className="hidden"
+          />
           
           {uploadedPhoto ? (
             <div className="relative w-full aspect-[4/5] max-w-[120px] mx-auto rounded-lg overflow-hidden border-2 border-gray-300">
@@ -1020,34 +1021,30 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                 alt="Uploaded photo" 
                 className="w-full h-full object-cover"
               />
-              {isEditing && (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  className="absolute top-1 right-1 h-6 w-6"
-                  onClick={removePhoto}
-                  data-testid="button-remove-photo"
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant="destructive"
+                size="icon"
+                className="absolute top-1 right-1 h-6 w-6"
+                onClick={removePhoto}
+                data-testid="button-remove-photo"
+              >
+                <X className="h-3 w-3" />
+              </Button>
             </div>
           ) : (
-            <div className="w-full aspect-[4/5] max-w-[120px] mx-auto bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300 hover:border-gray-400 transition-colors">
-              <div className="text-center">
-                <Camera className="h-6 w-6 mx-auto mb-1 text-gray-400" />
-                <div className="text-xs text-gray-500 mb-1">Upload Photo</div>
-                {isEditing && (
-                  <label htmlFor="sidebar-photo-upload" className="cursor-pointer">
-                    <div className="text-xs text-blue-600 hover:text-blue-800">Choose file</div>
-                  </label>
-                )}
+            <label htmlFor="sidebar-photo-upload" className="cursor-pointer block">
+              <div className="w-full aspect-[4/5] max-w-[120px] mx-auto bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                <div className="text-center">
+                  <Camera className="h-6 w-6 mx-auto mb-1 text-gray-400" />
+                  <div className="text-xs text-gray-500 mb-1">Upload Photo</div>
+                  <div className="text-xs text-blue-600 hover:text-blue-800">Choose file</div>
+                </div>
               </div>
-            </div>
+            </label>
           )}
           
-          {isEditing && uploadedPhoto && (
+          {uploadedPhoto && (
             <Button 
               type="button" 
               variant="outline" 

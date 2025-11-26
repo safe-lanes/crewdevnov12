@@ -1679,9 +1679,18 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
         </div>
           
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          {/* Photo Upload Area */}
+          {/* Photo Upload Area - Always available for upload */}
           <div className="lg:col-span-3 space-y-4">
             <div className="relative">
+              {/* Hidden file input - always available */}
+              <input
+                id="photo-upload"
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoUpload}
+                className="hidden"
+              />
+              
               {uploadedPhoto ? (
                 <div className="relative w-32 h-40 rounded-lg overflow-hidden border-2 border-gray-300">
                   <img 
@@ -1689,57 +1698,37 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                     alt="Uploaded photo" 
                     className="w-full h-full object-cover"
                   />
-                  {isEditing && (
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="icon"
-                      className="absolute top-1 right-1 h-6 w-6"
-                      onClick={removePhoto}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  )}
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-1 right-1 h-6 w-6"
+                    onClick={removePhoto}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
                 </div>
               ) : (
-                <div className="w-32 h-40 bg-gray-50 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300 hover:border-gray-400 transition-colors">
-                  <div className="text-center">
-                    <Camera className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                    <div className="text-sm text-gray-500 mb-2">Upload Photo</div>
-                    {isEditing && (
-                      <label htmlFor="photo-upload" className="cursor-pointer">
-                        <input
-                          id="photo-upload"
-                          type="file"
-                          accept="image/*"
-                          onChange={handlePhotoUpload}
-                          className="hidden"
-                        />
-                        <div className="text-xs text-blue-600 hover:text-blue-800">Choose file</div>
-                      </label>
-                    )}
+                <label htmlFor="photo-upload" className="cursor-pointer block">
+                  <div className="w-32 h-40 bg-gray-50 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                    <div className="text-center">
+                      <Camera className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                      <div className="text-sm text-gray-500 mb-2">Upload Photo</div>
+                      <div className="text-xs text-blue-600 hover:text-blue-800">Choose file</div>
+                    </div>
                   </div>
-                </div>
-              )}
-              {isEditing && uploadedPhoto && (
-                <label htmlFor="photo-upload" className="mt-2 block">
-                  <input
-                    id="photo-upload"
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoUpload}
-                    className="hidden"
-                  />
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full text-xs"
-                    onClick={() => document.getElementById('photo-upload')?.click()}
-                  >
-                    Change Photo
-                  </Button>
                 </label>
+              )}
+              {uploadedPhoto && (
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full text-xs mt-2"
+                  onClick={() => document.getElementById('photo-upload')?.click()}
+                >
+                  Change Photo
+                </Button>
               )}
             </div>
             
