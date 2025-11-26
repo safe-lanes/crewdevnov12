@@ -1267,6 +1267,7 @@ export class DatabaseStorage implements IStorage {
     // Create crew member from candidate data
     const crewMemberData: InsertCrewMember = {
       id: newCrewId,
+      employeeId: newCrewId, // Set employeeId to display as Crew ID in the database view
       empNo: applicationData.empNo || '',
       firstName: candidate.firstName,
       middleName: candidate.middleName,
@@ -1599,9 +1600,9 @@ export class DatabaseStorage implements IStorage {
       }
       
       // Fetch crew member data to populate relieverCrewName
-      const crewMember = await this.getCrewMemberById(crewMemberId);
+      const crewMember = await this.getCrewMember(crewMemberId);
       const relieverCrewName = crewMember ? 
-        `${crewMember.familyName || crewMember.lastName || ''}, ${crewMember.firstName || ''}`.trim().replace(/^,\s*|,\s*$/g, '') : 
+        `${crewMember.familyName || ''}, ${crewMember.firstName || ''}`.trim().replace(/^,\s*|,\s*$/g, '') : 
         null;
       
       // Create vessel_planning record
