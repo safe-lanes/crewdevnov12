@@ -1279,6 +1279,9 @@ export const VesselModule = (): JSX.Element => {
     const [onBoardDialogOpen, setOnBoardDialogOpen] = useState(false);
     const [selectedRankForOnBoard, setSelectedRankForOnBoard] = useState<any>(null);
     
+    // Show Archived state for Crew List
+    const [showArchived, setShowArchived] = useState(false);
+    
     // Compliance Matrix dialog state
     const [complianceDialogOpen, setComplianceDialogOpen] = useState(false);
 
@@ -1567,26 +1570,45 @@ export const VesselModule = (): JSX.Element => {
                     <Tabs value={activeTab} className="w-full h-full">
                         <TabsContent value="crew-list" className="mt-0">
                             <div className="space-y-4">
-                                {/* Download buttons aligned to the right */}
-                                <div className="flex justify-end gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-8 gap-2"
-                                        data-testid="button-download-imo"
-                                    >
-                                        <Download className="h-4 w-4" />
-                                        <span className="text-xs">IMO Crew List</span>
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-8 gap-2"
-                                        data-testid="button-download-us"
-                                    >
-                                        <Download className="h-4 w-4" />
-                                        <span className="text-xs">US Crew List</span>
-                                    </Button>
+                                {/* Controls: Show Archived and Download buttons */}
+                                <div className="flex items-center justify-between">
+                                    {/* Show Archived Checkbox */}
+                                    <div className="flex items-center gap-2 border border-gray-300 rounded-md px-3 py-2 bg-white">
+                                        <Checkbox
+                                            id="show-archived-crew"
+                                            checked={showArchived}
+                                            onCheckedChange={(checked) => setShowArchived(checked === true)}
+                                            data-testid="checkbox-show-archived-crew"
+                                        />
+                                        <label 
+                                            htmlFor="show-archived-crew" 
+                                            className="text-sm text-gray-700 cursor-pointer select-none"
+                                        >
+                                            Show Archived
+                                        </label>
+                                    </div>
+                                    
+                                    {/* Download buttons */}
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-8 gap-2"
+                                            data-testid="button-download-imo"
+                                        >
+                                            <Download className="h-4 w-4" />
+                                            <span className="text-xs">IMO Crew List</span>
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-8 gap-2"
+                                            data-testid="button-download-us"
+                                        >
+                                            <Download className="h-4 w-4" />
+                                            <span className="text-xs">US Crew List</span>
+                                        </Button>
+                                    </div>
                                 </div>
 
                                 {/* Table Container */}
@@ -1600,16 +1622,26 @@ export const VesselModule = (): JSX.Element => {
                                                     <TableHead className="text-white text-xs font-normal sticky top-0 z-30 bg-[#52baf3]">Surname, Given Name</TableHead>
                                                     <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Nationality</TableHead>
                                                     <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Joined</TableHead>
-                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Doc Check</TableHead>
-                                                    <TableHead className="text-white text-xs font-normal w-20 sticky top-0 z-30 bg-[#52baf3]">Famil.</TableHead>
-                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Relief Date</TableHead>
-                                                    <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Planned S/Off</TableHead>
-                                                    <TableHead className="text-white text-xs font-normal w-40 sticky top-0 z-30 bg-[#52baf3]">Doc. Expiring (2m)/Expired</TableHead>
-                                                    <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Medical Expiring</TableHead>
-                                                    <TableHead className="text-white text-xs font-normal w-40 sticky top-0 z-30 bg-[#52baf3]">Vacc. Expiring (2m)/Expired</TableHead>
-                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Appraisal</TableHead>
-                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Handover</TableHead>
-                                                    <TableHead className="text-white text-xs font-normal w-16 sticky top-0 z-30 bg-[#52baf3]"></TableHead>
+                                                    {showArchived ? (
+                                                        <>
+                                                            <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Actual Sign Off Date</TableHead>
+                                                            <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Appraisal</TableHead>
+                                                            <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Handover</TableHead>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Doc Check</TableHead>
+                                                            <TableHead className="text-white text-xs font-normal w-20 sticky top-0 z-30 bg-[#52baf3]">Famil.</TableHead>
+                                                            <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Relief Date</TableHead>
+                                                            <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Planned S/Off</TableHead>
+                                                            <TableHead className="text-white text-xs font-normal w-40 sticky top-0 z-30 bg-[#52baf3]">Doc. Expiring (2m)/Expired</TableHead>
+                                                            <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Medical Expiring</TableHead>
+                                                            <TableHead className="text-white text-xs font-normal w-40 sticky top-0 z-30 bg-[#52baf3]">Vacc. Expiring (2m)/Expired</TableHead>
+                                                            <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Appraisal</TableHead>
+                                                            <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Handover</TableHead>
+                                                            <TableHead className="text-white text-xs font-normal w-16 sticky top-0 z-30 bg-[#52baf3]"></TableHead>
+                                                        </>
+                                                    )}
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
@@ -1633,8 +1665,13 @@ export const VesselModule = (): JSX.Element => {
                                                     </TableRow>
                                                 ) : (() => {
                                                     // Use vessel planning data and sort by rank order
+                                                    // Filter based on showArchived: when false, exclude archived; when true, show only archived
                                                     const vesselCrew = vesselPlanning
-                                                        .filter((planning: any) => planning.crewMemberId)
+                                                        .filter((planning: any) => {
+                                                            if (!planning.crewMemberId) return false;
+                                                            const isArchived = planning.isArchived === true;
+                                                            return showArchived ? isArchived : !isArchived;
+                                                        })
                                                         .sort((a: any, b: any) => {
                                                             // Strip suffix from rank name (e.g., "3rd Officer_1" -> "3rd Officer")
                                                             const aRankBase = a.rank?.split('_')[0] || a.rank;
@@ -1647,8 +1684,11 @@ export const VesselModule = (): JSX.Element => {
                                                     if (vesselCrew.length === 0) {
                                                         return (
                                                             <TableRow>
-                                                                <TableCell colSpan={15} className="text-center text-xs text-gray-500 py-8">
-                                                                    No crew members assigned to this vessel.
+                                                                <TableCell colSpan={showArchived ? 8 : 15} className="text-center text-xs text-gray-500 py-8">
+                                                                    {showArchived 
+                                                                        ? "No archived crew members for this vessel."
+                                                                        : "No crew members assigned to this vessel."
+                                                                    }
                                                                 </TableCell>
                                                             </TableRow>
                                                         );
@@ -1698,60 +1738,96 @@ export const VesselModule = (): JSX.Element => {
                                                             <TableCell className="text-xs text-gray-700" data-testid={`cell-joined-${index + 1}`}>
                                                                 {formatDateOnly(planning.signOnDate)}
                                                             </TableCell>
-                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-doccheck-${index + 1}`}>
-                                                                
-                                                            </TableCell>
-                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-famil-${index + 1}`}>
-                                                                
-                                                            </TableCell>
-                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-relief-${index + 1}`}>
-                                                                {formatDateOnly(planning.reliefDue || planning.signOffDate)}
-                                                            </TableCell>
-                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-planned-${index + 1}`}>
-                                                                
-                                                            </TableCell>
-                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-docexp-${index + 1}`}>
-                                                                
-                                                            </TableCell>
-                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-medical-${index + 1}`}>
-                                                                
-                                                            </TableCell>
-                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-vaccexp-${index + 1}`}>
-                                                                
-                                                            </TableCell>
-                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-appraisal-${index + 1}`}>
-                                                                {crewData && (() => {
-                                                                    const buttonConfig = getAppraisalButtonConfig(planning.crewMemberId);
-                                                                    // Reconstruct crew object for appraisal handler using embedded data
-                                                                    const crewForAppraisal = {
-                                                                        id: crewData.id,
-                                                                        employeeId: crewData.employeeId,
-                                                                        firstName: crewData.firstName,
-                                                                        lastName: crewData.lastName,
-                                                                        nationality: crewData.nationality,
-                                                                        presentRank: crewData.presentRank || planning.rank
-                                                                    };
-                                                                    return (
-                                                                        <Button 
-                                                                            variant="ghost" 
-                                                                            size="sm" 
-                                                                            className="h-7 text-xs px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                                                            onClick={() => handleAppraisalClick(crewForAppraisal, buttonConfig)}
-                                                                            data-testid={`button-appraisal-${buttonConfig.text.toLowerCase()}-${index + 1}`}
-                                                                        >
-                                                                            {buttonConfig.text}
+                                                            {showArchived ? (
+                                                                <>
+                                                                    <TableCell className="text-xs text-gray-700" data-testid={`cell-signoff-date-${index + 1}`}>
+                                                                        {formatDateOnly(planning.signOffDate || planning.archivedDate)}
+                                                                    </TableCell>
+                                                                    <TableCell className="text-xs text-gray-700" data-testid={`cell-appraisal-${index + 1}`}>
+                                                                        {crewData && (() => {
+                                                                            const buttonConfig = getAppraisalButtonConfig(planning.crewMemberId);
+                                                                            const crewForAppraisal = {
+                                                                                id: crewData.id,
+                                                                                employeeId: crewData.employeeId,
+                                                                                firstName: crewData.firstName,
+                                                                                lastName: crewData.lastName,
+                                                                                nationality: crewData.nationality,
+                                                                                presentRank: crewData.presentRank || planning.rank
+                                                                            };
+                                                                            return (
+                                                                                <Button 
+                                                                                    variant="ghost" 
+                                                                                    size="sm" 
+                                                                                    className="h-7 text-xs px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                                                                    onClick={() => handleAppraisalClick(crewForAppraisal, buttonConfig)}
+                                                                                    data-testid={`button-appraisal-${buttonConfig.text.toLowerCase()}-${index + 1}`}
+                                                                                >
+                                                                                    {buttonConfig.text}
+                                                                                </Button>
+                                                                            );
+                                                                        })()}
+                                                                    </TableCell>
+                                                                    <TableCell className="text-xs text-gray-700" data-testid={`cell-handover-${index + 1}`}>
+                                                                        {formatDateOnly(planning.handOverDate)}
+                                                                    </TableCell>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <TableCell className="text-xs text-gray-700" data-testid={`cell-doccheck-${index + 1}`}>
+                                                                        
+                                                                    </TableCell>
+                                                                    <TableCell className="text-xs text-gray-700" data-testid={`cell-famil-${index + 1}`}>
+                                                                        
+                                                                    </TableCell>
+                                                                    <TableCell className="text-xs text-gray-700" data-testid={`cell-relief-${index + 1}`}>
+                                                                        {formatDateOnly(planning.reliefDue || planning.signOffDate)}
+                                                                    </TableCell>
+                                                                    <TableCell className="text-xs text-gray-700" data-testid={`cell-planned-${index + 1}`}>
+                                                                        
+                                                                    </TableCell>
+                                                                    <TableCell className="text-xs text-gray-700" data-testid={`cell-docexp-${index + 1}`}>
+                                                                        
+                                                                    </TableCell>
+                                                                    <TableCell className="text-xs text-gray-700" data-testid={`cell-medical-${index + 1}`}>
+                                                                        
+                                                                    </TableCell>
+                                                                    <TableCell className="text-xs text-gray-700" data-testid={`cell-vaccexp-${index + 1}`}>
+                                                                        
+                                                                    </TableCell>
+                                                                    <TableCell className="text-xs text-gray-700" data-testid={`cell-appraisal-${index + 1}`}>
+                                                                        {crewData && (() => {
+                                                                            const buttonConfig = getAppraisalButtonConfig(planning.crewMemberId);
+                                                                            const crewForAppraisal = {
+                                                                                id: crewData.id,
+                                                                                employeeId: crewData.employeeId,
+                                                                                firstName: crewData.firstName,
+                                                                                lastName: crewData.lastName,
+                                                                                nationality: crewData.nationality,
+                                                                                presentRank: crewData.presentRank || planning.rank
+                                                                            };
+                                                                            return (
+                                                                                <Button 
+                                                                                    variant="ghost" 
+                                                                                    size="sm" 
+                                                                                    className="h-7 text-xs px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                                                                    onClick={() => handleAppraisalClick(crewForAppraisal, buttonConfig)}
+                                                                                    data-testid={`button-appraisal-${buttonConfig.text.toLowerCase()}-${index + 1}`}
+                                                                                >
+                                                                                    {buttonConfig.text}
+                                                                                </Button>
+                                                                            );
+                                                                        })()}
+                                                                    </TableCell>
+                                                                    <TableCell className="text-xs text-gray-700" data-testid={`cell-handover-${index + 1}`}>
+                                                                        
+                                                                    </TableCell>
+                                                                    <TableCell className="text-xs" data-testid={`cell-actions-${index + 1}`}>
+                                                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                                            <Eye className="h-4 w-4 text-gray-500" />
                                                                         </Button>
-                                                                    );
-                                                                })()}
-                                                            </TableCell>
-                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-handover-${index + 1}`}>
-                                                                
-                                                            </TableCell>
-                                                            <TableCell className="text-xs" data-testid={`cell-actions-${index + 1}`}>
-                                                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                                                    <Eye className="h-4 w-4 text-gray-500" />
-                                                                </Button>
-                                                            </TableCell>
+                                                                    </TableCell>
+                                                                </>
+                                                            )}
                                                         </TableRow>
                                                     )});
                                                 })()}
