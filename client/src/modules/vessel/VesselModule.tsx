@@ -798,12 +798,15 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
             // Check if this is a takeover (takeOverConfirmation checked AND takeOverDate set)
             const isTakeover = data.takeOverConfirmation && data.takeOverDate;
             
+            // Check if this is a sign-off (Relief Status = "Signed Off" AND Sign Off Date is set)
+            const isSignOff = data.reliefStatus === "Signed Off" && data.signOffDate;
+            
+            // Fetch all planning records for this vessel for validation
+            const response = await apiRequest('GET', `/api/vessel-planning/vessel/${vesselId}`);
+            const allPlanning = await response.json() as any[];
+            
             if (isTakeover && planningData?.crewStatus === "secondary") {
                 // TAKEOVER LOGIC: Secondary crew is taking over as Primary
-                
-                // Step 1: Fetch all planning records for this vessel to find primary and secondary
-                const response = await apiRequest('GET', `/api/vessel-planning/vessel/${vesselId}`);
-                const allPlanning = await response.json() as any[];
                 
                 // Find primary crew member for this rank
                 const primaryCrew = allPlanning.find((p: any) => 
@@ -831,6 +834,36 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                 };
                 
                 return apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, promotePayload);
+            } else if (isSignOff && planningData?.id) {
+                // SIGN-OFF LOGIC: Crew is signing off from the vessel
+                
+                // Validate: Primary cannot sign off if secondary crew exists
+                if (planningData?.crewStatus === "primary") {
+                    const secondaryCrew = allPlanning.find((p: any) => 
+                        p.rankId === rankId && 
+                        p.crewStatus === "secondary" && 
+                        p.id !== planningData.id &&
+                        !p.isArchived
+                    );
+                    
+                    if (secondaryCrew) {
+                        throw new Error("Cannot sign off primary crew when a secondary (reliever) exists. The reliever must take over first.");
+                    }
+                }
+                
+                // Exclude timestamp fields (createdAt, updatedAt) to avoid Date object errors
+                const { createdAt: _1, updatedAt: _2, ...cleanPlanningData } = planningData || {};
+                const archivePayload = {
+                    vesselId,
+                    rankId,
+                    rank,
+                    ...cleanPlanningData,
+                    ...data,
+                    isArchived: true,
+                    archivedDate: data.signOffDate, // Use sign-off date as archive date
+                };
+                
+                return apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, archivePayload);
             } else {
                 // Normal update flow
                 // Exclude timestamp fields (createdAt, updatedAt) to avoid Date object errors
@@ -1109,6 +1142,7 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                                                     <SelectItem value="Proposed">Proposed</SelectItem>
                                                     <SelectItem value="Planned">Planned</SelectItem>
                                                     <SelectItem value="Confirmed">Confirmed</SelectItem>
+                                                    <SelectItem value="Signed Off">Signed Off</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </FormControl>
