@@ -2173,19 +2173,27 @@ export const VesselModule = (): JSX.Element => {
                                                             const fullRankName = rank.role || rank.rank;
                                                             // Strip suffix for fallback matching (e.g., "3rd Officer_1" -> "3rd Officer")
                                                             const baseRankName = fullRankName?.split('_')[0];
+                                                            // Check if this is a variant position (has suffix like _1, _2)
+                                                            const rankHasSuffix = fullRankName?.includes('_');
+                                                            
                                                             // OFFICER MATRIX: Show only PRIMARY crew (filter out secondary)
-                                                            // Match by full rank name including suffix to avoid mixing up variant positions
+                                                            // For variant positions, use EXACT rank name matching only
                                                             const rankPlanningData = vesselPlanning.find((p: any) => {
                                                                 if (p.crewStatus !== 'primary') return false;
-                                                                // Match by rankId (most precise)
-                                                                if (p.rankId === rank.id || p.rankId === rank.rankId) return true;
-                                                                // Match by full rank name including suffix
+                                                                
+                                                                // For variant positions (with suffix), ONLY match by exact full rank name
+                                                                if (rankHasSuffix) {
+                                                                    return p.rank === fullRankName;
+                                                                }
+                                                                
+                                                                // For non-variant positions, try exact name first
                                                                 if (p.rank === fullRankName) return true;
-                                                                // Only match by base name if neither has a suffix
+                                                                // Then try rankId match
+                                                                if (p.rankId === rank.id || p.rankId === rank.rankId) return true;
+                                                                // Fallback to base name only if planning record has no suffix
                                                                 const planningBaseRank = p.rank?.split('_')[0];
                                                                 const planningHasSuffix = p.rank?.includes('_');
-                                                                const rankHasSuffix = fullRankName?.includes('_');
-                                                                if (!planningHasSuffix && !rankHasSuffix && planningBaseRank === baseRankName) return true;
+                                                                if (!planningHasSuffix && planningBaseRank === baseRankName) return true;
                                                                 return false;
                                                             });
                                                             
@@ -2321,20 +2329,31 @@ export const VesselModule = (): JSX.Element => {
                                                         const baseRankName = fullRankName?.split('_')[0];
                                                         
                                                         // Find all matching planning records for this rank (exclude archived)
-                                                        // Priority: 1) Match by rankId, 2) Match by full rank name (with suffix), 3) Fallback to base rank name only if no suffix variants exist
+                                                        // For variant positions (with suffix like _1, _2), use EXACT rank name matching only
+                                                        // This prevents cross-contamination where both 3rd Officer_1 and 3rd Officer_2 share rankId S4
+                                                        const rankHasSuffix = fullRankName?.includes('_');
+                                                        
                                                         const matchingRecords = vesselPlanning.filter((p: any) => {
                                                             if (p.isArchived) return false;
-                                                            // Match by rankId (most precise)
-                                                            if (p.rankId === rank.id || p.rankId === rank.rankId) return true;
-                                                            // Match by full rank name including suffix (e.g., "3rd Officer_1" matches "3rd Officer_1")
+                                                            
+                                                            // For variant positions (with suffix), ONLY match by exact full rank name
+                                                            // This is critical because variant positions share the same rankId
+                                                            if (rankHasSuffix) {
+                                                                return p.rank === fullRankName;
+                                                            }
+                                                            
+                                                            // For non-variant positions, use the original matching logic
+                                                            // First try exact full rank name match
                                                             if (p.rank === fullRankName) return true;
-                                                            // Only match by base name if the planning record also has no suffix
-                                                            // This prevents "3rd Officer_1" from matching a record stored as "3rd Officer_2"
+                                                            
+                                                            // Then try rankId match (for non-variant positions this is safe)
+                                                            if (p.rankId === rank.id || p.rankId === rank.rankId) return true;
+                                                            
+                                                            // Fallback: match by base name only if planning record also has no suffix
                                                             const planningBaseRank = p.rank?.split('_')[0];
                                                             const planningHasSuffix = p.rank?.includes('_');
-                                                            const rankHasSuffix = fullRankName?.includes('_');
-                                                            // Only match base names if neither has a suffix
-                                                            if (!planningHasSuffix && !rankHasSuffix && planningBaseRank === baseRankName) return true;
+                                                            if (!planningHasSuffix && planningBaseRank === baseRankName) return true;
+                                                            
                                                             return false;
                                                         });
                                                         
