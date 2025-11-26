@@ -39,6 +39,9 @@ export const availableRanks = pgTable("available_ranks", {
 export const crewMembers = pgTable("crew_members", {
   id: text("id").primaryKey(),
   
+  // Photo
+  uploadedPhoto: text("uploaded_photo"), // Base64 encoded photo data
+  
   // Basic Personal Information
   empNo: text("emp_no"), // Employee Number
   firstName: text("first_name").notNull(),
@@ -729,6 +732,9 @@ export const updateAvailableRankSchema = createInsertSchema(availableRanks).pick
 }).partial();
 
 export const insertCrewMemberSchema = createInsertSchema(crewMembers).pick({
+  // Photo
+  uploadedPhoto: true,
+  
   // Basic Personal Information
   empNo: true,
   firstName: true,
