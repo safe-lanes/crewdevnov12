@@ -1518,6 +1518,9 @@ export class DatabaseStorage implements IStorage {
       for (let i = 0; i < assignments.length; i++) {
         const assignment = assignments[i];
         
+        // Skip deployed or rejected assignments - they are now in the archive
+        if (assignment.status === 'Deployed' || assignment.status === 'Rejected') continue;
+        
         // Apply vessel filter
         if (filters?.vessels && !filters.vessels.includes(assignment.vesselName)) continue;
         

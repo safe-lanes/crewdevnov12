@@ -470,8 +470,8 @@ export const rotationArchive = pgTable("rotation_archive", {
   originalDraftId: text("original_draft_id"), // Keep draftId for reference
   originalAssignmentIndex: integer("original_assignment_index"), // Index in original plan's assignments array
   
-  vesselId: text("vessel_id").notNull(), // Vessel code (VSL-XXX format)
-  vesselName: text("vessel_name").notNull(),
+  vesselId: text("vessel_id"), // Vessel code (VSL-XXX format) - nullable for historical fidelity
+  vesselName: text("vessel_name"), // nullable for historical fidelity
   rankId: text("rank_id"), // Rank ID if available
   rank: text("rank").notNull(),
   
@@ -481,14 +481,14 @@ export const rotationArchive = pgTable("rotation_archive", {
   
   joiningDate: text("joining_date").notNull(),
   joiningPort: text("joining_port"),
-  contractPeriod: integer("contract_period").notNull(),
+  contractPeriod: integer("contract_period"), // nullable for historical fidelity
   signOffDate: text("sign_off_date"), // Planned sign-off date
   
-  proposedBy: text("proposed_by").notNull(),
-  proposedDate: text("proposed_date").notNull(),
+  proposedBy: text("proposed_by"), // nullable for historical fidelity (avoid synthetic "System" default)
+  proposedDate: text("proposed_date"), // nullable for historical fidelity
   result: text("result").notNull(), // "Deployed" or "Rejected"
   archivedDate: text("archived_date").notNull(), // When deployed/rejected
-  archivedBy: text("archived_by").notNull(), // Who deployed/rejected
+  archivedBy: text("archived_by"), // nullable for historical fidelity (avoid synthetic "Current User" default)
   
   vesselPlanningId: integer("vessel_planning_id"), // ID of vessel_planning record created (for deployed)
   

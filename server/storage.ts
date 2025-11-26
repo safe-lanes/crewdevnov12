@@ -5406,7 +5406,7 @@ export class PersistentFileStorage implements IStorage {
     
     // Apply filters if provided
     if (filters?.vessels && filters.vessels.length > 0) {
-      entries = entries.filter(e => filters.vessels!.includes(e.vesselName));
+      entries = entries.filter(e => e.vesselName && filters.vessels!.includes(e.vesselName));
     }
     if (filters?.ranks && filters.ranks.length > 0) {
       entries = entries.filter(e => filters.ranks!.includes(e.rank));
@@ -5431,8 +5431,8 @@ export class PersistentFileStorage implements IStorage {
       originalPlanId: entry.originalPlanId ?? null,
       originalDraftId: entry.originalDraftId ?? null,
       originalAssignmentIndex: entry.originalAssignmentIndex ?? null,
-      vesselId: entry.vesselId,
-      vesselName: entry.vesselName,
+      vesselId: entry.vesselId ?? null,
+      vesselName: entry.vesselName ?? null,
       rankId: entry.rankId ?? null,
       rank: entry.rank,
       crewId: entry.crewId,
@@ -5440,13 +5440,13 @@ export class PersistentFileStorage implements IStorage {
       crewMemberId: entry.crewMemberId ?? null,
       joiningDate: entry.joiningDate,
       joiningPort: entry.joiningPort ?? null,
-      contractPeriod: entry.contractPeriod,
+      contractPeriod: entry.contractPeriod ?? null,
       signOffDate: entry.signOffDate ?? null,
-      proposedBy: entry.proposedBy,
-      proposedDate: entry.proposedDate,
+      proposedBy: entry.proposedBy ?? null,
+      proposedDate: entry.proposedDate ?? null,
       result: entry.result,
       archivedDate: entry.archivedDate,
-      archivedBy: entry.archivedBy,
+      archivedBy: entry.archivedBy ?? null,
       vesselPlanningId: entry.vesselPlanningId ?? null,
       currentCrewInfo: entry.currentCrewInfo ?? null,
       fullAssignmentSnapshot: entry.fullAssignmentSnapshot ?? null,
