@@ -443,6 +443,10 @@ export const vesselPlanning = pgTable("vessel_planning", {
   deploymentChecklistCompleted: boolean("deployment_checklist_completed"),
   applicableDocsChecked: boolean("applicable_docs_checked"),
   
+  // Archive Status - for vessel crew archive functionality
+  isArchived: boolean("is_archived").default(false), // true when crew signs off from vessel
+  archivedDate: text("archived_date"), // Date when record was archived (sign-off date)
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1147,6 +1151,8 @@ export const insertVesselPlanningSchema = createInsertSchema(vesselPlanning).pic
   contractEndRangeEndMonths: true,
   deploymentChecklistCompleted: true,
   applicableDocsChecked: true,
+  isArchived: true,
+  archivedDate: true,
 });
 
 export const insertRotationPlanSchema = createInsertSchema(rotationPlans).omit({

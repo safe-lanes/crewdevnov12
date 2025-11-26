@@ -4908,6 +4908,8 @@ export class PersistentFileStorage implements IStorage {
       handOverDate: insertPlanning.handOverDate ?? null,
       deploymentChecklistCompleted: insertPlanning.deploymentChecklistCompleted ?? null,
       applicableDocsChecked: insertPlanning.applicableDocsChecked ?? null,
+      isArchived: insertPlanning.isArchived ?? false,
+      archivedDate: insertPlanning.archivedDate ?? null,
       createdAt: null,
       updatedAt: null
     };
