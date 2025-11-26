@@ -1643,24 +1643,61 @@ export class DatabaseStorage implements IStorage {
         `${crewMember.familyName || ''}, ${crewMember.firstName || ''}`.trim().replace(/^,\s*|,\s*$/g, '') : 
         null;
       
-      // Create vessel_planning record
-      // Note: Deployed rotation assignments are RELIEVERS (incoming crew), not on-board crew
-      // Store vessel CODE (e.g., "VSL-003"), not vessel NAME
-      const [vesselPlanningRecord] = await this.db
-        .insert(vesselPlanning)
-        .values({
-          vesselId: vesselCode,
-          rankId: assignment.rank || 'Unknown',
-          rank: assignment.rank,
-          crewStatus: 'primary', // CRITICAL: Set default crew_status to 'primary'
-          relieverCrewId: crewMemberId,
-          relieverCrewName: relieverCrewName, // FIXED: Populate reliever name
-          joiningDate: joiningDate,
-          joiningPort: assignment.joiningPort || null,
-          joiningStatus: 'Planned', // FIXED: Set to 'Planned' (was 'Deployed')
-          contractPeriodMonths: contractPeriodMonths,
-        })
-        .returning();
+      // Find existing vessel_planning record for this vessel+rank to UPDATE (not create new)
+      // This prevents duplicate records - we add reliever data to existing on-board crew record
+      const rankName = assignment.rank;
+      const existingRecords = await this.db
+        .select()
+        .from(vesselPlanning)
+        .where(
+          and(
+            eq(vesselPlanning.vesselId, vesselCode),
+            or(
+              eq(vesselPlanning.rank, rankName),
+              eq(vesselPlanning.rankId, rankName)
+            ),
+            eq(vesselPlanning.crewStatus, 'primary')
+          )
+        );
+      
+      let vesselPlanningRecord: any;
+      
+      if (existingRecords.length > 0) {
+        // UPDATE existing record with reliever data
+        console.log('📝 Updating existing vessel_planning record:', existingRecords[0].id);
+        const [updated] = await this.db
+          .update(vesselPlanning)
+          .set({
+            relieverCrewId: crewMemberId,
+            relieverCrewName: relieverCrewName,
+            joiningDate: joiningDate,
+            joiningPort: assignment.joiningPort || null,
+            joiningStatus: 'Planned',
+            contractPeriodMonths: contractPeriodMonths,
+          })
+          .where(eq(vesselPlanning.id, existingRecords[0].id))
+          .returning();
+        vesselPlanningRecord = updated;
+      } else {
+        // No existing record found - create new one (fallback for positions without on-board crew)
+        console.log('➕ Creating new vessel_planning record (no existing record found)');
+        const [created] = await this.db
+          .insert(vesselPlanning)
+          .values({
+            vesselId: vesselCode,
+            rankId: assignment.rank || 'Unknown',
+            rank: assignment.rank,
+            crewStatus: 'primary',
+            relieverCrewId: crewMemberId,
+            relieverCrewName: relieverCrewName,
+            joiningDate: joiningDate,
+            joiningPort: assignment.joiningPort || null,
+            joiningStatus: 'Planned',
+            contractPeriodMonths: contractPeriodMonths,
+          })
+          .returning();
+        vesselPlanningRecord = created;
+      }
       
       // Update assignment status in rotation plan
       assignments[assignmentIndex] = {
