@@ -159,9 +159,9 @@ export interface IStorage {
   deleteRotationPlan(id: number): Promise<boolean>;
   // Rotation Approval Workflow
   proposeRotationPlan(id: number, proposedBy: string): Promise<RotationPlan | undefined>;
-  getProposedAssignments(filters?: { vessels?: string[]; ranks?: string[]; draftId?: string; dateFrom?: string; dateTo?: string }): Promise<any[]>;
+  getProposedAssignments(filters?: { vessels?: string[]; ranks?: string[]; draftId?: string; dateFrom?: string; dateTo?: string; archived?: boolean }): Promise<any[]>;
   deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[]; vesselPlanningId?: number; vesselCode?: string }>;
-  rejectAssignment(planId: number, assignmentIndex: number): Promise<RotationPlan | undefined>;
+  rejectAssignment(planId: number, assignmentIndex: number, rejectedBy?: string): Promise<RotationPlan | undefined>;
   checkAssignmentConflicts(crewId: string, joiningDate: string, contractPeriod: number, excludePlanId?: number, excludeAssignmentIndex?: number): Promise<any[]>;
   // Drug/Alcohol Test Records
   getDrugAlcoholTestRecords(): Promise<DrugAlcoholTestRecord[]>;
@@ -1298,9 +1298,10 @@ export class MemStorage implements IStorage {
     return updatedPlan;
   }
 
-  async getProposedAssignments(filters?: { vessels?: string[]; ranks?: string[]; draftId?: string; dateFrom?: string; dateTo?: string }): Promise<any[]> {
+  async getProposedAssignments(filters?: { vessels?: string[]; ranks?: string[]; draftId?: string; dateFrom?: string; dateTo?: string; archived?: boolean }): Promise<any[]> {
+    // For archived view, include completed plans as well (which have all assignments deployed/rejected)
     const proposedPlans = Array.from(this.rotationPlans.values()).filter(plan => 
-      plan.planStatus === "Proposed" || plan.planStatus === "Partially Approved"
+      plan.planStatus === "Proposed" || plan.planStatus === "Partially Approved" || plan.planStatus === "Completed"
     );
 
     const assignments: any[] = [];
@@ -1310,7 +1311,12 @@ export class MemStorage implements IStorage {
         for (let i = 0; i < planAssignments.length; i++) {
           const assignment = planAssignments[i];
           
-          if (!assignment.proposalStatus || assignment.proposalStatus === "proposed") {
+          // Determine which assignments to include based on archived filter
+          const isArchived = assignment.proposalStatus === "deployed" || assignment.proposalStatus === "rejected";
+          const isPending = !assignment.proposalStatus || assignment.proposalStatus === "proposed";
+          
+          // If archived filter is set, only include archived assignments; otherwise only pending
+          if (filters?.archived ? isArchived : isPending) {
             // Find current crew on board for this vessel/rank
             let currentCrew = null;
             
@@ -1396,6 +1402,18 @@ export class MemStorage implements IStorage {
             }
             
             const { assignmentIndex: _, ...assignmentWithoutIndex } = assignment;
+            
+            // For archived assignments, add result and archivedDate fields
+            let result: string | undefined;
+            let archivedDate: string | undefined;
+            if (assignment.proposalStatus === "deployed") {
+              result = "Deployed";
+              archivedDate = assignment.deployedDate;
+            } else if (assignment.proposalStatus === "rejected") {
+              result = "Rejected";
+              archivedDate = assignment.rejectedDate;
+            }
+            
             assignments.push({
               ...assignmentWithoutIndex,
               planId: plan.id,
@@ -1404,10 +1422,21 @@ export class MemStorage implements IStorage {
               proposedDate: plan.proposedDate,
               assignmentIndex: i,
               currentCrew, // Add current crew timeline data
+              ...(result && { result }),
+              ...(archivedDate && { archivedDate }),
             });
           }
         }
       }
+    }
+
+    // Sort archived assignments by archivedDate (latest first)
+    if (filters?.archived) {
+      assignments.sort((a, b) => {
+        const dateA = new Date(a.archivedDate || '1970-01-01');
+        const dateB = new Date(b.archivedDate || '1970-01-01');
+        return dateB.getTime() - dateA.getTime();
+      });
     }
 
     return assignments;
@@ -1504,18 +1533,26 @@ export class MemStorage implements IStorage {
     return { success: true, vesselPlanningId: existingPlanningId || undefined, vesselCode };
   }
 
-  async rejectAssignment(planId: number, assignmentIndex: number): Promise<RotationPlan | undefined> {
+  async rejectAssignment(planId: number, assignmentIndex: number, rejectedBy?: string): Promise<RotationPlan | undefined> {
     const plan = this.rotationPlans.get(planId);
     if (!plan || !plan.assignments) return undefined;
 
     const assignments = JSON.parse(plan.assignments);
     if (!assignments[assignmentIndex]) return undefined;
 
-    // Remove the assignment
-    assignments.splice(assignmentIndex, 1);
+    // Mark assignment as rejected (instead of removing it, so it can be archived)
+    assignments[assignmentIndex] = {
+      ...assignments[assignmentIndex],
+      proposalStatus: "rejected",
+      rejectedDate: new Date().toISOString().split('T')[0],
+      rejectedBy: rejectedBy || 'Current User'
+    };
 
-    // Update plan status back to Draft if no assignments left
-    const planStatus = assignments.length === 0 ? "In Draft" : plan.planStatus;
+    // Check if all assignments are now processed (deployed or rejected)
+    const pendingAssignments = assignments.filter((a: any) => 
+      !a.proposalStatus || a.proposalStatus === "proposed"
+    );
+    const planStatus = pendingAssignments.length === 0 ? "Completed" : plan.planStatus;
 
     const updatedPlan: RotationPlan = {
       ...plan,
@@ -4901,9 +4938,10 @@ export class PersistentFileStorage implements IStorage {
     return updatedPlan;
   }
 
-  async getProposedAssignments(filters?: { vessels?: string[]; ranks?: string[]; draftId?: string; dateFrom?: string; dateTo?: string }): Promise<any[]> {
+  async getProposedAssignments(filters?: { vessels?: string[]; ranks?: string[]; draftId?: string; dateFrom?: string; dateTo?: string; archived?: boolean }): Promise<any[]> {
+    // For archived view, include completed plans as well (which have all assignments deployed/rejected)
     const proposedPlans = Array.from(this.rotationPlans.values()).filter(plan => 
-      plan.planStatus === "Proposed" || plan.planStatus === "Partially Approved"
+      plan.planStatus === "Proposed" || plan.planStatus === "Partially Approved" || plan.planStatus === "Completed"
     );
 
     const assignments: any[] = [];
@@ -4913,7 +4951,12 @@ export class PersistentFileStorage implements IStorage {
         for (let i = 0; i < planAssignments.length; i++) {
           const assignment = planAssignments[i];
           
-          if (!assignment.proposalStatus || assignment.proposalStatus === "proposed") {
+          // Determine which assignments to include based on archived filter
+          const isArchived = assignment.proposalStatus === "deployed" || assignment.proposalStatus === "rejected";
+          const isPending = !assignment.proposalStatus || assignment.proposalStatus === "proposed";
+          
+          // If archived filter is set, only include archived assignments; otherwise only pending
+          if (filters?.archived ? isArchived : isPending) {
             // Find current crew on board for this vessel/rank
             let currentCrew = null;
             
@@ -4999,6 +5042,18 @@ export class PersistentFileStorage implements IStorage {
             }
             
             const { assignmentIndex: _, ...assignmentWithoutIndex } = assignment;
+            
+            // For archived assignments, add result and archivedDate fields
+            let result: string | undefined;
+            let archivedDate: string | undefined;
+            if (assignment.proposalStatus === "deployed") {
+              result = "Deployed";
+              archivedDate = assignment.deployedDate;
+            } else if (assignment.proposalStatus === "rejected") {
+              result = "Rejected";
+              archivedDate = assignment.rejectedDate;
+            }
+            
             assignments.push({
               ...assignmentWithoutIndex,
               planId: plan.id,
@@ -5007,10 +5062,21 @@ export class PersistentFileStorage implements IStorage {
               proposedDate: plan.proposedDate,
               assignmentIndex: i,
               currentCrew, // Add current crew timeline data
+              ...(result && { result }),
+              ...(archivedDate && { archivedDate }),
             });
           }
         }
       }
+    }
+
+    // Sort archived assignments by archivedDate (latest first)
+    if (filters?.archived) {
+      assignments.sort((a, b) => {
+        const dateA = new Date(a.archivedDate || '1970-01-01');
+        const dateB = new Date(b.archivedDate || '1970-01-01');
+        return dateB.getTime() - dateA.getTime();
+      });
     }
 
     return assignments;
@@ -5108,18 +5174,26 @@ export class PersistentFileStorage implements IStorage {
     return { success: true, vesselPlanningId: existingPlanningId || undefined, vesselCode };
   }
 
-  async rejectAssignment(planId: number, assignmentIndex: number): Promise<RotationPlan | undefined> {
+  async rejectAssignment(planId: number, assignmentIndex: number, rejectedBy?: string): Promise<RotationPlan | undefined> {
     const plan = this.rotationPlans.get(planId);
     if (!plan || !plan.assignments) return undefined;
 
     const assignments = JSON.parse(plan.assignments);
     if (!assignments[assignmentIndex]) return undefined;
 
-    // Remove the assignment
-    assignments.splice(assignmentIndex, 1);
+    // Mark assignment as rejected (instead of removing it, so it can be archived)
+    assignments[assignmentIndex] = {
+      ...assignments[assignmentIndex],
+      proposalStatus: "rejected",
+      rejectedDate: new Date().toISOString().split('T')[0],
+      rejectedBy: rejectedBy || 'Current User'
+    };
 
-    // Update plan status back to Draft if no assignments left
-    const planStatus = assignments.length === 0 ? "In Draft" : plan.planStatus;
+    // Check if all assignments are now processed (deployed or rejected)
+    const pendingAssignments = assignments.filter((a: any) => 
+      !a.proposalStatus || a.proposalStatus === "proposed"
+    );
+    const planStatus = pendingAssignments.length === 0 ? "Completed" : plan.planStatus;
 
     const updatedPlan: RotationPlan = {
       ...plan,

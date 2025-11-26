@@ -36,6 +36,10 @@ const useProposals = (filters: any) => {
     queryParams.append('dateTo', filters.dateTo);
   }
   
+  if (filters.showArchived) {
+    queryParams.append('archived', 'true');
+  }
+  
   return useQuery({
     queryKey: ['/api/rotation/proposals', queryParams.toString()],
     queryFn: () => fetch(`/api/rotation/proposals?${queryParams.toString()}`).then(res => res.json()),
@@ -71,6 +75,8 @@ interface ProposalRow {
     rangeStartDate: string;
     rangeEndDate: string;
   } | null;
+  result?: string;
+  archivedDate?: string;
 }
 
 // Timeline View Component
@@ -80,7 +86,8 @@ const ApprovalTimelineView: React.FC<{
   scrollTop: number;
   selectedAssignments: Set<string>;
   onToggleAssignment: (planId: number, assignmentIndex: number) => void;
-}> = ({ rowData, rowHeight, scrollTop, selectedAssignments, onToggleAssignment }) => {
+  showArchived?: boolean;
+}> = ({ rowData, rowHeight, scrollTop, selectedAssignments, onToggleAssignment, showArchived = false }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
@@ -299,11 +306,13 @@ const ApprovalTimelineView: React.FC<{
                   height: rowHeight,
                 }}
               >
-                <Checkbox
-                  checked={selectedAssignments.has(key)}
-                  onCheckedChange={() => onToggleAssignment(proposal.planId, proposal.assignmentIndex)}
-                  data-testid={`checkbox-assignment-${key}`}
-                />
+                {!showArchived && (
+                  <Checkbox
+                    checked={selectedAssignments.has(key)}
+                    onCheckedChange={() => onToggleAssignment(proposal.planId, proposal.assignmentIndex)}
+                    data-testid={`checkbox-assignment-${key}`}
+                  />
+                )}
               </div>
             );
           })}
@@ -317,6 +326,7 @@ export function ApprovalTable({ selectedVessels, selectedRanks, draftIdFilter, d
   const [selectedAssignments, setSelectedAssignments] = useState<Set<string>>(new Set());
   const [gridScrollTop, setGridScrollTop] = useState(0);
   const [displayedRowData, setDisplayedRowData] = useState<ProposalRow[]>([]);
+  const [showArchived, setShowArchived] = useState(false);
   const gridApiRef = useRef<any>(null);
   const { toast } = useToast();
   
@@ -326,6 +336,7 @@ export function ApprovalTable({ selectedVessels, selectedRanks, draftIdFilter, d
     draftIdFilter,
     dateFrom,
     dateTo,
+    showArchived,
   });
 
   // Filter out invalid proposals and log warnings
@@ -450,61 +461,108 @@ export function ApprovalTable({ selectedVessels, selectedRanks, draftIdFilter, d
     });
   };
 
-  const columnDefs: ColDef[] = useMemo(() => [
-    {
-      headerName: 'Vessel',
-      field: 'vessel',
-      width: 180,
-      cellStyle: { fontSize: '13px', color: '#4f5863' },
-      sortable: true,
-      resizable: false,
-    },
-    {
-      headerName: 'Rank',
-      field: 'rank',
-      width: 120,
-      cellStyle: { fontSize: '13px', color: '#4f5863' },
-      sortable: true,
-      resizable: false,
-    },
-    {
-      headerName: 'Proposed Date',
-      field: 'proposedDate',
-      width: 140,
-      cellStyle: { fontSize: '13px', color: '#4f5863' },
-      sortable: true,
-      resizable: false,
-      valueFormatter: (params) => {
-        // Defensive guard for AG Grid initialization
-        if (!params.colDef || !params.data) return '';
-        if (!params.value) return '';
-        try {
-          const date = new Date(params.value);
-          return format(date, 'dd-MMM-yyyy');
-        } catch {
-          return params.value;
-        }
+  const columnDefs: ColDef[] = useMemo(() => {
+    const baseColumns: ColDef[] = [
+      {
+        headerName: 'Vessel',
+        field: 'vessel',
+        width: 180,
+        cellStyle: { fontSize: '13px', color: '#4f5863' },
+        sortable: true,
+        resizable: false,
       },
-    },
-    {
-      headerName: 'Draft ID',
-      field: 'draftId',
-      width: 140,
-      cellStyle: { fontSize: '13px', color: '#4f5863' },
-      sortable: true,
-      resizable: false,
-      hide: true, // Hidden by default, accessible via horizontal scroll
-    },
-    {
-      headerName: 'Proposed By',
-      field: 'proposedBy',
-      width: 130,
-      cellStyle: { fontSize: '13px', color: '#4f5863' },
-      sortable: true,
-      resizable: false,
-      hide: true, // Hidden by default, accessible via horizontal scroll
-    },
-  ], []);
+      {
+        headerName: 'Rank',
+        field: 'rank',
+        width: 120,
+        cellStyle: { fontSize: '13px', color: '#4f5863' },
+        sortable: true,
+        resizable: false,
+      },
+      {
+        headerName: 'Proposed Date',
+        field: 'proposedDate',
+        width: 140,
+        cellStyle: { fontSize: '13px', color: '#4f5863' },
+        sortable: true,
+        resizable: false,
+        valueFormatter: (params) => {
+          if (!params.colDef || !params.data) return '';
+          if (!params.value) return '';
+          try {
+            const date = new Date(params.value);
+            return format(date, 'dd-MMM-yyyy');
+          } catch {
+            return params.value;
+          }
+        },
+      },
+    ];
+
+    // Add archived-specific columns when showing archived entries
+    if (showArchived) {
+      baseColumns.push(
+        {
+          headerName: 'Result',
+          field: 'result',
+          width: 100,
+          cellStyle: (params) => {
+            const baseStyle = { fontSize: '13px' };
+            if (params.value === 'Deployed') {
+              return { ...baseStyle, color: '#16a34a', fontWeight: 500 };
+            } else if (params.value === 'Rejected') {
+              return { ...baseStyle, color: '#dc2626', fontWeight: 500 };
+            }
+            return { ...baseStyle, color: '#4f5863' };
+          },
+          sortable: true,
+          resizable: false,
+        },
+        {
+          headerName: 'Archived Date',
+          field: 'archivedDate',
+          width: 140,
+          cellStyle: { fontSize: '13px', color: '#4f5863' },
+          sortable: true,
+          resizable: false,
+          valueFormatter: (params) => {
+            if (!params.colDef || !params.data) return '';
+            if (!params.value) return '';
+            try {
+              const date = new Date(params.value);
+              return format(date, 'dd-MMM-yyyy');
+            } catch {
+              return params.value;
+            }
+          },
+        }
+      );
+    }
+
+    // Add remaining columns (hidden by default)
+    baseColumns.push(
+      {
+        headerName: 'Draft ID',
+        field: 'draftId',
+        width: 140,
+        cellStyle: { fontSize: '13px', color: '#4f5863' },
+        sortable: true,
+        resizable: false,
+        hide: true,
+      },
+      {
+        headerName: 'Proposed By',
+        field: 'proposedBy',
+        width: 130,
+        cellStyle: { fontSize: '13px', color: '#4f5863' },
+        sortable: true,
+        resizable: false,
+        hide: true,
+      }
+    );
+
+    return baseColumns;
+  }, [showArchived]);
 
   // Extract displayed rows from AG Grid (after sorting/filtering)
   const updateDisplayedRows = useCallback(() => {
@@ -566,25 +624,50 @@ export function ApprovalTable({ selectedVessels, selectedRanks, draftIdFilter, d
 
   return (
     <div className="space-y-4">
-      {/* Action Buttons */}
-      <div className="flex gap-2">
-        <Button
-          onClick={handleDeploy}
-          disabled={selectedAssignments.size === 0 || deployMutation.isPending}
-          className="bg-green-600 hover:bg-green-700"
-          data-testid="button-deploy"
-        >
-          {deployMutation.isPending ? "Deploying..." : "Deploy"}
-        </Button>
-        <Button
-          onClick={handleReject}
-          disabled={selectedAssignments.size === 0 || rejectMutation.isPending}
-          variant="outline"
-          className="border-red-500 text-red-500 hover:bg-red-50"
-          data-testid="button-reject"
-        >
-          {rejectMutation.isPending ? "Rejecting..." : "Reject"}
-        </Button>
+      {/* Action Buttons and Show Archived Toggle */}
+      <div className="flex items-center justify-between">
+        <div className="flex gap-2">
+          {!showArchived && (
+            <>
+              <Button
+                onClick={handleDeploy}
+                disabled={selectedAssignments.size === 0 || deployMutation.isPending}
+                className="bg-green-600 hover:bg-green-700"
+                data-testid="button-deploy"
+              >
+                {deployMutation.isPending ? "Deploying..." : "Deploy"}
+              </Button>
+              <Button
+                onClick={handleReject}
+                disabled={selectedAssignments.size === 0 || rejectMutation.isPending}
+                variant="outline"
+                className="border-red-500 text-red-500 hover:bg-red-50"
+                data-testid="button-reject"
+              >
+                {rejectMutation.isPending ? "Rejecting..." : "Reject"}
+              </Button>
+            </>
+          )}
+        </div>
+        
+        {/* Show Archived Checkbox */}
+        <div className="flex items-center gap-2 border border-gray-300 rounded-md px-3 py-2 bg-white">
+          <Checkbox
+            id="show-archived"
+            checked={showArchived}
+            onCheckedChange={(checked) => {
+              setShowArchived(checked === true);
+              setSelectedAssignments(new Set());
+            }}
+            data-testid="checkbox-show-archived"
+          />
+          <label 
+            htmlFor="show-archived" 
+            className="text-sm text-gray-700 cursor-pointer select-none"
+          >
+            Show Archived
+          </label>
+        </div>
       </div>
 
       {/* Hybrid Table: AG Grid + Timeline - Always visible */}
@@ -613,7 +696,9 @@ export function ApprovalTable({ selectedVessels, selectedRanks, draftIdFilter, d
                 }
                 return `fallback-${Math.random().toString(36).substring(7)}`;
               },
-              overlayNoRowsTemplate: '<span class="text-gray-500 text-sm">No proposed assignments found. Create a rotation plan and propose it for approval.</span>',
+              overlayNoRowsTemplate: showArchived 
+                ? '<span class="text-gray-500 text-sm">No archived assignments found.</span>'
+                : '<span class="text-gray-500 text-sm">No proposed assignments found. Create a rotation plan and propose it for approval.</span>',
             }}
           />
         </div>
@@ -626,6 +711,7 @@ export function ApprovalTable({ selectedVessels, selectedRanks, draftIdFilter, d
             scrollTop={gridScrollTop}
             selectedAssignments={selectedAssignments}
             onToggleAssignment={toggleAssignment}
+            showArchived={showArchived}
           />
         </div>
       </div>

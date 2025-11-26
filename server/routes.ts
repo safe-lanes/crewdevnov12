@@ -2936,6 +2936,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         draftId: req.query.draftId as string | undefined,
         dateFrom: req.query.dateFrom as string | undefined,
         dateTo: req.query.dateTo as string | undefined,
+        archived: req.query.archived === 'true',
       };
       const proposals = await storage.getProposedAssignments(filters);
       res.json(proposals);
