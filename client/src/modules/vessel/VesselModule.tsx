@@ -84,6 +84,24 @@ const useAppraisals = () => {
     });
 };
 
+// Hook to fetch ports from Port Master (ID 005)
+const usePorts = () => {
+    return useQuery({
+        queryKey: ['/api/masters/005/data'],
+        select: (data: any[]) => {
+            return data
+                .filter((port: any) => !port.isDeleted)
+                .map((port: any) => ({
+                    id: port.id,
+                    name: port.name || port.portName || '',
+                    code: port.portcode || port.cid || port.entryId || '',
+                }))
+                .filter((port: any) => port.name) // Only include ports with names
+                .sort((a: any, b: any) => a.name.localeCompare(b.name)); // Sort alphabetically
+        }
+    });
+};
+
 // Helper function to format dates to DD-MMM-YYYY (e.g., 15-Dec-2025)
 const formatDateOnly = (dateString: string | null | undefined): string => {
     if (!dateString) return '';
@@ -137,6 +155,7 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
     planningData
 }) => {
     const { toast } = useToast();
+    const { data: ports = [] } = usePorts();
     
     const form = useForm<ReliefStatusFormData>({
         resolver: zodResolver(reliefStatusFormSchema),
@@ -588,10 +607,20 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                                                     <SelectValue placeholder="Select Port" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="Singapore">Singapore</SelectItem>
-                                                    <SelectItem value="Rotterdam">Rotterdam</SelectItem>
-                                                    <SelectItem value="Dubai">Dubai</SelectItem>
-                                                    <SelectItem value="Hong Kong">Hong Kong</SelectItem>
+                                                    {ports.length > 0 ? (
+                                                        ports.map((port: any) => (
+                                                            <SelectItem key={port.id || port.name} value={port.name}>
+                                                                {port.name}
+                                                            </SelectItem>
+                                                        ))
+                                                    ) : (
+                                                        <>
+                                                            <SelectItem value="Singapore">Singapore</SelectItem>
+                                                            <SelectItem value="Rotterdam">Rotterdam</SelectItem>
+                                                            <SelectItem value="Dubai">Dubai</SelectItem>
+                                                            <SelectItem value="Hong Kong">Hong Kong</SelectItem>
+                                                        </>
+                                                    )}
                                                 </SelectContent>
                                             </Select>
                                         </FormControl>
@@ -733,6 +762,7 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
     planningData
 }) => {
     const { toast } = useToast();
+    const { data: ports = [] } = usePorts();
     const [signOffDateOpen, setSignOffDateOpen] = useState(false);
     const [takeOverDateOpen, setTakeOverDateOpen] = useState(false);
     
@@ -1271,10 +1301,20 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                                                     <SelectValue placeholder="Select Port" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="Singapore">Singapore</SelectItem>
-                                                    <SelectItem value="Rotterdam">Rotterdam</SelectItem>
-                                                    <SelectItem value="Dubai">Dubai</SelectItem>
-                                                    <SelectItem value="Hong Kong">Hong Kong</SelectItem>
+                                                    {ports.length > 0 ? (
+                                                        ports.map((port: any) => (
+                                                            <SelectItem key={port.id || port.name} value={port.name}>
+                                                                {port.name}
+                                                            </SelectItem>
+                                                        ))
+                                                    ) : (
+                                                        <>
+                                                            <SelectItem value="Singapore">Singapore</SelectItem>
+                                                            <SelectItem value="Rotterdam">Rotterdam</SelectItem>
+                                                            <SelectItem value="Dubai">Dubai</SelectItem>
+                                                            <SelectItem value="Hong Kong">Hong Kong</SelectItem>
+                                                        </>
+                                                    )}
                                                 </SelectContent>
                                             </Select>
                                         </FormControl>
