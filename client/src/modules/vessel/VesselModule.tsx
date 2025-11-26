@@ -2169,13 +2169,25 @@ export const VesselModule = (): JSX.Element => {
                                                     vesselRanks
                                                         .filter((rank: any) => rank.officer === true)
                                                         .map((rank: any, index: number) => {
-                                                            // Strip suffix from rank name (e.g., "3rd Officer_1" -> "3rd Officer")
-                                                            const rankName = (rank.role || rank.rank)?.split('_')[0];
+                                                            // Get full rank name (with suffix like _1, _2 for variant positions)
+                                                            const fullRankName = rank.role || rank.rank;
+                                                            // Strip suffix for fallback matching (e.g., "3rd Officer_1" -> "3rd Officer")
+                                                            const baseRankName = fullRankName?.split('_')[0];
                                                             // OFFICER MATRIX: Show only PRIMARY crew (filter out secondary)
-                                                            const rankPlanningData = vesselPlanning.find((p: any) => 
-                                                                (p.rankId === rank.id || p.rankId === rank.rankId || p.rank === rankName) &&
-                                                                p.crewStatus === 'primary'
-                                                            );
+                                                            // Match by full rank name including suffix to avoid mixing up variant positions
+                                                            const rankPlanningData = vesselPlanning.find((p: any) => {
+                                                                if (p.crewStatus !== 'primary') return false;
+                                                                // Match by rankId (most precise)
+                                                                if (p.rankId === rank.id || p.rankId === rank.rankId) return true;
+                                                                // Match by full rank name including suffix
+                                                                if (p.rank === fullRankName) return true;
+                                                                // Only match by base name if neither has a suffix
+                                                                const planningBaseRank = p.rank?.split('_')[0];
+                                                                const planningHasSuffix = p.rank?.includes('_');
+                                                                const rankHasSuffix = fullRankName?.includes('_');
+                                                                if (!planningHasSuffix && !rankHasSuffix && planningBaseRank === baseRankName) return true;
+                                                                return false;
+                                                            });
                                                             
                                                             return (
                                                             <TableRow key={rank.id || index} className="hover:bg-gray-50 border-b border-gray-100">
@@ -2303,14 +2315,28 @@ export const VesselModule = (): JSX.Element => {
                                                     const normalizedRows: any[] = [];
                                                     
                                                     vesselRanks.forEach((rank: any, rankIndex: number) => {
-                                                        // Strip suffix from rank name (e.g., "3rd Officer_1" -> "3rd Officer")
-                                                        const rankName = (rank.role || rank.rank)?.split('_')[0];
+                                                        // Get full rank name (with suffix like _1, _2 for variant positions)
+                                                        const fullRankName = rank.role || rank.rank;
+                                                        // Strip suffix for fallback matching (e.g., "3rd Officer_1" -> "3rd Officer")
+                                                        const baseRankName = fullRankName?.split('_')[0];
                                                         
                                                         // Find all matching planning records for this rank (exclude archived)
-                                                        const matchingRecords = vesselPlanning.filter((p: any) => 
-                                                            (p.rankId === rank.id || p.rankId === rank.rankId || p.rank === rankName) &&
-                                                            !p.isArchived
-                                                        );
+                                                        // Priority: 1) Match by rankId, 2) Match by full rank name (with suffix), 3) Fallback to base rank name only if no suffix variants exist
+                                                        const matchingRecords = vesselPlanning.filter((p: any) => {
+                                                            if (p.isArchived) return false;
+                                                            // Match by rankId (most precise)
+                                                            if (p.rankId === rank.id || p.rankId === rank.rankId) return true;
+                                                            // Match by full rank name including suffix (e.g., "3rd Officer_1" matches "3rd Officer_1")
+                                                            if (p.rank === fullRankName) return true;
+                                                            // Only match by base name if the planning record also has no suffix
+                                                            // This prevents "3rd Officer_1" from matching a record stored as "3rd Officer_2"
+                                                            const planningBaseRank = p.rank?.split('_')[0];
+                                                            const planningHasSuffix = p.rank?.includes('_');
+                                                            const rankHasSuffix = fullRankName?.includes('_');
+                                                            // Only match base names if neither has a suffix
+                                                            if (!planningHasSuffix && !rankHasSuffix && planningBaseRank === baseRankName) return true;
+                                                            return false;
+                                                        });
                                                         
                                                         // Separate primary and secondary crew by crew_status
                                                         const primaryCrew = matchingRecords.find((p: any) => p.crewStatus === 'primary');
@@ -2324,7 +2350,7 @@ export const VesselModule = (): JSX.Element => {
                                                             normalizedRows.push({
                                                                 serialNumber: rankIndex + 1,
                                                                 rank,
-                                                                rankName,
+                                                                rankName: baseRankName,
                                                                 crewStatus: 'primary',
                                                                 planningData: primaryCrew,
                                                                 hasBothCrewTypes
@@ -2332,7 +2358,7 @@ export const VesselModule = (): JSX.Element => {
                                                             normalizedRows.push({
                                                                 serialNumber: rankIndex + 1,
                                                                 rank,
-                                                                rankName,
+                                                                rankName: baseRankName,
                                                                 crewStatus: 'secondary',
                                                                 planningData: secondaryCrew,
                                                                 hasBothCrewTypes
@@ -2342,7 +2368,7 @@ export const VesselModule = (): JSX.Element => {
                                                             normalizedRows.push({
                                                                 serialNumber: rankIndex + 1,
                                                                 rank,
-                                                                rankName,
+                                                                rankName: baseRankName,
                                                                 crewStatus: 'primary',
                                                                 planningData: primaryCrew,
                                                                 hasBothCrewTypes: false
@@ -2352,7 +2378,7 @@ export const VesselModule = (): JSX.Element => {
                                                             normalizedRows.push({
                                                                 serialNumber: rankIndex + 1,
                                                                 rank,
-                                                                rankName,
+                                                                rankName: baseRankName,
                                                                 crewStatus: 'secondary',
                                                                 planningData: secondaryCrew,
                                                                 hasBothCrewTypes: false
@@ -2362,7 +2388,7 @@ export const VesselModule = (): JSX.Element => {
                                                             normalizedRows.push({
                                                                 serialNumber: rankIndex + 1,
                                                                 rank,
-                                                                rankName,
+                                                                rankName: baseRankName,
                                                                 crewStatus: 'primary',
                                                                 planningData: matchingRecords[0] || null,
                                                                 hasBothCrewTypes: false
