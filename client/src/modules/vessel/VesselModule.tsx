@@ -164,7 +164,7 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                 contractPeriodMonths: planningData.contractPeriodMonths,
                 contractEndRangeStartMonths: planningData.contractEndRangeStartMonths,
                 contractEndRangeEndMonths: planningData.contractEndRangeEndMonths,
-                joiningDate: planningData.joiningDate || '',
+                joiningDate: formatDateOnly(planningData.joiningDate) || '',
                 joiningPort: planningData.joiningPort || '',
                 deploymentChecklistCompleted: planningData.deploymentChecklistCompleted || false,
                 applicableDocsChecked: planningData.applicableDocsChecked || false,
@@ -558,7 +558,7 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                                             <Input 
                                                 {...field} 
                                                 type="text" 
-                                                placeholder="dd-mm-yyyy" 
+                                                placeholder="DD-MMM-YYYY" 
                                                 className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                                 data-testid="input-joining-date"
                                                 disabled={!isRelieverAssigned}
