@@ -41,6 +41,13 @@ The application employs a modern web stack with a module-first architecture for 
         - If position is occupied: Reliever becomes secondary crew while existing crew remains primary
         - Crew names display in "LastName, FirstName" format with status indicator (P/S)
         - Backend enrichment joins vessel_planning with crew_members table for name display
+    - **Crew Archive System**: Manages historical crew records with sign-off workflow and archive toggle.
+        - **Archive Trigger**: Setting Relief Status to "Signed Off" with a Sign Off Date auto-sets isArchived=true and archivedDate
+        - **Business Rule**: Primary crew cannot sign off when secondary (reliever) exists - reliever must take over first
+        - **API Filtering**: GET /api/vessel-planning/vessel/:vesselId supports `?archived=true|false` for server-side filtering
+        - **Show Archived Toggle**: Checkbox in Crew List page header to switch between active and archived crew views
+        - **Conditional Columns**: Archived view displays 8 columns (S.No., Rank, Name, Nationality, Joined, Actual Sign Off Date, Appraisal, Handover); Active view displays full 15 columns
+        - **Data Retention**: Archived records preserved indefinitely for compliance and historical reference
 - **Rotation Module**: Manages crew rotation planning with "Due" and "Plan" sections, visual timelines, and comprehensive filters.
 - **Promotion Hierarchy System**: Configurable promotion paths, integrated with a Promotions module for filtering and "Next Promotion Rank" calculation. Includes a multi-part Promotion Review Form and a detailed Promotion Checklist Form.
 - **Forms Configuration - Company Rank Integration**: Uses company-specific rank labels for rank group creation and automatically matches forms to crew member ranks during appraisals.
