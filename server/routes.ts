@@ -2591,6 +2591,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const firstName = crew.firstName || '';
             enriched.crewName = lastName && firstName ? `${lastName}, ${firstName}` : (lastName || firstName);
             enriched.nationality = crew.nationality;
+            // Use vessel_planning.reliefDue as source of truth, fallback to crew.reliefDue for legacy records
+            enriched.reliefDue = p.reliefDue || crew.reliefDue;
+            enriched.reliefDate = p.reliefDue || crew.reliefDue; // Alias for backward compatibility
           }
         }
         
@@ -2656,8 +2659,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const firstName = crew.firstName || '';
             enriched.crewName = lastName && firstName ? `${lastName}, ${firstName}` : (lastName || firstName);
             enriched.nationality = crew.nationality;
-            enriched.reliefDue = crew.reliefDue;
-            enriched.reliefDate = crew.reliefDue; // Alias for backward compatibility
+            // Use vessel_planning.reliefDue as source of truth, fallback to crew.reliefDue for legacy records
+            enriched.reliefDue = p.reliefDue || crew.reliefDue;
+            enriched.reliefDate = p.reliefDue || crew.reliefDue; // Alias for backward compatibility
             enriched.crewMemberData = {
               id: crew.id,
               employeeId: crew.employeeId,
