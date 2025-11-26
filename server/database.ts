@@ -1264,24 +1264,62 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    // Create crew member from candidate data
+    // Create crew member from candidate data - Transfer ALL A1 section fields
     const crewMemberData: InsertCrewMember = {
       id: newCrewId,
       employeeId: newCrewId, // Set employeeId to display as Crew ID in the database view
-      empNo: applicationData.empNo || '',
+      empNo: candidate.fileNo || '',
+      
+      // Photo (A1 - Crew Photo)
+      uploadedPhoto: applicationData.uploadedPhoto || null,
+      
+      // A1.1 General Particulars
       firstName: candidate.firstName,
       middleName: candidate.middleName,
       familyName: candidate.familyName,
-      dateOfBirth: candidate.dob, // Use dob from candidate
+      dateOfBirth: candidate.dob,
       nationality: candidate.nationality,
       presentRank: candidate.rankAppliedFor,
-      presentVessel: 'Unassigned',
-      vesselType: candidate.vesselType || 'General',
       rankAppliedFor: candidate.rankAppliedFor,
-      email: applicationData.email || null,
-      mobile: applicationData.mobile || null,
+      vesselType: candidate.vesselType || 'General',
+      presentVessel: 'Unassigned',
+      age: applicationData.ageInYears || null,
+      placeOfBirthCity: applicationData.placeOfBirthCity || null,
+      placeOfBirthCountry: applicationData.placeOfBirthCountry || null,
+      heightCm: applicationData.heightCm || null,
+      weightKg: applicationData.weightKg || null,
+      nativeLanguage: applicationData.nativeLanguage || null,
+      foreignLanguages: applicationData.foreignLanguages || null,
+      englishProficiency: applicationData.englishProficiency || null,
+      manningAgent: applicationData.manningAgent || null,
+      
+      // A1.2 Address & Contact Info
+      countryOfResidence: applicationData.countryOfResidence || null,
+      nearestAirport: applicationData.nearestAirport || null,
       residentialAddressLine1: applicationData.residentialAddressLine1 || null,
       residentialAddressLine2: applicationData.residentialAddressLine2 || null,
+      contactLandline: applicationData.contactLandline || null,
+      mobile: applicationData.mobile || null,
+      email: applicationData.email || null,
+      
+      // A1.3 Family and NOK
+      maritalStatus: applicationData.maritalStatus || null,
+      numberOfDependentChildren: applicationData.numberOfDependentChildren || null,
+      fatherName: applicationData.fatherName || null,
+      motherName: applicationData.motherName || null,
+      spouseFirstName: applicationData.spouseFirstName || null,
+      spouseMiddleName: applicationData.spouseMiddleName || null,
+      spouseFamilyName: applicationData.spouseFamilyName || null,
+      spouseDateOfBirth: applicationData.spouseDateOfBirth || null,
+      children: applicationData.children ? JSON.stringify(applicationData.children) : null,
+      nokFirstName: applicationData.nokFirstName || null,
+      nokMiddleName: applicationData.nokMiddleName || null,
+      nokFamilyName: applicationData.nokFamilyName || null,
+      nokTelephone: applicationData.nokTelephone || null,
+      nokEmail: applicationData.nokEmail || null,
+      nokAddress: applicationData.nokAddress || null,
+      nokRelationship: applicationData.nokRelationship || null,
+      
       status: 'Active'
     };
     
