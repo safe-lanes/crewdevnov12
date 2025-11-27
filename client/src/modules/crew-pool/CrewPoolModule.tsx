@@ -159,7 +159,8 @@ export const CrewPoolModule = (): JSX.Element => {
                     floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true,
-                    headerClass: 'ag-header-cell-text-wrap'
+                    headerClass: 'ag-header-cell-text-wrap',
+                    hide: true
                 },
                 {
                     headerName: 'Family\nName',
