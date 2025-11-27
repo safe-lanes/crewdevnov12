@@ -250,9 +250,9 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<string>('A');
   const [editingSections, setEditingSections] = useState<{[key: string]: boolean}>({
-    'A1.1': false,
-    'A1.2': false,
-    'A1.3': false
+    'B1': false,
+    'B2': false,
+    'B3': false
   });
   const [showCrewDropdown, setShowCrewDropdown] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
@@ -1426,20 +1426,20 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   };
 
 
-  // A1.1 General Particulars render function
+  // B1 General Particulars render function
   const renderA11GeneralParticulars = () => {
-    const isEditing = editingSections['A1.1'];
+    const isEditing = editingSections['B1'];
     
     return (
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A1.1 General Particulars</h3>
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B1 General Particulars</h3>
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => toggleEditSection('A1.1')}
+            onClick={() => toggleEditSection('B1')}
             className="text-gray-500 hover:text-gray-700"
-            data-testid="button-edit-a11"
+            data-testid="button-edit-b1"
           >
             <Edit className="h-4 w-4" />
           </Button>
@@ -1842,20 +1842,20 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     );
   };
 
-  // A1.2 Address & Contact Info render function
+  // B2 Address & Contact Info render function
   const renderA12AddressContact = () => {
-    const isEditing = editingSections['A1.2'];
+    const isEditing = editingSections['B2'];
     
     return (
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A1.2 Address & Contact Info</h3>
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B2 Address & Contact Info</h3>
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => toggleEditSection('A1.2')}
+            onClick={() => toggleEditSection('B2')}
             className="text-gray-500 hover:text-gray-700"
-            data-testid="button-edit-a12"
+            data-testid="button-edit-b2"
           >
             <Edit className="h-4 w-4" />
           </Button>
@@ -1963,20 +1963,20 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     );
   };
 
-  // A1.3 Family and NOK render function
+  // B3 Family and NOK render function
   const renderA13FamilyNOK = () => {
-    const isEditing = editingSections['A1.3'];
+    const isEditing = editingSections['B3'];
     
     return (
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A1.3 Family and NOK</h3>
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B3 Family and NOK</h3>
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => toggleEditSection('A1.3')}
+            onClick={() => toggleEditSection('B3')}
             className="text-gray-500 hover:text-gray-700"
-            data-testid="button-edit-a13"
+            data-testid="button-edit-b3"
           >
             <Edit className="h-4 w-4" />
           </Button>
@@ -2331,12 +2331,12 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     );
   };
 
-  // A2.1 Travel and Identification Documents render function
+  // C1 Travel and Identification Documents render function
   const renderA21TravelDocs = () => {
     return (
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A2.1 Travel and Identification Docs</h3>
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>C1 Travel and Identification Docs</h3>
           <Button
             variant="outline"
             size="sm"
@@ -2426,12 +2426,12 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     );
   };
 
-  // A2.2 Visas render function
+  // C2 Visas render function
   const renderA22Visas = () => {
     return (
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A2.2 Visas</h3>
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>C2 Visas</h3>
           <Button
             variant="outline"
             size="sm"
@@ -2521,12 +2521,12 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     );
   };
 
-  // A3.1 Education render function
+  // D1 Education render function
   const renderA31Education = () => {
     return (
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A3.1 Education</h3>
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>D1 Education</h3>
           <Button
             variant="outline"
             size="sm"
@@ -2607,12 +2607,12 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     );
   };
 
-  // A3.2 License & DCE render function
+  // D2 License & DCE render function
   const renderA32LicenseDCE = () => {
     return (
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A3.2 License & DCE</h3>
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>D2 License & DCE</h3>
           <Button
             variant="outline"
             size="sm"
@@ -2718,12 +2718,12 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     );
   };
 
-  // A3.3 Training Courses render function
+  // D3 Training Courses render function
   const renderA33TrainingCourse = () => {
     return (
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A3.3 Training Course</h3>
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>D3 Training Course</h3>
           <Button
             variant="outline"
             size="sm"
@@ -3482,7 +3482,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   };
 
   // Toggle edit section with auto-save
-  const toggleEditSection = (sectionId: 'A1.1' | 'A1.2' | 'A1.3') => {
+  const toggleEditSection = (sectionId: 'B1' | 'B2' | 'B3') => {
     // If turning off edit mode and another section is being edited, auto-save
     const currentlyEditing = Object.keys(editingSections).find(key => editingSections[key]);
     if (currentlyEditing && currentlyEditing !== sectionId && editingSections[currentlyEditing]) {
