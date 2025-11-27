@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError } from "./storage";
 import { type VesselPlanning, insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertCompanyProcessingSchema, insertPromotionFormSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertOfficeViolationCommentSchema, insertNCReportSchema, insertVesselDateLineAdjustmentSchema } from "@shared/schema";
 import { z } from "zod";
-import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew } from "@shared/crew-mapping";
+import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew, calculateCrewStatus } from "@shared/crew-mapping";
 import { 
   isVesselMaster,
   filterVesselMasterData,
@@ -5320,7 +5320,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const crewIdKey = String(crew.id);
         const vesselAssignments = crewVesselMap.get(crewIdKey) || [];
         
-        if (vesselAssignments.length > 0) {
+        // Determine if crew has active vessel assignment
+        const hasVesselAssignment = vesselAssignments.length > 0;
+        
+        if (hasVesselAssignment) {
           // Find primary assignment first, fallback to first assignment
           const primaryAssignment = vesselAssignments.find(a => a.crewStatus === 'primary') || vesselAssignments[0];
           
@@ -5337,13 +5340,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (primaryAssignment.reliefDue) {
             normalized.reliefDue = primaryAssignment.reliefDue;
           }
-          
-          // Set status to "On Board" for any vessel assignment
-          normalized.status = 'On Board';
         } else {
           // No vessel_planning assignment - clear presentVessel
           normalized.presentVessel = null;
         }
+        
+        // Use unified status calculation logic:
+        // isActive=false → "Inactive", else check vessel assignment → "On Board"/"On Leave"
+        const isActive = crew.isActive !== false; // Default to active if null/undefined
+        normalized.status = calculateCrewStatus(isActive ? true : false, hasVesselAssignment);
+        normalized.isActive = isActive;
+        normalized.nextAvailability = crew.nextAvailability || null;
         
         return normalized;
       });
