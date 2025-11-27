@@ -388,18 +388,6 @@ export const CrewPoolModule = (): JSX.Element => {
                     floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true
-                },
-                {
-                    headerName: 'Avail',
-                    field: 'availability',
-                    width: viewportConfig.isDesktopOrLaptop ? undefined : 75,
-                    minWidth: 75,
-                    cellStyle: { fontSize: '12px', color: '#4f5863' },
-                    filter: 'agTextColumnFilter',
-                    floatingFilter: viewportConfig.showFloatingFilters,
-                    sortable: true,
-                    resizable: true,
-                    valueFormatter: (params: any) => formatCompactDate(params.value)
                 }
             ]
         },
