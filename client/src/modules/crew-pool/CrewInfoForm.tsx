@@ -210,6 +210,13 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   // Dashboard data query
   const { data: dashboardData, isLoading: isDashboardLoading, error: dashboardError } = useQuery<CrewDashboardSummary>({
     queryKey: ['/api/crew-members', crewMember?.id, 'dashboard'],
+    queryFn: async () => {
+      const response = await fetch(`/api/crew-members/${crewMember?.id}/dashboard`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch dashboard summary');
+      }
+      return response.json();
+    },
     enabled: !!crewMember?.id && isOpen,
   });
 
