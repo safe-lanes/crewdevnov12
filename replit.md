@@ -61,6 +61,11 @@ The application employs a modern web stack with a module-first architecture for 
     - **Utility Functions**: `getParentTypes()` for experience inheritance (e.g., LPG Tanker → Gas Tanker → Tanker Vessels), `getChildTypes()` for analytics aggregation, `isTankerType()`, `isBulkType()` for type checking
     - **Dropdown Integration**: All modules fetch from API with fallback to `DEFAULT_DROPDOWN_VESSEL_TYPES`; filters Level 2 + Level 3 types (excludes Level 1 categories)
     - **Modules Using**: CrewInfoForm, RecruitmentApplicationForm, ElementCrewAppraisals, PromotionsModule
+    - **Vessel-to-VesselType Linking**: Vessels in Master 014 are linked to vessel types in Master 004 via the `vtuid` column, which stores the vessel type's `entry_id` (e.g., VT004 for Oil Tanker). This enables:
+        - Referential integrity between vessels and vessel types
+        - Efficient querying and filtering by vessel type hierarchy
+        - Analytics aggregation using parent-child relationships
+    - **Naming Convention**: Vessel type names use database nomenclature (e.g., "Container" not "Container Vessel") for consistency across the system
 - **Crew Appraisals Module**: Comprehensive crew appraisal management with AG Grid table display and advanced filtering.
     - **Master Data Integration**: Filters connected to master data sources with intelligent fallback:
         - Rank filter: `/api/available-ranks` (Available Ranks Master)
