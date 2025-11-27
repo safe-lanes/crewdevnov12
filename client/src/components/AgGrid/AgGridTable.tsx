@@ -307,6 +307,23 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
     viewportConfig
   ]);
 
+  // Helper to parse height values (handles px, calc, and numbers)
+  const parseHeightToPixels = useCallback((value: string | number): number => {
+    if (typeof value === 'number') return value;
+    if (value.startsWith('calc(')) {
+      // For calc values with viewport height, compute based on window.innerHeight
+      const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 900;
+      // Extract the subtraction value from calc(100vh - Xpx)
+      const match = value.match(/calc\(100vh\s*-\s*(\d+)px\)/);
+      if (match) {
+        return screenHeight - parseInt(match[1]);
+      }
+      // Fallback for other calc patterns
+      return screenHeight - 200;
+    }
+    return parseInt(value) || 600;
+  }, []);
+
   // Calculate dynamic height based on row count and screen size
   const dynamicHeight = useMemo(() => {
     if (!autoHeight) return height;
@@ -324,15 +341,15 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
     const availableHeight = screenHeight - reservedHeight;
     
     // Convert maxHeight and minHeight to numbers for comparison
-    const maxHeightNum = typeof maxHeight === 'string' ? parseInt(maxHeight) : maxHeight;
-    const minHeightNum = typeof minHeight === 'string' ? parseInt(minHeight) : minHeight;
+    const maxHeightNum = parseHeightToPixels(maxHeight);
+    const minHeightNum = parseHeightToPixels(minHeight);
     
     // Use the smaller of calculated height, available screen height, or maxHeight
     const effectiveMaxHeight = Math.min(maxHeightNum, availableHeight);
     const constrainedHeight = Math.max(minHeightNum, Math.min(calculatedHeight, effectiveMaxHeight));
     
     return `${constrainedHeight}px`;
-  }, [autoHeight, height, rowData.length, enableStatusBar, maxHeight, minHeight]);
+  }, [autoHeight, height, rowData.length, enableStatusBar, maxHeight, minHeight, parseHeightToPixels]);
 
   // Merge default options with provided options
   const finalGridOptions = useMemo(() => {

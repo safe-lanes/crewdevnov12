@@ -472,8 +472,8 @@ export const CrewPoolModule = (): JSX.Element => {
                                 columnDefs={columnDefs}
                                 onGridReady={onGridReady}
                                 autoHeight={true}
-                                maxHeight="500px"
-                                minHeight="200px"
+                                maxHeight={`calc(100vh - ${showFilters ? '280px' : '200px'})`}
+                                minHeight="300px"
                                 width="100%"
                                 enableExport={true}
                                 enableSideBar={true}
