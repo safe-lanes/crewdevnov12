@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Edit, Camera, Plus, Trash2, Paperclip, Save, ArrowLeft, ChevronDown } from 'lucide-react';
+import { X, Edit, Camera, Plus, Trash2, Paperclip, Save, ArrowLeft, ChevronDown, Pencil } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -266,6 +266,9 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   // Track newly created crew member ID for subsequent saves
   const [createdCrewId, setCreatedCrewId] = useState<string | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
+  const [isStatusEditOpen, setIsStatusEditOpen] = useState(false);
+  const [isNextAvailabilityEditOpen, setIsNextAvailabilityEditOpen] = useState(false);
+  const [tempNextAvailability, setTempNextAvailability] = useState<string>('');
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
 
   // Sections for stepper navigation  
@@ -1115,39 +1118,96 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
           <div className="space-y-6">
             {/* Status Card */}
             <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-status">
-              <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Status</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>Status</h3>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => setIsStatusEditOpen(true)}
+                  data-testid="button-edit-status"
+                >
+                  <Pencil className="h-3 w-3" />
+                </Button>
+              </div>
               <div className="space-y-3">
-                <div className={`${statusData?.status ? 'bg-orange-500' : 'bg-gray-400'} text-white p-3 rounded text-center`} data-testid="status-badge">
+                {/* Status Badge with color coding: On Board=orange, On Leave=green, Inactive=gray */}
+                <div 
+                  className={`${
+                    statusData?.status === 'On Board' ? 'bg-orange-500' : 
+                    statusData?.status === 'On Leave' ? 'bg-green-500' : 
+                    statusData?.status === 'Inactive' ? 'bg-gray-500' :
+                    'bg-gray-400'
+                  } text-white p-3 rounded text-center`} 
+                  data-testid="status-badge"
+                >
                   <div className="text-sm font-medium">{statusData?.status || '—'}</div>
                 </div>
                 
                 <div className="space-y-2 text-sm">
-                  <div>
-                    <div className="text-gray-600 text-xs">Vessel</div>
-                    <div className="font-medium text-lg" data-testid="text-vessel">
-                      {statusData?.vessel || crewMember?.presentVessel || '—'}
+                  {/* Vessel - only show when On Board */}
+                  {statusData?.status === 'On Board' && (
+                    <div>
+                      <div className="text-gray-600 text-xs">Vessel</div>
+                      <div className="font-medium text-lg" data-testid="text-vessel">
+                        {statusData?.vessel || crewMember?.presentVessel || '—'}
+                      </div>
                     </div>
-                  </div>
+                  )}
                   
-                  <div className="grid grid-cols-2 gap-4 mt-3">
+                  {/* Next Availability - only show when On Leave */}
+                  {statusData?.status === 'On Leave' && (
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="text-gray-600 text-xs">Next Availability</div>
+                        <div className="font-medium" data-testid="text-next-availability">
+                          {statusData?.nextAvailability || formData.nextAvailability || '—'}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 ml-2"
+                        onClick={() => setIsNextAvailabilityEditOpen(true)}
+                        data-testid="button-edit-next-availability"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {/* Vessel field (when On Leave - shows as dash since not on vessel) */}
+                  {statusData?.status === 'On Leave' && (
                     <div>
-                      <div className="text-gray-600 text-xs">Joined</div>
-                      <div className="font-medium" data-testid="text-joined">
-                        {statusData?.joinedDate || '—'}
+                      <div className="text-gray-600 text-xs">Vessel</div>
+                      <div className="font-medium text-lg" data-testid="text-vessel">
+                        —
                       </div>
                     </div>
-                    <div>
-                      <div className="text-gray-600 text-xs">Relief Due</div>
-                      <div className="font-medium" data-testid="text-sailing-due">
-                        {statusData?.sailingDue || '—'}
+                  )}
+                  
+                  {/* Joined and Relief Due - only show when On Board */}
+                  {statusData?.status === 'On Board' && (
+                    <div className="grid grid-cols-2 gap-4 mt-3">
+                      <div>
+                        <div className="text-gray-600 text-xs">Joined</div>
+                        <div className="font-medium" data-testid="text-joined">
+                          {statusData?.joinedDate || '—'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-gray-600 text-xs">Relief Due</div>
+                        <div className="font-medium" data-testid="text-sailing-due">
+                          {statusData?.sailingDue || '—'}
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                   
                   <div className="mt-3">
                     <div className="text-gray-600 text-xs">Nearest Airport</div>
                     <div className="font-medium" data-testid="text-assignment">
-                      {formData.nearestAirport || statusData?.presentAssignment || '—'}
+                      {formData.nearestAirport || '—'}
                     </div>
                   </div>
                   
@@ -3631,6 +3691,57 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     },
   });
 
+  // Status update mutation (for isActive toggle and nextAvailability)
+  const statusUpdateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: { isActive?: boolean; nextAvailability?: string } }) => {
+      const response = await apiRequest('PATCH', `/api/crew-members/${id}`, data);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        return await response.json();
+      }
+      return { success: true };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crew-members'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/crew-members', variables.id, 'dashboard'] });
+      toast({
+        title: "Status Updated",
+        description: "Crew member status has been updated.",
+        duration: 3000,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: `Failed to update status: ${error.message}`,
+        variant: "destructive",
+        duration: 5000,
+      });
+    },
+  });
+
+  // Handle toggling isActive status
+  const handleToggleActiveStatus = (newIsActive: boolean) => {
+    const crewId = crewMember?.id || createdCrewId;
+    if (crewId) {
+      statusUpdateMutation.mutate({ id: crewId, data: { isActive: newIsActive } });
+    }
+    setIsStatusEditOpen(false);
+  };
+
+  // Handle updating next availability date
+  const handleUpdateNextAvailability = () => {
+    const crewId = crewMember?.id || createdCrewId;
+    if (crewId && tempNextAvailability) {
+      statusUpdateMutation.mutate({ id: crewId, data: { nextAvailability: tempNextAvailability } });
+    }
+    setIsNextAvailabilityEditOpen(false);
+    setTempNextAvailability('');
+  };
+
   const handleSave = () => {
     console.log('Saving crew info:', formData);
     
@@ -4034,6 +4145,65 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
           </div>
         </div>
       </div>
+      
+      {/* Status Edit Dialog - Toggle Active/Inactive */}
+      <Dialog open={isStatusEditOpen} onOpenChange={setIsStatusEditOpen}>
+        <DialogContent className="sm:max-w-[350px]">
+          <DialogHeader>
+            <DialogTitle>Change Status</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-3">
+            <p className="text-sm text-gray-600 mb-4">
+              Toggle between Active and Inactive status. Active crew members can be "On Board" (on vessel) or "On Leave" (not on vessel).
+            </p>
+            <Button
+              variant={statusData?.isActive !== false ? "default" : "outline"}
+              className="w-full justify-start"
+              onClick={() => handleToggleActiveStatus(true)}
+              data-testid="button-set-active"
+            >
+              <div className="w-3 h-3 rounded-full bg-green-500 mr-3"></div>
+              Active (On Board / On Leave)
+            </Button>
+            <Button
+              variant={statusData?.isActive === false ? "default" : "outline"}
+              className="w-full justify-start"
+              onClick={() => handleToggleActiveStatus(false)}
+              data-testid="button-set-inactive"
+            >
+              <div className="w-3 h-3 rounded-full bg-gray-500 mr-3"></div>
+              Inactive
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Next Availability Edit Dialog */}
+      <Dialog open={isNextAvailabilityEditOpen} onOpenChange={setIsNextAvailabilityEditOpen}>
+        <DialogContent className="sm:max-w-[350px]">
+          <DialogHeader>
+            <DialogTitle>Set Next Availability</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <label className="text-sm font-medium text-gray-700">Next Availability Date</label>
+            <Input
+              type="date"
+              value={tempNextAvailability}
+              onChange={(e) => setTempNextAvailability(e.target.value)}
+              className="mt-1"
+              data-testid="input-next-availability"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsNextAvailabilityEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateNextAvailability} disabled={!tempNextAvailability}>
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

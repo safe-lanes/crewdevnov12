@@ -1431,6 +1431,10 @@ export class DatabaseStorage implements IStorage {
     return await this.db.select().from(vesselPlanning).where(eq(vesselPlanning.vesselId, vesselId));
   }
 
+  async getVesselPlanningByCrewMember(crewMemberId: string): Promise<VesselPlanning[]> {
+    return await this.db.select().from(vesselPlanning).where(eq(vesselPlanning.crewMemberId, crewMemberId));
+  }
+
   async getVesselPlanningById(id: number): Promise<VesselPlanning | undefined> {
     const result = await this.db.select().from(vesselPlanning).where(eq(vesselPlanning.id, id));
     return result[0] || undefined;

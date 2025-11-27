@@ -172,6 +172,7 @@ export interface IStorage {
   createVesselRevision(vesselRevision: InsertVesselRevision): Promise<VesselRevision>;
   // Vessel Planning
   getVesselPlanningByVessel(vesselId: string): Promise<VesselPlanning[]>;
+  getVesselPlanningByCrewMember(crewMemberId: string): Promise<VesselPlanning[]>;
   getVesselPlanningById(id: number): Promise<VesselPlanning | undefined>;
   getAllVesselPlanning(): Promise<VesselPlanning[]>;
   createVesselPlanning(planning: InsertVesselPlanning): Promise<VesselPlanning>;
@@ -1234,6 +1235,10 @@ export class MemStorage implements IStorage {
   // Vessel Planning Methods
   async getVesselPlanningByVessel(vesselId: string): Promise<VesselPlanning[]> {
     return Array.from(this.vesselPlanning.values()).filter(planning => planning.vesselId === vesselId);
+  }
+
+  async getVesselPlanningByCrewMember(crewMemberId: string): Promise<VesselPlanning[]> {
+    return Array.from(this.vesselPlanning.values()).filter(planning => planning.crewMemberId === crewMemberId);
   }
 
   async getVesselPlanningById(id: number): Promise<VesselPlanning | undefined> {
@@ -4931,6 +4936,10 @@ export class PersistentFileStorage implements IStorage {
   // Vessel Planning Methods
   async getVesselPlanningByVessel(vesselId: string): Promise<VesselPlanning[]> {
     return Array.from(this.vesselPlanning.values()).filter(planning => planning.vesselId === vesselId);
+  }
+
+  async getVesselPlanningByCrewMember(crewMemberId: string): Promise<VesselPlanning[]> {
+    return Array.from(this.vesselPlanning.values()).filter(planning => planning.crewMemberId === crewMemberId);
   }
 
   async getVesselPlanningById(id: number): Promise<VesselPlanning | undefined> {
