@@ -730,6 +730,7 @@ const onBoardStatusFormSchema = z.object({
     onBoardCrewName: z.string().optional(),
     onBoardCrewNationality: z.string().optional(),
     signOnDate: z.string().optional(),
+    joiningPort: z.string().optional(),
     reliefDue: z.string().optional(),
     signOffDate: z.string().optional(),
     signOffPort: z.string().optional(),
@@ -772,6 +773,7 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
             onBoardCrewName: '',
             onBoardCrewNationality: '',
             signOnDate: '',
+            joiningPort: '',
             reliefDue: '',
             signOffDate: '',
             signOffPort: '',
@@ -792,6 +794,7 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                 onBoardCrewName: planningData.onBoardCrewName || '',
                 onBoardCrewNationality: planningData.onBoardCrewNationality || '',
                 signOnDate: planningData.signOnDate || '',
+                joiningPort: planningData.joiningPort || '',
                 reliefDue: planningData.reliefDue || '',
                 signOffDate: planningData.signOffDate || '',
                 signOffPort: planningData.signOffPort || '',
@@ -809,6 +812,7 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                 onBoardCrewName: '',
                 onBoardCrewNationality: '',
                 signOnDate: '',
+                joiningPort: '',
                 reliefDue: '',
                 signOffDate: '',
                 signOffPort: '',
@@ -1060,6 +1064,14 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                             <div className="flex items-center border rounded-md px-3 py-2 bg-gray-50">
                                 <CalendarIcon className="mr-2 h-4 w-4 text-gray-400" />
                                 <span className="text-sm text-gray-900">{planningData?.signOnDate ? formatDisplayDate(planningData.signOnDate) : '-'}</span>
+                            </div>
+                        </div>
+
+                        {/* 3.5 Joining Port - Display only (read-only) */}
+                        <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                            <span className="text-sm text-gray-700">Joining Port:</span>
+                            <div className="flex items-center border rounded-md px-3 py-2 bg-gray-50">
+                                <span className="text-sm text-gray-900">{planningData?.joiningPort || '-'}</span>
                             </div>
                         </div>
 
