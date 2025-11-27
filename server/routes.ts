@@ -5472,10 +5472,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Crew member not found" });
       }
       
-      // Check if this is form data from CrewInfoForm (comprehensive)
-      // or simple crew member data (basic fields only)
+      // Check if this is a simple status update (isActive/nextAvailability only)
+      const isStatusUpdate = (
+        Object.keys(req.body).every(key => ['isActive', 'nextAvailability'].includes(key))
+      );
+      
       let mappedData;
-      if (req.body.documents || req.body.education || req.body.licenses || req.body.currentCompanySeaService) {
+      if (isStatusUpdate) {
+        // Direct status update - pass through without mapping transformation
+        mappedData = { ...req.body };
+      } else if (req.body.documents || req.body.education || req.body.licenses || req.body.currentCompanySeaService) {
         // This is comprehensive form data - use form mapping
         mappedData = mapFormDataToStorage(req.body);
       } else {
