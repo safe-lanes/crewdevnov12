@@ -1332,6 +1332,9 @@ export class DatabaseStorage implements IStorage {
       licenses: applicationData.licenses ? JSON.stringify(applicationData.licenses) : null,
       trainingCourses: applicationData.trainingCourses ? JSON.stringify(applicationData.trainingCourses) : null,
       
+      // A4 - Sea Service (recruitment seaService maps to externalSeaService in crew)
+      externalSeaService: applicationData.seaService ? JSON.stringify(applicationData.seaService) : null,
+      
       status: 'Active'
     };
     
