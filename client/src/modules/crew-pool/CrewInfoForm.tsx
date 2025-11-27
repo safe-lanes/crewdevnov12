@@ -263,6 +263,8 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     'B3': false
   });
   const [showCrewDropdown, setShowCrewDropdown] = useState(false);
+  // Track newly created crew member ID for subsequent saves
+  const [createdCrewId, setCreatedCrewId] = useState<string | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -609,6 +611,25 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
       setUploadedPhoto(null);
     }
   }, [isOpen, crewMember?.id]);
+
+  // Reset createdCrewId when:
+  // 1. Dialog opens for a NEW crew member (crewMember is null/undefined at open)
+  // 2. Dialog opens for a DIFFERENT crew member (crewMember?.id changes)
+  // This ensures each session starts fresh
+  useEffect(() => {
+    if (isOpen) {
+      // Dialog is opening - check if we need to reset for a fresh session
+      if (!crewMember?.id) {
+        // Opening for a new crew member - ensure we start fresh (POST on first save)
+        setCreatedCrewId(null);
+      }
+    }
+  }, [isOpen, crewMember?.id]);
+  
+  useEffect(() => {
+    // When switching to a different crew member while dialog is open, reset the locally created ID
+    setCreatedCrewId(null);
+  }, [crewMember?.id]);
 
   // Helper function to calculate BMI
   const calculateBMI = (height: string, weight: string) => {
@@ -3532,18 +3553,31 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
         return { success: true };
       }
     },
-    onSuccess: () => {
+    onSuccess: (responseData: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/crew-members'] });
-      // Also invalidate dashboard data if open
-      if (crewMember?.id) {
-        queryClient.invalidateQueries({ queryKey: [`/api/crew-members/${crewMember.id}/dashboard`] });
+      // Handle both direct response and potentially nested structure
+      const crewData = responseData?.crewMember || responseData;
+      const newId = crewData?.id || crewData?.employeeId;
+      
+      console.log('Create crew response - extracted ID:', newId);
+      
+      if (newId) {
+        // Store the ID for subsequent saves in this session
+        setCreatedCrewId(newId);
+        // Invalidate dashboard data for the new crew member
+        queryClient.invalidateQueries({ queryKey: [`/api/crew-members/${newId}/dashboard`] });
+        // Notify parent about the new crew member so it can update its state
+        // This ensures the header, dashboard queries, and other dependent features work correctly
+        if (onCrewMemberChange && crewData) {
+          onCrewMemberChange(crewData);
+        }
       }
       toast({
-        title: "Success",
-        description: "Crew member created successfully.",
+        title: "Saved",
+        description: "Crew member created successfully. You can continue editing.",
         duration: 3000,
       });
-      onClose();
+      // Keep form open to allow continued editing
     },
     onError: (error: any) => {
       toast({
@@ -3581,11 +3615,11 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
       // Also invalidate dashboard data for the updated crew member
       queryClient.invalidateQueries({ queryKey: [`/api/crew-members/${variables.id}/dashboard`] });
       toast({
-        title: "Success", 
-        description: "Crew member updated successfully.",
+        title: "Saved", 
+        description: "Crew member updated successfully. You can continue editing.",
         duration: 3000,
       });
-      onClose();
+      // Keep form open to allow continued editing
     },
     onError: (error: any) => {
       toast({
@@ -3600,9 +3634,12 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   const handleSave = () => {
     console.log('Saving crew info:', formData);
     
-    if (crewMember && crewMember.id) {
+    // Check for existing ID from prop or from local state (after creation)
+    const existingId = crewMember?.id || createdCrewId;
+    
+    if (existingId) {
       // Update existing crew member
-      updateCrewMutation.mutate({ id: crewMember.id, data: formData });
+      updateCrewMutation.mutate({ id: existingId, data: formData });
     } else {
       // Create new crew member - generate ID based on current date
       const newId = new Date().toISOString().slice(0, 10); // YYYY-MM-DD format
