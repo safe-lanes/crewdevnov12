@@ -48,19 +48,6 @@ export const RANK_CATEGORIES: RankCategory[] = [
 
 export const ALL_RANKS = RANK_CATEGORIES.flatMap(category => category.ranks);
 
-export const VESSEL_TYPES = [
-  'Container Ship',
-  'Bulk Carrier',
-  'Tanker',
-  'General Cargo',
-  'Passenger Ship',
-  'Offshore Vessel',
-  'Tug Boat',
-  'Ferry',
-  'Fishing Vessel',
-  'Research Vessel',
-] as const;
-
 export const APPRAISAL_TYPES = [
   'Interim Appraisal',
   'Final Appraisal',

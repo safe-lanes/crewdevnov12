@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Filter, Search as SearchIcon } from 'lucide-react';
+import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 
 export function PromotionsModule() {
     const [selectedPromotionsPage, setSelectedPromotionsPage] = useState('all');
@@ -98,10 +99,9 @@ export function PromotionsModule() {
                                 <SelectValue placeholder="Vessel Type" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="container">Container Ship</SelectItem>
-                                <SelectItem value="tanker">Tanker</SelectItem>
-                                <SelectItem value="bulk">Bulk Carrier</SelectItem>
-                                <SelectItem value="general">General Cargo</SelectItem>
+                                {DEFAULT_DROPDOWN_VESSEL_TYPES.map((type) => (
+                                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
 

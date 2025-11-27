@@ -27,6 +27,7 @@ import SectionTitleComponents from "@/components/Section/SectionTitleComponents"
 import SideBarComponent from "@/components/Navbar/SideBarComponent";
 import MainLayout from "@/components/main/MainLayout";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
+import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 
 // Interface for combined crew member and appraisal data
 interface CrewAppraisalData {
@@ -230,19 +231,12 @@ export const ElementCrewAppraisals = (): JSX.Element => {
   const uniqueVesselTypes = useMemo(() => {
     if (vesselTypeMasterData.length > 0) return vesselTypeMasterData;
     
-    const vesselTypes = new Set<string>();
-    crewMembers.forEach(crew => {
-      const crewDTO = fromStorageCrew(crew);
-      if (crewDTO.vesselType) {
-        vesselTypes.add(crewDTO.vesselType);
-      }
-    });
-    return Array.from(vesselTypes).sort().map((vt, index) => ({
+    return DEFAULT_DROPDOWN_VESSEL_TYPES.map((vt, index) => ({
       entryId: `VT-${index}`,
       name: vt,
       vesselType: vt
     }));
-  }, [vesselTypeMasterData, crewMembers]);
+  }, [vesselTypeMasterData]);
 
   const handleEditClick = useCallback((crewMember: CrewAppraisalData) => {
     setSelectedCrewMember(crewMember);

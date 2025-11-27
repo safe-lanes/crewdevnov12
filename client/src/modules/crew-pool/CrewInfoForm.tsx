@@ -15,6 +15,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { toStorageCrew } from '@shared/crew-mapping';
 import type { CrewDashboardSummary } from '@shared/schema';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
+import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 
 interface CrewMember {
   id: string;
@@ -276,12 +277,8 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   const sectionERef = useRef<HTMLDivElement>(null);
   const sectionFRef = useRef<HTMLDivElement>(null);
 
-  // Master data arrays
-  const VESSEL_TYPES = [
-    'Bulk Carrier', 'Container', 'Oil Tanker', 'Chemical Tanker', 'Product Tanker',
-    'Crude Oil Tanker', 'LPG Tanker', 'LNG Carrier', 'General Cargo', 'RoRo',
-    'Passenger', 'Offshore', 'Naval', 'Research', 'Salvage/Tug'
-  ];
+  // Master data arrays - vessel types from centralized source
+  const vesselTypeMasterData = DEFAULT_DROPDOWN_VESSEL_TYPES;
 
   const NATIONALITIES = [
     "Afghan", "Albanian", "Algerian", "American", "Andorran", "Angolan", "Antiguan", "Argentine", "Armenian", "Australian",
@@ -334,8 +331,6 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom",
     "United States", "Uruguay", "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
   ];
-
-  const vesselTypeMasterData = VESSEL_TYPES;
 
   // Initialize form data with crew member data
   const [formData, setFormData] = useState<FormData>({
@@ -1554,7 +1549,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                     <SelectValue placeholder="Select vessel types" />
                   </SelectTrigger>
                   <SelectContent className="max-h-[200px]">
-                    {VESSEL_TYPES.map(vesselType => (
+                    {vesselTypeMasterData.map((vesselType: string) => (
                       <SelectItem 
                         key={vesselType} 
                         value={vesselType}

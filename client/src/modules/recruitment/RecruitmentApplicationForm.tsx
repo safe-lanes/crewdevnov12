@@ -19,6 +19,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { type RecruitmentCandidate, type InsertRecruitmentCandidate } from '@shared/schema';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
+import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 
 interface RecruitmentApplicationFormProps {
   candidate: RecruitmentCandidate | null;
@@ -1433,24 +1434,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     });
   };
 
-  // Vessel types available for selection
-  const VESSEL_TYPES = [
-    'Bulk Carrier',
-    'Container',
-    'Oil Tanker',
-    'Chemical Tanker',
-    'Product Tanker',
-    'Crude Oil Tanker',
-    'LPG Tanker',
-    'LNG Carrier',
-    'General Cargo',
-    'RoRo',
-    'Passenger',
-    'Offshore',
-    'Naval',
-    'Research',
-    'Salvage/Tug'
-  ];
+  // Vessel types from centralized source
+  const vesselTypeMasterData = DEFAULT_DROPDOWN_VESSEL_TYPES;
 
   // Comprehensive nationality list matching AppraisalForm standards
   const NATIONALITIES = [
@@ -1526,12 +1511,6 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     "Ajmer", "Akola", "Gulbarga", "Jamnagar", "Ujjain", "Loni", "Siliguri", "Jhansi", "Ulhasnagar", "Jammu", "Sangli"
   ];
 
-  // Placeholder master data (until Crew Admin masters are created)
-  const vesselTypeMasterData = [
-    'Cargo', 'Tanker', 'Container', 'Bulk Carrier', 'Oil Tanker', 'Chemical Tanker',
-    'Gas Carrier', 'Ro-Ro', 'Passenger', 'Cruise', 'Ferry', 'Offshore',
-    'Tug', 'Dredger', 'Research Vessel', 'Naval Vessel'
-  ];
 
   // Rank data now comes from shared hook useCompanyRanks
 
@@ -1782,7 +1761,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         <SelectValue placeholder="Select vessel types" />
                       </SelectTrigger>
                       <SelectContent className="max-h-[200px]">
-                        {VESSEL_TYPES.map(vesselType => (
+                        {vesselTypeMasterData.map((vesselType: string) => (
                           <SelectItem 
                             key={vesselType} 
                             value={vesselType}
