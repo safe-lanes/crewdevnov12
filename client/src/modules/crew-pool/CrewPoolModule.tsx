@@ -250,13 +250,13 @@ export const CrewPoolModule = (): JSX.Element => {
                             <span 
                                 style={{
                                     display: 'inline-block',
-                                    padding: '2px 7px',
-                                    borderRadius: '3px',
+                                    padding: '4px 10px',
+                                    borderRadius: '4px',
                                     fontSize: '11px',
                                     fontWeight: 500,
                                     backgroundColor: bgColor,
                                     color: textColor,
-                                    lineHeight: '1'
+                                    lineHeight: '1.2'
                                 }}
                             >
                                 {status}
