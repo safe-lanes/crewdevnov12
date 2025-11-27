@@ -1,6 +1,41 @@
 import { CrewMember, InsertCrewMember } from "./schema";
 import { calculateSeaServicePeriod } from "./seaServiceCalculator";
 
+/**
+ * Unified status calculation logic
+ * 
+ * Status is computed based on:
+ * 1. isActive = false → "Inactive" (manual, can't be used in rotation planning)
+ * 2. isActive = true (or null/undefined = default true):
+ *    - Has active vessel assignment → "On Board"
+ *    - No vessel assignment → "On Leave"
+ * 
+ * Both "On Board" and "On Leave" fall under the "Active" category
+ * and can be used for rotation planning.
+ */
+export function calculateCrewStatus(
+  isActive: boolean | null | undefined,
+  hasVesselAssignment: boolean
+): 'On Board' | 'On Leave' | 'Inactive' {
+  // If explicitly marked as inactive, return Inactive
+  if (isActive === false) {
+    return 'Inactive';
+  }
+  
+  // If active (true, null, or undefined defaults to active)
+  // Check vessel assignment to determine On Board vs On Leave
+  return hasVesselAssignment ? 'On Board' : 'On Leave';
+}
+
+/**
+ * Get the status category for filtering/grouping purposes
+ * "On Board" and "On Leave" are both "Active"
+ * "Inactive" is its own category
+ */
+export function getStatusCategory(status: string): 'Active' | 'Inactive' {
+  return status === 'Inactive' ? 'Inactive' : 'Active';
+}
+
 // Frontend/Table representation with normalized field names
 export interface CrewMemberDTO {
   id: string;
