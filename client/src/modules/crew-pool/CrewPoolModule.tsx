@@ -228,11 +228,26 @@ export const CrewPoolModule = (): JSX.Element => {
                 {
                     headerName: 'Status',
                     field: 'status',
-                    width: viewportConfig.isDesktopOrLaptop ? undefined : 60,
-                    minWidth: 60,
-                    cellStyle: { fontSize: '11px', color: '#4f5863', whiteSpace: 'normal', lineHeight: '1.2' },
-                    wrapText: true,
-                    autoHeight: true,
+                    width: viewportConfig.isDesktopOrLaptop ? undefined : 80,
+                    minWidth: 80,
+                    cellRenderer: (params: any) => {
+                        const status = params.value || 'Unknown';
+                        let bgColor = '#e5e7eb'; // gray
+                        let textColor = '#374151';
+                        
+                        if (status === 'On Board') {
+                            bgColor = '#fed7aa'; // orange-200
+                            textColor = '#9a3412'; // orange-800
+                        } else if (status === 'On Leave') {
+                            bgColor = '#bbf7d0'; // green-200
+                            textColor = '#166534'; // green-800
+                        } else if (status === 'Inactive') {
+                            bgColor = '#e5e7eb'; // gray-200
+                            textColor = '#4b5563'; // gray-600
+                        }
+                        
+                        return `<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; background-color: ${bgColor}; color: ${textColor};">${status}</span>`;
+                    },
                     filter: 'agSetColumnFilter',
                     floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
@@ -291,6 +306,19 @@ export const CrewPoolModule = (): JSX.Element => {
                 {
                     headerName: 'Relief\nDue',
                     field: 'reliefDue',
+                    width: viewportConfig.isDesktopOrLaptop ? undefined : 75,
+                    minWidth: 75,
+                    cellStyle: { fontSize: '11px', color: '#4f5863' },
+                    filter: 'agDateColumnFilter',
+                    floatingFilter: viewportConfig.showFloatingFilters,
+                    sortable: true,
+                    resizable: true,
+                    headerClass: 'ag-header-cell-text-wrap',
+                    valueFormatter: (params: any) => formatCompactDate(params.value)
+                },
+                {
+                    headerName: 'Next\nAvailable',
+                    field: 'nextAvailability',
                     width: viewportConfig.isDesktopOrLaptop ? undefined : 75,
                     minWidth: 75,
                     cellStyle: { fontSize: '11px', color: '#4f5863' },
