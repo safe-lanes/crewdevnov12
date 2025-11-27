@@ -232,21 +232,35 @@ export const CrewPoolModule = (): JSX.Element => {
                     minWidth: 80,
                     cellRenderer: (params: any) => {
                         const status = params.value || 'Unknown';
-                        let bgColor = '#e5e7eb'; // gray
+                        let bgColor = '#e5e7eb';
                         let textColor = '#374151';
                         
                         if (status === 'On Board') {
-                            bgColor = '#fed7aa'; // orange-200
-                            textColor = '#9a3412'; // orange-800
+                            bgColor = '#fed7aa';
+                            textColor = '#9a3412';
                         } else if (status === 'On Leave') {
-                            bgColor = '#bbf7d0'; // green-200
-                            textColor = '#166534'; // green-800
+                            bgColor = '#bbf7d0';
+                            textColor = '#166534';
                         } else if (status === 'Inactive') {
-                            bgColor = '#e5e7eb'; // gray-200
-                            textColor = '#4b5563'; // gray-600
+                            bgColor = '#e5e7eb';
+                            textColor = '#4b5563';
                         }
                         
-                        return `<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; background-color: ${bgColor}; color: ${textColor};">${status}</span>`;
+                        return (
+                            <span 
+                                style={{
+                                    display: 'inline-block',
+                                    padding: '2px 8px',
+                                    borderRadius: '4px',
+                                    fontSize: '10px',
+                                    fontWeight: 500,
+                                    backgroundColor: bgColor,
+                                    color: textColor
+                                }}
+                            >
+                                {status}
+                            </span>
+                        );
                     },
                     filter: 'agSetColumnFilter',
                     floatingFilter: viewportConfig.showFloatingFilters,
