@@ -2647,17 +2647,44 @@ export class DatabaseStorage implements IStorage {
 
     const appraisals = await this.getAppraisalResultsByCrewMember(crewId);
 
-    const vesselName = await this.translateVesselCodeToNameFromDb(crewMember.presentVessel || '');
-    const joinedDateFormatted = this.formatDateForDashboard(crewMember.joiningDate || crewMember.signOnDate);
-    const reliefDueFormatted = this.formatDateForDashboard(crewMember.reliefDue);
+    // Check vessel_planning for active vessel assignments
+    const vesselPlanningEntries = await this.getVesselPlanningByCrewMember(crewId);
+    const hasVesselAssignment = vesselPlanningEntries && vesselPlanningEntries.length > 0;
+    
+    // Find primary assignment if any
+    const primaryAssignment = hasVesselAssignment 
+      ? vesselPlanningEntries.find((p: any) => 
+          (p.crewStatus || 'primary').toLowerCase() === 'primary' || 
+          (p.crewStatus || 'primary').toLowerCase() === 'p'
+        ) || vesselPlanningEntries[0]
+      : null;
+
+    // Use unified status calculation logic
+    const isActive = crewMember.isActive !== false; // Default to active if null/undefined
+    const calculatedStatus = isActive 
+      ? (hasVesselAssignment ? 'On Board' : 'On Leave') 
+      : 'Inactive';
+    
+    // Get vessel name from vessel_planning or crew member record
+    const vesselCode = primaryAssignment?.vesselId || crewMember.presentVessel || '';
+    const vesselName = await this.translateVesselCodeToNameFromDb(vesselCode);
+    
+    // Get dates from vessel_planning or crew member record
+    const joinedDate = primaryAssignment?.signOnDate || crewMember.joiningDate || crewMember.signOnDate;
+    const reliefDue = primaryAssignment?.reliefDue || crewMember.reliefDue;
+    const joinedDateFormatted = this.formatDateForDashboard(joinedDate);
+    const reliefDueFormatted = this.formatDateForDashboard(reliefDue);
+    const nextAvailabilityFormatted = this.formatDateForDashboard(crewMember.nextAvailability);
 
     return {
       status: {
-        status: "On Board",
-        vessel: vesselName,
-        joinedDate: joinedDateFormatted, 
-        sailingDue: reliefDueFormatted,
-        presentAssignment: crewMember.presentVessel || "Chandigarh",
+        status: calculatedStatus,
+        isActive: isActive,
+        vessel: hasVesselAssignment ? vesselName : null,
+        joinedDate: hasVesselAssignment ? joinedDateFormatted : null, 
+        sailingDue: hasVesselAssignment ? reliefDueFormatted : null,
+        nextAvailability: !hasVesselAssignment && calculatedStatus === 'On Leave' ? nextAvailabilityFormatted : null,
+        presentAssignment: vesselCode || null,
         emergencyContact: {
           name: "Mira Kumari", 
           relation: "Wife",
