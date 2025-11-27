@@ -1323,6 +1323,15 @@ export class DatabaseStorage implements IStorage {
       nokAddress: applicationData.nokAddress || null,
       nokRelationship: applicationData.nokRelationship || null,
       
+      // A2 - Travel & ID Documents
+      documents: applicationData.documents ? JSON.stringify(applicationData.documents) : null,
+      visas: applicationData.visas ? JSON.stringify(applicationData.visas) : null,
+      
+      // A3 - Training & Certificates
+      education: applicationData.education ? JSON.stringify(applicationData.education) : null,
+      licenses: applicationData.licenses ? JSON.stringify(applicationData.licenses) : null,
+      trainingCourses: applicationData.trainingCourses ? JSON.stringify(applicationData.trainingCourses) : null,
+      
       status: 'Active'
     };
     
