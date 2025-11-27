@@ -701,15 +701,6 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                         {/* Action Buttons */}
                         <div className="flex justify-end gap-2 pt-4">
                             <Button 
-                                type="button" 
-                                onClick={handleSave}
-                                className="bg-[#1e40af] hover:bg-[#1e40af]/90"
-                                disabled={updatePlanningMutation.isPending}
-                                data-testid="button-save-relief"
-                            >
-                                Save
-                            </Button>
-                            <Button 
                                 type="submit"
                                 className="bg-[#14b8a6] hover:bg-[#14b8a6]/90"
                                 disabled={updatePlanningMutation.isPending}
@@ -1337,15 +1328,6 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
 
                         {/* Action Buttons */}
                         <div className="flex justify-end gap-2 pt-4">
-                            <Button 
-                                type="button" 
-                                onClick={handleSave}
-                                className="bg-[#1e40af] hover:bg-[#1e40af]/90"
-                                disabled={updatePlanningMutation.isPending}
-                                data-testid="button-save-onboard"
-                            >
-                                Save
-                            </Button>
                             <Button 
                                 type="submit"
                                 className="bg-[#14b8a6] hover:bg-[#14b8a6]/90"
