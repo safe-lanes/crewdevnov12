@@ -2837,6 +2837,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.body.isArchived = true;
         req.body.archivedDate = req.body.signOffDate;
         console.log(`✅ [VESSEL-PLANNING] Archiving ${existingPlanning.crewStatus} crew member on sign-off: ${id}`);
+        
+        // Sync sign-off reason to crew_members table if crew member is linked
+        const crewMemberId = existingPlanning.crewMemberId;
+        if (crewMemberId && req.body.signOffReason) {
+          try {
+            await storage.updateCrewMember(crewMemberId, { 
+              reason: req.body.signOffReason 
+            });
+            console.log(`✅ [VESSEL-PLANNING] Synced sign-off reason "${req.body.signOffReason}" to crew member ${crewMemberId}`);
+          } catch (syncError) {
+            console.error(`⚠️ [VESSEL-PLANNING] Failed to sync sign-off reason to crew member:`, syncError);
+            // Continue with vessel planning update even if crew sync fails
+          }
+        }
       }
       
       // TAKEOVER DETECTION: Clear reliever fields when appropriate

@@ -716,6 +716,14 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
     );
 };
 
+// Sign-off reason options
+const SIGN_OFF_REASONS = [
+    "Contract Completed",
+    "Terminated",
+    "Medical Reasons",
+    "Others"
+] as const;
+
 // Form schema for On Board Status
 const onBoardStatusFormSchema = z.object({
     onBoardCrewName: z.string().optional(),
@@ -725,6 +733,7 @@ const onBoardStatusFormSchema = z.object({
     reliefDue: z.string().optional(),
     signOffDate: z.string().optional(),
     signOffPort: z.string().optional(),
+    signOffReason: z.string().optional(),
     reliefStatus: z.string().optional(),
     takeOverDate: z.string().optional(),
     takeOverConfirmation: z.boolean().optional(),
@@ -768,6 +777,7 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
             reliefDue: '',
             signOffDate: '',
             signOffPort: '',
+            signOffReason: '',
             reliefStatus: '',
             takeOverDate: '',
             takeOverConfirmation: false,
@@ -789,6 +799,7 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                 reliefDue: planningData.reliefDue || '',
                 signOffDate: planningData.signOffDate || '',
                 signOffPort: planningData.signOffPort || '',
+                signOffReason: planningData.signOffReason || '',
                 reliefStatus: planningData.reliefStatus || '',
                 takeOverDate: planningData.takeOverDate || '',
                 takeOverConfirmation: planningData.takeOverConfirmation || false,
@@ -807,6 +818,7 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                 reliefDue: '',
                 signOffDate: '',
                 signOffPort: '',
+                signOffReason: '',
                 reliefStatus: '',
                 takeOverDate: '',
                 takeOverConfirmation: false,
@@ -817,6 +829,9 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
             });
         }
     }, [open, planningData, form]);
+
+    // Watch reliefStatus to conditionally show sign-off reason dropdown
+    const watchedReliefStatus = form.watch('reliefStatus');
 
     // Watch contractPeriodMonths to calculate Relief Due in real-time
     const watchedContractPeriod = form.watch('contractPeriodMonths');
@@ -854,6 +869,11 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
             
             // Check if this is a sign-off (Relief Status = "Signed Off" AND Sign Off Date is set)
             const isSignOff = data.reliefStatus === "Signed Off" && data.signOffDate;
+            
+            // Validate: Sign-off reason is required when signing off
+            if (isSignOff && !data.signOffReason) {
+                throw new Error("Please select a reason for sign-off");
+            }
             
             // Calculate Relief Due = Joining Date + Contract Period (if both are available)
             let computedReliefDue: string | null = null;
@@ -1239,6 +1259,39 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                                 </FormItem>
                             )}
                         />
+
+                        {/* 10.1 Sign Off Reason - Conditional, shows only when Relief Status = "Signed Off" */}
+                        {watchedReliefStatus === "Signed Off" && (
+                            <FormField
+                                control={form.control}
+                                name="signOffReason"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                                            <FormLabel className="text-sm text-gray-700">Reason</FormLabel>
+                                            <FormControl>
+                                                <Select 
+                                                    onValueChange={field.onChange} 
+                                                    value={field.value || undefined} 
+                                                    data-testid="select-sign-off-reason"
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select Reason" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {SIGN_OFF_REASONS.map((reason) => (
+                                                            <SelectItem key={reason} value={reason}>
+                                                                {reason}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </FormControl>
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />
+                        )}
 
                         {/* 11. Hand Over Date - Display Only (Auto-filled) */}
                         <div className="grid grid-cols-[140px_1fr] items-center gap-4">

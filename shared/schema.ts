@@ -428,6 +428,7 @@ export const vesselPlanning = pgTable("vessel_planning", {
   reliefDue: text("relief_due"),
   signOffDate: text("sign_off_date"),
   signOffPort: text("sign_off_port"),
+  signOffReason: text("sign_off_reason"), // Reason for sign-off: Contract Completed, Terminated, Medical Reasons, Others
   reliefStatus: text("relief_status"),
   
   // Handover Workflow Fields
@@ -1144,6 +1145,7 @@ export const insertVesselPlanningSchema = createInsertSchema(vesselPlanning).pic
   reliefDue: true,
   signOffDate: true,
   signOffPort: true,
+  signOffReason: true,
   reliefStatus: true,
   takeOverDate: true,
   takeOverConfirmation: true,
