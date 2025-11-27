@@ -97,6 +97,10 @@ The application employs a modern web stack with a module-first architecture for 
 - **Rank Ordering System**: All crew-displaying modules use rank-based sorting with suffix normalization from Admin > Rank Administration.
 - **Performance Optimization**: Utilizes map-based lookups, TanStack Query for caching, `useRef`, `useMemo`, and optimized `PersistentFileStorage`.
 - **Data Storage**: `PersistentFileStorage` for development, with PostgreSQL/Drizzle ORM for production.
+- **Crew Member Update Protection**: When saving crew member data from CrewInfoForm, vessel assignment fields (presentVessel, joiningDate, signOnDate, signOffDate, reliefDue) are protected from accidental clearing.
+    - **PATCH Handler**: Strips undefined/empty values for vessel assignment fields before update
+    - **Auto-Sync Guard**: Only syncs reliefDue to vessel_planning when explicitly set with valid value
+    - **Dashboard Data Flow**: Dashboard reads from `getCrewDashboardSummary` API which translates vessel codes to names using Master 014 lookup
 
 ## External Dependencies
 - React 18

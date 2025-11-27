@@ -5246,8 +5246,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
-        // 🔄 Sync Relief Due date if changed
-        if (updates.reliefDue !== undefined && updates.reliefDue !== oldCrew.reliefDue) {
+        // 🔄 Sync Relief Due date if changed - ONLY if a valid date is provided
+        // Skip if updates.reliefDue is null/undefined/empty (don't overwrite existing values)
+        if (updates.reliefDue && updates.reliefDue !== oldCrew.reliefDue) {
           updateData.reliefDue = updates.reliefDue;
           console.log(`⚡ [AUTO-SYNC] Relief Due updated: ${oldCrew.reliefDue} → ${updates.reliefDue}`);
         }
@@ -5475,7 +5476,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mappedData = toStorageCrew(req.body);
       }
       
-      const result = insertCrewMemberSchema.partial().safeParse(mappedData);
+      // 🛡️ PRESERVE VESSEL ASSIGNMENT FIELDS - Strip undefined/empty values
+      // These fields are managed by vessel_planning, not the form
+      const vesselAssignmentFields = ['presentVessel', 'joiningDate', 'signOnDate', 'signOffDate', 'reliefDue'];
+      const cleanedData: any = {};
+      
+      Object.entries(mappedData).forEach(([key, value]) => {
+        // For vessel assignment fields, only include if explicitly set with valid value
+        if (vesselAssignmentFields.includes(key)) {
+          if (value !== undefined && value !== null && value !== '') {
+            cleanedData[key] = value;
+          }
+          // Otherwise, skip this field entirely to preserve existing value
+        } else {
+          // For other fields, include as-is (allow null/empty for clearable fields)
+          if (value !== undefined) {
+            cleanedData[key] = value;
+          }
+        }
+      });
+      
+      const result = insertCrewMemberSchema.partial().safeParse(cleanedData);
       if (!result.success) {
         return res.status(400).json({ error: "Invalid crew member data", details: result.error.issues });
       }
