@@ -62,12 +62,14 @@ export const crewMembers = pgTable("crew_members", {
   lastVessel: text("last_vessel"),
   
   // Contract and Status
-  status: text("status"), // On Leave, Available, etc.
+  status: text("status"), // Computed: On Board, On Leave, Inactive
+  isActive: boolean("is_active").default(true), // Manual toggle: true=Active (On Board/On Leave), false=Inactive
   joiningDate: text("joining_date"), // Changed from signOnDate
   signOnDate: text("sign_on_date"), // Keep both for backward compatibility
   signOffDate: text("sign_off_date"),
   contractPeriod: text("contract_period"),
   reliefDue: text("relief_due"),
+  nextAvailability: text("next_availability"), // When crew is next ready to join vessel (for On Leave status)
   reason: text("reason"), // For sign-off reason
   availability: text("availability"),
   

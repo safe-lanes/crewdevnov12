@@ -31,11 +31,13 @@ export interface CrewMemberDTO {
   
   // Contract and Status
   status?: string | null;
+  isActive?: boolean | null; // Manual toggle: true=Active (On Board/On Leave), false=Inactive
   joiningDate?: string | null;
   signOnDate?: string | null;
   signOffDate?: string | null;
   contractPeriod?: string | null;
   reliefDue?: string | null;
+  nextAvailability?: string | null; // When crew is next ready to join vessel (for On Leave status)
   reason?: string | null;
   availability?: string | null;
   
@@ -431,11 +433,13 @@ export function mapFormDataToStorage(formData: any): Partial<InsertCrewMember> {
       : formData.vesselType || undefined,
     lastVessel: formData.lastVessel || undefined,
     status: formData.status || 'Active',
+    isActive: formData.isActive !== undefined ? formData.isActive : true,
     joiningDate: formData.joiningDate || undefined,
     signOnDate: formData.signOnDate || formData.joiningDate || undefined,
     signOffDate: formData.signOffDate || undefined,
     contractPeriod: formData.contractPeriod || undefined,
     reliefDue: formData.reliefDue || undefined,
+    nextAvailability: formData.nextAvailability || undefined,
     reason: formData.reason || undefined,
     availability: formData.availability || 'Available',
     email: formData.email || null,
