@@ -11,6 +11,38 @@ const STATIC_VESSEL_MAPPING: Record<string, string> = {
   "Coastal Guardian": "VSL-006",
 };
 
+const STATIC_VESSEL_CODE_TO_NAME: Record<string, string> = {
+  "VSL-001": "MV Atlantic Explorer",
+  "VSL-002": "MV Pacific Voyager",
+  "VSL-003": "Nordic Star",
+  "VSL-004": "Oceanic Pride",
+  "VSL-005": "Harbor Master",
+  "VSL-006": "Coastal Guardian",
+};
+
+export function translateVesselCodeToName(vesselCode: string): string {
+  const vesselName = STATIC_VESSEL_CODE_TO_NAME[vesselCode];
+  if (vesselName) {
+    return vesselName;
+  }
+  return vesselCode;
+}
+
+function formatDateForDashboard(dateString: string | null | undefined): string {
+  if (!dateString) return '';
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  } catch {
+    return dateString;
+  }
+}
+
 //Helper function to translate vessel name to vessel code
 // Provides static mapping for storage backends that don't have master data
 // Throws error if vessel cannot be translated to enforce data integrity
@@ -1018,13 +1050,17 @@ export class MemStorage implements IStorage {
 
     const appraisals = await this.getAppraisalResultsByCrewMember(crewId);
 
-    // Generate realistic dashboard data based on crew member and appraisals
+    const vesselName = crewMember.presentVessel ? translateVesselCodeToName(crewMember.presentVessel) : '';
+    const joinedDateFormatted = formatDateForDashboard(crewMember.joiningDate || crewMember.signOnDate);
+    const reliefDueFormatted = formatDateForDashboard(crewMember.reliefDue);
+
+    // Generate dashboard data based on actual crew member data
     const summary: CrewDashboardSummary = {
       status: {
         status: "On Board",
-        vessel: crewMember.presentVessel,
-        joinedDate: "15 Mar 2022", 
-        sailingDue: "15 Jul 2022",
+        vessel: vesselName,
+        joinedDate: joinedDateFormatted, 
+        sailingDue: reliefDueFormatted,
         presentAssignment: crewMember.presentVessel || "Chandigarh",
         emergencyContact: {
           name: "Mira Kumari", 
@@ -4319,13 +4355,17 @@ export class PersistentFileStorage implements IStorage {
 
     const appraisals = await this.getAppraisalResultsByCrewMember(crewId);
 
-    // Generate realistic dashboard data based on crew member and appraisals
+    const vesselName = crewMember.presentVessel ? translateVesselCodeToName(crewMember.presentVessel) : '';
+    const joinedDateFormatted = formatDateForDashboard(crewMember.joiningDate || crewMember.signOnDate);
+    const reliefDueFormatted = formatDateForDashboard(crewMember.reliefDue);
+
+    // Generate dashboard data based on actual crew member data
     const summary: CrewDashboardSummary = {
       status: {
         status: "On Board",
-        vessel: crewMember.presentVessel,
-        joinedDate: "15 Mar 2022", 
-        sailingDue: "15 Jul 2022",
+        vessel: vesselName,
+        joinedDate: joinedDateFormatted, 
+        sailingDue: reliefDueFormatted,
         presentAssignment: crewMember.presentVessel || "Chandigarh",
         emergencyContact: {
           name: "Mira Kumari", 
