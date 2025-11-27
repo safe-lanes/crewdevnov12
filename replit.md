@@ -51,13 +51,20 @@ The application employs a modern web stack with a module-first architecture for 
 - **Rotation Module**: Manages crew rotation planning with "Due" and "Plan" sections, visual timelines, and comprehensive filters.
 - **Promotion Hierarchy System**: Configurable promotion paths, integrated with a Promotions module for filtering and "Next Promotion Rank" calculation. Includes a multi-part Promotion Review Form and a detailed Promotion Checklist Form.
 - **Forms Configuration - Company Rank Integration**: Uses company-specific rank labels for rank group creation and automatically matches forms to crew member ranks during appraisals.
+- **Vessel Type Hierarchy System**: Centralized 3-level vessel type classification in `client/src/utils/data/vesselTypes.ts`.
+    - **Level 1 (Categories)**: Tanker Vessels, Dry Vessels, Other Vessels
+    - **Level 2 (Types)**: Oil Tanker, Chemical Tanker, Gas Tanker, Bitumen/Asphalt Carriers, Bulk Carrier, General Cargo, Container, RoRo, Barges, Offshore Support Vessels, Shuttle Tankers
+    - **Level 3 (Subtypes)**: Product Oil Tanker, Crude Oil Tanker, LNG Tanker, LPG Tanker
+    - **Utility Functions**: `getParentTypes()` for experience inheritance (e.g., LPG Tanker → Gas Tanker → Tanker Vessels), `getChildTypes()` for analytics aggregation
+    - **Dropdown Integration**: `DEFAULT_DROPDOWN_VESSEL_TYPES` exports Level 2 + Level 3 types for form dropdowns; can filter by level with `getVesselTypesByLevel([2])` or `getVesselTypesByLevel([3])`
+    - **Modules Using**: CrewInfoForm, RecruitmentApplicationForm, ElementCrewAppraisals, PromotionsModule
 - **Crew Appraisals Module**: Comprehensive crew appraisal management with AG Grid table display and advanced filtering.
     - **Master Data Integration**: Filters connected to master data sources with intelligent fallback:
         - Rank filter: `/api/available-ranks` (Available Ranks Master)
         - Vessel filter: `/api/masters/014/data` (Vessel Master)
-        - Vessel Type filter: `/api/masters/015/data` with fallback to unique values extracted from crew data
+        - Vessel Type filter: `/api/masters/015/data` with fallback to centralized vessel types from `vesselTypes.ts`
         - Nationality filter: `/api/masters/001/data` with fallback to unique values extracted from crew data
-    - **Intelligent Fallback**: When master data endpoints return empty arrays, the system automatically extracts unique values from existing crew member data to populate filters
+    - **Intelligent Fallback**: When master data endpoints return empty arrays, the system uses centralized vessel types or extracts unique values from existing crew member data
     - **3-Stage Appraisal Workflow**: Independent stage submissions with status progression (Draft → Preliminary → Submitted → Reviewed)
         - **Stage 1** (Parts A & B - Target Setting): Sets appraisal period, personality index, trainings, and targets. Part B evaluation fields are optional and can be left blank.
         - **Stage 2** (Parts C-F - Performance Assessment): Fills Part B evaluations and completes competence/behavioral assessments, training needs, and recommendations.
