@@ -202,8 +202,8 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     queryKey: ["/api/masters/014/data"],
   });
 
-  const { data: vesselTypeMasterData = [] } = useQuery<Array<{ entryId: string; name: string; vesselType?: string }>>({
-    queryKey: ["/api/masters/015/data"],
+  const { data: vesselTypeMasterData = [] } = useQuery<Array<{ entryId: string; name: string; level?: number; parentId?: string | null; code?: string }>>({
+    queryKey: ["/api/masters/004/data"],
   });
 
   const { data: nationalityMasterData = [] } = useQuery<Array<{ entryId: string; name: string; countryName?: string }>>({
@@ -229,12 +229,16 @@ export const ElementCrewAppraisals = (): JSX.Element => {
   }, [nationalityMasterData, crewMembers]);
 
   const uniqueVesselTypes = useMemo(() => {
-    if (vesselTypeMasterData.length > 0) return vesselTypeMasterData;
+    // Filter to Level 2 and Level 3 types for dropdown (not Level 1 categories)
+    if (vesselTypeMasterData.length > 0) {
+      const filteredTypes = vesselTypeMasterData.filter(vt => vt.level && vt.level >= 2);
+      if (filteredTypes.length > 0) return filteredTypes;
+    }
     
+    // Fallback to static data
     return DEFAULT_DROPDOWN_VESSEL_TYPES.map((vt, index) => ({
       entryId: `VT-${index}`,
-      name: vt,
-      vesselType: vt
+      name: vt
     }));
   }, [vesselTypeMasterData]);
 
@@ -605,8 +609,8 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                 </SelectTrigger>
                 <SelectContent>
                   {uniqueVesselTypes.map((vesselType) => (
-                    <SelectItem key={vesselType.entryId} value={vesselType.vesselType || vesselType.name}>
-                      {vesselType.vesselType || vesselType.name}
+                    <SelectItem key={vesselType.entryId} value={vesselType.name}>
+                      {vesselType.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

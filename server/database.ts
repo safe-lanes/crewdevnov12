@@ -256,6 +256,10 @@ export class DatabaseStorage implements IStorage {
         { name: 'gasTanker', ddl: 'ADD COLUMN gasTanker TINYINT(1) NOT NULL DEFAULT 0' },
         { name: 'chemicalTanker', ddl: 'ADD COLUMN chemicalTanker TINYINT(1) NOT NULL DEFAULT 0' },
         { name: 'bulk', ddl: 'ADD COLUMN bulk TINYINT(1) NOT NULL DEFAULT 0' },
+        // Additional columns for Vessel Type hierarchy support
+        { name: 'level', ddl: 'ADD COLUMN level INT NULL' },
+        { name: 'parentId', ddl: 'ADD COLUMN parentId TEXT NULL' },
+        { name: 'code', ddl: 'ADD COLUMN code TEXT NULL' },
         // Additional columns for Fleet Groups master structure (ID 015)
         { name: 'fuid', ddl: 'ADD COLUMN fuid TEXT NULL' },
         { name: 'managerId', ddl: 'ADD COLUMN managerId TEXT NULL' },

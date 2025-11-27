@@ -344,6 +344,9 @@ export const masterDataEntries = pgTable("master_data_entries", {
   countryRefId: text("countryRefId"),
   vtuid: text("vtuid"),
   vesselType: text("vesselType"),
+  level: integer("level"), // Hierarchy level: 1=Category, 2=Type, 3=Subtype
+  parentId: text("parentId"), // Reference to parent entry's entryId for hierarchy
+  code: text("code"), // Unique code for the vessel type (e.g., 'OIL_TANKER', 'LPG_TANKER')
   tanker: boolean("tanker").default(false),
   oilTanker: boolean("oilTanker").default(false),
   gasTanker: boolean("gasTanker").default(false),
@@ -1074,6 +1077,9 @@ export const insertMasterDataEntrySchema = createInsertSchema(masterDataEntries)
   countryRefId: true,
   vtuid: true,
   vesselType: true,
+  level: true,
+  parentId: true,
+  code: true,
   tanker: true,
   oilTanker: true,
   gasTanker: true,

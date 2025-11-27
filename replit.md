@@ -51,18 +51,21 @@ The application employs a modern web stack with a module-first architecture for 
 - **Rotation Module**: Manages crew rotation planning with "Due" and "Plan" sections, visual timelines, and comprehensive filters.
 - **Promotion Hierarchy System**: Configurable promotion paths, integrated with a Promotions module for filtering and "Next Promotion Rank" calculation. Includes a multi-part Promotion Review Form and a detailed Promotion Checklist Form.
 - **Forms Configuration - Company Rank Integration**: Uses company-specific rank labels for rank group creation and automatically matches forms to crew member ranks during appraisals.
-- **Vessel Type Hierarchy System**: Centralized 3-level vessel type classification in `client/src/utils/data/vesselTypes.ts`.
-    - **Level 1 (Categories)**: Tanker Vessels, Dry Vessels, Other Vessels
+- **Vessel Type Hierarchy System**: Centralized 3-level vessel type classification stored in Master Data 004.
+    - **Database Storage**: Vessel types stored in `master_data_entries` table with `master_id='004'` using `level`, `parentId`, and `code` columns for hierarchy
+    - **API Endpoint**: `/api/masters/004/data` returns all 18 vessel types with hierarchy metadata
+    - **Level 1 (Categories)**: Tanker Vessels (VT001), Dry Vessels (VT002), Other Vessels (VT003)
     - **Level 2 (Types)**: Oil Tanker, Chemical Tanker, Gas Tanker, Bitumen/Asphalt Carriers, Bulk Carrier, General Cargo, Container, RoRo, Barges, Offshore Support Vessels, Shuttle Tankers
     - **Level 3 (Subtypes)**: Product Oil Tanker, Crude Oil Tanker, LNG Tanker, LPG Tanker
-    - **Utility Functions**: `getParentTypes()` for experience inheritance (e.g., LPG Tanker → Gas Tanker → Tanker Vessels), `getChildTypes()` for analytics aggregation
-    - **Dropdown Integration**: `DEFAULT_DROPDOWN_VESSEL_TYPES` exports Level 2 + Level 3 types for form dropdowns; can filter by level with `getVesselTypesByLevel([2])` or `getVesselTypesByLevel([3])`
+    - **Static Fallback**: `client/src/utils/data/vesselTypes.ts` contains `VESSEL_TYPE_HIERARCHY` array as fallback when API unavailable
+    - **Utility Functions**: `getParentTypes()` for experience inheritance (e.g., LPG Tanker → Gas Tanker → Tanker Vessels), `getChildTypes()` for analytics aggregation, `isTankerType()`, `isBulkType()` for type checking
+    - **Dropdown Integration**: All modules fetch from API with fallback to `DEFAULT_DROPDOWN_VESSEL_TYPES`; filters Level 2 + Level 3 types (excludes Level 1 categories)
     - **Modules Using**: CrewInfoForm, RecruitmentApplicationForm, ElementCrewAppraisals, PromotionsModule
 - **Crew Appraisals Module**: Comprehensive crew appraisal management with AG Grid table display and advanced filtering.
     - **Master Data Integration**: Filters connected to master data sources with intelligent fallback:
         - Rank filter: `/api/available-ranks` (Available Ranks Master)
         - Vessel filter: `/api/masters/014/data` (Vessel Master)
-        - Vessel Type filter: `/api/masters/015/data` with fallback to centralized vessel types from `vesselTypes.ts`
+        - Vessel Type filter: `/api/masters/004/data` (Vessel Type Master with hierarchy) with fallback to centralized vessel types from `vesselTypes.ts`
         - Nationality filter: `/api/masters/001/data` with fallback to unique values extracted from crew data
     - **Intelligent Fallback**: When master data endpoints return empty arrays, the system uses centralized vessel types or extracts unique values from existing crew member data
     - **3-Stage Appraisal Workflow**: Independent stage submissions with status progression (Draft → Preliminary → Submitted → Reviewed)

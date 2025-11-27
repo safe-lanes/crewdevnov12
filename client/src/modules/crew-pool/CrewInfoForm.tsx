@@ -277,8 +277,20 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   const sectionERef = useRef<HTMLDivElement>(null);
   const sectionFRef = useRef<HTMLDivElement>(null);
 
-  // Master data arrays - vessel types from centralized source
-  const vesselTypeMasterData = DEFAULT_DROPDOWN_VESSEL_TYPES;
+  // Fetch vessel types from Master 004 API with fallback to static data
+  const { data: vesselTypeMasterDataRaw = [] } = useQuery<Array<{ entryId: string; name: string; level?: number }>>({
+    queryKey: ["/api/masters/004/data"],
+  });
+  
+  // Filter to Level 2 and Level 3 types for dropdown (not Level 1 categories)
+  const vesselTypeMasterData = useMemo(() => {
+    if (vesselTypeMasterDataRaw.length > 0) {
+      const filteredTypes = vesselTypeMasterDataRaw.filter(vt => vt.level && vt.level >= 2);
+      if (filteredTypes.length > 0) return filteredTypes.map(vt => vt.name);
+    }
+    // Fallback to static data
+    return DEFAULT_DROPDOWN_VESSEL_TYPES;
+  }, [vesselTypeMasterDataRaw]);
 
   const NATIONALITIES = [
     "Afghan", "Albanian", "Algerian", "American", "Andorran", "Angolan", "Antiguan", "Argentine", "Armenian", "Australian",

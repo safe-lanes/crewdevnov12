@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { StandardFormPopup } from '@/components/ui/form-popup';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ArrowLeft, Edit, Plus, Save, Trash2, Upload, Paperclip, X, Camera, Info, MessageSquare } from 'lucide-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { type RecruitmentCandidate, type InsertRecruitmentCandidate } from '@shared/schema';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
@@ -1434,8 +1434,20 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     });
   };
 
-  // Vessel types from centralized source
-  const vesselTypeMasterData = DEFAULT_DROPDOWN_VESSEL_TYPES;
+  // Fetch vessel types from Master 004 API with fallback to static data
+  const { data: vesselTypeMasterDataRaw = [] } = useQuery<Array<{ entryId: string; name: string; level?: number }>>({
+    queryKey: ["/api/masters/004/data"],
+  });
+  
+  // Filter to Level 2 and Level 3 types for dropdown (not Level 1 categories)
+  const vesselTypeMasterData = useMemo(() => {
+    if (vesselTypeMasterDataRaw.length > 0) {
+      const filteredTypes = vesselTypeMasterDataRaw.filter(vt => vt.level && vt.level >= 2);
+      if (filteredTypes.length > 0) return filteredTypes.map(vt => vt.name);
+    }
+    // Fallback to static data
+    return DEFAULT_DROPDOWN_VESSEL_TYPES;
+  }, [vesselTypeMasterDataRaw]);
 
   // Comprehensive nationality list matching AppraisalForm standards
   const NATIONALITIES = [

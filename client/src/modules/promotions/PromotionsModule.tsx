@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import PromotionsSideBar from './PromotionsSideBar';
 import { PromotionsTable } from './PromotionsTable';
 import MainLayout from '@/components/main/MainLayout';
@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Filter, Search as SearchIcon } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 
 export function PromotionsModule() {
@@ -20,6 +21,21 @@ export function PromotionsModule() {
     const [nationality, setNationality] = useState('');
     const [criteria, setCriteria] = useState('');
     const [status, setStatus] = useState('');
+    
+    // Fetch vessel types from Master 004 API with fallback to static data
+    const { data: vesselTypeMasterDataRaw = [] } = useQuery<Array<{ entryId: string; name: string; level?: number }>>({
+        queryKey: ["/api/masters/004/data"],
+    });
+    
+    // Filter to Level 2 and Level 3 types for dropdown (not Level 1 categories)
+    const vesselTypeOptions = useMemo(() => {
+        if (vesselTypeMasterDataRaw.length > 0) {
+            const filteredTypes = vesselTypeMasterDataRaw.filter(vt => vt.level && vt.level >= 2);
+            if (filteredTypes.length > 0) return filteredTypes.map(vt => vt.name);
+        }
+        // Fallback to static data
+        return DEFAULT_DROPDOWN_VESSEL_TYPES;
+    }, [vesselTypeMasterDataRaw]);
 
     const handleClearFilters = () => {
         setSearchName('');
@@ -99,7 +115,7 @@ export function PromotionsModule() {
                                 <SelectValue placeholder="Vessel Type" />
                             </SelectTrigger>
                             <SelectContent>
-                                {DEFAULT_DROPDOWN_VESSEL_TYPES.map((type) => (
+                                {vesselTypeOptions.map((type) => (
                                     <SelectItem key={type} value={type}>{type}</SelectItem>
                                 ))}
                             </SelectContent>

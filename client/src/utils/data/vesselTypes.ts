@@ -1,33 +1,52 @@
 export interface VesselType {
-  id: string;
+  id: string;          // Maps to entryId in database (e.g., 'VT001')
   name: string;
   level: 1 | 2 | 3;
   parentId: string | null;
   code: string;
+  tanker?: boolean;
+  oilTanker?: boolean;
+  gasTanker?: boolean;
+  chemicalTanker?: boolean;
+  bulk?: boolean;
 }
 
+// Static fallback data that mirrors Master 004 in database
+// This is used when API is not available or for immediate local lookups
 export const VESSEL_TYPE_HIERARCHY: VesselType[] = [
-  { id: 'tanker-vessels', name: 'Tanker Vessels', level: 1, parentId: null, code: 'TANKER' },
-  { id: 'oil-tanker', name: 'Oil Tanker', level: 2, parentId: 'tanker-vessels', code: 'OIL_TANKER' },
-  { id: 'product-oil-tanker', name: 'Product Oil Tanker', level: 3, parentId: 'oil-tanker', code: 'PRODUCT_OIL_TANKER' },
-  { id: 'crude-oil-tanker', name: 'Crude Oil Tanker', level: 3, parentId: 'oil-tanker', code: 'CRUDE_OIL_TANKER' },
-  { id: 'chemical-tanker', name: 'Chemical Tanker', level: 2, parentId: 'tanker-vessels', code: 'CHEMICAL_TANKER' },
-  { id: 'gas-tanker', name: 'Gas Tanker', level: 2, parentId: 'tanker-vessels', code: 'GAS_TANKER' },
-  { id: 'lng-tanker', name: 'LNG Tanker', level: 3, parentId: 'gas-tanker', code: 'LNG_TANKER' },
-  { id: 'lpg-tanker', name: 'LPG Tanker', level: 3, parentId: 'gas-tanker', code: 'LPG_TANKER' },
-  { id: 'bitumen-asphalt-carriers', name: 'Bitumen/Asphalt Carriers', level: 2, parentId: 'tanker-vessels', code: 'BITUMEN_ASPHALT' },
-
-  { id: 'dry-vessels', name: 'Dry Vessels', level: 1, parentId: null, code: 'DRY' },
-  { id: 'bulk-carrier', name: 'Bulk Carrier', level: 2, parentId: 'dry-vessels', code: 'BULK_CARRIER' },
-  { id: 'general-cargo', name: 'General Cargo', level: 2, parentId: 'dry-vessels', code: 'GENERAL_CARGO' },
-  { id: 'container', name: 'Container', level: 2, parentId: 'dry-vessels', code: 'CONTAINER' },
-  { id: 'roro', name: 'RoRo', level: 2, parentId: 'dry-vessels', code: 'RORO' },
-
-  { id: 'other-vessels', name: 'Other Vessels', level: 1, parentId: null, code: 'OTHER' },
-  { id: 'barges', name: 'Barges', level: 2, parentId: 'other-vessels', code: 'BARGES' },
-  { id: 'offshore-support-vessels', name: 'Offshore Support Vessels', level: 2, parentId: 'other-vessels', code: 'OFFSHORE_SUPPORT' },
-  { id: 'shuttle-tankers', name: 'Shuttle Tankers', level: 2, parentId: 'other-vessels', code: 'SHUTTLE_TANKERS' },
+  // Level 1 - Categories
+  { id: 'VT001', name: 'Tanker Vessels', level: 1, parentId: null, code: 'TANKER' },
+  { id: 'VT002', name: 'Dry Vessels', level: 1, parentId: null, code: 'DRY' },
+  { id: 'VT003', name: 'Other Vessels', level: 1, parentId: null, code: 'OTHER' },
+  
+  // Level 2 - Tanker Types
+  { id: 'VT004', name: 'Oil Tanker', level: 2, parentId: 'VT001', code: 'OIL_TANKER', tanker: true, oilTanker: true },
+  { id: 'VT005', name: 'Chemical Tanker', level: 2, parentId: 'VT001', code: 'CHEMICAL_TANKER', tanker: true, chemicalTanker: true },
+  { id: 'VT006', name: 'Gas Tanker', level: 2, parentId: 'VT001', code: 'GAS_TANKER', tanker: true, gasTanker: true },
+  { id: 'VT007', name: 'Bitumen/Asphalt Carriers', level: 2, parentId: 'VT001', code: 'BITUMEN_ASPHALT', tanker: true },
+  
+  // Level 3 - Oil Tanker Subtypes
+  { id: 'VT008', name: 'Product Oil Tanker', level: 3, parentId: 'VT004', code: 'PRODUCT_OIL_TANKER', tanker: true, oilTanker: true },
+  { id: 'VT009', name: 'Crude Oil Tanker', level: 3, parentId: 'VT004', code: 'CRUDE_OIL_TANKER', tanker: true, oilTanker: true },
+  
+  // Level 3 - Gas Tanker Subtypes
+  { id: 'VT010', name: 'LNG Tanker', level: 3, parentId: 'VT006', code: 'LNG_TANKER', tanker: true, gasTanker: true },
+  { id: 'VT011', name: 'LPG Tanker', level: 3, parentId: 'VT006', code: 'LPG_TANKER', tanker: true, gasTanker: true },
+  
+  // Level 2 - Dry Vessel Types
+  { id: 'VT012', name: 'Bulk Carrier', level: 2, parentId: 'VT002', code: 'BULK_CARRIER', bulk: true },
+  { id: 'VT013', name: 'General Cargo', level: 2, parentId: 'VT002', code: 'GENERAL_CARGO' },
+  { id: 'VT014', name: 'Container', level: 2, parentId: 'VT002', code: 'CONTAINER' },
+  { id: 'VT015', name: 'RoRo', level: 2, parentId: 'VT002', code: 'RORO' },
+  
+  // Level 2 - Other Vessel Types
+  { id: 'VT016', name: 'Barges', level: 2, parentId: 'VT003', code: 'BARGES' },
+  { id: 'VT017', name: 'Offshore Support Vessels', level: 2, parentId: 'VT003', code: 'OFFSHORE_SUPPORT' },
+  { id: 'VT018', name: 'Shuttle Tankers', level: 2, parentId: 'VT003', code: 'SHUTTLE_TANKERS', tanker: true },
 ];
+
+// Master ID for vessel types in the database
+export const VESSEL_TYPE_MASTER_ID = '004';
 
 export function getAllVesselTypes(): VesselType[] {
   return VESSEL_TYPE_HIERARCHY;
@@ -48,6 +67,10 @@ export function getVesselTypeById(id: string): VesselType | undefined {
 
 export function getVesselTypeByName(name: string): VesselType | undefined {
   return VESSEL_TYPE_HIERARCHY.find(vt => vt.name.toLowerCase() === name.toLowerCase());
+}
+
+export function getVesselTypeByCode(code: string): VesselType | undefined {
+  return VESSEL_TYPE_HIERARCHY.find(vt => vt.code === code);
 }
 
 export function getParentTypes(vesselTypeNameOrId: string): VesselType[] {
@@ -102,6 +125,10 @@ export function getAllRelatedTypes(vesselTypeName: string): string[] {
   return [vesselTypeName, ...parents, ...children];
 }
 
+/**
+ * Get all experience types for a vessel type (the type itself + all parent types)
+ * Example: LPG Tanker -> ['LPG Tanker', 'Gas Tanker', 'Tanker Vessels']
+ */
 export function getExperienceTypes(vesselTypeName: string): string[] {
   const current = getVesselTypeByName(vesselTypeName);
   if (!current) return [vesselTypeName];
@@ -119,6 +146,55 @@ export function isParentOf(parentName: string, childName: string): boolean {
   return parentChildren.includes(childName);
 }
 
+/**
+ * Check if a vessel type is a tanker (any tanker type in the hierarchy)
+ */
+export function isTankerType(vesselTypeName: string): boolean {
+  const type = getVesselTypeByName(vesselTypeName);
+  if (!type) return false;
+  return type.tanker === true || getParentTypes(vesselTypeName).some(p => p.tanker === true);
+}
+
+/**
+ * Check if a vessel type is a bulk carrier type
+ */
+export function isBulkType(vesselTypeName: string): boolean {
+  const type = getVesselTypeByName(vesselTypeName);
+  if (!type) return false;
+  return type.bulk === true || getParentTypes(vesselTypeName).some(p => p.bulk === true);
+}
+
+/**
+ * Convert API response to VesselType array
+ * Use this when fetching from /api/masters/004/data
+ */
+export function mapApiResponseToVesselTypes(apiData: Array<{
+  entryId: string;
+  name: string;
+  level?: number;
+  parentId?: string | null;
+  code?: string;
+  tanker?: boolean;
+  oilTanker?: boolean;
+  gasTanker?: boolean;
+  chemicalTanker?: boolean;
+  bulk?: boolean;
+}>): VesselType[] {
+  return apiData.map(entry => ({
+    id: entry.entryId,
+    name: entry.name,
+    level: (entry.level || 2) as 1 | 2 | 3,
+    parentId: entry.parentId || null,
+    code: entry.code || entry.entryId,
+    tanker: entry.tanker,
+    oilTanker: entry.oilTanker,
+    gasTanker: entry.gasTanker,
+    chemicalTanker: entry.chemicalTanker,
+    bulk: entry.bulk,
+  }));
+}
+
+// Pre-exported dropdown options
 export const DEFAULT_DROPDOWN_VESSEL_TYPES = getVesselTypesForDropdown([2, 3]);
 
 export const LEVEL_2_VESSEL_TYPES = getVesselTypesForDropdown([2]);

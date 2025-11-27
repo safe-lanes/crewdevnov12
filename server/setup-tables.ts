@@ -73,10 +73,31 @@ async function setupTables() {
       { masterId: '001', entryId: '002', name: 'Indian', description: 'India' },
       { masterId: '001', entryId: '003', name: 'Ukrainian', description: 'Ukraine' },
       
-      // Vessel Type (004)
-      { masterId: '004', entryId: '001', name: 'Container Ship', description: 'Cargo container vessel' },
-      { masterId: '004', entryId: '002', name: 'Bulk Carrier', description: 'Dry bulk cargo vessel' },
-      { masterId: '004', entryId: '003', name: 'Tanker', description: 'Oil/chemical tanker' },
+      // Vessel Type (004) - Hierarchical structure with levels and parent relationships
+      // Level 1 - Categories
+      { masterId: '004', entryId: 'VT001', name: 'Tanker Vessels', description: 'All tanker vessel types', level: 1, parentId: null, code: 'TANKER' },
+      { masterId: '004', entryId: 'VT002', name: 'Dry Vessels', description: 'Dry cargo vessel types', level: 1, parentId: null, code: 'DRY' },
+      { masterId: '004', entryId: 'VT003', name: 'Other Vessels', description: 'Specialized and other vessel types', level: 1, parentId: null, code: 'OTHER' },
+      // Level 2 - Tanker Types
+      { masterId: '004', entryId: 'VT004', name: 'Oil Tanker', description: 'Oil tanker vessels', level: 2, parentId: 'VT001', code: 'OIL_TANKER', tanker: true, oilTanker: true },
+      { masterId: '004', entryId: 'VT005', name: 'Chemical Tanker', description: 'Chemical tanker vessels', level: 2, parentId: 'VT001', code: 'CHEMICAL_TANKER', tanker: true, chemicalTanker: true },
+      { masterId: '004', entryId: 'VT006', name: 'Gas Tanker', description: 'Gas carrier vessels', level: 2, parentId: 'VT001', code: 'GAS_TANKER', tanker: true, gasTanker: true },
+      { masterId: '004', entryId: 'VT007', name: 'Bitumen/Asphalt Carriers', description: 'Bitumen and asphalt carriers', level: 2, parentId: 'VT001', code: 'BITUMEN_ASPHALT', tanker: true },
+      // Level 3 - Oil Tanker Subtypes
+      { masterId: '004', entryId: 'VT008', name: 'Product Oil Tanker', description: 'Refined product tankers', level: 3, parentId: 'VT004', code: 'PRODUCT_OIL_TANKER', tanker: true, oilTanker: true },
+      { masterId: '004', entryId: 'VT009', name: 'Crude Oil Tanker', description: 'Crude oil tankers', level: 3, parentId: 'VT004', code: 'CRUDE_OIL_TANKER', tanker: true, oilTanker: true },
+      // Level 3 - Gas Tanker Subtypes
+      { masterId: '004', entryId: 'VT010', name: 'LNG Tanker', description: 'Liquefied natural gas tankers', level: 3, parentId: 'VT006', code: 'LNG_TANKER', tanker: true, gasTanker: true },
+      { masterId: '004', entryId: 'VT011', name: 'LPG Tanker', description: 'Liquefied petroleum gas tankers', level: 3, parentId: 'VT006', code: 'LPG_TANKER', tanker: true, gasTanker: true },
+      // Level 2 - Dry Vessel Types
+      { masterId: '004', entryId: 'VT012', name: 'Bulk Carrier', description: 'Dry bulk cargo vessels', level: 2, parentId: 'VT002', code: 'BULK_CARRIER', bulk: true },
+      { masterId: '004', entryId: 'VT013', name: 'General Cargo', description: 'General cargo vessels', level: 2, parentId: 'VT002', code: 'GENERAL_CARGO' },
+      { masterId: '004', entryId: 'VT014', name: 'Container', description: 'Container vessels', level: 2, parentId: 'VT002', code: 'CONTAINER' },
+      { masterId: '004', entryId: 'VT015', name: 'RoRo', description: 'Roll-on/roll-off vessels', level: 2, parentId: 'VT002', code: 'RORO' },
+      // Level 2 - Other Vessel Types
+      { masterId: '004', entryId: 'VT016', name: 'Barges', description: 'Barge vessels', level: 2, parentId: 'VT003', code: 'BARGES' },
+      { masterId: '004', entryId: 'VT017', name: 'Offshore Support Vessels', description: 'Offshore support and supply vessels', level: 2, parentId: 'VT003', code: 'OFFSHORE_SUPPORT' },
+      { masterId: '004', entryId: 'VT018', name: 'Shuttle Tankers', description: 'Shuttle tanker vessels', level: 2, parentId: 'VT003', code: 'SHUTTLE_TANKERS', tanker: true },
       
       // Contract Type (008)
       { masterId: '008', entryId: '001', name: 'Permanent', description: 'Full-time permanent contract' },
