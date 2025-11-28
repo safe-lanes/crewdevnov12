@@ -22,14 +22,14 @@ interface TrainingCourseSelectionDialogProps {
   open: boolean;
   onClose: () => void;
   onConfirm: (selectedTemplates: TrainingCourseTemplate[]) => void;
-  existingCourses?: string[];
+  existingCourseIds?: string[];
 }
 
 export function TrainingCourseSelectionDialog({
   open,
   onClose,
   onConfirm,
-  existingCourses = [],
+  existingCourseIds = [],
 }: TrainingCourseSelectionDialogProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
@@ -63,13 +63,8 @@ export function TrainingCourseSelectionDialog({
   }, [templates, searchTerm]);
 
   const alreadyAddedIds = useMemo(() => {
-    return new Set(
-      existingCourses.map(name => {
-        const template = templates.find(t => t.name === name);
-        return template?.id;
-      }).filter(Boolean) as string[]
-    );
-  }, [existingCourses, templates]);
+    return new Set(existingCourseIds);
+  }, [existingCourseIds]);
 
   const handleToggle = (id: string) => {
     setSelectedIds(prev => {

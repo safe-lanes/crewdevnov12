@@ -20,6 +20,14 @@ import { useToast } from '@/hooks/use-toast';
 import { type RecruitmentCandidate, type InsertRecruitmentCandidate } from '@shared/schema';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
+import { LicenseSelectionDialog } from '@/modules/crew-pool/LicenseSelectionDialog';
+import { TrainingCourseSelectionDialog } from '@/modules/crew-pool/TrainingCourseSelectionDialog';
+import { TravelDocumentSelectionDialog } from '@/modules/crew-pool/TravelDocumentSelectionDialog';
+import { VisaSelectionDialog } from '@/modules/crew-pool/VisaSelectionDialog';
+import type { LicenseTemplate } from '@/utils/data/licenseDceTemplates';
+import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
+import type { TravelDocumentTemplate } from '@/utils/data/travelDocumentTemplates';
+import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
 
 interface RecruitmentApplicationFormProps {
   candidate: RecruitmentCandidate | null;
@@ -84,6 +92,7 @@ interface FormData {
   // A2.1 Travel and Identification Documents
   documents: Array<{
     id: string;
+    documentId?: string;  // Template ID for duplicate detection
     document: string;
     number: string;
     issued: string;
@@ -94,6 +103,7 @@ interface FormData {
   // A2.2 Visas
   visas: Array<{
     id: string;
+    countryId?: string;  // Template ID for duplicate detection
     issuingCountry: string;
     serialNo: string;
     issued: string;
@@ -113,6 +123,7 @@ interface FormData {
   // A3.2 License & DCE
   licenses: Array<{
     id: string;
+    licenseId?: string;  // Template ID for duplicate detection
     certificateDocument: string;
     abbr: string;
     requirement: string;
@@ -125,6 +136,7 @@ interface FormData {
   // A3.3 Training Course
   trainingCourses: Array<{
     id: string;
+    courseId?: string;  // Template ID for duplicate detection
     trainingCourse: string;
     abbr: string;
     requirement: string;
@@ -672,6 +684,12 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const [editingB8Comment, setEditingB8Comment] = useState<string | null>(null);
   const [newB8Comment, setNewB8Comment] = useState<{[key: string]: string}>({});
 
+  // Dialog states for Add from Database functionality
+  const [isLicenseDialogOpen, setIsLicenseDialogOpen] = useState(false);
+  const [isTrainingDialogOpen, setIsTrainingDialogOpen] = useState(false);
+  const [isTravelDocDialogOpen, setIsTravelDocDialogOpen] = useState(false);
+  const [isVisaDialogOpen, setIsVisaDialogOpen] = useState(false);
+
   // Mapping for interviewer values to display names
   const interviewerDisplayNames: {[key: string]: string} = {
     'capt-nick': 'Capt. Nick, Marine Superintendent',
@@ -1208,6 +1226,83 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
         course.id === id ? { ...course, [field]: value } : course
       )
     }));
+  };
+
+  // Add from Database handlers
+  const addLicensesFromDatabase = (selectedLicenses: LicenseTemplate[]) => {
+    const newLicenses = selectedLicenses.map((license, index) => ({
+      id: `db-${license.id}-${Date.now()}-${index}`,
+      licenseId: license.id,
+      certificateDocument: license.name,
+      abbr: license.abbr || '',
+      requirement: license.requirement || '',
+      certificateNo: '',
+      issuingAuthority: '',
+      issued: '',
+      expiry: ''
+    }));
+    
+    setFormData(prev => ({
+      ...prev,
+      licenses: [...prev.licenses, ...newLicenses]
+    }));
+    setIsLicenseDialogOpen(false);
+  };
+
+  const addTrainingCoursesFromDatabase = (selectedCourses: TrainingCourseTemplate[]) => {
+    const newCourses = selectedCourses.map((course, index) => ({
+      id: `db-${course.id}-${Date.now()}-${index}`,
+      courseId: course.id,
+      trainingCourse: course.name,
+      abbr: course.abbr || '',
+      requirement: course.requirement || '',
+      certificateNo: '',
+      issuingAuthority: '',
+      issued: '',
+      expiry: ''
+    }));
+    
+    setFormData(prev => ({
+      ...prev,
+      trainingCourses: [...prev.trainingCourses, ...newCourses]
+    }));
+    setIsTrainingDialogOpen(false);
+  };
+
+  const addTravelDocsFromDatabase = (selectedDocs: TravelDocumentTemplate[]) => {
+    const newDocs = selectedDocs.map((doc, index) => ({
+      id: `db-${doc.id}-${Date.now()}-${index}`,
+      documentId: doc.id,
+      document: doc.name,
+      number: '',
+      issued: '',
+      expiry: '',
+      issuingAuthority: ''
+    }));
+    
+    setFormData(prev => ({
+      ...prev,
+      documents: [...prev.documents, ...newDocs]
+    }));
+    setIsTravelDocDialogOpen(false);
+  };
+
+  const addVisasFromDatabase = (selectedCountries: VisaCountryTemplate[]) => {
+    const newVisas = selectedCountries.map((country, index) => ({
+      id: `db-${country.id}-${Date.now()}-${index}`,
+      countryId: country.id,
+      issuingCountry: country.name,
+      serialNo: '',
+      issued: '',
+      expiry: '',
+      visaType: ''
+    }));
+    
+    setFormData(prev => ({
+      ...prev,
+      visas: [...prev.visas, ...newVisas]
+    }));
+    setIsVisaDialogOpen(false);
   };
 
   // Sea Service management functions
@@ -2251,15 +2346,27 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       <div data-section="A2" className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A2.1 Travel and Identification Docs</h3>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={addDocument}
-            className="text-gray-600 border-gray-300 hover:bg-gray-50"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            ADD
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsTravelDocDialogOpen(true)}
+              className="text-gray-600 border-gray-300 hover:bg-gray-50 text-xs"
+              data-testid="button-add-travel-doc-from-db"
+            >
+              + ADD FROM DATABASE
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={addDocument}
+              className="text-gray-600 border-gray-300 hover:bg-gray-50"
+              data-testid="button-add-travel-doc"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              ADD
+            </Button>
+          </div>
         </div>
         
         <Table className="w-full">
@@ -2344,15 +2451,27 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A2.2 Visas</h3>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={addVisa}
-            className="text-gray-600 border-gray-300 hover:bg-gray-50"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            ADD
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsVisaDialogOpen(true)}
+              className="text-gray-600 border-gray-300 hover:bg-gray-50 text-xs"
+              data-testid="button-add-visa-from-db"
+            >
+              + ADD FROM DATABASE
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={addVisa}
+              className="text-gray-600 border-gray-300 hover:bg-gray-50"
+              data-testid="button-add-visa"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              ADD
+            </Button>
+          </div>
         </div>
         
         <Table className="w-full">
@@ -2525,7 +2644,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             <Button
               variant="outline"
               size="sm"
+              onClick={() => setIsLicenseDialogOpen(true)}
               className="text-gray-600 border-gray-300 hover:bg-gray-50 text-xs"
+              data-testid="button-add-license-from-db"
             >
               + ADD FROM DATABASE
             </Button>
@@ -2534,6 +2655,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               size="sm"
               onClick={addLicense}
               className="text-gray-600 border-gray-300 hover:bg-gray-50"
+              data-testid="button-add-license"
             >
               <Plus className="h-4 w-4 mr-2" />
               ADD
@@ -2647,7 +2769,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             <Button
               variant="outline"
               size="sm"
+              onClick={() => setIsTrainingDialogOpen(true)}
               className="text-gray-600 border-gray-300 hover:bg-gray-50 text-xs"
+              data-testid="button-add-training-from-db"
             >
               + ADD FROM DATABASE
             </Button>
@@ -2656,6 +2780,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               size="sm"
               onClick={addTrainingCourse}
               className="text-gray-600 border-gray-300 hover:bg-gray-50"
+              data-testid="button-add-training"
             >
               <Plus className="h-4 w-4 mr-2" />
               ADD
@@ -6787,6 +6912,35 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           </div>
         </div>
       </div>
+      
+      {/* Selection Dialogs for Add from Database */}
+      <LicenseSelectionDialog
+        open={isLicenseDialogOpen}
+        onClose={() => setIsLicenseDialogOpen(false)}
+        onConfirm={addLicensesFromDatabase}
+        existingLicenseIds={formData.licenses.map(l => l.licenseId).filter((id): id is string => Boolean(id))}
+      />
+      
+      <TrainingCourseSelectionDialog
+        open={isTrainingDialogOpen}
+        onClose={() => setIsTrainingDialogOpen(false)}
+        onConfirm={addTrainingCoursesFromDatabase}
+        existingCourseIds={formData.trainingCourses.map(c => c.courseId).filter((id): id is string => Boolean(id))}
+      />
+      
+      <TravelDocumentSelectionDialog
+        open={isTravelDocDialogOpen}
+        onClose={() => setIsTravelDocDialogOpen(false)}
+        onConfirm={addTravelDocsFromDatabase}
+        existingDocumentIds={formData.documents.map(d => d.documentId).filter((id): id is string => Boolean(id))}
+      />
+      
+      <VisaSelectionDialog
+        open={isVisaDialogOpen}
+        onClose={() => setIsVisaDialogOpen(false)}
+        onConfirm={addVisasFromDatabase}
+        existingCountryIds={formData.visas.map(v => v.countryId).filter((id): id is string => Boolean(id))}
+      />
     </div>
   );
 };

@@ -4682,7 +4682,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
         open={isTrainingDialogOpen}
         onClose={() => setIsTrainingDialogOpen(false)}
         onConfirm={addTrainingCoursesFromDatabase}
-        existingCourses={formData.trainingCourses.map(c => c.trainingCourse)}
+        existingCourseIds={formData.trainingCourses.map(c => c.courseId).filter(Boolean)}
       />
       
       {/* Travel Document Selection Dialog - Add from Database */}
