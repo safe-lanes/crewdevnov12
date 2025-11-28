@@ -300,12 +300,48 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   });
   
   // Filter to Level 2 and Level 3 types for dropdown (not Level 1 categories)
+  // Sort in hierarchical order with Oil Chemical Tanker positioned after Chemical Tanker
   const vesselTypeMasterData = useMemo(() => {
+    // Define the preferred order for vessel types in dropdown
+    const preferredOrder = [
+      'Oil Tanker',
+      'Chemical Tanker',
+      'Oil Chemical Tanker',
+      'Gas Tanker',
+      'Bitumen/Asphalt Carriers',
+      'Product Oil Tanker',
+      'Crude Oil Tanker',
+      'LNG Tanker',
+      'LPG Tanker',
+      'Bulk Carrier',
+      'General Cargo',
+      'Container',
+      'RoRo',
+      'Barges',
+      'Offshore Support Vessels',
+      'Shuttle Tankers'
+    ];
+    
     if (vesselTypeMasterDataRaw.length > 0) {
       const filteredTypes = vesselTypeMasterDataRaw.filter(vt => vt.level && vt.level >= 2);
-      if (filteredTypes.length > 0) return filteredTypes.map(vt => vt.name);
+      if (filteredTypes.length > 0) {
+        // Sort by preferred order, with unknown types at the end
+        return filteredTypes
+          .map(vt => vt.name)
+          .sort((a, b) => {
+            const indexA = preferredOrder.indexOf(a);
+            const indexB = preferredOrder.indexOf(b);
+            // If both are in preferred order, sort by index
+            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+            // If only one is in preferred order, it comes first
+            if (indexA !== -1) return -1;
+            if (indexB !== -1) return 1;
+            // Both unknown, sort alphabetically
+            return a.localeCompare(b);
+          });
+      }
     }
-    // Fallback to static data
+    // Fallback to static data (already in correct order)
     return DEFAULT_DROPDOWN_VESSEL_TYPES;
   }, [vesselTypeMasterDataRaw]);
 
