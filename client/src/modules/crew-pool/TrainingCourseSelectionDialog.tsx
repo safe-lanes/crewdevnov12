@@ -13,42 +13,43 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Search, Database } from 'lucide-react';
 import { 
-  LICENSE_DCE_TEMPLATES, 
-  mapApiResponseToLicenseTemplates,
-  type LicenseTemplate 
-} from '@/utils/data/licenseDceTemplates';
+  TRAINING_COURSE_TEMPLATES, 
+  mapApiResponseToTrainingCourseTemplates,
+  type TrainingCourseTemplate 
+} from '@/utils/data/trainingCourseTemplates';
 
-interface LicenseSelectionDialogProps {
+interface TrainingCourseSelectionDialogProps {
   open: boolean;
   onClose: () => void;
-  onConfirm: (selectedTemplates: LicenseTemplate[]) => void;
-  existingLicenses?: string[];
+  onConfirm: (selectedTemplates: TrainingCourseTemplate[]) => void;
+  existingCourses?: string[];
 }
 
-export function LicenseSelectionDialog({
+export function TrainingCourseSelectionDialog({
   open,
   onClose,
   onConfirm,
-  existingLicenses = [],
-}: LicenseSelectionDialogProps) {
+  existingCourses = [],
+}: TrainingCourseSelectionDialogProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
 
-  const { data: apiTemplates = [], isLoading } = useQuery<Array<{
+  const { data: apiTemplates = [], isLoading, isError } = useQuery<Array<{
     entryId: string;
     name: string;
     shortCode?: string;
     description?: string;
   }>>({
-    queryKey: ['/api/masters/016/data'],
+    queryKey: ['/api/masters/017/data'],
     enabled: open,
+    retry: false,
   });
 
   const templates = useMemo(() => {
     if (apiTemplates.length > 0) {
-      return mapApiResponseToLicenseTemplates(apiTemplates);
+      return mapApiResponseToTrainingCourseTemplates(apiTemplates);
     }
-    return LICENSE_DCE_TEMPLATES;
+    return TRAINING_COURSE_TEMPLATES;
   }, [apiTemplates]);
 
   const filteredTemplates = useMemo(() => {
@@ -63,12 +64,12 @@ export function LicenseSelectionDialog({
 
   const alreadyAddedIds = useMemo(() => {
     return new Set(
-      existingLicenses.map(name => {
+      existingCourses.map(name => {
         const template = templates.find(t => t.name === name);
         return template?.id;
       }).filter(Boolean) as string[]
     );
-  }, [existingLicenses, templates]);
+  }, [existingCourses, templates]);
 
   const handleToggle = (id: string) => {
     setSelectedIds(prev => {
@@ -114,18 +115,18 @@ export function LicenseSelectionDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Database className="h-5 w-5 text-blue-600" />
-            Add License & DCE from Database
+            Add Training Course from Database
           </DialogTitle>
         </DialogHeader>
 
         <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Search certificates..."
+            placeholder="Search training courses..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
-            data-testid="input-license-search"
+            data-testid="input-training-search"
           />
         </div>
 
@@ -139,7 +140,8 @@ export function LicenseSelectionDialog({
               size="sm"
               onClick={handleSelectAll}
               className="text-xs"
-              data-testid="button-select-all"
+              disabled={availableCount === 0}
+              data-testid="button-select-all-training"
             >
               Select All
             </Button>
@@ -148,7 +150,7 @@ export function LicenseSelectionDialog({
               size="sm"
               onClick={handleClearAll}
               className="text-xs"
-              data-testid="button-clear-all"
+              data-testid="button-clear-all-training"
             >
               Clear
             </Button>
@@ -158,7 +160,7 @@ export function LicenseSelectionDialog({
         <div className="border rounded-lg overflow-hidden flex-1">
           <div className="bg-gray-100 grid grid-cols-12 gap-2 px-4 py-2 text-xs font-medium text-gray-600">
             <div className="col-span-1"></div>
-            <div className="col-span-5">Certificate / Document</div>
+            <div className="col-span-5">Training Course</div>
             <div className="col-span-2">ABBR</div>
             <div className="col-span-4">Requirement</div>
           </div>
@@ -166,11 +168,19 @@ export function LicenseSelectionDialog({
           <ScrollArea className="h-[300px]">
             {isLoading ? (
               <div className="p-8 text-center text-gray-500">
-                Loading certificates...
+                Loading training courses...
+              </div>
+            ) : (isError || templates.length === 0) ? (
+              <div className="p-8 text-center text-gray-500">
+                No training courses available in database.
+                <br />
+                <span className="text-xs text-gray-400 mt-2 block">
+                  Training course templates will be added later.
+                </span>
               </div>
             ) : filteredTemplates.length === 0 ? (
               <div className="p-8 text-center text-gray-500">
-                No certificates found matching "{searchTerm}"
+                No training courses found matching "{searchTerm}"
               </div>
             ) : (
               <div className="divide-y">
@@ -185,7 +195,7 @@ export function LicenseSelectionDialog({
                         isAlreadyAdded ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''
                       } ${isSelected ? 'bg-blue-50' : ''}`}
                       onClick={() => !isAlreadyAdded && handleToggle(template.id)}
-                      data-testid={`license-option-${template.id}`}
+                      data-testid={`training-option-${template.id}`}
                     >
                       <div className="col-span-1">
                         <Checkbox
@@ -216,13 +226,13 @@ export function LicenseSelectionDialog({
         </div>
 
         <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={handleClose} data-testid="button-cancel-license">
+          <Button variant="outline" onClick={handleClose} data-testid="button-cancel-training">
             Cancel
           </Button>
           <Button
             onClick={handleConfirm}
             disabled={selectedIds.size === 0 || isLoading}
-            data-testid="button-confirm-license"
+            data-testid="button-confirm-training"
           >
             Add {selectedIds.size > 0 ? `(${selectedIds.size})` : ''} Selected
           </Button>

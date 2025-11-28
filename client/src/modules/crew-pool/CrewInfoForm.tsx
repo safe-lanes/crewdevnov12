@@ -18,6 +18,8 @@ import type { CrewDashboardSummary } from '@shared/schema';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 import { LicenseSelectionDialog } from './LicenseSelectionDialog';
+import { TrainingCourseSelectionDialog } from './TrainingCourseSelectionDialog';
+import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
 import type { LicenseTemplate } from '@/utils/data/licenseDceTemplates';
 
 interface CrewMember {
@@ -276,6 +278,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   const [isNextAvailabilityEditOpen, setIsNextAvailabilityEditOpen] = useState(false);
   const [tempNextAvailability, setTempNextAvailability] = useState<string>('');
   const [isLicenseDialogOpen, setIsLicenseDialogOpen] = useState(false);
+  const [isTrainingDialogOpen, setIsTrainingDialogOpen] = useState(false);
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
 
   // Sections for stepper navigation  
@@ -1001,6 +1004,26 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
       licenses: [...prev.licenses, ...newLicenses] 
     }));
     setIsLicenseDialogOpen(false);
+  };
+
+  // Add training courses from database selection
+  const addTrainingCoursesFromDatabase = (selectedTemplates: TrainingCourseTemplate[]) => {
+    const newCourses: TrainingCourse[] = selectedTemplates.map((template) => ({
+      id: `db-${template.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      trainingCourse: template.name,
+      abbr: template.abbr,
+      requirement: template.requirement,
+      certificateNo: '',
+      issuingAuthority: '',
+      issued: '',
+      expiry: ''
+    }));
+    
+    setFormData(prev => ({ 
+      ...prev, 
+      trainingCourses: [...prev.trainingCourses, ...newCourses] 
+    }));
+    setIsTrainingDialogOpen(false);
   };
 
   const updateLicense = (id: string, field: keyof License, value: string) => {
@@ -3017,6 +3040,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             <Button
               variant="outline"
               size="sm"
+              onClick={() => setIsTrainingDialogOpen(true)}
               className="text-gray-600 border-gray-300 hover:bg-gray-50 text-xs"
               data-testid="button-add-training-from-database"
             >
@@ -4567,6 +4591,14 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
         onClose={() => setIsLicenseDialogOpen(false)}
         onConfirm={addLicensesFromDatabase}
         existingLicenses={formData.licenses.map(l => l.certificateDocument)}
+      />
+      
+      {/* Training Course Selection Dialog - Add from Database */}
+      <TrainingCourseSelectionDialog
+        open={isTrainingDialogOpen}
+        onClose={() => setIsTrainingDialogOpen(false)}
+        onConfirm={addTrainingCoursesFromDatabase}
+        existingCourses={formData.trainingCourses.map(c => c.trainingCourse)}
       />
     </div>
   );
