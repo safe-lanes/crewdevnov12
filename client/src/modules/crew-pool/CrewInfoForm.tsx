@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
@@ -183,6 +184,7 @@ interface SeaService {
   from: string;
   to: string;
   periodMonths: string;
+  experienceCategories?: string[]; // For Oil Chemical Tanker: ['oil', 'chemical'] by default, can be overridden
 }
 
 interface PreJoiningMedical {
@@ -3083,13 +3085,14 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">From</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">To</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Period(M)</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Experience</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {formData.currentCompanySeaService.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="p-8 text-center text-gray-500">
+                    <td colSpan={11} className="p-8 text-center text-gray-500">
                       No current company sea service records added yet. Click "ADD" to get started.
                     </td>
                   </tr>
@@ -3230,6 +3233,60 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                         />
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        {service.vesselType === 'Oil Chemical Tanker' ? (
+                          <div className="flex flex-col gap-1">
+                            <label className="flex items-center gap-1 text-[11px]">
+                              <Checkbox
+                                checked={(service.experienceCategories || ['oil', 'chemical']).includes('oil')}
+                                onCheckedChange={(checked) => {
+                                  const current = service.experienceCategories || ['oil', 'chemical'];
+                                  let newCategories: string[];
+                                  if (checked) {
+                                    newCategories = [...current, 'oil'].filter((v, i, a) => a.indexOf(v) === i);
+                                  } else {
+                                    if (current.filter(c => c !== 'oil').length === 0) return;
+                                    newCategories = current.filter(c => c !== 'oil');
+                                  }
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    currentCompanySeaService: prev.currentCompanySeaService.map(s =>
+                                      s.id === service.id ? { ...s, experienceCategories: newCategories } : s
+                                    )
+                                  }));
+                                }}
+                                className="h-3 w-3"
+                              />
+                              <span>Oil</span>
+                            </label>
+                            <label className="flex items-center gap-1 text-[11px]">
+                              <Checkbox
+                                checked={(service.experienceCategories || ['oil', 'chemical']).includes('chemical')}
+                                onCheckedChange={(checked) => {
+                                  const current = service.experienceCategories || ['oil', 'chemical'];
+                                  let newCategories: string[];
+                                  if (checked) {
+                                    newCategories = [...current, 'chemical'].filter((v, i, a) => a.indexOf(v) === i);
+                                  } else {
+                                    if (current.filter(c => c !== 'chemical').length === 0) return;
+                                    newCategories = current.filter(c => c !== 'chemical');
+                                  }
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    currentCompanySeaService: prev.currentCompanySeaService.map(s =>
+                                      s.id === service.id ? { ...s, experienceCategories: newCategories } : s
+                                    )
+                                  }));
+                                }}
+                                className="h-3 w-3"
+                              />
+                              <span>Chemical</span>
+                            </label>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-[11px]">—</span>
+                        )}
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <div className="flex gap-1">
                           <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
                             <Paperclip className="h-3 w-3" />
@@ -3292,13 +3349,14 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">From</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">To</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Period(M)</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Experience</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {formData.externalSeaService.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="p-8 text-center text-gray-500">
+                    <td colSpan={11} className="p-8 text-center text-gray-500">
                       No external sea service records added yet. Click "ADD" to get started.
                     </td>
                   </tr>
@@ -3409,6 +3467,60 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                           className="border-0 bg-gray-50 p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6 cursor-not-allowed"
                           title="Auto-calculated based on From & To dates"
                         />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        {service.vesselType === 'Oil Chemical Tanker' ? (
+                          <div className="flex flex-col gap-1">
+                            <label className="flex items-center gap-1 text-[11px]">
+                              <Checkbox
+                                checked={(service.experienceCategories || ['oil', 'chemical']).includes('oil')}
+                                onCheckedChange={(checked) => {
+                                  const current = service.experienceCategories || ['oil', 'chemical'];
+                                  let newCategories: string[];
+                                  if (checked) {
+                                    newCategories = [...current, 'oil'].filter((v, i, a) => a.indexOf(v) === i);
+                                  } else {
+                                    if (current.filter(c => c !== 'oil').length === 0) return;
+                                    newCategories = current.filter(c => c !== 'oil');
+                                  }
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    externalSeaService: prev.externalSeaService.map(s =>
+                                      s.id === service.id ? { ...s, experienceCategories: newCategories } : s
+                                    )
+                                  }));
+                                }}
+                                className="h-3 w-3"
+                              />
+                              <span>Oil</span>
+                            </label>
+                            <label className="flex items-center gap-1 text-[11px]">
+                              <Checkbox
+                                checked={(service.experienceCategories || ['oil', 'chemical']).includes('chemical')}
+                                onCheckedChange={(checked) => {
+                                  const current = service.experienceCategories || ['oil', 'chemical'];
+                                  let newCategories: string[];
+                                  if (checked) {
+                                    newCategories = [...current, 'chemical'].filter((v, i, a) => a.indexOf(v) === i);
+                                  } else {
+                                    if (current.filter(c => c !== 'chemical').length === 0) return;
+                                    newCategories = current.filter(c => c !== 'chemical');
+                                  }
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    externalSeaService: prev.externalSeaService.map(s =>
+                                      s.id === service.id ? { ...s, experienceCategories: newCategories } : s
+                                    )
+                                  }));
+                                }}
+                                className="h-3 w-3"
+                              />
+                              <span>Chemical</span>
+                            </label>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-[11px]">—</span>
+                        )}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <div className="flex gap-1">

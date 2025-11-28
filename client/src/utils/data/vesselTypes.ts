@@ -22,6 +22,7 @@ export const VESSEL_TYPE_HIERARCHY: VesselType[] = [
   // Level 2 - Tanker Types
   { id: 'VT004', name: 'Oil Tanker', level: 2, parentId: 'VT001', code: 'OIL_TANKER', tanker: true, oilTanker: true },
   { id: 'VT005', name: 'Chemical Tanker', level: 2, parentId: 'VT001', code: 'CHEMICAL_TANKER', tanker: true, chemicalTanker: true },
+  { id: 'VT019', name: 'Oil Chemical Tanker', level: 2, parentId: 'VT001', code: 'OIL_CHEMICAL_TANKER', tanker: true, oilTanker: true, chemicalTanker: true },
   { id: 'VT006', name: 'Gas Tanker', level: 2, parentId: 'VT001', code: 'GAS_TANKER', tanker: true, gasTanker: true },
   { id: 'VT007', name: 'Bitumen/Asphalt Carriers', level: 2, parentId: 'VT001', code: 'BITUMEN_ASPHALT', tanker: true },
   
