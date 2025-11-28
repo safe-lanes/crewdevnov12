@@ -1332,11 +1332,17 @@ export const experienceMetricSchema = z.object({
   endorsements: z.string(),
 });
 
+export const shipTypeItemSchema = z.object({
+  type: z.string(),
+  label: z.string(),
+  months: z.number(),
+  years: z.number(),
+});
+
 export const shipTypeExperienceSchema = z.object({
-  oilTanker: z.number(),
-  chemicalTanker: z.number(),
-  gasTanker: z.number(),
-  bulk: z.number(),
+  items: z.array(shipTypeItemSchema),
+  totalMonths: z.number(),
+  totalYears: z.number(),
 });
 
 export const serviceAssignmentSchema = z.object({

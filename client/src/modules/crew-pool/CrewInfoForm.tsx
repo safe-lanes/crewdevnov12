@@ -1587,65 +1587,45 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-ship-types">
               <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Ship Type</h3>
               <div className="space-y-3">
-                <div className="space-y-1" data-testid="ship-type-oil-tanker">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Oil Tkr</span>
-                    <span className="font-medium" data-testid="text-oil-tanker-years">
-                      {shipTypesData?.oilTanker !== undefined ? shipTypesData.oilTanker.toFixed(0) : '—'}
-                    </span>
+                {shipTypesData?.items && shipTypesData.items.length > 0 ? (
+                  shipTypesData.items.map((item: { type: string; label: string; months: number; years: number }, index: number) => {
+                    // Calculate bar width as percentage of total sea time
+                    const percentage = shipTypesData.totalMonths > 0 
+                      ? (item.months / shipTypesData.totalMonths) * 100 
+                      : 0;
+                    const typeSlug = item.type.toLowerCase().replace(/[\s\/]+/g, '-');
+                    
+                    return (
+                      <div key={index} className="space-y-1" data-testid={`ship-type-${typeSlug}`}>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">{item.label}</span>
+                          <span className="font-medium" data-testid={`text-${typeSlug}-years`}>
+                            {item.years}
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-blue-500 h-2 rounded-full transition-all duration-300" 
+                            style={{ width: `${percentage}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-center text-gray-500 py-4 text-sm">
+                    No ship type experience data available
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-blue-500 h-2 rounded-full" style={{ 
-                      width: `${shipTypesData?.oilTanker ? Math.min(shipTypesData.oilTanker * 16.67, 100) : 0}%` 
-                    }}></div>
-                  </div>
-                </div>
-                <div className="space-y-1" data-testid="ship-type-chemical-tanker">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Ch Tkr</span>
-                    <span className="font-medium" data-testid="text-chemical-tanker-years">
-                      {shipTypesData?.chemicalTanker !== undefined ? shipTypesData.chemicalTanker.toFixed(0) : '—'}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-blue-500 h-2 rounded-full" style={{ 
-                      width: `${shipTypesData?.chemicalTanker ? Math.min(shipTypesData.chemicalTanker * 16.67, 100) : 0}%` 
-                    }}></div>
-                  </div>
-                </div>
-                <div className="space-y-1" data-testid="ship-type-gas-tanker">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Gas Tkr</span>
-                    <span className="font-medium" data-testid="text-gas-tanker-years">
-                      {shipTypesData?.gasTanker !== undefined ? shipTypesData.gasTanker.toFixed(0) : '—'}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-blue-500 h-2 rounded-full" style={{ 
-                      width: `${shipTypesData?.gasTanker ? Math.min(shipTypesData.gasTanker * 16.67, 100) : 0}%` 
-                    }}></div>
-                  </div>
-                </div>
-                <div className="space-y-1" data-testid="ship-type-bulk">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Bulk</span>
-                    <span className="font-medium" data-testid="text-bulk-years">
-                      {shipTypesData?.bulk !== undefined ? shipTypesData.bulk.toFixed(0) : '—'}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-blue-500 h-2 rounded-full" style={{ 
-                      width: `${shipTypesData?.bulk ? Math.min(shipTypesData.bulk * 16.67, 100) : 0}%` 
-                    }}></div>
-                  </div>
-                </div>
+                )}
               </div>
-              <div className="mt-3 flex justify-between text-xs text-gray-500">
-                <span>0</span>
-                <span>2</span>
-                <span>4</span>
-                <span>6</span>
-              </div>
+              {shipTypesData?.items && shipTypesData.items.length > 0 && (
+                <div className="mt-3 flex justify-between text-xs text-gray-500">
+                  <span>0</span>
+                  <span>{Math.round(shipTypesData.totalYears / 4)}</span>
+                  <span>{Math.round(shipTypesData.totalYears / 2)}</span>
+                  <span>{shipTypesData.totalYears}</span>
+                </div>
+              )}
             </div>
           </div>
 
