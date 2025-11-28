@@ -19,8 +19,12 @@ import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 import { LicenseSelectionDialog } from './LicenseSelectionDialog';
 import { TrainingCourseSelectionDialog } from './TrainingCourseSelectionDialog';
+import { TravelDocumentSelectionDialog } from './TravelDocumentSelectionDialog';
+import { VisaSelectionDialog } from './VisaSelectionDialog';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
 import type { LicenseTemplate } from '@/utils/data/licenseDceTemplates';
+import type { TravelDocumentTemplate } from '@/utils/data/travelDocumentTemplates';
+import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
 
 interface CrewMember {
   id: string;
@@ -130,6 +134,7 @@ interface ChildInfo {
 
 interface DocumentInfo {
   id: string;
+  documentId: string;  // Template ID (e.g., DOC001) - empty for manual entries
   document: string;
   number: string;
   issued: string;
@@ -139,6 +144,7 @@ interface DocumentInfo {
 
 interface Visa {
   id: string;
+  countryId: string;  // Template ID (e.g., USA, SCHENGEN) - empty for manual entries
   issuingCountry: string;
   serialNo: string;
   issued: string;
@@ -280,6 +286,8 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   const [tempNextAvailability, setTempNextAvailability] = useState<string>('');
   const [isLicenseDialogOpen, setIsLicenseDialogOpen] = useState(false);
   const [isTrainingDialogOpen, setIsTrainingDialogOpen] = useState(false);
+  const [isTravelDocDialogOpen, setIsTravelDocDialogOpen] = useState(false);
+  const [isVisaDialogOpen, setIsVisaDialogOpen] = useState(false);
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
 
   // Sections for stepper navigation  
@@ -494,6 +502,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     // A2.1 Travel and Identification Documents
     documents: [{
       id: '1',
+      documentId: '',
       document: '',
       number: '',
       issued: '',
@@ -504,6 +513,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     // A2.2 Visas
     visas: [{
       id: '1',
+      countryId: '',
       issuingCountry: '',
       serialNo: '',
       issued: '',
@@ -890,7 +900,8 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   // Document management
   const addDocument = () => {
     const newDoc: DocumentInfo = {
-      id: (formData.documents.length + 1).toString(),
+      id: `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      documentId: '',  // Empty for manual entries
       document: '',
       number: '',
       issued: '',
@@ -919,7 +930,8 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   // Visa management
   const addVisa = () => {
     const newVisa: Visa = {
-      id: (formData.visas.length + 1).toString(),
+      id: `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      countryId: '',  // Empty for manual entries
       issuingCountry: '',
       serialNo: '',
       issued: '',
@@ -1028,6 +1040,44 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
       trainingCourses: [...prev.trainingCourses, ...newCourses] 
     }));
     setIsTrainingDialogOpen(false);
+  };
+
+  // Add travel documents from database selection
+  const addTravelDocsFromDatabase = (selectedTemplates: TravelDocumentTemplate[]) => {
+    const newDocs: DocumentInfo[] = selectedTemplates.map((template) => ({
+      id: `db-${template.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      documentId: template.id,  // Store template ID (e.g., DOC001)
+      document: template.name,
+      number: '',
+      issued: '',
+      expiry: '',
+      issuingAuthority: ''
+    }));
+    
+    setFormData(prev => ({ 
+      ...prev, 
+      documents: [...prev.documents, ...newDocs] 
+    }));
+    setIsTravelDocDialogOpen(false);
+  };
+
+  // Add visas from database selection (country list)
+  const addVisasFromDatabase = (selectedCountries: VisaCountryTemplate[]) => {
+    const newVisas: Visa[] = selectedCountries.map((country) => ({
+      id: `db-${country.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      countryId: country.id,  // Store template ID (e.g., USA, SCHENGEN)
+      issuingCountry: country.name,
+      serialNo: '',
+      issued: '',
+      expiry: '',
+      visaType: ''
+    }));
+    
+    setFormData(prev => ({ 
+      ...prev, 
+      visas: [...prev.visas, ...newVisas] 
+    }));
+    setIsVisaDialogOpen(false);
   };
 
   const updateLicense = (id: string, field: keyof License, value: string) => {
@@ -2642,16 +2692,28 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>C1 Travel and Identification Docs</h3>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={addDocument}
-            className="text-gray-600 border-gray-300 hover:bg-gray-50"
-            data-testid="button-add-travel-doc"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            ADD
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsTravelDocDialogOpen(true)}
+              className="text-gray-600 border-gray-300 hover:bg-gray-50"
+              data-testid="button-add-travel-doc-from-db"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              ADD FROM DATABASE
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={addDocument}
+              className="text-gray-600 border-gray-300 hover:bg-gray-50"
+              data-testid="button-add-travel-doc"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              ADD
+            </Button>
+          </div>
         </div>
         
         <Table className="w-full">
@@ -2737,16 +2799,28 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>C2 Visas</h3>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={addVisa}
-            className="text-gray-600 border-gray-300 hover:bg-gray-50"
-            data-testid="button-add-visa"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            ADD
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsVisaDialogOpen(true)}
+              className="text-gray-600 border-gray-300 hover:bg-gray-50"
+              data-testid="button-add-visa-from-db"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              ADD FROM DATABASE
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={addVisa}
+              className="text-gray-600 border-gray-300 hover:bg-gray-50"
+              data-testid="button-add-visa"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              ADD
+            </Button>
+          </div>
         </div>
         
         <Table className="w-full">
@@ -4609,6 +4683,22 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
         onClose={() => setIsTrainingDialogOpen(false)}
         onConfirm={addTrainingCoursesFromDatabase}
         existingCourses={formData.trainingCourses.map(c => c.trainingCourse)}
+      />
+      
+      {/* Travel Document Selection Dialog - Add from Database */}
+      <TravelDocumentSelectionDialog
+        open={isTravelDocDialogOpen}
+        onClose={() => setIsTravelDocDialogOpen(false)}
+        onConfirm={addTravelDocsFromDatabase}
+        existingDocumentIds={formData.documents.map(d => d.documentId).filter(Boolean)}
+      />
+      
+      {/* Visa Selection Dialog - Add from Database */}
+      <VisaSelectionDialog
+        open={isVisaDialogOpen}
+        onClose={() => setIsVisaDialogOpen(false)}
+        onConfirm={addVisasFromDatabase}
+        existingCountryIds={formData.visas.map(v => v.countryId).filter(Boolean)}
       />
     </div>
   );
