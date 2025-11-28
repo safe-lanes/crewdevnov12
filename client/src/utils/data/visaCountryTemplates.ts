@@ -30,11 +30,75 @@ export function sortCountriesWithPriority(countries: VisaCountryTemplate[]): Vis
   });
 }
 
+export function normalizeNationalityToCountry(nationality: string): string {
+  const nationalityToCountry: Record<string, string> = {
+    'indian': 'India',
+    'american': 'United States',
+    'british': 'United Kingdom',
+    'chinese': 'China',
+    'australian': 'Australia',
+    'philippine': 'Philippines',
+    'filipino': 'Philippines',
+    'ukrainian': 'Ukraine',
+    'canadian': 'Canada',
+    'japanese': 'Japan',
+    'singaporean': 'Singapore',
+    'emirati': 'United Arab Emirates',
+    'saudi': 'Saudi Arabia',
+    'qatari': 'Qatar',
+    'kuwaiti': 'Kuwait',
+    'bahraini': 'Bahrain',
+    'omani': 'Oman',
+    'malaysian': 'Malaysia',
+    'thai': 'Thailand',
+    'indonesian': 'Indonesia',
+    'vietnamese': 'Vietnam',
+    'korean': 'South Korea',
+    'brazilian': 'Brazil',
+    'mexican': 'Mexico',
+    'argentinian': 'Argentina',
+    'south african': 'South Africa',
+    'nigerian': 'Nigeria',
+    'egyptian': 'Egypt',
+    'turkish': 'Turkey',
+    'russian': 'Russia',
+    'german': 'Germany',
+    'french': 'France',
+    'italian': 'Italy',
+    'spanish': 'Spain',
+    'dutch': 'Netherlands',
+    'polish': 'Poland',
+    'greek': 'Greece',
+    'portuguese': 'Portugal',
+    'swedish': 'Sweden',
+    'norwegian': 'Norway',
+    'danish': 'Denmark',
+    'finnish': 'Finland',
+    'belgian': 'Belgium',
+    'austrian': 'Austria',
+    'swiss': 'Switzerland',
+    'irish': 'Ireland',
+    'new zealander': 'New Zealand',
+    'panamanian': 'Panama',
+    'liberian': 'Liberia',
+    'maltese': 'Malta',
+    'cypriot': 'Cyprus',
+  };
+  
+  const lower = nationality.toLowerCase().trim();
+  return nationalityToCountry[lower] || nationality;
+}
+
 export function mapApiResponseToVisaCountries(
-  apiResponse: Array<{ id?: number; nuid?: string; name: string; countryName?: string }>
+  apiResponse: Array<{ id?: number; nuid?: string; name: string; countryName?: string; nationality?: string }>
 ): VisaCountryTemplate[] {
   const countries = apiResponse.map(item => {
-    const name = item.countryName || item.name || '';
+    let name = item.countryName || item.name || '';
+    if (item.nationality && !item.countryName) {
+      name = normalizeNationalityToCountry(item.nationality);
+    } else if (name) {
+      name = normalizeNationalityToCountry(name);
+    }
     return {
       id: item.nuid || `COUNTRY-${item.id}` || '',
       name,
@@ -43,6 +107,23 @@ export function mapApiResponseToVisaCountries(
   });
   
   return sortCountriesWithPriority(countries);
+}
+
+export function mergeWithDefaultCountries(
+  apiCountries: VisaCountryTemplate[]
+): VisaCountryTemplate[] {
+  const existingNames = new Set(apiCountries.map(c => c.name.toLowerCase()));
+  
+  const allCountries = [...apiCountries];
+  
+  for (const defaultCountry of DEFAULT_VISA_COUNTRIES) {
+    if (!existingNames.has(defaultCountry.name.toLowerCase())) {
+      allCountries.push(defaultCountry);
+      existingNames.add(defaultCountry.name.toLowerCase());
+    }
+  }
+  
+  return sortCountriesWithPriority(allCountries);
 }
 
 export const DEFAULT_VISA_COUNTRIES: VisaCountryTemplate[] = [

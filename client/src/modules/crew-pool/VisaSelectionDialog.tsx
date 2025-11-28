@@ -15,6 +15,7 @@ import {
   DEFAULT_VISA_COUNTRIES,
   PRIORITY_COUNTRIES,
   mapApiResponseToVisaCountries,
+  mergeWithDefaultCountries,
   type VisaCountryTemplate,
 } from '@/utils/data/visaCountryTemplates';
 
@@ -45,15 +46,21 @@ export function VisaSelectionDialog({
   });
 
   const countries = useMemo(() => {
+    let result: VisaCountryTemplate[];
+    
     if (apiCountries.length > 0) {
       const mapped = mapApiResponseToVisaCountries(apiCountries);
-      const schengenExists = mapped.some(c => c.name.toLowerCase() === 'schengen');
-      if (!schengenExists) {
-        mapped.unshift({ id: 'SCHENGEN', name: 'Schengen', isPriority: true });
-      }
-      return mapped;
+      result = mergeWithDefaultCountries(mapped);
+    } else {
+      result = [...DEFAULT_VISA_COUNTRIES];
     }
-    return DEFAULT_VISA_COUNTRIES;
+    
+    const schengenExists = result.some(c => c.name.toLowerCase() === 'schengen');
+    if (!schengenExists) {
+      result.unshift({ id: 'SCHENGEN', name: 'Schengen', isPriority: true });
+    }
+    
+    return result;
   }, [apiCountries]);
 
   const filteredCountries = useMemo(() => {
