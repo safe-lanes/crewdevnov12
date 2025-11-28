@@ -800,6 +800,8 @@ export const insertCrewMemberSchema = createInsertSchema(crewMembers).pick({
   
   // Contract and Status
   status: true,
+  isActive: true,
+  nextAvailability: true,
   joiningDate: true,
   signOnDate: true, // Keep for backward compatibility
   signOffDate: true,
