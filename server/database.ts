@@ -2650,11 +2650,198 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Dashboard & Utilities Methods
+  
+  // Tanker vessel types for experience calculation
+  private readonly TANKER_VESSEL_TYPES = [
+    'Oil Tanker',
+    'Chemical Tanker', 
+    'Gas Tanker',
+    'LPG Tanker',
+    'LNG Tanker',
+    'Product Oil Tanker',
+    'Crude Oil Tanker',
+    'Bitumen/Asphalt Carriers',
+    'Oil Chemical Tanker',
+    'Shuttle Tankers'
+  ];
+
+  // Officer rank categories for OOW calculation
+  private readonly OFFICER_CATEGORIES = ['Senior Officers', 'Junior Officers'];
+  
+  // Officer rank names for OOW calculation (fallback when category not available)
+  private readonly OFFICER_RANK_NAMES = [
+    'Master', 'Captain',
+    'Chief Officer', 'Chief Mate', 'C/O',
+    '2nd Officer', 'Second Officer', '2/O',
+    '3rd Officer', 'Third Officer', '3/O',
+    'Chief Engineer', 'C/E',
+    '2nd Engineer', 'Second Engineer', '2/E',
+    '3rd Engineer', 'Third Engineer', '3/E',
+    '4th Engineer', 'Fourth Engineer', '4/E',
+    'Electrical Officer', 'E/O', 'ETO',
+    'Radio Officer', 'R/O'
+  ];
+
+  private isTankerVesselType(vesselType: string): boolean {
+    if (!vesselType) return false;
+    const normalized = vesselType.trim().toLowerCase();
+    
+    // Keywords that indicate tanker vessels
+    const tankerKeywords = ['tanker', 'oil', 'chemical', 'gas', 'lng', 'lpg', 'bitumen', 'asphalt', 'product'];
+    
+    // Check exact match first
+    if (this.TANKER_VESSEL_TYPES.some(t => t.toLowerCase() === normalized)) {
+      return true;
+    }
+    
+    // Check keyword-based matching for variants like "Oil/Chemical Tanker", "Product Tanker", etc.
+    return tankerKeywords.some(keyword => normalized.includes(keyword));
+  }
+
+  private isOfficerRank(rankName: string): boolean {
+    if (!rankName) return false;
+    const normalized = rankName.trim().toLowerCase();
+    
+    // Keywords that indicate officer ranks (excludes ratings like AB, Oiler, Fitter, Cook, Steward)
+    const officerKeywords = ['officer', 'master', 'captain', 'engineer', 'mate', 'eto', 'e/o', 'r/o'];
+    
+    // Exclusion keywords for non-officer ratings that might have "officer" in title
+    const ratingKeywords = ['petty', 'bosun', 'boatswain', 'able', 'ordinary', 'oiler', 'motorman', 'wiper', 
+                            'fitter', 'cook', 'steward', 'messman', 'cadet', 'trainee', 'rating'];
+    
+    // Check exact match first
+    if (this.OFFICER_RANK_NAMES.some(r => r.toLowerCase() === normalized)) {
+      return true;
+    }
+    
+    // Check if it's explicitly a rating (exclude)
+    if (ratingKeywords.some(keyword => normalized.includes(keyword))) {
+      return false;
+    }
+    
+    // Check keyword-based matching for officer ranks
+    return officerKeywords.some(keyword => normalized.includes(keyword));
+  }
+
+  private async isOfficerRankByCategory(rankName: string): Promise<boolean> {
+    if (!rankName) return false;
+    
+    // First check the available_ranks table for category
+    try {
+      const result: any = await this.pool.query(
+        `SELECT category FROM available_ranks WHERE name = $1 LIMIT 1`,
+        [rankName.trim()]
+      );
+      if (result.rows && result.rows.length > 0) {
+        const category = result.rows[0].category;
+        return this.OFFICER_CATEGORIES.includes(category);
+      }
+    } catch (e) {
+      // Fall through to name-based check
+    }
+    
+    // Fallback to name-based check
+    return this.isOfficerRank(rankName);
+  }
+
+  private calculateExperienceFromSeaService(
+    companySeaService: any[],
+    externalSeaService: any[],
+    currentRank: string
+  ): { company: number; rank: number; tankers: number; oow: number } {
+    const allSeaService = [...companySeaService, ...externalSeaService];
+    
+    // 1. Company (Yrs) - Calendar time from earliest E1 "from" date to today
+    // Uses calendar difference from first company service date to present
+    let companyYears = 0;
+    if (companySeaService.length > 0) {
+      const fromDates = companySeaService
+        .map(s => s.from)
+        .filter(d => d && d.trim() !== '')
+        .map(d => new Date(d))
+        .filter(d => !isNaN(d.getTime()));
+      
+      if (fromDates.length > 0) {
+        const earliestDate = new Date(Math.min(...fromDates.map(d => d.getTime())));
+        const today = new Date();
+        const diffMs = today.getTime() - earliestDate.getTime();
+        const diffYears = diffMs / (1000 * 60 * 60 * 24 * 365.25);
+        companyYears = Math.round(diffYears * 10) / 10; // Round to 1 decimal
+      }
+    }
+
+    // 2. Rank (Yrs) - Sum of Period(M) where rank = current rank / 12
+    let rankMonths = 0;
+    if (currentRank) {
+      const normalizedCurrentRank = currentRank.trim().toLowerCase();
+      for (const service of allSeaService) {
+        if (service.rank && service.rank.trim().toLowerCase() === normalizedCurrentRank) {
+          const period = parseFloat(service.periodMonths) || 0;
+          rankMonths += period;
+        }
+      }
+    }
+    const rankYears = Math.round((rankMonths / 12) * 10) / 10;
+
+    // 3. Tankers (Yrs) - Sum of Period(M) where vessel type is tanker / 12
+    let tankerMonths = 0;
+    for (const service of allSeaService) {
+      if (this.isTankerVesselType(service.vesselType)) {
+        const period = parseFloat(service.periodMonths) || 0;
+        tankerMonths += period;
+      }
+    }
+    const tankerYears = Math.round((tankerMonths / 12) * 10) / 10;
+
+    // 4. OOW (Yrs) - Sum of Period(M) where rank is officer / 12
+    let oowMonths = 0;
+    for (const service of allSeaService) {
+      if (this.isOfficerRank(service.rank)) {
+        const period = parseFloat(service.periodMonths) || 0;
+        oowMonths += period;
+      }
+    }
+    const oowYears = Math.round((oowMonths / 12) * 10) / 10;
+
+    return {
+      company: companyYears,
+      rank: rankYears,
+      tankers: tankerYears,
+      oow: oowYears
+    };
+  }
+
   async getCrewDashboardSummary(crewId: string): Promise<any> {
     const crewMember = await this.getCrewMember(crewId);
     if (!crewMember) return undefined;
 
     const appraisals = await this.getAppraisalResultsByCrewMember(crewId);
+    
+    // Parse sea service data for experience calculations
+    let companySeaService: any[] = [];
+    let externalSeaService: any[] = [];
+    try {
+      companySeaService = crewMember.currentCompanySeaService 
+        ? JSON.parse(crewMember.currentCompanySeaService as string) 
+        : [];
+    } catch (e) {
+      companySeaService = [];
+    }
+    try {
+      externalSeaService = crewMember.externalSeaService 
+        ? JSON.parse(crewMember.externalSeaService as string) 
+        : [];
+    } catch (e) {
+      externalSeaService = [];
+    }
+    
+    // Calculate experience from sea service data
+    const currentRank = crewMember.presentRank || '';
+    const experience = this.calculateExperienceFromSeaService(
+      companySeaService,
+      externalSeaService,
+      currentRank
+    );
 
     // Check vessel_planning for active vessel assignments
     const vesselPlanningEntries = await this.getVesselPlanningByCrewMember(crewId);
@@ -2701,11 +2888,11 @@ export class DatabaseStorage implements IStorage {
         } : null
       },
       experience: {
-        company: 1.2,
-        rank: 1.9,
-        tankers: 2.5, 
-        ocw: 3.6,
-        endorsements: "5"
+        company: experience.company,
+        rank: experience.rank,
+        tankers: experience.tankers, 
+        ocw: experience.oow,
+        endorsements: "—"  // Will be calculated from D2 section later
       },
       shipTypes: {
         oilTanker: 4.2,

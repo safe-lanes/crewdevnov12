@@ -43,6 +43,140 @@ function formatDateForDashboard(dateString: string | null | undefined): string {
   }
 }
 
+// Experience calculation helper functions
+const TANKER_VESSEL_TYPES = [
+  'Oil Tanker',
+  'Chemical Tanker', 
+  'Gas Tanker',
+  'LPG Tanker',
+  'LNG Tanker',
+  'Product Oil Tanker',
+  'Crude Oil Tanker',
+  'Bitumen/Asphalt Carriers',
+  'Oil Chemical Tanker',
+  'Shuttle Tankers'
+];
+
+const OFFICER_RANK_NAMES = [
+  'Master', 'Captain',
+  'Chief Officer', 'Chief Mate', 'C/O',
+  '2nd Officer', 'Second Officer', '2/O',
+  '3rd Officer', 'Third Officer', '3/O',
+  'Chief Engineer', 'C/E',
+  '2nd Engineer', 'Second Engineer', '2/E',
+  '3rd Engineer', 'Third Engineer', '3/E',
+  '4th Engineer', 'Fourth Engineer', '4/E',
+  'Electrical Officer', 'E/O', 'ETO',
+  'Radio Officer', 'R/O'
+];
+
+function isTankerVesselType(vesselType: string): boolean {
+  if (!vesselType) return false;
+  const normalized = vesselType.trim().toLowerCase();
+  
+  // Keywords that indicate tanker vessels
+  const tankerKeywords = ['tanker', 'oil', 'chemical', 'gas', 'lng', 'lpg', 'bitumen', 'asphalt', 'product'];
+  
+  // Check exact match first
+  if (TANKER_VESSEL_TYPES.some(t => t.toLowerCase() === normalized)) {
+    return true;
+  }
+  
+  // Check keyword-based matching for variants like "Oil/Chemical Tanker", "Product Tanker", etc.
+  return tankerKeywords.some(keyword => normalized.includes(keyword));
+}
+
+function isOfficerRank(rankName: string): boolean {
+  if (!rankName) return false;
+  const normalized = rankName.trim().toLowerCase();
+  
+  // Keywords that indicate officer ranks (excludes ratings like AB, Oiler, Fitter, Cook, Steward)
+  const officerKeywords = ['officer', 'master', 'captain', 'engineer', 'mate', 'eto', 'e/o', 'r/o'];
+  
+  // Exclusion keywords for non-officer ratings that might have "officer" in title
+  const ratingKeywords = ['petty', 'bosun', 'boatswain', 'able', 'ordinary', 'oiler', 'motorman', 'wiper', 
+                          'fitter', 'cook', 'steward', 'messman', 'cadet', 'trainee', 'rating'];
+  
+  // Check exact match first
+  if (OFFICER_RANK_NAMES.some(r => r.toLowerCase() === normalized)) {
+    return true;
+  }
+  
+  // Check if it's explicitly a rating (exclude)
+  if (ratingKeywords.some(keyword => normalized.includes(keyword))) {
+    return false;
+  }
+  
+  // Check keyword-based matching for officer ranks
+  return officerKeywords.some(keyword => normalized.includes(keyword));
+}
+
+function calculateExperienceFromSeaService(
+  companySeaService: any[],
+  externalSeaService: any[],
+  currentRank: string
+): { company: number; rank: number; tankers: number; oow: number } {
+  const allSeaService = [...companySeaService, ...externalSeaService];
+  
+  // 1. Company (Yrs) - Calendar time from earliest E1 "from" date to today
+  let companyYears = 0;
+  if (companySeaService.length > 0) {
+    const fromDates = companySeaService
+      .map(s => s.from)
+      .filter((d: any) => d && d.trim() !== '')
+      .map((d: any) => new Date(d))
+      .filter((d: any) => !isNaN(d.getTime()));
+    
+    if (fromDates.length > 0) {
+      const earliestDate = new Date(Math.min(...fromDates.map((d: any) => d.getTime())));
+      const today = new Date();
+      const diffMs = today.getTime() - earliestDate.getTime();
+      const diffYears = diffMs / (1000 * 60 * 60 * 24 * 365.25);
+      companyYears = Math.round(diffYears * 10) / 10;
+    }
+  }
+
+  // 2. Rank (Yrs) - Sum of Period(M) where rank = current rank / 12
+  let rankMonths = 0;
+  if (currentRank) {
+    const normalizedCurrentRank = currentRank.trim().toLowerCase();
+    for (const service of allSeaService) {
+      if (service.rank && service.rank.trim().toLowerCase() === normalizedCurrentRank) {
+        const period = parseFloat(service.periodMonths) || 0;
+        rankMonths += period;
+      }
+    }
+  }
+  const rankYears = Math.round((rankMonths / 12) * 10) / 10;
+
+  // 3. Tankers (Yrs) - Sum of Period(M) where vessel type is tanker / 12
+  let tankerMonths = 0;
+  for (const service of allSeaService) {
+    if (isTankerVesselType(service.vesselType)) {
+      const period = parseFloat(service.periodMonths) || 0;
+      tankerMonths += period;
+    }
+  }
+  const tankerYears = Math.round((tankerMonths / 12) * 10) / 10;
+
+  // 4. OOW (Yrs) - Sum of Period(M) where rank is officer / 12
+  let oowMonths = 0;
+  for (const service of allSeaService) {
+    if (isOfficerRank(service.rank)) {
+      const period = parseFloat(service.periodMonths) || 0;
+      oowMonths += period;
+    }
+  }
+  const oowYears = Math.round((oowMonths / 12) * 10) / 10;
+
+  return {
+    company: companyYears,
+    rank: rankYears,
+    tankers: tankerYears,
+    oow: oowYears
+  };
+}
+
 //Helper function to translate vessel name to vessel code
 // Provides static mapping for storage backends that don't have master data
 // Throws error if vessel cannot be translated to enforce data integrity
@@ -4377,6 +4511,32 @@ export class PersistentFileStorage implements IStorage {
 
     const appraisals = await this.getAppraisalResultsByCrewMember(crewId);
 
+    // Parse sea service data for experience calculations
+    let companySeaService: any[] = [];
+    let externalSeaService: any[] = [];
+    try {
+      companySeaService = crewMember.currentCompanySeaService 
+        ? JSON.parse(crewMember.currentCompanySeaService as string) 
+        : [];
+    } catch (e) {
+      companySeaService = [];
+    }
+    try {
+      externalSeaService = crewMember.externalSeaService 
+        ? JSON.parse(crewMember.externalSeaService as string) 
+        : [];
+    } catch (e) {
+      externalSeaService = [];
+    }
+    
+    // Calculate experience from sea service data
+    const currentRank = crewMember.presentRank || '';
+    const experience = calculateExperienceFromSeaService(
+      companySeaService,
+      externalSeaService,
+      currentRank
+    );
+
     const vesselName = crewMember.presentVessel ? translateVesselCodeToName(crewMember.presentVessel) : '';
     const joinedDateFormatted = formatDateForDashboard(crewMember.joiningDate || crewMember.signOnDate);
     const reliefDueFormatted = formatDateForDashboard(crewMember.reliefDue);
@@ -4396,11 +4556,11 @@ export class PersistentFileStorage implements IStorage {
         } : null
       },
       experience: {
-        company: 1.2,
-        rank: 1.9,
-        tankers: 2.5, 
-        ocw: 3.6,
-        endorsements: "5"
+        company: experience.company,
+        rank: experience.rank,
+        tankers: experience.tankers, 
+        ocw: experience.oow,
+        endorsements: "—"  // Will be calculated from D2 section later
       },
       shipTypes: {
         oilTanker: 4.2,
