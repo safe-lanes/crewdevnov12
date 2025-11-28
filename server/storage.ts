@@ -1016,12 +1016,13 @@ export class MemStorage implements IStorage {
   }
 
   async createCrewMember(insertCrewMember: InsertCrewMember): Promise<CrewMember> {
+    const now = new Date();
     const crewMember: CrewMember = { 
       ...insertCrewMember,
       middleName: insertCrewMember.middleName || null,
       familyName: insertCrewMember.familyName || null,
-      createdAt: null,
-      updatedAt: null as any // new Date()
+      createdAt: now,
+      updatedAt: now
     };
     this.crewMembers.set(crewMember.id, crewMember);
     return crewMember;
@@ -1031,10 +1032,11 @@ export class MemStorage implements IStorage {
     const existingCrewMember = this.crewMembers.get(id);
     if (!existingCrewMember) return undefined;
 
+    // Set updatedAt timestamp automatically on every update for sorting by latest edited
     const updatedCrewMember: CrewMember = { 
       ...existingCrewMember, 
       ...crewMemberData,
-      updatedAt: null as any // new Date()
+      updatedAt: new Date()
     };
     this.crewMembers.set(id, updatedCrewMember);
     return updatedCrewMember;
@@ -4351,7 +4353,12 @@ export class PersistentFileStorage implements IStorage {
 
     // Sanitize input - remove id if present since it's read-only
     const { id: _omitId, ...sanitizedData } = crewMemberData as any;
-    const updatedCrewMember: CrewMember = { ...existingCrewMember, ...sanitizedData };
+    // Set updatedAt timestamp automatically on every update for sorting by latest edited
+    const updatedCrewMember: CrewMember = { 
+      ...existingCrewMember, 
+      ...sanitizedData,
+      updatedAt: new Date()
+    };
     this.crewMembers.set(id, updatedCrewMember);
     this.saveToFile();
     return updatedCrewMember;

@@ -118,7 +118,15 @@ export const CrewPoolModule = (): JSX.Element => {
 
     // Column definitions with groups - responsive widths
     const columnDefs: ColDef[] = useMemo(() => [
-        // Standalone Crew ID column (pinned)
+        // Hidden updatedAt column for primary sorting (latest edited first)
+        {
+            field: 'updatedAt',
+            hide: true,
+            sortable: true,
+            sort: 'desc',
+            sortIndex: 0
+        },
+        // Standalone Crew ID column (pinned) - secondary sort by ascending
         {
             headerName: 'Crew\nID',
             field: 'employeeId',
@@ -128,6 +136,8 @@ export const CrewPoolModule = (): JSX.Element => {
             filter: 'agTextColumnFilter',
             floatingFilter: viewportConfig.showFloatingFilters,
             sortable: true,
+            sort: 'asc',
+            sortIndex: 1,
             resizable: true,
             pinned: 'left',
             headerClass: 'ag-header-cell-text-wrap'

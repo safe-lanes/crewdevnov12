@@ -1076,7 +1076,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateCrewMember(id: string, crewMemberData: Partial<InsertCrewMember>): Promise<CrewMember | undefined> {
-    const result = await this.db.update(crewMembers).set(crewMemberData).where(eq(crewMembers.id, id)).returning();
+    // Set updatedAt timestamp automatically on every update for sorting by latest edited
+    const dataWithTimestamp = {
+      ...crewMemberData,
+      updatedAt: new Date()
+    };
+    const result = await this.db.update(crewMembers).set(dataWithTimestamp).where(eq(crewMembers.id, id)).returning();
     return result[0] || undefined;
   }
 
