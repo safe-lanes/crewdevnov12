@@ -2748,7 +2748,10 @@ export class DatabaseStorage implements IStorage {
     companySeaService: any[],
     externalSeaService: any[]
   ): { shipTypeExperience: Array<{ type: string; label: string; months: number; years: number }>; totalMonths: number } {
-    const allSeaService = [...companySeaService, ...externalSeaService];
+    // Ensure inputs are arrays
+    const safeCompanySeaService = Array.isArray(companySeaService) ? companySeaService : [];
+    const safeExternalSeaService = Array.isArray(externalSeaService) ? externalSeaService : [];
+    const allSeaService = [...safeCompanySeaService, ...safeExternalSeaService];
     
     // Vessel type normalization map
     const vesselTypeNormalization: Record<string, string> = {
@@ -2788,7 +2791,7 @@ export class DatabaseStorage implements IStorage {
       if (!vesselType) continue;
       
       const normalizedType = vesselType.toLowerCase();
-      let displayLabel = vesselTypeNormalization[normalizedType] || null;
+      let displayLabel: string = vesselTypeNormalization[normalizedType] || '';
       
       // If no exact match, try keyword matching
       if (!displayLabel) {
@@ -2832,13 +2835,16 @@ export class DatabaseStorage implements IStorage {
     externalSeaService: any[],
     currentRank: string
   ): { company: number; rank: number; tankers: number; oow: number } {
-    const allSeaService = [...companySeaService, ...externalSeaService];
+    // Ensure inputs are arrays
+    const safeCompanySeaService = Array.isArray(companySeaService) ? companySeaService : [];
+    const safeExternalSeaService = Array.isArray(externalSeaService) ? externalSeaService : [];
+    const allSeaService = [...safeCompanySeaService, ...safeExternalSeaService];
     
     // 1. Company (Yrs) - Calendar time from earliest E1 "from" date to today
     // Uses calendar difference from first company service date to present
     let companyYears = 0;
-    if (companySeaService.length > 0) {
-      const fromDates = companySeaService
+    if (safeCompanySeaService.length > 0) {
+      const fromDates = safeCompanySeaService
         .map(s => s.from)
         .filter(d => d && d.trim() !== '')
         .map(d => new Date(d))
