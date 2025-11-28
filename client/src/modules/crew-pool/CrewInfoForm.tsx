@@ -3094,7 +3094,14 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                     </td>
                   </tr>
                 ) : (
-                  formData.currentCompanySeaService.map((service) => (
+                  [...formData.currentCompanySeaService]
+                    .sort((a, b) => {
+                      // Sort by latest dates first (To date, then From date)
+                      const aDate = a.to || a.from || '';
+                      const bDate = b.to || b.from || '';
+                      return bDate.localeCompare(aDate);
+                    })
+                    .map((service) => (
                     <tr key={service.id} className="border-t">
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Select
@@ -3296,7 +3303,14 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                     </td>
                   </tr>
                 ) : (
-                  formData.externalSeaService.map((service) => (
+                  [...formData.externalSeaService]
+                    .sort((a, b) => {
+                      // Sort by latest dates first (To date, then From date)
+                      const aDate = a.to || a.from || '';
+                      const bDate = b.to || b.from || '';
+                      return bDate.localeCompare(aDate);
+                    })
+                    .map((service) => (
                     <tr key={service.id} className="border-t">
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Input
