@@ -174,6 +174,7 @@ interface TrainingCourse {
 interface SeaService {
   id: string;
   vesselName: string;
+  vesselCode: string;
   vesselType: string;
   deadweight: string;
   engineTypePower: string;
@@ -304,6 +305,22 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     // Fallback to static data
     return DEFAULT_DROPDOWN_VESSEL_TYPES;
   }, [vesselTypeMasterDataRaw]);
+
+  // Fetch vessels from Master 014 API for E1 Sea Service dropdown
+  const { data: vesselMasterData = [], isLoading: vesselsLoading } = useQuery<Array<{ entryId: string; nuid: string; name: string }>>({
+    queryKey: ["/api/masters/014/data"],
+  });
+
+  // Transform vessel master data for dropdown (name display, code storage)
+  const vesselOptions = useMemo(() => {
+    return vesselMasterData
+      .filter(v => v.nuid && v.name)
+      .map(v => ({
+        code: v.nuid,
+        name: v.name
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [vesselMasterData]);
 
   const NATIONALITIES = [
     "Afghan", "Albanian", "Algerian", "American", "Andorran", "Angolan", "Antiguan", "Argentine", "Armenian", "Australian",
@@ -465,6 +482,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     currentCompanySeaService: [{
       id: '1',
       vesselName: '',
+      vesselCode: '',
       vesselType: '',
       deadweight: '',
       engineTypePower: '',
@@ -479,6 +497,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     externalSeaService: [{
       id: '1',
       vesselName: '',
+      vesselCode: '',
       vesselType: '',
       deadweight: '',
       engineTypePower: '',
@@ -919,6 +938,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     const newService: SeaService = {
       id: `current-${Date.now()}`,
       vesselName: '',
+      vesselCode: '',
       vesselType: '',
       deadweight: '',
       engineTypePower: '',
@@ -952,6 +972,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     const newService: SeaService = {
       id: `external-${Date.now()}`,
       vesselName: '',
+      vesselCode: '',
       vesselType: '',
       deadweight: '',
       engineTypePower: '',
