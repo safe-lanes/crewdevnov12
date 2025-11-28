@@ -2689,11 +2689,11 @@ export class DatabaseStorage implements IStorage {
         sailingDue: hasVesselAssignment ? reliefDueFormatted : null,
         nextAvailability: !hasVesselAssignment && calculatedStatus === 'On Leave' ? nextAvailabilityFormatted : null,
         presentAssignment: vesselCode || null,
-        emergencyContact: {
-          name: "Mira Kumari", 
-          relation: "Wife",
-          phone: "+91 987 555 8553"
-        }
+        emergencyContact: (crewMember.nokFirstName && crewMember.nokRelationship && crewMember.nokTelephone) ? {
+          name: `${crewMember.nokFirstName}${crewMember.nokFamilyName ? ' ' + crewMember.nokFamilyName : ''}`.trim(),
+          relation: crewMember.nokRelationship,
+          phone: crewMember.nokTelephone
+        } : null
       },
       experience: {
         company: 1.2,

@@ -60,6 +60,7 @@ interface FormData {
   vesselType: string[];
   manningAgent: string;
   employeeId: string;
+  nextAvailability: string;
   
   // A1.2 Address & Contact Info
   countryOfResidence: string;
@@ -378,6 +379,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     vesselType: [],
     manningAgent: '',
     employeeId: crewMember?.employeeId || '',
+    nextAvailability: '',
     
     // A1.2 Address & Contact Info
     countryOfResidence: '',

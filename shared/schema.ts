@@ -1310,16 +1310,18 @@ export type NCReport = typeof ncReports.$inferSelect;
 
 // Dashboard Types
 export const dashboardStatusSchema = z.object({
-  status: z.enum(["On Board", "On Leave", "Available", "In Transit"]),
-  vessel: z.string(),
-  joinedDate: z.string(),
-  sailingDue: z.string(),
-  presentAssignment: z.string(),
+  status: z.enum(["On Board", "On Leave", "Available", "In Transit", "Inactive"]),
+  isActive: z.boolean().optional(),
+  vessel: z.string().nullable(),
+  joinedDate: z.string().nullable(),
+  sailingDue: z.string().nullable(),
+  nextAvailability: z.string().nullable().optional(),
+  presentAssignment: z.string().nullable(),
   emergencyContact: z.object({
     name: z.string(),
     relation: z.string(),
     phone: z.string(),
-  }),
+  }).nullable(),
 });
 
 export const experienceMetricSchema = z.object({

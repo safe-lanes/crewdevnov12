@@ -1062,12 +1062,12 @@ export class MemStorage implements IStorage {
         vessel: vesselName,
         joinedDate: joinedDateFormatted, 
         sailingDue: reliefDueFormatted,
-        presentAssignment: crewMember.presentVessel || "Chandigarh",
-        emergencyContact: {
-          name: "Mira Kumari", 
-          relation: "Wife",
-          phone: "+91 987 555 8553"
-        }
+        presentAssignment: crewMember.presentVessel || null,
+        emergencyContact: (crewMember.nokFirstName && crewMember.nokRelationship && crewMember.nokTelephone) ? {
+          name: `${crewMember.nokFirstName}${crewMember.nokFamilyName ? ' ' + crewMember.nokFamilyName : ''}`.trim(),
+          relation: crewMember.nokRelationship,
+          phone: crewMember.nokTelephone
+        } : null
       },
       experience: {
         company: 1.2,
@@ -3428,6 +3428,8 @@ export class PersistentFileStorage implements IStorage {
       updatedAt: null,
       uploadedPhoto: null,
       status: null,
+      isActive: true,
+      nextAvailability: null,
       empNo: null,
       dateOfBirth: null,
       age: null,
@@ -3498,6 +3500,8 @@ export class PersistentFileStorage implements IStorage {
       updatedAt: null,
       uploadedPhoto: null,
       status: null,
+      isActive: true,
+      nextAvailability: null,
       empNo: null,
       dateOfBirth: null,
       age: null,
@@ -3568,6 +3572,8 @@ export class PersistentFileStorage implements IStorage {
       updatedAt: null,
       uploadedPhoto: null,
       status: null,
+      isActive: true,
+      nextAvailability: null,
       empNo: null,
       dateOfBirth: null,
       age: null,
@@ -3638,6 +3644,8 @@ export class PersistentFileStorage implements IStorage {
       updatedAt: null,
       uploadedPhoto: null,
       status: null,
+      isActive: true,
+      nextAvailability: null,
       empNo: null,
       dateOfBirth: null,
       age: null,
@@ -4264,6 +4272,8 @@ export class PersistentFileStorage implements IStorage {
     const crewMember: CrewMember = {
       id: uniqueId,
       status: insertCrewMember.status ?? null,
+      isActive: insertCrewMember.isActive ?? true,
+      nextAvailability: insertCrewMember.nextAvailability ?? null,
       createdAt: null,
       updatedAt: null,
       uploadedPhoto: insertCrewMember.uploadedPhoto ?? null,
@@ -4371,12 +4381,12 @@ export class PersistentFileStorage implements IStorage {
         vessel: vesselName,
         joinedDate: joinedDateFormatted, 
         sailingDue: reliefDueFormatted,
-        presentAssignment: crewMember.presentVessel || "Chandigarh",
-        emergencyContact: {
-          name: "Mira Kumari", 
-          relation: "Wife",
-          phone: "+91 987 555 8553"
-        }
+        presentAssignment: crewMember.presentVessel || null,
+        emergencyContact: (crewMember.nokFirstName && crewMember.nokRelationship && crewMember.nokTelephone) ? {
+          name: `${crewMember.nokFirstName}${crewMember.nokFamilyName ? ' ' + crewMember.nokFamilyName : ''}`.trim(),
+          relation: crewMember.nokRelationship,
+          phone: crewMember.nokTelephone
+        } : null
       },
       experience: {
         company: 1.2,
@@ -4983,6 +4993,7 @@ export class PersistentFileStorage implements IStorage {
       applicableDocsChecked: insertPlanning.applicableDocsChecked ?? null,
       isArchived: insertPlanning.isArchived ?? false,
       archivedDate: insertPlanning.archivedDate ?? null,
+      signOffReason: insertPlanning.signOffReason ?? null,
       createdAt: null,
       updatedAt: null
     };
