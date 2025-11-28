@@ -292,7 +292,8 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   const sectionFRef = useRef<HTMLDivElement>(null);
 
   // Fetch vessel types from Master 004 API with fallback to static data
-  const { data: vesselTypeMasterDataRaw = [] } = useQuery<Array<{ entryId: string; name: string; level?: number }>>({
+  // Include vtuid field which vessels in Master 014 use to link to vessel types
+  const { data: vesselTypeMasterDataRaw = [] } = useQuery<Array<{ entryId: string; name: string; level?: number; vtuid?: string | null }>>({
     queryKey: ["/api/masters/004/data"],
   });
   
@@ -306,19 +307,38 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     return DEFAULT_DROPDOWN_VESSEL_TYPES;
   }, [vesselTypeMasterDataRaw]);
 
+  // Create a lookup map from vtuid (vessel type unique ID) to vessel type name
+  // Vessels in Master 014 store vtuid that matches the vtuid in Master 004, NOT the entryId
+  const vesselTypeIdToNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    vesselTypeMasterDataRaw.forEach(vt => {
+      // Use vtuid as the key (this is what vessels reference)
+      // Also add entryId as a fallback key for older data
+      if (vt.vtuid && vt.name) {
+        map.set(vt.vtuid, vt.name);
+      }
+      if (vt.entryId && vt.name) {
+        map.set(vt.entryId, vt.name);
+      }
+    });
+    return map;
+  }, [vesselTypeMasterDataRaw]);
+
   // Fetch vessels from Master 014 API for E1 Sea Service dropdown
-  const { data: vesselMasterData = [], isLoading: vesselsLoading } = useQuery<Array<{ id: number; entryId?: string; nuid?: string | null; name: string }>>({
+  // Include vtuid to link to vessel type from Master 004
+  const { data: vesselMasterData = [], isLoading: vesselsLoading } = useQuery<Array<{ id: number; entryId?: string; nuid?: string | null; name: string; vtuid?: string | null }>>({
     queryKey: ["/api/masters/014/data"],
   });
 
-  // Transform vessel master data for dropdown (name display, code storage)
+  // Transform vessel master data for dropdown (name display, code storage, vessel type link)
   // Use nuid if available, otherwise fall back to id as string
   const vesselOptions = useMemo(() => {
     return vesselMasterData
       .filter(v => v.name)
       .map(v => ({
         code: v.nuid || `VSL-${v.id}`,
-        name: v.name
+        name: v.name,
+        vtuid: v.vtuid || null
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [vesselMasterData]);
@@ -3005,6 +3025,13 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                             const selectedVessel = vesselOptions.find(v => v.code === value);
                             updateCurrentCompanySeaService(service.id, 'vesselCode', value);
                             updateCurrentCompanySeaService(service.id, 'vesselName', selectedVessel?.name || '');
+                            // Auto-populate vessel type from vessel's linked vtuid
+                            if (selectedVessel?.vtuid) {
+                              const vesselTypeName = vesselTypeIdToNameMap.get(selectedVessel.vtuid);
+                              if (vesselTypeName) {
+                                updateCurrentCompanySeaService(service.id, 'vesselType', vesselTypeName);
+                              }
+                            }
                           }}
                         >
                           <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
