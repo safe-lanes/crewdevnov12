@@ -307,16 +307,17 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   }, [vesselTypeMasterDataRaw]);
 
   // Fetch vessels from Master 014 API for E1 Sea Service dropdown
-  const { data: vesselMasterData = [], isLoading: vesselsLoading } = useQuery<Array<{ entryId: string; nuid: string; name: string }>>({
+  const { data: vesselMasterData = [], isLoading: vesselsLoading } = useQuery<Array<{ id: number; entryId?: string; nuid?: string | null; name: string }>>({
     queryKey: ["/api/masters/014/data"],
   });
 
   // Transform vessel master data for dropdown (name display, code storage)
+  // Use nuid if available, otherwise fall back to id as string
   const vesselOptions = useMemo(() => {
     return vesselMasterData
-      .filter(v => v.nuid && v.name)
+      .filter(v => v.name)
       .map(v => ({
-        code: v.nuid,
+        code: v.nuid || `VSL-${v.id}`,
         name: v.name
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
