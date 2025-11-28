@@ -1242,10 +1242,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       expiry: ''
     }));
     
-    setFormData(prev => ({
-      ...prev,
-      licenses: [...prev.licenses, ...newLicenses]
-    }));
+    setFormData(prev => {
+      // Filter out empty rows (rows with no certificate document)
+      const existingLicenses = prev.licenses.filter(l => l.certificateDocument.trim() !== '');
+      return {
+        ...prev,
+        licenses: [...existingLicenses, ...newLicenses]
+      };
+    });
     setIsLicenseDialogOpen(false);
   };
 
@@ -1262,10 +1266,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       expiry: ''
     }));
     
-    setFormData(prev => ({
-      ...prev,
-      trainingCourses: [...prev.trainingCourses, ...newCourses]
-    }));
+    setFormData(prev => {
+      // Filter out empty rows (rows with no training course name)
+      const existingCourses = prev.trainingCourses.filter(c => c.trainingCourse.trim() !== '');
+      return {
+        ...prev,
+        trainingCourses: [...existingCourses, ...newCourses]
+      };
+    });
     setIsTrainingDialogOpen(false);
   };
 
@@ -1280,10 +1288,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       issuingAuthority: ''
     }));
     
-    setFormData(prev => ({
-      ...prev,
-      documents: [...prev.documents, ...newDocs]
-    }));
+    setFormData(prev => {
+      // Filter out empty rows (rows with no document name)
+      const existingDocs = prev.documents.filter(d => d.document.trim() !== '');
+      return {
+        ...prev,
+        documents: [...existingDocs, ...newDocs]
+      };
+    });
     setIsTravelDocDialogOpen(false);
   };
 
@@ -1298,10 +1310,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       visaType: ''
     }));
     
-    setFormData(prev => ({
-      ...prev,
-      visas: [...prev.visas, ...newVisas]
-    }));
+    setFormData(prev => {
+      // Filter out empty rows (rows with no issuing country)
+      const existingVisas = prev.visas.filter(v => v.issuingCountry.trim() !== '');
+      return {
+        ...prev,
+        visas: [...existingVisas, ...newVisas]
+      };
+    });
     setIsVisaDialogOpen(false);
   };
 
