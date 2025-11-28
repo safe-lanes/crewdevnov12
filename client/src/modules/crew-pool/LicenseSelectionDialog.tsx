@@ -22,14 +22,14 @@ interface LicenseSelectionDialogProps {
   open: boolean;
   onClose: () => void;
   onConfirm: (selectedTemplates: LicenseTemplate[]) => void;
-  existingLicenses?: string[];
+  existingLicenseIds?: string[];
 }
 
 export function LicenseSelectionDialog({
   open,
   onClose,
   onConfirm,
-  existingLicenses = [],
+  existingLicenseIds = [],
 }: LicenseSelectionDialogProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
@@ -62,13 +62,8 @@ export function LicenseSelectionDialog({
   }, [templates, searchTerm]);
 
   const alreadyAddedIds = useMemo(() => {
-    return new Set(
-      existingLicenses.map(name => {
-        const template = templates.find(t => t.name === name);
-        return template?.id;
-      }).filter(Boolean) as string[]
-    );
-  }, [existingLicenses, templates]);
+    return new Set(existingLicenseIds);
+  }, [existingLicenseIds]);
 
   const handleToggle = (id: string) => {
     setSelectedIds(prev => {
@@ -158,9 +153,10 @@ export function LicenseSelectionDialog({
         <div className="border rounded-lg overflow-hidden flex-1">
           <div className="bg-gray-100 grid grid-cols-12 gap-2 px-4 py-2 text-xs font-medium text-gray-600">
             <div className="col-span-1"></div>
-            <div className="col-span-5">Certificate / Document</div>
+            <div className="col-span-2">ID</div>
+            <div className="col-span-4">Certificate / Document</div>
             <div className="col-span-2">ABBR</div>
-            <div className="col-span-4">Requirement</div>
+            <div className="col-span-3">Requirement</div>
           </div>
 
           <ScrollArea className="h-[300px]">
@@ -195,7 +191,10 @@ export function LicenseSelectionDialog({
                           className="h-4 w-4"
                         />
                       </div>
-                      <div className="col-span-5 text-sm text-gray-800">
+                      <div className="col-span-2 text-sm text-gray-800 font-mono">
+                        {template.id}
+                      </div>
+                      <div className="col-span-4 text-sm text-gray-800">
                         {template.name}
                         {isAlreadyAdded && (
                           <span className="ml-2 text-xs text-gray-400">(already added)</span>
@@ -204,7 +203,7 @@ export function LicenseSelectionDialog({
                       <div className="col-span-2 text-sm text-gray-600 font-mono">
                         {template.abbr}
                       </div>
-                      <div className="col-span-4 text-sm text-gray-600">
+                      <div className="col-span-3 text-sm text-gray-600">
                         {template.requirement}
                       </div>
                     </div>

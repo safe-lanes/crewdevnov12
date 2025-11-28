@@ -156,6 +156,7 @@ interface Education {
 
 interface License {
   id: string;
+  licenseId: string;  // Master 016 entry_id (e.g., LIC001) - empty for manual entries
   certificateDocument: string;
   abbr: string;
   requirement: string;
@@ -522,6 +523,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     // A3.2 License & DCE
     licenses: [{
       id: '1',
+      licenseId: '',
       certificateDocument: '',
       abbr: '',
       requirement: '',
@@ -974,7 +976,8 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   // License management
   const addLicense = () => {
     const newLicense: License = {
-      id: (formData.licenses.length + 1).toString(),
+      id: `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      licenseId: '',  // Empty for manual entries
       certificateDocument: '',
       abbr: '',
       requirement: '',
@@ -990,6 +993,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   const addLicensesFromDatabase = (selectedTemplates: LicenseTemplate[]) => {
     const newLicenses: License[] = selectedTemplates.map((template) => ({
       id: `db-${template.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      licenseId: template.id,  // Store Master 016 entry_id (e.g., LIC001)
       certificateDocument: template.name,
       abbr: template.abbr,
       requirement: template.requirement,
@@ -2940,6 +2944,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-20">ID</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Certificate/Document</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Abbr</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Requirement</TableHead>
@@ -2953,6 +2958,11 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
           <TableBody>
             {formData.licenses.map((license) => (
               <TableRow key={license.id} className="border-b border-gray-200">
+                <TableCell className="p-3">
+                  <span className="text-[#4f5863] text-[13px] font-mono">
+                    {license.licenseId || '-'}
+                  </span>
+                </TableCell>
                 <TableCell className="p-3">
                   <Input
                     value={license.certificateDocument}
@@ -4590,7 +4600,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
         open={isLicenseDialogOpen}
         onClose={() => setIsLicenseDialogOpen(false)}
         onConfirm={addLicensesFromDatabase}
-        existingLicenses={formData.licenses.map(l => l.certificateDocument)}
+        existingLicenseIds={formData.licenses.map(l => l.licenseId).filter(Boolean)}
       />
       
       {/* Training Course Selection Dialog - Add from Database */}
