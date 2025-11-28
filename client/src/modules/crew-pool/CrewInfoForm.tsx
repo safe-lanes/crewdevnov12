@@ -2998,12 +2998,33 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                   formData.currentCompanySeaService.map((service) => (
                     <tr key={service.id} className="border-t">
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
-                        <Input
-                          value={service.vesselName}
-                          onChange={(e) => updateCurrentCompanySeaService(service.id, 'vesselName', e.target.value)}
-                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                          placeholder="Enter vessel name"
-                        />
+                        <Select
+                          value={service.vesselCode}
+                          onValueChange={(value) => {
+                            const selectedVessel = vesselOptions.find(v => v.code === value);
+                            updateCurrentCompanySeaService(service.id, 'vesselCode', value);
+                            updateCurrentCompanySeaService(service.id, 'vesselName', selectedVessel?.name || '');
+                          }}
+                        >
+                          <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                            <SelectValue placeholder="Select vessel">
+                              {service.vesselName || "Select vessel"}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {vesselsLoading ? (
+                              <SelectItem value="loading" disabled>Loading vessels...</SelectItem>
+                            ) : vesselOptions.length === 0 ? (
+                              <SelectItem value="empty" disabled>No vessels available</SelectItem>
+                            ) : (
+                              vesselOptions.map((vessel) => (
+                                <SelectItem key={vessel.code} value={vessel.code}>
+                                  {vessel.name}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Select
