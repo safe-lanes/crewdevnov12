@@ -183,7 +183,7 @@ export function LicenseSelectionDialog({
                       onClick={() => !isAlreadyAdded && handleToggle(template.id)}
                       data-testid={`license-option-${template.id}`}
                     >
-                      <div className="col-span-1">
+                      <div className="col-span-1" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={isSelected}
                           disabled={isAlreadyAdded}

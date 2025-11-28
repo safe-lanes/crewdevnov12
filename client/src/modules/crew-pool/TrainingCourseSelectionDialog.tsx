@@ -192,7 +192,7 @@ export function TrainingCourseSelectionDialog({
                       onClick={() => !isAlreadyAdded && handleToggle(template.id)}
                       data-testid={`training-option-${template.id}`}
                     >
-                      <div className="col-span-1">
+                      <div className="col-span-1" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={isSelected}
                           disabled={isAlreadyAdded}
