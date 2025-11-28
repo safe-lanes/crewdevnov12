@@ -536,6 +536,27 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     doctorVisits: []
   });
 
+  // Helper function to calculate period in months between two dates (used for hydration)
+  // Uses average days per month (30.44) for accurate calculation
+  const calculateSeaServicePeriod = (fromDate: string, toDate: string): string => {
+    if (!fromDate || !toDate) return '';
+    
+    const from = new Date(fromDate);
+    const to = new Date(toDate);
+    
+    if (isNaN(from.getTime()) || isNaN(to.getTime())) return '';
+    if (to < from) return '';
+    
+    // Calculate total days between dates and convert to months
+    const timeDiff = to.getTime() - from.getTime();
+    const totalDays = timeDiff / (1000 * 60 * 60 * 24);
+    const totalMonths = totalDays / 30.44; // Average days per month
+    
+    // Round to 1 decimal place, ensure minimum of 0
+    const result = Math.max(0, Math.round(totalMonths * 10) / 10);
+    return result.toString();
+  };
+
   // Update form data when detailed crew data loads from API
   useEffect(() => {
     if (detailedCrewData && crewMember?.id) {
@@ -623,16 +644,30 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
           : detailedCrewData.trainingCourses 
             ? JSON.parse(detailedCrewData.trainingCourses) 
             : prev.trainingCourses,
-        currentCompanySeaService: Array.isArray(detailedCrewData.currentCompanySeaService) 
-          ? detailedCrewData.currentCompanySeaService 
-          : detailedCrewData.currentCompanySeaService 
-            ? JSON.parse(detailedCrewData.currentCompanySeaService) 
-            : prev.currentCompanySeaService,
-        externalSeaService: Array.isArray(detailedCrewData.externalSeaService) 
-          ? detailedCrewData.externalSeaService 
-          : detailedCrewData.externalSeaService 
-            ? JSON.parse(detailedCrewData.externalSeaService) 
-            : prev.externalSeaService,
+        currentCompanySeaService: (() => {
+          const services = Array.isArray(detailedCrewData.currentCompanySeaService) 
+            ? detailedCrewData.currentCompanySeaService 
+            : detailedCrewData.currentCompanySeaService 
+              ? JSON.parse(detailedCrewData.currentCompanySeaService) 
+              : prev.currentCompanySeaService;
+          // Recalculate periods for existing records with dates
+          return services.map((s: SeaService) => ({
+            ...s,
+            periodMonths: s.from && s.to ? calculateSeaServicePeriod(s.from, s.to) : s.periodMonths || ''
+          }));
+        })(),
+        externalSeaService: (() => {
+          const services = Array.isArray(detailedCrewData.externalSeaService) 
+            ? detailedCrewData.externalSeaService 
+            : detailedCrewData.externalSeaService 
+              ? JSON.parse(detailedCrewData.externalSeaService) 
+              : prev.externalSeaService;
+          // Recalculate periods for existing records with dates
+          return services.map((s: SeaService) => ({
+            ...s,
+            periodMonths: s.from && s.to ? calculateSeaServicePeriod(s.from, s.to) : s.periodMonths || ''
+          }));
+        })(),
         preJoiningMedicals: Array.isArray(detailedCrewData.preJoiningMedicals) 
           ? detailedCrewData.preJoiningMedicals 
           : detailedCrewData.preJoiningMedicals 
@@ -954,6 +989,27 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     }));
   };
 
+  // Helper function to calculate period in months between two dates
+  // Uses average days per month (30.44) for accurate calculation
+  const calculatePeriodMonths = (fromDate: string, toDate: string): string => {
+    if (!fromDate || !toDate) return '';
+    
+    const from = new Date(fromDate);
+    const to = new Date(toDate);
+    
+    if (isNaN(from.getTime()) || isNaN(to.getTime())) return '';
+    if (to < from) return '';
+    
+    // Calculate total days between dates and convert to months
+    const timeDiff = to.getTime() - from.getTime();
+    const totalDays = timeDiff / (1000 * 60 * 60 * 24);
+    const totalMonths = totalDays / 30.44; // Average days per month
+    
+    // Round to 1 decimal place, ensure minimum of 0
+    const result = Math.max(0, Math.round(totalMonths * 10) / 10);
+    return result.toString();
+  };
+
   // Sea service management - Current Company
   const addCurrentCompanySeaService = () => {
     const newService: SeaService = {
@@ -975,9 +1031,20 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   const updateCurrentCompanySeaService = (id: string, field: keyof SeaService, value: string) => {
     setFormData(prev => ({
       ...prev,
-      currentCompanySeaService: prev.currentCompanySeaService.map(service => 
-        service.id === id ? { ...service, [field]: value } : service
-      )
+      currentCompanySeaService: prev.currentCompanySeaService.map(service => {
+        if (service.id !== id) return service;
+        
+        const updatedService = { ...service, [field]: value };
+        
+        // Auto-calculate period when from or to date changes
+        if (field === 'from' || field === 'to') {
+          const fromDate = field === 'from' ? value : service.from;
+          const toDate = field === 'to' ? value : service.to;
+          updatedService.periodMonths = calculatePeriodMonths(fromDate, toDate);
+        }
+        
+        return updatedService;
+      })
     }));
   };
 
@@ -1009,9 +1076,20 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   const updateExternalSeaService = (id: string, field: keyof SeaService, value: string) => {
     setFormData(prev => ({
       ...prev,
-      externalSeaService: prev.externalSeaService.map(service => 
-        service.id === id ? { ...service, [field]: value } : service
-      )
+      externalSeaService: prev.externalSeaService.map(service => {
+        if (service.id !== id) return service;
+        
+        const updatedService = { ...service, [field]: value };
+        
+        // Auto-calculate period when from or to date changes
+        if (field === 'from' || field === 'to') {
+          const fromDate = field === 'from' ? value : service.from;
+          const toDate = field === 'to' ? value : service.to;
+          updatedService.periodMonths = calculatePeriodMonths(fromDate, toDate);
+        }
+        
+        return updatedService;
+      })
     }));
   };
 
