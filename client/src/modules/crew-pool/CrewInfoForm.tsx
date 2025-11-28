@@ -17,6 +17,8 @@ import { toStorageCrew } from '@shared/crew-mapping';
 import type { CrewDashboardSummary } from '@shared/schema';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
+import { LicenseSelectionDialog } from './LicenseSelectionDialog';
+import type { LicenseTemplate } from '@/utils/data/licenseDceTemplates';
 
 interface CrewMember {
   id: string;
@@ -273,6 +275,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   const [isStatusEditOpen, setIsStatusEditOpen] = useState(false);
   const [isNextAvailabilityEditOpen, setIsNextAvailabilityEditOpen] = useState(false);
   const [tempNextAvailability, setTempNextAvailability] = useState<string>('');
+  const [isLicenseDialogOpen, setIsLicenseDialogOpen] = useState(false);
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
 
   // Sections for stepper navigation  
@@ -978,6 +981,26 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
       expiry: ''
     };
     setFormData(prev => ({ ...prev, licenses: [...prev.licenses, newLicense] }));
+  };
+
+  // Add licenses from database selection
+  const addLicensesFromDatabase = (selectedTemplates: LicenseTemplate[]) => {
+    const newLicenses: License[] = selectedTemplates.map((template) => ({
+      id: `db-${template.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      certificateDocument: template.name,
+      abbr: template.abbr,
+      requirement: template.requirement,
+      certificateNo: '',
+      issuingAuthority: '',
+      issued: '',
+      expiry: ''
+    }));
+    
+    setFormData(prev => ({ 
+      ...prev, 
+      licenses: [...prev.licenses, ...newLicenses] 
+    }));
+    setIsLicenseDialogOpen(false);
   };
 
   const updateLicense = (id: string, field: keyof License, value: string) => {
@@ -2872,6 +2895,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             <Button
               variant="outline"
               size="sm"
+              onClick={() => setIsLicenseDialogOpen(true)}
               className="text-gray-600 border-gray-300 hover:bg-gray-50 text-xs"
               data-testid="button-add-license-from-database"
             >
@@ -4536,6 +4560,14 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* License Selection Dialog - Add from Database */}
+      <LicenseSelectionDialog
+        open={isLicenseDialogOpen}
+        onClose={() => setIsLicenseDialogOpen(false)}
+        onConfirm={addLicensesFromDatabase}
+        existingLicenses={formData.licenses.map(l => l.certificateDocument)}
+      />
     </div>
   );
 };
