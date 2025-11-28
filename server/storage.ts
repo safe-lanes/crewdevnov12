@@ -111,6 +111,89 @@ function isOfficerRank(rankName: string): boolean {
   return officerKeywords.some(keyword => normalized.includes(keyword));
 }
 
+function calculateShipTypeExperience(
+  companySeaService: any[],
+  externalSeaService: any[]
+): { shipTypeExperience: Array<{ type: string; label: string; months: number; years: number }>; totalMonths: number } {
+  const allSeaService = [...companySeaService, ...externalSeaService];
+  
+  // Vessel type normalization map
+  const vesselTypeNormalization: Record<string, string> = {
+    'oil tanker': 'Oil Tkr',
+    'product tanker': 'Oil Tkr', 
+    'crude oil tanker': 'Oil Tkr',
+    'chemical tanker': 'Ch Tkr',
+    'oil/chemical tanker': 'Oil/Ch Tkr',
+    'oil chemical tanker': 'Oil/Ch Tkr',
+    'gas tanker': 'Gas Tkr',
+    'lpg tanker': 'Gas Tkr',
+    'lng tanker': 'Gas Tkr',
+    'bulk carrier': 'Bulk',
+    'dry bulk carrier': 'Bulk',
+    'bulk': 'Bulk',
+    'container ship': 'Container',
+    'container': 'Container',
+    'general cargo': 'Gen Cargo',
+    'ro-ro': 'Ro-Ro',
+    'roro': 'Ro-Ro',
+    'offshore': 'Offshore',
+    'tanker': 'Tanker'
+  };
+  
+  // Aggregate months by normalized vessel type
+  const typeMonths: Record<string, number> = {};
+  let totalMonths = 0;
+  
+  for (const service of allSeaService) {
+    const period = parseFloat(service.periodMonths) || 0;
+    if (period <= 0) continue;
+    
+    totalMonths += period;
+    
+    // Normalize vessel type
+    let vesselType = (service.vesselType || '').trim();
+    if (!vesselType) continue;
+    
+    const normalizedType = vesselType.toLowerCase();
+    let displayLabel = vesselTypeNormalization[normalizedType] || null;
+    
+    // If no exact match, try keyword matching
+    if (!displayLabel) {
+      if (normalizedType.includes('oil') && normalizedType.includes('chemical')) {
+        displayLabel = 'Oil/Ch Tkr';
+      } else if (normalizedType.includes('oil') || normalizedType.includes('product') || normalizedType.includes('crude')) {
+        displayLabel = 'Oil Tkr';
+      } else if (normalizedType.includes('chemical')) {
+        displayLabel = 'Ch Tkr';
+      } else if (normalizedType.includes('gas') || normalizedType.includes('lpg') || normalizedType.includes('lng')) {
+        displayLabel = 'Gas Tkr';
+      } else if (normalizedType.includes('bulk')) {
+        displayLabel = 'Bulk';
+      } else if (normalizedType.includes('container')) {
+        displayLabel = 'Container';
+      } else if (normalizedType.includes('tanker')) {
+        displayLabel = 'Tanker';
+      } else {
+        displayLabel = vesselType; // Use original if no mapping
+      }
+    }
+    
+    typeMonths[displayLabel] = (typeMonths[displayLabel] || 0) + period;
+  }
+  
+  // Convert to array and sort by months descending
+  const shipTypeExperience = Object.entries(typeMonths)
+    .map(([type, months]) => ({
+      type,
+      label: type,
+      months,
+      years: Math.round((months / 12) * 10) / 10
+    }))
+    .sort((a, b) => b.months - a.months);
+  
+  return { shipTypeExperience, totalMonths };
+}
+
 function calculateExperienceFromSeaService(
   companySeaService: any[],
   externalSeaService: any[],
@@ -1191,6 +1274,31 @@ export class MemStorage implements IStorage {
     const joinedDateFormatted = formatDateForDashboard(crewMember.joiningDate || crewMember.signOnDate);
     const reliefDueFormatted = formatDateForDashboard(crewMember.reliefDue);
 
+    // Parse sea service data for experience calculations
+    let companySeaService: any[] = [];
+    let externalSeaService: any[] = [];
+    try {
+      companySeaService = crewMember.currentCompanySeaService 
+        ? JSON.parse(crewMember.currentCompanySeaService as string) 
+        : [];
+    } catch (e) {
+      companySeaService = [];
+    }
+    try {
+      externalSeaService = crewMember.externalSeaService 
+        ? JSON.parse(crewMember.externalSeaService as string) 
+        : [];
+    } catch (e) {
+      externalSeaService = [];
+    }
+    
+    // Calculate experience from sea service
+    const currentRank = crewMember.presentRank || '';
+    const experience = calculateExperienceFromSeaService(companySeaService, externalSeaService, currentRank);
+    
+    // Calculate ship type experience
+    const shipTypeData = calculateShipTypeExperience(companySeaService, externalSeaService);
+
     // Generate dashboard data based on actual crew member data
     const summary: CrewDashboardSummary = {
       status: {
@@ -1206,17 +1314,16 @@ export class MemStorage implements IStorage {
         } : null
       },
       experience: {
-        company: 1.2,
-        rank: 1.9,
-        tankers: 2.5, 
-        ocw: 3.6,
-        endorsements: "5"
+        company: experience.company,
+        rank: experience.rank,
+        tankers: experience.tankers, 
+        ocw: experience.oow,
+        endorsements: "—"
       },
       shipTypes: {
-        oilTanker: 4.2,
-        chemicalTanker: 5.1,
-        gasTanker: 3.2,
-        bulk: 1.1
+        items: shipTypeData.shipTypeExperience,
+        totalMonths: shipTypeData.totalMonths,
+        totalYears: Math.round((shipTypeData.totalMonths / 12) * 10) / 10
       },
       serviceTimeline: [
         { vessel: "Pacific Explorer", startMonth: 1, endMonth: 3, type: "completed" },
@@ -4536,6 +4643,9 @@ export class PersistentFileStorage implements IStorage {
       externalSeaService,
       currentRank
     );
+    
+    // Calculate ship type experience
+    const shipTypeData = calculateShipTypeExperience(companySeaService, externalSeaService);
 
     const vesselName = crewMember.presentVessel ? translateVesselCodeToName(crewMember.presentVessel) : '';
     const joinedDateFormatted = formatDateForDashboard(crewMember.joiningDate || crewMember.signOnDate);
@@ -4563,10 +4673,9 @@ export class PersistentFileStorage implements IStorage {
         endorsements: "—"  // Will be calculated from D2 section later
       },
       shipTypes: {
-        oilTanker: 4.2,
-        chemicalTanker: 5.1,
-        gasTanker: 3.2,
-        bulk: 1.1
+        items: shipTypeData.shipTypeExperience,
+        totalMonths: shipTypeData.totalMonths,
+        totalYears: Math.round((shipTypeData.totalMonths / 12) * 10) / 10
       },
       serviceTimeline: [
         { vessel: "Pacific Explorer", startMonth: 1, endMonth: 3, type: "completed" },
