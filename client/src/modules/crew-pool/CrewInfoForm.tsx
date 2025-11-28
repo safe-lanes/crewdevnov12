@@ -2868,16 +2868,26 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>D2 License & DCE</h3>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={addLicense}
-            className="text-gray-600 border-gray-300 hover:bg-gray-50"
-            data-testid="button-add-license"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            ADD
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-gray-600 border-gray-300 hover:bg-gray-50 text-xs"
+              data-testid="button-add-license-from-database"
+            >
+              + ADD FROM DATABASE
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={addLicense}
+              className="text-gray-600 border-gray-300 hover:bg-gray-50"
+              data-testid="button-add-license"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              ADD
+            </Button>
+          </div>
         </div>
         
         <Table className="w-full">
@@ -2979,16 +2989,26 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>D3 Training Course</h3>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={addTrainingCourse}
-            className="text-gray-600 border-gray-300 hover:bg-gray-50"
-            data-testid="button-add-training-course"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            ADD
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-gray-600 border-gray-300 hover:bg-gray-50 text-xs"
+              data-testid="button-add-training-from-database"
+            >
+              + ADD FROM DATABASE
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={addTrainingCourse}
+              className="text-gray-600 border-gray-300 hover:bg-gray-50"
+              data-testid="button-add-training-course"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              ADD
+            </Button>
+          </div>
         </div>
         
         <Table className="w-full">
