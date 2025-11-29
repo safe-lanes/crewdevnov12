@@ -1645,6 +1645,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get company rank by name - for endorsement code derivation
+  app.get("/api/company-ranks/by-name/:rankName", async (req, res) => {
+    try {
+      const { rankName } = req.params;
+      const companyRank = await storage.getCompanyRankByName(decodeURIComponent(rankName));
+      if (!companyRank) {
+        return res.status(404).json({ error: "Rank not found" });
+      }
+      res.json(companyRank);
+    } catch (error) {
+      console.error("❌ Failed to fetch company rank by name:", error);
+      res.status(500).json({ error: "Failed to fetch company rank" });
+    }
+  });
+
   // Promotion Hierarchies endpoints
   app.get("/api/promotion-hierarchies", async (req, res) => {
     try {

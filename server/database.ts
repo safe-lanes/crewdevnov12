@@ -882,6 +882,11 @@ export class DatabaseStorage implements IStorage {
     return result[0] || undefined;
   }
 
+  async getCompanyRankByName(rankName: string): Promise<CompanyRank | undefined> {
+    const result = await this.db.select().from(companyRanks).where(eq(companyRanks.rank, rankName));
+    return result[0] || undefined;
+  }
+
   async createCompanyRank(rank: InsertCompanyRank): Promise<CompanyRank> {
     const [created] = await this.db.insert(companyRanks).values(rank).returning();
     return created;

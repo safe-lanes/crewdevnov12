@@ -260,6 +260,61 @@ function calculateExperienceFromSeaService(
   };
 }
 
+/**
+ * Derive endorsement code (O, C, G combinations) based on rank category and licenses held
+ * 
+ * Mapping by Rank Category:
+ * - Senior Officers: L002 (DCE_Oil_Management) → O, L004 (DCE_Chem_Management) → C, L006 (DCE_Gas_Management) → G
+ * - Other Officers: L001/L002 → O, L003/L004 → C, L005/L006 → G
+ * - Ratings: LIC018 (DCE_Oil_Support) → O, LIC019 (DCE_Chem_Support) → C, LIC020 (DCE_Gas_Support) → G
+ */
+export function deriveEndorsementCode(
+  rankFlags: { seniorOfficer?: boolean | null; officer?: boolean | null; rating?: boolean | null },
+  licenses: Array<{ licenseType?: string; licenseId?: string; entryId?: string }>
+): string {
+  if (!licenses || licenses.length === 0) return '—';
+  
+  // Extract license IDs from the licenses array
+  // Note: License records store their ID in 'entryId' (from Master 016), not 'licenseId'
+  const licenseIds = new Set(
+    licenses.map(lic => (lic.entryId || lic.licenseId || lic.licenseType || '').toUpperCase())
+  );
+  
+  let hasO = false;
+  let hasC = false;
+  let hasG = false;
+  
+  if (rankFlags.seniorOfficer) {
+    // Senior Officers - only Management level DCE
+    hasO = licenseIds.has('L002') || licenseIds.has('LIC002');
+    hasC = licenseIds.has('L004') || licenseIds.has('LIC004');
+    hasG = licenseIds.has('L006') || licenseIds.has('LIC006');
+  } else if (rankFlags.rating) {
+    // Ratings - Support level DCE
+    hasO = licenseIds.has('LIC018');
+    hasC = licenseIds.has('LIC019');
+    hasG = licenseIds.has('LIC020');
+  } else if (rankFlags.officer) {
+    // Other Officers (not Senior) - Operation OR Management level DCE
+    hasO = licenseIds.has('L001') || licenseIds.has('L002') || licenseIds.has('LIC001') || licenseIds.has('LIC002');
+    hasC = licenseIds.has('L003') || licenseIds.has('L004') || licenseIds.has('LIC003') || licenseIds.has('LIC004');
+    hasG = licenseIds.has('L005') || licenseIds.has('L006') || licenseIds.has('LIC005') || licenseIds.has('LIC006');
+  } else {
+    // Default: treat as Other Officers (officer flag not explicitly set)
+    hasO = licenseIds.has('L001') || licenseIds.has('L002') || licenseIds.has('LIC001') || licenseIds.has('LIC002');
+    hasC = licenseIds.has('L003') || licenseIds.has('L004') || licenseIds.has('LIC003') || licenseIds.has('LIC004');
+    hasG = licenseIds.has('L005') || licenseIds.has('L006') || licenseIds.has('LIC005') || licenseIds.has('LIC006');
+  }
+  
+  // Build endorsement code string
+  let code = '';
+  if (hasO) code += 'O';
+  if (hasC) code += 'C';
+  if (hasG) code += 'G';
+  
+  return code || '—';
+}
+
 //Helper function to translate vessel name to vessel code
 // Provides static mapping for storage backends that don't have master data
 // Throws error if vessel cannot be translated to enforce data integrity
@@ -308,6 +363,7 @@ export interface IStorage {
   // Company Ranks
   getCompanyRanks(): Promise<CompanyRank[]>;
   getCompanyRank(id: string): Promise<CompanyRank | undefined>;
+  getCompanyRankByName(rankName: string): Promise<CompanyRank | undefined>;
   createCompanyRank(rank: InsertCompanyRank): Promise<CompanyRank>;
   updateCompanyRank(id: string, rank: Partial<InsertCompanyRank>): Promise<CompanyRank | undefined>;
   deleteCompanyRank(id: string): Promise<boolean>;
@@ -1149,6 +1205,11 @@ export class MemStorage implements IStorage {
     return this.companyRanks.get(id);
   }
 
+  async getCompanyRankByName(rankName: string): Promise<CompanyRank | undefined> {
+    const ranks = Array.from(this.companyRanks.values());
+    return ranks.find(r => r.rank?.toLowerCase() === rankName.toLowerCase());
+  }
+
   async createCompanyRank(insertCompanyRank: InsertCompanyRank): Promise<CompanyRank> {
     const companyRank: CompanyRank = { ...insertCompanyRank, createdAt: null, updatedAt: null };
     this.companyRanks.set(companyRank.id, companyRank);
@@ -1299,6 +1360,27 @@ export class MemStorage implements IStorage {
     // Calculate ship type experience
     const shipTypeData = calculateShipTypeExperience(companySeaService, externalSeaService);
 
+    // Parse licenses for endorsement calculation
+    let licenses: any[] = [];
+    try {
+      licenses = crewMember.licenses 
+        ? JSON.parse(crewMember.licenses as string) 
+        : [];
+    } catch (e) {
+      licenses = [];
+    }
+
+    // Get rank flags for endorsement derivation
+    const rankFlags = await this.getCompanyRankByName(currentRank);
+    const endorsementCode = deriveEndorsementCode(
+      {
+        seniorOfficer: rankFlags?.seniorOfficer,
+        officer: rankFlags?.officer,
+        rating: rankFlags?.rating
+      },
+      licenses
+    );
+
     // Generate dashboard data based on actual crew member data
     const summary: CrewDashboardSummary = {
       status: {
@@ -1318,7 +1400,7 @@ export class MemStorage implements IStorage {
         rank: experience.rank,
         tankers: experience.tankers, 
         ocw: experience.oow,
-        endorsements: "—"
+        endorsements: endorsementCode
       },
       shipTypes: {
         items: shipTypeData.shipTypeExperience,
@@ -4299,6 +4381,11 @@ export class PersistentFileStorage implements IStorage {
     return this.companyRanks.get(id);
   }
 
+  async getCompanyRankByName(rankName: string): Promise<CompanyRank | undefined> {
+    const ranks = Array.from(this.companyRanks.values());
+    return ranks.find(r => r.rank?.toLowerCase() === rankName.toLowerCase());
+  }
+
   async createCompanyRank(insertCompanyRank: InsertCompanyRank): Promise<CompanyRank> {
     const companyRank: CompanyRank = {
       id: insertCompanyRank.id,
@@ -4647,6 +4734,27 @@ export class PersistentFileStorage implements IStorage {
     // Calculate ship type experience
     const shipTypeData = calculateShipTypeExperience(companySeaService, externalSeaService);
 
+    // Parse licenses for endorsement calculation
+    let licenses: any[] = [];
+    try {
+      licenses = crewMember.licenses 
+        ? JSON.parse(crewMember.licenses as string) 
+        : [];
+    } catch (e) {
+      licenses = [];
+    }
+
+    // Get rank flags for endorsement derivation
+    const rankFlags = await this.getCompanyRankByName(currentRank);
+    const endorsementCode = deriveEndorsementCode(
+      {
+        seniorOfficer: rankFlags?.seniorOfficer,
+        officer: rankFlags?.officer,
+        rating: rankFlags?.rating
+      },
+      licenses
+    );
+
     const vesselName = crewMember.presentVessel ? translateVesselCodeToName(crewMember.presentVessel) : '';
     const joinedDateFormatted = formatDateForDashboard(crewMember.joiningDate || crewMember.signOnDate);
     const reliefDueFormatted = formatDateForDashboard(crewMember.reliefDue);
@@ -4670,7 +4778,7 @@ export class PersistentFileStorage implements IStorage {
         rank: experience.rank,
         tankers: experience.tankers, 
         ocw: experience.oow,
-        endorsements: "—"  // Will be calculated from D2 section later
+        endorsements: endorsementCode
       },
       shipTypes: {
         items: shipTypeData.shipTypeExperience,
