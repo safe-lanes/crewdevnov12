@@ -1,4 +1,4 @@
-import { useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect, useMemo, useState } from 'react';
 import { format, addMonths, differenceInDays, parseISO, isAfter, isBefore, isWithinInterval } from 'date-fns';
 import type { ServiceAssignment } from '@shared/schema';
 
@@ -9,6 +9,16 @@ interface TimelineCardProps {
   onHandoverClick?: (handoverId: number) => void;
 }
 
+interface BadgePosition {
+  index: number;
+  x: number;
+  y: number;
+  hasAppraisal: boolean;
+  hasHandover: boolean;
+  appraisalIds: number[];
+  handoverIds: number[];
+}
+
 export function TimelineCard({ 
   assignments, 
   isLoading = false,
@@ -17,6 +27,7 @@ export function TimelineCard({
 }: TimelineCardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [badgePositions, setBadgePositions] = useState<BadgePosition[]>([]);
   
   const today = useMemo(() => new Date(), []);
   const startDate = useMemo(() => addMonths(today, -2), [today]);
@@ -40,6 +51,7 @@ export function TimelineCard({
     const assignmentStart = parseISO(assignment.startDate);
     const assignmentEnd = assignment.endDate ? parseISO(assignment.endDate) : null;
     const contractEnd = assignment.contractEndDate ? parseISO(assignment.contractEndDate) : null;
+    const rangeEnd = assignment.rangeEndDate ? parseISO(assignment.rangeEndDate) : null;
     
     if (assignment.type === 'planned') {
       return '#3B82F6';
@@ -55,8 +67,12 @@ export function TimelineCard({
     });
     
     if (isOnBoard) {
-      if (contractEnd && isAfter(today, contractEnd)) {
+      if (rangeEnd && isAfter(today, rangeEnd)) {
         return '#EF4444';
+      }
+      
+      if (contractEnd && isAfter(today, contractEnd)) {
+        return '#F59E0B';
       }
       
       if (contractEnd && differenceInDays(contractEnd, today) < 14) {
@@ -116,6 +132,8 @@ export function TimelineCard({
       return !(isAfter(aStart, endDate) || isBefore(aEnd, startDate));
     });
     
+    const newBadgePositions: BadgePosition[] = [];
+    
     filteredAssignments.forEach((assignment, index) => {
       const assignmentStart = parseISO(assignment.startDate);
       const assignmentEnd = assignment.endDate 
@@ -148,7 +166,24 @@ export function TimelineCard({
       if (barWidth > 50) {
         ctx.fillText(vesselName, barStartX + 6, barY + 14);
       }
+      
+      const hasAppraisal = assignment.appraisalIds && assignment.appraisalIds.length > 0;
+      const hasHandover = assignment.handoverIds && assignment.handoverIds.length > 0;
+      
+      if (hasAppraisal || hasHandover) {
+        newBadgePositions.push({
+          index,
+          x: barStartX + barWidth + 4,
+          y: barY,
+          hasAppraisal: !!hasAppraisal,
+          hasHandover: !!hasHandover,
+          appraisalIds: assignment.appraisalIds || [],
+          handoverIds: assignment.handoverIds || []
+        });
+      }
     });
+    
+    setBadgePositions(newBadgePositions);
     
   }, [assignments, isLoading, months, today, startDate, endDate, totalDays]);
   
@@ -182,32 +217,36 @@ export function TimelineCard({
           style={{ maxHeight: '200px' }}
         />
         
-        {assignments.length > 0 && (
-          <div className="absolute top-6 right-2 flex flex-col gap-1">
-            {assignments.slice(0, 2).map((assignment, index) => (
-              <div key={index} className="flex gap-1">
-                {assignment.appraisalIds && assignment.appraisalIds.length > 0 && (
-                  <button
-                    onClick={() => onAppraisalClick?.(assignment.appraisalIds![0])}
-                    className="bg-emerald-500 hover:bg-emerald-600 text-white px-1.5 py-0.5 rounded text-xs font-medium transition-colors"
-                    data-testid={`badge-appraisal-${index}`}
-                  >
-                    App-{assignment.appraisalIds.length}
-                  </button>
-                )}
-                {assignment.handoverIds && assignment.handoverIds.length > 0 && (
-                  <button
-                    onClick={() => onHandoverClick?.(assignment.handoverIds![0])}
-                    className="bg-amber-500 hover:bg-amber-600 text-white px-1.5 py-0.5 rounded text-xs font-medium transition-colors"
-                    data-testid={`badge-handover-${index}`}
-                  >
-                    HO-{assignment.handoverIds.length}
-                  </button>
-                )}
-              </div>
-            ))}
+        {badgePositions.map((pos) => (
+          <div 
+            key={pos.index}
+            className="absolute flex gap-1"
+            style={{
+              left: `${(pos.x / 400) * 100}%`,
+              top: `${pos.y}px`,
+              transform: 'translateY(-2px)'
+            }}
+          >
+            {pos.hasAppraisal && (
+              <button
+                onClick={() => onAppraisalClick?.(pos.appraisalIds[0])}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white px-1.5 py-0.5 rounded text-xs font-medium transition-colors whitespace-nowrap"
+                data-testid={`badge-appraisal-${pos.index}`}
+              >
+                App-{pos.appraisalIds.length}
+              </button>
+            )}
+            {pos.hasHandover && (
+              <button
+                onClick={() => onHandoverClick?.(pos.handoverIds[0])}
+                className="bg-amber-500 hover:bg-amber-600 text-white px-1.5 py-0.5 rounded text-xs font-medium transition-colors whitespace-nowrap"
+                data-testid={`badge-handover-${pos.index}`}
+              >
+                HO-{pos.handoverIds.length}
+              </button>
+            )}
           </div>
-        )}
+        ))}
       </div>
       
       {assignments.length === 0 && (
