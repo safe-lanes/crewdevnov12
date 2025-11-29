@@ -677,37 +677,38 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
         nokRelationship: detailedCrewData.nokRelationship || '',
         
         // Complex data arrays - parse JSON strings from API
+        // IMPORTANT: Use empty defaults (not prev state) to prevent data leaking between crew members
         documents: Array.isArray(detailedCrewData.documents) 
           ? detailedCrewData.documents 
           : detailedCrewData.documents 
             ? JSON.parse(detailedCrewData.documents) 
-            : prev.documents,
+            : [],
         visas: Array.isArray(detailedCrewData.visas) 
           ? detailedCrewData.visas 
           : detailedCrewData.visas 
             ? JSON.parse(detailedCrewData.visas) 
-            : prev.visas,
+            : [],
         education: Array.isArray(detailedCrewData.education) 
           ? detailedCrewData.education 
           : detailedCrewData.education 
             ? JSON.parse(detailedCrewData.education) 
-            : prev.education,
+            : [],
         licenses: Array.isArray(detailedCrewData.licenses) 
           ? detailedCrewData.licenses 
           : detailedCrewData.licenses 
             ? JSON.parse(detailedCrewData.licenses) 
-            : prev.licenses,
+            : [],
         trainingCourses: Array.isArray(detailedCrewData.trainingCourses) 
           ? detailedCrewData.trainingCourses 
           : detailedCrewData.trainingCourses 
             ? JSON.parse(detailedCrewData.trainingCourses) 
-            : prev.trainingCourses,
+            : [],
         currentCompanySeaService: (() => {
           const services = Array.isArray(detailedCrewData.currentCompanySeaService) 
             ? detailedCrewData.currentCompanySeaService 
             : detailedCrewData.currentCompanySeaService 
               ? JSON.parse(detailedCrewData.currentCompanySeaService) 
-              : prev.currentCompanySeaService;
+              : [];  // Reset to empty instead of preserving prev state
           // Recalculate periods for existing records with dates
           return services.map((s: SeaService) => ({
             ...s,
@@ -719,7 +720,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             ? detailedCrewData.externalSeaService 
             : detailedCrewData.externalSeaService 
               ? JSON.parse(detailedCrewData.externalSeaService) 
-              : prev.externalSeaService;
+              : [];  // Reset to empty instead of preserving prev state
           // Recalculate periods for existing records with dates
           return services.map((s: SeaService) => ({
             ...s,
@@ -730,12 +731,12 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
           ? detailedCrewData.preJoiningMedicals 
           : detailedCrewData.preJoiningMedicals 
             ? JSON.parse(detailedCrewData.preJoiningMedicals) 
-            : prev.preJoiningMedicals,
+            : [],
         doctorVisits: Array.isArray(detailedCrewData.doctorVisits) 
           ? detailedCrewData.doctorVisits 
           : detailedCrewData.doctorVisits 
             ? JSON.parse(detailedCrewData.doctorVisits) 
-            : prev.doctorVisits,
+            : [],
       }));
       
       // Also load the uploaded photo from crew data (or reset if no photo)
