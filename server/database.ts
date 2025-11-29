@@ -3242,7 +3242,10 @@ export class DatabaseStorage implements IStorage {
     // Use raw SQL to avoid Drizzle schema column issues
     const existingColumns = await this.getExistingColumns('master_data_entries');
     const selectColumns = Array.from(existingColumns).map(col => `"${col}"`).join(', ');
-    const selectSql = `SELECT ${selectColumns} FROM master_data_entries WHERE "master_id" = $1`;
+    // Order by orderBy column if it exists, fallback to entry_id for consistent ordering
+    const hasOrderBy = existingColumns.has('orderBy');
+    const orderClause = hasOrderBy ? '"orderBy" NULLS LAST, "entry_id"' : '"entry_id"';
+    const selectSql = `SELECT ${selectColumns} FROM master_data_entries WHERE "master_id" = $1 ORDER BY ${orderClause}`;
     
     const result: any = await this.pool.query(selectSql, [masterId]);
     return result.rows || [];
