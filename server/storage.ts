@@ -341,12 +341,14 @@ export function translateVesselNameToCode(vesselName: string): string {
  * Build service timeline from sea service records and vessel planning
  * Combines historical sea service with current/planned vessel assignments
  * for the 6-month dashboard timeline display
+ * @param vesselCodeToNameMap - Optional map of vessel codes to names for translation (for DatabaseStorage)
  */
 export function buildServiceTimeline(
   companySeaService: any[],
   vesselPlanningRecords: any[],
   appraisalsByVessel: Map<string, number[]>,
-  handoversByVessel: Map<string, number[]>
+  handoversByVessel: Map<string, number[]>,
+  vesselCodeToNameMap?: Map<string, string>
 ): Array<{
   vessel: string;
   vesselId?: string;
@@ -387,8 +389,17 @@ export function buildServiceTimeline(
     if (toDate && toDate < timelineStart) continue;
     if (fromDate > timelineEnd) continue;
     
-    const vesselName = service.vesselName || service.vessel || 'Unknown Vessel';
+    // Get vessel name - prefer database translation, then provided names, then fallback
     const vesselId = service.vesselId || '';
+    let vesselName = service.vesselName || service.vessel || 'Unknown Vessel';
+    
+    // If we have a vessel ID and a translation map, use the map to get the authoritative name
+    if (vesselId && vesselCodeToNameMap && vesselCodeToNameMap.has(vesselId)) {
+      vesselName = vesselCodeToNameMap.get(vesselId)!;
+    } else if (vesselId && !vesselCodeToNameMap) {
+      // Fall back to static translation if no map provided (MemStorage case)
+      vesselName = translateVesselCodeToName(vesselId) || vesselName;
+    }
     
     timeline.push({
       vessel: vesselName,
@@ -398,8 +409,8 @@ export function buildServiceTimeline(
       contractEndDate: null,
       rangeEndDate: null,
       type: toDate && toDate < today ? 'completed' : 'onBoard',
-      appraisalIds: appraisalsByVessel.get(vesselName) || [],
-      handoverIds: handoversByVessel.get(vesselName) || [],
+      appraisalIds: appraisalsByVessel.get(vesselName) || appraisalsByVessel.get(vesselId) || [],
+      handoverIds: handoversByVessel.get(vesselName) || handoversByVessel.get(vesselId) || [],
     });
   }
   
@@ -445,13 +456,19 @@ export function buildServiceTimeline(
       }
     }
     
-    // Get vessel name - translate vessel code to name if needed
-    let vesselName = planning.vesselName || 'Unknown Vessel';
+    // Get vessel name - always prefer database translation when vesselId is available
     const vesselId = planning.vesselId || '';
+    let vesselName = planning.vesselName || 'Unknown Vessel';
     
-    // If vesselName is empty or looks like a vessel code, translate it
-    if (!planning.vesselName && vesselId) {
-      vesselName = translateVesselCodeToName(vesselId);
+    // Always translate via the authoritative map if we have a vesselId
+    // This ensures we use the latest database vessel names, not stale stored names
+    if (vesselId) {
+      if (vesselCodeToNameMap && vesselCodeToNameMap.has(vesselId)) {
+        vesselName = vesselCodeToNameMap.get(vesselId)!;
+      } else if (!vesselCodeToNameMap) {
+        // Fall back to static translation if no map provided (MemStorage case)
+        vesselName = translateVesselCodeToName(vesselId);
+      }
     }
     
     timeline.push({

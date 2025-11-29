@@ -3195,13 +3195,17 @@ export class DatabaseStorage implements IStorage {
       appraisalsByVessel.get(vessel)!.push(appraisal.id);
     }
     
+    // Build vessel code to name map from master data for timeline translation
+    const vesselCodeToNameMap = await this.getVesselCodeToNameMap();
+    
     // Build the service timeline using buildServiceTimeline helper
     const { buildServiceTimeline } = await import('./storage.js');
     const serviceTimeline = buildServiceTimeline(
       companySeaService,
       vesselPlanningEntries,
       appraisalsByVessel,
-      new Map() // handovers - not yet implemented
+      new Map(), // handovers - not yet implemented
+      vesselCodeToNameMap
     );
 
     return {
@@ -3299,6 +3303,25 @@ export class DatabaseStorage implements IStorage {
     } catch {
       return vesselCode;
     }
+  }
+
+  private async getVesselCodeToNameMap(): Promise<Map<string, string>> {
+    const vesselMap = new Map<string, string>();
+    try {
+      const result: any = await this.pool.query(
+        `SELECT entry_id, name FROM master_data_entries WHERE master_id = '014'`
+      );
+      if (result.rows) {
+        for (const row of result.rows) {
+          if (row.entry_id && row.name) {
+            vesselMap.set(row.entry_id, row.name);
+          }
+        }
+      }
+    } catch {
+      // Return empty map on error
+    }
+    return vesselMap;
   }
 
   async getFormForRank(rankLabel: string, category?: string): Promise<Form | undefined> {
