@@ -3185,18 +3185,93 @@ export class DatabaseStorage implements IStorage {
     const reliefDueFormatted = this.formatDateForDashboard(reliefDue);
     const nextAvailabilityFormatted = this.formatDateForDashboard(crewMember.nextAvailability);
 
-    // Build service timeline from sea service and vessel planning
-    const appraisalsByVessel = new Map<string, number[]>();
-    for (const appraisal of appraisals) {
-      const vessel = appraisal.vesselName || '';
-      if (!appraisalsByVessel.has(vessel)) {
-        appraisalsByVessel.set(vessel, []);
-      }
-      appraisalsByVessel.get(vessel)!.push(appraisal.id);
-    }
-    
     // Build vessel code to name map from master data for timeline translation
     const vesselCodeToNameMap = await this.getVesselCodeToNameMap();
+    
+    // Build reverse map: vessel name -> vessel code(s) for legacy appraisals
+    const vesselNameToCodeMap = new Map<string, string>();
+    for (const [code, name] of vesselCodeToNameMap.entries()) {
+      vesselNameToCodeMap.set(name, code);
+    }
+    
+    // Build service timeline from sea service and vessel planning
+    // Key appraisals by both vessel name and vessel code to ensure lookups work after translation
+    const appraisalsByVessel = new Map<string, number[]>();
+    
+    // Helper to add appraisal ID to a key in the map
+    const addAppraisalToKey = (key: string, appraisalId: number) => {
+      if (!key) return;
+      if (!appraisalsByVessel.has(key)) {
+        appraisalsByVessel.set(key, []);
+      }
+      const arr = appraisalsByVessel.get(key)!;
+      // Avoid duplicates
+      if (!arr.includes(appraisalId)) {
+        arr.push(appraisalId);
+      }
+    };
+    
+    for (const appraisal of appraisals) {
+      // Parse appraisalData JSON to extract vessel info
+      // The vessel name is stored inside the appraisalData JSON field
+      let vesselNameKey = '';
+      let vesselIdKey = '';
+      
+      try {
+        if (appraisal.appraisalData) {
+          // appraisalData is stored as JSON string
+          let parsedData = typeof appraisal.appraisalData === 'string' 
+            ? JSON.parse(appraisal.appraisalData)
+            : appraisal.appraisalData;
+          
+          // Handle double-stringified JSON (character-by-character storage)
+          if (typeof parsedData === 'object' && parsedData !== null) {
+            // Check if it's character-by-character format (keys are numeric indices)
+            const keys = Object.keys(parsedData);
+            if (keys.length > 0 && keys.every(k => /^\d+$/.test(k))) {
+              // Reconstruct the string from character indices
+              const chars = [];
+              for (let i = 0; i < keys.length; i++) {
+                if (parsedData[String(i)] !== undefined) {
+                  chars.push(parsedData[String(i)]);
+                }
+              }
+              const reconstructed = chars.join('');
+              parsedData = JSON.parse(reconstructed);
+            }
+          }
+          
+          // Extract vessel info from parsed data
+          vesselNameKey = parsedData.vessel || parsedData.vesselName || '';
+          vesselIdKey = parsedData.vesselId || parsedData.vesselCode || '';
+        }
+      } catch (e) {
+        // If parsing fails, continue with empty vessel info
+      }
+      
+      // Index by vessel name (stored value)
+      if (vesselNameKey) {
+        addAppraisalToKey(vesselNameKey, appraisal.id);
+        
+        // Also try to find the vessel code for this name (reverse lookup)
+        // This handles legacy appraisals stored with translated names but no vesselId
+        const reverseCode = vesselNameToCodeMap.get(vesselNameKey);
+        if (reverseCode) {
+          addAppraisalToKey(reverseCode, appraisal.id);
+        }
+      }
+      
+      // Index by vessel ID if available
+      if (vesselIdKey) {
+        addAppraisalToKey(vesselIdKey, appraisal.id);
+        
+        // Also index by the translated vessel name if we have a code
+        const translatedName = vesselCodeToNameMap.get(vesselIdKey);
+        if (translatedName) {
+          addAppraisalToKey(translatedName, appraisal.id);
+        }
+      }
+    }
     
     // Build the service timeline using buildServiceTimeline helper
     const { buildServiceTimeline } = await import('./storage.js');
