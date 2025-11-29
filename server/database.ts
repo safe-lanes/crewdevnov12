@@ -2744,9 +2744,45 @@ export class DatabaseStorage implements IStorage {
     return this.isOfficerRank(rankName);
   }
 
+  private buildRankOrderMap(hierarchies: any[]): Map<string, number> {
+    // Build a map of rank name -> hierarchy order (lower = more senior)
+    // Each hierarchy's rankPath goes from senior to junior (e.g., Master → Chief Officer → 2nd Officer → 3rd Officer)
+    // So index 0 = most senior, higher index = more junior
+    const rankOrderMap = new Map<string, number>();
+    
+    for (const hierarchy of hierarchies) {
+      if (!hierarchy.isActive) continue;
+      
+      let rankPath: string[] = [];
+      try {
+        // Parse rankPath if it's a JSON string
+        rankPath = typeof hierarchy.rankPath === 'string' 
+          ? JSON.parse(hierarchy.rankPath) 
+          : hierarchy.rankPath;
+      } catch (e) {
+        continue;
+      }
+      
+      if (!Array.isArray(rankPath)) continue;
+      
+      // Each rank gets its index as order (0 = most senior, higher = more junior)
+      rankPath.forEach((rank, index) => {
+        const normalizedRank = rank.trim().toLowerCase();
+        // Use the lowest order if rank appears in multiple hierarchies (more senior position wins)
+        const currentOrder = rankOrderMap.get(normalizedRank);
+        if (currentOrder === undefined || index < currentOrder) {
+          rankOrderMap.set(normalizedRank, index);
+        }
+      });
+    }
+    
+    return rankOrderMap;
+  }
+
   private calculateRankExperience(
     companySeaService: any[],
-    externalSeaService: any[]
+    externalSeaService: any[],
+    rankOrderMap?: Map<string, number>
   ): { rankExperience: Array<{ type: string; label: string; months: number; years: number }>; totalMonths: number } {
     // Ensure inputs are arrays
     const safeCompanySeaService = Array.isArray(companySeaService) ? companySeaService : [];
@@ -2770,15 +2806,35 @@ export class DatabaseStorage implements IStorage {
       rankMonths[rank] = (rankMonths[rank] || 0) + period;
     }
     
-    // Convert to array and sort by months descending
+    // Convert to array
     const rankExperience = Object.entries(rankMonths)
       .map(([rank, months]) => ({
         type: rank,
         label: rank,
         months,
         years: Math.round((months / 12) * 10) / 10
-      }))
-      .sort((a, b) => b.months - a.months);
+      }));
+    
+    // Sort by hierarchy order (senior first) if available, otherwise by months descending
+    if (rankOrderMap && rankOrderMap.size > 0) {
+      rankExperience.sort((a, b) => {
+        const orderA = rankOrderMap.get(a.type.toLowerCase()) ?? -1;
+        const orderB = rankOrderMap.get(b.type.toLowerCase()) ?? -1;
+        
+        // Both ranks in hierarchy: sort by hierarchy order (lower index = more senior = first)
+        if (orderA >= 0 && orderB >= 0) {
+          return orderA - orderB;
+        }
+        // Only one in hierarchy: prioritize the one in hierarchy
+        if (orderA >= 0) return -1;
+        if (orderB >= 0) return 1;
+        // Neither in hierarchy: fall back to months descending
+        return b.months - a.months;
+      });
+    } else {
+      // No hierarchy: sort by months descending
+      rankExperience.sort((a, b) => b.months - a.months);
+    }
     
     return { rankExperience, totalMonths };
   }
@@ -2990,8 +3046,12 @@ export class DatabaseStorage implements IStorage {
     // Calculate ship type experience
     const shipTypeData = this.calculateShipTypeExperience(companySeaService, externalSeaService);
     
-    // Calculate rank experience
-    const rankData = this.calculateRankExperience(companySeaService, externalSeaService);
+    // Fetch promotion hierarchies for rank ordering
+    const hierarchies = await this.getPromotionHierarchies();
+    const rankOrderMap = this.buildRankOrderMap(hierarchies);
+    
+    // Calculate rank experience (sorted by hierarchy order if available)
+    const rankData = this.calculateRankExperience(companySeaService, externalSeaService, rankOrderMap);
 
     // Check vessel_planning for active vessel assignments
     const vesselPlanningEntries = await this.getVesselPlanningByCrewMember(crewId);
