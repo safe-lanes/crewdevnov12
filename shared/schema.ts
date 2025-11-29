@@ -1345,6 +1345,12 @@ export const shipTypeExperienceSchema = z.object({
   totalYears: z.number(),
 });
 
+export const rankExperienceSchema = z.object({
+  items: z.array(shipTypeItemSchema),
+  totalMonths: z.number(),
+  totalYears: z.number(),
+});
+
 export const serviceAssignmentSchema = z.object({
   vessel: z.string(),
   startMonth: z.number(),
@@ -1379,6 +1385,7 @@ export const crewDashboardSummarySchema = z.object({
   status: dashboardStatusSchema,
   experience: experienceMetricSchema,
   shipTypes: shipTypeExperienceSchema,
+  rankExperience: rankExperienceSchema,
   serviceTimeline: z.array(serviceAssignmentSchema),
   compliance: z.array(complianceItemSchema),
   careerProgression: z.array(careerStepSchema),

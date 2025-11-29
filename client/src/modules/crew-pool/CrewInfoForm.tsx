@@ -266,6 +266,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   const statusData = dashboardData?.status;
   const experienceData = dashboardData?.experience;
   const shipTypesData = dashboardData?.shipTypes;
+  const rankExperienceData = dashboardData?.rankExperience;
   const complianceData = dashboardData?.compliance;
   const careerProgressionData = dashboardData?.careerProgression;
   const serviceTimelineData = dashboardData?.serviceTimeline;
@@ -1575,12 +1576,48 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
               </div>
             </div>
 
-            {/* Rank Experience - Placeholder */}
+            {/* Rank Experience */}
             <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-rank">
               <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Rank</h3>
-              <div className="text-center text-gray-500 py-8">
-                Rank experience data not available
+              <div className="space-y-3">
+                {rankExperienceData?.items && rankExperienceData.items.length > 0 ? (
+                  rankExperienceData.items.map((item: { type: string; label: string; months: number; years: number }, index: number) => {
+                    const percentage = rankExperienceData.totalMonths > 0 
+                      ? (item.months / rankExperienceData.totalMonths) * 100 
+                      : 0;
+                    const rankSlug = item.type.toLowerCase().replace(/[\s\/]+/g, '-');
+                    
+                    return (
+                      <div key={index} className="space-y-1" data-testid={`rank-${rankSlug}`}>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">{item.label}</span>
+                          <span className="font-medium" data-testid={`text-${rankSlug}-years`}>
+                            {item.years}
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-blue-500 h-2 rounded-full transition-all duration-300" 
+                            style={{ width: `${percentage}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-center text-gray-500 py-4 text-sm">
+                    No rank experience data available
+                  </div>
+                )}
               </div>
+              {rankExperienceData?.items && rankExperienceData.items.length > 0 && (
+                <div className="mt-3 flex justify-between text-xs text-gray-500">
+                  <span>0</span>
+                  <span>{Math.round(rankExperienceData.totalYears / 4)}</span>
+                  <span>{Math.round(rankExperienceData.totalYears / 2)}</span>
+                  <span>{rankExperienceData.totalYears}</span>
+                </div>
+              )}
             </div>
 
             {/* Ship Type Experience */}

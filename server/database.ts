@@ -2744,6 +2744,45 @@ export class DatabaseStorage implements IStorage {
     return this.isOfficerRank(rankName);
   }
 
+  private calculateRankExperience(
+    companySeaService: any[],
+    externalSeaService: any[]
+  ): { rankExperience: Array<{ type: string; label: string; months: number; years: number }>; totalMonths: number } {
+    // Ensure inputs are arrays
+    const safeCompanySeaService = Array.isArray(companySeaService) ? companySeaService : [];
+    const safeExternalSeaService = Array.isArray(externalSeaService) ? externalSeaService : [];
+    const allSeaService = [...safeCompanySeaService, ...safeExternalSeaService];
+    
+    // Aggregate months by rank
+    const rankMonths: Record<string, number> = {};
+    let totalMonths = 0;
+    
+    for (const service of allSeaService) {
+      const period = parseFloat(service.periodMonths) || 0;
+      if (period <= 0) continue;
+      
+      // Get rank name - only count if rank exists
+      let rank = (service.rank || '').trim();
+      if (!rank) continue;
+      
+      // Only add to total if rank exists (so totals match items)
+      totalMonths += period;
+      rankMonths[rank] = (rankMonths[rank] || 0) + period;
+    }
+    
+    // Convert to array and sort by months descending
+    const rankExperience = Object.entries(rankMonths)
+      .map(([rank, months]) => ({
+        type: rank,
+        label: rank,
+        months,
+        years: Math.round((months / 12) * 10) / 10
+      }))
+      .sort((a, b) => b.months - a.months);
+    
+    return { rankExperience, totalMonths };
+  }
+
   private calculateShipTypeExperience(
     companySeaService: any[],
     externalSeaService: any[]
@@ -2950,6 +2989,9 @@ export class DatabaseStorage implements IStorage {
     
     // Calculate ship type experience
     const shipTypeData = this.calculateShipTypeExperience(companySeaService, externalSeaService);
+    
+    // Calculate rank experience
+    const rankData = this.calculateRankExperience(companySeaService, externalSeaService);
 
     // Check vessel_planning for active vessel assignments
     const vesselPlanningEntries = await this.getVesselPlanningByCrewMember(crewId);
@@ -3006,6 +3048,11 @@ export class DatabaseStorage implements IStorage {
         items: shipTypeData.shipTypeExperience,
         totalMonths: shipTypeData.totalMonths,
         totalYears: Math.round((shipTypeData.totalMonths / 12) * 10) / 10
+      },
+      rankExperience: {
+        items: rankData.rankExperience,
+        totalMonths: rankData.totalMonths,
+        totalYears: Math.round((rankData.totalMonths / 12) * 10) / 10
       },
       serviceTimeline: [
         { vessel: "Pacific Explorer", startMonth: 1, endMonth: 3, type: "completed" },
