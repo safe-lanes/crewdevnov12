@@ -624,6 +624,7 @@ export const CrewPoolModule = (): JSX.Element => {
                 isOpen={isCrewInfoFormOpen}
                 onClose={handleCloseCrewInfoForm}
                 crewMember={selectedCrewMember}
+                onCrewMemberChange={(newCrewMember) => setSelectedCrewMember(newCrewMember)}
             />
         </>
     );
