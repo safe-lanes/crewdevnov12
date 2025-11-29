@@ -2900,29 +2900,45 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
+  private parseSeaServiceData(data: any): any[] {
+    if (!data) return [];
+    
+    let parsed = data;
+    
+    // Handle double-stringified JSON (parse until we get an array or non-string)
+    let attempts = 0;
+    while (typeof parsed === 'string' && attempts < 3) {
+      try {
+        parsed = JSON.parse(parsed);
+        attempts++;
+      } catch (e) {
+        return [];
+      }
+    }
+    
+    // Ensure result is an array
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+    
+    // Handle AG Grid wrapper objects like { rows: [...] } or { data: [...] }
+    if (parsed && typeof parsed === 'object') {
+      if (Array.isArray(parsed.rows)) return parsed.rows;
+      if (Array.isArray(parsed.data)) return parsed.data;
+    }
+    
+    return [];
+  }
+
   async getCrewDashboardSummary(crewId: string): Promise<any> {
     const crewMember = await this.getCrewMember(crewId);
     if (!crewMember) return undefined;
 
     const appraisals = await this.getAppraisalResultsByCrewMember(crewId);
     
-    // Parse sea service data for experience calculations
-    let companySeaService: any[] = [];
-    let externalSeaService: any[] = [];
-    try {
-      companySeaService = crewMember.currentCompanySeaService 
-        ? JSON.parse(crewMember.currentCompanySeaService as string) 
-        : [];
-    } catch (e) {
-      companySeaService = [];
-    }
-    try {
-      externalSeaService = crewMember.externalSeaService 
-        ? JSON.parse(crewMember.externalSeaService as string) 
-        : [];
-    } catch (e) {
-      externalSeaService = [];
-    }
+    // Parse sea service data for experience calculations (handles double-stringified JSON)
+    const companySeaService = this.parseSeaServiceData(crewMember.currentCompanySeaService);
+    const externalSeaService = this.parseSeaServiceData(crewMember.externalSeaService);
     
     // Calculate experience from sea service data
     const currentRank = crewMember.presentRank || '';
