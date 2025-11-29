@@ -8,13 +8,20 @@ export interface LicenseTemplate {
 // Static fallback data that mirrors Master 016 in database
 // This is used when API is not available or for immediate local lookups
 export const LICENSE_DCE_TEMPLATES: LicenseTemplate[] = [
-  // DCE Certificates
+  // DCE Certificates - Operation Level
   { id: 'LIC001', name: 'DCE_Oil_Operation', abbr: 'DC_O_O', requirement: 'STCW A-V1-1-1' },
-  { id: 'LIC002', name: 'DCE_Oil_Management', abbr: 'DC_O_M', requirement: 'STCW A-V1-1-2' },
   { id: 'LIC003', name: 'DCE_Chem_Operation', abbr: 'DC_C_O', requirement: 'STCW A-V1-1-1' },
-  { id: 'LIC004', name: 'DCE_Chem_Management', abbr: 'DC_C_M', requirement: 'STCW A-V1-1-3' },
   { id: 'LIC005', name: 'DCE_Gas_Operation', abbr: 'DC_G_O', requirement: 'STCW A-V1-2-1' },
+  
+  // DCE Certificates - Management Level
+  { id: 'LIC002', name: 'DCE_Oil_Management', abbr: 'DC_O_M', requirement: 'STCW A-V1-1-2' },
+  { id: 'LIC004', name: 'DCE_Chem_Management', abbr: 'DC_C_M', requirement: 'STCW A-V1-1-3' },
   { id: 'LIC006', name: 'DCE_Gas_Management', abbr: 'DC_G_M', requirement: 'STCW A-V1-2-2' },
+  
+  // DCE Certificates - Support Level (NEW)
+  { id: 'LIC018', name: 'DCE_Oil_Support', abbr: 'DC_O_S', requirement: 'STCW A-V1-1' },
+  { id: 'LIC019', name: 'DCE_Chem_Support', abbr: 'DC_C_S', requirement: 'STCW A-V1-1' },
+  { id: 'LIC020', name: 'DCE_Gas_Support', abbr: 'DC_G_S', requirement: 'STCW A-V1-2' },
   
   // COC Certificates
   { id: 'LIC007', name: 'COC Master', abbr: 'COC_DM', requirement: 'STCW II/2' },
