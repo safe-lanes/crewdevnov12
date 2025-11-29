@@ -25,6 +25,7 @@ import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplate
 import type { LicenseTemplate } from '@/utils/data/licenseDceTemplates';
 import type { TravelDocumentTemplate } from '@/utils/data/travelDocumentTemplates';
 import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
+import { TimelineCard } from './components/TimelineCard';
 
 interface CrewMember {
   id: string;
@@ -1737,80 +1738,17 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
 
           {/* RIGHT COLUMN - Timeline, Appraisals, Promotion */}
           <div className="space-y-6">
-            {/* Timeline */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-timeline">
-              <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Timeline</h3>
-              <div className="space-y-2">
-                {isDashboardLoading ? (
-                  <div className="space-y-3 animate-pulse">
-                    <div className="grid grid-cols-6 gap-1">
-                      {[1, 2, 3, 4, 5, 6].map((i) => (
-                        <div key={i} className="h-3 bg-gray-200 rounded"></div>
-                      ))}
-                    </div>
-                    <div className="h-8 bg-gray-200 rounded w-3/4"></div>
-                    <div className="h-8 bg-gray-200 rounded w-1/2 ml-auto"></div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-6 gap-1 text-xs text-center text-gray-600">
-                      <span data-testid="month-jan">Jan</span>
-                      <span data-testid="month-feb">Feb</span>
-                      <span data-testid="month-mar">Mar</span>
-                      <span data-testid="month-apr">Apr</span>
-                      <span data-testid="month-may">May</span>
-                      <span data-testid="month-jun">Jun</span>
-                    </div>
-                    
-                    {serviceTimelineData && serviceTimelineData.length > 0 ? (
-                      <div className="space-y-2">
-                        {serviceTimelineData.map((assignment, index) => {
-                          const duration = ((assignment.endMonth - assignment.startMonth + 1) / 12) * 100;
-                          const startPosition = (assignment.startMonth / 12) * 100;
-                          return (
-                            <div key={index} className="relative h-8">
-                              <div 
-                                className={`h-4 rounded relative ${assignment.type === 'active' ? 'bg-red-500' : 'bg-white border-2 border-gray-400'}`}
-                                style={{ 
-                                  width: `${duration}%`, 
-                                  marginLeft: `${startPosition}%`, 
-                                  marginBottom: '4px' 
-                                }}
-                                data-testid={`timeline-bar-${assignment.vessel.toLowerCase().replace(/\s+/g, '-')}`}>
-                                <div className={`absolute left-2 top-0 text-xs font-medium ${assignment.type === 'active' ? 'text-white' : 'text-gray-600'}`}
-                                     data-testid={`vessel-label-${assignment.vessel.toLowerCase().replace(/\s+/g, '-')}`}>
-                                  {assignment.vessel}
-                                </div>
-                              </div>
-                              
-                              {assignment.type === 'active' && (
-                                <div className="absolute right-0 top-0 flex flex-col space-y-1">
-                                  <div className="bg-green-500 text-white px-2 py-1 rounded text-xs font-medium">App'd</div>
-                                  <div className="bg-yellow-500 text-white px-2 py-1 rounded text-xs font-medium">Req'd</div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                        
-                        <div className="flex items-center gap-4 text-xs mt-4">
-                          {serviceTimelineData.map((assignment, index) => (
-                            <div key={index} className="flex items-center gap-1">
-                              <div className={`w-3 h-3 rounded ${assignment.type === 'active' ? 'bg-red-500' : 'border-2 border-gray-400 bg-white'}`}></div>
-                              <span className="text-gray-600">{assignment.vessel}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-center text-gray-500 py-8">
-                        No timeline data available
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
+            {/* Timeline Card */}
+            <TimelineCard
+              assignments={serviceTimelineData || []}
+              isLoading={isDashboardLoading}
+              onAppraisalClick={(appraisalId) => {
+                console.log('Navigate to appraisal:', appraisalId);
+              }}
+              onHandoverClick={(handoverId) => {
+                console.log('Navigate to handover:', handoverId);
+              }}
+            />
 
             {/* Appraisals */}
             <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-appraisals">
