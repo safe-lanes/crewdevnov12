@@ -3030,6 +3030,90 @@ export class DatabaseStorage implements IStorage {
     return [];
   }
 
+  private parseLicenseData(data: any): any[] {
+    if (!data) return [];
+    
+    // If already an array, return it
+    if (Array.isArray(data)) {
+      return data;
+    }
+    
+    let parsed = data;
+    
+    // Handle double-stringified JSON (parse until we get an array or non-string)
+    let attempts = 0;
+    while (typeof parsed === 'string' && attempts < 3) {
+      try {
+        parsed = JSON.parse(parsed);
+        attempts++;
+      } catch (e) {
+        return [];
+      }
+    }
+    
+    // Ensure result is an array
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+    
+    return [];
+  }
+
+  /**
+   * Derive endorsement code (O, C, G combinations) based on rank category and licenses held
+   * 
+   * Mapping by Rank Category:
+   * - Senior Officers: L002 (DCE_Oil_Management) → O, L004 (DCE_Chem_Management) → C, L006 (DCE_Gas_Management) → G
+   * - Other Officers: L001/L002 → O, L003/L004 → C, L005/L006 → G
+   * - Ratings: LIC018 (DCE_Oil_Support) → O, LIC019 (DCE_Chem_Support) → C, LIC020 (DCE_Gas_Support) → G
+   */
+  private deriveEndorsementCode(
+    rankFlags: { seniorOfficer?: boolean | null; officer?: boolean | null; rating?: boolean | null },
+    licenses: Array<{ licenseType?: string; licenseId?: string; entryId?: string }>
+  ): string {
+    if (!licenses || licenses.length === 0) return '—';
+    
+    // Extract license IDs from the licenses array
+    // Note: License records store their ID in 'licenseId' (from Master 016 template.id), or 'entryId'
+    const licenseIds = new Set(
+      licenses.map(lic => (lic.licenseId || lic.entryId || lic.licenseType || '').toUpperCase())
+    );
+    
+    let hasO = false;
+    let hasC = false;
+    let hasG = false;
+    
+    if (rankFlags.seniorOfficer) {
+      // Senior Officers - only Management level DCE
+      hasO = licenseIds.has('L002') || licenseIds.has('LIC002');
+      hasC = licenseIds.has('L004') || licenseIds.has('LIC004');
+      hasG = licenseIds.has('L006') || licenseIds.has('LIC006');
+    } else if (rankFlags.rating) {
+      // Ratings - Support level DCE
+      hasO = licenseIds.has('LIC018');
+      hasC = licenseIds.has('LIC019');
+      hasG = licenseIds.has('LIC020');
+    } else if (rankFlags.officer) {
+      // Other Officers (not Senior) - Operation OR Management level DCE
+      hasO = licenseIds.has('L001') || licenseIds.has('L002') || licenseIds.has('LIC001') || licenseIds.has('LIC002');
+      hasC = licenseIds.has('L003') || licenseIds.has('L004') || licenseIds.has('LIC003') || licenseIds.has('LIC004');
+      hasG = licenseIds.has('L005') || licenseIds.has('L006') || licenseIds.has('LIC005') || licenseIds.has('LIC006');
+    } else {
+      // Default: treat as Other Officers (officer flag not explicitly set)
+      hasO = licenseIds.has('L001') || licenseIds.has('L002') || licenseIds.has('LIC001') || licenseIds.has('LIC002');
+      hasC = licenseIds.has('L003') || licenseIds.has('L004') || licenseIds.has('LIC003') || licenseIds.has('LIC004');
+      hasG = licenseIds.has('L005') || licenseIds.has('L006') || licenseIds.has('LIC005') || licenseIds.has('LIC006');
+    }
+    
+    // Build endorsement code string
+    let code = '';
+    if (hasO) code += 'O';
+    if (hasC) code += 'C';
+    if (hasG) code += 'G';
+    
+    return code || '—';
+  }
+
   async getCrewDashboardSummary(crewId: string): Promise<any> {
     const crewMember = await this.getCrewMember(crewId);
     if (!crewMember) return undefined;
@@ -3057,6 +3141,20 @@ export class DatabaseStorage implements IStorage {
     
     // Calculate rank experience (sorted by hierarchy order if available)
     const rankData = this.calculateRankExperience(companySeaService, externalSeaService, rankOrderMap);
+
+    // Parse licenses for endorsement calculation (handles double-stringified JSON)
+    const licenses = this.parseLicenseData(crewMember.licenses);
+    
+    // Get rank flags for endorsement derivation
+    const rankFlags = await this.getCompanyRankByName(currentRank);
+    const endorsementCode = this.deriveEndorsementCode(
+      {
+        seniorOfficer: rankFlags?.seniorOfficer,
+        officer: rankFlags?.officer,
+        rating: rankFlags?.rating
+      },
+      licenses
+    );
 
     // Check vessel_planning for active vessel assignments
     const vesselPlanningEntries = await this.getVesselPlanningByCrewMember(crewId);
@@ -3107,7 +3205,7 @@ export class DatabaseStorage implements IStorage {
         rank: experience.rank,
         tankers: experience.tankers, 
         ocw: experience.oow,
-        endorsements: "—"  // Will be calculated from D2 section later
+        endorsements: endorsementCode
       },
       shipTypes: {
         items: shipTypeData.shipTypeExperience,
