@@ -445,9 +445,14 @@ export function buildServiceTimeline(
       }
     }
     
-    // Get vessel name - try to resolve from vesselId
-    const vesselName = planning.vesselName || planning.vesselId || 'Unknown Vessel';
+    // Get vessel name - translate vessel code to name if needed
+    let vesselName = planning.vesselName || 'Unknown Vessel';
     const vesselId = planning.vesselId || '';
+    
+    // If vesselName is empty or looks like a vessel code, translate it
+    if (!planning.vesselName && vesselId) {
+      vesselName = translateVesselCodeToName(vesselId);
+    }
     
     timeline.push({
       vessel: vesselName,
