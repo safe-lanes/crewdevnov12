@@ -3185,6 +3185,25 @@ export class DatabaseStorage implements IStorage {
     const reliefDueFormatted = this.formatDateForDashboard(reliefDue);
     const nextAvailabilityFormatted = this.formatDateForDashboard(crewMember.nextAvailability);
 
+    // Build service timeline from sea service and vessel planning
+    const appraisalsByVessel = new Map<string, number[]>();
+    for (const appraisal of appraisals) {
+      const vessel = appraisal.vesselName || '';
+      if (!appraisalsByVessel.has(vessel)) {
+        appraisalsByVessel.set(vessel, []);
+      }
+      appraisalsByVessel.get(vessel)!.push(appraisal.id);
+    }
+    
+    // Build the service timeline using buildServiceTimeline helper
+    const { buildServiceTimeline } = await import('./storage.js');
+    const serviceTimeline = buildServiceTimeline(
+      companySeaService,
+      vesselPlanningEntries,
+      appraisalsByVessel,
+      new Map() // handovers - not yet implemented
+    );
+
     return {
       status: {
         status: calculatedStatus,
@@ -3217,10 +3236,7 @@ export class DatabaseStorage implements IStorage {
         totalMonths: rankData.totalMonths,
         totalYears: Math.round((rankData.totalMonths / 12) * 10) / 10
       },
-      serviceTimeline: [
-        { vessel: "Pacific Explorer", startMonth: 1, endMonth: 3, type: "completed" },
-        { vessel: "Atlantic Explorer", startMonth: 5, endMonth: 6, type: "active" }
-      ],
+      serviceTimeline,
       compliance: [
         { category: "Travel Docs", status: "compliant", details: "✓" },
         { category: "Visas", status: "compliant", details: "✓" },

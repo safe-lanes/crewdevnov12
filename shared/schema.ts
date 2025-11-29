@@ -1353,9 +1353,14 @@ export const rankExperienceSchema = z.object({
 
 export const serviceAssignmentSchema = z.object({
   vessel: z.string(),
-  startMonth: z.number(),
-  endMonth: z.number(),
-  type: z.enum(["active", "completed"]),
+  vesselId: z.string().optional(),
+  startDate: z.string(),
+  endDate: z.string().nullable(),
+  contractEndDate: z.string().nullable(),
+  rangeEndDate: z.string().nullable(),
+  type: z.enum(["onBoard", "planned", "completed"]),
+  appraisalIds: z.array(z.number()).optional(),
+  handoverIds: z.array(z.number()).optional(),
 });
 
 export const complianceItemSchema = z.object({

@@ -337,6 +337,137 @@ export function translateVesselNameToCode(vesselName: string): string {
   );
 }
 
+/**
+ * Build service timeline from sea service records and vessel planning
+ * Combines historical sea service with current/planned vessel assignments
+ * for the 6-month dashboard timeline display
+ */
+export function buildServiceTimeline(
+  companySeaService: any[],
+  vesselPlanningRecords: any[],
+  appraisalsByVessel: Map<string, number[]>,
+  handoversByVessel: Map<string, number[]>
+): Array<{
+  vessel: string;
+  vesselId?: string;
+  startDate: string;
+  endDate: string | null;
+  contractEndDate: string | null;
+  rangeEndDate: string | null;
+  type: 'onBoard' | 'planned' | 'completed';
+  appraisalIds?: number[];
+  handoverIds?: number[];
+}> {
+  const today = new Date();
+  const timelineStart = new Date(today);
+  timelineStart.setMonth(today.getMonth() - 2);
+  const timelineEnd = new Date(today);
+  timelineEnd.setMonth(today.getMonth() + 4);
+  
+  const timeline: Array<{
+    vessel: string;
+    vesselId?: string;
+    startDate: string;
+    endDate: string | null;
+    contractEndDate: string | null;
+    rangeEndDate: string | null;
+    type: 'onBoard' | 'planned' | 'completed';
+    appraisalIds?: number[];
+    handoverIds?: number[];
+  }> = [];
+  
+  // Process sea service records (completed/historical assignments)
+  for (const service of companySeaService) {
+    if (!service.from) continue;
+    
+    const fromDate = new Date(service.from);
+    const toDate = service.to ? new Date(service.to) : null;
+    
+    // Skip if entirely outside the 6-month window
+    if (toDate && toDate < timelineStart) continue;
+    if (fromDate > timelineEnd) continue;
+    
+    const vesselName = service.vesselName || service.vessel || 'Unknown Vessel';
+    const vesselId = service.vesselId || '';
+    
+    timeline.push({
+      vessel: vesselName,
+      vesselId,
+      startDate: service.from,
+      endDate: service.to || null,
+      contractEndDate: null,
+      rangeEndDate: null,
+      type: toDate && toDate < today ? 'completed' : 'onBoard',
+      appraisalIds: appraisalsByVessel.get(vesselName) || [],
+      handoverIds: handoversByVessel.get(vesselName) || [],
+    });
+  }
+  
+  // Process vessel planning records (current/planned assignments)
+  for (const planning of vesselPlanningRecords) {
+    if (!planning.signOnDate && !planning.joiningDate) continue;
+    
+    const startDate = planning.signOnDate || planning.joiningDate;
+    const fromDate = new Date(startDate);
+    
+    // Skip if starts after timeline end
+    if (fromDate > timelineEnd) continue;
+    
+    // Determine end date and contract dates
+    let endDate: string | null = planning.signOffDate || null;
+    let contractEndDate: string | null = null;
+    let rangeEndDate: string | null = null;
+    
+    // Calculate contract end date if contract period is set
+    if (planning.contractPeriodMonths && planning.signOnDate) {
+      const contractEnd = new Date(planning.signOnDate);
+      contractEnd.setMonth(contractEnd.getMonth() + planning.contractPeriodMonths);
+      contractEndDate = contractEnd.toISOString().split('T')[0];
+      
+      // Calculate range end date (extended period)
+      if (planning.contractEndRangeEndMonths) {
+        const rangeEnd = new Date(contractEnd);
+        rangeEnd.setMonth(rangeEnd.getMonth() + planning.contractEndRangeEndMonths);
+        rangeEndDate = rangeEnd.toISOString().split('T')[0];
+      }
+    }
+    
+    // Determine type based on dates
+    let type: 'onBoard' | 'planned' | 'completed' = 'planned';
+    if (planning.signOnDate) {
+      const signOn = new Date(planning.signOnDate);
+      if (signOn <= today) {
+        if (planning.signOffDate && new Date(planning.signOffDate) < today) {
+          type = 'completed';
+        } else {
+          type = 'onBoard';
+        }
+      }
+    }
+    
+    // Get vessel name - try to resolve from vesselId
+    const vesselName = planning.vesselName || planning.vesselId || 'Unknown Vessel';
+    const vesselId = planning.vesselId || '';
+    
+    timeline.push({
+      vessel: vesselName,
+      vesselId,
+      startDate,
+      endDate,
+      contractEndDate,
+      rangeEndDate,
+      type,
+      appraisalIds: appraisalsByVessel.get(vesselName) || appraisalsByVessel.get(vesselId) || [],
+      handoverIds: handoversByVessel.get(vesselName) || handoversByVessel.get(vesselId) || [],
+    });
+  }
+  
+  // Sort by start date
+  timeline.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+  
+  return timeline;
+}
+
 // modify the interface with any CRUD methods
 // you might need
 
@@ -1386,6 +1517,27 @@ export class MemStorage implements IStorage {
       licenses
     );
 
+    // Build service timeline from sea service and vessel planning
+    const vesselPlanningRecords = await this.getVesselPlanningByCrewMember(crewId);
+    
+    // Group appraisals by vessel for badge display
+    const appraisalsByVessel = new Map<string, number[]>();
+    for (const appraisal of appraisals) {
+      const vessel = appraisal.vesselName || '';
+      if (!appraisalsByVessel.has(vessel)) {
+        appraisalsByVessel.set(vessel, []);
+      }
+      appraisalsByVessel.get(vessel)!.push(appraisal.id);
+    }
+    
+    // Build the timeline
+    const serviceTimeline = buildServiceTimeline(
+      companySeaService,
+      vesselPlanningRecords,
+      appraisalsByVessel,
+      new Map() // handovers - not yet implemented
+    );
+
     // Generate dashboard data based on actual crew member data
     const summary: CrewDashboardSummary = {
       status: {
@@ -1412,10 +1564,7 @@ export class MemStorage implements IStorage {
         totalMonths: shipTypeData.totalMonths,
         totalYears: Math.round((shipTypeData.totalMonths / 12) * 10) / 10
       },
-      serviceTimeline: [
-        { vessel: "Pacific Explorer", startMonth: 1, endMonth: 3, type: "completed" },
-        { vessel: "Atlantic Explorer", startMonth: 5, endMonth: 6, type: "active" }
-      ],
+      serviceTimeline,
       compliance: [
         { category: "Travel Docs", status: "compliant", details: "✓" },
         { category: "Visas", status: "compliant", details: "✓" },
@@ -4769,6 +4918,27 @@ export class PersistentFileStorage implements IStorage {
     const joinedDateFormatted = formatDateForDashboard(crewMember.joiningDate || crewMember.signOnDate);
     const reliefDueFormatted = formatDateForDashboard(crewMember.reliefDue);
 
+    // Build service timeline from sea service and vessel planning
+    const vesselPlanningRecords = await this.getVesselPlanningByCrewMember(crewId);
+    
+    // Group appraisals by vessel for badge display
+    const appraisalsByVessel = new Map<string, number[]>();
+    for (const appraisal of appraisals) {
+      const vessel = appraisal.vesselName || '';
+      if (!appraisalsByVessel.has(vessel)) {
+        appraisalsByVessel.set(vessel, []);
+      }
+      appraisalsByVessel.get(vessel)!.push(appraisal.id);
+    }
+    
+    // Build the timeline
+    const serviceTimeline = buildServiceTimeline(
+      companySeaService,
+      vesselPlanningRecords,
+      appraisalsByVessel,
+      new Map() // handovers - not yet implemented
+    );
+
     // Generate dashboard data based on actual crew member data
     const summary: CrewDashboardSummary = {
       status: {
@@ -4795,10 +4965,7 @@ export class PersistentFileStorage implements IStorage {
         totalMonths: shipTypeData.totalMonths,
         totalYears: Math.round((shipTypeData.totalMonths / 12) * 10) / 10
       },
-      serviceTimeline: [
-        { vessel: "Pacific Explorer", startMonth: 1, endMonth: 3, type: "completed" },
-        { vessel: "Atlantic Explorer", startMonth: 5, endMonth: 6, type: "active" }
-      ],
+      serviceTimeline,
       compliance: [
         { category: "Travel Docs", status: "compliant", details: "✓" },
         { category: "Visas", status: "compliant", details: "✓" },
