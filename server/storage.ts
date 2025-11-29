@@ -1361,13 +1361,18 @@ export class MemStorage implements IStorage {
     const shipTypeData = calculateShipTypeExperience(companySeaService, externalSeaService);
 
     // Parse licenses for endorsement calculation
+    // Handle both cases: licenses can be a JSON string or already an array
     let licenses: any[] = [];
-    try {
-      licenses = crewMember.licenses 
-        ? JSON.parse(crewMember.licenses as string) 
-        : [];
-    } catch (e) {
-      licenses = [];
+    if (crewMember.licenses) {
+      if (Array.isArray(crewMember.licenses)) {
+        licenses = crewMember.licenses;
+      } else if (typeof crewMember.licenses === 'string') {
+        try {
+          licenses = JSON.parse(crewMember.licenses);
+        } catch (e) {
+          licenses = [];
+        }
+      }
     }
 
     // Get rank flags for endorsement derivation
@@ -4735,13 +4740,18 @@ export class PersistentFileStorage implements IStorage {
     const shipTypeData = calculateShipTypeExperience(companySeaService, externalSeaService);
 
     // Parse licenses for endorsement calculation
+    // Handle both cases: licenses can be a JSON string or already an array
     let licenses: any[] = [];
-    try {
-      licenses = crewMember.licenses 
-        ? JSON.parse(crewMember.licenses as string) 
-        : [];
-    } catch (e) {
-      licenses = [];
+    if (crewMember.licenses) {
+      if (Array.isArray(crewMember.licenses)) {
+        licenses = crewMember.licenses;
+      } else if (typeof crewMember.licenses === 'string') {
+        try {
+          licenses = JSON.parse(crewMember.licenses);
+        } catch (e) {
+          licenses = [];
+        }
+      }
     }
 
     // Get rank flags for endorsement derivation
