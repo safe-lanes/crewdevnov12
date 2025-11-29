@@ -101,6 +101,18 @@ The application employs a modern web stack with a module-first architecture for 
     - **PATCH Handler**: Strips undefined/empty values for vessel assignment fields before update
     - **Auto-Sync Guard**: Only syncs reliefDue to vessel_planning when explicitly set with valid value
     - **Dashboard Data Flow**: Dashboard reads from `getCrewDashboardSummary` API which translates vessel codes to names using Master 014 lookup
+- **Crew Dashboard Timeline Card**: Canvas-based visualization showing 6-month window (2 months before, 4 months after today) of vessel assignments.
+    - **Data Structure**: Uses ServiceAssignment type with ISO date strings (startDate, endDate, contractEndDate, rangeEndDate) for precise timeline positioning
+    - **Timeline Builder**: `buildServiceTimeline()` helper function combines sea service history and vessel planning data
+    - **Color Coding**: 
+        - Green: On board, within contract period
+        - Yellow: On board but past contractEndDate or within 14 days of contract end ("Near Relief")
+        - Red: On board but past rangeEndDate (overdue)
+        - Blue: Planned future assignments
+        - Gray: Completed assignments
+    - **Appraisal/Handover Badges**: App-N and HO-N badges displayed next to each bar when appraisal/handover records exist for that assignment
+    - **Canvas Features**: Today indicator (red dashed line), month headers, vessel name labels on bars
+    - **Component**: `client/src/modules/crew-pool/components/TimelineCard.tsx`
 
 ## External Dependencies
 - React 18
