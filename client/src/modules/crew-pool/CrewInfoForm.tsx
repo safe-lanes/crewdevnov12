@@ -1380,10 +1380,6 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
 
   // Dashboard render function
   const renderDashboard = () => {
-    if (isDashboardLoading) {
-      return <div className="text-center py-8">Loading dashboard...</div>;
-    }
-
     if (dashboardError) {
       return <div className="text-center py-8 text-red-600">Error loading dashboard data</div>;
     }
@@ -1410,97 +1406,119 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                 </Button>
               </div>
               <div className="space-y-3">
-                {/* Status Badge with color coding: On Board=orange, On Leave=green, Inactive=gray */}
-                <div 
-                  className={`${
-                    statusData?.status === 'On Board' ? 'bg-orange-500' : 
-                    statusData?.status === 'On Leave' ? 'bg-green-500' : 
-                    statusData?.status === 'Inactive' ? 'bg-gray-500' :
-                    'bg-gray-400'
-                  } text-white p-3 rounded text-center`} 
-                  data-testid="status-badge"
-                >
-                  <div className="text-sm font-medium">{statusData?.status || '—'}</div>
-                </div>
-                
-                <div className="space-y-2 text-sm">
-                  {/* Vessel - only show when On Board */}
-                  {statusData?.status === 'On Board' && (
-                    <div>
-                      <div className="text-gray-600 text-xs">Vessel</div>
-                      <div className="font-medium text-lg" data-testid="text-vessel">
-                        {statusData?.vessel || crewMember?.presentVessel || '—'}
-                      </div>
+                {isDashboardLoading ? (
+                  <div className="space-y-3 animate-pulse">
+                    <div className="h-10 bg-gray-200 rounded"></div>
+                    <div className="space-y-2">
+                      <div className="h-3 bg-gray-200 rounded w-16"></div>
+                      <div className="h-5 bg-gray-200 rounded w-32"></div>
                     </div>
-                  )}
-                  
-                  {/* Next Availability - only show when On Leave */}
-                  {statusData?.status === 'On Leave' && (
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="text-gray-600 text-xs">Next Availability</div>
-                        <div className="font-medium" data-testid="text-next-availability">
-                          {statusData?.nextAvailability || formData.nextAvailability || '—'}
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-5 w-5 ml-2"
-                        onClick={() => setIsNextAvailabilityEditOpen(true)}
-                        data-testid="button-edit-next-availability"
-                      >
-                        <Pencil className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  )}
-                  
-                  {/* Vessel field (when On Leave - shows as dash since not on vessel) */}
-                  {statusData?.status === 'On Leave' && (
-                    <div>
-                      <div className="text-gray-600 text-xs">Vessel</div>
-                      <div className="font-medium text-lg" data-testid="text-vessel">
-                        —
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Joined and Relief Due - only show when On Board */}
-                  {statusData?.status === 'On Board' && (
-                    <div className="grid grid-cols-2 gap-4 mt-3">
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <div className="text-gray-600 text-xs">Joined</div>
-                        <div className="font-medium" data-testid="text-joined">
-                          {statusData?.joinedDate || '—'}
-                        </div>
+                        <div className="h-3 bg-gray-200 rounded w-12 mb-1"></div>
+                        <div className="h-4 bg-gray-200 rounded w-20"></div>
                       </div>
                       <div>
-                        <div className="text-gray-600 text-xs">Relief Due</div>
-                        <div className="font-medium" data-testid="text-sailing-due">
-                          {statusData?.sailingDue || '—'}
+                        <div className="h-3 bg-gray-200 rounded w-16 mb-1"></div>
+                        <div className="h-4 bg-gray-200 rounded w-20"></div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Status Badge with color coding: On Board=orange, On Leave=green, Inactive=gray */}
+                    <div 
+                      className={`${
+                        statusData?.status === 'On Board' ? 'bg-orange-500' : 
+                        statusData?.status === 'On Leave' ? 'bg-green-500' : 
+                        statusData?.status === 'Inactive' ? 'bg-gray-500' :
+                        'bg-gray-400'
+                      } text-white p-3 rounded text-center`} 
+                      data-testid="status-badge"
+                    >
+                      <div className="text-sm font-medium">{statusData?.status || '—'}</div>
+                    </div>
+                    
+                    <div className="space-y-2 text-sm">
+                      {/* Vessel - only show when On Board */}
+                      {statusData?.status === 'On Board' && (
+                        <div>
+                          <div className="text-gray-600 text-xs">Vessel</div>
+                          <div className="font-medium text-lg" data-testid="text-vessel">
+                            {statusData?.vessel || crewMember?.presentVessel || '—'}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Next Availability - only show when On Leave */}
+                      {statusData?.status === 'On Leave' && (
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="text-gray-600 text-xs">Next Availability</div>
+                            <div className="font-medium" data-testid="text-next-availability">
+                              {statusData?.nextAvailability || formData.nextAvailability || '—'}
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 ml-2"
+                            onClick={() => setIsNextAvailabilityEditOpen(true)}
+                            data-testid="button-edit-next-availability"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
+                      
+                      {/* Vessel field (when On Leave - shows as dash since not on vessel) */}
+                      {statusData?.status === 'On Leave' && (
+                        <div>
+                          <div className="text-gray-600 text-xs">Vessel</div>
+                          <div className="font-medium text-lg" data-testid="text-vessel">
+                            —
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Joined and Relief Due - only show when On Board */}
+                      {statusData?.status === 'On Board' && (
+                        <div className="grid grid-cols-2 gap-4 mt-3">
+                          <div>
+                            <div className="text-gray-600 text-xs">Joined</div>
+                            <div className="font-medium" data-testid="text-joined">
+                              {statusData?.joinedDate || '—'}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-gray-600 text-xs">Relief Due</div>
+                            <div className="font-medium" data-testid="text-sailing-due">
+                              {statusData?.sailingDue || '—'}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="mt-3">
+                        <div className="text-gray-600 text-xs">Nearest Airport</div>
+                        <div className="font-medium" data-testid="text-assignment">
+                          {formData.nearestAirport || '—'}
+                        </div>
+                      </div>
+                      
+                      <div className="mt-3">
+                        <div className="text-gray-600 text-xs">Emergency Contact Name, Relation, Ph:</div>
+                        <div className="text-red-600 text-sm font-medium" data-testid="text-emergency-contact">
+                          {formData.nokFirstName && formData.nokRelationship && formData.nokTelephone ? 
+                            `${formData.nokFirstName} ${formData.nokFamilyName || ''}, ${formData.nokRelationship}, ${formData.nokTelephone}`.trim() : 
+                            statusData?.emergencyContact ? 
+                              `${statusData.emergencyContact.name}, ${statusData.emergencyContact.relation}, ${statusData.emergencyContact.phone}` : 
+                              '—'}
                         </div>
                       </div>
                     </div>
-                  )}
-                  
-                  <div className="mt-3">
-                    <div className="text-gray-600 text-xs">Nearest Airport</div>
-                    <div className="font-medium" data-testid="text-assignment">
-                      {formData.nearestAirport || '—'}
-                    </div>
-                  </div>
-                  
-                  <div className="mt-3">
-                    <div className="text-gray-600 text-xs">Emergency Contact Name, Relation, Ph:</div>
-                    <div className="text-red-600 text-sm font-medium" data-testid="text-emergency-contact">
-                      {formData.nokFirstName && formData.nokRelationship && formData.nokTelephone ? 
-                        `${formData.nokFirstName} ${formData.nokFamilyName || ''}, ${formData.nokRelationship}, ${formData.nokTelephone}`.trim() : 
-                        statusData?.emergencyContact ? 
-                          `${statusData.emergencyContact.name}, ${statusData.emergencyContact.relation}, ${statusData.emergencyContact.phone}` : 
-                          '—'}
-                    </div>
-                  </div>
-                </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -1509,7 +1527,19 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
               <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }} data-testid="text-compliance-title">Training/ Cert/ Docs</h3>
               
               <div className="space-y-3" data-testid="compliance-items">
-                {complianceData && complianceData.length > 0 ? (
+                {isDashboardLoading ? (
+                  <div className="space-y-3 animate-pulse">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-3 h-3 bg-gray-200 rounded-full"></div>
+                          <div className="h-4 bg-gray-200 rounded w-24"></div>
+                        </div>
+                        <div className="h-3 bg-gray-200 rounded w-16"></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : complianceData && complianceData.length > 0 ? (
                   complianceData.map((item, index) => {
                     const statusColor = item.status === 'compliant' ? 'bg-green-500' : item.status === 'issues' ? 'bg-red-500' : 'bg-yellow-500';
                     const testId = item.category.toLowerCase().replace(/[\s&]/g, '-');
@@ -1542,38 +1572,49 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             {/* Experience Metrics */}
             <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-experience">
               <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Experience</h3>
-              <div className="grid grid-cols-5 gap-4">
-                <div className="text-center">
-                  <div className="text-xs text-gray-500 mb-2">Company (Yrs)</div>
-                  <div className="text-2xl font-medium text-blue-600" data-testid="text-company-years">
-                    {experienceData?.company ?? '—'}
+              {isDashboardLoading ? (
+                <div className="grid grid-cols-5 gap-4 animate-pulse">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="text-center">
+                      <div className="h-3 bg-gray-200 rounded w-16 mx-auto mb-2"></div>
+                      <div className="h-7 bg-gray-200 rounded w-8 mx-auto"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-5 gap-4">
+                  <div className="text-center">
+                    <div className="text-xs text-gray-500 mb-2">Company (Yrs)</div>
+                    <div className="text-2xl font-medium text-blue-600" data-testid="text-company-years">
+                      {experienceData?.company ?? '—'}
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs text-gray-500 mb-2">Rank (Yrs)</div>
+                    <div className="text-2xl font-medium text-blue-600" data-testid="text-rank-years">
+                      {experienceData?.rank ?? '—'}
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs text-gray-500 mb-2">Tankers (Yrs)</div>
+                    <div className="text-2xl font-medium text-blue-600" data-testid="text-tankers-years">
+                      {experienceData?.tankers ?? '—'}
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs text-gray-500 mb-2">OOW (Yrs)</div>
+                    <div className="text-2xl font-medium text-blue-600" data-testid="text-ocw-years">
+                      {experienceData?.ocw ?? '—'}
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs text-gray-500 mb-2">Endors</div>
+                    <div className="text-2xl font-medium text-blue-600" data-testid="text-endorsements-count">
+                      {experienceData?.endorsements ?? '—'}
+                    </div>
                   </div>
                 </div>
-                <div className="text-center">
-                  <div className="text-xs text-gray-500 mb-2">Rank (Yrs)</div>
-                  <div className="text-2xl font-medium text-blue-600" data-testid="text-rank-years">
-                    {experienceData?.rank ?? '—'}
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xs text-gray-500 mb-2">Tankers (Yrs)</div>
-                  <div className="text-2xl font-medium text-blue-600" data-testid="text-tankers-years">
-                    {experienceData?.tankers ?? '—'}
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xs text-gray-500 mb-2">OOW (Yrs)</div>
-                  <div className="text-2xl font-medium text-blue-600" data-testid="text-ocw-years">
-                    {experienceData?.ocw ?? '—'}
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xs text-gray-500 mb-2">Endors</div>
-                  <div className="text-2xl font-medium text-blue-600" data-testid="text-endorsements-count">
-                    {experienceData?.endorsements ?? '—'}
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Rank Experience */}
@@ -1699,59 +1740,73 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-timeline">
               <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Timeline</h3>
               <div className="space-y-2">
-                <div className="grid grid-cols-6 gap-1 text-xs text-center text-gray-600">
-                  <span data-testid="month-jan">Jan</span>
-                  <span data-testid="month-feb">Feb</span>
-                  <span data-testid="month-mar">Mar</span>
-                  <span data-testid="month-apr">Apr</span>
-                  <span data-testid="month-may">May</span>
-                  <span data-testid="month-jun">Jun</span>
-                </div>
-                
-                {serviceTimelineData && serviceTimelineData.length > 0 ? (
-                  <div className="space-y-2">
-                    {serviceTimelineData.map((assignment, index) => {
-                      const duration = ((assignment.endMonth - assignment.startMonth + 1) / 12) * 100;
-                      const startPosition = (assignment.startMonth / 12) * 100;
-                      return (
-                        <div key={index} className="relative h-8">
-                          <div 
-                            className={`h-4 rounded relative ${assignment.type === 'active' ? 'bg-red-500' : 'bg-white border-2 border-gray-400'}`}
-                            style={{ 
-                              width: `${duration}%`, 
-                              marginLeft: `${startPosition}%`, 
-                              marginBottom: '4px' 
-                            }}
-                            data-testid={`timeline-bar-${assignment.vessel.toLowerCase().replace(/\s+/g, '-')}`}>
-                            <div className={`absolute left-2 top-0 text-xs font-medium ${assignment.type === 'active' ? 'text-white' : 'text-gray-600'}`}
-                                 data-testid={`vessel-label-${assignment.vessel.toLowerCase().replace(/\s+/g, '-')}`}>
-                              {assignment.vessel}
-                            </div>
-                          </div>
-                          
-                          {assignment.type === 'active' && (
-                            <div className="absolute right-0 top-0 flex flex-col space-y-1">
-                              <div className="bg-green-500 text-white px-2 py-1 rounded text-xs font-medium">App'd</div>
-                              <div className="bg-yellow-500 text-white px-2 py-1 rounded text-xs font-medium">Req'd</div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                    
-                    <div className="flex items-center gap-4 text-xs mt-4">
-                      {serviceTimelineData.map((assignment, index) => (
-                        <div key={index} className="flex items-center gap-1">
-                          <div className={`w-3 h-3 rounded ${assignment.type === 'active' ? 'bg-red-500' : 'border-2 border-gray-400 bg-white'}`}></div>
-                          <span className="text-gray-600">{assignment.vessel}</span>
-                        </div>
+                {isDashboardLoading ? (
+                  <div className="space-y-3 animate-pulse">
+                    <div className="grid grid-cols-6 gap-1">
+                      {[1, 2, 3, 4, 5, 6].map((i) => (
+                        <div key={i} className="h-3 bg-gray-200 rounded"></div>
                       ))}
                     </div>
+                    <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+                    <div className="h-8 bg-gray-200 rounded w-1/2 ml-auto"></div>
                   </div>
                 ) : (
-                  <div className="text-center text-gray-500 py-8">
-                    No timeline data available
-                  </div>
+                  <>
+                    <div className="grid grid-cols-6 gap-1 text-xs text-center text-gray-600">
+                      <span data-testid="month-jan">Jan</span>
+                      <span data-testid="month-feb">Feb</span>
+                      <span data-testid="month-mar">Mar</span>
+                      <span data-testid="month-apr">Apr</span>
+                      <span data-testid="month-may">May</span>
+                      <span data-testid="month-jun">Jun</span>
+                    </div>
+                    
+                    {serviceTimelineData && serviceTimelineData.length > 0 ? (
+                      <div className="space-y-2">
+                        {serviceTimelineData.map((assignment, index) => {
+                          const duration = ((assignment.endMonth - assignment.startMonth + 1) / 12) * 100;
+                          const startPosition = (assignment.startMonth / 12) * 100;
+                          return (
+                            <div key={index} className="relative h-8">
+                              <div 
+                                className={`h-4 rounded relative ${assignment.type === 'active' ? 'bg-red-500' : 'bg-white border-2 border-gray-400'}`}
+                                style={{ 
+                                  width: `${duration}%`, 
+                                  marginLeft: `${startPosition}%`, 
+                                  marginBottom: '4px' 
+                                }}
+                                data-testid={`timeline-bar-${assignment.vessel.toLowerCase().replace(/\s+/g, '-')}`}>
+                                <div className={`absolute left-2 top-0 text-xs font-medium ${assignment.type === 'active' ? 'text-white' : 'text-gray-600'}`}
+                                     data-testid={`vessel-label-${assignment.vessel.toLowerCase().replace(/\s+/g, '-')}`}>
+                                  {assignment.vessel}
+                                </div>
+                              </div>
+                              
+                              {assignment.type === 'active' && (
+                                <div className="absolute right-0 top-0 flex flex-col space-y-1">
+                                  <div className="bg-green-500 text-white px-2 py-1 rounded text-xs font-medium">App'd</div>
+                                  <div className="bg-yellow-500 text-white px-2 py-1 rounded text-xs font-medium">Req'd</div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                        
+                        <div className="flex items-center gap-4 text-xs mt-4">
+                          {serviceTimelineData.map((assignment, index) => (
+                            <div key={index} className="flex items-center gap-1">
+                              <div className={`w-3 h-3 rounded ${assignment.type === 'active' ? 'bg-red-500' : 'border-2 border-gray-400 bg-white'}`}></div>
+                              <span className="text-gray-600">{assignment.vessel}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center text-gray-500 py-8">
+                        No timeline data available
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -1760,7 +1815,25 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-appraisals">
               <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Appraisals</h3>
               
-              {appraisalsData && appraisalsData.length > 0 ? (
+              {isDashboardLoading ? (
+                <div className="space-y-4 animate-pulse">
+                  <div className="grid grid-cols-2 gap-4 text-center">
+                    <div>
+                      <div className="h-3 bg-gray-200 rounded w-16 mx-auto mb-2"></div>
+                      <div className="h-7 bg-gray-200 rounded w-10 mx-auto"></div>
+                    </div>
+                    <div>
+                      <div className="h-3 bg-gray-200 rounded w-16 mx-auto mb-2"></div>
+                      <div className="h-7 bg-gray-200 rounded w-10 mx-auto"></div>
+                    </div>
+                  </div>
+                  <div className="h-16 flex items-end justify-between gap-1">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <div key={i} className="flex-1 bg-gray-200 rounded-t" style={{ height: `${70 - i * 10}%` }}></div>
+                    ))}
+                  </div>
+                </div>
+              ) : appraisalsData && appraisalsData.length > 0 ? (
                 <>
                   <div className="grid grid-cols-2 gap-4 text-center mb-4">
                     <div>
@@ -1805,34 +1878,56 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-promotion">
               <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }} data-testid="text-promotion-title">Promotion</h3>
               <div className="space-y-4">
-                <div className="text-xs text-gray-500 grid grid-cols-4 gap-2 mb-2" data-testid="promotion-headers">
-                  <span>Recommended</span>
-                  <span>Seaborne</span>
-                  <span>Checklist</span>
-                  <span>Approved</span>
-                </div>
-                {careerProgressionData && careerProgressionData.length > 0 ? (
-                  careerProgressionData.map((step, index) => {
-                    const testId = step.position.toLowerCase().replace(/[\s\/]/g, '-');
-                    return (
-                      <div key={index} className="flex items-center justify-between" data-testid={`promotion-${testId}`}>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm font-medium">{step.position}</span>
-                          {step.date && <span className="text-xs text-gray-500">{step.date}</span>}
-                        </div>
-                        <div className="flex items-center space-x-2" data-testid={`${testId}-status-indicators`}>
-                          <div className={`w-3 h-3 ${step.status?.recommend ? 'bg-green-500' : 'bg-gray-300'} rounded-full`}></div>
-                          <div className={`w-3 h-3 ${step.status?.advance ? 'bg-yellow-500' : 'bg-gray-300'} rounded-full`}></div>
-                          <div className={`w-3 h-3 ${step.status?.demote ? 'bg-yellow-500' : 'bg-gray-300'} rounded-full`}></div>
-                          <div className={`w-3 h-3 ${step.status?.approved ? 'bg-red-500' : 'bg-gray-300'} rounded-full`}></div>
+                {isDashboardLoading ? (
+                  <div className="space-y-3 animate-pulse">
+                    <div className="grid grid-cols-4 gap-2">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="h-3 bg-gray-200 rounded"></div>
+                      ))}
+                    </div>
+                    {[1, 2].map((i) => (
+                      <div key={i} className="flex items-center justify-between">
+                        <div className="h-4 bg-gray-200 rounded w-24"></div>
+                        <div className="flex space-x-2">
+                          {[1, 2, 3, 4].map((j) => (
+                            <div key={j} className="w-3 h-3 bg-gray-200 rounded-full"></div>
+                          ))}
                         </div>
                       </div>
-                    );
-                  })
-                ) : (
-                  <div className="text-center text-gray-500 py-8">
-                    No promotion data available
+                    ))}
                   </div>
+                ) : (
+                  <>
+                    <div className="text-xs text-gray-500 grid grid-cols-4 gap-2 mb-2" data-testid="promotion-headers">
+                      <span>Recommended</span>
+                      <span>Seaborne</span>
+                      <span>Checklist</span>
+                      <span>Approved</span>
+                    </div>
+                    {careerProgressionData && careerProgressionData.length > 0 ? (
+                      careerProgressionData.map((step, index) => {
+                        const testId = step.position.toLowerCase().replace(/[\s\/]/g, '-');
+                        return (
+                          <div key={index} className="flex items-center justify-between" data-testid={`promotion-${testId}`}>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm font-medium">{step.position}</span>
+                              {step.date && <span className="text-xs text-gray-500">{step.date}</span>}
+                            </div>
+                            <div className="flex items-center space-x-2" data-testid={`${testId}-status-indicators`}>
+                              <div className={`w-3 h-3 ${step.status?.recommend ? 'bg-green-500' : 'bg-gray-300'} rounded-full`}></div>
+                              <div className={`w-3 h-3 ${step.status?.advance ? 'bg-yellow-500' : 'bg-gray-300'} rounded-full`}></div>
+                              <div className={`w-3 h-3 ${step.status?.demote ? 'bg-yellow-500' : 'bg-gray-300'} rounded-full`}></div>
+                              <div className={`w-3 h-3 ${step.status?.approved ? 'bg-red-500' : 'bg-gray-300'} rounded-full`}></div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="text-center text-gray-500 py-8">
+                        No promotion data available
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
