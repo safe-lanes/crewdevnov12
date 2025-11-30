@@ -1,7 +1,7 @@
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react';
-import { format, addMonths, differenceInDays, parseISO, isAfter, isBefore, startOfMonth, endOfMonth } from 'date-fns';
-import { Maximize2, X } from 'lucide-react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { format, addMonths, differenceInDays, parseISO, isAfter, isBefore, startOfMonth, endOfMonth, getMonth } from 'date-fns';
+import { Maximize2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { ServiceAssignment } from '@shared/schema';
 
 interface TimelineCardProps {
@@ -151,7 +151,10 @@ function TimelineCanvas({
     return finalBarEndX;
   }, [today, startDate, endDate, totalDays]);
   
-  const canvasHeight = Math.max(100, 32 + assignments.length * 28);
+  const yearRowHeight = isExpanded ? 18 : 0;
+  const monthRowHeight = 24;
+  const headerHeight = yearRowHeight + monthRowHeight;
+  const canvasHeight = Math.max(100, headerHeight + 8 + assignments.length * 28);
   
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -162,7 +165,6 @@ function TimelineCanvas({
     
     const width = canvas.width;
     const height = canvas.height;
-    const headerHeight = 24;
     const barHeight = 20;
     const barSpacing = 8;
     const leftPadding = 8;
@@ -188,12 +190,24 @@ function TimelineCanvas({
       }
     });
     
+    if (isExpanded) {
+      ctx.fillStyle = '#16569e';
+      ctx.font = 'bold 11px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      months.forEach((month, index) => {
+        if (getMonth(month.date) === 0) {
+          const x = leftPadding + (index + 0.5) * monthWidth;
+          ctx.fillText(format(month.date, 'yyyy'), x, 13);
+        }
+      });
+    }
+    
     ctx.fillStyle = '#6B7280';
     ctx.font = isExpanded ? '10px Inter, system-ui, sans-serif' : '11px Inter, system-ui, sans-serif';
     ctx.textAlign = 'center';
     months.forEach((month, index) => {
       const x = leftPadding + (index + 0.5) * monthWidth;
-      ctx.fillText(month.label, x, 16);
+      ctx.fillText(month.label, x, yearRowHeight + 16);
     });
     
     const todayX = leftPadding + (differenceInDays(today, startDate) / totalDays) * chartWidth;
@@ -254,7 +268,7 @@ function TimelineCanvas({
     
     setBadgePositions(newBadgePositions);
     
-  }, [assignments, months, today, startDate, endDate, totalDays, monthCount, isExpanded, canvasWidth, drawAssignmentBar]);
+  }, [assignments, months, today, startDate, endDate, totalDays, monthCount, isExpanded, canvasWidth, drawAssignmentBar, yearRowHeight, headerHeight]);
   
   return (
     <div className="relative">
@@ -394,38 +408,29 @@ export function TimelineCard({
       </div>
       
       <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="max-w-5xl w-[90vw] max-h-[85vh] p-0">
-          <div className="flex flex-col h-full">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold" style={{ color: '#16569e' }}>
-                Timeline (18 Months View)
-              </h2>
-              <button
-                onClick={() => setShowModal(false)}
-                className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
-                data-testid="button-close-timeline-modal"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+        <DialogContent className="max-w-5xl w-[90vw] max-h-[85vh]">
+          <DialogHeader>
+            <DialogTitle style={{ color: '#16569e' }}>
+              Timeline (18 Months View)
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-auto">
+            <TimelineCanvas
+              assignments={assignments}
+              isExpanded={true}
+              onAppraisalClick={onAppraisalClick}
+              onHandoverClick={onHandoverClick}
+              canvasWidth={800}
+            />
             
-            <div className="flex-1 overflow-auto p-6">
-              <TimelineCanvas
-                assignments={assignments}
-                isExpanded={true}
-                onAppraisalClick={onAppraisalClick}
-                onHandoverClick={onHandoverClick}
-                canvasWidth={800}
-              />
-              
-              {assignments.length === 0 && (
-                <div className="text-center text-gray-500 py-8">
-                  No timeline data available
-                </div>
-              )}
-              
-              {assignments.length > 0 && <TimelineLegend />}
-            </div>
+            {assignments.length === 0 && (
+              <div className="text-center text-gray-500 py-8">
+                No timeline data available
+              </div>
+            )}
+            
+            {assignments.length > 0 && <TimelineLegend />}
           </div>
         </DialogContent>
       </Dialog>
