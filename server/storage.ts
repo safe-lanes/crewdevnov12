@@ -440,6 +440,9 @@ export function buildServiceTimeline(
         const rangeEnd = new Date(contractEnd);
         rangeEnd.setMonth(rangeEnd.getMonth() + planning.contractEndRangeEndMonths);
         rangeEndDate = rangeEnd.toISOString().split('T')[0];
+      } else {
+        // If no range extension specified, use contract end as range end
+        rangeEndDate = contractEndDate;
       }
     }
     
