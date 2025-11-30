@@ -117,28 +117,26 @@ export function TimelineCard({
     
     let finalBarEndX = barStartX;
     
-    // Draw green bar (Contract Start to Contract End)
+    // Draw green bar (Contract Start to Contract End) - matches Rotation module exactly
     if (clippedGreenEndX > barStartX) {
-      ctx.fillStyle = 'rgba(34, 197, 94, 0.7)'; // Green with opacity
-      ctx.beginPath();
-      ctx.roundRect(barStartX, barY, clippedGreenEndX - barStartX, barHeight, 4);
-      ctx.fill();
+      ctx.fillStyle = 'rgba(2, 169, 33, 0.5)'; // #02A921 with 50% opacity
+      ctx.fillRect(barStartX, barY, clippedGreenEndX - barStartX, barHeight);
       finalBarEndX = clippedGreenEndX;
     }
     
-    // Draw yellow bar (Contract End to Range End)
+    // Draw yellow bar (Contract End to Range End) - matches Rotation module exactly
     if (clippedYellowEndX > clippedGreenEndX && rangeEnd && contractEnd && isAfter(rangeEnd, contractEnd)) {
-      ctx.fillStyle = 'rgba(245, 158, 11, 0.7)'; // Yellow/Amber with opacity
+      ctx.fillStyle = 'rgba(241, 205, 29, 0.5)'; // #F1CD1D with 50% opacity
       ctx.fillRect(clippedGreenEndX, barY, clippedYellowEndX - clippedGreenEndX, barHeight);
       finalBarEndX = clippedYellowEndX;
     }
     
-    // Draw red bar (After Range End) - only if overdue
+    // Draw light red/pink bar (After Range End) - matches Rotation module exactly
     if (rangeEnd && isAfter(today, rangeEnd)) {
       const redStartX = clippedYellowEndX;
       const redEndX = Math.min(todayX, leftPadding + chartWidth);
       if (redEndX > redStartX) {
-        ctx.fillStyle = 'rgba(239, 68, 68, 0.7)'; // Red with opacity
+        ctx.fillStyle = 'rgba(229, 78, 96, 0.5)'; // #E54E60 with 50% opacity
         ctx.fillRect(redStartX, barY, redEndX - redStartX, barHeight);
         finalBarEndX = redEndX;
       }
@@ -168,25 +166,38 @@ export function TimelineCard({
     ctx.fillStyle = '#f8fafc';
     ctx.fillRect(0, 0, width, headerHeight);
     
+    const monthWidth = chartWidth / 6;
+    
+    // Draw month boundary lines first (vertical lines at month starts)
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 1;
+    months.forEach((month, index) => {
+      if (index > 0) {
+        const boundaryX = leftPadding + index * monthWidth;
+        ctx.beginPath();
+        ctx.moveTo(boundaryX, 0);
+        ctx.lineTo(boundaryX, height);
+        ctx.stroke();
+      }
+    });
+    
+    // Draw month labels centered in each column
     ctx.fillStyle = '#6B7280';
     ctx.font = '11px Inter, system-ui, sans-serif';
     ctx.textAlign = 'center';
-    
-    const monthWidth = chartWidth / 6;
     months.forEach((month, index) => {
       const x = leftPadding + (index + 0.5) * monthWidth;
       ctx.fillText(month.label, x, 16);
     });
     
+    // Draw "today" vertical line - solid yellow matching Rotation module
     const todayX = leftPadding + (differenceInDays(today, startDate) / totalDays) * chartWidth;
-    ctx.strokeStyle = '#EF4444';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([4, 2]);
+    ctx.strokeStyle = '#fbbf24'; // Yellow color matching Rotation module
+    ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(todayX, headerHeight);
     ctx.lineTo(todayX, height);
     ctx.stroke();
-    ctx.setLineDash([]);
     
     const filteredAssignments = assignments.filter(a => {
       const aStart = parseISO(a.startDate);
@@ -315,15 +326,15 @@ export function TimelineCard({
       {assignments.length > 0 && (
         <div className="flex flex-wrap items-center gap-3 mt-3 text-xs">
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-green-500"></div>
+            <div className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(2, 169, 33, 0.7)' }}></div>
             <span className="text-gray-600">On Board</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-yellow-500"></div>
+            <div className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(241, 205, 29, 0.7)' }}></div>
             <span className="text-gray-600">Near Relief</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-red-500"></div>
+            <div className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(229, 78, 96, 0.7)' }}></div>
             <span className="text-gray-600">Overdue</span>
           </div>
           <div className="flex items-center gap-1">
