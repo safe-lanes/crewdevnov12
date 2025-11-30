@@ -1,6 +1,7 @@
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import { format, addMonths, differenceInDays, parseISO, isAfter, isBefore, startOfMonth, endOfMonth } from 'date-fns';
-import { Maximize2, Minimize2 } from 'lucide-react';
+import { Maximize2, X } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import type { ServiceAssignment } from '@shared/schema';
 
 interface TimelineCardProps {
@@ -20,34 +21,37 @@ interface BadgePosition {
   handoverIds: number[];
 }
 
-export function TimelineCard({ 
-  assignments, 
-  isLoading = false,
+interface TimelineCanvasProps {
+  assignments: ServiceAssignment[];
+  isExpanded: boolean;
+  onAppraisalClick?: (appraisalId: number) => void;
+  onHandoverClick?: (handoverId: number) => void;
+  canvasWidth?: number;
+}
+
+function TimelineCanvas({
+  assignments,
+  isExpanded,
   onAppraisalClick,
-  onHandoverClick
-}: TimelineCardProps) {
+  onHandoverClick,
+  canvasWidth = 400
+}: TimelineCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const [badgePositions, setBadgePositions] = useState<BadgePosition[]>([]);
-  const [isExpanded, setIsExpanded] = useState(false);
   
   const today = useMemo(() => new Date(), []);
   
-  // Calculate date range based on expanded state
-  // Collapsed (6 months): 2 months before, 4 months after (Sep-Feb for Nov 30)
-  // Expanded (18 months): 12 months before, 6 months after
   const startDate = useMemo(() => {
     const monthsBefore = isExpanded ? 12 : 2;
     return startOfMonth(addMonths(today, -monthsBefore));
   }, [today, isExpanded]);
   
   const endDate = useMemo(() => {
-    const monthsAfter = isExpanded ? 5 : 3; // 6 months forward means index 5
+    const monthsAfter = isExpanded ? 5 : 3;
     return endOfMonth(addMonths(today, monthsAfter));
   }, [today, isExpanded]);
   
   const totalDays = useMemo(() => differenceInDays(endDate, startDate), [startDate, endDate]);
-  
   const monthCount = isExpanded ? 18 : 6;
   
   const months = useMemo(() => {
@@ -63,10 +67,6 @@ export function TimelineCard({
     return result;
   }, [startDate, monthCount]);
   
-  // Draw multi-segment bar matching Rotation module:
-  // Green: startDate → contractEndDate
-  // Yellow: contractEndDate → rangeEndDate  
-  // Red: rangeEndDate → today (only if overdue)
   const drawAssignmentBar = useCallback((
     ctx: CanvasRenderingContext2D,
     assignment: ServiceAssignment,
@@ -80,7 +80,6 @@ export function TimelineCard({
     const contractEnd = assignment.contractEndDate ? parseISO(assignment.contractEndDate) : null;
     const rangeEnd = assignment.rangeEndDate ? parseISO(assignment.rangeEndDate) : null;
     
-    // For planned assignments - single blue bar
     if (assignment.type === 'planned') {
       const assignmentEnd = assignment.endDate 
         ? parseISO(assignment.endDate) 
@@ -98,7 +97,6 @@ export function TimelineCard({
       return barEndX;
     }
     
-    // For completed assignments - single gray bar
     if (assignment.type === 'completed') {
       const assignmentEnd = assignment.endDate 
         ? parseISO(assignment.endDate) 
@@ -116,43 +114,35 @@ export function TimelineCard({
       return barEndX;
     }
     
-    // For active/current assignments - multi-segment bar matching Rotation module
     const todayX = leftPadding + (differenceInDays(today, startDate) / totalDays) * chartWidth;
-    
-    // Determine bar boundaries
     const effectiveContractEnd = contractEnd || rangeEnd || addMonths(assignmentStart, 6);
     const effectiveRangeEnd = rangeEnd || effectiveContractEnd;
     
-    // Calculate X positions for each segment
     const greenEndX = leftPadding + Math.max(0, (differenceInDays(effectiveContractEnd, startDate) / totalDays) * chartWidth);
     const yellowEndX = leftPadding + Math.max(0, (differenceInDays(effectiveRangeEnd, startDate) / totalDays) * chartWidth);
     
-    // Clip to visible range
     const clippedGreenEndX = Math.min(greenEndX, leftPadding + chartWidth);
     const clippedYellowEndX = Math.min(yellowEndX, leftPadding + chartWidth);
     
     let finalBarEndX = barStartX;
     
-    // Draw green bar (Contract Start to Contract End) - matches Rotation module exactly
     if (clippedGreenEndX > barStartX) {
-      ctx.fillStyle = 'rgba(2, 169, 33, 0.5)'; // #02A921 with 50% opacity
+      ctx.fillStyle = 'rgba(2, 169, 33, 0.5)';
       ctx.fillRect(barStartX, barY, clippedGreenEndX - barStartX, barHeight);
       finalBarEndX = clippedGreenEndX;
     }
     
-    // Draw yellow bar (Contract End to Range End) - matches Rotation module exactly
     if (clippedYellowEndX > clippedGreenEndX && rangeEnd && contractEnd && isAfter(rangeEnd, contractEnd)) {
-      ctx.fillStyle = 'rgba(241, 205, 29, 0.5)'; // #F1CD1D with 50% opacity
+      ctx.fillStyle = 'rgba(241, 205, 29, 0.5)';
       ctx.fillRect(clippedGreenEndX, barY, clippedYellowEndX - clippedGreenEndX, barHeight);
       finalBarEndX = clippedYellowEndX;
     }
     
-    // Draw light red/pink bar (After Range End) - matches Rotation module exactly
     if (rangeEnd && isAfter(today, rangeEnd)) {
       const redStartX = clippedYellowEndX;
       const redEndX = Math.min(todayX, leftPadding + chartWidth);
       if (redEndX > redStartX) {
-        ctx.fillStyle = 'rgba(229, 78, 96, 0.5)'; // #E54E60 with 50% opacity
+        ctx.fillStyle = 'rgba(229, 78, 96, 0.5)';
         ctx.fillRect(redStartX, barY, redEndX - redStartX, barHeight);
         finalBarEndX = redEndX;
       }
@@ -161,9 +151,11 @@ export function TimelineCard({
     return finalBarEndX;
   }, [today, startDate, endDate, totalDays]);
   
+  const canvasHeight = Math.max(100, 32 + assignments.length * 28);
+  
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || isLoading) return;
+    if (!canvas) return;
     
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -184,7 +176,6 @@ export function TimelineCard({
     
     const monthWidth = chartWidth / monthCount;
     
-    // Draw month boundary lines first (vertical lines at month starts)
     ctx.strokeStyle = '#e5e7eb';
     ctx.lineWidth = 1;
     months.forEach((month, index) => {
@@ -197,18 +188,16 @@ export function TimelineCard({
       }
     });
     
-    // Draw month labels centered in each column
     ctx.fillStyle = '#6B7280';
-    ctx.font = isExpanded ? '9px Inter, system-ui, sans-serif' : '11px Inter, system-ui, sans-serif';
+    ctx.font = isExpanded ? '10px Inter, system-ui, sans-serif' : '11px Inter, system-ui, sans-serif';
     ctx.textAlign = 'center';
     months.forEach((month, index) => {
       const x = leftPadding + (index + 0.5) * monthWidth;
       ctx.fillText(month.label, x, 16);
     });
     
-    // Draw "today" vertical line - solid yellow matching Rotation module
     const todayX = leftPadding + (differenceInDays(today, startDate) / totalDays) * chartWidth;
-    ctx.strokeStyle = '#fbbf24'; // Yellow color matching Rotation module
+    ctx.strokeStyle = '#fbbf24';
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(todayX, headerHeight);
@@ -217,7 +206,6 @@ export function TimelineCard({
     
     const filteredAssignments = assignments.filter(a => {
       const aStart = parseISO(a.startDate);
-      // Use rangeEndDate for visibility check (matches Rotation module logic)
       const aEnd = a.rangeEndDate 
         ? parseISO(a.rangeEndDate) 
         : (a.endDate ? parseISO(a.endDate) : addMonths(today, 6));
@@ -228,17 +216,14 @@ export function TimelineCard({
     
     filteredAssignments.forEach((assignment, index) => {
       const assignmentStart = parseISO(assignment.startDate);
-      
       const displayStart = isBefore(assignmentStart, startDate) ? startDate : assignmentStart;
       
       const barStartX = leftPadding + (differenceInDays(displayStart, startDate) / totalDays) * chartWidth;
       const barY = headerHeight + 8 + index * (barHeight + barSpacing);
       
-      // Use multi-segment bar drawing (matching Rotation module)
       const barEndX = drawAssignmentBar(ctx, assignment, barStartX, barY, barHeight, chartWidth, leftPadding);
       const barWidth = barEndX - barStartX;
       
-      // Draw vessel name label
       ctx.fillStyle = '#FFFFFF';
       ctx.font = 'bold 10px Inter, system-ui, sans-serif';
       ctx.textAlign = 'left';
@@ -269,7 +254,86 @@ export function TimelineCard({
     
     setBadgePositions(newBadgePositions);
     
-  }, [assignments, isLoading, months, today, startDate, endDate, totalDays, monthCount, isExpanded, drawAssignmentBar]);
+  }, [assignments, months, today, startDate, endDate, totalDays, monthCount, isExpanded, canvasWidth, drawAssignmentBar]);
+  
+  return (
+    <div className="relative">
+      <canvas
+        ref={canvasRef}
+        width={canvasWidth}
+        height={canvasHeight}
+        className="w-full"
+        style={{ maxHeight: isExpanded ? '400px' : '200px' }}
+      />
+      
+      {badgePositions.map((pos) => (
+        <div 
+          key={pos.index}
+          className="absolute flex gap-1"
+          style={{
+            left: `${(pos.x / canvasWidth) * 100}%`,
+            top: `${pos.y}px`,
+            transform: 'translateY(-2px)'
+          }}
+        >
+          {pos.hasAppraisal && (
+            <button
+              onClick={() => onAppraisalClick?.(pos.appraisalIds[0])}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white px-1.5 py-0.5 rounded text-xs font-medium transition-colors whitespace-nowrap"
+              data-testid={`badge-appraisal-${pos.index}`}
+            >
+              App-{pos.appraisalIds.length}
+            </button>
+          )}
+          {pos.hasHandover && (
+            <button
+              onClick={() => onHandoverClick?.(pos.handoverIds[0])}
+              className="bg-amber-500 hover:bg-amber-600 text-white px-1.5 py-0.5 rounded text-xs font-medium transition-colors whitespace-nowrap"
+              data-testid={`badge-handover-${pos.index}`}
+            >
+              HO-{pos.handoverIds.length}
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TimelineLegend() {
+  return (
+    <div className="flex flex-wrap items-center gap-3 mt-3 text-xs">
+      <div className="flex items-center gap-1">
+        <div className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(2, 169, 33, 0.7)' }}></div>
+        <span className="text-gray-600">On Board</span>
+      </div>
+      <div className="flex items-center gap-1">
+        <div className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(241, 205, 29, 0.7)' }}></div>
+        <span className="text-gray-600">Near Relief</span>
+      </div>
+      <div className="flex items-center gap-1">
+        <div className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(229, 78, 96, 0.7)' }}></div>
+        <span className="text-gray-600">Overdue</span>
+      </div>
+      <div className="flex items-center gap-1">
+        <div className="w-3 h-3 rounded bg-blue-500"></div>
+        <span className="text-gray-600">Planned</span>
+      </div>
+      <div className="flex items-center gap-1">
+        <div className="w-3 h-3 rounded bg-gray-400"></div>
+        <span className="text-gray-600">Completed</span>
+      </div>
+    </div>
+  );
+}
+
+export function TimelineCard({ 
+  assignments, 
+  isLoading = false,
+  onAppraisalClick,
+  onHandoverClick
+}: TimelineCardProps) {
+  const [showModal, setShowModal] = useState(false);
   
   if (isLoading) {
     return (
@@ -298,95 +362,74 @@ export function TimelineCard({
   }
   
   return (
-    <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-timeline">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>Timeline</h3>
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
-          title={isExpanded ? "Collapse to 6 months" : "Expand to 18 months"}
-          data-testid="button-expand-timeline"
-        >
-          {isExpanded ? (
-            <Minimize2 className="h-4 w-4" />
-          ) : (
+    <>
+      <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-timeline">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>Timeline</h3>
+          <button
+            onClick={() => setShowModal(true)}
+            className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+            title="Expand to 18 months view"
+            data-testid="button-expand-timeline"
+          >
             <Maximize2 className="h-4 w-4" />
-          )}
-        </button>
-      </div>
-      
-      <div ref={containerRef} className="relative">
-        <canvas
-          ref={canvasRef}
-          width={400}
-          height={Math.max(100, 32 + assignments.length * 28)}
-          className="w-full"
-          style={{ maxHeight: '200px' }}
+          </button>
+        </div>
+        
+        <TimelineCanvas
+          assignments={assignments}
+          isExpanded={false}
+          onAppraisalClick={onAppraisalClick}
+          onHandoverClick={onHandoverClick}
+          canvasWidth={400}
         />
         
-        {badgePositions.map((pos) => (
-          <div 
-            key={pos.index}
-            className="absolute flex gap-1"
-            style={{
-              left: `${(pos.x / 400) * 100}%`,
-              top: `${pos.y}px`,
-              transform: 'translateY(-2px)'
-            }}
-          >
-            {pos.hasAppraisal && (
-              <button
-                onClick={() => onAppraisalClick?.(pos.appraisalIds[0])}
-                className="bg-emerald-500 hover:bg-emerald-600 text-white px-1.5 py-0.5 rounded text-xs font-medium transition-colors whitespace-nowrap"
-                data-testid={`badge-appraisal-${pos.index}`}
-              >
-                App-{pos.appraisalIds.length}
-              </button>
-            )}
-            {pos.hasHandover && (
-              <button
-                onClick={() => onHandoverClick?.(pos.handoverIds[0])}
-                className="bg-amber-500 hover:bg-amber-600 text-white px-1.5 py-0.5 rounded text-xs font-medium transition-colors whitespace-nowrap"
-                data-testid={`badge-handover-${pos.index}`}
-              >
-                HO-{pos.handoverIds.length}
-              </button>
-            )}
+        {assignments.length === 0 && (
+          <div className="text-center text-gray-500 py-8">
+            No timeline data available
           </div>
-        ))}
+        )}
+        
+        {assignments.length > 0 && <TimelineLegend />}
       </div>
       
-      {assignments.length === 0 && (
-        <div className="text-center text-gray-500 py-8">
-          No timeline data available
-        </div>
-      )}
-      
-      {assignments.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3 mt-3 text-xs">
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(2, 169, 33, 0.7)' }}></div>
-            <span className="text-gray-600">On Board</span>
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="max-w-5xl w-[90vw] max-h-[85vh] p-0">
+          <div className="flex flex-col h-full">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold" style={{ color: '#16569e' }}>
+                Timeline (18 Months View)
+              </h2>
+              <button
+                onClick={() => setShowModal(false)}
+                className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+                data-testid="button-close-timeline-modal"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-auto p-6">
+              <TimelineCanvas
+                assignments={assignments}
+                isExpanded={true}
+                onAppraisalClick={onAppraisalClick}
+                onHandoverClick={onHandoverClick}
+                canvasWidth={800}
+              />
+              
+              {assignments.length === 0 && (
+                <div className="text-center text-gray-500 py-8">
+                  No timeline data available
+                </div>
+              )}
+              
+              {assignments.length > 0 && <TimelineLegend />}
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(241, 205, 29, 0.7)' }}></div>
-            <span className="text-gray-600">Near Relief</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(229, 78, 96, 0.7)' }}></div>
-            <span className="text-gray-600">Overdue</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-blue-500"></div>
-            <span className="text-gray-600">Planned</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-gray-400"></div>
-            <span className="text-gray-600">Completed</span>
-          </div>
-        </div>
-      )}
-    </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
