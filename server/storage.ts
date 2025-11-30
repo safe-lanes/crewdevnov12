@@ -429,19 +429,31 @@ export function buildServiceTimeline(
     let contractEndDate: string | null = null;
     let rangeEndDate: string | null = null;
     
-    // Calculate contract end date if contract period is set
-    if (planning.contractPeriodMonths && planning.signOnDate) {
-      const contractEnd = new Date(planning.signOnDate);
-      contractEnd.setMonth(contractEnd.getMonth() + planning.contractPeriodMonths);
-      contractEndDate = contractEnd.toISOString().split('T')[0];
+    // Calculate contract end date and range end date from signOnDate
+    // Green bar ends at: signOnDate + contractEndRangeStartMonths
+    // Yellow bar ends at: signOnDate + contractEndRangeEndMonths
+    if (planning.signOnDate) {
+      const signOnDate = new Date(planning.signOnDate);
       
-      // Calculate range end date (extended period)
+      // Calculate contractEndDate (green bar end) using contractEndRangeStartMonths
+      if (planning.contractEndRangeStartMonths) {
+        const contractEnd = new Date(signOnDate);
+        contractEnd.setMonth(contractEnd.getMonth() + planning.contractEndRangeStartMonths);
+        contractEndDate = contractEnd.toISOString().split('T')[0];
+      } else if (planning.contractPeriodMonths) {
+        // Fallback to contractPeriodMonths if no range start defined
+        const contractEnd = new Date(signOnDate);
+        contractEnd.setMonth(contractEnd.getMonth() + planning.contractPeriodMonths);
+        contractEndDate = contractEnd.toISOString().split('T')[0];
+      }
+      
+      // Calculate rangeEndDate (yellow bar end) using contractEndRangeEndMonths
       if (planning.contractEndRangeEndMonths) {
-        const rangeEnd = new Date(contractEnd);
+        const rangeEnd = new Date(signOnDate);
         rangeEnd.setMonth(rangeEnd.getMonth() + planning.contractEndRangeEndMonths);
         rangeEndDate = rangeEnd.toISOString().split('T')[0];
-      } else {
-        // If no range extension specified, use contract end as range end
+      } else if (contractEndDate) {
+        // If no range end specified, use contract end as range end
         rangeEndDate = contractEndDate;
       }
     }
