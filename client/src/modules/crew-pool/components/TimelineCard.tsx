@@ -1,5 +1,5 @@
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react';
-import { format, addMonths, differenceInDays, parseISO, isAfter, isBefore } from 'date-fns';
+import { format, addMonths, differenceInDays, parseISO, isAfter, isBefore, startOfMonth, endOfMonth } from 'date-fns';
 import type { ServiceAssignment } from '@shared/schema';
 
 interface TimelineCardProps {
@@ -30,22 +30,24 @@ export function TimelineCard({
   const [badgePositions, setBadgePositions] = useState<BadgePosition[]>([]);
   
   const today = useMemo(() => new Date(), []);
-  const startDate = useMemo(() => addMonths(today, -2), [today]);
-  const endDate = useMemo(() => addMonths(today, 4), [today]);
+  // Align to month boundaries: start at first day of month 2 months ago
+  const startDate = useMemo(() => startOfMonth(addMonths(today, -2)), [today]);
+  // End at last day of month 3 months from now (so we show 6 full months)
+  const endDate = useMemo(() => endOfMonth(addMonths(today, 3)), [today]);
   const totalDays = useMemo(() => differenceInDays(endDate, startDate), [startDate, endDate]);
   
   const months = useMemo(() => {
     const result = [];
     let current = new Date(startDate);
-    while (isBefore(current, endDate) || format(current, 'MMM') === format(endDate, 'MMM')) {
+    for (let i = 0; i < 6; i++) {
       result.push({
         label: format(current, 'MMM'),
         date: new Date(current)
       });
       current = addMonths(current, 1);
     }
-    return result.slice(0, 6);
-  }, [startDate, endDate]);
+    return result;
+  }, [startDate]);
   
   // Draw multi-segment bar matching Rotation module:
   // Green: startDate → contractEndDate
