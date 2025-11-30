@@ -1,5 +1,5 @@
-import { useRef, useEffect, useMemo, useState } from 'react';
-import { format, addMonths, differenceInDays, parseISO, isAfter, isBefore, isWithinInterval } from 'date-fns';
+import { useRef, useEffect, useMemo, useState, useCallback } from 'react';
+import { format, addMonths, differenceInDays, parseISO, isAfter, isBefore } from 'date-fns';
 import type { ServiceAssignment } from '@shared/schema';
 
 interface TimelineCardProps {
@@ -47,43 +47,105 @@ export function TimelineCard({
     return result.slice(0, 6);
   }, [startDate, endDate]);
   
-  const getBarColor = (assignment: ServiceAssignment): string => {
+  // Draw multi-segment bar matching Rotation module:
+  // Green: startDate → contractEndDate
+  // Yellow: contractEndDate → rangeEndDate  
+  // Red: rangeEndDate → today (only if overdue)
+  const drawAssignmentBar = useCallback((
+    ctx: CanvasRenderingContext2D,
+    assignment: ServiceAssignment,
+    barStartX: number,
+    barY: number,
+    barHeight: number,
+    chartWidth: number,
+    leftPadding: number
+  ): number => {
     const assignmentStart = parseISO(assignment.startDate);
-    const assignmentEnd = assignment.endDate ? parseISO(assignment.endDate) : null;
     const contractEnd = assignment.contractEndDate ? parseISO(assignment.contractEndDate) : null;
     const rangeEnd = assignment.rangeEndDate ? parseISO(assignment.rangeEndDate) : null;
     
+    // For planned assignments - single blue bar
     if (assignment.type === 'planned') {
-      return '#3B82F6';
+      const assignmentEnd = assignment.endDate 
+        ? parseISO(assignment.endDate) 
+        : (rangeEnd || (contractEnd ? contractEnd : addMonths(today, 4)));
+      
+      const displayEnd = isAfter(assignmentEnd, endDate) ? endDate : assignmentEnd;
+      const barEndX = leftPadding + (differenceInDays(displayEnd, startDate) / totalDays) * chartWidth;
+      const barWidth = Math.max(barEndX - barStartX, 4);
+      
+      ctx.fillStyle = '#3B82F6';
+      ctx.beginPath();
+      ctx.roundRect(barStartX, barY, barWidth, barHeight, 4);
+      ctx.fill();
+      
+      return barEndX;
     }
     
+    // For completed assignments - single gray bar
     if (assignment.type === 'completed') {
-      return '#6B7280';
+      const assignmentEnd = assignment.endDate 
+        ? parseISO(assignment.endDate) 
+        : (rangeEnd || addMonths(assignmentStart, 6));
+      
+      const displayEnd = isAfter(assignmentEnd, endDate) ? endDate : assignmentEnd;
+      const barEndX = leftPadding + (differenceInDays(displayEnd, startDate) / totalDays) * chartWidth;
+      const barWidth = Math.max(barEndX - barStartX, 4);
+      
+      ctx.fillStyle = '#9CA3AF';
+      ctx.beginPath();
+      ctx.roundRect(barStartX, barY, barWidth, barHeight, 4);
+      ctx.fill();
+      
+      return barEndX;
     }
     
-    const isOnBoard = isWithinInterval(today, {
-      start: assignmentStart,
-      end: assignmentEnd || addMonths(today, 12)
-    });
+    // For active/current assignments - multi-segment bar matching Rotation module
+    const todayX = leftPadding + (differenceInDays(today, startDate) / totalDays) * chartWidth;
     
-    if (isOnBoard) {
-      if (rangeEnd && isAfter(today, rangeEnd)) {
-        return '#EF4444';
-      }
-      
-      if (contractEnd && isAfter(today, contractEnd)) {
-        return '#F59E0B';
-      }
-      
-      if (contractEnd && differenceInDays(contractEnd, today) < 14) {
-        return '#F59E0B';
-      }
-      
-      return '#22C55E';
+    // Determine bar boundaries
+    const effectiveContractEnd = contractEnd || rangeEnd || addMonths(assignmentStart, 6);
+    const effectiveRangeEnd = rangeEnd || effectiveContractEnd;
+    
+    // Calculate X positions for each segment
+    const greenEndX = leftPadding + Math.max(0, (differenceInDays(effectiveContractEnd, startDate) / totalDays) * chartWidth);
+    const yellowEndX = leftPadding + Math.max(0, (differenceInDays(effectiveRangeEnd, startDate) / totalDays) * chartWidth);
+    
+    // Clip to visible range
+    const clippedGreenEndX = Math.min(greenEndX, leftPadding + chartWidth);
+    const clippedYellowEndX = Math.min(yellowEndX, leftPadding + chartWidth);
+    
+    let finalBarEndX = barStartX;
+    
+    // Draw green bar (Contract Start to Contract End)
+    if (clippedGreenEndX > barStartX) {
+      ctx.fillStyle = 'rgba(34, 197, 94, 0.7)'; // Green with opacity
+      ctx.beginPath();
+      ctx.roundRect(barStartX, barY, clippedGreenEndX - barStartX, barHeight, 4);
+      ctx.fill();
+      finalBarEndX = clippedGreenEndX;
     }
     
-    return '#9CA3AF';
-  };
+    // Draw yellow bar (Contract End to Range End)
+    if (clippedYellowEndX > clippedGreenEndX && rangeEnd && contractEnd && isAfter(rangeEnd, contractEnd)) {
+      ctx.fillStyle = 'rgba(245, 158, 11, 0.7)'; // Yellow/Amber with opacity
+      ctx.fillRect(clippedGreenEndX, barY, clippedYellowEndX - clippedGreenEndX, barHeight);
+      finalBarEndX = clippedYellowEndX;
+    }
+    
+    // Draw red bar (After Range End) - only if overdue
+    if (rangeEnd && isAfter(today, rangeEnd)) {
+      const redStartX = clippedYellowEndX;
+      const redEndX = Math.min(todayX, leftPadding + chartWidth);
+      if (redEndX > redStartX) {
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.7)'; // Red with opacity
+        ctx.fillRect(redStartX, barY, redEndX - redStartX, barHeight);
+        finalBarEndX = redEndX;
+      }
+    }
+    
+    return finalBarEndX;
+  }, [today, startDate, endDate, totalDays]);
   
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -128,7 +190,10 @@ export function TimelineCard({
     
     const filteredAssignments = assignments.filter(a => {
       const aStart = parseISO(a.startDate);
-      const aEnd = a.endDate ? parseISO(a.endDate) : addMonths(today, 12);
+      // Use rangeEndDate for visibility check (matches Rotation module logic)
+      const aEnd = a.rangeEndDate 
+        ? parseISO(a.rangeEndDate) 
+        : (a.endDate ? parseISO(a.endDate) : addMonths(today, 6));
       return !(isAfter(aStart, endDate) || isBefore(aEnd, startDate));
     });
     
@@ -136,25 +201,17 @@ export function TimelineCard({
     
     filteredAssignments.forEach((assignment, index) => {
       const assignmentStart = parseISO(assignment.startDate);
-      const assignmentEnd = assignment.endDate 
-        ? parseISO(assignment.endDate) 
-        : addMonths(today, 4);
       
       const displayStart = isBefore(assignmentStart, startDate) ? startDate : assignmentStart;
-      const displayEnd = isAfter(assignmentEnd, endDate) ? endDate : assignmentEnd;
       
       const barStartX = leftPadding + (differenceInDays(displayStart, startDate) / totalDays) * chartWidth;
-      const barEndX = leftPadding + (differenceInDays(displayEnd, startDate) / totalDays) * chartWidth;
-      const barWidth = Math.max(barEndX - barStartX, 4);
-      
       const barY = headerHeight + 8 + index * (barHeight + barSpacing);
       
-      const color = getBarColor(assignment);
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.roundRect(barStartX, barY, barWidth, barHeight, 4);
-      ctx.fill();
+      // Use multi-segment bar drawing (matching Rotation module)
+      const barEndX = drawAssignmentBar(ctx, assignment, barStartX, barY, barHeight, chartWidth, leftPadding);
+      const barWidth = barEndX - barStartX;
       
+      // Draw vessel name label
       ctx.fillStyle = '#FFFFFF';
       ctx.font = 'bold 10px Inter, system-ui, sans-serif';
       ctx.textAlign = 'left';
@@ -173,7 +230,7 @@ export function TimelineCard({
       if (hasAppraisal || hasHandover) {
         newBadgePositions.push({
           index,
-          x: barStartX + barWidth + 4,
+          x: barEndX + 4,
           y: barY,
           hasAppraisal: !!hasAppraisal,
           hasHandover: !!hasHandover,
@@ -185,7 +242,7 @@ export function TimelineCard({
     
     setBadgePositions(newBadgePositions);
     
-  }, [assignments, isLoading, months, today, startDate, endDate, totalDays]);
+  }, [assignments, isLoading, months, today, startDate, endDate, totalDays, drawAssignmentBar]);
   
   if (isLoading) {
     return (
