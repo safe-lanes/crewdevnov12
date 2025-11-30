@@ -1,5 +1,6 @@
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import { format, addMonths, differenceInDays, parseISO, isAfter, isBefore, startOfMonth, endOfMonth } from 'date-fns';
+import { Maximize2, Minimize2 } from 'lucide-react';
 import type { ServiceAssignment } from '@shared/schema';
 
 interface TimelineCardProps {
@@ -28,18 +29,31 @@ export function TimelineCard({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [badgePositions, setBadgePositions] = useState<BadgePosition[]>([]);
+  const [isExpanded, setIsExpanded] = useState(false);
   
   const today = useMemo(() => new Date(), []);
-  // Align to month boundaries: start at first day of month 2 months ago
-  const startDate = useMemo(() => startOfMonth(addMonths(today, -2)), [today]);
-  // End at last day of month 3 months from now (so we show 6 full months)
-  const endDate = useMemo(() => endOfMonth(addMonths(today, 3)), [today]);
+  
+  // Calculate date range based on expanded state
+  // Collapsed (6 months): 2 months before, 4 months after (Sep-Feb for Nov 30)
+  // Expanded (18 months): 12 months before, 6 months after
+  const startDate = useMemo(() => {
+    const monthsBefore = isExpanded ? 12 : 2;
+    return startOfMonth(addMonths(today, -monthsBefore));
+  }, [today, isExpanded]);
+  
+  const endDate = useMemo(() => {
+    const monthsAfter = isExpanded ? 5 : 3; // 6 months forward means index 5
+    return endOfMonth(addMonths(today, monthsAfter));
+  }, [today, isExpanded]);
+  
   const totalDays = useMemo(() => differenceInDays(endDate, startDate), [startDate, endDate]);
+  
+  const monthCount = isExpanded ? 18 : 6;
   
   const months = useMemo(() => {
     const result = [];
     let current = new Date(startDate);
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < monthCount; i++) {
       result.push({
         label: format(current, 'MMM'),
         date: new Date(current)
@@ -47,7 +61,7 @@ export function TimelineCard({
       current = addMonths(current, 1);
     }
     return result;
-  }, [startDate]);
+  }, [startDate, monthCount]);
   
   // Draw multi-segment bar matching Rotation module:
   // Green: startDate → contractEndDate
@@ -168,7 +182,7 @@ export function TimelineCard({
     ctx.fillStyle = '#f8fafc';
     ctx.fillRect(0, 0, width, headerHeight);
     
-    const monthWidth = chartWidth / 6;
+    const monthWidth = chartWidth / monthCount;
     
     // Draw month boundary lines first (vertical lines at month starts)
     ctx.strokeStyle = '#e5e7eb';
@@ -185,7 +199,7 @@ export function TimelineCard({
     
     // Draw month labels centered in each column
     ctx.fillStyle = '#6B7280';
-    ctx.font = '11px Inter, system-ui, sans-serif';
+    ctx.font = isExpanded ? '9px Inter, system-ui, sans-serif' : '11px Inter, system-ui, sans-serif';
     ctx.textAlign = 'center';
     months.forEach((month, index) => {
       const x = leftPadding + (index + 0.5) * monthWidth;
@@ -255,12 +269,21 @@ export function TimelineCard({
     
     setBadgePositions(newBadgePositions);
     
-  }, [assignments, isLoading, months, today, startDate, endDate, totalDays, drawAssignmentBar]);
+  }, [assignments, isLoading, months, today, startDate, endDate, totalDays, monthCount, isExpanded, drawAssignmentBar]);
   
   if (isLoading) {
     return (
       <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-timeline">
-        <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Timeline</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>Timeline</h3>
+          <button
+            disabled
+            className="p-1 rounded hover:bg-gray-100 text-gray-400"
+            data-testid="button-expand-timeline"
+          >
+            <Maximize2 className="h-4 w-4" />
+          </button>
+        </div>
         <div className="space-y-3 animate-pulse">
           <div className="grid grid-cols-6 gap-1">
             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -276,7 +299,21 @@ export function TimelineCard({
   
   return (
     <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-timeline">
-      <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Timeline</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>Timeline</h3>
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+          title={isExpanded ? "Collapse to 6 months" : "Expand to 18 months"}
+          data-testid="button-expand-timeline"
+        >
+          {isExpanded ? (
+            <Minimize2 className="h-4 w-4" />
+          ) : (
+            <Maximize2 className="h-4 w-4" />
+          )}
+        </button>
+      </div>
       
       <div ref={containerRef} className="relative">
         <canvas
