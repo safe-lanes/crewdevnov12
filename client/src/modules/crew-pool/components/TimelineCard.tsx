@@ -89,18 +89,10 @@ function TimelineCanvas({
       const barEndX = leftPadding + (differenceInDays(displayEnd, startDate) / totalDays) * chartWidth;
       const barWidth = Math.max(barEndX - barStartX, 4);
       
-      // Draw outlined/hollow bar with light background and blue border
-      ctx.fillStyle = '#EFF6FF'; // Very light blue background
-      ctx.beginPath();
-      ctx.roundRect(barStartX, barY, barWidth, barHeight, 4);
-      ctx.fill();
-      
-      // Draw blue border
-      ctx.strokeStyle = '#3B82F6';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.roundRect(barStartX, barY, barWidth, barHeight, 4);
-      ctx.stroke();
+      // Draw outlined hollow bar with no fill, sharp corners
+      ctx.strokeStyle = '#56baf3';
+      ctx.lineWidth = 1.0;
+      ctx.strokeRect(barStartX, barY, barWidth, barHeight);
       
       return barEndX;
     }
@@ -258,7 +250,7 @@ function TimelineCanvas({
       const barWidth = barEndX - barStartX;
       
       // Use blue text for planned bars (outlined style), white for others
-      ctx.fillStyle = assignment.type === 'planned' ? '#3B82F6' : '#FFFFFF';
+      ctx.fillStyle = assignment.type === 'planned' ? '#56baf3' : '#FFFFFF';
       ctx.font = 'bold 10px Inter, system-ui, sans-serif';
       ctx.textAlign = 'left';
       
@@ -350,7 +342,7 @@ function TimelineLegend() {
         <span className="text-gray-600">Overdue</span>
       </div>
       <div className="flex items-center gap-1">
-        <div className="w-3 h-3 rounded border-[1.5px] border-blue-500 bg-blue-50"></div>
+        <div className="w-3 h-3 border" style={{ borderColor: '#56baf3' }}></div>
         <span className="text-gray-600">Planned</span>
       </div>
       <div className="flex items-center gap-1">
