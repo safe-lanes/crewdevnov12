@@ -55,50 +55,27 @@ const useDueCrew = (filters: any) => {
 };
 
 // Custom Timeline Component - Split into header, body, and footer sections
+// Uses ref-based scroll tracking + requestAnimationFrame for smooth sync
 const TimelineView: React.FC<{ 
   rowData: CrewMember[]; 
   rowHeight: number;
-  scrollTop: number;
+  scrollTopRef: React.MutableRefObject<number>;
   headerHeight: number;
   paginationHeight: number;
-}> = ({ rowData, rowHeight, scrollTop, headerHeight, paginationHeight }) => {
+}> = ({ rowData, rowHeight, scrollTopRef, headerHeight, paginationHeight }) => {
   const headerCanvasRef = useRef<HTMLCanvasElement>(null);
   const bodyCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [dimensions, setDimensions] = useState({ width: 800, bodyHeight: 400 });
+  const rafIdRef = useRef<number | null>(null);
+  const lastScrollTopRef = useRef<number>(0);
+  const dimensionsRef = useRef({ width: 800, bodyHeight: 400 });
+  const [, forceUpdate] = useState(0); // For triggering re-renders on dimension changes
   
   // Calculate 7-month window (2 months before today + today + 5 months after today)
   const today = useMemo(() => new Date(), []);
   const startDate = useMemo(() => addMonths(today, -2), [today]);
   const endDate = useMemo(() => addMonths(today, 5), [today]);
   const totalDays = useMemo(() => differenceInDays(endDate, startDate), [startDate, endDate]);
-  
-  // Resize canvas to match container - batch state updates to prevent re-render loops
-  useEffect(() => {
-    const updateSize = () => {
-      if (containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        const newWidth = Math.max(100, rect.width);
-        // Body height = container height - header - pagination footer
-        const newBodyHeight = Math.max(100, rect.height - headerHeight - paginationHeight);
-        
-        setDimensions(prev => {
-          // Only update if values actually changed (avoid unnecessary re-renders)
-          if (Math.abs(prev.width - newWidth) > 1 || Math.abs(prev.bodyHeight - newBodyHeight) > 1) {
-            return { width: newWidth, bodyHeight: newBodyHeight };
-          }
-          return prev;
-        });
-      }
-    };
-    
-    updateSize();
-    window.addEventListener('resize', updateSize);
-    return () => window.removeEventListener('resize', updateSize);
-  }, [headerHeight, paginationHeight]);
-  
-  const containerWidth = dimensions.width;
-  const bodyHeight = dimensions.bodyHeight;
   
   // Generate month headers with day-based positioning (using stable totalDays)
   const monthsData = useMemo(() => {
@@ -110,7 +87,6 @@ const TimelineView: React.FC<{
       const monthStart = current < startDate ? startDate : current;
       const monthEnd = endOfMonth(current) > endDate ? endDate : endOfMonth(current);
       
-      // Store ratios instead of pixel positions (stable across width changes)
       const startRatio = differenceInDays(monthStart, startDate) / totalDays;
       const endRatio = differenceInDays(monthEnd, startDate) / totalDays;
       
@@ -124,54 +100,16 @@ const TimelineView: React.FC<{
     return result;
   }, [startDate, endDate, totalDays]);
 
-  // Draw header canvas
-  useEffect(() => {
-    const canvas = headerCanvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const width = containerWidth;
-    
-    // Clear canvas
-    ctx.clearRect(0, 0, width, headerHeight);
-    
-    // Draw month headers background - match AG Grid blue styling
-    ctx.fillStyle = '#52baf3';
-    ctx.fillRect(0, 0, width, headerHeight);
-    
-    // Draw month headers with day-based positioning
-    ctx.fillStyle = 'white';
-    ctx.font = '12px sans-serif';
-    ctx.textAlign = 'center';
-    
-    monthsData.forEach((month) => {
-      const startX = month.startRatio * width;
-      const endX = month.endRatio * width;
-      const centerX = (startX + endX) / 2;
-      ctx.fillText(month.label, centerX, headerHeight / 2 + 4);
-      
-      // Draw vertical separator at month start
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(startX, 0);
-      ctx.lineTo(startX, headerHeight);
-      ctx.stroke();
-    });
-  }, [monthsData, containerWidth, headerHeight]);
-
-  // Draw body canvas with timeline bars
-  useEffect(() => {
+  // Draw body canvas - extracted to a function for RAF loop
+  const drawBodyCanvas = useCallback((scrollTop: number) => {
     const canvas = bodyCanvasRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const width = containerWidth;
-    const height = bodyHeight;
+    const width = dimensionsRef.current.width;
+    const height = dimensionsRef.current.bodyHeight;
     
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
@@ -259,7 +197,94 @@ const TimelineView: React.FC<{
     ctx.moveTo(todayX, 0);
     ctx.lineTo(todayX, height);
     ctx.stroke();
-  }, [rowData, scrollTop, rowHeight, monthsData, today, startDate, totalDays, containerWidth, bodyHeight]);
+  }, [rowData, rowHeight, monthsData, today, startDate, totalDays]);
+
+  // RAF loop for smooth scroll sync - bypasses React render cycle
+  useEffect(() => {
+    const animate = () => {
+      const currentScrollTop = scrollTopRef.current;
+      
+      // Only redraw if scroll position changed
+      if (currentScrollTop !== lastScrollTopRef.current) {
+        lastScrollTopRef.current = currentScrollTop;
+        drawBodyCanvas(currentScrollTop);
+      }
+      
+      rafIdRef.current = requestAnimationFrame(animate);
+    };
+    
+    rafIdRef.current = requestAnimationFrame(animate);
+    
+    return () => {
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+    };
+  }, [scrollTopRef, drawBodyCanvas]);
+
+  // Resize canvas to match container
+  useEffect(() => {
+    const updateSize = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const newWidth = Math.max(100, rect.width);
+        const newBodyHeight = Math.max(100, rect.height - headerHeight - paginationHeight);
+        
+        const prev = dimensionsRef.current;
+        if (Math.abs(prev.width - newWidth) > 1 || Math.abs(prev.bodyHeight - newBodyHeight) > 1) {
+          dimensionsRef.current = { width: newWidth, bodyHeight: newBodyHeight };
+          // Reset lastScrollTop to force RAF loop to redraw
+          lastScrollTopRef.current = -1;
+          forceUpdate(n => n + 1); // Trigger re-render for canvas size update
+        }
+      }
+    };
+    
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, [headerHeight, paginationHeight]);
+
+  const containerWidth = dimensionsRef.current.width;
+  const bodyHeight = dimensionsRef.current.bodyHeight;
+
+  // Draw header canvas (only needs to update on dimension/data changes, not scroll)
+  useEffect(() => {
+    const canvas = headerCanvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const width = containerWidth;
+    
+    ctx.clearRect(0, 0, width, headerHeight);
+    ctx.fillStyle = '#52baf3';
+    ctx.fillRect(0, 0, width, headerHeight);
+    
+    ctx.fillStyle = 'white';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    
+    monthsData.forEach((month) => {
+      const startX = month.startRatio * width;
+      const endX = month.endRatio * width;
+      const centerX = (startX + endX) / 2;
+      ctx.fillText(month.label, centerX, headerHeight / 2 + 4);
+      
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(startX, 0);
+      ctx.lineTo(startX, headerHeight);
+      ctx.stroke();
+    });
+  }, [monthsData, containerWidth, headerHeight]);
+
+  // Force redraw when data changes by resetting lastScrollTop
+  useEffect(() => {
+    lastScrollTopRef.current = -1; // Force RAF loop to redraw
+  }, [rowData]);
 
   return (
     <div ref={containerRef} className="w-full h-full flex flex-col">
@@ -297,7 +322,8 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
   dueInValue,
   rankValue,
 }) => {
-  const [gridScrollTop, setGridScrollTop] = useState(0);
+  // Use ref instead of state for scroll position - bypasses React render cycle for smooth sync
+  const scrollTopRef = useRef(0);
   const [displayedRowData, setDisplayedRowData] = useState<CrewMember[]>([]);
   const [paginationHeight, setPaginationHeight] = useState(48); // Default pagination height
   const timelineContainerRef = useRef<HTMLDivElement>(null);
@@ -436,11 +462,11 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
     // Initial load - set displayed rows
     updateDisplayedRows();
     
-    // Listen to body scroll events
+    // Listen to body scroll events - update ref directly (no React re-render)
     event.api.addEventListener('bodyScroll', () => {
       if (event.api.isDestroyed()) return;
       const verticalRange = event.api.getVerticalPixelRange();
-      setGridScrollTop(verticalRange.top);
+      scrollTopRef.current = verticalRange.top;
     });
     
     // Listen to sort changes
@@ -465,7 +491,7 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
       if (event.api.isDestroyed()) return;
       requestAnimationFrame(() => {
         updateDisplayedRows();
-        setGridScrollTop(0); // Reset scroll when page changes
+        scrollTopRef.current = 0; // Reset scroll when page changes
       });
     });
   }, [updateDisplayedRows]);
@@ -534,7 +560,7 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
         <TimelineView 
           rowData={displayedRowData} 
           rowHeight={48}
-          scrollTop={gridScrollTop}
+          scrollTopRef={scrollTopRef}
           headerHeight={HEADER_HEIGHT}
           paginationHeight={paginationHeight}
         />
