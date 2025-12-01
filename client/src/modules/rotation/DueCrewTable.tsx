@@ -172,8 +172,8 @@ const TimelineCellRenderer = (params: ICellRendererParams<CrewMember>) => {
         className="absolute z-20"
         style={{
           left: `${todayPct}%`,
-          top: '-4px',
-          bottom: '-4px',
+          top: '-50%',
+          bottom: '-50%',
           width: '2px',
           backgroundColor: '#f59e0b',
         }}

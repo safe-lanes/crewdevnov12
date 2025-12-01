@@ -284,6 +284,15 @@
   width: 100% !important;
 }
 
+/* Ensure the pinned right column container allows overflow for today line */
+.ag-theme-alpine .ag-pinned-right-cols-container .ag-row {
+  overflow: visible !important;
+}
+
+.ag-theme-alpine .ag-pinned-right-cols-container .ag-cell {
+  overflow: visible !important;
+}
+
 /* Timeline header styling */
 .ag-theme-alpine .ag-header-cell.timeline-header {
   padding: 0 !important;
