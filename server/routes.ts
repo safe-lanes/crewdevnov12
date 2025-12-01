@@ -2683,12 +2683,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
               try {
                 let medicals: any[] = [];
                 if (typeof crew.preJoiningMedicals === 'string' && crew.preJoiningMedicals.trim()) {
-                  medicals = JSON.parse(crew.preJoiningMedicals);
+                  let parsed = crew.preJoiningMedicals;
+                  // Handle double-stringified JSON (e.g., '"""[...]"""' or '"[...]"')
+                  while (typeof parsed === 'string') {
+                    const trimmed = parsed.trim();
+                    // Stop if it looks like an array
+                    if (trimmed.startsWith('[')) {
+                      parsed = JSON.parse(trimmed);
+                      break;
+                    }
+                    // Try to parse the string
+                    try {
+                      parsed = JSON.parse(trimmed);
+                    } catch {
+                      break;
+                    }
+                  }
+                  if (Array.isArray(parsed)) {
+                    medicals = parsed;
+                  }
                 } else if (Array.isArray(crew.preJoiningMedicals)) {
                   medicals = crew.preJoiningMedicals;
                 }
                 if (Array.isArray(medicals) && medicals.length > 0) {
-                  // Find the latest expiry date
+                  // Find the latest expiry date from all medical records
                   const sortedMedicals = medicals
                     .filter((m: any) => m.expiry)
                     .sort((a: any, b: any) => new Date(b.expiry).getTime() - new Date(a.expiry).getTime());
