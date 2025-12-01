@@ -224,6 +224,26 @@ interface DoctorVisit {
 export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, crewMember, onCrewMemberChange }) => {
   const { toast } = useToast();
   
+  // Helper function to determine expiry date text color
+  const getExpiryColorClass = (dateString: string): string => {
+    if (!dateString) return 'text-[#4f5863]';
+    
+    const expiryDate = new Date(dateString);
+    if (isNaN(expiryDate.getTime())) return 'text-[#4f5863]';
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const twoMonthsFromNow = new Date(today);
+    twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
+    
+    if (expiryDate < today) {
+      return 'text-red-600'; // Expired
+    } else if (expiryDate <= twoMonthsFromNow) {
+      return 'text-orange-500'; // Expiring within 2 months
+    }
+    return 'text-[#4f5863]'; // Valid (default color)
+  };
   
   // Dashboard data query
   const { data: dashboardData, isLoading: isDashboardLoading, error: dashboardError } = useQuery<CrewDashboardSummary>({
@@ -2920,7 +2940,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                     type="date"
                     value={doc.expiry}
                     onChange={(e) => updateDocument(doc.id, 'expiry', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    className={`${getExpiryColorClass(doc.expiry)} text-[13px] border-0 shadow-none p-0 h-auto`}
                   />
                 </TableCell>
                 <TableCell className="p-3">
@@ -3027,7 +3047,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                     type="date"
                     value={visa.expiry}
                     onChange={(e) => updateVisa(visa.id, 'expiry', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    className={`${getExpiryColorClass(visa.expiry)} text-[13px] border-0 shadow-none p-0 h-auto`}
                   />
                 </TableCell>
                 <TableCell className="p-3">
@@ -3248,7 +3268,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                     type="date"
                     value={license.expiry}
                     onChange={(e) => updateLicense(license.id, 'expiry', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    className={`${getExpiryColorClass(license.expiry)} text-[13px] border-0 shadow-none p-0 h-auto`}
                   />
                 </TableCell>
                 <TableCell className="p-3">
@@ -3374,7 +3394,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                     type="date"
                     value={course.expiry}
                     onChange={(e) => updateTrainingCourse(course.id, 'expiry', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    className={`${getExpiryColorClass(course.expiry)} text-[13px] border-0 shadow-none p-0 h-auto`}
                   />
                 </TableCell>
                 <TableCell className="p-3">
@@ -4025,7 +4045,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                           type="date"
                           value={medical.expiry}
                           onChange={(e) => updatePreJoiningMedical(medical.id, 'expiry', e.target.value)}
-                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          className={`border-0 bg-transparent p-0 focus-visible:ring-0 ${getExpiryColorClass(medical.expiry)} text-[13px] font-normal h-6`}
                         />
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
