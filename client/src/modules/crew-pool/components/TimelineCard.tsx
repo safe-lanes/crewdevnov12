@@ -330,11 +330,11 @@ function TimelineLegend() {
     <div className="flex flex-wrap items-center gap-3 mt-3 text-xs">
       <div className="flex items-center gap-1">
         <div className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(2, 169, 33, 0.7)' }}></div>
-        <span className="text-gray-600">On Board</span>
+        <span className="text-gray-600">Contract</span>
       </div>
       <div className="flex items-center gap-1">
         <div className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(241, 205, 29, 0.7)' }}></div>
-        <span className="text-gray-600">Near Relief</span>
+        <span className="text-gray-600">+/- Range</span>
       </div>
       <div className="flex items-center gap-1">
         <div className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(229, 78, 96, 0.7)' }}></div>
