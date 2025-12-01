@@ -245,6 +245,42 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     return 'text-[#4f5863]'; // Valid (default color)
   };
   
+  // Helper function to analyze expiry status for an array of items
+  const analyzeExpiryStatus = (items: Array<{ expiry: string; [key: string]: any }>, nameField: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const twoMonthsFromNow = new Date(today);
+    twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
+    
+    let hasExpired = false;
+    let hasExpiring = false;
+    const issues: Array<{ name: string; expiry: string; status: 'expired' | 'expiring' }> = [];
+    
+    items.forEach(item => {
+      if (!item.expiry) return;
+      const expiryDate = new Date(item.expiry);
+      if (isNaN(expiryDate.getTime())) return;
+      
+      if (expiryDate < today) {
+        hasExpired = true;
+        issues.push({ name: item[nameField] || 'Unknown', expiry: item.expiry, status: 'expired' });
+      } else if (expiryDate <= twoMonthsFromNow) {
+        hasExpiring = true;
+        issues.push({ name: item[nameField] || 'Unknown', expiry: item.expiry, status: 'expiring' });
+      }
+    });
+    
+    const dotColor = hasExpired ? 'bg-red-500' : hasExpiring ? 'bg-orange-500' : 'bg-green-500';
+    return { dotColor, issueCount: issues.length, issues };
+  };
+  
+  // State for issues popup dialog
+  const [issuesDialogOpen, setIssuesDialogOpen] = useState(false);
+  const [issuesDialogData, setIssuesDialogData] = useState<{
+    category: string;
+    issues: Array<{ name: string; expiry: string; status: 'expired' | 'expiring' }>;
+  }>({ category: '', issues: [] });
+  
   // Dashboard data query
   const { data: dashboardData, isLoading: isDashboardLoading, error: dashboardError } = useQuery<CrewDashboardSummary>({
     queryKey: ['/api/crew-members', crewMember?.id, 'dashboard'],
@@ -1559,7 +1595,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
               <div className="space-y-3" data-testid="compliance-items">
                 {isDashboardLoading ? (
                   <div className="space-y-3 animate-pulse">
-                    {[1, 2, 3, 4].map((i) => (
+                    {[1, 2, 3, 4, 5].map((i) => (
                       <div key={i} className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
                           <div className="w-3 h-3 bg-gray-200 rounded-full"></div>
@@ -1569,73 +1605,209 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                       </div>
                     ))}
                   </div>
-                ) : complianceData && complianceData.length > 0 ? (
-                  complianceData
-                    .filter(item => item.category !== 'Vaccination')
-                    .map((item, index) => {
-                    const isMedical = item.category === 'Medical';
-                    let medicalExpiry: string | null = null;
-                    let medicalStatus: 'expired' | 'expiring' | 'valid' | null = null;
+                ) : (
+                  <>
+                    {/* Travel Docs - linked to C1 */}
+                    {(() => {
+                      const analysis = analyzeExpiryStatus(formData.documents, 'document');
+                      return (
+                        <div className="flex items-center justify-between" data-testid="doc-travel-docs">
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-3 h-3 ${analysis.dotColor} rounded-full`} data-testid="status-travel-docs"></div>
+                            <span className="text-sm">Travel Docs:</span>
+                          </div>
+                          <div className="flex items-center">
+                            {analysis.issueCount > 0 && (
+                              <button
+                                onClick={() => {
+                                  setIssuesDialogData({ category: 'Travel Docs', issues: analysis.issues });
+                                  setIssuesDialogOpen(true);
+                                }}
+                                className="text-xs text-gray-500 hover:text-blue-600 hover:underline cursor-pointer"
+                                data-testid="details-travel-docs"
+                              >
+                                Issues: {analysis.issueCount}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
                     
-                    if (isMedical && formData.preJoiningMedicals && formData.preJoiningMedicals.length > 0) {
-                      const sortedMedicals = [...formData.preJoiningMedicals]
-                        .filter(m => m.expiry)
-                        .sort((a, b) => new Date(b.expiry).getTime() - new Date(a.expiry).getTime());
-                      if (sortedMedicals.length > 0) {
-                        medicalExpiry = sortedMedicals[0].expiry;
-                        const expiryDate = new Date(medicalExpiry);
-                        const today = new Date();
-                        const twoMonthsFromNow = new Date();
-                        twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
-                        
-                        if (expiryDate < today) {
-                          medicalStatus = 'expired';
-                        } else if (expiryDate <= twoMonthsFromNow) {
-                          medicalStatus = 'expiring';
-                        } else {
-                          medicalStatus = 'valid';
+                    {/* Visas - linked to C2 */}
+                    {(() => {
+                      const analysis = analyzeExpiryStatus(formData.visas, 'issuingCountry');
+                      return (
+                        <div className="flex items-center justify-between" data-testid="doc-visas">
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-3 h-3 ${analysis.dotColor} rounded-full`} data-testid="status-visas"></div>
+                            <span className="text-sm">Visas:</span>
+                          </div>
+                          <div className="flex items-center">
+                            {analysis.issueCount > 0 && (
+                              <button
+                                onClick={() => {
+                                  setIssuesDialogData({ category: 'Visas', issues: analysis.issues });
+                                  setIssuesDialogOpen(true);
+                                }}
+                                className="text-xs text-gray-500 hover:text-blue-600 hover:underline cursor-pointer"
+                                data-testid="details-visas"
+                              >
+                                Issues: {analysis.issueCount}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    
+                    {/* License & DCE - linked to D2 */}
+                    {(() => {
+                      const analysis = analyzeExpiryStatus(formData.licenses, 'certificateDocument');
+                      return (
+                        <div className="flex items-center justify-between" data-testid="doc-license-dce">
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-3 h-3 ${analysis.dotColor} rounded-full`} data-testid="status-license-dce"></div>
+                            <span className="text-sm">License & DCE:</span>
+                          </div>
+                          <div className="flex items-center">
+                            {analysis.issueCount > 0 && (
+                              <button
+                                onClick={() => {
+                                  setIssuesDialogData({ category: 'License & DCE', issues: analysis.issues });
+                                  setIssuesDialogOpen(true);
+                                }}
+                                className="text-xs text-gray-500 hover:text-blue-600 hover:underline cursor-pointer"
+                                data-testid="details-license-dce"
+                              >
+                                Issues: {analysis.issueCount}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    
+                    {/* Training - linked to D3 */}
+                    {(() => {
+                      const analysis = analyzeExpiryStatus(formData.trainingCourses, 'trainingCourse');
+                      return (
+                        <div className="flex items-center justify-between" data-testid="doc-training">
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-3 h-3 ${analysis.dotColor} rounded-full`} data-testid="status-training"></div>
+                            <span className="text-sm">Training:</span>
+                          </div>
+                          <div className="flex items-center">
+                            {analysis.issueCount > 0 && (
+                              <button
+                                onClick={() => {
+                                  setIssuesDialogData({ category: 'Training', issues: analysis.issues });
+                                  setIssuesDialogOpen(true);
+                                }}
+                                className="text-xs text-gray-500 hover:text-blue-600 hover:underline cursor-pointer"
+                                data-testid="details-training"
+                              >
+                                Issues: {analysis.issueCount}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    
+                    {/* Medical - linked to F1 (shows expiry date) */}
+                    {(() => {
+                      let medicalExpiry: string | null = null;
+                      let medicalStatus: 'expired' | 'expiring' | 'valid' = 'valid';
+                      
+                      if (formData.preJoiningMedicals && formData.preJoiningMedicals.length > 0) {
+                        const sortedMedicals = [...formData.preJoiningMedicals]
+                          .filter(m => m.expiry)
+                          .sort((a, b) => new Date(b.expiry).getTime() - new Date(a.expiry).getTime());
+                        if (sortedMedicals.length > 0) {
+                          medicalExpiry = sortedMedicals[0].expiry;
+                          const expiryDate = new Date(medicalExpiry);
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          const twoMonthsFromNow = new Date(today);
+                          twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
+                          
+                          if (expiryDate < today) {
+                            medicalStatus = 'expired';
+                          } else if (expiryDate <= twoMonthsFromNow) {
+                            medicalStatus = 'expiring';
+                          } else {
+                            medicalStatus = 'valid';
+                          }
                         }
                       }
-                    }
-                    
-                    let statusColor: string;
-                    if (isMedical && medicalStatus) {
-                      statusColor = medicalStatus === 'valid' ? 'bg-green-500' : medicalStatus === 'expiring' ? 'bg-orange-500' : 'bg-red-500';
-                    } else {
-                      statusColor = item.status === 'compliant' ? 'bg-green-500' : item.status === 'issues' ? 'bg-red-500' : 'bg-yellow-500';
-                    }
-                    
-                    let displayDetails = item.details;
-                    if (isMedical && medicalExpiry) {
-                      const expDate = new Date(medicalExpiry);
-                      if (!isNaN(expDate.getTime())) {
-                        const formattedDate = expDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' });
-                        displayDetails = `Exp: ${formattedDate}`;
+                      
+                      const dotColor = medicalStatus === 'valid' ? 'bg-green-500' : medicalStatus === 'expiring' ? 'bg-orange-500' : 'bg-red-500';
+                      let displayDetails = '';
+                      if (medicalExpiry) {
+                        const expDate = new Date(medicalExpiry);
+                        if (!isNaN(expDate.getTime())) {
+                          displayDetails = `Exp: ${expDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}`;
+                        }
                       }
-                    }
-                    
-                    const testId = item.category.toLowerCase().replace(/[\s&]/g, '-');
-                    return (
-                      <div key={index} className="flex items-center justify-between" data-testid={`doc-${testId}`}>
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-3 h-3 ${statusColor} rounded-full`} data-testid={`status-${testId}`}></div>
-                          <span className="text-sm">{item.category}:</span>
+                      
+                      return (
+                        <div className="flex items-center justify-between" data-testid="doc-medical">
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-3 h-3 ${dotColor} rounded-full`} data-testid="status-medical"></div>
+                            <span className="text-sm">Medical:</span>
+                          </div>
+                          <div className="flex items-center">
+                            {displayDetails && (
+                              <span className="text-xs text-gray-500" data-testid="details-medical">{displayDetails}</span>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center">
-                          {displayDetails && displayDetails !== '✓' && (
-                            <span className="text-xs text-gray-500" data-testid={`details-${testId}`}>{displayDetails}</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="text-center text-gray-500 py-8">
-                    No compliance data available
-                  </div>
+                      );
+                    })()}
+                  </>
                 )}
               </div>
             </div>
+            
+            {/* Issues Popup Dialog */}
+            <Dialog open={issuesDialogOpen} onOpenChange={setIssuesDialogOpen}>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle style={{ color: '#16569e' }}>
+                    {issuesDialogData.category} - Expiry Issues
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="mt-4">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-100">
+                        <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Document</TableHead>
+                        <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry Date</TableHead>
+                        <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {issuesDialogData.issues.map((issue, index) => (
+                        <TableRow key={index} className="border-b border-gray-200">
+                          <TableCell className="p-3 text-sm">{issue.name}</TableCell>
+                          <TableCell className="p-3 text-sm">
+                            {new Date(issue.expiry).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </TableCell>
+                          <TableCell className="p-3">
+                            <span className={`text-xs font-medium px-2 py-1 rounded ${
+                              issue.status === 'expired' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
+                            }`}>
+                              {issue.status === 'expired' ? 'Expired' : 'Expiring Soon'}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {/* MIDDLE COLUMN - Experience, Rank, Ship Types */}
