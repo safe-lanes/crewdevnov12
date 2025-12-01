@@ -235,11 +235,15 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                     // Update existing planning record to convert reliever to primary crew
                     // Exclude timestamp fields (createdAt, updatedAt) to avoid Date object errors
                     const { createdAt: _c1, updatedAt: _u1, ...cleanDataForPromote } = planningData || {};
+                    // Calculate the sign-on date for the new primary
+                    const newPrimarySignOnDate = data.joiningDate || planningData.joiningDate;
                     const promoteToPrimaryPayload = {
                         ...cleanDataForPromote,
                         crewMemberId: planningData.relieverCrewId,
                         crewStatus: "primary",
-                        signOnDate: data.joiningDate || planningData.joiningDate,
+                        signOnDate: newPrimarySignOnDate,
+                        // CRITICAL: Keep joiningDate in sync with signOnDate for timeline calculations
+                        joiningDate: newPrimarySignOnDate,
                         joiningPort: data.joiningPort || planningData.joiningPort,
                         contractPeriodMonths: data.contractPeriodMonths || planningData.contractPeriodMonths,
                         contractEndRangeStartMonths: data.contractEndRangeStartMonths || planningData.contractEndRangeStartMonths,
@@ -248,7 +252,6 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                         relieverCrewId: null,
                         relieverCrewName: null,
                         relieverNationality: null,
-                        joiningDate: null,
                         joiningStatus: null,
                         deploymentChecklistCompleted: false,
                         applicableDocsChecked: false,
@@ -264,13 +267,17 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                 }
                 
                 // Step 1: Create NEW planning record for secondary crew
+                // Calculate the sign-on date for the secondary crew
+                const secondarySignOnDate = data.joiningDate || planningData.joiningDate;
                 const secondaryCrewPayload = {
                     vesselId,
                     rankId,
                     rank,
                     crewMemberId: planningData.relieverCrewId,
                     crewStatus: "secondary",
-                    signOnDate: data.joiningDate || planningData.joiningDate,
+                    signOnDate: secondarySignOnDate,
+                    // CRITICAL: Keep joiningDate in sync with signOnDate for timeline calculations
+                    joiningDate: secondarySignOnDate,
                     joiningPort: data.joiningPort || planningData.joiningPort,
                     contractPeriodMonths: data.contractPeriodMonths || planningData.contractPeriodMonths,
                     contractEndRangeStartMonths: data.contractEndRangeStartMonths || planningData.contractEndRangeStartMonths,
@@ -287,12 +294,9 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                     relieverCrewId: null,
                     relieverCrewName: null,
                     relieverNationality: null,
-                    joiningDate: null,
+                    // Clear reliever-specific date fields (primary keeps its own signOnDate/joiningDate)
                     joiningPort: null,
                     joiningStatus: null,
-                    contractPeriodMonths: null,
-                    contractEndRangeStartMonths: null,
-                    contractEndRangeEndMonths: null,
                     deploymentChecklistCompleted: false,
                     applicableDocsChecked: false,
                 };
