@@ -119,6 +119,31 @@ const formatDateOnly = (dateString: string | null | undefined): string => {
     }
 };
 
+// Helper to parse date from various formats to Date object
+const parseDateString = (dateStr: string): Date | undefined => {
+    if (!dateStr) return undefined;
+    try {
+        // Try to parse YYYY-MM-DD format first
+        if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            return new Date(dateStr);
+        }
+        // Try to parse dd-MMM-yyyy format (e.g., 15-May-2025)
+        const monthNames: { [key: string]: string } = {
+            'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
+            'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
+            'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+        };
+        const parts = dateStr.split('-');
+        if (parts.length === 3 && monthNames[parts[1]]) {
+            return new Date(`${parts[2]}-${monthNames[parts[1]]}-${parts[0]}`);
+        }
+        // Fallback: try direct parsing
+        return new Date(dateStr);
+    } catch {
+        return undefined;
+    }
+};
+
 // Consistent message for when vessel has no rank configuration
 const NO_RANKS_CONFIGURED_MESSAGE = "No positions configured for this vessel. Please configure positions in Admin > Rank Admin > Vessel.";
 
@@ -157,6 +182,7 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
 }) => {
     const { toast } = useToast();
     const { data: ports = [] } = usePorts();
+    const [joiningDateOpen, setJoiningDateOpen] = React.useState(false);
     
     const form = useForm<ReliefStatusFormData>({
         resolver: zodResolver(reliefStatusFormSchema),
@@ -184,7 +210,7 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                 contractPeriodMonths: planningData.contractPeriodMonths,
                 contractEndRangeStartMonths: planningData.contractEndRangeStartMonths,
                 contractEndRangeEndMonths: planningData.contractEndRangeEndMonths,
-                joiningDate: formatDateOnly(planningData.joiningDate) || '',
+                joiningDate: planningData.joiningDate || '', // Keep in ISO format for storage
                 joiningPort: planningData.joiningPort || '',
                 deploymentChecklistCompleted: planningData.deploymentChecklistCompleted || false,
                 applicableDocsChecked: planningData.applicableDocsChecked || false,
@@ -349,8 +375,26 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
         }
     });
 
+    // Helper to normalize date to ISO format (YYYY-MM-DD)
+    const normalizeToIsoDate = (dateStr: string | undefined): string | undefined => {
+        if (!dateStr) return undefined;
+        // Already in ISO format
+        if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) return dateStr;
+        // Convert from DD-MMM-YYYY or other formats
+        const parsed = parseDateString(dateStr);
+        if (parsed && !isNaN(parsed.getTime())) {
+            return format(parsed, 'yyyy-MM-dd');
+        }
+        return dateStr; // Return as-is if parsing fails
+    };
+
     const handleSave = () => {
         const data = form.getValues();
+        
+        // Normalize joiningDate to ISO format before submitting
+        if (data.joiningDate) {
+            data.joiningDate = normalizeToIsoDate(data.joiningDate);
+        }
         
         // Validate: If no reliever crew name is assigned, clear all reliever fields before saving
         if (!data.relieverCrewName || data.relieverCrewName.trim() === '') {
@@ -388,6 +432,11 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
     };
 
     const handleSubmit = form.handleSubmit((data) => {
+        // Normalize joiningDate to ISO format before submitting
+        if (data.joiningDate) {
+            data.joiningDate = normalizeToIsoDate(data.joiningDate);
+        }
+        
         // Same validation as handleSave - prevent saving reliever fields without crew member
         if (!data.relieverCrewName || data.relieverCrewName.trim() === '') {
             const hasOtherData = data.joiningStatus || data.joiningPort || data.joiningDate || 
@@ -584,16 +633,34 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                                 <FormItem>
                                     <div className="grid grid-cols-3 items-center gap-4">
                                         <FormLabel className="text-sm text-gray-700">Joining Date:</FormLabel>
-                                        <FormControl>
-                                            <Input 
-                                                {...field} 
-                                                type="text" 
-                                                placeholder="DD-MMM-YYYY" 
-                                                className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                                                data-testid="input-joining-date"
-                                                disabled={!isRelieverAssigned}
-                                            />
-                                        </FormControl>
+                                        <Popover open={joiningDateOpen} onOpenChange={setJoiningDateOpen}>
+                                            <PopoverTrigger asChild>
+                                                <FormControl>
+                                                    <Button
+                                                        variant="outline"
+                                                        className={`col-span-2 justify-start text-left font-normal ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''} ${!field.value && 'text-muted-foreground'}`}
+                                                        data-testid="button-joining-date"
+                                                        disabled={!isRelieverAssigned}
+                                                    >
+                                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                                        {field.value ? formatDateOnly(field.value) : <span className="text-gray-400">Select date</span>}
+                                                    </Button>
+                                                </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar
+                                                    mode="single"
+                                                    selected={field.value ? parseDateString(field.value) : undefined}
+                                                    onSelect={(date) => {
+                                                        if (date) {
+                                                            field.onChange(format(date, 'yyyy-MM-dd'));
+                                                            setJoiningDateOpen(false);
+                                                        }
+                                                    }}
+                                                    initialFocus
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
                                     </div>
                                 </FormItem>
                             )}
