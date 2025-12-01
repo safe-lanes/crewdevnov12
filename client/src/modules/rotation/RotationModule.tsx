@@ -279,7 +279,7 @@ export function RotationModule() {
     const [selectedVessels, setSelectedVessels] = useState<string[]>([]);
     const [fleetValue, setFleetValue] = useState("");
     const [addGroupValue, setAddGroupValue] = useState("");
-    const [dueInValue, setDueInValue] = useState("");
+    const [dueInValue, setDueInValue] = useState("1m");
     const [rankValue, setRankValue] = useState("");
     const [showFilters, setShowFilters] = useState(true);
 
@@ -292,7 +292,7 @@ export function RotationModule() {
         setSelectedVessels([]);
         setFleetValue("");
         setAddGroupValue("");
-        setDueInValue("");
+        setDueInValue("1m");
         setRankValue("");
     };
 

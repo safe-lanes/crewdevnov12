@@ -279,16 +279,35 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
     },
   ], []);
 
-  // Extract displayed rows from AG Grid (after sorting/filtering)
+  // Extract displayed rows from AG Grid (after sorting/filtering/pagination)
   const updateDisplayedRows = useCallback(() => {
     if (!gridApiRef.current) return;
     
     const displayedRows: CrewMember[] = [];
-    gridApiRef.current.forEachNodeAfterFilterAndSort((node: any) => {
-      if (node.data) {
-        displayedRows.push(node.data);
-      }
-    });
+    const api = gridApiRef.current;
+    
+    // With pagination enabled, get only rows on the current page
+    if (api.paginationGetPageSize) {
+      const pageSize = api.paginationGetPageSize();
+      const currentPage = api.paginationGetCurrentPage();
+      const startRow = currentPage * pageSize;
+      const endRow = startRow + pageSize;
+      
+      let rowIndex = 0;
+      api.forEachNodeAfterFilterAndSort((node: any) => {
+        if (node.data && rowIndex >= startRow && rowIndex < endRow) {
+          displayedRows.push(node.data);
+        }
+        rowIndex++;
+      });
+    } else {
+      // Fallback for non-paginated grids
+      api.forEachNodeAfterFilterAndSort((node: any) => {
+        if (node.data) {
+          displayedRows.push(node.data);
+        }
+      });
+    }
     setDisplayedRowData(displayedRows);
   }, []);
 
@@ -316,6 +335,14 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
     event.api.addEventListener('filterChanged', () => {
       requestAnimationFrame(() => {
         updateDisplayedRows();
+      });
+    });
+    
+    // Listen to pagination changes
+    event.api.addEventListener('paginationChanged', () => {
+      requestAnimationFrame(() => {
+        updateDisplayedRows();
+        setGridScrollTop(0); // Reset scroll when page changes
       });
     });
   }, [updateDisplayedRows]);
@@ -357,6 +384,9 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
             headerHeight: 48,
             suppressMovableColumns: true,
             suppressHorizontalScroll: true,
+            pagination: true,
+            paginationPageSize: 50,
+            paginationPageSizeSelector: [25, 50, 100],
             getRowId: (params: any) => {
               if (params.data?.id) return params.data.id.toString();
               if (params.node?.rowIndex !== undefined) return `row-${params.node.rowIndex}`;
