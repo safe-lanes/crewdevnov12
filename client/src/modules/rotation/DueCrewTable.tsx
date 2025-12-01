@@ -167,13 +167,13 @@ const TimelineCellRenderer = (params: ICellRendererParams<CrewMember>) => {
         />
       )}
       
-      {/* Today line - solid vertical line */}
+      {/* Today line - solid vertical line extending beyond cell */}
       <div
         className="absolute z-20"
         style={{
           left: `${todayPct}%`,
-          top: 0,
-          bottom: 0,
+          top: '-4px',
+          bottom: '-4px',
           width: '2px',
           backgroundColor: '#f59e0b',
         }}
