@@ -2,6 +2,13 @@
 -- This vessel type carries both oil and chemical cargo
 -- Experience on this type counts towards both Oil Tanker and Chemical Tanker by default
 
+-- Step A: Ensure parent record exists in data_masters
+-- Never assume master_id '004' exists - create it if missing
+INSERT INTO data_masters (id, name, description)
+SELECT '004', 'Vessel Type Master', 'Master data for vessel types including tankers, bulk carriers, and other vessel categories'
+WHERE NOT EXISTS (SELECT 1 FROM data_masters WHERE id = '004');
+
+-- Step B: Insert child record only after parent exists
 -- Only insert if not already exists
 INSERT INTO master_data_entries (
   master_id,
