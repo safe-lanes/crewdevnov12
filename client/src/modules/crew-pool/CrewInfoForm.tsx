@@ -1578,40 +1578,56 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                 <div className="grid grid-cols-5 gap-4 animate-pulse">
                   {[1, 2, 3, 4, 5].map((i) => (
                     <div key={i} className="text-center">
-                      <div className="h-3 bg-gray-200 rounded w-16 mx-auto mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-16 mx-auto mb-1"></div>
+                      <div className="h-3 bg-gray-200 rounded w-10 mx-auto mb-1"></div>
                       <div className="h-7 bg-gray-200 rounded w-8 mx-auto"></div>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="grid grid-cols-5 gap-4">
-                  <div className="text-center">
-                    <div className="text-xs text-gray-500 mb-2">Company (Yrs)</div>
-                    <div className="text-2xl font-medium text-blue-600" data-testid="text-company-years">
+                  <div className="text-center flex flex-col items-center h-16 justify-between">
+                    <div>
+                      <div className="text-xs text-gray-500">Company</div>
+                      <div className="text-xs text-gray-500">(Yrs)</div>
+                    </div>
+                    <div className="text-2xl font-medium text-black" data-testid="text-company-years">
                       {experienceData?.company ?? '—'}
                     </div>
                   </div>
-                  <div className="text-center">
-                    <div className="text-xs text-gray-500 mb-2">Rank (Yrs)</div>
-                    <div className="text-2xl font-medium text-blue-600" data-testid="text-rank-years">
+                  <div className="text-center flex flex-col items-center h-16 justify-between">
+                    <div>
+                      <div className="text-xs text-gray-500">Rank</div>
+                      <div className="text-xs text-gray-500">(Yrs)</div>
+                    </div>
+                    <div className="text-2xl font-medium text-black" data-testid="text-rank-years">
                       {experienceData?.rank ?? '—'}
                     </div>
                   </div>
-                  <div className="text-center">
-                    <div className="text-xs text-gray-500 mb-2">Tankers (Yrs)</div>
-                    <div className="text-2xl font-medium text-blue-600" data-testid="text-tankers-years">
+                  <div className="text-center flex flex-col items-center h-16 justify-between">
+                    <div>
+                      <div className="text-xs text-gray-500">Tankers</div>
+                      <div className="text-xs text-gray-500">(Yrs)</div>
+                    </div>
+                    <div className="text-2xl font-medium text-black" data-testid="text-tankers-years">
                       {experienceData?.tankers ?? '—'}
                     </div>
                   </div>
-                  <div className="text-center">
-                    <div className="text-xs text-gray-500 mb-2">OOW (Yrs)</div>
-                    <div className="text-2xl font-medium text-blue-600" data-testid="text-ocw-years">
+                  <div className="text-center flex flex-col items-center h-16 justify-between">
+                    <div>
+                      <div className="text-xs text-gray-500">OOW</div>
+                      <div className="text-xs text-gray-500">(Yrs)</div>
+                    </div>
+                    <div className="text-2xl font-medium text-black" data-testid="text-ocw-years">
                       {experienceData?.ocw ?? '—'}
                     </div>
                   </div>
-                  <div className="text-center">
-                    <div className="text-xs text-gray-500 mb-2">Endors</div>
-                    <div className="text-2xl font-medium text-blue-600" data-testid="text-endorsements-count">
+                  <div className="text-center flex flex-col items-center h-16 justify-between">
+                    <div>
+                      <div className="text-xs text-gray-500">Endors</div>
+                      <div className="text-xs text-gray-500">&nbsp;</div>
+                    </div>
+                    <div className="text-2xl font-medium text-black" data-testid="text-endorsements-count">
                       {experienceData?.endorsements ?? '—'}
                     </div>
                   </div>
