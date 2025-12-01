@@ -102,7 +102,7 @@ const TimelineCellRenderer = (params: ICellRendererParams<CrewMember>) => {
       {/* Green bar (Contract Start to Contract End) */}
       {greenEndPct > greenStartPct && (
         <div
-          className="absolute h-5 rounded-sm"
+          className="absolute h-5 rounded-sm top-1/2 -translate-y-1/2"
           style={{
             left: `${greenStartPct}%`,
             width: `${greenEndPct - greenStartPct}%`,
@@ -114,7 +114,7 @@ const TimelineCellRenderer = (params: ICellRendererParams<CrewMember>) => {
       {/* Yellow bar (Contract End to Range End) */}
       {yellowEndPct > greenEndPct && (
         <div
-          className="absolute h-5 rounded-sm"
+          className="absolute h-5 rounded-sm top-1/2 -translate-y-1/2"
           style={{
             left: `${greenEndPct}%`,
             width: `${yellowEndPct - greenEndPct}%`,
@@ -126,7 +126,7 @@ const TimelineCellRenderer = (params: ICellRendererParams<CrewMember>) => {
       {/* Pink bar (After Range End - overdue) */}
       {isOverdue && pinkEndPct > pinkStartPct && (
         <div
-          className="absolute h-5 rounded-sm"
+          className="absolute h-5 rounded-sm top-1/2 -translate-y-1/2"
           style={{
             left: `${pinkStartPct}%`,
             width: `${pinkEndPct - pinkStartPct}%`,
