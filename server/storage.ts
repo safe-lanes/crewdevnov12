@@ -341,14 +341,20 @@ export function translateVesselNameToCode(vesselName: string): string {
  * Build service timeline from sea service records and vessel planning
  * Combines historical sea service with current/planned vessel assignments
  * for the 6-month dashboard timeline display
+ * @param companySeaService - Historical sea service records
+ * @param vesselPlanningRecords - Current vessel planning where crew is assigned as primary
+ * @param appraisalsByVessel - Map of vessel names/IDs to appraisal IDs
+ * @param handoversByVessel - Map of vessel names/IDs to handover IDs
  * @param vesselCodeToNameMap - Optional map of vessel codes to names for translation (for DatabaseStorage)
+ * @param relieverPlanningRecords - Optional records where crew is assigned as a reliever (for blue planned bars)
  */
 export function buildServiceTimeline(
   companySeaService: any[],
   vesselPlanningRecords: any[],
   appraisalsByVessel: Map<string, number[]>,
   handoversByVessel: Map<string, number[]>,
-  vesselCodeToNameMap?: Map<string, string>
+  vesselCodeToNameMap?: Map<string, string>,
+  relieverPlanningRecords?: any[]
 ): Array<{
   vessel: string;
   vesselId?: string;
@@ -510,6 +516,85 @@ export function buildServiceTimeline(
     });
   }
   
+  // Process reliever planning records - these are records where the crew is assigned as a reliever
+  // They should appear as blue "planned" bars showing future assignments
+  if (relieverPlanningRecords && relieverPlanningRecords.length > 0) {
+    for (const planning of relieverPlanningRecords) {
+      // For reliever records, use joiningDate as the start date (this is when the reliever will join)
+      const startDate = planning.joiningDate;
+      if (!startDate) continue;
+      
+      const fromDate = new Date(startDate);
+      
+      // Skip if starts after timeline end
+      if (fromDate > timelineEnd) continue;
+      
+      // Calculate contract end dates based on the reliever's contract period
+      // IMPORTANT: Coerce contract period values to numbers since they may come as strings from the database
+      let contractEndDate: string | null = null;
+      let rangeEndDate: string | null = null;
+      
+      const baseDateObj = new Date(startDate);
+      
+      // Helper to safely parse month values (handles string and number types)
+      const parseMonths = (val: any): number | null => {
+        if (val === null || val === undefined || val === '') return null;
+        const num = typeof val === 'number' ? val : parseInt(String(val), 10);
+        return isNaN(num) ? null : num;
+      };
+      
+      const contractEndRangeStartMonths = parseMonths(planning.contractEndRangeStartMonths);
+      const contractPeriodMonths = parseMonths(planning.contractPeriodMonths);
+      const contractEndRangeEndMonths = parseMonths(planning.contractEndRangeEndMonths);
+      
+      if (contractEndRangeStartMonths !== null) {
+        const contractEnd = new Date(baseDateObj);
+        contractEnd.setMonth(contractEnd.getMonth() + contractEndRangeStartMonths);
+        contractEndDate = contractEnd.toISOString().split('T')[0];
+      } else if (contractPeriodMonths !== null) {
+        const contractEnd = new Date(baseDateObj);
+        contractEnd.setMonth(contractEnd.getMonth() + contractPeriodMonths);
+        contractEndDate = contractEnd.toISOString().split('T')[0];
+      }
+      
+      if (contractEndRangeEndMonths !== null) {
+        const rangeEnd = new Date(baseDateObj);
+        rangeEnd.setMonth(rangeEnd.getMonth() + contractEndRangeEndMonths);
+        rangeEndDate = rangeEnd.toISOString().split('T')[0];
+      } else if (contractEndDate) {
+        rangeEndDate = contractEndDate;
+      }
+      
+      // For reliever assignments, default end date based on contract period
+      let endDate: string | null = rangeEndDate || contractEndDate || null;
+      
+      // Get vessel name
+      const vesselId = planning.vesselId || '';
+      let vesselName = planning.vesselName || 'Unknown Vessel';
+      
+      if (vesselId) {
+        if (vesselCodeToNameMap && vesselCodeToNameMap.has(vesselId)) {
+          vesselName = vesselCodeToNameMap.get(vesselId)!;
+        } else if (!vesselCodeToNameMap) {
+          vesselName = translateVesselCodeToName(vesselId);
+        }
+      }
+      
+      // Reliever assignments are always type "planned" until they actually sign on
+      timeline.push({
+        vessel: vesselName,
+        vesselId,
+        startDate,
+        endDate,
+        contractEndDate,
+        rangeEndDate,
+        type: 'planned',
+        appraisalIds: [],
+        handoverIds: [],
+      });
+    }
+  }
+  
   // Sort by start date
   timeline.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
   
@@ -625,6 +710,7 @@ export interface IStorage {
   // Vessel Planning
   getVesselPlanningByVessel(vesselId: string): Promise<VesselPlanning[]>;
   getVesselPlanningByCrewMember(crewMemberId: string): Promise<VesselPlanning[]>;
+  getVesselPlanningAsReliever(crewMemberId: string): Promise<VesselPlanning[]>;
   getVesselPlanningById(id: number): Promise<VesselPlanning | undefined>;
   getAllVesselPlanning(): Promise<VesselPlanning[]>;
   createVesselPlanning(planning: InsertVesselPlanning): Promise<VesselPlanning>;
@@ -1568,6 +1654,9 @@ export class MemStorage implements IStorage {
     // Build service timeline from sea service and vessel planning
     const vesselPlanningRecords = await this.getVesselPlanningByCrewMember(crewId);
     
+    // Also fetch records where this crew member is assigned as a reliever (for planned blue bars)
+    const relieverPlanningRecords = await this.getVesselPlanningAsReliever(crewId);
+    
     // Group appraisals by vessel for badge display
     const appraisalsByVessel = new Map<string, number[]>();
     for (const appraisal of appraisals) {
@@ -1578,12 +1667,14 @@ export class MemStorage implements IStorage {
       appraisalsByVessel.get(vessel)!.push(appraisal.id);
     }
     
-    // Build the timeline
+    // Build the timeline (includes both primary assignments and reliever assignments)
     const serviceTimeline = buildServiceTimeline(
       companySeaService,
       vesselPlanningRecords,
       appraisalsByVessel,
-      new Map() // handovers - not yet implemented
+      new Map(), // handovers - not yet implemented
+      undefined, // vesselCodeToNameMap - MemStorage uses static translation
+      relieverPlanningRecords
     );
 
     // Generate dashboard data based on actual crew member data
@@ -1766,6 +1857,10 @@ export class MemStorage implements IStorage {
 
   async getVesselPlanningByCrewMember(crewMemberId: string): Promise<VesselPlanning[]> {
     return Array.from(this.vesselPlanning.values()).filter(planning => planning.crewMemberId === crewMemberId);
+  }
+
+  async getVesselPlanningAsReliever(crewMemberId: string): Promise<VesselPlanning[]> {
+    return Array.from(this.vesselPlanning.values()).filter(planning => planning.relieverCrewId === crewMemberId);
   }
 
   async getVesselPlanningById(id: number): Promise<VesselPlanning | undefined> {
@@ -4969,6 +5064,9 @@ export class PersistentFileStorage implements IStorage {
     // Build service timeline from sea service and vessel planning
     const vesselPlanningRecords = await this.getVesselPlanningByCrewMember(crewId);
     
+    // Also fetch records where this crew member is assigned as a reliever (for planned blue bars)
+    const relieverPlanningRecords = await this.getVesselPlanningAsReliever(crewId);
+    
     // Group appraisals by vessel for badge display
     const appraisalsByVessel = new Map<string, number[]>();
     for (const appraisal of appraisals) {
@@ -4979,12 +5077,14 @@ export class PersistentFileStorage implements IStorage {
       appraisalsByVessel.get(vessel)!.push(appraisal.id);
     }
     
-    // Build the timeline
+    // Build the timeline (includes both primary assignments and reliever assignments)
     const serviceTimeline = buildServiceTimeline(
       companySeaService,
       vesselPlanningRecords,
       appraisalsByVessel,
-      new Map() // handovers - not yet implemented
+      new Map(), // handovers - not yet implemented
+      undefined, // vesselCodeToNameMap - PersistentFileStorage uses static translation
+      relieverPlanningRecords
     );
 
     // Generate dashboard data based on actual crew member data
@@ -5559,6 +5659,10 @@ export class PersistentFileStorage implements IStorage {
 
   async getVesselPlanningByCrewMember(crewMemberId: string): Promise<VesselPlanning[]> {
     return Array.from(this.vesselPlanning.values()).filter(planning => planning.crewMemberId === crewMemberId);
+  }
+
+  async getVesselPlanningAsReliever(crewMemberId: string): Promise<VesselPlanning[]> {
+    return Array.from(this.vesselPlanning.values()).filter(planning => planning.relieverCrewId === crewMemberId);
   }
 
   async getVesselPlanningById(id: number): Promise<VesselPlanning | undefined> {

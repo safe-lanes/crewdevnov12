@@ -1445,6 +1445,10 @@ export class DatabaseStorage implements IStorage {
     return await this.db.select().from(vesselPlanning).where(eq(vesselPlanning.crewMemberId, crewMemberId));
   }
 
+  async getVesselPlanningAsReliever(crewMemberId: string): Promise<VesselPlanning[]> {
+    return await this.db.select().from(vesselPlanning).where(eq(vesselPlanning.relieverCrewId, crewMemberId));
+  }
+
   async getVesselPlanningById(id: number): Promise<VesselPlanning | undefined> {
     const result = await this.db.select().from(vesselPlanning).where(eq(vesselPlanning.id, id));
     return result[0] || undefined;
@@ -3215,6 +3219,9 @@ export class DatabaseStorage implements IStorage {
     // For now, appraisalsByVessel remains empty - badges are disabled
     // TODO: Implement appraisal-to-vessel matching based on user specification
     
+    // Fetch records where this crew member is assigned as a reliever (for planned blue bars)
+    const relieverPlanningRecords = await this.getVesselPlanningAsReliever(crewId);
+    
     // Build the service timeline using buildServiceTimeline helper
     const { buildServiceTimeline } = await import('./storage.js');
     const serviceTimeline = buildServiceTimeline(
@@ -3222,7 +3229,8 @@ export class DatabaseStorage implements IStorage {
       vesselPlanningEntries,
       appraisalsByVessel,
       new Map(), // handovers - not yet implemented
-      vesselCodeToNameMap
+      vesselCodeToNameMap,
+      relieverPlanningRecords
     );
 
     return {
