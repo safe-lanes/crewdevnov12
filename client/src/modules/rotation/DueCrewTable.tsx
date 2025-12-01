@@ -54,15 +54,18 @@ const useDueCrew = (filters: any) => {
   });
 };
 
-// Custom Timeline Component
+// Custom Timeline Component - Split into header, body, and footer sections
 const TimelineView: React.FC<{ 
   rowData: CrewMember[]; 
   rowHeight: number;
   scrollTop: number;
-}> = ({ rowData, rowHeight, scrollTop }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  headerHeight: number;
+  paginationHeight: number;
+}> = ({ rowData, rowHeight, scrollTop, headerHeight, paginationHeight }) => {
+  const headerCanvasRef = useRef<HTMLCanvasElement>(null);
+  const bodyCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
+  const [dimensions, setDimensions] = useState({ width: 800, bodyHeight: 400 });
   
   // Calculate 7-month window (2 months before today + today + 5 months after today)
   const today = useMemo(() => new Date(), []);
@@ -70,77 +73,136 @@ const TimelineView: React.FC<{
   const endDate = useMemo(() => addMonths(today, 5), [today]);
   const totalDays = useMemo(() => differenceInDays(endDate, startDate), [startDate, endDate]);
   
-  // Resize canvas to match container
+  // Resize canvas to match container - batch state updates to prevent re-render loops
   useEffect(() => {
-    const updateCanvasSize = () => {
+    const updateSize = () => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
-        setCanvasSize({ width: rect.width, height: rect.height });
+        const newWidth = Math.max(100, rect.width);
+        // Body height = container height - header - pagination footer
+        const newBodyHeight = Math.max(100, rect.height - headerHeight - paginationHeight);
+        
+        setDimensions(prev => {
+          // Only update if values actually changed (avoid unnecessary re-renders)
+          if (Math.abs(prev.width - newWidth) > 1 || Math.abs(prev.bodyHeight - newBodyHeight) > 1) {
+            return { width: newWidth, bodyHeight: newBodyHeight };
+          }
+          return prev;
+        });
       }
     };
     
-    updateCanvasSize();
-    window.addEventListener('resize', updateCanvasSize);
-    return () => window.removeEventListener('resize', updateCanvasSize);
-  }, []);
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, [headerHeight, paginationHeight]);
   
-  // Generate month headers
-  const months = useMemo(() => {
-    const result = [];
+  const containerWidth = dimensions.width;
+  const bodyHeight = dimensions.bodyHeight;
+  
+  // Generate month headers with day-based positioning (using stable totalDays)
+  const monthsData = useMemo(() => {
+    const result: { label: string; startRatio: number; endRatio: number; }[] = [];
     let current = startOfMonth(startDate);
-    while (current <= endOfMonth(endDate)) {
+    const timelineEnd = endOfMonth(endDate);
+    
+    while (current <= timelineEnd) {
+      const monthStart = current < startDate ? startDate : current;
+      const monthEnd = endOfMonth(current) > endDate ? endDate : endOfMonth(current);
+      
+      // Store ratios instead of pixel positions (stable across width changes)
+      const startRatio = differenceInDays(monthStart, startDate) / totalDays;
+      const endRatio = differenceInDays(monthEnd, startDate) / totalDays;
+      
       result.push({
         label: format(current, 'MMM'),
-        date: current,
+        startRatio,
+        endRatio,
       });
       current = addMonths(current, 1);
     }
     return result;
-  }, [startDate, endDate]);
+  }, [startDate, endDate, totalDays]);
 
+  // Draw header canvas
   useEffect(() => {
-    const canvas = canvasRef.current;
+    const canvas = headerCanvasRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const width = canvasSize.width;
-    const height = canvasSize.height;
-    const headerHeight = 48; // Match AG Grid header height
+    const width = containerWidth;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, width, headerHeight);
+    
+    // Draw month headers background - match AG Grid blue styling
+    ctx.fillStyle = '#52baf3';
+    ctx.fillRect(0, 0, width, headerHeight);
+    
+    // Draw month headers with day-based positioning
+    ctx.fillStyle = 'white';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    
+    monthsData.forEach((month) => {
+      const startX = month.startRatio * width;
+      const endX = month.endRatio * width;
+      const centerX = (startX + endX) / 2;
+      ctx.fillText(month.label, centerX, headerHeight / 2 + 4);
+      
+      // Draw vertical separator at month start
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(startX, 0);
+      ctx.lineTo(startX, headerHeight);
+      ctx.stroke();
+    });
+  }, [monthsData, containerWidth, headerHeight]);
+
+  // Draw body canvas with timeline bars
+  useEffect(() => {
+    const canvas = bodyCanvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const width = containerWidth;
+    const height = bodyHeight;
     
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
     
-    // Draw month headers background - match AG Grid blue styling
-    ctx.fillStyle = '#52baf3'; // Blue background matching AG Grid
-    ctx.fillRect(0, 0, width, headerHeight);
+    // Fill white background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
     
-    // Draw month headers
-    ctx.fillStyle = 'white'; // White text
-    ctx.font = '12px sans-serif';
-    ctx.textAlign = 'center';
+    // Calculate today's X position
+    const todayX = (differenceInDays(today, startDate) / totalDays) * width;
     
-    months.forEach((month, idx) => {
-      const x = (idx / months.length) * width + (width / months.length / 2);
-      ctx.fillText(month.label, x, 30); // Adjusted vertical position for 48px header
+    // Draw vertical month separator lines in body
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 1;
+    monthsData.forEach((month) => {
+      const startX = month.startRatio * width;
+      ctx.beginPath();
+      ctx.moveTo(startX, 0);
+      ctx.lineTo(startX, height);
+      ctx.stroke();
     });
     
-    // Calculate today's X position (will draw the line after all bars)
-    const todayX = ((differenceInDays(today, startDate) / totalDays) * width);
-    
     // Draw timeline bars for each crew member
-    const visibleStartRow = Math.floor(scrollTop / rowHeight);
-    const visibleEndRow = Math.min(
-      Math.ceil((scrollTop + height - headerHeight) / rowHeight) + 1,
-      rowData.length
-    );
-    
-    for (let i = visibleStartRow; i < visibleEndRow; i++) {
+    for (let i = 0; i < rowData.length; i++) {
       const crew = rowData[i];
       if (!crew) continue;
       
-      const y = headerHeight + (i * rowHeight) - scrollTop;
+      const y = (i * rowHeight) - scrollTop;
+      
+      // Skip rows outside visible area
+      if (y + rowHeight < 0 || y > height) continue;
       
       // Draw row background (white)
       ctx.fillStyle = '#ffffff';
@@ -150,7 +212,7 @@ const TimelineView: React.FC<{
       ctx.strokeStyle = '#e5e7eb';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(0, y + rowHeight - 0.5); // Subtract 0.5 for pixel-perfect alignment
+      ctx.moveTo(0, y + rowHeight - 0.5);
       ctx.lineTo(width, y + rowHeight - 0.5);
       ctx.stroke();
       
@@ -160,22 +222,22 @@ const TimelineView: React.FC<{
       const rangeEnd = new Date(crew.rangeEndDate);
       
       // Calculate positions
-      const greenStart = Math.max(0, ((differenceInDays(contractStart, startDate) / totalDays) * width));
-      const greenEnd = Math.max(0, ((differenceInDays(contractEnd, startDate) / totalDays) * width));
-      const yellowEnd = Math.max(0, ((differenceInDays(rangeEnd, startDate) / totalDays) * width));
+      const greenStart = Math.max(0, (differenceInDays(contractStart, startDate) / totalDays) * width);
+      const greenEnd = Math.max(0, (differenceInDays(contractEnd, startDate) / totalDays) * width);
+      const yellowEnd = Math.max(0, (differenceInDays(rangeEnd, startDate) / totalDays) * width);
       
       const barY = y + (rowHeight - 20) / 2;
       const barHeight = 20;
       
       // Draw green bar (Contract Start to Contract End)
       if (greenEnd > greenStart) {
-        ctx.fillStyle = 'rgba(2, 169, 33, 0.5)'; // #02A921 with 50% opacity
+        ctx.fillStyle = 'rgba(2, 169, 33, 0.5)';
         ctx.fillRect(greenStart, barY, greenEnd - greenStart, barHeight);
       }
       
       // Draw yellow bar (Contract End to Range End)
       if (yellowEnd > greenEnd) {
-        ctx.fillStyle = 'rgba(241, 205, 29, 0.5)'; // #F1CD1D with 50% opacity
+        ctx.fillStyle = 'rgba(241, 205, 29, 0.5)';
         ctx.fillRect(greenEnd, barY, yellowEnd - greenEnd, barHeight);
       }
       
@@ -184,7 +246,7 @@ const TimelineView: React.FC<{
         const pinkStart = yellowEnd;
         const pinkEnd = todayX;
         if (pinkEnd > pinkStart) {
-          ctx.fillStyle = 'rgba(229, 78, 96, 0.5)'; // #E54E60 with 50% opacity
+          ctx.fillStyle = 'rgba(229, 78, 96, 0.5)';
           ctx.fillRect(pinkStart, barY, pinkEnd - pinkStart, barHeight);
         }
       }
@@ -194,19 +256,35 @@ const TimelineView: React.FC<{
     ctx.strokeStyle = '#fbbf24';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(todayX, headerHeight);
+    ctx.moveTo(todayX, 0);
     ctx.lineTo(todayX, height);
     ctx.stroke();
-  }, [rowData, scrollTop, rowHeight, months, today, startDate, endDate, totalDays, canvasSize]);
+  }, [rowData, scrollTop, rowHeight, monthsData, today, startDate, totalDays, containerWidth, bodyHeight]);
 
   return (
-    <div ref={containerRef} className="w-full h-full">
-      <canvas
-        ref={canvasRef}
-        width={canvasSize.width}
-        height={canvasSize.height}
-        className="block"
-      />
+    <div ref={containerRef} className="w-full h-full flex flex-col">
+      {/* Header section - fixed height matching AG Grid header */}
+      <div className="flex-none" style={{ height: headerHeight }}>
+        <canvas
+          ref={headerCanvasRef}
+          width={containerWidth}
+          height={headerHeight}
+          className="block"
+        />
+      </div>
+      
+      {/* Body section - flexible height for timeline bars */}
+      <div className="flex-1 overflow-hidden" style={{ height: bodyHeight }}>
+        <canvas
+          ref={bodyCanvasRef}
+          width={containerWidth}
+          height={bodyHeight}
+          className="block"
+        />
+      </div>
+      
+      {/* Footer section - fixed height matching AG Grid pagination */}
+      <div className="flex-none bg-gray-50 border-t border-gray-200" style={{ height: paginationHeight }} />
     </div>
   );
 };
@@ -221,10 +299,13 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
 }) => {
   const [gridScrollTop, setGridScrollTop] = useState(0);
   const [displayedRowData, setDisplayedRowData] = useState<CrewMember[]>([]);
+  const [paginationHeight, setPaginationHeight] = useState(48); // Default pagination height
   const timelineContainerRef = useRef<HTMLDivElement>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
   const gridApiRef = useRef<any>(null);
   const gridBodyRef = useRef<HTMLElement | null>(null);
+  
+  const HEADER_HEIGHT = 48; // AG Grid header height
   
   const { data: crewData = [], isLoading } = useDueCrew({
     filterType,
@@ -335,11 +416,19 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
     gridApiRef.current = event.api;
     
     // Get reference to the grid body viewport for scroll sync (scoped to this grid container)
+    // Also measure the pagination panel height
     setTimeout(() => {
       if (gridContainerRef.current) {
         const gridElement = gridContainerRef.current.querySelector('.ag-body-viewport');
         if (gridElement) {
           gridBodyRef.current = gridElement as HTMLElement;
+        }
+        
+        // Measure pagination panel height
+        const paginationPanel = gridContainerRef.current.querySelector('.ag-paging-panel');
+        if (paginationPanel) {
+          const panelHeight = paginationPanel.getBoundingClientRect().height;
+          setPaginationHeight(panelHeight > 0 ? panelHeight : 48);
         }
       }
     }, 100);
@@ -446,6 +535,8 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
           rowData={displayedRowData} 
           rowHeight={48}
           scrollTop={gridScrollTop}
+          headerHeight={HEADER_HEIGHT}
+          paginationHeight={paginationHeight}
         />
       </div>
     </div>
