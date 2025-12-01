@@ -188,6 +188,7 @@ export interface SeaService {
 }
 
 export interface PreJoiningMedical {
+  vesselCode: string;
   vessel: string;
   date: string;
   bp: string;

@@ -202,6 +202,7 @@ interface SeaService {
 
 interface PreJoiningMedical {
   id: string;
+  vesselCode: string;
   vessel: string;
   dateOfMedical: string;
   bp: string; // Blood Pressure (mmHG)
@@ -728,11 +729,17 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             periodMonths: s.from && s.to ? calculateSeaServicePeriod(s.from, s.to) : s.periodMonths || ''
           }));
         })(),
-        preJoiningMedicals: Array.isArray(detailedCrewData.preJoiningMedicals) 
-          ? detailedCrewData.preJoiningMedicals 
-          : detailedCrewData.preJoiningMedicals 
-            ? JSON.parse(detailedCrewData.preJoiningMedicals) 
-            : [],
+        preJoiningMedicals: (() => {
+          const medicals = Array.isArray(detailedCrewData.preJoiningMedicals) 
+            ? detailedCrewData.preJoiningMedicals 
+            : detailedCrewData.preJoiningMedicals 
+              ? JSON.parse(detailedCrewData.preJoiningMedicals) 
+              : [];
+          return medicals.map((m: PreJoiningMedical) => ({
+            ...m,
+            vesselCode: m.vesselCode || ''
+          }));
+        })(),
         doctorVisits: Array.isArray(detailedCrewData.doctorVisits) 
           ? detailedCrewData.doctorVisits 
           : detailedCrewData.doctorVisits 
@@ -1263,6 +1270,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   const addPreJoiningMedical = () => {
     const newMedical: PreJoiningMedical = {
       id: `${Date.now()}`,
+      vesselCode: '',
       vessel: '',
       dateOfMedical: '',
       bp: '', 
@@ -3897,12 +3905,33 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                   formData.preJoiningMedicals.map((medical) => (
                     <tr key={medical.id} className="border-t">
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
-                        <Input
-                          value={medical.vessel}
-                          onChange={(e) => updatePreJoiningMedical(medical.id, 'vessel', e.target.value)}
-                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                          placeholder="Enter vessel"
-                        />
+                        <Select
+                          value={medical.vesselCode || ''}
+                          onValueChange={(value) => {
+                            const selectedVessel = vesselOptions.find(v => v.code === value);
+                            updatePreJoiningMedical(medical.id, 'vesselCode', value);
+                            updatePreJoiningMedical(medical.id, 'vessel', selectedVessel?.name || '');
+                          }}
+                        >
+                          <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                            <SelectValue placeholder="Select vessel">
+                              {medical.vessel || "Select vessel"}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {vesselsLoading ? (
+                              <SelectItem value="loading" disabled>Loading vessels...</SelectItem>
+                            ) : vesselOptions.length === 0 ? (
+                              <SelectItem value="empty" disabled>No vessels available</SelectItem>
+                            ) : (
+                              vesselOptions.map((vessel) => (
+                                <SelectItem key={vessel.code} value={vessel.code}>
+                                  {vessel.name}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Input
