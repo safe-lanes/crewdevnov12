@@ -30,6 +30,7 @@ import { CalendarIcon } from "lucide-react";
 import { format, addMonths, parseISO } from "date-fns";
 import { ComplianceMatrixDialog } from './ComplianceMatrixDialog';
 import { AppraisalForm } from '@/modules/crewing/AppraisalForm';
+import { CrewInfoForm } from '@/modules/crew-pool/CrewInfoForm';
 
 // Hook to fetch vessels from Master Data (ID 014)
 const useVessels = () => {
@@ -1432,6 +1433,10 @@ export const VesselModule = (): JSX.Element => {
     const [showAppraisalForm, setShowAppraisalForm] = useState(false);
     const [selectedCrewForAppraisal, setSelectedCrewForAppraisal] = useState<any>(null);
 
+    // Crew Info Form state
+    const [isCrewInfoFormOpen, setIsCrewInfoFormOpen] = useState(false);
+    const [selectedCrewMember, setSelectedCrewMember] = useState<any>(null);
+
     const gridApiRef = useRef<GridApi | null>(null);
 
     // Fetch vessels and crew members
@@ -1961,7 +1966,18 @@ export const VesselModule = (): JSX.Element => {
                                                                         
                                                                     </TableCell>
                                                                     <TableCell className="text-xs" data-testid={`cell-actions-${index + 1}`}>
-                                                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                                        <Button 
+                                                                            variant="ghost" 
+                                                                            size="sm" 
+                                                                            className="h-8 w-8 p-0"
+                                                                            onClick={() => {
+                                                                                if (crewData) {
+                                                                                    setSelectedCrewMember(crewData);
+                                                                                    setIsCrewInfoFormOpen(true);
+                                                                                }
+                                                                            }}
+                                                                            data-testid={`button-view-crew-${index + 1}`}
+                                                                        >
                                                                             <Eye className="h-4 w-4 text-gray-500" />
                                                                         </Button>
                                                                     </TableCell>
@@ -2801,6 +2817,16 @@ export const VesselModule = (): JSX.Element => {
                     onClose={handleCloseAppraisalForm}
                 />
             )}
+
+            {/* Crew Info Form */}
+            <CrewInfoForm
+                isOpen={isCrewInfoFormOpen}
+                onClose={() => {
+                    setIsCrewInfoFormOpen(false);
+                    setSelectedCrewMember(null);
+                }}
+                crewMember={selectedCrewMember}
+            />
         </>
     );
 };
