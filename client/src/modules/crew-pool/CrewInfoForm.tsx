@@ -1397,12 +1397,12 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     return (
       <div className="space-y-6">
         {/* 3-Column Grid Layout matching reference design */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
           
           {/* LEFT COLUMN - Status & Compliance */}
-          <div className="space-y-6">
+          <div className="flex flex-col gap-6 h-full">
             {/* Status Card */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-status">
+            <div className="bg-white p-4 rounded-lg border border-gray-200 flex-1" data-testid="card-status">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>Status</h3>
                 <Button
@@ -1533,7 +1533,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             </div>
 
             {/* Training/Cert/Docs Card */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-compliance-status">
+            <div className="bg-white p-4 rounded-lg border border-gray-200 flex-1" data-testid="card-compliance-status">
               <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }} data-testid="text-compliance-title">Training/ Cert/ Docs</h3>
               
               <div className="space-y-3" data-testid="compliance-items">
