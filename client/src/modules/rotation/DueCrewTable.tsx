@@ -128,14 +128,13 @@ const TimelineCellRenderer = (params: ICellRendererParams<CrewMember>) => {
       {/* Green bar (Contract Start to Contract End) */}
       {greenEndPct > greenStartPct && (
         <div
-          className="absolute h-6 rounded-sm z-10"
+          className="absolute h-6 z-10"
           style={{
             left: `${greenStartPct}%`,
             width: `${greenEndPct - greenStartPct}%`,
             top: '50%',
             transform: 'translateY(-50%)',
-            backgroundColor: '#02a921',
-            opacity: 0.6,
+            backgroundColor: 'rgba(2, 169, 33, 0.6)',
           }}
         />
       )}
@@ -143,14 +142,13 @@ const TimelineCellRenderer = (params: ICellRendererParams<CrewMember>) => {
       {/* Yellow bar (Contract End to Range End) */}
       {yellowEndPct > greenEndPct && (
         <div
-          className="absolute h-6 rounded-sm z-10"
+          className="absolute h-6 z-10"
           style={{
             left: `${greenEndPct}%`,
             width: `${yellowEndPct - greenEndPct}%`,
             top: '50%',
             transform: 'translateY(-50%)',
-            backgroundColor: '#f1cd1d',
-            opacity: 0.6,
+            backgroundColor: 'rgba(241, 205, 29, 0.6)',
           }}
         />
       )}
@@ -158,27 +156,26 @@ const TimelineCellRenderer = (params: ICellRendererParams<CrewMember>) => {
       {/* Pink bar (After Range End - overdue) */}
       {isOverdue && pinkEndPct > pinkStartPct && (
         <div
-          className="absolute h-6 rounded-sm z-10"
+          className="absolute h-6 z-10"
           style={{
             left: `${pinkStartPct}%`,
             width: `${pinkEndPct - pinkStartPct}%`,
             top: '50%',
             transform: 'translateY(-50%)',
-            backgroundColor: '#e54e60',
-            opacity: 0.6,
+            backgroundColor: 'rgba(229, 78, 96, 0.6)',
           }}
         />
       )}
       
-      {/* Today line */}
+      {/* Today line - solid vertical line */}
       <div
         className="absolute z-20"
         style={{
           left: `${todayPct}%`,
           top: 0,
           bottom: 0,
-          width: '3px',
-          backgroundColor: '#fbbf24',
+          width: '2px',
+          backgroundColor: '#f59e0b',
         }}
       />
     </div>
