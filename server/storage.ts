@@ -429,12 +429,16 @@ export function buildServiceTimeline(
     let contractEndDate: string | null = null;
     let rangeEndDate: string | null = null;
     
-    // Calculate contractEndDate and rangeEndDate from Joining Date (or Sign On Date as fallback)
+    // Calculate contractEndDate and rangeEndDate from Sign On Date (or Joining Date as fallback)
+    // CRITICAL: Prioritize signOnDate over joiningDate because joiningDate may contain
+    // the reliever's planned arrival date (stored on primary record for planning purposes)
+    // while signOnDate contains the actual on-board crew's sign-on date for timeline calculations
+    // This matches the logic in routes.ts for Crew Due/Overdue to ensure both modules are aligned.
     // These define the flexibility window for contract termination:
-    // - contractEndDate (Green bar ends): joiningDate + contractEndRangeStartMonths
-    // - rangeEndDate (Yellow bar ends): joiningDate + contractEndRangeEndMonths
+    // - contractEndDate (Green bar ends): signOnDate + contractEndRangeStartMonths
+    // - rangeEndDate (Yellow bar ends): signOnDate + contractEndRangeEndMonths
     // - Red (Overdue): when today > rangeEndDate
-    const baseDate = planning.joiningDate || planning.signOnDate;
+    const baseDate = planning.signOnDate || planning.joiningDate;
     
     if (baseDate) {
       const baseDateObj = new Date(baseDate);
