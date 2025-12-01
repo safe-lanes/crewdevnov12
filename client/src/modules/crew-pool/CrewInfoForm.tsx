@@ -3889,7 +3889,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">BP (mmHG)</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Weight (Kgs)</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Any Medication Prescribed</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Fitness For Duty</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Fitness for Sea Service</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Expiry</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>
                 </tr>
@@ -3946,7 +3946,6 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                           value={medical.bp}
                           onChange={(e) => updatePreJoiningMedical(medical.id, 'bp', e.target.value)}
                           className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                          placeholder="120/80"
                         />
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
@@ -3954,7 +3953,6 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                           value={medical.weight}
                           onChange={(e) => updatePreJoiningMedical(medical.id, 'weight', e.target.value)}
                           className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                          placeholder="75"
                         />
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
@@ -3966,12 +3964,18 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                         />
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
-                        <Input
-                          value={medical.fitnessForDuty}
-                          onChange={(e) => updatePreJoiningMedical(medical.id, 'fitnessForDuty', e.target.value)}
-                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                          placeholder="Fit for sea service"
-                        />
+                        <Select
+                          value={medical.fitnessForDuty || ''}
+                          onValueChange={(value) => updatePreJoiningMedical(medical.id, 'fitnessForDuty', value)}
+                        >
+                          <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Fit">Fit</SelectItem>
+                            <SelectItem value="Unfit">Unfit</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Input
