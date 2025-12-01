@@ -247,6 +247,11 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   
   // Helper function to analyze expiry status for an array of items
   const analyzeExpiryStatus = (items: Array<{ expiry: string; [key: string]: any }>, nameField: string) => {
+    // Return grey if no items exist
+    if (!items || items.length === 0) {
+      return { dotColor: 'bg-gray-400', issueCount: 0, issues: [] };
+    }
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const twoMonthsFromNow = new Date(today);
@@ -254,12 +259,15 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     
     let hasExpired = false;
     let hasExpiring = false;
+    let hasValidData = false;
     const issues: Array<{ name: string; expiry: string; status: 'expired' | 'expiring' }> = [];
     
     items.forEach(item => {
       if (!item.expiry) return;
       const expiryDate = new Date(item.expiry);
       if (isNaN(expiryDate.getTime())) return;
+      
+      hasValidData = true; // Found at least one item with valid expiry date
       
       if (expiryDate < today) {
         hasExpired = true;
@@ -269,6 +277,11 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
         issues.push({ name: item[nameField] || 'Unknown', expiry: item.expiry, status: 'expiring' });
       }
     });
+    
+    // Return grey if no items have valid expiry dates
+    if (!hasValidData) {
+      return { dotColor: 'bg-gray-400', issueCount: 0, issues: [] };
+    }
     
     const dotColor = hasExpired ? 'bg-red-500' : hasExpiring ? 'bg-orange-500' : 'bg-green-500';
     return { dotColor, issueCount: issues.length, issues };
@@ -1718,33 +1731,41 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                     {/* Medical - linked to F1 (shows expiry date) */}
                     {(() => {
                       let medicalExpiry: string | null = null;
-                      let medicalStatus: 'expired' | 'expiring' | 'valid' = 'valid';
+                      let medicalStatus: 'expired' | 'expiring' | 'valid' | 'nodata' = 'nodata';
                       
                       if (formData.preJoiningMedicals && formData.preJoiningMedicals.length > 0) {
+                        // Sort by expiry date descending (latest first)
                         const sortedMedicals = [...formData.preJoiningMedicals]
                           .filter(m => m.expiry)
                           .sort((a, b) => new Date(b.expiry).getTime() - new Date(a.expiry).getTime());
-                        if (sortedMedicals.length > 0) {
-                          medicalExpiry = sortedMedicals[0].expiry;
-                          const expiryDate = new Date(medicalExpiry);
-                          const today = new Date();
-                          today.setHours(0, 0, 0, 0);
-                          const twoMonthsFromNow = new Date(today);
-                          twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
-                          
-                          if (expiryDate < today) {
-                            medicalStatus = 'expired';
-                          } else if (expiryDate <= twoMonthsFromNow) {
-                            medicalStatus = 'expiring';
-                          } else {
-                            medicalStatus = 'valid';
+                        
+                        // Find the first entry with a valid expiry date
+                        for (const medical of sortedMedicals) {
+                          const expiryDate = new Date(medical.expiry);
+                          if (!isNaN(expiryDate.getTime())) {
+                            medicalExpiry = medical.expiry;
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            const twoMonthsFromNow = new Date(today);
+                            twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
+                            
+                            if (expiryDate < today) {
+                              medicalStatus = 'expired';
+                            } else if (expiryDate <= twoMonthsFromNow) {
+                              medicalStatus = 'expiring';
+                            } else {
+                              medicalStatus = 'valid';
+                            }
+                            break; // Found valid date, stop iterating
                           }
                         }
                       }
                       
-                      const dotColor = medicalStatus === 'valid' ? 'bg-green-500' : medicalStatus === 'expiring' ? 'bg-orange-500' : 'bg-red-500';
+                      const dotColor = medicalStatus === 'nodata' ? 'bg-gray-400' : 
+                                       medicalStatus === 'valid' ? 'bg-green-500' : 
+                                       medicalStatus === 'expiring' ? 'bg-orange-500' : 'bg-red-500';
                       let displayDetails = '';
-                      if (medicalExpiry) {
+                      if (medicalExpiry && medicalStatus !== 'nodata') {
                         const expDate = new Date(medicalExpiry);
                         if (!isNaN(expDate.getTime())) {
                           displayDetails = `Exp: ${expDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}`;
