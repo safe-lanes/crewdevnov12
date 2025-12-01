@@ -281,6 +281,24 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
     },
   ], []);
 
+  // Memoize gridOptions to prevent recreating on each render (avoids infinite loops)
+  const gridOptionsConfig = useMemo(() => ({
+    rowHeight: 48,
+    headerHeight: 48,
+    suppressMovableColumns: true,
+    suppressHorizontalScroll: true,
+    domLayout: 'normal' as const,
+    alwaysShowVerticalScroll: true,
+    pagination: true,
+    paginationPageSize: 50,
+    paginationPageSizeSelector: [25, 50, 100],
+    getRowId: (params: any) => {
+      if (params.data?.id) return params.data.id.toString();
+      if (params.node?.rowIndex !== undefined) return `row-${params.node.rowIndex}`;
+      return `fallback-${Math.random().toString(36).substring(7)}`;
+    },
+  }), []);
+
   // Extract displayed rows from AG Grid (after sorting/filtering/pagination)
   const updateDisplayedRows = useCallback(() => {
     if (!gridApiRef.current || gridApiRef.current.isDestroyed()) return;
@@ -413,22 +431,7 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
           enableExport={false}
           enableSideBar={false}
           enableStatusBar={false}
-          gridOptions={{
-            rowHeight: 48,
-            headerHeight: 48,
-            suppressMovableColumns: true,
-            suppressHorizontalScroll: true,
-            domLayout: 'normal',
-            alwaysShowVerticalScroll: true,
-            pagination: true,
-            paginationPageSize: 50,
-            paginationPageSizeSelector: [25, 50, 100],
-            getRowId: (params: any) => {
-              if (params.data?.id) return params.data.id.toString();
-              if (params.node?.rowIndex !== undefined) return `row-${params.node.rowIndex}`;
-              return `fallback-${Math.random().toString(36).substring(7)}`;
-            },
-          }}
+          gridOptions={gridOptionsConfig}
         />
       </div>
       

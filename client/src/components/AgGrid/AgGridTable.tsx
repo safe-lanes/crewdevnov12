@@ -375,19 +375,37 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
     };
   }, [defaultGridOptions, gridOptions, autoHeight, rowData.length, enableStatusBar]);
 
-  // Check if scroll is needed
+  // Check if scroll is needed or if domLayout is explicitly set to 'normal'
+  // Note: We use finalGridOptions.domLayout which is already memoized
   const needsScroll = useMemo(() => {
+    // If domLayout is 'normal' in finalGridOptions, we need a fixed height container
+    if (finalGridOptions.domLayout === 'normal') return true;
+    
     if (!autoHeight) return false;
     const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 900;
     const calculatedHeight = 50 + (rowData.length * 50) + 4;
     return calculatedHeight > (screenHeight - 200);
-  }, [autoHeight, rowData.length]);
+  }, [autoHeight, rowData.length, finalGridOptions.domLayout]);
+
+  // Determine the container height
+  const containerHeight = useMemo(() => {
+    // If domLayout is 'normal' and a height prop is provided, use it
+    if (finalGridOptions.domLayout === 'normal') {
+      return height;
+    }
+    // If scroll is needed due to autoHeight calculations, use dynamic height
+    if (needsScroll) {
+      return dynamicHeight;
+    }
+    // Otherwise, auto height
+    return 'auto';
+  }, [finalGridOptions.domLayout, height, needsScroll, dynamicHeight]);
 
   return (
     <div 
       className={`ag-theme-${theme} ${needsScroll ? 'needs-scroll' : 'no-scroll'} bg-white rounded-lg shadow-md ${className}`} 
       style={{ 
-        height: needsScroll ? dynamicHeight : 'auto', 
+        height: containerHeight, 
         width,
         overflow: needsScroll ? 'auto' : 'visible'
       }}
