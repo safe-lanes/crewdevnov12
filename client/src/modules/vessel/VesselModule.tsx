@@ -1926,7 +1926,7 @@ export const VesselModule = (): JSX.Element => {
                                                                         {formatDateOnly(planning.reliefDue || planning.signOffDate)}
                                                                     </TableCell>
                                                                     <TableCell className="text-xs text-gray-700" data-testid={`cell-planned-${index + 1}`}>
-                                                                        
+                                                                        {formatDateOnly(planning.signOffDate)}
                                                                     </TableCell>
                                                                     <TableCell className="text-xs text-gray-700" data-testid={`cell-docexp-${index + 1}`}>
                                                                         
