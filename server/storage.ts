@@ -429,31 +429,46 @@ export function buildServiceTimeline(
     let contractEndDate: string | null = null;
     let rangeEndDate: string | null = null;
     
-    // Calculate contract end date and range end date from signOnDate
-    // Green bar ends at: signOnDate + contractEndRangeStartMonths
-    // Yellow bar ends at: signOnDate + contractEndRangeEndMonths
-    if (planning.signOnDate) {
+    // Use reliefDue as the contractEndDate (green bar end) - this is the Relief Due date shown in the UI
+    // This ensures the green bar ends exactly at the Relief Due date
+    if (planning.reliefDue) {
+      contractEndDate = planning.reliefDue;
+      
+      // Calculate rangeEndDate (yellow bar end) from reliefDue + range extension if configured
+      if (planning.contractEndRangeEndMonths && planning.contractEndRangeStartMonths) {
+        // Calculate the extension beyond reliefDue for the yellow bar
+        const reliefDueDate = new Date(planning.reliefDue);
+        const rangeExtensionMonths = planning.contractEndRangeEndMonths - planning.contractEndRangeStartMonths;
+        if (rangeExtensionMonths > 0) {
+          const rangeEnd = new Date(reliefDueDate);
+          rangeEnd.setMonth(rangeEnd.getMonth() + rangeExtensionMonths);
+          rangeEndDate = rangeEnd.toISOString().split('T')[0];
+        } else {
+          rangeEndDate = contractEndDate;
+        }
+      } else {
+        // If no range extension configured, yellow bar ends at same point as green
+        rangeEndDate = contractEndDate;
+      }
+    } else if (planning.signOnDate) {
+      // Fallback: Calculate contract end from signOnDate + months if no reliefDue
       const signOnDate = new Date(planning.signOnDate);
       
-      // Calculate contractEndDate (green bar end) using contractEndRangeStartMonths
       if (planning.contractEndRangeStartMonths) {
         const contractEnd = new Date(signOnDate);
         contractEnd.setMonth(contractEnd.getMonth() + planning.contractEndRangeStartMonths);
         contractEndDate = contractEnd.toISOString().split('T')[0];
       } else if (planning.contractPeriodMonths) {
-        // Fallback to contractPeriodMonths if no range start defined
         const contractEnd = new Date(signOnDate);
         contractEnd.setMonth(contractEnd.getMonth() + planning.contractPeriodMonths);
         contractEndDate = contractEnd.toISOString().split('T')[0];
       }
       
-      // Calculate rangeEndDate (yellow bar end) using contractEndRangeEndMonths
       if (planning.contractEndRangeEndMonths) {
         const rangeEnd = new Date(signOnDate);
         rangeEnd.setMonth(rangeEnd.getMonth() + planning.contractEndRangeEndMonths);
         rangeEndDate = rangeEnd.toISOString().split('T')[0];
       } else if (contractEndDate) {
-        // If no range end specified, use contract end as range end
         rangeEndDate = contractEndDate;
       }
     }
