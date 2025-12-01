@@ -90,9 +90,10 @@ function TimelineCanvas({
       const barWidth = Math.max(barEndX - barStartX, 4);
       
       // Draw outlined hollow bar with no fill, sharp corners
+      // Use 0.5 pixel offset for crisp line rendering (avoids anti-aliasing blur)
       ctx.strokeStyle = '#56baf3';
       ctx.lineWidth = 1.0;
-      ctx.strokeRect(barStartX, barY, barWidth, barHeight);
+      ctx.strokeRect(Math.floor(barStartX) + 0.5, Math.floor(barY) + 0.5, Math.floor(barWidth), barHeight);
       
       return barEndX;
     }
