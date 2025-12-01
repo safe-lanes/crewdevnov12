@@ -138,7 +138,10 @@ function TimelineCanvas({
       finalBarEndX = clippedYellowEndX;
     }
     
-    if (rangeEnd && isAfter(today, rangeEnd)) {
+    // Red (Overdue): Draw when today is past the range end date (or contract end if no range extension)
+    // Use effectiveRangeEnd which falls back to effectiveContractEnd when rangeEnd is null
+    if (isAfter(today, effectiveRangeEnd)) {
+      // Red bar starts from where yellow ends (or green ends if no yellow)
       const redStartX = clippedYellowEndX;
       const redEndX = Math.min(todayX, leftPadding + chartWidth);
       if (redEndX > redStartX) {
