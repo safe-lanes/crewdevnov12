@@ -2908,6 +2908,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Continue with vessel planning update even if crew sync fails
           }
         }
+        
+        // COMPREHENSIVE SIGN-OFF SYNC: Update crew member status, clear vessel fields, and add sea service record
+        if (crewMemberId) {
+          try {
+            // Get current crew member data to access existing sea service records
+            const crewMemberData = await storage.getCrewMember(crewMemberId);
+            
+            if (crewMemberData) {
+              // Get vessel info for sea service record
+              let vesselName = 'Unknown Vessel';
+              let vesselType = '';
+              
+              // Try to get vessel details from master data (014)
+              if (vesselId) {
+                try {
+                  const masterEntries = await storage.getMasterDataEntries('014');
+                  const vesselEntry = masterEntries.find((e: any) => e.entryId === vesselId || e.entry_id === vesselId || e.nuid === vesselId);
+                  if (vesselEntry) {
+                    vesselName = vesselEntry.name || vesselName;
+                    // Get vessel type from vtuid (links to master 004)
+                    if (vesselEntry.vtuid) {
+                      const typeEntries = await storage.getMasterDataEntries('004');
+                      const typeEntry = typeEntries.find((t: any) => t.entryId === vesselEntry.vtuid || t.entry_id === vesselEntry.vtuid);
+                      if (typeEntry) {
+                        vesselType = typeEntry.name || '';
+                      }
+                    }
+                  }
+                } catch (vesselError) {
+                  console.warn(`⚠️ [VESSEL-PLANNING] Could not fetch vessel details:`, vesselError);
+                }
+              }
+              
+              // Get rank display name - priority order:
+              // 1. Crew member's presentRank (already human-readable)
+              // 2. Planning's rank field (may be human-readable)
+              // 3. Look up from company ranks by rankId or id
+              // 4. Fall back to raw rankId as last resort
+              let rankDisplayName = crewMemberData.presentRank || '';
+              
+              // If no display name yet, try to resolve from company ranks
+              if (!rankDisplayName && existingPlanning.rankId) {
+                try {
+                  const companyRanks = await storage.getCompanyRanks();
+                  // Match on both rankId AND numeric id (different planning records may use either)
+                  const rankEntry = companyRanks.find((r: any) => 
+                    r.rankId === existingPlanning.rankId || 
+                    r.id === existingPlanning.rankId ||
+                    String(r.id) === existingPlanning.rankId
+                  );
+                  if (rankEntry) {
+                    // Company ranks use 'rank' field for the display name
+                    rankDisplayName = rankEntry.rank || '';
+                  }
+                } catch (rankError) {
+                  console.warn(`⚠️ [VESSEL-PLANNING] Could not fetch rank display name:`, rankError);
+                }
+              }
+              
+              // If still no display name, use planning's rank field or fall back to rankId
+              if (!rankDisplayName) {
+                rankDisplayName = existingPlanning.rank || existingPlanning.rankId || 'Unknown Rank';
+              }
+              
+              // Determine sign on/off dates
+              const signOnDate = existingPlanning.signOnDate || existingPlanning.joiningDate;
+              const signOffDate = req.body.signOffDate;
+              
+              // Prepare the update object
+              const crewUpdate: any = {
+                status: 'On Leave',
+                presentVessel: '',
+                signOnDate: null,
+                joiningDate: null,
+                reliefDue: null
+              };
+              
+              // Only add sea service record if we have valid sign-on and sign-off dates
+              if (signOnDate && signOffDate) {
+                // Parse existing sea service records
+                let currentSeaService: any[] = [];
+                if (crewMemberData.currentCompanySeaService) {
+                  try {
+                    currentSeaService = typeof crewMemberData.currentCompanySeaService === 'string' 
+                      ? JSON.parse(crewMemberData.currentCompanySeaService) 
+                      : crewMemberData.currentCompanySeaService;
+                    if (!Array.isArray(currentSeaService)) {
+                      currentSeaService = [];
+                    }
+                  } catch (e) {
+                    currentSeaService = [];
+                  }
+                }
+                
+                // Calculate period in months
+                let periodMonths = '';
+                const from = new Date(signOnDate);
+                const to = new Date(signOffDate);
+                if (!isNaN(from.getTime()) && !isNaN(to.getTime()) && to >= from) {
+                  const timeDiff = to.getTime() - from.getTime();
+                  const totalDays = timeDiff / (1000 * 60 * 60 * 24);
+                  const months = Math.max(0, Math.round((totalDays / 30.44) * 10) / 10);
+                  periodMonths = months.toString();
+                }
+                
+                // Create new sea service record (add at beginning - latest on top)
+                const newSeaServiceRecord = {
+                  id: `auto-${Date.now()}`,
+                  vesselName: vesselName,
+                  vesselCode: vesselId || '',
+                  vesselType: vesselType,
+                  deadweight: '',
+                  engineTypePower: '',
+                  ownerOperator: '',
+                  rank: rankDisplayName,
+                  from: signOnDate,
+                  to: signOffDate,
+                  periodMonths: periodMonths
+                };
+                
+                // Add new record at the beginning (latest on top)
+                const updatedSeaService = [newSeaServiceRecord, ...currentSeaService];
+                crewUpdate.currentCompanySeaService = JSON.stringify(updatedSeaService);
+                
+                console.log(`✅ [VESSEL-PLANNING] Adding sea service record: ${vesselName} (${rankDisplayName}) ${signOnDate} to ${signOffDate} = ${periodMonths} months`);
+              } else {
+                console.log(`⚠️ [VESSEL-PLANNING] Skipping sea service record - missing dates (signOn: ${signOnDate}, signOff: ${signOffDate})`);
+              }
+              
+              // Update crew member: status to "On Leave", clear vessel fields, optionally add sea service record
+              await storage.updateCrewMember(crewMemberId, crewUpdate);
+              
+              console.log(`✅ [VESSEL-PLANNING] Comprehensive sign-off sync for ${crewMemberId}:`);
+              console.log(`   - Status set to "On Leave"`);
+              console.log(`   - Vessel assignment fields cleared`);
+            }
+          } catch (syncError) {
+            console.error(`⚠️ [VESSEL-PLANNING] Failed comprehensive sign-off sync:`, syncError);
+            // Continue with vessel planning update even if crew sync fails
+          }
+        }
       }
       
       // TAKEOVER DETECTION: Clear reliever fields when appropriate
@@ -5702,15 +5843,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Process crew members with contract date calculations
+      // Only include active crew members who are "On Board" (exclude "On Leave" and "Inactive")
       const processedCrew = crewMembers
-        .filter(crew => crew.presentRank && crew.presentVessel)
+        .filter(crew => crew.presentRank && crew.presentVessel && crew.status === 'On Board')
         .map(crew => {
           const vesselPlanning = planningMap.get(crew.presentVessel || '') || [];
           
           // Find matching planning data by rank (including crew member match)
+          // IMPORTANT: Exclude archived planning records to prevent signed-off crew from appearing
           const matchingPlan = vesselPlanning.find(p => 
-            p.rank === crew.presentRank && p.crewMemberId === crew.id
+            p.rank === crew.presentRank && p.crewMemberId === crew.id && !p.isArchived
           );
+          
+          // ADDITIONAL SAFEGUARD: If no active planning record exists for this crew member,
+          // they should not appear in rotation (handles edge case where crew status wasn't updated)
+          if (!matchingPlan) {
+            // Check if there's ANY archived record for this crew - if so, they were signed off
+            const archivedPlan = vesselPlanning.find(p => 
+              p.crewMemberId === crew.id && p.isArchived
+            );
+            if (archivedPlan) {
+              return null; // Crew was signed off, exclude from rotation
+            }
+          }
           
           // Get dates from vesselPlanning if available, otherwise from crew record
           const rawJoiningDate = matchingPlan?.joiningDate || matchingPlan?.signOnDate || crew.joiningDate;
