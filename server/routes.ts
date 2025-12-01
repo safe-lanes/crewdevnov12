@@ -6004,13 +6004,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             crew._rangeEndDate >= today && crew._rangeEndDate <= oneMonthFromNow
           );
         } else if (monthsMap[dueIn as string]) {
-          // Relief Due is within X months from today
+          // Relief Due is within X months from today, PLUS any overdue crew
+          // Business rule: Always include overdue cases regardless of "Due in X" filter
           const months = monthsMap[dueIn as string];
           const targetDate = new Date(today);
           targetDate.setMonth(targetDate.getMonth() + months);
-          filteredCrew = filteredCrew.filter(crew => 
-            crew._reliefDueDate && crew._reliefDueDate >= today && crew._reliefDueDate <= targetDate
-          );
+          filteredCrew = filteredCrew.filter(crew => {
+            // Include if already overdue (rangeEndDate has passed)
+            const isOverdue = crew._rangeEndDate < today;
+            // Include if relief due is within the selected time window
+            const isDueWithinWindow = crew._reliefDueDate && 
+              crew._reliefDueDate >= today && 
+              crew._reliefDueDate <= targetDate;
+            return isOverdue || isDueWithinWindow;
+          });
         }
       }
 
