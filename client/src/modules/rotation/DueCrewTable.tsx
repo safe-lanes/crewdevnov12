@@ -369,7 +369,7 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
   return (
     <div className="flex gap-0 h-[calc(100vh-280px)] bg-white rounded-bl-lg border border-gray-200 overflow-hidden">
       {/* Left section: AG Grid */}
-      <div className="flex-none w-[620px] border-r border-gray-200">
+      <div className="flex-none w-[620px] h-full border-r border-gray-200 overflow-hidden">
         <AgGridTable
           rowData={crewData}
           columnDefs={columnDefs}
@@ -384,6 +384,8 @@ export const DueCrewTable: React.FC<DueCrewTableProps> = ({
             headerHeight: 48,
             suppressMovableColumns: true,
             suppressHorizontalScroll: true,
+            domLayout: 'normal',
+            alwaysShowVerticalScroll: true,
             pagination: true,
             paginationPageSize: 50,
             paginationPageSizeSelector: [25, 50, 100],

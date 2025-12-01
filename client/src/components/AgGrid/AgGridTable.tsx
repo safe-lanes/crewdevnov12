@@ -360,14 +360,18 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
     
     const needsScroll = autoHeight && calculatedHeight > availableHeight;
     
+    // Calculate default domLayout, but allow override from gridOptions
+    const defaultDomLayout = needsScroll ? ('normal' as const) : ('autoHeight' as const);
+    
     return {
       ...defaultGridOptions,
       ...gridOptions,
-      alwaysShowVerticalScroll: false,
-      suppressHorizontalScroll: false,
-      suppressScrollOnNewData: true,
-      // Control scrolling more precisely
-      domLayout: needsScroll ? ('normal' as const) : ('autoHeight' as const)
+      // Only set these defaults if not explicitly provided in gridOptions
+      alwaysShowVerticalScroll: gridOptions.alwaysShowVerticalScroll ?? false,
+      suppressHorizontalScroll: gridOptions.suppressHorizontalScroll ?? false,
+      suppressScrollOnNewData: gridOptions.suppressScrollOnNewData ?? true,
+      // Allow domLayout override from gridOptions, otherwise use calculated default
+      domLayout: gridOptions.domLayout ?? defaultDomLayout
     };
   }, [defaultGridOptions, gridOptions, autoHeight, rowData.length, enableStatusBar]);
 
