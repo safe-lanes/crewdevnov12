@@ -1550,8 +1550,50 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                     ))}
                   </div>
                 ) : complianceData && complianceData.length > 0 ? (
-                  complianceData.map((item, index) => {
-                    const statusColor = item.status === 'compliant' ? 'bg-green-500' : item.status === 'issues' ? 'bg-red-500' : 'bg-yellow-500';
+                  complianceData
+                    .filter(item => item.category !== 'Vaccination')
+                    .map((item, index) => {
+                    const isMedical = item.category === 'Medical';
+                    let medicalExpiry: string | null = null;
+                    let medicalStatus: 'expired' | 'expiring' | 'valid' | null = null;
+                    
+                    if (isMedical && formData.preJoiningMedicals && formData.preJoiningMedicals.length > 0) {
+                      const sortedMedicals = [...formData.preJoiningMedicals]
+                        .filter(m => m.expiry)
+                        .sort((a, b) => new Date(b.expiry).getTime() - new Date(a.expiry).getTime());
+                      if (sortedMedicals.length > 0) {
+                        medicalExpiry = sortedMedicals[0].expiry;
+                        const expiryDate = new Date(medicalExpiry);
+                        const today = new Date();
+                        const twoMonthsFromNow = new Date();
+                        twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
+                        
+                        if (expiryDate < today) {
+                          medicalStatus = 'expired';
+                        } else if (expiryDate <= twoMonthsFromNow) {
+                          medicalStatus = 'expiring';
+                        } else {
+                          medicalStatus = 'valid';
+                        }
+                      }
+                    }
+                    
+                    let statusColor: string;
+                    if (isMedical && medicalStatus) {
+                      statusColor = medicalStatus === 'valid' ? 'bg-green-500' : medicalStatus === 'expiring' ? 'bg-orange-500' : 'bg-red-500';
+                    } else {
+                      statusColor = item.status === 'compliant' ? 'bg-green-500' : item.status === 'issues' ? 'bg-red-500' : 'bg-yellow-500';
+                    }
+                    
+                    let displayDetails = item.details;
+                    if (isMedical && medicalExpiry) {
+                      const expDate = new Date(medicalExpiry);
+                      if (!isNaN(expDate.getTime())) {
+                        const formattedDate = expDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' });
+                        displayDetails = `Exp: ${formattedDate}`;
+                      }
+                    }
+                    
                     const testId = item.category.toLowerCase().replace(/[\s&]/g, '-');
                     return (
                       <div key={index} className="flex items-center justify-between" data-testid={`doc-${testId}`}>
@@ -1560,10 +1602,9 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                           <span className="text-sm">{item.category}:</span>
                         </div>
                         <div className="flex items-center">
-                          {item.details && item.details !== '✓' && (
-                            <span className="text-xs text-gray-500 mr-2" data-testid={`details-${testId}`}>{item.details}</span>
+                          {displayDetails && displayDetails !== '✓' && (
+                            <span className="text-xs text-gray-500" data-testid={`details-${testId}`}>{displayDetails}</span>
                           )}
-                          <span className="text-xs text-gray-400">Remarks</span>
                         </div>
                       </div>
                     );
