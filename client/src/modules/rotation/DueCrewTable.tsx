@@ -338,19 +338,25 @@ export const DueCrewTable: FC<DueCrewTableProps> = ({
 
   // Effect to create/update the today line overlay
   useEffect(() => {
-    if (!containerRef.current) return;
+    // Delay to ensure AG Grid has rendered
+    const timeoutId = setTimeout(() => {
+      if (!containerRef.current) return;
 
-    const container = containerRef.current;
-    const pinnedContainer = container.querySelector('.ag-pinned-right-cols-container');
-    
-    if (!pinnedContainer) return;
+      const container = containerRef.current;
+      const pinnedContainer = container.querySelector('.ag-pinned-right-cols-container');
+      
+      if (!pinnedContainer) return;
 
-    // Find or create the today line overlay
-    let todayLine = pinnedContainer.querySelector('.today-line-overlay') as HTMLDivElement;
-    
-    if (!todayLine) {
-      todayLine = document.createElement('div');
-      todayLine.className = 'today-line-overlay';
+      // Find or create the today line overlay
+      let todayLine = pinnedContainer.querySelector('.today-line-overlay') as HTMLDivElement;
+      
+      if (!todayLine) {
+        todayLine = document.createElement('div');
+        todayLine.className = 'today-line-overlay';
+        pinnedContainer.appendChild(todayLine);
+      }
+
+      // Always update the position
       todayLine.style.cssText = `
         position: absolute;
         top: 0;
@@ -359,15 +365,11 @@ export const DueCrewTable: FC<DueCrewTableProps> = ({
         background-color: #f59e0b;
         pointer-events: none;
         z-index: 100;
+        left: ${todayLinePosition}%;
       `;
-      pinnedContainer.appendChild(todayLine);
-    }
+    }, 100);
 
-    todayLine.style.left = `${todayLinePosition}%`;
-
-    return () => {
-      todayLine?.remove();
-    };
+    return () => clearTimeout(timeoutId);
   }, [todayLinePosition, crewData]);
 
   if (isLoading) {
