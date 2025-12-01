@@ -2677,13 +2677,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Use vessel_planning.reliefDue as source of truth, fallback to crew.reliefDue for legacy records
             enriched.reliefDue = p.reliefDue || crew.reliefDue;
             enriched.reliefDate = p.reliefDue || crew.reliefDue; // Alias for backward compatibility
+            // Get latest medical expiry from preJoiningMedicals
+            let latestMedicalExpiry: string | null = null;
+            if (crew.preJoiningMedicals) {
+              try {
+                let medicals: any[] = [];
+                if (typeof crew.preJoiningMedicals === 'string' && crew.preJoiningMedicals.trim()) {
+                  medicals = JSON.parse(crew.preJoiningMedicals);
+                } else if (Array.isArray(crew.preJoiningMedicals)) {
+                  medicals = crew.preJoiningMedicals;
+                }
+                if (Array.isArray(medicals) && medicals.length > 0) {
+                  // Find the latest expiry date
+                  const sortedMedicals = medicals
+                    .filter((m: any) => m.expiry)
+                    .sort((a: any, b: any) => new Date(b.expiry).getTime() - new Date(a.expiry).getTime());
+                  if (sortedMedicals.length > 0) {
+                    latestMedicalExpiry = sortedMedicals[0].expiry;
+                  }
+                }
+              } catch (e) {
+                // Invalid JSON, skip medical expiry
+              }
+            }
             enriched.crewMemberData = {
               id: crew.id,
               employeeId: crew.employeeId,
               firstName: crew.firstName,
               lastName: crew.lastName,
               nationality: crew.nationality,
-              presentRank: crew.presentRank
+              presentRank: crew.presentRank,
+              latestMedicalExpiry
             };
           }
         }

@@ -1936,7 +1936,28 @@ export const VesselModule = (): JSX.Element => {
                                                                         
                                                                     </TableCell>
                                                                     <TableCell className="text-xs text-gray-700" data-testid={`cell-medical-${index + 1}`}>
-                                                                        
+                                                                        {(() => {
+                                                                            const medicalExpiry = crewData?.latestMedicalExpiry;
+                                                                            if (!medicalExpiry) return null;
+                                                                            
+                                                                            const expiryDate = new Date(medicalExpiry);
+                                                                            const today = new Date();
+                                                                            const twoMonthsFromNow = new Date();
+                                                                            twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
+                                                                            
+                                                                            let textColor = 'text-gray-700';
+                                                                            if (expiryDate < today) {
+                                                                                textColor = 'text-red-600 font-medium';
+                                                                            } else if (expiryDate <= twoMonthsFromNow) {
+                                                                                textColor = 'text-orange-500 font-medium';
+                                                                            }
+                                                                            
+                                                                            return (
+                                                                                <span className={textColor}>
+                                                                                    {formatDateOnly(medicalExpiry)}
+                                                                                </span>
+                                                                            );
+                                                                        })()}
                                                                     </TableCell>
                                                                     <TableCell className="text-xs text-gray-700" data-testid={`cell-appraisal-${index + 1}`}>
                                                                         {crewData && (() => {
