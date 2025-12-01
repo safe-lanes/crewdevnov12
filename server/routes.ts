@@ -5868,7 +5868,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           // Get dates from vesselPlanning if available, otherwise from crew record
-          const rawJoiningDate = matchingPlan?.joiningDate || matchingPlan?.signOnDate || crew.joiningDate;
+          // CRITICAL: Prioritize signOnDate over joiningDate because joiningDate may contain
+          // the reliever's planned arrival date (stored on primary record for planning purposes)
+          // while signOnDate contains the actual on-board crew's sign-on date for timeline calculations
+          const rawJoiningDate = matchingPlan?.signOnDate || matchingPlan?.joiningDate || crew.joiningDate;
           const rawReliefDue = matchingPlan?.reliefDue || matchingPlan?.reliefDueDate || crew.reliefDue;
           
           // Calculate range dates with defaults (1 month if no planning data)

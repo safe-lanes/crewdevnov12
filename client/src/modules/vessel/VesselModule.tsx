@@ -294,7 +294,9 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                     relieverCrewId: null,
                     relieverCrewName: null,
                     relieverNationality: null,
-                    // Clear reliever-specific date fields (primary keeps its own signOnDate/joiningDate)
+                    // CRITICAL: Reset joiningDate to match primary's signOnDate (not the reliever's planned date)
+                    // This ensures timeline calculations use the primary's actual join date
+                    joiningDate: planningData.signOnDate || null,
                     joiningPort: null,
                     joiningStatus: null,
                     deploymentChecklistCompleted: false,
@@ -303,7 +305,11 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                 
                 return apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, clearRelieverPayload);
             } else {
-                // Normal update flow
+                // Normal update flow - saving RELIEVER PLANNING data onto the PRIMARY crew record
+                // NOTE: The reliever's planned joiningDate IS stored here for planning purposes.
+                // The backend timeline calculation (routes.ts) now prioritizes signOnDate over joiningDate,
+                // so the reliever's planned date won't affect the primary crew's timeline display.
+                
                 // Exclude timestamp fields (createdAt, updatedAt) to avoid Date object errors
                 const { createdAt, updatedAt, ...cleanPlanningData } = planningData || {};
                 const payload = {
@@ -926,6 +932,10 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                 // Step 3: Promote current secondary to primary
                 // Exclude timestamp fields (createdAt, updatedAt) to avoid Date object errors
                 const { createdAt: _1, updatedAt: _2, ...cleanPlanningDataForTakeover } = planningData || {};
+                
+                // CRITICAL: Sync joiningDate with signOnDate for timeline calculations
+                const signOnDateForPromotion = dataWithReliefDue.signOnDate || cleanPlanningDataForTakeover.signOnDate;
+                
                 const promotePayload = {
                     vesselId,
                     rankId,
@@ -933,6 +943,8 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                     ...cleanPlanningDataForTakeover,
                     ...dataWithReliefDue,
                     crewStatus: "primary", // Change from secondary to primary
+                    // Sync joiningDate to match signOnDate for consistent timeline calculations
+                    joiningDate: signOnDateForPromotion || cleanPlanningDataForTakeover.joiningDate,
                 };
                 
                 return apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, promotePayload);
@@ -970,12 +982,20 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                 // Normal update flow
                 // Exclude timestamp fields (createdAt, updatedAt) to avoid Date object errors
                 const { createdAt, updatedAt, ...cleanPlanningData } = planningData || {};
+                
+                // CRITICAL: If signOnDate is being updated, also sync joiningDate to match
+                // This ensures both date fields are consistent. The backend now prioritizes
+                // signOnDate over joiningDate for timeline calculations (see routes.ts).
+                const signOnDateToSync = dataWithReliefDue.signOnDate || cleanPlanningData.signOnDate;
+                
                 const payload = {
                     vesselId,
                     rankId,
                     rank,
                     ...cleanPlanningData,
                     ...dataWithReliefDue,
+                    // Sync joiningDate to match signOnDate for consistent timeline calculations
+                    joiningDate: signOnDateToSync || cleanPlanningData.joiningDate,
                 };
                 
                 if (planningData?.id) {
