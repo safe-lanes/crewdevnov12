@@ -269,6 +269,31 @@
   padding: 8px 16px !important;
 }
 
+/* Timeline column cells need special styling for absolute positioned bars */
+.ag-theme-alpine .ag-cell[col-id="timeline"],
+.ag-theme-alpine .ag-cell.timeline-cell {
+  padding: 0 !important;
+  overflow: visible !important;
+  position: relative !important;
+}
+
+.ag-theme-alpine .ag-cell[col-id="timeline"] .ag-cell-wrapper,
+.ag-theme-alpine .ag-cell.timeline-cell .ag-cell-wrapper {
+  overflow: visible !important;
+  height: 100% !important;
+  width: 100% !important;
+}
+
+/* Timeline header styling */
+.ag-theme-alpine .ag-header-cell.timeline-header {
+  padding: 0 !important;
+}
+
+.ag-theme-alpine .ag-header-cell.timeline-header .ag-header-cell-comp-wrapper {
+  width: 100% !important;
+  height: 100% !important;
+}
+
 /* Center align cells with ag-cell-center class */
 .ag-theme-alpine .ag-cell-center {
   text-align: center !important;

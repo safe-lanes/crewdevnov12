@@ -73,9 +73,30 @@ const TimelineCellRenderer = (params: ICellRendererParams<CrewMember>) => {
   if (!params.data) return null;
   
   const crew = params.data;
-  const contractStart = new Date(crew.contractStartDate);
-  const contractEnd = new Date(crew.contractEndDate);
-  const rangeEnd = new Date(crew.rangeEndDate);
+  const contractStart = crew.contractStartDate ? new Date(crew.contractStartDate) : null;
+  const contractEnd = crew.contractEndDate ? new Date(crew.contractEndDate) : null;
+  const rangeEnd = crew.rangeEndDate ? new Date(crew.rangeEndDate) : null;
+  
+  // Debug: log data for first row
+  if (params.node?.rowIndex === 0) {
+    console.log('Timeline Debug:', {
+      name: crew.name,
+      contractStartDate: crew.contractStartDate,
+      contractEndDate: crew.contractEndDate,
+      rangeEndDate: crew.rangeEndDate,
+      startDate: startDate.toISOString(),
+      totalDays,
+    });
+  }
+  
+  // If no valid dates, show empty timeline
+  if (!contractStart || !contractEnd || !rangeEnd) {
+    return (
+      <div className="relative w-full h-full bg-gray-50 flex items-center">
+        <span className="text-xs text-gray-400 ml-2">No dates</span>
+      </div>
+    );
+  }
   
   // Calculate positions as percentages (clamped to 0-100)
   const greenStartPct = clamp((differenceInDays(contractStart, startDate) / totalDays) * 100);
@@ -83,13 +104,18 @@ const TimelineCellRenderer = (params: ICellRendererParams<CrewMember>) => {
   const yellowEndPct = clamp((differenceInDays(rangeEnd, startDate) / totalDays) * 100);
   const todayPct = clamp((differenceInDays(today, startDate) / totalDays) * 100);
   
+  // Debug: log percentages for first row
+  if (params.node?.rowIndex === 0) {
+    console.log('Timeline Percentages:', { greenStartPct, greenEndPct, yellowEndPct, todayPct });
+  }
+  
   // Calculate pink bar if overdue
   const isOverdue = rangeEnd < today;
   const pinkStartPct = clamp(yellowEndPct);
   const pinkEndPct = clamp(todayPct);
   
   return (
-    <div className="relative w-full h-full flex items-center">
+    <div className="relative w-full h-full flex items-center" style={{ minHeight: '40px' }}>
       {/* Month separator lines */}
       {monthsData.map((month, idx) => (
         <div
@@ -102,11 +128,14 @@ const TimelineCellRenderer = (params: ICellRendererParams<CrewMember>) => {
       {/* Green bar (Contract Start to Contract End) */}
       {greenEndPct > greenStartPct && (
         <div
-          className="absolute h-5 rounded-sm top-1/2 -translate-y-1/2"
+          className="absolute h-6 rounded-sm z-10"
           style={{
             left: `${greenStartPct}%`,
             width: `${greenEndPct - greenStartPct}%`,
-            backgroundColor: 'rgba(2, 169, 33, 0.5)',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            backgroundColor: '#02a921',
+            opacity: 0.6,
           }}
         />
       )}
@@ -114,11 +143,14 @@ const TimelineCellRenderer = (params: ICellRendererParams<CrewMember>) => {
       {/* Yellow bar (Contract End to Range End) */}
       {yellowEndPct > greenEndPct && (
         <div
-          className="absolute h-5 rounded-sm top-1/2 -translate-y-1/2"
+          className="absolute h-6 rounded-sm z-10"
           style={{
             left: `${greenEndPct}%`,
             width: `${yellowEndPct - greenEndPct}%`,
-            backgroundColor: 'rgba(241, 205, 29, 0.5)',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            backgroundColor: '#f1cd1d',
+            opacity: 0.6,
           }}
         />
       )}
@@ -126,20 +158,26 @@ const TimelineCellRenderer = (params: ICellRendererParams<CrewMember>) => {
       {/* Pink bar (After Range End - overdue) */}
       {isOverdue && pinkEndPct > pinkStartPct && (
         <div
-          className="absolute h-5 rounded-sm top-1/2 -translate-y-1/2"
+          className="absolute h-6 rounded-sm z-10"
           style={{
             left: `${pinkStartPct}%`,
             width: `${pinkEndPct - pinkStartPct}%`,
-            backgroundColor: 'rgba(229, 78, 96, 0.5)',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            backgroundColor: '#e54e60',
+            opacity: 0.6,
           }}
         />
       )}
       
       {/* Today line */}
       <div
-        className="absolute top-0 bottom-0 w-[3px]"
+        className="absolute z-20"
         style={{
           left: `${todayPct}%`,
+          top: 0,
+          bottom: 0,
+          width: '3px',
           backgroundColor: '#fbbf24',
         }}
       />
@@ -269,6 +307,7 @@ export const DueCrewTable: FC<DueCrewTableProps> = ({
       },
       {
         headerName: '',
+        colId: 'timeline',
         field: 'timeline' as keyof CrewMember,
         flex: 1,
         minWidth: 400,
@@ -277,8 +316,9 @@ export const DueCrewTable: FC<DueCrewTableProps> = ({
         resizable: false,
         cellRenderer: TimelineCellRenderer,
         headerComponent: TimelineHeaderComponent,
-        cellStyle: { padding: '0' },
+        cellStyle: { padding: '0', overflow: 'visible' },
         headerClass: 'timeline-header',
+        cellClass: 'timeline-cell',
       },
     ];
   }, []);
