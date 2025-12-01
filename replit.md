@@ -17,6 +17,13 @@ A comprehensive system designed to streamline seafarer and vessel management. It
 - Provide clear implementation details
 - Document architectural decisions
 
+### Database Migration Requirements
+- **ALWAYS update migrations when adding new features**: Any schema change (new columns, new tables, field modifications) MUST have a corresponding migration file in the `migrations/` folder
+- **Never assume existing data**: Migrations must check and create parent records before inserting child records (e.g., ensure `data_masters` entry exists before inserting into `master_data_entries`)
+- **Audit schema vs migrations**: When working on database-related tasks, compare `shared/schema.ts` against existing migrations to identify any gaps
+- **Migration naming**: Use sequential numbering format `NNNN_descriptive_name.sql` (e.g., `0013_add_uploaded_photo_column.sql`)
+- **Idempotent migrations**: Use `IF NOT EXISTS` / `IF EXISTS` clauses to make migrations safe to re-run
+
 ## System Architecture
 The application employs a modern web stack with a module-first architecture for clear separation of concerns and scalability.
 
