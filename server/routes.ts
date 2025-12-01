@@ -5874,23 +5874,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const rawJoiningDate = matchingPlan?.signOnDate || matchingPlan?.joiningDate || crew.joiningDate;
           const rawReliefDue = matchingPlan?.reliefDue || matchingPlan?.reliefDueDate || crew.reliefDue;
           
-          // Calculate range dates with defaults (1 month if no planning data)
-          const rangeEndMonths = matchingPlan?.contractEndRangeEndMonths ?? 1;
-          const rangeStartMonths = matchingPlan?.contractEndRangeStartMonths ?? 0;
-          
           // Parse dates using centralized utility (handles all formats)
           const joiningDate = parseFlexibleDate(rawJoiningDate || '');
           const reliefDue = parseFlexibleDate(rawReliefDue || '');
           
-          // Only include crew with valid relief due date
-          if (!reliefDue) return null;
-
-          // Calculate range dates
-          const rangeStartDate = new Date(reliefDue);
-          rangeStartDate.setMonth(rangeStartDate.getMonth() + rangeStartMonths);
+          // Calculate contract window dates - MUST EXACTLY match buildServiceTimeline logic:
+          // - contractEndDate (Green bar ends): signOnDate + contractEndRangeStartMonths
+          // - rangeEndDate (Yellow bar ends): signOnDate + contractEndRangeEndMonths
+          // - Fallback chain: contractEndRangeStartMonths -> contractPeriodMonths -> reliefDue
+          let contractEndDateStr: string | null = null;
+          let rangeEndDateStr: string | null = null;
           
-          const rangeEndDate = new Date(reliefDue);
-          rangeEndDate.setMonth(rangeEndDate.getMonth() + rangeEndMonths);
+          // Calculate contract dates based on baseDate (signOnDate || joiningDate)
+          // This mirrors buildServiceTimeline's logic exactly
+          if (joiningDate) {
+            // First try: contractEndRangeStartMonths (signOnDate + months)
+            if (matchingPlan?.contractEndRangeStartMonths) {
+              const contractEnd = new Date(joiningDate);
+              contractEnd.setMonth(contractEnd.getMonth() + matchingPlan.contractEndRangeStartMonths);
+              contractEndDateStr = contractEnd.toISOString().split('T')[0];
+            } 
+            // Second try: contractPeriodMonths (signOnDate + months)
+            else if (matchingPlan?.contractPeriodMonths) {
+              const contractEnd = new Date(joiningDate);
+              contractEnd.setMonth(contractEnd.getMonth() + matchingPlan.contractPeriodMonths);
+              contractEndDateStr = contractEnd.toISOString().split('T')[0];
+            }
+            // Last resort: use reliefDue
+            else if (rawReliefDue) {
+              contractEndDateStr = rawReliefDue;
+            }
+            
+            // For rangeEndDate: contractEndRangeEndMonths, or fallback to contractEndDate
+            if (matchingPlan?.contractEndRangeEndMonths) {
+              const rangeEnd = new Date(joiningDate);
+              rangeEnd.setMonth(rangeEnd.getMonth() + matchingPlan.contractEndRangeEndMonths);
+              rangeEndDateStr = rangeEnd.toISOString().split('T')[0];
+            } else if (contractEndDateStr) {
+              // If no range end configured, use the same as contractEndDate (no yellow extension)
+              rangeEndDateStr = contractEndDateStr;
+            }
+          } else if (rawReliefDue) {
+            // Fallback for legacy records without joiningDate: use reliefDue for both
+            // This mirrors buildServiceTimeline which falls back to reliefDue when no baseDate
+            contractEndDateStr = rawReliefDue;
+            rangeEndDateStr = rawReliefDue;
+          }
+          
+          // Must have at least a contract end date for timeline display
+          if (!contractEndDateStr) return null;
 
           return {
             id: crew.id,
@@ -5900,13 +5932,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             name: `${crew.firstName} ${crew.middleName || ''} ${crew.familyName || ''}`.trim(),
             reliefDue: rawReliefDue,
             contractStartDate: rawJoiningDate,
-            contractEndDate: rawReliefDue,
-            rangeStartDate: rangeStartDate.toISOString().split('T')[0],
-            rangeEndDate: rangeEndDate.toISOString().split('T')[0],
+            contractEndDate: contractEndDateStr,
+            // rangeStartDate: Keep as reliefDue for backward compatibility with filters
+            // The timeline visualization uses contractEndDate as the green/yellow boundary
+            rangeStartDate: rawReliefDue || contractEndDateStr,
+            rangeEndDate: rangeEndDateStr || contractEndDateStr,
             nationality: crew.nationality,
             // Include raw dates for filtering
             _reliefDueDate: reliefDue,
-            _rangeEndDate: rangeEndDate,
+            _rangeEndDate: new Date(rangeEndDateStr || contractEndDateStr),
           };
         })
         .filter((crew): crew is NonNullable<typeof crew> => crew !== null);
@@ -5975,7 +6009,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const targetDate = new Date(today);
           targetDate.setMonth(targetDate.getMonth() + months);
           filteredCrew = filteredCrew.filter(crew => 
-            crew._reliefDueDate >= today && crew._reliefDueDate <= targetDate
+            crew._reliefDueDate && crew._reliefDueDate >= today && crew._reliefDueDate <= targetDate
           );
         }
       }
