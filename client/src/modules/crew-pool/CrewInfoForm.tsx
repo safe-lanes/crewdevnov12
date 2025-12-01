@@ -1619,9 +1619,9 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
           </div>
 
           {/* MIDDLE COLUMN - Experience, Rank, Ship Types */}
-          <div className="space-y-6">
+          <div className="flex flex-col gap-6 h-full">
             {/* Experience Metrics */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-experience">
+            <div className="bg-white p-4 rounded-lg border border-gray-200 flex-1" data-testid="card-experience">
               <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Experience</h3>
               {isDashboardLoading ? (
                 <div className="grid grid-cols-5 gap-4 animate-pulse">
@@ -1685,7 +1685,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             </div>
 
             {/* Rank Experience */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-rank">
+            <div className="bg-white p-4 rounded-lg border border-gray-200 flex-1" data-testid="card-rank">
               <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Rank</h3>
               <div className="space-y-3">
                 {isDashboardLoading ? (
@@ -1743,7 +1743,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             </div>
 
             {/* Ship Type Experience */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-ship-types">
+            <div className="bg-white p-4 rounded-lg border border-gray-200 flex-1" data-testid="card-ship-types">
               <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Ship Type</h3>
               <div className="space-y-3">
                 {isDashboardLoading ? (
@@ -1802,21 +1802,23 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
           </div>
 
           {/* RIGHT COLUMN - Timeline, Appraisals, Promotion */}
-          <div className="space-y-6">
+          <div className="flex flex-col gap-6 h-full">
             {/* Timeline Card */}
-            <TimelineCard
-              assignments={serviceTimelineData || []}
-              isLoading={isDashboardLoading}
-              onAppraisalClick={(appraisalId) => {
-                console.log('Navigate to appraisal:', appraisalId);
-              }}
-              onHandoverClick={(handoverId) => {
-                console.log('Navigate to handover:', handoverId);
-              }}
-            />
+            <div className="flex-1">
+              <TimelineCard
+                assignments={serviceTimelineData || []}
+                isLoading={isDashboardLoading}
+                onAppraisalClick={(appraisalId) => {
+                  console.log('Navigate to appraisal:', appraisalId);
+                }}
+                onHandoverClick={(handoverId) => {
+                  console.log('Navigate to handover:', handoverId);
+                }}
+              />
+            </div>
 
             {/* Appraisals */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-appraisals">
+            <div className="bg-white p-4 rounded-lg border border-gray-200 flex-1" data-testid="card-appraisals">
               <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Appraisals</h3>
               
               {isDashboardLoading ? (
@@ -1879,7 +1881,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             </div>
 
             {/* Promotion */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-promotion">
+            <div className="bg-white p-4 rounded-lg border border-gray-200 flex-1" data-testid="card-promotion">
               <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }} data-testid="text-promotion-title">Promotion</h3>
               <div className="space-y-4">
                 {isDashboardLoading ? (

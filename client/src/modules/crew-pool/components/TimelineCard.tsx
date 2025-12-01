@@ -351,7 +351,7 @@ export function TimelineCard({
   
   if (isLoading) {
     return (
-      <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-timeline">
+      <div className="bg-white p-4 rounded-lg border border-gray-200 h-full" data-testid="card-timeline">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>Timeline</h3>
           <button
@@ -377,7 +377,7 @@ export function TimelineCard({
   
   return (
     <>
-      <div className="bg-white p-4 rounded-lg border border-gray-200" data-testid="card-timeline">
+      <div className="bg-white p-4 rounded-lg border border-gray-200 h-full" data-testid="card-timeline">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>Timeline</h3>
           <button
