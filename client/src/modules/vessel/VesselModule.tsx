@@ -1779,7 +1779,6 @@ export const VesselModule = (): JSX.Element => {
                                                             <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Planned S/Off</TableHead>
                                                             <TableHead className="text-white text-xs font-normal w-40 sticky top-0 z-30 bg-[#52baf3]">Doc. Expiring (2m)/Expired</TableHead>
                                                             <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Medical Expiring</TableHead>
-                                                            <TableHead className="text-white text-xs font-normal w-40 sticky top-0 z-30 bg-[#52baf3]">Vacc. Expiring (2m)/Expired</TableHead>
                                                             <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Appraisal</TableHead>
                                                             <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Handover</TableHead>
                                                             <TableHead className="text-white text-xs font-normal w-16 sticky top-0 z-30 bg-[#52baf3]"></TableHead>
@@ -1790,19 +1789,19 @@ export const VesselModule = (): JSX.Element => {
                                             <TableBody>
                                                 {ranksLoading ? (
                                                     <TableRow>
-                                                        <TableCell colSpan={15} className="text-center text-xs text-gray-500 py-8">
+                                                        <TableCell colSpan={14} className="text-center text-xs text-gray-500 py-8">
                                                             Loading vessel positions...
                                                         </TableCell>
                                                     </TableRow>
                                                 ) : vesselRanks.length === 0 ? (
                                                     <TableRow>
-                                                        <TableCell colSpan={15} className="text-center text-xs text-gray-500 py-8">
+                                                        <TableCell colSpan={14} className="text-center text-xs text-gray-500 py-8">
                                                             {NO_RANKS_CONFIGURED_MESSAGE}
                                                         </TableCell>
                                                     </TableRow>
                                                 ) : planningLoading ? (
                                                     <TableRow>
-                                                        <TableCell colSpan={15} className="text-center text-xs text-gray-500 py-8">
+                                                        <TableCell colSpan={14} className="text-center text-xs text-gray-500 py-8">
                                                             Loading crew members...
                                                         </TableCell>
                                                     </TableRow>
@@ -1827,7 +1826,7 @@ export const VesselModule = (): JSX.Element => {
                                                     if (vesselCrew.length === 0) {
                                                         return (
                                                             <TableRow>
-                                                                <TableCell colSpan={showArchived ? 8 : 15} className="text-center text-xs text-gray-500 py-8">
+                                                                <TableCell colSpan={showArchived ? 8 : 14} className="text-center text-xs text-gray-500 py-8">
                                                                     {showArchived 
                                                                         ? "No archived crew members for this vessel."
                                                                         : "No crew members assigned to this vessel."
@@ -1932,9 +1931,6 @@ export const VesselModule = (): JSX.Element => {
                                                                         
                                                                     </TableCell>
                                                                     <TableCell className="text-xs text-gray-700" data-testid={`cell-medical-${index + 1}`}>
-                                                                        
-                                                                    </TableCell>
-                                                                    <TableCell className="text-xs text-gray-700" data-testid={`cell-vaccexp-${index + 1}`}>
                                                                         
                                                                     </TableCell>
                                                                     <TableCell className="text-xs text-gray-700" data-testid={`cell-appraisal-${index + 1}`}>
