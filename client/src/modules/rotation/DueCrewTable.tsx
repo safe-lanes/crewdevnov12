@@ -77,18 +77,6 @@ const TimelineCellRenderer = (params: ICellRendererParams<CrewMember>) => {
   const contractEnd = crew.contractEndDate ? new Date(crew.contractEndDate) : null;
   const rangeEnd = crew.rangeEndDate ? new Date(crew.rangeEndDate) : null;
   
-  // Debug: log data for first row
-  if (params.node?.rowIndex === 0) {
-    console.log('Timeline Debug:', {
-      name: crew.name,
-      contractStartDate: crew.contractStartDate,
-      contractEndDate: crew.contractEndDate,
-      rangeEndDate: crew.rangeEndDate,
-      startDate: startDate.toISOString(),
-      totalDays,
-    });
-  }
-  
   // If no valid dates, show empty timeline
   if (!contractStart || !contractEnd || !rangeEnd) {
     return (
@@ -103,11 +91,6 @@ const TimelineCellRenderer = (params: ICellRendererParams<CrewMember>) => {
   const greenEndPct = clamp((differenceInDays(contractEnd, startDate) / totalDays) * 100);
   const yellowEndPct = clamp((differenceInDays(rangeEnd, startDate) / totalDays) * 100);
   const todayPct = clamp((differenceInDays(today, startDate) / totalDays) * 100);
-  
-  // Debug: log percentages for first row
-  if (params.node?.rowIndex === 0) {
-    console.log('Timeline Percentages:', { greenStartPct, greenEndPct, yellowEndPct, todayPct });
-  }
   
   // Calculate pink bar if overdue
   const isOverdue = rangeEnd < today;
