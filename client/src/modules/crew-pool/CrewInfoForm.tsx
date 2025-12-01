@@ -1465,8 +1465,8 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
 
     return (
       <div className="space-y-6">
-        {/* 3-Column Grid Layout matching reference design */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+        {/* 3-Column Grid Layout with 25/35/40 proportions (1fr:1.4fr:1.6fr = 25:35:40) */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr_1.6fr] gap-6 items-stretch">
           
           {/* LEFT COLUMN - Status & Compliance */}
           <div className="flex flex-col gap-6 h-full">
