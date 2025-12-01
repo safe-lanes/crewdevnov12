@@ -176,13 +176,13 @@ function TimelineCanvas({
     ctx.fillStyle = '#f8fafc';
     ctx.fillRect(0, 0, width, headerHeight);
     
-    const monthWidth = chartWidth / monthCount;
-    
+    // Draw month grid lines and labels using day-based positioning (to align with bar date calculations)
     ctx.strokeStyle = '#e5e7eb';
     ctx.lineWidth = 1;
     months.forEach((month, index) => {
       if (index > 0) {
-        const boundaryX = leftPadding + index * monthWidth;
+        // Calculate month boundary position using day-based positioning
+        const boundaryX = leftPadding + (differenceInDays(month.date, startDate) / totalDays) * chartWidth;
         ctx.beginPath();
         ctx.moveTo(boundaryX, 0);
         ctx.lineTo(boundaryX, height);
@@ -196,7 +196,11 @@ function TimelineCanvas({
       ctx.textAlign = 'center';
       months.forEach((month, index) => {
         if (getMonth(month.date) === 0) {
-          const x = leftPadding + (index + 0.5) * monthWidth;
+          // Calculate month center using day-based positioning
+          const monthStart = month.date;
+          const monthEnd = index < months.length - 1 ? months[index + 1].date : endDate;
+          const monthCenterDays = differenceInDays(monthStart, startDate) + differenceInDays(monthEnd, monthStart) / 2;
+          const x = leftPadding + (monthCenterDays / totalDays) * chartWidth;
           ctx.fillText(format(month.date, 'yyyy'), x, 13);
         }
       });
@@ -206,7 +210,11 @@ function TimelineCanvas({
     ctx.font = isExpanded ? '10px Inter, system-ui, sans-serif' : '11px Inter, system-ui, sans-serif';
     ctx.textAlign = 'center';
     months.forEach((month, index) => {
-      const x = leftPadding + (index + 0.5) * monthWidth;
+      // Calculate month center using day-based positioning
+      const monthStart = month.date;
+      const monthEnd = index < months.length - 1 ? months[index + 1].date : endDate;
+      const monthCenterDays = differenceInDays(monthStart, startDate) + differenceInDays(monthEnd, monthStart) / 2;
+      const x = leftPadding + (monthCenterDays / totalDays) * chartWidth;
       ctx.fillText(month.label, x, yearRowHeight + 16);
     });
     
