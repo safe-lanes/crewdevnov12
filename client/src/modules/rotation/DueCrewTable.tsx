@@ -1,5 +1,5 @@
 import type { FC } from 'react';
-import { useMemo, useRef, useCallback } from 'react';
+import { useMemo, useRef, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
 import type { ColDef, ICellRendererParams, IHeaderParams } from 'ag-grid-community';
@@ -166,18 +166,6 @@ const TimelineCellRenderer = (params: ICellRendererParams<CrewMember>) => {
           }}
         />
       )}
-      
-      {/* Today line - solid vertical line extending beyond cell */}
-      <div
-        className="absolute z-20"
-        style={{
-          left: `${todayPct}%`,
-          top: '-50%',
-          bottom: '-50%',
-          width: '2px',
-          backgroundColor: '#f59e0b',
-        }}
-      />
     </div>
   );
 };
@@ -336,9 +324,51 @@ export const DueCrewTable: FC<DueCrewTableProps> = ({
     },
   }), []);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const handleGridReady = useCallback((event: any) => {
     gridApiRef.current = event.api;
   }, []);
+
+  // Calculate today's position for the overlay line
+  const todayLinePosition = useMemo(() => {
+    const { today, startDate, totalDays } = getTimelineRange();
+    return clamp((differenceInDays(today, startDate) / totalDays) * 100);
+  }, []);
+
+  // Effect to create/update the today line overlay
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const container = containerRef.current;
+    const pinnedContainer = container.querySelector('.ag-pinned-right-cols-container');
+    
+    if (!pinnedContainer) return;
+
+    // Find or create the today line overlay
+    let todayLine = pinnedContainer.querySelector('.today-line-overlay') as HTMLDivElement;
+    
+    if (!todayLine) {
+      todayLine = document.createElement('div');
+      todayLine.className = 'today-line-overlay';
+      todayLine.style.cssText = `
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background-color: #f59e0b;
+        pointer-events: none;
+        z-index: 100;
+      `;
+      pinnedContainer.appendChild(todayLine);
+    }
+
+    todayLine.style.left = `${todayLinePosition}%`;
+
+    return () => {
+      todayLine?.remove();
+    };
+  }, [todayLinePosition, crewData]);
 
   if (isLoading) {
     return (
@@ -349,7 +379,7 @@ export const DueCrewTable: FC<DueCrewTableProps> = ({
   }
 
   return (
-    <div className="h-[calc(100vh-280px)] bg-white rounded-bl-lg border border-gray-200 overflow-hidden">
+    <div ref={containerRef} className="h-[calc(100vh-280px)] bg-white rounded-bl-lg border border-gray-200 overflow-hidden">
       <AgGridTable
         rowData={crewData}
         columnDefs={columnDefs}

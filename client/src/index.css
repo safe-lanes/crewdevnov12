@@ -284,13 +284,20 @@
   width: 100% !important;
 }
 
-/* Ensure the pinned right column container allows overflow for today line */
-.ag-theme-alpine .ag-pinned-right-cols-container .ag-row {
-  overflow: visible !important;
+/* Ensure the pinned right column container allows the today line overlay */
+.ag-theme-alpine .ag-pinned-right-cols-container {
+  position: relative !important;
 }
 
-.ag-theme-alpine .ag-pinned-right-cols-container .ag-cell {
-  overflow: visible !important;
+/* Today line overlay styling */
+.today-line-overlay {
+  position: absolute !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: 2px !important;
+  background-color: #f59e0b !important;
+  pointer-events: none !important;
+  z-index: 100 !important;
 }
 
 /* Timeline header styling */
