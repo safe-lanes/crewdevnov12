@@ -595,10 +595,46 @@ export function buildServiceTimeline(
     }
   }
   
-  // Sort by start date
-  timeline.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+  // Deduplicate entries: If both sea_service and vessel_planning have entries for the same vessel
+  // with overlapping date ranges, prefer the vessel_planning entry (it has more complete data like 
+  // contractEndDate and rangeEndDate). This prevents duplicate bars in the timeline.
+  const deduplicatedTimeline: typeof timeline = [];
+  const seen = new Set<string>();
   
-  return timeline;
+  // First pass: add entries with vesselId (from vessel_planning) - these have richer data
+  for (const entry of timeline) {
+    if (entry.vesselId) {
+      const key = `${entry.vesselId}_${entry.startDate}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        deduplicatedTimeline.push(entry);
+      }
+    }
+  }
+  
+  // Second pass: add entries without vesselId (from sea_service) only if not duplicate
+  for (const entry of timeline) {
+    if (!entry.vesselId) {
+      // Check if there's already an entry with the same vessel name and similar start date
+      const isDuplicate = deduplicatedTimeline.some(existing => {
+        if (existing.vessel !== entry.vessel) return false;
+        // Consider duplicates if start dates are within 7 days of each other
+        const existingStart = new Date(existing.startDate).getTime();
+        const entryStart = new Date(entry.startDate).getTime();
+        const daysDiff = Math.abs(existingStart - entryStart) / (1000 * 60 * 60 * 24);
+        return daysDiff <= 7;
+      });
+      
+      if (!isDuplicate) {
+        deduplicatedTimeline.push(entry);
+      }
+    }
+  }
+  
+  // Sort by start date
+  deduplicatedTimeline.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+  
+  return deduplicatedTimeline;
 }
 
 // modify the interface with any CRUD methods
@@ -1667,20 +1703,36 @@ export class MemStorage implements IStorage {
       appraisalsByVessel.get(vessel)!.push(appraisal.id);
     }
     
+    // Filter out archived records for timeline display (archived records should not appear as active bars)
+    const activeVesselPlanningRecords = vesselPlanningRecords.filter(p => !p.isArchived);
+    
     // Build the timeline (includes both primary assignments and reliever assignments)
     const serviceTimeline = buildServiceTimeline(
       companySeaService,
-      vesselPlanningRecords,
+      activeVesselPlanningRecords,
       appraisalsByVessel,
       new Map(), // handovers - not yet implemented
       undefined, // vesselCodeToNameMap - MemStorage uses static translation
       relieverPlanningRecords
     );
 
+    // Compute status based on crew member data:
+    // - On Board: Has a presentVessel (assigned to a vessel)
+    // - On Leave: No presentVessel but isActive is true (available but not on ship)
+    // - Inactive: isActive is false (manually triggered only)
+    let computedStatus: 'On Board' | 'On Leave' | 'Inactive' = 'On Leave';
+    if (crewMember.isActive === false) {
+      computedStatus = 'Inactive';
+    } else if (crewMember.presentVessel && crewMember.presentVessel.trim() !== '') {
+      computedStatus = 'On Board';
+    } else {
+      computedStatus = 'On Leave';
+    }
+
     // Generate dashboard data based on actual crew member data
     const summary: CrewDashboardSummary = {
       status: {
-        status: "On Board",
+        status: computedStatus,
         vessel: vesselName,
         joinedDate: joinedDateFormatted, 
         sailingDue: reliefDueFormatted,
@@ -5077,20 +5129,36 @@ export class PersistentFileStorage implements IStorage {
       appraisalsByVessel.get(vessel)!.push(appraisal.id);
     }
     
+    // Filter out archived records for timeline display (archived records should not appear as active bars)
+    const activeVesselPlanningRecords = vesselPlanningRecords.filter(p => !p.isArchived);
+    
     // Build the timeline (includes both primary assignments and reliever assignments)
     const serviceTimeline = buildServiceTimeline(
       companySeaService,
-      vesselPlanningRecords,
+      activeVesselPlanningRecords,
       appraisalsByVessel,
       new Map(), // handovers - not yet implemented
       undefined, // vesselCodeToNameMap - PersistentFileStorage uses static translation
       relieverPlanningRecords
     );
 
+    // Compute status based on crew member data:
+    // - On Board: Has a presentVessel (assigned to a vessel)
+    // - On Leave: No presentVessel but isActive is true (available but not on ship)
+    // - Inactive: isActive is false (manually triggered only)
+    let computedStatus: 'On Board' | 'On Leave' | 'Inactive' = 'On Leave';
+    if (crewMember.isActive === false) {
+      computedStatus = 'Inactive';
+    } else if (crewMember.presentVessel && crewMember.presentVessel.trim() !== '') {
+      computedStatus = 'On Board';
+    } else {
+      computedStatus = 'On Leave';
+    }
+
     // Generate dashboard data based on actual crew member data
     const summary: CrewDashboardSummary = {
       status: {
-        status: "On Board",
+        status: computedStatus,
         vessel: vesselName,
         joinedDate: joinedDateFormatted, 
         sailingDue: reliefDueFormatted,

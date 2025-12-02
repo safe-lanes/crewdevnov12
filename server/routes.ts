@@ -5766,6 +5766,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Build update payload: populate Previous Assignment and clear Current Assignment
       // Note: presentVessel uses empty string since it's defined as notNull in schema
       // Other fields can use null since they're nullable
+      // IMPORTANT: isActive remains true - "Inactive" status can only be manually triggered
       const signOffPayload: Record<string, any> = {
         // Previous Assignment - populate with sign-off data
         lastVessel: lastVessel || existingCrew.presentVessel,
@@ -5779,6 +5780,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         reliefDue: null,
         contractPeriod: null,
         nextAvailability: null,
+        
+        // Keep crew member active - they go to "On Leave" status (not "Inactive")
+        // "Inactive" can only be manually triggered by the user
+        isActive: true,
       };
       
       const crewMember = await storage.updateCrewMember(id, signOffPayload);
