@@ -943,10 +943,14 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
     // Denylist of fields that On Board Status popup should NOT update
     // These belong to the Reliever Status section and should not be overwritten
     // when saving On Board Status (prevents stale reliever data from being saved)
+    // NOTE: joiningDate/joiningPort are dual-purpose fields used for reliever planning,
+    // so they must be excluded to prevent On Board Status from overwriting reliever's planned dates
     const RELIEVER_FIELDS_TO_EXCLUDE = [
         'relieverCrewId', 'relieverCrewName', 'relieverJoiningDate', 
         'relieverJoiningPort', 'relieverStatus', 'relieverNationality',
         'joiningStatus', 'deploymentChecklistCompleted', 'applicableDocsChecked',
+        'joiningDate', 'joiningPort', // Dual-purpose fields - exclude to protect reliever planning data
+        'contractPeriodMonths', 'contractEndRangeStartMonths', 'contractEndRangeEndMonths', // Reliever contract fields
         'createdAt', 'updatedAt' // Also exclude timestamps to avoid Date object errors
     ];
     
