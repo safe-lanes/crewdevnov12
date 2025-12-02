@@ -1724,6 +1724,22 @@ export class DatabaseStorage implements IStorage {
           .returning();
         vesselPlanningRecord = updated;
         console.log('✅ Updated vessel_planning record:', updated?.id, 'new joiningDate:', updated?.joiningDate);
+        
+        // Verify update was persisted by re-fetching
+        const [verifyRecord] = await this.db
+          .select()
+          .from(vesselPlanning)
+          .where(eq(vesselPlanning.id, existingRecords[0].id));
+        console.log('🔍 Verification fetch - joiningDate:', verifyRecord?.joiningDate, 'updatedAt:', verifyRecord?.updatedAt);
+        
+        if (verifyRecord?.joiningDate !== joiningDate) {
+          console.error('⚠️ ALERT: joiningDate mismatch after update!', {
+            expected: joiningDate,
+            actual: verifyRecord?.joiningDate
+          });
+          // This should never happen - throw to surface the issue to API consumers
+          throw new Error(`Database update failed: joiningDate not persisted. Expected "${joiningDate}", got "${verifyRecord?.joiningDate}"`);
+        }
       } else {
         // No existing record found - create new one (fallback for positions without on-board crew)
         console.log('➕ Creating new vessel_planning record (no existing record found)');
@@ -1886,10 +1902,19 @@ export class DatabaseStorage implements IStorage {
     const conflicts: any[] = [];
     
     // Check 1: Conflicts in vesselPlanning table (deployed assignments)
+    // Check both crewMemberId (primary crew) and relieverCrewId (assigned reliever)
     const vesselPlanningEntries = await this.db
       .select()
       .from(vesselPlanning)
-      .where(eq(vesselPlanning.crewMemberId, crewId));
+      .where(
+        and(
+          eq(vesselPlanning.isArchived, false),
+          or(
+            eq(vesselPlanning.crewMemberId, crewId),
+            eq(vesselPlanning.relieverCrewId, crewId)
+          )
+        )
+      );
     
     for (const planning of vesselPlanningEntries) {
       // Use joiningDate as start date
