@@ -3161,15 +3161,17 @@ export class DatabaseStorage implements IStorage {
     );
 
     // Check vessel_planning for active vessel assignments
-    const vesselPlanningEntries = await this.getVesselPlanningByCrewMember(crewId);
-    const hasVesselAssignment = vesselPlanningEntries && vesselPlanningEntries.length > 0;
+    // IMPORTANT: Filter out archived records - archived crew have been signed off and are not currently on board
+    const allVesselPlanningEntries = await this.getVesselPlanningByCrewMember(crewId);
+    const activeVesselPlanningEntries = allVesselPlanningEntries.filter((p: any) => !p.isArchived);
+    const hasVesselAssignment = activeVesselPlanningEntries && activeVesselPlanningEntries.length > 0;
     
-    // Find primary assignment if any
+    // Find primary assignment if any (from non-archived records only)
     const primaryAssignment = hasVesselAssignment 
-      ? vesselPlanningEntries.find((p: any) => 
+      ? activeVesselPlanningEntries.find((p: any) => 
           (p.crewStatus || 'primary').toLowerCase() === 'primary' || 
           (p.crewStatus || 'primary').toLowerCase() === 'p'
-        ) || vesselPlanningEntries[0]
+        ) || activeVesselPlanningEntries[0]
       : null;
 
     // Use unified status calculation logic
