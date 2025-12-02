@@ -5750,6 +5750,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Sign-off endpoint: Updates crew member with Previous Assignment and clears Current Assignment
+  // This bypasses the vessel assignment field protection since sign-off is an intentional clearing
+  app.post("/api/crew-members/:id/sign-off", async (req, res) => {
+    try {
+      const id = req.params.id;
+      const { lastVessel, signOffDate, reason } = req.body;
+      
+      // Get existing crew member
+      const existingCrew = await storage.getCrewMember(id);
+      if (!existingCrew) {
+        return res.status(404).json({ error: "Crew member not found" });
+      }
+      
+      // Build update payload: populate Previous Assignment and clear Current Assignment
+      // Note: presentVessel uses empty string since it's defined as notNull in schema
+      // Other fields can use null since they're nullable
+      const signOffPayload: Record<string, any> = {
+        // Previous Assignment - populate with sign-off data
+        lastVessel: lastVessel || existingCrew.presentVessel,
+        signOffDate: signOffDate,
+        reason: reason,
+        
+        // Current Assignment - clear all fields
+        presentVessel: '',  // Empty string since field is notNull
+        joiningDate: null,
+        signOnDate: null,
+        reliefDue: null,
+        contractPeriod: null,
+        nextAvailability: null,
+      };
+      
+      const crewMember = await storage.updateCrewMember(id, signOffPayload);
+      if (!crewMember) {
+        return res.status(404).json({ error: "Crew member not found" });
+      }
+      
+      console.log(`✅ [Sign-Off] Crew ${id} signed off from ${lastVessel} on ${signOffDate}. Current Assignment cleared, Previous Assignment updated.`);
+      
+      // Return normalized data to frontend
+      const normalizedCrewMember = fromStorageCrew(crewMember);
+      res.json(normalizedCrewMember);
+    } catch (error) {
+      console.error('[Sign-Off] Error:', error);
+      res.status(500).json({ error: "Failed to process crew sign-off" });
+    }
+  });
+
   app.delete("/api/crew-members/:id", async (req, res) => {
     try {
       const id = req.params.id;

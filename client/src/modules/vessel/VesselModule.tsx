@@ -31,6 +31,7 @@ import { format, addMonths, parseISO } from "date-fns";
 import { ComplianceMatrixDialog } from './ComplianceMatrixDialog';
 import { AppraisalForm } from '@/modules/crewing/AppraisalForm';
 import { CrewInfoForm } from '@/modules/crew-pool/CrewInfoForm';
+import { useVesselLookup } from '@/hooks/useVesselLookup';
 
 // Hook to fetch vessels from Master Data (ID 014)
 const useVessels = () => {
@@ -848,6 +849,7 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
 }) => {
     const { toast } = useToast();
     const { data: ports = [] } = usePorts();
+    const { getVesselName } = useVesselLookup();
     const [signOffDateOpen, setSignOffDateOpen] = useState(false);
     const [takeOverDateOpen, setTakeOverDateOpen] = useState(false);
     
@@ -1100,6 +1102,23 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                     archivedDate: data.signOffDate, // Use sign-off date as archive date
                 };
                 
+                // CREW MEMBER UPDATE: Populate Previous Assignment and clear Current Assignment
+                const crewMemberId = planningData?.crewMemberId;
+                if (crewMemberId) {
+                    // Get the vessel name for lastVessel (Previous Assignment)
+                    const vesselName = getVesselName(vesselId) || vesselId;
+                    
+                    // Use dedicated sign-off endpoint that bypasses vessel assignment field protection
+                    const signOffPayload = {
+                        lastVessel: vesselName,
+                        signOffDate: data.signOffDate,
+                        reason: data.signOffReason,
+                    };
+                    
+                    // Call the sign-off endpoint to update crew member record
+                    await apiRequest('POST', `/api/crew-members/${crewMemberId}/sign-off`, signOffPayload);
+                }
+                
                 return apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, archivePayload);
             } else {
                 // Normal update flow
@@ -1130,6 +1149,8 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['/api/vessel-planning/vessel', vesselId] });
+            // Also invalidate crew members cache to reflect sign-off changes in Crew Pool
+            queryClient.invalidateQueries({ queryKey: ['/api/crew-members'] });
             toast({
                 title: "Success",
                 description: "On board status saved successfully",
