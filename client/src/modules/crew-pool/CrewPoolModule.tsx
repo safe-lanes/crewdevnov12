@@ -128,7 +128,7 @@ export const CrewPoolModule = (): JSX.Element => {
         },
         // Standalone Crew ID column (pinned) - secondary sort by ascending
         {
-            headerName: 'Crew\nID',
+            headerName: 'ID',
             field: 'employeeId',
             width: viewportConfig.isDesktopOrLaptop ? undefined : 80,
             minWidth: 80,
