@@ -1704,7 +1704,11 @@ export class DatabaseStorage implements IStorage {
       
       if (existingRecords.length > 0) {
         // UPDATE existing record with reliever data
-        console.log('📝 Updating existing vessel_planning record:', existingRecords[0].id);
+        console.log('📝 Updating existing vessel_planning record:', existingRecords[0].id, 'with joiningDate:', joiningDate);
+        console.log('📋 Previous reliever data:', { 
+          relieverCrewId: existingRecords[0].relieverCrewId, 
+          joiningDate: existingRecords[0].joiningDate 
+        });
         const [updated] = await this.db
           .update(vesselPlanning)
           .set({
@@ -1714,10 +1718,12 @@ export class DatabaseStorage implements IStorage {
             joiningPort: assignment.joiningPort || null,
             joiningStatus: 'Planned',
             contractPeriodMonths: contractPeriodMonths,
+            updatedAt: new Date(),
           })
           .where(eq(vesselPlanning.id, existingRecords[0].id))
           .returning();
         vesselPlanningRecord = updated;
+        console.log('✅ Updated vessel_planning record:', updated?.id, 'new joiningDate:', updated?.joiningDate);
       } else {
         // No existing record found - create new one (fallback for positions without on-board crew)
         console.log('➕ Creating new vessel_planning record (no existing record found)');
