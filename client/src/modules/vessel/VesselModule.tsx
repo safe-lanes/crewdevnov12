@@ -295,9 +295,15 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                 // Step 1: Create NEW planning record for secondary crew
                 // Calculate the sign-on date for the secondary crew
                 const secondarySignOnDate = data.joiningDate || planningData.joiningDate;
+                
+                // CRITICAL FIX: Use the PRIMARY crew's rankId to ensure Take Over lookup works
+                // The rankId prop might be a company rank ID (e.g., "S3") while the primary
+                // uses a vessel planning rank ID (e.g., "4"). Mismatched rankIds break Take Over.
+                const canonicalRankId = existingPrimary.rankId || rankId;
+                
                 const secondaryCrewPayload = {
                     vesselId,
-                    rankId,
+                    rankId: canonicalRankId,
                     rank,
                     crewMemberId: planningData.relieverCrewId,
                     crewStatus: "secondary",
@@ -1010,9 +1016,29 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                 // TAKEOVER LOGIC: Secondary crew is taking over as Primary
                 
                 // Find primary crew member for this rank
-                const primaryCrew = allPlanning.find((p: any) => 
-                    p.rankId === rankId && p.crewStatus === "primary"
+                // First try exact rankId match, then fall back to (vesselId, rank) match
+                // This handles cases where rankId mismatches due to company vs vessel rank IDs
+                let primaryCrew = allPlanning.find((p: any) => 
+                    p.rankId === rankId && 
+                    p.crewStatus === "primary" && 
+                    !p.isArchived &&
+                    p.id !== planningData?.id
                 );
+                
+                // Fallback: Search by rank name if rankId doesn't find a match
+                if (!primaryCrew) {
+                    primaryCrew = allPlanning.find((p: any) => 
+                        p.vesselId === vesselId && 
+                        p.rank === rank && 
+                        p.crewStatus === "primary" && 
+                        !p.isArchived &&
+                        p.id !== planningData?.id
+                    );
+                    
+                    if (primaryCrew) {
+                        console.warn(`[Takeover] Primary crew found by rank name fallback (rankId mismatch): expected ${rankId}, found ${primaryCrew.rankId}`);
+                    }
+                }
                 
                 // Step 2: If primary exists, demote them to secondary and set handover date
                 if (primaryCrew) {
@@ -1020,6 +1046,8 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                         crewStatus: "secondary",
                         handOverDate: data.takeOverDate, // Auto-fill handover date
                     });
+                } else {
+                    console.warn(`[Takeover] No primary crew found to demote for rank: ${rank}`);
                 }
                 
                 // Step 3: Promote current secondary to primary
