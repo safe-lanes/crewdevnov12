@@ -1023,18 +1023,19 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                 }
                 
                 // Step 3: Promote current secondary to primary
-                // Filter out reliever fields to prevent stale data from overwriting
+                // Filter out reliever fields from BOTH planningData AND form data to prevent stale data
                 const cleanPlanningDataForTakeover = filterOutRelieverFields(planningData || {});
+                const cleanFormData = filterOutRelieverFields(dataWithReliefDue as Record<string, any>);
                 
                 // CRITICAL: Sync joiningDate with signOnDate for timeline calculations
-                const signOnDateForPromotion = dataWithReliefDue.signOnDate || cleanPlanningDataForTakeover.signOnDate;
+                const signOnDateForPromotion = cleanFormData.signOnDate || cleanPlanningDataForTakeover.signOnDate;
                 
                 const promotePayload = {
                     vesselId,
                     rankId,
                     rank,
                     ...cleanPlanningDataForTakeover,
-                    ...dataWithReliefDue,
+                    ...cleanFormData,
                     crewStatus: "primary", // Change from secondary to primary
                     // Sync joiningDate to match signOnDate for consistent timeline calculations
                     joiningDate: signOnDateForPromotion || cleanPlanningDataForTakeover.joiningDate,
@@ -1058,14 +1059,15 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                     }
                 }
                 
-                // Filter out reliever fields to prevent stale data from overwriting
+                // Filter out reliever fields from BOTH planningData AND form data to prevent stale data
                 const cleanPlanningData = filterOutRelieverFields(planningData || {});
+                const cleanFormData = filterOutRelieverFields(dataWithReliefDue as Record<string, any>);
                 const archivePayload = {
                     vesselId,
                     rankId,
                     rank,
                     ...cleanPlanningData,
-                    ...dataWithReliefDue,
+                    ...cleanFormData,
                     isArchived: true,
                     archivedDate: data.signOffDate, // Use sign-off date as archive date
                 };
@@ -1073,22 +1075,22 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                 return apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, archivePayload);
             } else {
                 // Normal update flow
-                // Filter out reliever fields to prevent stale data from overwriting
+                // Filter out reliever fields from BOTH planningData AND form data to prevent stale data
                 const cleanPlanningData = filterOutRelieverFields(planningData || {});
+                const cleanFormData = filterOutRelieverFields(dataWithReliefDue as Record<string, any>);
                 
-                // CRITICAL: If signOnDate is being updated, also sync joiningDate to match
-                // This ensures both date fields are consistent. The backend now prioritizes
-                // signOnDate over joiningDate for timeline calculations (see routes.ts).
-                const signOnDateToSync = dataWithReliefDue.signOnDate || cleanPlanningData.signOnDate;
-                
+                // CRITICAL FIX: Do NOT include joiningDate in payload for On Board Status updates
+                // joiningDate is a dual-purpose field that stores the RELIEVER's planned joining date
+                // when a reliever is assigned. Setting it here would overwrite the reliever's date.
+                // The server will preserve the existing joiningDate if it's not in the request.
                 const payload = {
                     vesselId,
                     rankId,
                     rank,
                     ...cleanPlanningData,
-                    ...dataWithReliefDue,
-                    // Sync joiningDate to match signOnDate for consistent timeline calculations
-                    joiningDate: signOnDateToSync || cleanPlanningData.joiningDate,
+                    ...cleanFormData,
+                    // Removed: ...(signOnDateToSync ? { joiningDate: signOnDateToSync } : {}),
+                    // joiningDate is filtered out by filterOutRelieverFields - do not re-add it
                 };
                 
                 if (planningData?.id) {
