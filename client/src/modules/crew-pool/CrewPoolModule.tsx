@@ -535,8 +535,8 @@ export const CrewPoolModule = (): JSX.Element => {
                 )}
 
                 {/* AG Grid Table */}
-                <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
-                    <CardContent className="p-4 pl-0 bg-[#f7fafc]">
+                <div className="w-full flex flex-col" style={{ height: `calc(100vh - ${showFilters ? '280px' : '200px'})` }}>
+                    <div className="flex-1 overflow-hidden">
                         {isCrewLoading ? (
                             <div className="flex items-center justify-center h-40">
                                 <div className="text-gray-500">Loading crew members...</div>
@@ -550,9 +550,7 @@ export const CrewPoolModule = (): JSX.Element => {
                                 rowData={crewData}
                                 columnDefs={columnDefs}
                                 onGridReady={onGridReady}
-                                autoHeight={true}
-                                maxHeight={`calc(100vh - ${showFilters ? '280px' : '200px'})`}
-                                minHeight="300px"
+                                height="100%"
                                 width="100%"
                                 enableExport={true}
                                 enableSideBar={true}
@@ -561,10 +559,11 @@ export const CrewPoolModule = (): JSX.Element => {
                                 enablePivoting={true}
                                 enableAdvancedFilter={false}
                                 rowSelection={false}
+                                gridOptions={{ domLayout: 'normal' as const }}
                             />
                         )}
-                    </CardContent>
-                </Card>
+                    </div>
+                </div>
             </>
         );
     };
