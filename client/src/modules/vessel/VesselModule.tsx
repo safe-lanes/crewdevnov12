@@ -940,6 +940,28 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
         }
     }, [planningData?.signOnDate, planningData?.joiningDate, watchedContractPeriod]);
 
+    // Denylist of fields that On Board Status popup should NOT update
+    // These belong to the Reliever Status section and should not be overwritten
+    // when saving On Board Status (prevents stale reliever data from being saved)
+    const RELIEVER_FIELDS_TO_EXCLUDE = [
+        'relieverCrewId', 'relieverCrewName', 'relieverJoiningDate', 
+        'relieverJoiningPort', 'relieverStatus', 'relieverNationality',
+        'joiningStatus', 'deploymentChecklistCompleted', 'applicableDocsChecked',
+        'createdAt', 'updatedAt' // Also exclude timestamps to avoid Date object errors
+    ];
+    
+    const filterOutRelieverFields = (data: Record<string, any>): Record<string, any> => {
+        return Object.fromEntries(
+            Object.entries(data).filter(([key]) => {
+                // Exclude any field that starts with 'reliever' (catches all reliever-* fields)
+                if (key.startsWith('reliever')) return false;
+                // Exclude specific fields from the denylist
+                if (RELIEVER_FIELDS_TO_EXCLUDE.includes(key)) return false;
+                return true;
+            })
+        );
+    };
+
     const updatePlanningMutation = useMutation({
         mutationFn: async (data: OnBoardStatusFormData) => {
             // Check if this is a takeover (takeOverConfirmation checked AND takeOverDate set)
@@ -997,8 +1019,8 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                 }
                 
                 // Step 3: Promote current secondary to primary
-                // Exclude timestamp fields (createdAt, updatedAt) to avoid Date object errors
-                const { createdAt: _1, updatedAt: _2, ...cleanPlanningDataForTakeover } = planningData || {};
+                // Filter out reliever fields to prevent stale data from overwriting
+                const cleanPlanningDataForTakeover = filterOutRelieverFields(planningData || {});
                 
                 // CRITICAL: Sync joiningDate with signOnDate for timeline calculations
                 const signOnDateForPromotion = dataWithReliefDue.signOnDate || cleanPlanningDataForTakeover.signOnDate;
@@ -1032,8 +1054,8 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                     }
                 }
                 
-                // Exclude timestamp fields (createdAt, updatedAt) to avoid Date object errors
-                const { createdAt: _1, updatedAt: _2, ...cleanPlanningData } = planningData || {};
+                // Filter out reliever fields to prevent stale data from overwriting
+                const cleanPlanningData = filterOutRelieverFields(planningData || {});
                 const archivePayload = {
                     vesselId,
                     rankId,
@@ -1047,8 +1069,8 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                 return apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, archivePayload);
             } else {
                 // Normal update flow
-                // Exclude timestamp fields (createdAt, updatedAt) to avoid Date object errors
-                const { createdAt, updatedAt, ...cleanPlanningData } = planningData || {};
+                // Filter out reliever fields to prevent stale data from overwriting
+                const cleanPlanningData = filterOutRelieverFields(planningData || {});
                 
                 // CRITICAL: If signOnDate is being updated, also sync joiningDate to match
                 // This ensures both date fields are consistent. The backend now prioritizes
