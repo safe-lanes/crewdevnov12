@@ -5502,10 +5502,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Build a map of crewMemberId -> vessel assignment (vesselId, crewStatus, joiningDate, reliefDue)
       // A crew can have multiple assignments (primary on one vessel, secondary on another)
       // For "Present Vessel" in Crew Database, show the PRIMARY assignment
+      // IMPORTANT: Filter out archived records - archived crew have been signed off and are not currently on board
       // Note: Convert crewMemberId to string for consistent key matching
       const crewVesselMap = new Map<string, { vesselId: string; crewStatus: string; joiningDate: string | null; reliefDue: string | null }[]>();
       
       for (const planning of allVesselPlanning) {
+        // Skip archived records - these crew members have been signed off
+        if (planning.isArchived) {
+          continue;
+        }
+        
         if (planning.crewMemberId) {
           // Convert to string for consistent key matching (handles both string and number IDs)
           const crewIdKey = String(planning.crewMemberId);
