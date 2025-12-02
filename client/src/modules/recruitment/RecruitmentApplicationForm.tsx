@@ -855,8 +855,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     c2VesselTypes: savedData.c2VesselTypes || [],
     c2FleetGroups: savedData.c2FleetGroups || [],
     
-    // C3 Recruited
-    c3RecruitmentStatus: savedData.c3RecruitmentStatus || '',
+    // C3 Recruited - only load saved value if it was explicitly set by user, otherwise start unchecked
+    c3RecruitmentStatus: savedData.c3RecruitmentStatus && savedData.c3SubmittedDate ? savedData.c3RecruitmentStatus : '',
     c3AssignedGroups: savedData.c3AssignedGroups || [],
     c3SubmittedBy: savedData.c3SubmittedBy || '',
     c3SubmittedDate: savedData.c3SubmittedDate || ''
