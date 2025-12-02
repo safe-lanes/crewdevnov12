@@ -3225,10 +3225,11 @@ export class DatabaseStorage implements IStorage {
     const relieverPlanningRecords = await this.getVesselPlanningAsReliever(crewId);
     
     // Build the service timeline using buildServiceTimeline helper
+    // Use ALL vessel planning entries (including archived) for historical timeline display
     const { buildServiceTimeline } = await import('./storage.js');
     const serviceTimeline = buildServiceTimeline(
       companySeaService,
-      vesselPlanningEntries,
+      allVesselPlanningEntries,
       appraisalsByVessel,
       new Map(), // handovers - not yet implemented
       vesselCodeToNameMap,
