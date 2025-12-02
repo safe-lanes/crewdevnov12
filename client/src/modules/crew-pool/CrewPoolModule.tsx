@@ -240,8 +240,8 @@ export const CrewPoolModule = (): JSX.Element => {
                 {
                     headerName: 'Status',
                     field: 'status',
-                    width: viewportConfig.isDesktopOrLaptop ? undefined : 80,
-                    minWidth: 80,
+                    width: viewportConfig.isDesktopOrLaptop ? undefined : 90,
+                    minWidth: 90,
                     wrapText: true,
                     autoHeight: true,
                     cellRenderer: (params: any) => {
