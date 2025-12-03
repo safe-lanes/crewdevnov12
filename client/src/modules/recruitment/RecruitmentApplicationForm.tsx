@@ -6043,38 +6043,40 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                       </div>
                     </div>
                     
-                    {/* Individual interview comment */}
-                    <div className="ml-4">
-                      <div className="text-blue-600 italic text-[13px] mb-2">
-                        {interview.interviewer ? interviewerDisplayNames[interview.interviewer] || interview.interviewer : 'Capt. Nick, Marine Superintendent'}:
-                      </div>
-                      {editingB6InterviewComment === interview.id ? (
-                        <Textarea
-                          value={formData.b6InterviewComments[interview.id] || ''}
-                          onChange={(e) => {
-                            setFormData(prev => ({
-                              ...prev,
-                              b6InterviewComments: {
-                                ...prev.b6InterviewComments,
-                                [interview.id]: e.target.value
-                              }
-                            }));
-                          }}
-                          onBlur={() => setEditingB6InterviewComment(null)}
-                          placeholder="Comment: Add your observations here..."
-                          className="text-blue-600 italic border-blue-200 text-[13px] mb-2"
-                          rows={2}
-                          autoFocus
-                        />
-                      ) : (
-                        <div 
-                          className="text-blue-600 italic cursor-pointer rounded hover:bg-gray-50 text-[13px] mb-2 p-1"
-                          onClick={() => setEditingB6InterviewComment(interview.id)}
-                        >
-                          {formData.b6InterviewComments[interview.id] || "Click to add comment..."}
+                    {/* Individual interview comment - only show when interviewer is selected */}
+                    {interview.interviewer && (
+                      <div className="ml-4">
+                        <div className="text-blue-600 italic text-[13px] mb-2">
+                          {interviewerDisplayNames[interview.interviewer] || interview.interviewer}:
                         </div>
-                      )}
-                    </div>
+                        {editingB6InterviewComment === interview.id ? (
+                          <Textarea
+                            value={formData.b6InterviewComments[interview.id] || ''}
+                            onChange={(e) => {
+                              setFormData(prev => ({
+                                ...prev,
+                                b6InterviewComments: {
+                                  ...prev.b6InterviewComments,
+                                  [interview.id]: e.target.value
+                                }
+                              }));
+                            }}
+                            onBlur={() => setEditingB6InterviewComment(null)}
+                            placeholder="Comment: Add your observations here..."
+                            className="text-blue-600 italic border-blue-200 text-[13px] mb-2"
+                            rows={2}
+                            autoFocus
+                          />
+                        ) : (
+                          <div 
+                            className="text-blue-600 italic cursor-pointer rounded hover:bg-gray-50 text-[13px] mb-2 p-1"
+                            onClick={() => setEditingB6InterviewComment(interview.id)}
+                          >
+                            {formData.b6InterviewComments[interview.id] || "Click to add comment..."}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
