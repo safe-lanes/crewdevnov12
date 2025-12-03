@@ -924,7 +924,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
 
     // Part C - Approval - load from saved data
     // C1 Approval
-    c1Approvers: savedData.c1Approvers || [{ id: '1', date: '', approver: '', status: '', approval: 'Yes', comments: '' }],
+    c1Approvers: savedData.c1Approvers || [{ id: '1', date: '', approver: '', status: '', approval: '', comments: '' }],
     
     // C2 Suitable for
     c2VesselTypes: savedData.c2VesselTypes || [],
@@ -1678,7 +1678,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       date: '',
       approver: '',
       status: '',
-      approval: 'Yes',
+      approval: '',
       comments: ''
     };
     setFormData(prev => ({
