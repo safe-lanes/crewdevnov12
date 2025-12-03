@@ -1097,20 +1097,34 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     }));
   };
 
+  // Helper function to get next unique ID based on prefix
+  const getNextId = (items: Array<{id: string}>, prefix: string): string => {
+    const existingNums = items
+      .map(item => {
+        const match = item.id.match(new RegExp(`^${prefix}-(\\d+)$`));
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter(n => n > 0);
+    const maxNum = existingNums.length > 0 ? Math.max(...existingNums) : 0;
+    return `${prefix}-${maxNum + 1}`;
+  };
+
   // Document management functions
   const addDocument = () => {
-    const newDoc = {
-      id: Date.now().toString(),
-      document: '',
-      number: '',
-      issued: '',
-      expiry: '',
-      issuingAuthority: ''
-    };
-    setFormData(prev => ({
-      ...prev,
-      documents: [...prev.documents, newDoc]
-    }));
+    setFormData(prev => {
+      const newDoc = {
+        id: getNextId(prev.documents, 'DOC'),
+        document: '',
+        number: '',
+        issued: '',
+        expiry: '',
+        issuingAuthority: ''
+      };
+      return {
+        ...prev,
+        documents: [...prev.documents, newDoc]
+      };
+    });
   };
 
   const removeDocument = (id: string) => {
@@ -1131,18 +1145,20 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
 
   // Visa management functions
   const addVisa = () => {
-    const newVisa = {
-      id: Date.now().toString(),
-      issuingCountry: '',
-      serialNo: '',
-      issued: '',
-      expiry: '',
-      visaType: ''
-    };
-    setFormData(prev => ({
-      ...prev,
-      visas: [...prev.visas, newVisa]
-    }));
+    setFormData(prev => {
+      const newVisa = {
+        id: getNextId(prev.visas, 'VIS'),
+        issuingCountry: '',
+        serialNo: '',
+        issued: '',
+        expiry: '',
+        visaType: ''
+      };
+      return {
+        ...prev,
+        visas: [...prev.visas, newVisa]
+      };
+    });
   };
 
   const removeVisa = (id: string) => {
@@ -1163,17 +1179,19 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
 
   // Education management functions
   const addEducation = () => {
-    const newEducation = {
-      id: Date.now().toString(),
-      dateOfCompletion: '',
-      schoolCollegeUniversity: '',
-      subjectsField: '',
-      qualifications: ''
-    };
-    setFormData(prev => ({
-      ...prev,
-      education: [...prev.education, newEducation]
-    }));
+    setFormData(prev => {
+      const newEducation = {
+        id: getNextId(prev.education, 'EDU'),
+        dateOfCompletion: '',
+        schoolCollegeUniversity: '',
+        subjectsField: '',
+        qualifications: ''
+      };
+      return {
+        ...prev,
+        education: [...prev.education, newEducation]
+      };
+    });
   };
 
   const removeEducation = (id: string) => {
@@ -1194,20 +1212,22 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
 
   // License management functions
   const addLicense = () => {
-    const newLicense = {
-      id: `A ${String(formData.licenses.length + 1).padStart(2, '0')}`,
-      certificateDocument: '',
-      abbr: '',
-      requirement: '',
-      certificateNo: '',
-      issuingAuthority: '',
-      issued: '',
-      expiry: ''
-    };
-    setFormData(prev => ({
-      ...prev,
-      licenses: [...prev.licenses, newLicense]
-    }));
+    setFormData(prev => {
+      const newLicense = {
+        id: getNextId(prev.licenses, 'LIC'),
+        certificateDocument: '',
+        abbr: '',
+        requirement: '',
+        certificateNo: '',
+        issuingAuthority: '',
+        issued: '',
+        expiry: ''
+      };
+      return {
+        ...prev,
+        licenses: [...prev.licenses, newLicense]
+      };
+    });
   };
 
   const removeLicense = (id: string) => {
@@ -1228,20 +1248,22 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
 
   // Training Course management functions
   const addTrainingCourse = () => {
-    const newCourse = {
-      id: `A ${String(formData.trainingCourses.length + 1).padStart(2, '0')}`,
-      trainingCourse: '',
-      abbr: '',
-      requirement: '',
-      certificateNo: '',
-      issuingAuthority: '',
-      issued: '',
-      expiry: ''
-    };
-    setFormData(prev => ({
-      ...prev,
-      trainingCourses: [...prev.trainingCourses, newCourse]
-    }));
+    setFormData(prev => {
+      const newCourse = {
+        id: getNextId(prev.trainingCourses, 'TRN'),
+        trainingCourse: '',
+        abbr: '',
+        requirement: '',
+        certificateNo: '',
+        issuingAuthority: '',
+        issued: '',
+        expiry: ''
+      };
+      return {
+        ...prev,
+        trainingCourses: [...prev.trainingCourses, newCourse]
+      };
+    });
   };
 
   const removeTrainingCourse = (id: string) => {
@@ -1260,23 +1282,33 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     }));
   };
 
+  // Helper to get max ID number from items with a given prefix
+  const getMaxIdNum = (items: Array<{id: string}>, prefix: string): number => {
+    const existingNums = items
+      .map(item => {
+        const match = item.id.match(new RegExp(`^${prefix}-(\\d+)$`));
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter(n => n > 0);
+    return existingNums.length > 0 ? Math.max(...existingNums) : 0;
+  };
+
   // Add from Database handlers
   const addLicensesFromDatabase = (selectedLicenses: LicenseTemplate[]) => {
-    const newLicenses = selectedLicenses.map((license, index) => ({
-      id: `db-${license.id}-${Date.now()}-${index}`,
-      licenseId: license.id,
-      certificateDocument: license.name,
-      abbr: license.abbr || '',
-      requirement: license.requirement || '',
-      certificateNo: '',
-      issuingAuthority: '',
-      issued: '',
-      expiry: ''
-    }));
-    
     setFormData(prev => {
-      // Filter out empty rows (rows with no certificate document)
       const existingLicenses = prev.licenses.filter(l => l.certificateDocument.trim() !== '');
+      const maxId = getMaxIdNum(prev.licenses, 'LIC');
+      const newLicenses = selectedLicenses.map((license, index) => ({
+        id: `LIC-${maxId + index + 1}`,
+        licenseId: license.id,
+        certificateDocument: license.name,
+        abbr: license.abbr || '',
+        requirement: license.requirement || '',
+        certificateNo: '',
+        issuingAuthority: '',
+        issued: '',
+        expiry: ''
+      }));
       return {
         ...prev,
         licenses: [...existingLicenses, ...newLicenses]
@@ -1286,21 +1318,20 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   };
 
   const addTrainingCoursesFromDatabase = (selectedCourses: TrainingCourseTemplate[]) => {
-    const newCourses = selectedCourses.map((course, index) => ({
-      id: `db-${course.id}-${Date.now()}-${index}`,
-      courseId: course.id,
-      trainingCourse: course.name,
-      abbr: course.abbr || '',
-      requirement: course.requirement || '',
-      certificateNo: '',
-      issuingAuthority: '',
-      issued: '',
-      expiry: ''
-    }));
-    
     setFormData(prev => {
-      // Filter out empty rows (rows with no training course name)
       const existingCourses = prev.trainingCourses.filter(c => c.trainingCourse.trim() !== '');
+      const maxId = getMaxIdNum(prev.trainingCourses, 'TRN');
+      const newCourses = selectedCourses.map((course, index) => ({
+        id: `TRN-${maxId + index + 1}`,
+        courseId: course.id,
+        trainingCourse: course.name,
+        abbr: course.abbr || '',
+        requirement: course.requirement || '',
+        certificateNo: '',
+        issuingAuthority: '',
+        issued: '',
+        expiry: ''
+      }));
       return {
         ...prev,
         trainingCourses: [...existingCourses, ...newCourses]
@@ -1310,19 +1341,18 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   };
 
   const addTravelDocsFromDatabase = (selectedDocs: TravelDocumentTemplate[]) => {
-    const newDocs = selectedDocs.map((doc, index) => ({
-      id: `db-${doc.id}-${Date.now()}-${index}`,
-      documentId: doc.id,
-      document: doc.name,
-      number: '',
-      issued: '',
-      expiry: '',
-      issuingAuthority: ''
-    }));
-    
     setFormData(prev => {
-      // Filter out empty rows (rows with no document name)
       const existingDocs = prev.documents.filter(d => d.document.trim() !== '');
+      const maxId = getMaxIdNum(prev.documents, 'DOC');
+      const newDocs = selectedDocs.map((doc, index) => ({
+        id: `DOC-${maxId + index + 1}`,
+        documentId: doc.id,
+        document: doc.name,
+        number: '',
+        issued: '',
+        expiry: '',
+        issuingAuthority: ''
+      }));
       return {
         ...prev,
         documents: [...existingDocs, ...newDocs]
@@ -1332,19 +1362,18 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   };
 
   const addVisasFromDatabase = (selectedCountries: VisaCountryTemplate[]) => {
-    const newVisas = selectedCountries.map((country, index) => ({
-      id: `db-${country.id}-${Date.now()}-${index}`,
-      countryId: country.id,
-      issuingCountry: country.name,
-      serialNo: '',
-      issued: '',
-      expiry: '',
-      visaType: ''
-    }));
-    
     setFormData(prev => {
-      // Filter out empty rows (rows with no issuing country)
       const existingVisas = prev.visas.filter(v => v.issuingCountry.trim() !== '');
+      const maxId = getMaxIdNum(prev.visas, 'VIS');
+      const newVisas = selectedCountries.map((country, index) => ({
+        id: `VIS-${maxId + index + 1}`,
+        countryId: country.id,
+        issuingCountry: country.name,
+        serialNo: '',
+        issued: '',
+        expiry: '',
+        visaType: ''
+      }));
       return {
         ...prev,
         visas: [...existingVisas, ...newVisas]
@@ -1438,22 +1467,24 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
 
   // Sea Service management functions
   const addSeaService = () => {
-    const newService = {
-      id: Date.now().toString(),
-      vesselName: '',
-      vesselType: '',
-      deadweight: '',
-      engineTypePower: '',
-      ownerOperator: '',
-      rank: '',
-      from: '',
-      to: '',
-      periodMonths: ''
-    };
-    setFormData(prev => ({
-      ...prev,
-      seaService: [...prev.seaService, newService]
-    }));
+    setFormData(prev => {
+      const newService = {
+        id: getNextId(prev.seaService, 'SEA'),
+        vesselName: '',
+        vesselType: '',
+        deadweight: '',
+        engineTypePower: '',
+        ownerOperator: '',
+        rank: '',
+        from: '',
+        to: '',
+        periodMonths: ''
+      };
+      return {
+        ...prev,
+        seaService: [...prev.seaService, newService]
+      };
+    });
   };
 
   const removeSeaService = (id: string) => {
@@ -1622,20 +1653,17 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
 
   // Additional Information management functions
   const addAdditionalInfo = () => {
-    const newInfo = {
-      id: `A5.${formData.additionalInfo.length + 1}`,
-      information: '',
-      response: ''
-    };
-    console.log('🔥 Adding additional info:', newInfo);
-    console.log('🔥 Current additionalInfo:', formData.additionalInfo);
     setFormData(prev => {
-      const newData = {
+      const newId = getNextId(prev.additionalInfo, 'A5');
+      const newInfo = {
+        id: newId,
+        information: '',
+        response: ''
+      };
+      return {
         ...prev,
         additionalInfo: [...prev.additionalInfo, newInfo]
       };
-      console.log('🔥 New additionalInfo after add:', newData.additionalInfo);
-      return newData;
     });
   };
 
@@ -1647,17 +1675,12 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   };
 
   const updateAdditionalInfo = (id: string, field: string, value: string) => {
-    console.log('🔥 Updating additional info:', { id, field, value });
-    setFormData(prev => {
-      const updatedAdditionalInfo = prev.additionalInfo.map(info => 
+    setFormData(prev => ({
+      ...prev,
+      additionalInfo: prev.additionalInfo.map(info => 
         info.id === id ? { ...info, [field]: value } : info
-      );
-      console.log('🔥 Updated additionalInfo:', updatedAdditionalInfo);
-      return {
-        ...prev,
-        additionalInfo: updatedAdditionalInfo
-      };
-    });
+      )
+    }));
   };
 
   // Fetch vessel types from Master 004 API with fallback to static data

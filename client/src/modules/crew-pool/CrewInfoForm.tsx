@@ -1000,18 +1000,43 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     }));
   };
 
+  // Helper function to get next unique ID based on prefix
+  const getNextId = (items: Array<{id: string}>, prefix: string): string => {
+    const existingNums = items
+      .map(item => {
+        const match = item.id.match(new RegExp(`^${prefix}-(\\d+)$`));
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter(n => n > 0);
+    const maxNum = existingNums.length > 0 ? Math.max(...existingNums) : 0;
+    return `${prefix}-${maxNum + 1}`;
+  };
+
+  // Helper to get max ID number from items with a given prefix
+  const getMaxIdNum = (items: Array<{id: string}>, prefix: string): number => {
+    const existingNums = items
+      .map(item => {
+        const match = item.id.match(new RegExp(`^${prefix}-(\\d+)$`));
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter(n => n > 0);
+    return existingNums.length > 0 ? Math.max(...existingNums) : 0;
+  };
+
   // Document management
   const addDocument = () => {
-    const newDoc: DocumentInfo = {
-      id: `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      documentId: '',  // Empty for manual entries
-      document: '',
-      number: '',
-      issued: '',
-      expiry: '',
-      issuingAuthority: ''
-    };
-    setFormData(prev => ({ ...prev, documents: [...prev.documents, newDoc] }));
+    setFormData(prev => {
+      const newDoc: DocumentInfo = {
+        id: getNextId(prev.documents, 'DOC'),
+        documentId: '',
+        document: '',
+        number: '',
+        issued: '',
+        expiry: '',
+        issuingAuthority: ''
+      };
+      return { ...prev, documents: [...prev.documents, newDoc] };
+    });
   };
 
   const updateDocument = (id: string, field: keyof DocumentInfo, value: string) => {
@@ -1032,16 +1057,18 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
 
   // Visa management
   const addVisa = () => {
-    const newVisa: Visa = {
-      id: `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      countryId: '',  // Empty for manual entries
-      issuingCountry: '',
-      serialNo: '',
-      issued: '',
-      expiry: '',
-      visaType: ''
-    };
-    setFormData(prev => ({ ...prev, visas: [...prev.visas, newVisa] }));
+    setFormData(prev => {
+      const newVisa: Visa = {
+        id: getNextId(prev.visas, 'VIS'),
+        countryId: '',
+        issuingCountry: '',
+        serialNo: '',
+        issued: '',
+        expiry: '',
+        visaType: ''
+      };
+      return { ...prev, visas: [...prev.visas, newVisa] };
+    });
   };
 
   const updateVisa = (id: string, field: keyof Visa, value: string) => {
@@ -1062,14 +1089,16 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
 
   // Education management
   const addEducation = () => {
-    const newEducation: Education = {
-      id: (formData.education.length + 1).toString(),
-      dateOfCompletion: '',
-      schoolCollegeUniversity: '',
-      subjectsField: '',
-      qualifications: ''
-    };
-    setFormData(prev => ({ ...prev, education: [...prev.education, newEducation] }));
+    setFormData(prev => {
+      const newEducation: Education = {
+        id: getNextId(prev.education, 'EDU'),
+        dateOfCompletion: '',
+        schoolCollegeUniversity: '',
+        subjectsField: '',
+        qualifications: ''
+      };
+      return { ...prev, education: [...prev.education, newEducation] };
+    });
   };
 
   const updateEducation = (id: string, field: keyof Education, value: string) => {
@@ -1090,37 +1119,38 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
 
   // License management
   const addLicense = () => {
-    const newLicense: License = {
-      id: `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      licenseId: '',  // Empty for manual entries
-      certificateDocument: '',
-      abbr: '',
-      requirement: '',
-      certificateNo: '',
-      issuingAuthority: '',
-      issued: '',
-      expiry: ''
-    };
-    setFormData(prev => ({ ...prev, licenses: [...prev.licenses, newLicense] }));
+    setFormData(prev => {
+      const newLicense: License = {
+        id: getNextId(prev.licenses, 'LIC'),
+        licenseId: '',
+        certificateDocument: '',
+        abbr: '',
+        requirement: '',
+        certificateNo: '',
+        issuingAuthority: '',
+        issued: '',
+        expiry: ''
+      };
+      return { ...prev, licenses: [...prev.licenses, newLicense] };
+    });
   };
 
   // Add licenses from database selection
   const addLicensesFromDatabase = (selectedTemplates: LicenseTemplate[]) => {
-    const newLicenses: License[] = selectedTemplates.map((template) => ({
-      id: `db-${template.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      licenseId: template.id,  // Store Master 016 entry_id (e.g., LIC001)
-      certificateDocument: template.name,
-      abbr: template.abbr,
-      requirement: template.requirement,
-      certificateNo: '',
-      issuingAuthority: '',
-      issued: '',
-      expiry: ''
-    }));
-    
     setFormData(prev => {
-      // Filter out empty rows (rows with no certificate document)
       const existingLicenses = prev.licenses.filter(l => l.certificateDocument.trim() !== '');
+      const maxId = getMaxIdNum(prev.licenses, 'LIC');
+      const newLicenses: License[] = selectedTemplates.map((template, index) => ({
+        id: `LIC-${maxId + index + 1}`,
+        licenseId: template.id,
+        certificateDocument: template.name,
+        abbr: template.abbr,
+        requirement: template.requirement,
+        certificateNo: '',
+        issuingAuthority: '',
+        issued: '',
+        expiry: ''
+      }));
       return { 
         ...prev, 
         licenses: [...existingLicenses, ...newLicenses] 
@@ -1131,21 +1161,20 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
 
   // Add training courses from database selection
   const addTrainingCoursesFromDatabase = (selectedTemplates: TrainingCourseTemplate[]) => {
-    const newCourses: TrainingCourse[] = selectedTemplates.map((template) => ({
-      id: `db-${template.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      courseId: template.id,  // Store template ID for duplicate detection
-      trainingCourse: template.name,
-      abbr: template.abbr,
-      requirement: template.requirement,
-      certificateNo: '',
-      issuingAuthority: '',
-      issued: '',
-      expiry: ''
-    }));
-    
     setFormData(prev => {
-      // Filter out empty rows (rows with no training course name)
       const existingCourses = prev.trainingCourses.filter(c => c.trainingCourse.trim() !== '');
+      const maxId = getMaxIdNum(prev.trainingCourses, 'TRN');
+      const newCourses: TrainingCourse[] = selectedTemplates.map((template, index) => ({
+        id: `TRN-${maxId + index + 1}`,
+        courseId: template.id,
+        trainingCourse: template.name,
+        abbr: template.abbr,
+        requirement: template.requirement,
+        certificateNo: '',
+        issuingAuthority: '',
+        issued: '',
+        expiry: ''
+      }));
       return { 
         ...prev, 
         trainingCourses: [...existingCourses, ...newCourses] 
@@ -1156,19 +1185,18 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
 
   // Add travel documents from database selection
   const addTravelDocsFromDatabase = (selectedTemplates: TravelDocumentTemplate[]) => {
-    const newDocs: DocumentInfo[] = selectedTemplates.map((template) => ({
-      id: `db-${template.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      documentId: template.id,  // Store template ID (e.g., DOC001)
-      document: template.name,
-      number: '',
-      issued: '',
-      expiry: '',
-      issuingAuthority: ''
-    }));
-    
     setFormData(prev => {
-      // Filter out empty rows (rows with no document name)
       const existingDocs = prev.documents.filter(d => d.document.trim() !== '');
+      const maxId = getMaxIdNum(prev.documents, 'DOC');
+      const newDocs: DocumentInfo[] = selectedTemplates.map((template, index) => ({
+        id: `DOC-${maxId + index + 1}`,
+        documentId: template.id,
+        document: template.name,
+        number: '',
+        issued: '',
+        expiry: '',
+        issuingAuthority: ''
+      }));
       return { 
         ...prev, 
         documents: [...existingDocs, ...newDocs] 
@@ -1179,19 +1207,18 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
 
   // Add visas from database selection (country list)
   const addVisasFromDatabase = (selectedCountries: VisaCountryTemplate[]) => {
-    const newVisas: Visa[] = selectedCountries.map((country) => ({
-      id: `db-${country.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      countryId: country.id,  // Store template ID (e.g., USA, SCHENGEN)
-      issuingCountry: country.name,
-      serialNo: '',
-      issued: '',
-      expiry: '',
-      visaType: ''
-    }));
-    
     setFormData(prev => {
-      // Filter out empty rows (rows with no issuing country)
       const existingVisas = prev.visas.filter(v => v.issuingCountry.trim() !== '');
+      const maxId = getMaxIdNum(prev.visas, 'VIS');
+      const newVisas: Visa[] = selectedCountries.map((country, index) => ({
+        id: `VIS-${maxId + index + 1}`,
+        countryId: country.id,
+        issuingCountry: country.name,
+        serialNo: '',
+        issued: '',
+        expiry: '',
+        visaType: ''
+      }));
       return { 
         ...prev, 
         visas: [...existingVisas, ...newVisas] 
@@ -1218,17 +1245,19 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
 
   // Training course management
   const addTrainingCourse = () => {
-    const newCourse: TrainingCourse = {
-      id: (formData.trainingCourses.length + 1).toString(),
-      trainingCourse: '',
-      abbr: '',
-      requirement: '',
-      certificateNo: '',
-      issuingAuthority: '',
-      issued: '',
-      expiry: ''
-    };
-    setFormData(prev => ({ ...prev, trainingCourses: [...prev.trainingCourses, newCourse] }));
+    setFormData(prev => {
+      const newCourse: TrainingCourse = {
+        id: getNextId(prev.trainingCourses, 'TRN'),
+        trainingCourse: '',
+        abbr: '',
+        requirement: '',
+        certificateNo: '',
+        issuingAuthority: '',
+        issued: '',
+        expiry: ''
+      };
+      return { ...prev, trainingCourses: [...prev.trainingCourses, newCourse] };
+    });
   };
 
   const updateTrainingCourse = (id: string, field: keyof TrainingCourse, value: string) => {
@@ -1270,20 +1299,22 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
 
   // Sea service management - Current Company
   const addCurrentCompanySeaService = () => {
-    const newService: SeaService = {
-      id: `current-${Date.now()}`,
-      vesselName: '',
-      vesselCode: '',
-      vesselType: '',
-      deadweight: '',
-      engineTypePower: '',
-      ownerOperator: '',
-      rank: '',
-      from: '',
-      to: '',
-      periodMonths: ''
-    };
-    setFormData(prev => ({ ...prev, currentCompanySeaService: [newService, ...prev.currentCompanySeaService] }));
+    setFormData(prev => {
+      const newService: SeaService = {
+        id: getNextId(prev.currentCompanySeaService, 'SEA-C'),
+        vesselName: '',
+        vesselCode: '',
+        vesselType: '',
+        deadweight: '',
+        engineTypePower: '',
+        ownerOperator: '',
+        rank: '',
+        from: '',
+        to: '',
+        periodMonths: ''
+      };
+      return { ...prev, currentCompanySeaService: [newService, ...prev.currentCompanySeaService] };
+    });
   };
 
   const updateCurrentCompanySeaService = (id: string, field: keyof SeaService, value: string) => {
@@ -1315,20 +1346,22 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
 
   // Sea service management - External
   const addExternalSeaService = () => {
-    const newService: SeaService = {
-      id: `external-${Date.now()}`,
-      vesselName: '',
-      vesselCode: '',
-      vesselType: '',
-      deadweight: '',
-      engineTypePower: '',
-      ownerOperator: '',
-      rank: '',
-      from: '',
-      to: '',
-      periodMonths: ''
-    };
-    setFormData(prev => ({ ...prev, externalSeaService: [newService, ...prev.externalSeaService] }));
+    setFormData(prev => {
+      const newService: SeaService = {
+        id: getNextId(prev.externalSeaService, 'SEA-E'),
+        vesselName: '',
+        vesselCode: '',
+        vesselType: '',
+        deadweight: '',
+        engineTypePower: '',
+        ownerOperator: '',
+        rank: '',
+        from: '',
+        to: '',
+        periodMonths: ''
+      };
+      return { ...prev, externalSeaService: [newService, ...prev.externalSeaService] };
+    });
   };
 
   const updateExternalSeaService = (id: string, field: keyof SeaService, value: string) => {
@@ -1360,18 +1393,20 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
 
   // Pre-joining medical management
   const addPreJoiningMedical = () => {
-    const newMedical: PreJoiningMedical = {
-      id: `${Date.now()}`,
-      vesselCode: '',
-      vessel: '',
-      dateOfMedical: '',
-      bp: '', 
-      weight: '',
-      anyMedicationPrescribed: '',
-      fitnessForDuty: '',
-      expiry: ''
-    };
-    setFormData(prev => ({ ...prev, preJoiningMedicals: [newMedical, ...prev.preJoiningMedicals] }));
+    setFormData(prev => {
+      const newMedical: PreJoiningMedical = {
+        id: getNextId(prev.preJoiningMedicals, 'MED'),
+        vesselCode: '',
+        vessel: '',
+        dateOfMedical: '',
+        bp: '', 
+        weight: '',
+        anyMedicationPrescribed: '',
+        fitnessForDuty: '',
+        expiry: ''
+      };
+      return { ...prev, preJoiningMedicals: [newMedical, ...prev.preJoiningMedicals] };
+    });
   };
 
   const updatePreJoiningMedical = (id: string, field: keyof PreJoiningMedical, value: string) => {
@@ -1392,15 +1427,17 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
 
   // Doctor visit management
   const addDoctorVisit = () => {
-    const newVisit: DoctorVisit = {
-      id: `${Date.now()}`,
-      vessel: '',
-      port: '',
-      date: '',
-      complaint: '',
-      doctorComments: ''
-    };
-    setFormData(prev => ({ ...prev, doctorVisits: [newVisit, ...prev.doctorVisits] }));
+    setFormData(prev => {
+      const newVisit: DoctorVisit = {
+        id: getNextId(prev.doctorVisits, 'DRV'),
+        vessel: '',
+        port: '',
+        date: '',
+        complaint: '',
+        doctorComments: ''
+      };
+      return { ...prev, doctorVisits: [newVisit, ...prev.doctorVisits] };
+    });
   };
 
   const updateDoctorVisit = (id: string, field: keyof DoctorVisit, value: string) => {
