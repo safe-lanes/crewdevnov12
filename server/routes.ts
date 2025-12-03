@@ -6363,18 +6363,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const currentYear = new Date().getFullYear();
       const yearPrefix = `R-${currentYear}-`;
+      const yearPattern = new RegExp(`^R-${currentYear}-(\\d+)$`);
       
       // Get all candidates to find the highest file number for this year
       const candidates = await storage.getRecruitmentCandidates();
       
-      // Filter candidates with file numbers matching R-YYYY-XXXX pattern for current year
+      // Filter candidates with file numbers matching R-YYYY-XXXX pattern for current year ONLY
       const currentYearFileNos = candidates
-        .filter(c => c.fileNo && c.fileNo.startsWith(yearPrefix))
+        .filter(c => c.fileNo && yearPattern.test(c.fileNo))
         .map(c => {
-          const match = c.fileNo.match(/R-\d{4}-(\d+)/);
+          const match = c.fileNo.match(yearPattern);
           return match ? parseInt(match[1], 10) : 0;
         })
-        .filter(num => !isNaN(num));
+        .filter(num => !isNaN(num) && num > 0);
       
       // Find the maximum number, default to 0 if none exist
       const maxNumber = currentYearFileNos.length > 0 ? Math.max(...currentYearFileNos) : 0;
@@ -6382,6 +6383,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Format as R-YYYY-0001 (4-digit padded number)
       const nextFileNo = `${yearPrefix}${String(nextNumber).padStart(4, '0')}`;
+      
+      console.log(`📋 Generated File No: ${nextFileNo} (max was ${maxNumber} from ${currentYearFileNos.length} candidates this year)`);
       
       res.json({ fileNo: nextFileNo });
     } catch (error) {

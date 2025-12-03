@@ -462,8 +462,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
 
     const finalStatus = statusMapping[formData.c3RecruitmentStatus];
 
-    // Generate file number for new candidates
-    const fileNo = candidate?.fileNo || `M${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`;
+    // Use existing file number (generated during A5 Submit for Screening)
+    const fileNo = candidate?.fileNo || formData.fileNo || '';
     
     const candidateData: InsertRecruitmentCandidate = {
       id: currentCandidateId || new Date().toISOString().split('T')[0] + '-' + Date.now(),
@@ -498,8 +498,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       return;
     }
 
-    // Generate file number for new candidates
-    const fileNo = candidate?.fileNo || `M${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`;
+    // Use existing file number (generated during A5 Submit for Screening)
+    const fileNo = candidate?.fileNo || formData.fileNo || '';
     
     const candidateData: InsertRecruitmentCandidate = {
       id: currentCandidateId || new Date().toISOString().split('T')[0] + '-' + Date.now(),
@@ -531,8 +531,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       return;
     }
 
-    // Generate file number for new candidates
-    const fileNo = candidate?.fileNo || `M${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`;
+    // Use existing file number (generated during A5 Submit for Screening)
+    const fileNo = candidate?.fileNo || formData.fileNo || '';
     
     const candidateData: InsertRecruitmentCandidate = {
       id: currentCandidateId || new Date().toISOString().split('T')[0] + '-' + Date.now(),
@@ -556,7 +556,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   };
 
   // Handle A5 submit for screening - special case to navigate to B
-  const handleA5SubmitForScreening = () => {
+  const handleA5SubmitForScreening = async () => {
     if (!formData.firstName || !formData.familyName) {
       toast({
         title: "Validation Error", 
@@ -566,70 +566,55 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       return;
     }
 
-    // Generate file number for new candidates
-    const fileNo = candidate?.fileNo || `M${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`;
-    
-    const candidateData: InsertRecruitmentCandidate = {
-      id: currentCandidateId || new Date().toISOString().split('T')[0] + '-' + Date.now(),
-      fileNo: fileNo,
-      firstName: formData.firstName,
-      middleName: formData.middleName || null,
-      familyName: formData.familyName,
-      dob: formData.dateOfBirth,
-      nationality: formData.nationality,
-      rankAppliedFor: formData.rankAppliedFor,
-      presentRank: formData.presentRank,
-      vesselType: formData.vesselType.join(', ') || '', // Join array to string for backend
-      status: getStatusForSection('A5', true), // A5 Submit for Screening
-      applicationData: JSON.stringify(formData) // Save all form data as JSON
-    };
+    try {
+      // Generate file number for new candidates who don't have one yet
+      // File No format: R-YYYY-0001 (sequential, resets each year)
+      let fileNo = candidate?.fileNo || formData.fileNo;
+      
+      // Only generate new file number if candidate doesn't have one (first time submitting for screening)
+      const needsNewFileNo = !fileNo || !fileNo.startsWith('R-');
+      if (needsNewFileNo) {
+        const fileNoResponse = await fetch('/api/recruitment-candidates/next-file-number');
+        if (!fileNoResponse.ok) {
+          throw new Error('Failed to generate file number');
+        }
+        const fileNoData = await fileNoResponse.json();
+        fileNo = fileNoData.fileNo;
+      }
+      
+      const candidateData: InsertRecruitmentCandidate = {
+        id: currentCandidateId || new Date().toISOString().split('T')[0] + '-' + Date.now(),
+        fileNo: fileNo,
+        firstName: formData.firstName,
+        middleName: formData.middleName || null,
+        familyName: formData.familyName,
+        dob: formData.dateOfBirth,
+        nationality: formData.nationality,
+        rankAppliedFor: formData.rankAppliedFor,
+        presentRank: formData.presentRank,
+        vesselType: formData.vesselType.join(', ') || '', // Join array to string for backend
+        status: getStatusForSection('A5', true), // A5 Submit for Screening
+        applicationData: JSON.stringify({ ...formData, fileNo }) // Save all form data as JSON including fileNo
+      };
 
-    console.log('🔥 A5 Submit for Screening - saving form data:', formData);
+      console.log('🔥 A5 Submit for Screening - saving form data:', formData);
+      console.log('📋 Generated File No:', fileNo);
 
-    // Handle the save and navigation manually for A5
-    if (currentCandidateId) {
-      // Update existing candidate (PATCH)
-      console.log('🔄 PATCH - Updating existing candidate:', currentCandidateId);
-      fetch(`/api/recruitment-candidates/${currentCandidateId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(candidateData)
-      }).then(res => {
+      // Handle the save and navigation manually for A5
+      if (currentCandidateId) {
+        // Update existing candidate (PATCH)
+        console.log('🔄 PATCH - Updating existing candidate:', currentCandidateId);
+        const res = await fetch(`/api/recruitment-candidates/${currentCandidateId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(candidateData)
+        });
+        
         if (!res.ok) throw new Error('Failed to update candidate');
-        return res.json();
-      }).then(() => {
-        toast({
-          title: "Success",
-          description: "Candidate submitted for screening successfully!",
-        });
-        // Force immediate refetch of the data
-        queryClient.refetchQueries({ queryKey: ['/api/recruitment-candidates'] });
-        // Navigate specifically to Part B for A5 submissions and clear continuous section highlighting
-        setActiveSection('B');
-        setActiveContinuousSection(''); // Clear continuous section highlighting
-      }).catch(error => {
-        console.error('Error saving candidate:', error);
-        toast({
-          title: "Error",
-          description: "Failed to save candidate. Please check your database connection and try again.",
-          variant: "destructive",
-        });
-      });
-    } else {
-      // Create new candidate (POST)
-      console.log('✨ POST - Creating new candidate');
-      fetch('/api/recruitment-candidates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(candidateData)
-      }).then(res => {
-        if (!res.ok) throw new Error('Failed to create candidate');
-        return res.json();
-      }).then((savedCandidate) => {
-        // Store the ID after first creation (fixes duplicate bug)
-        if (savedCandidate.id) {
-          console.log('💾 Storing candidate ID for future updates:', savedCandidate.id);
-          setCurrentCandidateId(savedCandidate.id);
+        
+        // Update form data with the generated file number for subsequent saves
+        if (needsNewFileNo) {
+          updateFormData('fileNo', fileNo);
         }
         
         toast({
@@ -641,13 +626,45 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
         // Navigate specifically to Part B for A5 submissions and clear continuous section highlighting
         setActiveSection('B');
         setActiveContinuousSection(''); // Clear continuous section highlighting
-      }).catch(error => {
-        console.error('Error saving candidate:', error);
-        toast({
-          title: "Error",
-          description: "Failed to save candidate. Please check your database connection and try again.",
-          variant: "destructive",
+      } else {
+        // Create new candidate (POST)
+        console.log('✨ POST - Creating new candidate');
+        const res = await fetch('/api/recruitment-candidates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(candidateData)
         });
+        
+        if (!res.ok) throw new Error('Failed to create candidate');
+        const savedCandidate = await res.json();
+        
+        // Store the ID after first creation (fixes duplicate bug)
+        if (savedCandidate.id) {
+          console.log('💾 Storing candidate ID for future updates:', savedCandidate.id);
+          setCurrentCandidateId(savedCandidate.id);
+        }
+        
+        // Update form data with the generated file number for subsequent saves
+        if (needsNewFileNo) {
+          updateFormData('fileNo', fileNo);
+        }
+        
+        toast({
+          title: "Success",
+          description: "Candidate submitted for screening successfully!",
+        });
+        // Force immediate refetch of the data
+        queryClient.refetchQueries({ queryKey: ['/api/recruitment-candidates'] });
+        // Navigate specifically to Part B for A5 submissions and clear continuous section highlighting
+        setActiveSection('B');
+        setActiveContinuousSection(''); // Clear continuous section highlighting
+      }
+    } catch (error) {
+      console.error('Error saving candidate:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save candidate. Please check your database connection and try again.",
+        variant: "destructive",
       });
     }
   };
@@ -1921,15 +1938,11 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               
               <div>
                 <Label className="text-xs text-gray-500 tracking-wide">File No</Label>
-                {isEditing ? (
-                  <Input
-                    value={formData.fileNo}
-                    onChange={(e) => updateFormData('fileNo', e.target.value)}
-                    className="mt-1"
-                  />
-                ) : (
-                  <div className="mt-1 text-sm text-gray-900">{formData.fileNo}</div>
-                )}
+                <div className="mt-1 text-sm text-gray-900">
+                  {formData.fileNo || (
+                    <span className="text-gray-400 italic">Auto-generated on Submit for Screening</span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
