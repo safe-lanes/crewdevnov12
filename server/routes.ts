@@ -6357,6 +6357,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Recruitment Candidates API routes
+  
+  // Generate next sequential file number in format R-YYYY-0001 (resets each year)
+  app.get("/api/recruitment-candidates/next-file-number", async (req, res) => {
+    try {
+      const currentYear = new Date().getFullYear();
+      const yearPrefix = `R-${currentYear}-`;
+      
+      // Get all candidates to find the highest file number for this year
+      const candidates = await storage.getRecruitmentCandidates();
+      
+      // Filter candidates with file numbers matching R-YYYY-XXXX pattern for current year
+      const currentYearFileNos = candidates
+        .filter(c => c.fileNo && c.fileNo.startsWith(yearPrefix))
+        .map(c => {
+          const match = c.fileNo.match(/R-\d{4}-(\d+)/);
+          return match ? parseInt(match[1], 10) : 0;
+        })
+        .filter(num => !isNaN(num));
+      
+      // Find the maximum number, default to 0 if none exist
+      const maxNumber = currentYearFileNos.length > 0 ? Math.max(...currentYearFileNos) : 0;
+      const nextNumber = maxNumber + 1;
+      
+      // Format as R-YYYY-0001 (4-digit padded number)
+      const nextFileNo = `${yearPrefix}${String(nextNumber).padStart(4, '0')}`;
+      
+      res.json({ fileNo: nextFileNo });
+    } catch (error) {
+      console.error('Error generating next file number:', error);
+      res.status(500).json({ error: "Failed to generate next file number" });
+    }
+  });
+
   app.get("/api/recruitment-candidates", async (req, res) => {
     try {
       const { status } = req.query;
