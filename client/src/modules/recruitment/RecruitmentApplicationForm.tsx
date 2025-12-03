@@ -5982,9 +5982,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                             <SelectValue placeholder="Result" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="pass">Pass</SelectItem>
-                            <SelectItem value="fail">Fail</SelectItem>
-                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="recommended">Recommended</SelectItem>
+                            <SelectItem value="not-recommended">Not Recommended</SelectItem>
+                            <SelectItem value="assess-further">Assess Further</SelectItem>
                           </SelectContent>
                         </Select>
                         {index === formData.b6Interviews.length - 1 && (
