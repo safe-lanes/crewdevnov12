@@ -172,6 +172,7 @@ interface FormData {
     id: string;
     information: string;
     response: string;
+    attachments?: FileAttachment[];
   }>;
 
   // Part B - Office Screening
@@ -247,6 +248,15 @@ interface FormData {
   c3SubmittedBy: string;
   c3SubmittedDate: string;
 }
+
+// Helper to normalize formData before saving to ensure all arrays have proper attachments
+const normalizeFormDataForSave = (data: FormData): FormData => ({
+  ...data,
+  additionalInfo: data.additionalInfo.map(info => ({
+    ...info,
+    attachments: info.attachments || []
+  }))
+});
 
 export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProps> = ({
   candidate,
@@ -484,10 +494,10 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       presentRank: formData.presentRank || '',
       vesselType: Array.isArray(formData.vesselType) ? formData.vesselType.join(', ') : formData.vesselType || '',
       status: finalStatus, // Set final recruitment status
-      applicationData: JSON.stringify({
+      applicationData: JSON.stringify(normalizeFormDataForSave({
         ...formData,
         c3SubmittedDate: new Date().toLocaleDateString()
-      })
+      }))
     };
 
     // Use the save-only mutation for final decision
@@ -520,7 +530,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       presentRank: formData.presentRank || '',
       vesselType: Array.isArray(formData.vesselType) ? formData.vesselType.join(', ') : formData.vesselType || '',
       status: getStatusForSection(activeSection, false), // Individual section submits
-      applicationData: JSON.stringify(formData)
+      applicationData: JSON.stringify(normalizeFormDataForSave(formData))
     };
 
     // Use the save-only mutation (doesn't advance to next section)
@@ -553,7 +563,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       presentRank: formData.presentRank,
       vesselType: formData.vesselType.join(', ') || '', // Join array to string for backend
       status: getStatusForSection(activeSection, true), // Main section submits
-      applicationData: JSON.stringify(formData) // Save all form data as JSON
+      applicationData: JSON.stringify(normalizeFormDataForSave(formData)) // Save all form data as JSON
     };
 
     console.log('🔥 Saving form data - additionalInfo:', formData.additionalInfo);
@@ -601,7 +611,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
         presentRank: formData.presentRank,
         vesselType: formData.vesselType.join(', ') || '', // Join array to string for backend
         status: getStatusForSection('A5', true), // A5 Submit for Screening
-        applicationData: JSON.stringify({ ...formData, fileNo }) // Save all form data as JSON including fileNo
+        applicationData: JSON.stringify(normalizeFormDataForSave({ ...formData, fileNo })) // Save all form data as JSON including fileNo
       };
 
       console.log('🔥 A5 Submit for Screening - saving form data:', formData);
@@ -717,7 +727,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   // Attachment dialog state - stores the id and type of item being edited
   const [attachmentDialog, setAttachmentDialog] = useState<{
     open: boolean;
-    type: 'document' | 'visa' | 'education' | 'license' | 'training' | 'seaService' | null;
+    type: 'document' | 'visa' | 'education' | 'license' | 'training' | 'seaService' | 'additionalInfo' | null;
     itemId: string | null;
     itemName: string;
   }>({ open: false, type: null, itemId: null, itemName: '' });
@@ -817,8 +827,11 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     // A4.1 Sea service - load from saved data
     seaService: savedData.seaService || [],
 
-    // A5 Additional information - load from saved data
-    additionalInfo: savedData.additionalInfo || [],
+    // A5 Additional information - load from saved data (normalize to include attachments)
+    additionalInfo: (savedData.additionalInfo || []).map((info: { id: string; information: string; response: string; attachments?: FileAttachment[] }) => ({
+      ...info,
+      attachments: info.attachments || []
+    })),
 
     // Part B - Office Screening - load from saved data
     b1AgeMeetsCriteria: savedData.b1AgeMeetsCriteria || '',
@@ -1384,7 +1397,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
 
   // Attachment management helper
   const openAttachmentDialog = (
-    type: 'document' | 'visa' | 'education' | 'license' | 'training' | 'seaService',
+    type: 'document' | 'visa' | 'education' | 'license' | 'training' | 'seaService' | 'additionalInfo',
     itemId: string,
     itemName: string
   ) => {
@@ -1407,6 +1420,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
         return formData.trainingCourses.find(t => t.id === attachmentDialog.itemId)?.attachments || [];
       case 'seaService':
         return formData.seaService.find(s => s.id === attachmentDialog.itemId)?.attachments || [];
+      case 'additionalInfo':
+        return formData.additionalInfo.find(a => a.id === attachmentDialog.itemId)?.attachments || [];
       default:
         return [];
     }
@@ -1457,6 +1472,13 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             ...prev,
             seaService: prev.seaService.map(s =>
               s.id === attachmentDialog.itemId ? { ...s, attachments } : s
+            )
+          };
+        case 'additionalInfo':
+          return {
+            ...prev,
+            additionalInfo: prev.additionalInfo.map(a =>
+              a.id === attachmentDialog.itemId ? { ...a, attachments } : a
             )
           };
         default:
@@ -1658,7 +1680,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       const newInfo = {
         id: newId,
         information: '',
-        response: ''
+        response: '',
+        attachments: []
       };
       return {
         ...prev,
@@ -3279,8 +3302,19 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-gray-400 hover:text-gray-600 relative"
+                      onClick={() => openAttachmentDialog('additionalInfo', info.id, info.information || 'Additional Info')}
+                      data-testid={`button-attach-additionalinfo-${info.id}`}
+                    >
                       <Paperclip className="h-3 w-3" />
+                      {(info.attachments?.length || 0) > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">
+                          {info.attachments?.length}
+                        </span>
+                      )}
                     </Button>
                     <Button 
                       variant="ghost" 
