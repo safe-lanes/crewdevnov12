@@ -2881,9 +2881,6 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
                       <Paperclip className="h-3 w-3" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
-                      <Edit className="h-3 w-3" />
-                    </Button>
                     <Button 
                       variant="ghost" 
                       size="icon" 
@@ -3029,9 +3026,6 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
-                      <Edit className="h-3 w-3" />
-                    </Button>
                     <Button 
                       variant="ghost" 
                       size="icon" 
@@ -3097,9 +3091,6 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
                       <Paperclip className="h-3 w-3" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
-                      <Edit className="h-3 w-3" />
                     </Button>
                     <Button 
                       variant="ghost" 
