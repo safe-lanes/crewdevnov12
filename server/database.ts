@@ -1108,8 +1108,8 @@ export class DatabaseStorage implements IStorage {
     
     if (result.rows.length > 0) {
       currentValue = result.rows[0].current_value;
-      prefix = result.rows[0].prefix;
-      format = result.rows[0].format;
+      prefix = result.rows[0].prefix || 'A';
+      format = result.rows[0].format || '0000';
     } else {
       // Initialize counter if it doesn't exist
       await this.pool.query(
@@ -1118,17 +1118,33 @@ export class DatabaseStorage implements IStorage {
       );
     }
     
-    const nextValue = currentValue + 1;
+    let nextValue = currentValue + 1;
+    let nextPrefix = prefix;
     
-    // Update counter
+    // Standard format: Alphabet + 4 digits (A0001 → A9999 → B0001 → B9999 → C0001...)
+    const maxValue = 9999;
+    
+    // Check if we need to roll over to next letter
+    if (nextValue > maxValue) {
+      nextValue = 1; // Reset to 1 (not 0, so first ID is X0001)
+      // Increment the prefix letter (A → B → C ... → Z)
+      const nextCharCode = prefix.charCodeAt(0) + 1;
+      if (nextCharCode > 90) { // 'Z' is 90
+        // Exceeded Z, could extend to AA, AB... but for now throw error
+        throw new Error('Crew ID sequence exhausted (reached Z9999). Contact administrator.');
+      }
+      nextPrefix = String.fromCharCode(nextCharCode);
+    }
+    
+    // Update counter with new value and possibly new prefix
     await this.pool.query(
-      'UPDATE id_counters SET current_value = $1, updated_at = NOW() WHERE counter_type = $2',
-      [nextValue, 'crew_id']
+      'UPDATE id_counters SET current_value = $1, prefix = $2, updated_at = NOW() WHERE counter_type = $3',
+      [nextValue, nextPrefix, 'crew_id']
     );
     
-    // Use the format length to determine padding
+    // Use the format length to determine padding (default 4 digits)
     const paddingLength = format.length;
-    return `${prefix}${nextValue.toString().padStart(paddingLength, '0')}`;
+    return `${nextPrefix}${nextValue.toString().padStart(paddingLength, '0')}`;
   }
 
   // Appraisal Result methods
