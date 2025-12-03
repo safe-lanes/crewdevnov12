@@ -292,10 +292,11 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const { data: companyRanks, isLoading: ranksLoading, rankNames } = useCompanyRanks();
 
   // Current user state - placeholder for now, will be connected to User Master later
-  const currentUser = {
+  // TODO: Replace with actual user data from User Master API when available
+  const [currentUser, setCurrentUser] = useState({
     name: "(Current User Name)",
     position: "(Position)"
-  };
+  });
   const currentUserDisplay = `${currentUser.name}, ${currentUser.position}`;
 
   // Create a save-only mutation (for individual section buttons)
