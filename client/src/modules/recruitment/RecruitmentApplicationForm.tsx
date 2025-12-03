@@ -6682,19 +6682,6 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 {formData.approvalSubmittedDate && ` on ${formData.approvalSubmittedDate}`}
               </div>
             )}
-            
-            {/* Submit for Approval button */}
-            <div className="flex justify-end mt-4">
-              <Button
-                type="button"
-                size="sm"
-                className="bg-green-600 hover:bg-green-700 text-white px-6"
-                onClick={handleSubmitForApproval}
-                data-testid="button-submit-for-approval"
-              >
-                Submit for Approval
-              </Button>
-            </div>
           </div>
         </div>
       </div>
@@ -7249,8 +7236,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <div className="flex justify-end gap-2 mt-6 pt-4">
                 <Button 
                   className="bg-[#00AF7B] hover:bg-[#009B6B] text-white px-8"
-                  onClick={handleSaveAndContinue}
+                  onClick={() => {
+                    // First populate C1.1 with selected approvers
+                    handleSubmitForApproval();
+                    // Then save and continue
+                    handleSaveAndContinue();
+                  }}
                   disabled={saveMutation.isPending}
+                  data-testid="button-submit-for-approval"
                 >
                   {saveMutation.isPending ? 'Saving...' : 'Submit for Approval'}
                 </Button>
