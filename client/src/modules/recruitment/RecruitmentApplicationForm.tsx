@@ -1872,6 +1872,81 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     return DEFAULT_DROPDOWN_VESSEL_TYPES;
   }, [vesselTypeMasterDataRaw]);
 
+  // Fetch Vessels Master (014) for C2.2 and C3.2 dropdowns
+  const { data: vesselsMasterDataRaw = [], isLoading: isLoadingVessels } = useQuery<Array<{ entryId: string; name: string }>>({
+    queryKey: ["/api/masters/014/data"],
+  });
+
+  // Fetch Fleet Groups Master (015) for C2.2 and C3.2 dropdowns
+  const { data: fleetGroupsMasterDataRaw = [], isLoading: isLoadingFleetGroups } = useQuery<Array<{ entryId: string; name: string }>>({
+    queryKey: ["/api/masters/015/data"],
+  });
+
+  // Fetch Additional Groups Master (016) for C2.2 and C3.2 dropdowns
+  const { data: additionalGroupsMasterDataRaw = [], isLoading: isLoadingAdditionalGroups } = useQuery<Array<{ entryId: string; name: string }>>({
+    queryKey: ["/api/masters/016/data"],
+  });
+
+  // Fallback static data when database has no entries
+  const FALLBACK_FLEET_GROUPS = [
+    'MR Class1 Tankers', 'Chemical JP 20', 'Chemical SS', 'Fleet A', 'Fleet B', 'Fleet C',
+    'Product Tanker Fleet', 'Crude Oil Fleet', 'Gas Tanker Fleet', 'Container Fleet'
+  ];
+
+  const FALLBACK_ADDITIONAL_GROUPS = [
+    'Special Operations', 'Port Operations', 'Offshore Operations', 'Emergency Response',
+    'Training Fleet', 'Research Vessels', 'Ice Class Vessels', 'High Risk Areas'
+  ];
+
+  const FALLBACK_VESSELS = [
+    'MV Atlantic Star', 'MV Pacific Dawn', 'MV Northern Light', 'MV Southern Cross',
+    'MV Eastern Wind', 'MV Western Pride', 'MV Central Hope', 'MV Global Unity',
+    'MV Ocean Explorer', 'MV Sea Voyager', 'MV Marine Pioneer', 'MV Coastal Guardian'
+  ];
+
+  // Combined vessel/fleet options for C2.2 and C3.2 dropdowns
+  const isLoadingVesselFleetData = isLoadingVessels || isLoadingFleetGroups || isLoadingAdditionalGroups;
+  
+  const vesselFleetOptions = useMemo(() => {
+    const options: Array<{ value: string; label: string; category: 'vessel' | 'fleet' | 'group' }> = [];
+    const addedValues = new Set<string>(); // Track duplicates
+    
+    // Helper to add option if valid and not duplicate
+    const addOption = (name: string, category: 'vessel' | 'fleet' | 'group') => {
+      const trimmedName = name?.trim();
+      if (trimmedName && trimmedName.length > 0 && !addedValues.has(trimmedName)) {
+        addedValues.add(trimmedName);
+        options.push({ value: trimmedName, label: trimmedName, category });
+      }
+    };
+    
+    // Add vessels from Vessels Master (014) or fallback
+    const vesselNames = vesselsMasterDataRaw.map(v => v.name).filter(n => n?.trim());
+    if (vesselNames.length > 0) {
+      vesselNames.forEach(name => addOption(name, 'vessel'));
+    } else if (!isLoadingVessels) {
+      FALLBACK_VESSELS.forEach(name => addOption(name, 'vessel'));
+    }
+    
+    // Add fleet groups from Fleet Groups Master (015) or fallback
+    const fleetNames = fleetGroupsMasterDataRaw.map(f => f.name).filter(n => n?.trim());
+    if (fleetNames.length > 0) {
+      fleetNames.forEach(name => addOption(name, 'fleet'));
+    } else if (!isLoadingFleetGroups) {
+      FALLBACK_FLEET_GROUPS.forEach(name => addOption(name, 'fleet'));
+    }
+    
+    // Add additional groups from Additional Groups Master (016) or fallback
+    const groupNames = additionalGroupsMasterDataRaw.map(g => g.name).filter(n => n?.trim());
+    if (groupNames.length > 0) {
+      groupNames.forEach(name => addOption(name, 'group'));
+    } else if (!isLoadingAdditionalGroups) {
+      FALLBACK_ADDITIONAL_GROUPS.forEach(name => addOption(name, 'group'));
+    }
+    
+    return options;
+  }, [vesselsMasterDataRaw, fleetGroupsMasterDataRaw, additionalGroupsMasterDataRaw, isLoadingVessels, isLoadingFleetGroups, isLoadingAdditionalGroups]);
+
   // Comprehensive nationality list matching AppraisalForm standards
   const NATIONALITIES = [
     "Afghan", "Albanian", "Algerian", "American", "Andorran", "Angolan", "Antiguan", "Argentine", "Armenian", "Australian",
@@ -1948,22 +2023,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
 
 
   // Rank data now comes from shared hook useCompanyRanks
-
-  const fleetGroupMasterData = [
-    'MR Class1 Tankers', 'Chemical JP 20', 'Chemical SS', 'Fleet A', 'Fleet B', 'Fleet C',
-    'Product Tanker Fleet', 'Crude Oil Fleet', 'Gas Tanker Fleet', 'Container Fleet'
-  ];
-
-  const additionalGroupMasterData = [
-    'Special Operations', 'Port Operations', 'Offshore Operations', 'Emergency Response',
-    'Training Fleet', 'Research Vessels', 'Ice Class Vessels', 'High Risk Areas'
-  ];
-
-  const vesselMasterData = [
-    'MV Atlantic Star', 'MV Pacific Dawn', 'MV Northern Light', 'MV Southern Cross',
-    'MV Eastern Wind', 'MV Western Pride', 'MV Central Hope', 'MV Global Unity',
-    'MV Ocean Explorer', 'MV Sea Voyager', 'MV Marine Pioneer', 'MV Coastal Guardian'
-  ];
+  // Vessel, Fleet Groups, and Additional Groups data now comes from API queries above (vesselFleetOptions)
 
   const approverMasterData = [
     'Capt. Nick, Marine Superintendent',
@@ -6900,15 +6960,18 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 value=""
                 onValueChange={(value) => addC2FleetGroup(value)}
               >
-                <SelectTrigger className="w-full max-w-md">
-                  <SelectValue placeholder="Add fleet group..." />
+                <SelectTrigger className="w-full max-w-md" data-testid="select-c2-fleet-group">
+                  <SelectValue placeholder={isLoadingVesselFleetData ? "Loading options..." : "Add fleet group..."} />
                 </SelectTrigger>
                 <SelectContent>
-                  {[...fleetGroupMasterData, ...additionalGroupMasterData]
-                    .filter(group => !formData.c2FleetGroups.includes(group))
-                    .map((fleetGroup) => (
-                      <SelectItem key={fleetGroup} value={fleetGroup}>
-                        {fleetGroup}
+                  {isLoadingVesselFleetData && (
+                    <SelectItem value="_loading" disabled>Loading options...</SelectItem>
+                  )}
+                  {vesselFleetOptions
+                    .filter(option => !formData.c2FleetGroups.includes(option.value))
+                    .map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
                       </SelectItem>
                     ))}
                 </SelectContent>
@@ -6995,15 +7058,18 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 value=""
                 onValueChange={(value) => addC3AssignedGroup(value)}
               >
-                <SelectTrigger className="w-full max-w-md">
-                  <SelectValue placeholder="Add vessel/fleet..." />
+                <SelectTrigger className="w-full max-w-md" data-testid="select-c3-vessel-fleet">
+                  <SelectValue placeholder={isLoadingVesselFleetData ? "Loading options..." : "Add vessel/fleet..."} />
                 </SelectTrigger>
                 <SelectContent>
-                  {[...vesselMasterData, ...fleetGroupMasterData, ...additionalGroupMasterData]
-                    .filter(item => !formData.c3AssignedGroups.includes(item))
-                    .map((item) => (
-                      <SelectItem key={item} value={item}>
-                        {item}
+                  {isLoadingVesselFleetData && (
+                    <SelectItem value="_loading" disabled>Loading options...</SelectItem>
+                  )}
+                  {vesselFleetOptions
+                    .filter(option => !formData.c3AssignedGroups.includes(option.value))
+                    .map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
                       </SelectItem>
                     ))}
                 </SelectContent>
