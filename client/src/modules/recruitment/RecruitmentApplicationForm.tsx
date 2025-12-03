@@ -745,6 +745,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const [isTrainingDialogOpen, setIsTrainingDialogOpen] = useState(false);
   const [isTravelDocDialogOpen, setIsTravelDocDialogOpen] = useState(false);
   const [isVisaDialogOpen, setIsVisaDialogOpen] = useState(false);
+  const [isB7TrainingDialogOpen, setIsB7TrainingDialogOpen] = useState(false);
   
   // Attachment dialog state - stores the id and type of item being edited
   const [attachmentDialog, setAttachmentDialog] = useState<{
@@ -1380,6 +1381,26 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       };
     });
     setIsTrainingDialogOpen(false);
+  };
+
+  // Handler for adding training courses from database to B7 Training Needs section
+  const addB7TrainingFromDatabase = (selectedCourses: TrainingCourseTemplate[]) => {
+    setFormData(prev => {
+      const existingNeeds = prev.b7TrainingNeeds.filter(t => t.training.trim() !== '');
+      const newNeeds = selectedCourses.map((course) => ({
+        id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9),
+        training: course.name,
+        identifiedBy: '',
+        category: course.requirement || '',
+        dueDate: '',
+        comments: ''
+      }));
+      return {
+        ...prev,
+        b7TrainingNeeds: [...existingNeeds, ...newNeeds]
+      };
+    });
+    setIsB7TrainingDialogOpen(false);
   };
 
   const addTravelDocsFromDatabase = (selectedDocs: TravelDocumentTemplate[]) => {
@@ -6193,15 +6214,27 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B7. Training Needs Identified</h3>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={addB7TrainingNeed}
-            className="text-gray-600 border-gray-300 hover:bg-gray-50"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            ADD
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsB7TrainingDialogOpen(true)}
+              className="text-gray-600 border-gray-300 hover:bg-gray-50 text-xs"
+              data-testid="button-add-b7-training-from-db"
+            >
+              + ADD FROM DATABASE
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={addB7TrainingNeed}
+              className="text-gray-600 border-gray-300 hover:bg-gray-50"
+              data-testid="button-add-b7-training"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              ADD
+            </Button>
+          </div>
         </div>
         
         <div className="space-y-4">
@@ -7264,6 +7297,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
         onClose={() => setIsTrainingDialogOpen(false)}
         onConfirm={addTrainingCoursesFromDatabase}
         existingCourseIds={formData.trainingCourses.map(c => c.courseId).filter((id): id is string => Boolean(id))}
+      />
+      
+      {/* B7 Training Needs - reuses same training course selection dialog */}
+      <TrainingCourseSelectionDialog
+        open={isB7TrainingDialogOpen}
+        onClose={() => setIsB7TrainingDialogOpen(false)}
+        onConfirm={addB7TrainingFromDatabase}
+        existingCourseIds={[]}
       />
       
       <TravelDocumentSelectionDialog
