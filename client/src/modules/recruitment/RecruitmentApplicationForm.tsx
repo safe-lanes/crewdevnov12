@@ -14,7 +14,9 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ArrowLeft, Edit, Plus, Save, Trash2, Upload, Paperclip, X, Camera, Info, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Edit, Plus, Save, Trash2, Upload, Paperclip, X, Camera, Info, MessageSquare, ChevronDown } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAttachmentDialog';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
@@ -240,6 +242,11 @@ interface FormData {
   b8Attachments: FileAttachment[];
   b8SubmittedBy: string;
   b8SubmittedDate: string;
+  
+  // Submit for Approval fields (after B8)
+  selectedApproversForSubmission: string[];
+  approvalSubmittedBy: string;
+  approvalSubmittedDate: string;
 
   // Part C - Approval
   // C1 Approval fields
@@ -921,6 +928,11 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     b8Attachments: savedData.b8Attachments || [],
     b8SubmittedBy: savedData.b8SubmittedBy || '',
     b8SubmittedDate: savedData.b8SubmittedDate || '',
+    
+    // Submit for Approval - load from saved data
+    selectedApproversForSubmission: savedData.selectedApproversForSubmission || [],
+    approvalSubmittedBy: savedData.approvalSubmittedBy || '',
+    approvalSubmittedDate: savedData.approvalSubmittedDate || '',
 
     // Part C - Approval - load from saved data
     // C1 Approval
@@ -1669,6 +1681,67 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
         training.id === id ? { ...training, [field]: value } : training
       )
     }));
+  };
+
+  // Submit for Approval management functions
+  const toggleApproverSelection = (approverName: string) => {
+    setFormData(prev => {
+      const currentSelected = prev.selectedApproversForSubmission;
+      if (currentSelected.includes(approverName)) {
+        return {
+          ...prev,
+          selectedApproversForSubmission: currentSelected.filter(a => a !== approverName)
+        };
+      } else {
+        return {
+          ...prev,
+          selectedApproversForSubmission: [...currentSelected, approverName]
+        };
+      }
+    });
+  };
+
+  const handleSubmitForApproval = () => {
+    if (formData.selectedApproversForSubmission.length === 0) {
+      toast({
+        title: "No Approvers Selected",
+        description: "Please select at least one approver before submitting for approval.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const currentDate = new Date().toLocaleDateString();
+    
+    // Create new C1 approver entries from selected approvers
+    const newApprovers = formData.selectedApproversForSubmission.map((approverName, index) => ({
+      id: `${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
+      date: currentDate,
+      approver: approverName,
+      status: 'Review Pending',
+      approval: '',
+      comments: ''
+    }));
+
+    setFormData(prev => ({
+      ...prev,
+      // Replace any empty/placeholder approvers with the new ones, or append if there are already filled approvers
+      c1Approvers: prev.c1Approvers.filter(a => a.approver && a.approver.trim() !== '').length > 0
+        ? [...prev.c1Approvers.filter(a => a.approver && a.approver.trim() !== ''), ...newApprovers]
+        : newApprovers,
+      approvalSubmittedBy: currentUserDisplay,
+      approvalSubmittedDate: currentDate
+    }));
+
+    // Save the data
+    setTimeout(() => {
+      handleSaveOnly();
+    }, 100);
+
+    toast({
+      title: "Submitted for Approval",
+      description: `Application has been submitted to ${formData.selectedApproversForSubmission.length} approver(s).`,
+    });
   };
 
   // Part C - Approval management functions
@@ -6559,6 +6632,67 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 </Button>
               </div>
             </div>
+          </div>
+
+          {/* Submit for Approval section */}
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div className="flex items-center gap-4 flex-1">
+                <Label className="text-sm text-gray-600 whitespace-nowrap">Submit for Approval to:</Label>
+                <div className="relative flex-1 max-w-md">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className="w-full justify-between text-sm font-normal"
+                        data-testid="button-approver-multi-select"
+                      >
+                        {formData.selectedApproversForSubmission.length > 0
+                          ? `${formData.selectedApproversForSubmission.length} approver(s) selected`
+                          : "Approver"}
+                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[350px] p-0" align="start">
+                      <div className="max-h-[300px] overflow-y-auto">
+                        {approverMasterData.map((approverName) => (
+                          <div
+                            key={approverName}
+                            className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-100"
+                            onClick={() => toggleApproverSelection(approverName)}
+                            data-testid={`checkbox-approver-${approverName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`}
+                          >
+                            <Checkbox
+                              checked={formData.selectedApproversForSubmission.includes(approverName)}
+                              className="mr-3"
+                            />
+                            <span className="text-sm">{approverName}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                className="bg-[#F97316] hover:bg-[#EA580C] text-white px-6"
+                onClick={handleSubmitForApproval}
+                data-testid="button-submit-for-approval"
+              >
+                Submit for Approval
+              </Button>
+            </div>
+            
+            {/* Show submitted by info if already submitted for approval */}
+            {formData.approvalSubmittedBy && (
+              <div className="text-xs text-gray-500">
+                Submitted by: {formData.approvalSubmittedBy}
+                {formData.approvalSubmittedDate && ` on ${formData.approvalSubmittedDate}`}
+              </div>
+            )}
           </div>
         </div>
       </div>
