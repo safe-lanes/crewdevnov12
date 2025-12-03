@@ -3148,9 +3148,6 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
                       <Paperclip className="h-3 w-3" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
-                      <Edit className="h-3 w-3" />
-                    </Button>
                     <Button 
                       variant="ghost" 
                       size="icon" 
@@ -3255,9 +3252,6 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
                       <Paperclip className="h-3 w-3" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
-                      <Edit className="h-3 w-3" />
-                    </Button>
                     <Button 
                       variant="ghost" 
                       size="icon" 
@@ -3340,9 +3334,6 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
                       <Paperclip className="h-3 w-3" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
-                      <Edit className="h-3 w-3" />
                     </Button>
                     <Button 
                       variant="ghost" 
@@ -3469,9 +3460,6 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
                       <Paperclip className="h-3 w-3" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
-                      <Edit className="h-3 w-3" />
-                    </Button>
                     <Button 
                       variant="ghost" 
                       size="icon" 
@@ -3594,9 +3582,6 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
                       <Paperclip className="h-3 w-3" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
-                      <Edit className="h-3 w-3" />
                     </Button>
                     <Button 
                       variant="ghost" 
@@ -3855,9 +3840,6 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                           <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
                             <Paperclip className="h-3 w-3" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
-                            <Edit className="h-3 w-3" />
-                          </Button>
                           <Button 
                             variant="ghost" 
                             size="icon" 
@@ -4091,9 +4073,6 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                           <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
                             <Paperclip className="h-3 w-3" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
-                            <Edit className="h-3 w-3" />
-                          </Button>
                           <Button 
                             variant="ghost" 
                             size="icon" 
@@ -4246,9 +4225,6 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                           <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
                             <Paperclip className="h-3 w-3" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
-                            <Edit className="h-3 w-3" />
-                          </Button>
                           <Button 
                             variant="ghost" 
                             size="icon" 
@@ -4357,9 +4333,6 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                         <div className="flex gap-1">
                           <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
                             <Paperclip className="h-3 w-3" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
-                            <Edit className="h-3 w-3" />
                           </Button>
                           <Button 
                             variant="ghost" 
