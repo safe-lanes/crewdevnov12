@@ -6635,10 +6635,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                           <SelectValue placeholder="Status" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Pending">Pending</SelectItem>
-                          <SelectItem value="Reviewed">Reviewed</SelectItem>
-                          <SelectItem value="Approved">Approved</SelectItem>
-                          <SelectItem value="Rejected">Rejected</SelectItem>
+                          <SelectItem value="Review Pending">Review Pending</SelectItem>
+                          <SelectItem value="Review Completed">Review Completed</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
