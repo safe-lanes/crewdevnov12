@@ -6690,15 +6690,22 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                     </div>
                   </div>
                   
-                  {/* Approver comment */}
-                  <div className="ml-4">
-                    <div className="text-blue-600 italic text-[13px] mb-2">
-                      {approver.approver}:
+                  {/* Approver comment - only show when approver is selected */}
+                  {approver.approver && (
+                    <div className="ml-4">
+                      <div className="text-blue-600 italic text-[13px] mb-2">
+                        {approver.approver}:
+                      </div>
+                      <Textarea
+                        value={approver.comments || ''}
+                        onChange={(e) => updateC1Approver(approver.id, 'comments', e.target.value)}
+                        placeholder="Click to add comment..."
+                        className="text-blue-600 italic border-blue-200 text-[13px] mb-2"
+                        rows={2}
+                        data-testid={`textarea-c1-approver-comment-${approver.id}`}
+                      />
                     </div>
-                    <div className="text-blue-600 italic text-[13px] mb-2">
-                      Overall Candidate reflected a strong understanding of the Navigation & cargo operations.
-                    </div>
-                  </div>
+                  )}
                 </div>
               ))}
             </div>
