@@ -181,6 +181,7 @@ interface FormData {
   b1CertificatesValid: string;
   b1Shortlisted: string;
   b1Comments: {[key: string]: Array<{user: string, text: string, id: string}>};
+  b1Attachments: FileAttachment[];
   b1SubmittedBy: string;
   b1SubmittedDate: string;
   
@@ -189,6 +190,7 @@ interface FormData {
   b2CurrentEmployerFeedback: string;
   b2Comments: {[key: string]: Array<{user: string, text: string, id: string}>};
   b2References: Array<{id: string, date: string, nameDesignation: string, contactInfo: string}>;
+  b2Attachments: FileAttachment[];
   b2SubmittedBy: string;
   b2SubmittedDate: string;
   
@@ -197,6 +199,7 @@ interface FormData {
   b3SecurityChecksResults: string;
   b3Comments: {[key: string]: Array<{user: string, text: string, id: string}>};
   b3Authorities: Array<{id: string, date: string, authority: string}>;
+  b3Attachments: FileAttachment[];
   b3SubmittedBy: string;
   b3SubmittedDate: string;
   
@@ -205,6 +208,7 @@ interface FormData {
   b4AuthenticationResults: string;
   b4Comments: {[key: string]: Array<{user: string, text: string, id: string}>};
   b4Certificates: Array<{id: string, date: string, certificate: string, authority: string}>;
+  b4Attachments: FileAttachment[];
   b4SubmittedBy: string;
   b4SubmittedDate: string;
   
@@ -212,6 +216,7 @@ interface FormData {
   b5CesTestsCompleted: string;
   b5Comments: {[key: string]: Array<{user: string, text: string, id: string}>};
   b5Tests: Array<{id: string, date: string, subject: string, score: string, result: string}>;
+  b5Attachments: FileAttachment[];
   b5SubmittedBy: string;
   b5SubmittedDate: string;
   
@@ -220,6 +225,7 @@ interface FormData {
   b6Comments: {[key: string]: Array<{user: string, text: string, id: string}>};
   b6Interviews: Array<{id: string, date: string, interviewer: string, status: string, result: string, comments: string}>;
   b6InterviewComments: {[key: string]: string};
+  b6Attachments: FileAttachment[];
   b6SubmittedBy: string;
   b6SubmittedDate: string;
   
@@ -231,6 +237,7 @@ interface FormData {
   // B8 Short Listing fields
   b8Shortlisted: string;
   b8Comments: {[key: string]: Array<{user: string, text: string, id: string}>};
+  b8Attachments: FileAttachment[];
   b8SubmittedBy: string;
   b8SubmittedDate: string;
 
@@ -255,7 +262,14 @@ const normalizeFormDataForSave = (data: FormData): FormData => ({
   additionalInfo: data.additionalInfo.map(info => ({
     ...info,
     attachments: info.attachments || []
-  }))
+  })),
+  b1Attachments: data.b1Attachments || [],
+  b2Attachments: data.b2Attachments || [],
+  b3Attachments: data.b3Attachments || [],
+  b4Attachments: data.b4Attachments || [],
+  b5Attachments: data.b5Attachments || [],
+  b6Attachments: data.b6Attachments || [],
+  b8Attachments: data.b8Attachments || []
 });
 
 export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProps> = ({
@@ -727,7 +741,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   // Attachment dialog state - stores the id and type of item being edited
   const [attachmentDialog, setAttachmentDialog] = useState<{
     open: boolean;
-    type: 'document' | 'visa' | 'education' | 'license' | 'training' | 'seaService' | 'additionalInfo' | null;
+    type: 'document' | 'visa' | 'education' | 'license' | 'training' | 'seaService' | 'additionalInfo' | 'b1' | 'b2' | 'b3' | 'b4' | 'b5' | 'b6' | 'b8' | null;
     itemId: string | null;
     itemName: string;
   }>({ open: false, type: null, itemId: null, itemName: '' });
@@ -839,6 +853,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     b1CertificatesValid: savedData.b1CertificatesValid || '',
     b1Shortlisted: savedData.b1Shortlisted || '',
     b1Comments: savedData.b1Comments || {},
+    b1Attachments: savedData.b1Attachments || [],
     b1SubmittedBy: savedData.b1SubmittedBy || '',
     b1SubmittedDate: savedData.b1SubmittedDate || '',
     
@@ -847,6 +862,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     b2CurrentEmployerFeedback: savedData.b2CurrentEmployerFeedback || '',
     b2Comments: savedData.b2Comments || {},
     b2References: savedData.b2References || [{ id: '1', date: '', nameDesignation: '', contactInfo: '' }],
+    b2Attachments: savedData.b2Attachments || [],
     b2SubmittedBy: savedData.b2SubmittedBy || '',
     b2SubmittedDate: savedData.b2SubmittedDate || '',
     
@@ -855,6 +871,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     b3SecurityChecksResults: savedData.b3SecurityChecksResults || '',
     b3Comments: savedData.b3Comments || {},
     b3Authorities: savedData.b3Authorities || [{ id: '1', date: '', authority: '' }],
+    b3Attachments: savedData.b3Attachments || [],
     b3SubmittedBy: savedData.b3SubmittedBy || '',
     b3SubmittedDate: savedData.b3SubmittedDate || '',
     
@@ -863,6 +880,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     b4AuthenticationResults: savedData.b4AuthenticationResults || '',
     b4Comments: savedData.b4Comments || {},
     b4Certificates: savedData.b4Certificates || [{ id: '1', date: '', certificate: '', authority: '' }],
+    b4Attachments: savedData.b4Attachments || [],
     b4SubmittedBy: savedData.b4SubmittedBy || '',
     b4SubmittedDate: savedData.b4SubmittedDate || '',
     
@@ -870,6 +888,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     b5CesTestsCompleted: savedData.b5CesTestsCompleted || '',
     b5Comments: savedData.b5Comments || {},
     b5Tests: savedData.b5Tests || [{ id: '1', date: '', subject: '', score: '', result: '' }],
+    b5Attachments: savedData.b5Attachments || [],
     b5SubmittedBy: savedData.b5SubmittedBy || '',
     b5SubmittedDate: savedData.b5SubmittedDate || '',
     
@@ -878,6 +897,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     b6Comments: savedData.b6Comments || {},
     b6Interviews: savedData.b6Interviews || [{ id: '1', date: '', interviewer: '', status: '', result: '', comments: '' }],
     b6InterviewComments: savedData.b6InterviewComments || {},
+    b6Attachments: savedData.b6Attachments || [],
     b6SubmittedBy: savedData.b6SubmittedBy || '',
     b6SubmittedDate: savedData.b6SubmittedDate || '',
     
@@ -889,6 +909,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     // B8 Short Listing - load from saved data
     b8Shortlisted: savedData.b8Shortlisted || '',
     b8Comments: savedData.b8Comments || {},
+    b8Attachments: savedData.b8Attachments || [],
     b8SubmittedBy: savedData.b8SubmittedBy || '',
     b8SubmittedDate: savedData.b8SubmittedDate || '',
 
@@ -1397,7 +1418,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
 
   // Attachment management helper
   const openAttachmentDialog = (
-    type: 'document' | 'visa' | 'education' | 'license' | 'training' | 'seaService' | 'additionalInfo',
+    type: 'document' | 'visa' | 'education' | 'license' | 'training' | 'seaService' | 'additionalInfo' | 'b1' | 'b2' | 'b3' | 'b4' | 'b5' | 'b6' | 'b8',
     itemId: string,
     itemName: string
   ) => {
@@ -1405,7 +1426,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   };
 
   const getAttachmentsForItem = (): FileAttachment[] => {
-    if (!attachmentDialog.itemId || !attachmentDialog.type) return [];
+    if (!attachmentDialog.type) return [];
     
     switch (attachmentDialog.type) {
       case 'document':
@@ -1422,13 +1443,27 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
         return formData.seaService.find(s => s.id === attachmentDialog.itemId)?.attachments || [];
       case 'additionalInfo':
         return formData.additionalInfo.find(a => a.id === attachmentDialog.itemId)?.attachments || [];
+      case 'b1':
+        return formData.b1Attachments || [];
+      case 'b2':
+        return formData.b2Attachments || [];
+      case 'b3':
+        return formData.b3Attachments || [];
+      case 'b4':
+        return formData.b4Attachments || [];
+      case 'b5':
+        return formData.b5Attachments || [];
+      case 'b6':
+        return formData.b6Attachments || [];
+      case 'b8':
+        return formData.b8Attachments || [];
       default:
         return [];
     }
   };
 
   const updateAttachments = (attachments: FileAttachment[]) => {
-    if (!attachmentDialog.itemId || !attachmentDialog.type) return;
+    if (!attachmentDialog.type) return;
 
     setFormData(prev => {
       switch (attachmentDialog.type) {
@@ -1481,6 +1516,20 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               a.id === attachmentDialog.itemId ? { ...a, attachments } : a
             )
           };
+        case 'b1':
+          return { ...prev, b1Attachments: attachments };
+        case 'b2':
+          return { ...prev, b2Attachments: attachments };
+        case 'b3':
+          return { ...prev, b3Attachments: attachments };
+        case 'b4':
+          return { ...prev, b4Attachments: attachments };
+        case 'b5':
+          return { ...prev, b5Attachments: attachments };
+        case 'b6':
+          return { ...prev, b6Attachments: attachments };
+        case 'b8':
+          return { ...prev, b8Attachments: attachments };
         default:
           return prev;
       }
@@ -3869,16 +3918,23 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </React.Fragment>
           ))}
 
-          {/* Upload button */}
+          {/* Attachment button */}
           <div className="flex justify-start mt-6">
             <Button
               type="button"
               variant="outline"
               size="sm"
               className="text-gray-600 border-gray-300 hover:bg-gray-50"
+              onClick={() => openAttachmentDialog('b1', 'b1', 'B1. Initial Screening')}
+              data-testid="button-b1-attachments"
             >
-              <Upload className="h-4 w-4 mr-2" />
-              Upload
+              <Paperclip className="h-4 w-4 mr-2" />
+              Attachment(s)
+              {formData.b1Attachments?.length > 0 && (
+                <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                  {formData.b1Attachments.length}
+                </span>
+              )}
             </Button>
           </div>
 
@@ -4344,16 +4400,23 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             )}
           </div>
 
-          {/* Upload button */}
+          {/* Attachment button */}
           <div className="flex justify-start">
             <Button
               type="button"
               variant="outline"
               size="sm"
               className="text-gray-600 border-gray-300 hover:bg-gray-50"
+              onClick={() => openAttachmentDialog('b2', 'b2', 'B2. Reference Checks')}
+              data-testid="button-b2-attachments"
             >
-              <Upload className="h-4 w-4 mr-2" />
-              Upload
+              <Paperclip className="h-4 w-4 mr-2" />
+              Attachment(s)
+              {formData.b2Attachments?.length > 0 && (
+                <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                  {formData.b2Attachments.length}
+                </span>
+              )}
             </Button>
           </div>
 
@@ -4822,16 +4885,23 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             )}
           </div>
 
-          {/* Upload button */}
+          {/* Attachment button */}
           <div className="flex justify-start">
             <Button
               type="button"
               variant="outline"
               size="sm"
               className="text-gray-600 border-gray-300 hover:bg-gray-50"
+              onClick={() => openAttachmentDialog('b3', 'b3', 'B3. Background Security Checks')}
+              data-testid="button-b3-attachments"
             >
-              <Upload className="h-4 w-4 mr-2" />
-              Upload
+              <Paperclip className="h-4 w-4 mr-2" />
+              Attachment(s)
+              {formData.b3Attachments?.length > 0 && (
+                <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                  {formData.b3Attachments.length}
+                </span>
+              )}
             </Button>
           </div>
 
@@ -5319,16 +5389,23 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             )}
           </div>
 
-          {/* Upload button */}
+          {/* Attachment button */}
           <div className="flex justify-start">
             <Button
               type="button"
               variant="outline"
               size="sm"
               className="text-gray-600 border-gray-300 hover:bg-gray-50"
+              onClick={() => openAttachmentDialog('b4', 'b4', 'B4. Authentication of Certificates')}
+              data-testid="button-b4-attachments"
             >
-              <Upload className="h-4 w-4 mr-2" />
-              Upload
+              <Paperclip className="h-4 w-4 mr-2" />
+              Attachment(s)
+              {formData.b4Attachments?.length > 0 && (
+                <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                  {formData.b4Attachments.length}
+                </span>
+              )}
             </Button>
           </div>
 
@@ -5674,16 +5751,23 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             )}
           </div>
 
-          {/* Upload button */}
+          {/* Attachment button */}
           <div className="flex justify-start">
             <Button
               type="button"
               variant="outline"
               size="sm"
               className="text-gray-600 border-gray-300 hover:bg-gray-50"
+              onClick={() => openAttachmentDialog('b5', 'b5', 'B5. CES/Language Test Results')}
+              data-testid="button-b5-attachments"
             >
-              <Upload className="h-4 w-4 mr-2" />
-              Upload
+              <Paperclip className="h-4 w-4 mr-2" />
+              Attachment(s)
+              {formData.b5Attachments?.length > 0 && (
+                <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                  {formData.b5Attachments.length}
+                </span>
+              )}
             </Button>
           </div>
 
@@ -6043,16 +6127,23 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             )}
           </div>
 
-          {/* Upload button */}
+          {/* Attachment button */}
           <div className="flex justify-start">
             <Button
               type="button"
               variant="outline"
               size="sm"
               className="text-gray-600 border-gray-300 hover:bg-gray-50"
+              onClick={() => openAttachmentDialog('b6', 'b6', 'B6. Interview(s)')}
+              data-testid="button-b6-attachments"
             >
-              <Upload className="h-4 w-4 mr-2" />
-              Upload
+              <Paperclip className="h-4 w-4 mr-2" />
+              Attachment(s)
+              {formData.b6Attachments?.length > 0 && (
+                <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                  {formData.b6Attachments.length}
+                </span>
+              )}
             </Button>
           </div>
 
@@ -6376,16 +6467,23 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             )}
           </div>
 
-          {/* Upload button */}
+          {/* Attachment button */}
           <div className="flex justify-start">
             <Button
               type="button"
               variant="outline"
               size="sm"
               className="text-gray-600 border-gray-300 hover:bg-gray-50"
+              onClick={() => openAttachmentDialog('b8', 'b8', 'B8. Short Listing')}
+              data-testid="button-b8-attachments"
             >
-              <Upload className="h-4 w-4 mr-2" />
-              Upload
+              <Paperclip className="h-4 w-4 mr-2" />
+              Attachment(s)
+              {formData.b8Attachments?.length > 0 && (
+                <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                  {formData.b8Attachments.length}
+                </span>
+              )}
             </Button>
           </div>
 
