@@ -6636,54 +6636,43 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
 
           {/* Submit for Approval section */}
           <div className="mt-6 pt-4 border-t border-gray-200">
-            <div className="flex items-center justify-between gap-4 mb-4">
-              <div className="flex items-center gap-4 flex-1">
-                <Label className="text-sm text-gray-600 whitespace-nowrap">Submit for Approval to:</Label>
-                <div className="relative flex-1 max-w-md">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        className="w-full justify-between text-sm font-normal"
-                        data-testid="button-approver-multi-select"
-                      >
-                        {formData.selectedApproversForSubmission.length > 0
-                          ? `${formData.selectedApproversForSubmission.length} approver(s) selected`
-                          : "Approver"}
-                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[350px] p-0" align="start">
-                      <div className="max-h-[300px] overflow-y-auto">
-                        {approverMasterData.map((approverName) => (
-                          <div
-                            key={approverName}
-                            className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-100"
-                            onClick={() => toggleApproverSelection(approverName)}
-                            data-testid={`checkbox-approver-${approverName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`}
-                          >
-                            <Checkbox
-                              checked={formData.selectedApproversForSubmission.includes(approverName)}
-                              className="mr-3"
-                            />
-                            <span className="text-sm">{approverName}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
+            <div className="flex items-center gap-4 mb-4">
+              <Label className="text-sm text-gray-600 whitespace-nowrap">Submit for Approval to:</Label>
+              <div className="relative flex-1 max-w-md">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className="w-full justify-between text-sm font-normal"
+                      data-testid="button-approver-multi-select"
+                    >
+                      {formData.selectedApproversForSubmission.length > 0
+                        ? `${formData.selectedApproversForSubmission.length} approver(s) selected`
+                        : "Approver"}
+                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[350px] p-0" align="start">
+                    <div className="max-h-[300px] overflow-y-auto">
+                      {approverMasterData.map((approverName) => (
+                        <div
+                          key={approverName}
+                          className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-100"
+                          onClick={() => toggleApproverSelection(approverName)}
+                          data-testid={`checkbox-approver-${approverName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`}
+                        >
+                          <Checkbox
+                            checked={formData.selectedApproversForSubmission.includes(approverName)}
+                            className="mr-3"
+                          />
+                          <span className="text-sm">{approverName}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
-              <Button
-                type="button"
-                size="sm"
-                className="bg-[#F97316] hover:bg-[#EA580C] text-white px-6"
-                onClick={handleSubmitForApproval}
-                data-testid="button-submit-for-approval"
-              >
-                Submit for Approval
-              </Button>
             </div>
             
             {/* Show submitted by info if already submitted for approval */}
@@ -6693,6 +6682,19 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 {formData.approvalSubmittedDate && ` on ${formData.approvalSubmittedDate}`}
               </div>
             )}
+            
+            {/* Submit for Approval button */}
+            <div className="flex justify-end mt-4">
+              <Button
+                type="button"
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white px-6"
+                onClick={handleSubmitForApproval}
+                data-testid="button-submit-for-approval"
+              >
+                Submit for Approval
+              </Button>
+            </div>
           </div>
         </div>
       </div>
