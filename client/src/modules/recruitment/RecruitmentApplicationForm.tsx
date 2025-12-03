@@ -291,6 +291,13 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   // Get company ranks from shared hook
   const { data: companyRanks, isLoading: ranksLoading, rankNames } = useCompanyRanks();
 
+  // Current user state - placeholder for now, will be connected to User Master later
+  const currentUser = {
+    name: "(Current User Name)",
+    position: "(Position)"
+  };
+  const currentUserDisplay = `${currentUser.name}, ${currentUser.position}`;
+
   // Create a save-only mutation (for individual section buttons)
   const saveOnlyMutation = useMutation({
     mutationFn: (candidateData: InsertRecruitmentCandidate) => {
@@ -3871,7 +3878,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   {/* New comment input */}
                   {newB1Comment[question.id] !== undefined && (
                     <div>
-                      <div className="text-sm font-medium text-gray-600 mb-2">Roxanne, Crewing Executive</div>
+                      <div className="text-sm font-medium text-gray-600 mb-2">{currentUserDisplay}</div>
                       <Textarea
                         value={newB1Comment[question.id]}
                         onChange={(e) => {
@@ -3892,7 +3899,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                                   ...(prev.b1Comments[question.id] || []),
                                   {
                                     id: commentId,
-                                    user: "Roxanne, Crewing Executive",
+                                    user: currentUserDisplay,
                                     text: newB1Comment[question.id]
                                   }
                                 ]
@@ -3954,7 +3961,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 className="bg-green-600 hover:bg-green-700 text-white"
                 onClick={() => {
                   const currentDate = new Date().toLocaleDateString();
-                  updateFormData('b1SubmittedBy', 'Roxanne, Crewing Executive');
+                  updateFormData('b1SubmittedBy', currentUserDisplay);
                   updateFormData('b1SubmittedDate', currentDate);
                   // Also save the data (but don't close form)
                   setTimeout(() => {
@@ -4203,7 +4210,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 
                 {newB2Comment['b2-completed'] !== undefined && (
                   <div>
-                    <div className="text-sm font-medium text-gray-600 mb-2">Roxanne, Crewing Executive</div>
+                    <div className="text-sm font-medium text-gray-600 mb-2">{currentUserDisplay}</div>
                     <Textarea
                       value={newB2Comment['b2-completed']}
                       onChange={(e) => {
@@ -4223,7 +4230,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                                 ...(prev.b2Comments['b2-completed'] || []),
                                 {
                                   id: commentId,
-                                  user: "Roxanne, Crewing Executive",
+                                  user: currentUserDisplay,
                                   text: newB2Comment['b2-completed']
                                 }
                               ]
@@ -4356,7 +4363,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 
                 {newB2Comment['b2-results'] !== undefined && (
                   <div>
-                    <div className="text-sm font-medium text-gray-600 mb-2">Roxanne, Crewing Executive</div>
+                    <div className="text-sm font-medium text-gray-600 mb-2">{currentUserDisplay}</div>
                     <Textarea
                       value={newB2Comment['b2-results']}
                       onChange={(e) => {
@@ -4376,7 +4383,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                                 ...(prev.b2Comments['b2-results'] || []),
                                 {
                                   id: commentId,
-                                  user: "Roxanne, Crewing Executive",
+                                  user: currentUserDisplay,
                                   text: newB2Comment['b2-results']
                                 }
                               ]
@@ -4436,7 +4443,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 className="bg-green-600 hover:bg-green-700 text-white"
                 onClick={() => {
                   const currentDate = new Date().toLocaleDateString();
-                  updateFormData('b2SubmittedBy', 'Roxanne, Crewing Executive');
+                  updateFormData('b2SubmittedBy', currentUserDisplay);
                   updateFormData('b2SubmittedDate', currentDate);
                   // Also save the data (but don't close form)
                   setTimeout(() => {
@@ -4677,7 +4684,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 
                 {newB3Comment['b3-completed'] !== undefined && (
                   <div>
-                    <div className="text-sm font-medium text-gray-600 mb-2">Roxanne, Crewing Executive</div>
+                    <div className="text-sm font-medium text-gray-600 mb-2">{currentUserDisplay}</div>
                     <Textarea
                       value={newB3Comment['b3-completed']}
                       onChange={(e) => {
@@ -4697,7 +4704,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                                 ...(prev.b3Comments['b3-completed'] || []),
                                 {
                                   id: commentId,
-                                  user: "Roxanne, Crewing Executive",
+                                  user: currentUserDisplay,
                                   text: newB3Comment['b3-completed']
                                 }
                               ]
@@ -4841,7 +4848,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 
                 {newB3Comment['b3-results'] !== undefined && (
                   <div>
-                    <div className="text-sm font-medium text-gray-600 mb-2">Roxanne, Crewing Executive</div>
+                    <div className="text-sm font-medium text-gray-600 mb-2">{currentUserDisplay}</div>
                     <Textarea
                       value={newB3Comment['b3-results']}
                       onChange={(e) => {
@@ -4861,7 +4868,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                                 ...(prev.b3Comments['b3-results'] || []),
                                 {
                                   id: commentId,
-                                  user: "Roxanne, Crewing Executive",
+                                  user: currentUserDisplay,
                                   text: newB3Comment['b3-results']
                                 }
                               ]
@@ -4921,7 +4928,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 className="bg-green-600 hover:bg-green-700 text-white"
                 onClick={() => {
                   const currentDate = new Date().toLocaleDateString();
-                  updateFormData('b3SubmittedBy', 'Roxanne, Crewing Executive');
+                  updateFormData('b3SubmittedBy', currentUserDisplay);
                   updateFormData('b3SubmittedDate', currentDate);
                   // Also save the data (but don't close form)
                   setTimeout(() => {
@@ -5181,7 +5188,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 
                 {newB4Comment['b4-authenticated'] !== undefined && (
                   <div>
-                    <div className="text-sm font-medium text-gray-600 mb-2">Roxanne, Crewing Executive</div>
+                    <div className="text-sm font-medium text-gray-600 mb-2">{currentUserDisplay}</div>
                     <Textarea
                       value={newB4Comment['b4-authenticated']}
                       onChange={(e) => {
@@ -5201,7 +5208,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                                 ...(prev.b4Comments['b4-authenticated'] || []),
                                 {
                                   id: commentId,
-                                  user: "Roxanne, Crewing Executive",
+                                  user: currentUserDisplay,
                                   text: newB4Comment['b4-authenticated']
                                 }
                               ]
@@ -5345,7 +5352,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 
                 {newB4Comment['b4-results'] !== undefined && (
                   <div>
-                    <div className="text-sm font-medium text-gray-600 mb-2">Roxanne, Crewing Executive</div>
+                    <div className="text-sm font-medium text-gray-600 mb-2">{currentUserDisplay}</div>
                     <Textarea
                       value={newB4Comment['b4-results']}
                       onChange={(e) => {
@@ -5365,7 +5372,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                                 ...(prev.b4Comments['b4-results'] || []),
                                 {
                                   id: commentId,
-                                  user: "Roxanne, Crewing Executive",
+                                  user: currentUserDisplay,
                                   text: newB4Comment['b4-results']
                                 }
                               ]
@@ -5425,7 +5432,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 className="bg-green-600 hover:bg-green-700 text-white"
                 onClick={() => {
                   const currentDate = new Date().toLocaleDateString();
-                  updateFormData('b4SubmittedBy', 'Roxanne, Crewing Executive');
+                  updateFormData('b4SubmittedBy', currentUserDisplay);
                   updateFormData('b4SubmittedDate', currentDate);
                   // Also save the data (but don't close form)
                   setTimeout(() => {
@@ -5707,7 +5714,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 
                 {newB5Comment['b5-completed'] !== undefined && (
                   <div>
-                    <div className="text-sm font-medium text-gray-600 mb-2">Roxanne, Crewing Executive</div>
+                    <div className="text-sm font-medium text-gray-600 mb-2">{currentUserDisplay}</div>
                     <Textarea
                       value={newB5Comment['b5-completed']}
                       onChange={(e) => {
@@ -5727,7 +5734,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                                 ...(prev.b5Comments['b5-completed'] || []),
                                 {
                                   id: commentId,
-                                  user: "Roxanne, Crewing Executive",
+                                  user: currentUserDisplay,
                                   text: newB5Comment['b5-completed']
                                 }
                               ]
@@ -5787,7 +5794,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 className="bg-green-600 hover:bg-green-700 text-white"
                 onClick={() => {
                   const currentDate = new Date().toLocaleDateString();
-                  updateFormData('b5SubmittedBy', 'Roxanne, Crewing Executive');
+                  updateFormData('b5SubmittedBy', currentUserDisplay);
                   updateFormData('b5SubmittedDate', currentDate);
                   // Also save the data (but don't close form)
                   setTimeout(() => {
@@ -6083,7 +6090,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 
                 {newB6Comment['b6-completed'] !== undefined && (
                   <div>
-                    <div className="text-sm font-medium text-gray-600 mb-2">Roxanne, Crewing Executive</div>
+                    <div className="text-sm font-medium text-gray-600 mb-2">{currentUserDisplay}</div>
                     <Textarea
                       value={newB6Comment['b6-completed']}
                       onChange={(e) => {
@@ -6103,7 +6110,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                                 ...(prev.b6Comments['b6-completed'] || []),
                                 {
                                   id: commentId,
-                                  user: "Roxanne, Crewing Executive",
+                                  user: currentUserDisplay,
                                   text: newB6Comment['b6-completed']
                                 }
                               ]
@@ -6163,7 +6170,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 className="bg-green-600 hover:bg-green-700 text-white"
                 onClick={() => {
                   const currentDate = new Date().toLocaleDateString();
-                  updateFormData('b6SubmittedBy', 'Roxanne, Crewing Executive');
+                  updateFormData('b6SubmittedBy', currentUserDisplay);
                   updateFormData('b6SubmittedDate', currentDate);
                   // Also save the data (but don't close form)
                   setTimeout(() => {
@@ -6295,7 +6302,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   className="bg-green-600 hover:bg-green-700 text-white"
                   onClick={() => {
                     const currentDate = new Date().toLocaleDateString();
-                    updateFormData('b7SubmittedBy', 'Roxanne, Crewing Executive');
+                    updateFormData('b7SubmittedBy', currentUserDisplay);
                     updateFormData('b7SubmittedDate', currentDate);
                     // Also save the data (but don't close form)
                     setTimeout(() => {
@@ -6423,7 +6430,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 
                 {newB8Comment['b8-shortlisted'] !== undefined && (
                   <div>
-                    <div className="text-sm font-medium text-gray-600 mb-2">Roxanne, Crewing Executive</div>
+                    <div className="text-sm font-medium text-gray-600 mb-2">{currentUserDisplay}</div>
                     <Textarea
                       value={newB8Comment['b8-shortlisted']}
                       onChange={(e) => {
@@ -6443,7 +6450,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                                 ...(prev.b8Comments['b8-shortlisted'] || []),
                                 {
                                   id: commentId,
-                                  user: "Roxanne, Crewing Executive",
+                                  user: currentUserDisplay,
                                   text: newB8Comment['b8-shortlisted']
                                 }
                               ]
@@ -6504,7 +6511,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   className="bg-green-600 hover:bg-green-700 text-white"
                   onClick={() => {
                     const currentDate = new Date().toLocaleDateString();
-                    updateFormData('b8SubmittedBy', 'Roxanne, Crewing Executive');
+                    updateFormData('b8SubmittedBy', currentUserDisplay);
                     updateFormData('b8SubmittedDate', currentDate);
                     // Also save the data (but don't close form)
                     setTimeout(() => {
