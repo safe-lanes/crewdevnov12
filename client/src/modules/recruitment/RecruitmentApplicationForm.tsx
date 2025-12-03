@@ -1882,37 +1882,15 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     queryKey: ["/api/masters/015/data"],
   });
 
-  // Fetch Additional Groups Master (016) for C2.2 and C3.2 dropdowns
-  const { data: additionalGroupsMasterDataRaw = [], isLoading: isLoadingAdditionalGroups } = useQuery<Array<{ entryId: string; name: string }>>({
-    queryKey: ["/api/masters/016/data"],
-  });
-
-  // Fallback static data when database has no entries
-  const FALLBACK_FLEET_GROUPS = [
-    'MR Class1 Tankers', 'Chemical JP 20', 'Chemical SS', 'Fleet A', 'Fleet B', 'Fleet C',
-    'Product Tanker Fleet', 'Crude Oil Fleet', 'Gas Tanker Fleet', 'Container Fleet'
-  ];
-
-  const FALLBACK_ADDITIONAL_GROUPS = [
-    'Special Operations', 'Port Operations', 'Offshore Operations', 'Emergency Response',
-    'Training Fleet', 'Research Vessels', 'Ice Class Vessels', 'High Risk Areas'
-  ];
-
-  const FALLBACK_VESSELS = [
-    'MV Atlantic Star', 'MV Pacific Dawn', 'MV Northern Light', 'MV Southern Cross',
-    'MV Eastern Wind', 'MV Western Pride', 'MV Central Hope', 'MV Global Unity',
-    'MV Ocean Explorer', 'MV Sea Voyager', 'MV Marine Pioneer', 'MV Coastal Guardian'
-  ];
-
-  // Combined vessel/fleet options for C2.2 and C3.2 dropdowns
-  const isLoadingVesselFleetData = isLoadingVessels || isLoadingFleetGroups || isLoadingAdditionalGroups;
+  // Combined vessel/fleet options for C2.2 and C3.2 dropdowns (only Masters 014 and 015)
+  const isLoadingVesselFleetData = isLoadingVessels || isLoadingFleetGroups;
   
   const vesselFleetOptions = useMemo(() => {
-    const options: Array<{ value: string; label: string; category: 'vessel' | 'fleet' | 'group' }> = [];
+    const options: Array<{ value: string; label: string; category: 'vessel' | 'fleet' }> = [];
     const addedValues = new Set<string>(); // Track duplicates
     
     // Helper to add option if valid and not duplicate
-    const addOption = (name: string, category: 'vessel' | 'fleet' | 'group') => {
+    const addOption = (name: string, category: 'vessel' | 'fleet') => {
       const trimmedName = name?.trim();
       if (trimmedName && trimmedName.length > 0 && !addedValues.has(trimmedName)) {
         addedValues.add(trimmedName);
@@ -1920,32 +1898,18 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       }
     };
     
-    // Add vessels from Vessels Master (014) or fallback
-    const vesselNames = vesselsMasterDataRaw.map(v => v.name).filter(n => n?.trim());
-    if (vesselNames.length > 0) {
-      vesselNames.forEach(name => addOption(name, 'vessel'));
-    } else if (!isLoadingVessels) {
-      FALLBACK_VESSELS.forEach(name => addOption(name, 'vessel'));
-    }
+    // Add vessels from Vessels Master (014) - no fallback
+    vesselsMasterDataRaw.forEach(v => {
+      if (v.name) addOption(v.name, 'vessel');
+    });
     
-    // Add fleet groups from Fleet Groups Master (015) or fallback
-    const fleetNames = fleetGroupsMasterDataRaw.map(f => f.name).filter(n => n?.trim());
-    if (fleetNames.length > 0) {
-      fleetNames.forEach(name => addOption(name, 'fleet'));
-    } else if (!isLoadingFleetGroups) {
-      FALLBACK_FLEET_GROUPS.forEach(name => addOption(name, 'fleet'));
-    }
-    
-    // Add additional groups from Additional Groups Master (016) or fallback
-    const groupNames = additionalGroupsMasterDataRaw.map(g => g.name).filter(n => n?.trim());
-    if (groupNames.length > 0) {
-      groupNames.forEach(name => addOption(name, 'group'));
-    } else if (!isLoadingAdditionalGroups) {
-      FALLBACK_ADDITIONAL_GROUPS.forEach(name => addOption(name, 'group'));
-    }
+    // Add fleet groups from Fleet Groups Master (015) - no fallback
+    fleetGroupsMasterDataRaw.forEach(f => {
+      if (f.name) addOption(f.name, 'fleet');
+    });
     
     return options;
-  }, [vesselsMasterDataRaw, fleetGroupsMasterDataRaw, additionalGroupsMasterDataRaw, isLoadingVessels, isLoadingFleetGroups, isLoadingAdditionalGroups]);
+  }, [vesselsMasterDataRaw, fleetGroupsMasterDataRaw]);
 
   // Comprehensive nationality list matching AppraisalForm standards
   const NATIONALITIES = [
