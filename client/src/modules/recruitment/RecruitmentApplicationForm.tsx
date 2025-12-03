@@ -3094,16 +3094,16 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Vessel Name</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Vessel Type</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Deadweight</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Engine Type/ Power</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Owner / operator</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Rank</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">From</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">To</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Period(M)</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-40">Vessel Name</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-28">Vessel Type</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-20">Deadweight</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Engine Type/ Power</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Owner / operator</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Rank</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-28">From</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-28">To</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-16">Period(M)</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-20">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
