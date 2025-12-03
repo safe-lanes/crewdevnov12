@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ArrowLeft, Edit, Plus, Save, Trash2, Upload, Paperclip, X, Camera, Info, MessageSquare } from 'lucide-react';
+import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAttachmentDialog';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { type RecruitmentCandidate, type InsertRecruitmentCandidate } from '@shared/schema';
@@ -98,6 +99,7 @@ interface FormData {
     issued: string;
     expiry: string;
     issuingAuthority: string;
+    attachments?: Array<{id: string; name: string; type: string; size: number; data: string; uploadedAt: string}>;
   }>;
 
   // A2.2 Visas
@@ -109,6 +111,7 @@ interface FormData {
     issued: string;
     expiry: string;
     visaType: string;
+    attachments?: Array<{id: string; name: string; type: string; size: number; data: string; uploadedAt: string}>;
   }>;
 
   // A3.1 Education
@@ -118,6 +121,7 @@ interface FormData {
     schoolCollegeUniversity: string;
     subjectsField: string;
     qualifications: string;
+    attachments?: Array<{id: string; name: string; type: string; size: number; data: string; uploadedAt: string}>;
   }>;
 
   // A3.2 License & DCE
@@ -131,6 +135,7 @@ interface FormData {
     issuingAuthority: string;
     issued: string;
     expiry: string;
+    attachments?: Array<{id: string; name: string; type: string; size: number; data: string; uploadedAt: string}>;
   }>;
 
   // A3.3 Training Course
@@ -144,6 +149,7 @@ interface FormData {
     issuingAuthority: string;
     issued: string;
     expiry: string;
+    attachments?: Array<{id: string; name: string; type: string; size: number; data: string; uploadedAt: string}>;
   }>;
 
   // A4.1 Sea Service
@@ -158,6 +164,7 @@ interface FormData {
     from: string;
     to: string;
     periodMonths: string;
+    attachments?: Array<{id: string; name: string; type: string; size: number; data: string; uploadedAt: string}>;
   }>;
 
   // A5 Additional Information
@@ -706,6 +713,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const [isTrainingDialogOpen, setIsTrainingDialogOpen] = useState(false);
   const [isTravelDocDialogOpen, setIsTravelDocDialogOpen] = useState(false);
   const [isVisaDialogOpen, setIsVisaDialogOpen] = useState(false);
+  
+  // Attachment dialog state - stores the id and type of item being edited
+  const [attachmentDialog, setAttachmentDialog] = useState<{
+    open: boolean;
+    type: 'document' | 'visa' | 'education' | 'license' | 'training' | 'seaService' | null;
+    itemId: string | null;
+    itemName: string;
+  }>({ open: false, type: null, itemId: null, itemName: '' });
 
   // Mapping for interviewer values to display names
   const interviewerDisplayNames: {[key: string]: string} = {
@@ -1336,6 +1351,89 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       };
     });
     setIsVisaDialogOpen(false);
+  };
+
+  // Attachment management helper
+  const openAttachmentDialog = (
+    type: 'document' | 'visa' | 'education' | 'license' | 'training' | 'seaService',
+    itemId: string,
+    itemName: string
+  ) => {
+    setAttachmentDialog({ open: true, type, itemId, itemName });
+  };
+
+  const getAttachmentsForItem = (): FileAttachment[] => {
+    if (!attachmentDialog.itemId || !attachmentDialog.type) return [];
+    
+    switch (attachmentDialog.type) {
+      case 'document':
+        return formData.documents.find(d => d.id === attachmentDialog.itemId)?.attachments || [];
+      case 'visa':
+        return formData.visas.find(v => v.id === attachmentDialog.itemId)?.attachments || [];
+      case 'education':
+        return formData.education.find(e => e.id === attachmentDialog.itemId)?.attachments || [];
+      case 'license':
+        return formData.licenses.find(l => l.id === attachmentDialog.itemId)?.attachments || [];
+      case 'training':
+        return formData.trainingCourses.find(t => t.id === attachmentDialog.itemId)?.attachments || [];
+      case 'seaService':
+        return formData.seaService.find(s => s.id === attachmentDialog.itemId)?.attachments || [];
+      default:
+        return [];
+    }
+  };
+
+  const updateAttachments = (attachments: FileAttachment[]) => {
+    if (!attachmentDialog.itemId || !attachmentDialog.type) return;
+
+    setFormData(prev => {
+      switch (attachmentDialog.type) {
+        case 'document':
+          return {
+            ...prev,
+            documents: prev.documents.map(d =>
+              d.id === attachmentDialog.itemId ? { ...d, attachments } : d
+            )
+          };
+        case 'visa':
+          return {
+            ...prev,
+            visas: prev.visas.map(v =>
+              v.id === attachmentDialog.itemId ? { ...v, attachments } : v
+            )
+          };
+        case 'education':
+          return {
+            ...prev,
+            education: prev.education.map(e =>
+              e.id === attachmentDialog.itemId ? { ...e, attachments } : e
+            )
+          };
+        case 'license':
+          return {
+            ...prev,
+            licenses: prev.licenses.map(l =>
+              l.id === attachmentDialog.itemId ? { ...l, attachments } : l
+            )
+          };
+        case 'training':
+          return {
+            ...prev,
+            trainingCourses: prev.trainingCourses.map(t =>
+              t.id === attachmentDialog.itemId ? { ...t, attachments } : t
+            )
+          };
+        case 'seaService':
+          return {
+            ...prev,
+            seaService: prev.seaService.map(s =>
+              s.id === attachmentDialog.itemId ? { ...s, attachments } : s
+            )
+          };
+        default:
+          return prev;
+      }
+    });
   };
 
   // Sea Service management functions
@@ -2451,8 +2549,19 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-gray-400 hover:text-blue-600 relative"
+                      onClick={() => openAttachmentDialog('document', doc.id, doc.document || 'Document')}
+                      data-testid={`button-attach-document-${doc.id}`}
+                    >
                       <Paperclip className="h-3 w-3" />
+                      {(doc.attachments?.length || 0) > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">
+                          {doc.attachments?.length}
+                        </span>
+                      )}
                     </Button>
                     <Button 
                       variant="ghost" 
@@ -2553,8 +2662,19 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-gray-400 hover:text-blue-600 relative"
+                      onClick={() => openAttachmentDialog('visa', visa.id, visa.issuingCountry || 'Visa')}
+                      data-testid={`button-attach-visa-${visa.id}`}
+                    >
                       <Paperclip className="h-3 w-3" />
+                      {(visa.attachments?.length || 0) > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">
+                          {visa.attachments?.length}
+                        </span>
+                      )}
                     </Button>
                     <Button 
                       variant="ghost" 
@@ -2634,8 +2754,19 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-gray-400 hover:text-blue-600 relative"
+                      onClick={() => openAttachmentDialog('education', edu.id, edu.qualifications || 'Education')}
+                      data-testid={`button-attach-education-${edu.id}`}
+                    >
                       <Paperclip className="h-3 w-3" />
+                      {(edu.attachments?.length || 0) > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">
+                          {edu.attachments?.length}
+                        </span>
+                      )}
                     </Button>
                     <Button 
                       variant="ghost" 
@@ -2756,8 +2887,19 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-gray-400 hover:text-blue-600 relative"
+                      onClick={() => openAttachmentDialog('license', license.id, license.certificateDocument || 'License')}
+                      data-testid={`button-attach-license-${license.id}`}
+                    >
                       <Paperclip className="h-3 w-3" />
+                      {(license.attachments?.length || 0) > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">
+                          {license.attachments?.length}
+                        </span>
+                      )}
                     </Button>
                     <Button 
                       variant="ghost" 
@@ -2878,8 +3020,19 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-gray-400 hover:text-blue-600 relative"
+                      onClick={() => openAttachmentDialog('training', course.id, course.trainingCourse || 'Training')}
+                      data-testid={`button-attach-training-${course.id}`}
+                    >
                       <Paperclip className="h-3 w-3" />
+                      {(course.attachments?.length || 0) > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">
+                          {course.attachments?.length}
+                        </span>
+                      )}
                     </Button>
                     <Button 
                       variant="ghost" 
@@ -3026,6 +3179,20 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-gray-400 hover:text-blue-600 relative"
+                      onClick={() => openAttachmentDialog('seaService', service.id, service.vesselName || 'Sea Service')}
+                      data-testid={`button-attach-seaservice-${service.id}`}
+                    >
+                      <Paperclip className="h-3 w-3" />
+                      {(service.attachments?.length || 0) > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">
+                          {service.attachments?.length}
+                        </span>
+                      )}
+                    </Button>
                     <Button 
                       variant="ghost" 
                       size="icon" 
@@ -6948,6 +7115,16 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
         onClose={() => setIsVisaDialogOpen(false)}
         onConfirm={addVisasFromDatabase}
         existingCountryIds={formData.visas.map(v => v.countryId).filter((id): id is string => Boolean(id))}
+      />
+      
+      {/* File Attachment Dialog */}
+      <FileAttachmentDialog
+        open={attachmentDialog.open}
+        onOpenChange={(open) => setAttachmentDialog(prev => ({ ...prev, open }))}
+        attachments={getAttachmentsForItem()}
+        onAttachmentsChange={updateAttachments}
+        title="Manage Attachments"
+        itemName={attachmentDialog.itemName}
       />
     </div>
   );
