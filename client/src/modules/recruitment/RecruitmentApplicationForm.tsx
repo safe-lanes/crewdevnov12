@@ -99,7 +99,7 @@ interface FormData {
     issued: string;
     expiry: string;
     issuingAuthority: string;
-    attachments?: Array<{id: string; name: string; type: string; size: number; data: string; uploadedAt: string}>;
+    attachments?: FileAttachment[];
   }>;
 
   // A2.2 Visas
@@ -111,7 +111,7 @@ interface FormData {
     issued: string;
     expiry: string;
     visaType: string;
-    attachments?: Array<{id: string; name: string; type: string; size: number; data: string; uploadedAt: string}>;
+    attachments?: FileAttachment[];
   }>;
 
   // A3.1 Education
@@ -121,7 +121,7 @@ interface FormData {
     schoolCollegeUniversity: string;
     subjectsField: string;
     qualifications: string;
-    attachments?: Array<{id: string; name: string; type: string; size: number; data: string; uploadedAt: string}>;
+    attachments?: FileAttachment[];
   }>;
 
   // A3.2 License & DCE
@@ -135,7 +135,7 @@ interface FormData {
     issuingAuthority: string;
     issued: string;
     expiry: string;
-    attachments?: Array<{id: string; name: string; type: string; size: number; data: string; uploadedAt: string}>;
+    attachments?: FileAttachment[];
   }>;
 
   // A3.3 Training Course
@@ -149,7 +149,7 @@ interface FormData {
     issuingAuthority: string;
     issued: string;
     expiry: string;
-    attachments?: Array<{id: string; name: string; type: string; size: number; data: string; uploadedAt: string}>;
+    attachments?: FileAttachment[];
   }>;
 
   // A4.1 Sea Service
@@ -164,7 +164,7 @@ interface FormData {
     from: string;
     to: string;
     periodMonths: string;
-    attachments?: Array<{id: string; name: string; type: string; size: number; data: string; uploadedAt: string}>;
+    attachments?: FileAttachment[];
   }>;
 
   // A5 Additional Information
