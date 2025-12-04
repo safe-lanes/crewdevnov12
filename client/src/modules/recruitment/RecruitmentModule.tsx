@@ -278,12 +278,7 @@ export const RecruitmentModule = (): JSX.Element => {
       filter: 'agSetColumnFilter',
       sortable: true,
       resizable: true,
-      enableRowGroup: false,
-      valueGetter: (params: any) => normalizeRank(params.data?.rankAppliedFor || '') || params.data?.rankAppliedFor,
-      filterValueGetter: (params: any) => normalizeRank(params.data?.rankAppliedFor || '') || params.data?.rankAppliedFor,
-      filterParams: {
-        keyCreator: (params: any) => normalizeRank(params.value || '') || params.value
-      }
+      enableRowGroup: false
     },
     {
       headerName: 'Present Rank',
@@ -293,12 +288,7 @@ export const RecruitmentModule = (): JSX.Element => {
       filter: 'agSetColumnFilter',
       sortable: true,
       resizable: true,
-      enableRowGroup: false,
-      valueGetter: (params: any) => normalizeRank(params.data?.presentRank || '') || params.data?.presentRank,
-      filterValueGetter: (params: any) => normalizeRank(params.data?.presentRank || '') || params.data?.presentRank,
-      filterParams: {
-        keyCreator: (params: any) => normalizeRank(params.value || '') || params.value
-      }
+      enableRowGroup: false
     },
     {
       headerName: 'Vessel Type',

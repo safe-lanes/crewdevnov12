@@ -279,12 +279,7 @@ export const CrewPoolModule = (): JSX.Element => {
                     resizable: true,
                     wrapText: true,
                     autoHeight: true,
-                    headerClass: 'ag-header-cell-text-wrap',
-                    valueGetter: (params: any) => normalizeRank(params.data?.presentRank || '') || params.data?.presentRank,
-                    filterValueGetter: (params: any) => normalizeRank(params.data?.presentRank || '') || params.data?.presentRank,
-                    filterParams: {
-                        keyCreator: (params: any) => normalizeRank(params.value || '') || params.value
-                    }
+                    headerClass: 'ag-header-cell-text-wrap'
                 },
                 {
                     headerName: 'Nation',
