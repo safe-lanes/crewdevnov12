@@ -20,6 +20,7 @@ import {
 import { apiRequest } from '@/lib/queryClient';
 import { type RecruitmentCandidate } from '@shared/schema';
 import { useToast } from '@/hooks/use-toast';
+import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 
 // Status mapping for filtering
 const STATUS_MAPPING = {
@@ -38,6 +39,7 @@ export const RecruitmentModule = (): JSX.Element => {
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { rankNames, isLoading: ranksLoading } = useCompanyRanks();
 
   // Filter state (moved up to fix order)
   const [filters, setFilters] = useState({
@@ -375,21 +377,17 @@ export const RecruitmentModule = (): JSX.Element => {
               />
 
               <Select value={filters.rankAppliedFor} onValueChange={(value) => setFilters(prev => ({ ...prev, rankAppliedFor: value }))}>
-                <SelectTrigger className="h-8 w-40 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
+                <SelectTrigger className="h-8 w-40 text-xs text-[#0f172a] placeholder:text-[#8899ae]" data-testid="select-rank-filter">
                   <SelectValue placeholder="Rank Applied for" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Captain">Captain</SelectItem>
-                  <SelectItem value="Chief Engineer">Chief Engineer</SelectItem>
-                  <SelectItem value="Chief Mate">Chief Mate</SelectItem>
-                  <SelectItem value="First Officer">First Officer</SelectItem>
-                  <SelectItem value="Second Officer">Second Officer</SelectItem>
-                  <SelectItem value="Second Engineer">Second Engineer</SelectItem>
-                  <SelectItem value="Third Engineer">Third Engineer</SelectItem>
-                  <SelectItem value="Able Seaman">Able Seaman</SelectItem>
-                  <SelectItem value="Electrician">Electrician</SelectItem>
-                  <SelectItem value="Bosun">Bosun</SelectItem>
-                  <SelectItem value="Cook">Cook</SelectItem>
+                <SelectContent className="max-h-[200px]">
+                  {ranksLoading ? (
+                    <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
+                  ) : (
+                    rankNames.map(rank => (
+                      <SelectItem key={rank} value={rank} data-testid={`rank-option-${rank}`}>{rank}</SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
 
