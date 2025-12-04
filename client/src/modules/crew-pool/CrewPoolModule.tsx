@@ -21,6 +21,7 @@ import {
 import CrewInfoForm from './CrewInfoForm';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
+import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { NATIONALITIES } from '@/utils/data/nationalities';
 
 const formatCompactDate = (value: any): string => {
@@ -63,6 +64,9 @@ export const CrewPoolModule = (): JSX.Element => {
     // Company ranks hook for dynamic rank dropdown
     const { rankNames, isLoading: ranksLoading } = useCompanyRanks();
     
+    // Rank normalization hook to convert positions (e.g., "OS_1") to actual ranks (e.g., "OS")
+    const { normalizeRank } = useRankNormalization();
+    
     // Fetch nationalities from Master Data 001
     const { data: nationalityMasterDataRaw = [], isLoading: nationalitiesLoading } = useQuery<Array<{ entryId: string; name: string }>>({
         queryKey: ["/api/masters/001/data"],
@@ -103,15 +107,49 @@ export const CrewPoolModule = (): JSX.Element => {
         },
     });
 
-    // Use API data directly - server already returns normalized data with vessel_planning enrichment
-    // No need to re-normalize as the server handles:
-    // 1. Normalization via normalizeCrewMemberForTable
-    // 2. Vessel assignment from vessel_planning (overrides presentVessel)
-    // 3. JoiningDate and ReliefDue from vessel_planning
+    // Normalize and filter crew data for AG Grid
+    // - Converts positions (e.g., "OS_1") to actual ranks (e.g., "OS")
+    // - Applies external filter state from dropdown controls
     const crewData = useMemo(() => {
         if (!rawCrewData || rawCrewData.length === 0) return [];
-        return rawCrewData;
-    }, [rawCrewData]);
+        
+        // First normalize the rank data
+        let data = rawCrewData.map((crew: any) => ({
+            ...crew,
+            presentRank: normalizeRank(crew.presentRank || '') || crew.presentRank
+        }));
+        
+        // Apply external filters
+        return data.filter((crew: any) => {
+            const fullName = `${crew.firstName || ''} ${crew.middleName || ''} ${crew.familyName || ''}`.toLowerCase();
+            const matchesName = filters.searchName === "" || fullName.includes(filters.searchName.toLowerCase());
+            const matchesVessel = filters.vessel === "" || crew.presentVessel === filters.vessel;
+            const matchesRank = filters.rank === "" || crew.presentRank === filters.rank;
+            const matchesNationality = filters.nationality === "" || crew.nationality === filters.nationality;
+            const matchesStatus = filters.status === "" || crew.status === filters.status;
+            
+            // Relief due filter logic
+            let matchesReliefDue = true;
+            if (filters.reliefDue !== "") {
+                const today = new Date();
+                const reliefDate = crew.reliefDue ? new Date(crew.reliefDue) : null;
+                
+                if (filters.reliefDue === "overdue" && reliefDate) {
+                    matchesReliefDue = reliefDate < today;
+                } else if (filters.reliefDue === "this-month" && reliefDate) {
+                    const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+                    const thisMonthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                    matchesReliefDue = reliefDate >= thisMonthStart && reliefDate <= thisMonthEnd;
+                } else if (filters.reliefDue === "next-month" && reliefDate) {
+                    const nextMonthStart = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+                    const nextMonthEnd = new Date(today.getFullYear(), today.getMonth() + 2, 0);
+                    matchesReliefDue = reliefDate >= nextMonthStart && reliefDate <= nextMonthEnd;
+                }
+            }
+            
+            return matchesName && matchesVessel && matchesRank && matchesNationality && matchesStatus && matchesReliefDue;
+        });
+    }, [rawCrewData, normalizeRank, filters]);
 
     // Actions cell renderer for edit button
     const ActionsCellRenderer = useCallback((params: ICellRendererParams) => {
@@ -241,7 +279,12 @@ export const CrewPoolModule = (): JSX.Element => {
                     resizable: true,
                     wrapText: true,
                     autoHeight: true,
-                    headerClass: 'ag-header-cell-text-wrap'
+                    headerClass: 'ag-header-cell-text-wrap',
+                    valueGetter: (params: any) => normalizeRank(params.data?.presentRank || '') || params.data?.presentRank,
+                    filterValueGetter: (params: any) => normalizeRank(params.data?.presentRank || '') || params.data?.presentRank,
+                    filterParams: {
+                        keyCreator: (params: any) => normalizeRank(params.value || '') || params.value
+                    }
                 },
                 {
                     headerName: 'Nation',
@@ -451,7 +494,7 @@ export const CrewPoolModule = (): JSX.Element => {
             suppressHeaderMenuButton: true,
             suppressColumnsToolPanel: true
         }
-    ], [ActionsCellRenderer, viewportConfig, getVesselName]);
+    ], [ActionsCellRenderer, viewportConfig, getVesselName, normalizeRank]);
 
     // Grid ready handler - responsive logic is handled by AgGridTable component
     const onGridReady = useCallback((params: GridReadyEvent) => {

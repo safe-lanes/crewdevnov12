@@ -21,6 +21,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { type RecruitmentCandidate } from '@shared/schema';
 import { useToast } from '@/hooks/use-toast';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
+import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 import { NATIONALITIES } from '@/utils/data/nationalities';
 
@@ -42,6 +43,7 @@ export const RecruitmentModule = (): JSX.Element => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { rankNames, isLoading: ranksLoading } = useCompanyRanks();
+  const { normalizeRank } = useRankNormalization();
 
   // Fetch vessel types from Master 004 API
   const { data: vesselTypeMasterDataRaw = [], isLoading: vesselTypesLoading } = useQuery<Array<{ entryId: string; name: string; level?: number }>>({
@@ -276,7 +278,12 @@ export const RecruitmentModule = (): JSX.Element => {
       filter: 'agSetColumnFilter',
       sortable: true,
       resizable: true,
-      enableRowGroup: false
+      enableRowGroup: false,
+      valueGetter: (params: any) => normalizeRank(params.data?.rankAppliedFor || '') || params.data?.rankAppliedFor,
+      filterValueGetter: (params: any) => normalizeRank(params.data?.rankAppliedFor || '') || params.data?.rankAppliedFor,
+      filterParams: {
+        keyCreator: (params: any) => normalizeRank(params.value || '') || params.value
+      }
     },
     {
       headerName: 'Present Rank',
@@ -286,7 +293,12 @@ export const RecruitmentModule = (): JSX.Element => {
       filter: 'agSetColumnFilter',
       sortable: true,
       resizable: true,
-      enableRowGroup: false
+      enableRowGroup: false,
+      valueGetter: (params: any) => normalizeRank(params.data?.presentRank || '') || params.data?.presentRank,
+      filterValueGetter: (params: any) => normalizeRank(params.data?.presentRank || '') || params.data?.presentRank,
+      filterParams: {
+        keyCreator: (params: any) => normalizeRank(params.value || '') || params.value
+      }
     },
     {
       headerName: 'Vessel Type',
@@ -319,7 +331,7 @@ export const RecruitmentModule = (): JSX.Element => {
       pinned: 'right',
       lockPosition: true
     }
-  ], [ActionsCellRenderer]);
+  ], [ActionsCellRenderer, normalizeRank]);
 
   const onGridReady = useCallback((params: GridReadyEvent) => {
     setGridApi(params.api);
@@ -338,7 +350,8 @@ export const RecruitmentModule = (): JSX.Element => {
     };
   }, []);
 
-  // Filter the recruitment data based on selected page and filters
+  // Filter and normalize the recruitment data based on selected page and filters
+  // Normalizes rank fields so AG Grid filtering and display work correctly
   const filteredData = useMemo(() => {
     let filtered = allCandidates as RecruitmentCandidate[];
     
@@ -350,19 +363,26 @@ export const RecruitmentModule = (): JSX.Element => {
       );
     }
     
-    // Then apply additional filters
-    return filtered.filter(candidate => {
+    // Apply additional filters
+    filtered = filtered.filter(candidate => {
       const matchesName = filters.searchName === "" || 
         `${candidate.firstName} ${candidate.middleName || ''} ${candidate.familyName}`
           .toLowerCase().includes(filters.searchName.toLowerCase());
-      const matchesRank = filters.rankAppliedFor === "" || candidate.rankAppliedFor === filters.rankAppliedFor;
+      const matchesRank = filters.rankAppliedFor === "" || normalizeRank(candidate.rankAppliedFor || '') === filters.rankAppliedFor;
       const matchesVesselType = filters.vesselType === "" || candidate.vesselType === filters.vesselType;
       const matchesNationality = filters.nationality === "" || candidate.nationality === filters.nationality;
       const matchesStatus = filters.status === "" || candidate.status === filters.status;
       
       return matchesName && matchesRank && matchesVesselType && matchesNationality && matchesStatus;
     });
-  }, [allCandidates, selectedRecruitmentPage, filters]);
+    
+    // Normalize rank fields in the data for AG Grid display and filtering
+    return filtered.map(candidate => ({
+      ...candidate,
+      rankAppliedFor: normalizeRank(candidate.rankAppliedFor || '') || candidate.rankAppliedFor,
+      presentRank: normalizeRank(candidate.presentRank || '') || candidate.presentRank
+    }));
+  }, [allCandidates, selectedRecruitmentPage, filters, normalizeRank]);
 
   const getTitle = () => {
     switch (selectedRecruitmentPage) {

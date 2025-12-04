@@ -574,13 +574,14 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   ];
 
   // Initialize form data with crew member data
+  // Note: presentRank is normalized to convert positions (e.g., "OS_1") to actual ranks (e.g., "OS")
   const [formData, setFormData] = useState<FormData>({
     // A1.1 General Particulars
     firstName: crewMember?.firstName || '',
     middleName: crewMember?.middleName || '',
     familyName: crewMember?.familyName || '',
     nationality: crewMember?.nationality || '',
-    presentRank: crewMember?.presentRank || '',
+    presentRank: normalizeRank(crewMember?.presentRank || '') || crewMember?.presentRank || '',
     dateOfBirth: crewMember?.dob || '',
     ageInYears: crewMember?.age || '',
     placeOfBirthCity: '',
@@ -748,7 +749,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
         middleName: detailedCrewData.middleName || '',
         familyName: detailedCrewData.familyName || '',
         nationality: detailedCrewData.nationality || '',
-        presentRank: detailedCrewData.presentRank || '',
+        presentRank: normalizeRank(detailedCrewData.presentRank || '') || detailedCrewData.presentRank || '',
         dateOfBirth: detailedCrewData.dob || detailedCrewData.dateOfBirth || '',
         ageInYears: detailedCrewData.age || detailedCrewData.ageInYears || calculateAge(detailedCrewData.dob || detailedCrewData.dateOfBirth || ''),
         placeOfBirthCity: detailedCrewData.placeOfBirthCity || '',
@@ -759,7 +760,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
         nativeLanguage: detailedCrewData.nativeLanguage || '',
         foreignLanguages: detailedCrewData.foreignLanguages || '',
         englishProficiency: detailedCrewData.englishProficiency || '',
-        rankAppliedFor: detailedCrewData.rankAppliedFor || '',
+        rankAppliedFor: normalizeRank(detailedCrewData.rankAppliedFor || '') || detailedCrewData.rankAppliedFor || '',
         vesselType: Array.isArray(detailedCrewData.vesselTypes) 
           ? detailedCrewData.vesselTypes 
           : detailedCrewData.vesselTypes 
@@ -2455,7 +2456,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                 </SelectContent>
               </Select>
             ) : (
-              <div className="mt-1 text-sm text-gray-900">{formData.presentRank}</div>
+              <div className="mt-1 text-sm text-gray-900">{normalizeRank(formData.presentRank || '') || formData.presentRank}</div>
             )}
           </div>
           
@@ -4683,13 +4684,14 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   // Crew member selection handler
   const handleCrewMemberSelection = (selectedCrewMember: CrewMember) => {
     // Update form data with selected crew member's basic information
+    // presentRank is normalized to convert positions to actual ranks
     setFormData(prev => ({
       ...prev,
       firstName: selectedCrewMember.firstName || '',
       middleName: selectedCrewMember.middleName || '',
       familyName: selectedCrewMember.familyName || '',
       nationality: selectedCrewMember.nationality || '',
-      presentRank: selectedCrewMember.presentRank || '',
+      presentRank: normalizeRank(selectedCrewMember.presentRank || '') || selectedCrewMember.presentRank || '',
       dateOfBirth: selectedCrewMember.dob || '',
       ageInYears: selectedCrewMember.age || '',
       employeeId: selectedCrewMember.employeeId || '',
