@@ -22,6 +22,7 @@ import { type RecruitmentCandidate } from '@shared/schema';
 import { useToast } from '@/hooks/use-toast';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
+import { NATIONALITIES } from '@/utils/data/nationalities';
 
 // Status mapping for filtering
 const STATUS_MAPPING = {
@@ -60,6 +61,20 @@ export const RecruitmentModule = (): JSX.Element => {
     // Fallback to static data
     return DEFAULT_DROPDOWN_VESSEL_TYPES;
   }, [vesselTypeMasterDataRaw]);
+
+  // Fetch nationalities from Master Data 001
+  const { data: nationalityMasterDataRaw = [], isLoading: nationalitiesLoading } = useQuery<Array<{ entryId: string; name: string }>>({
+    queryKey: ["/api/masters/001/data"],
+  });
+
+  // Extract nationality names with fallback to static data
+  const nationalityMasterData = useMemo(() => {
+    if (nationalityMasterDataRaw.length > 0) {
+      return nationalityMasterDataRaw.map(n => n.name);
+    }
+    // Fallback to static NATIONALITIES list
+    return [...NATIONALITIES];
+  }, [nationalityMasterDataRaw]);
 
   // Filter state (moved up to fix order)
   const [filters, setFilters] = useState({
@@ -427,16 +442,17 @@ export const RecruitmentModule = (): JSX.Element => {
               </Select>
 
               <Select value={filters.nationality} onValueChange={(value) => setFilters(prev => ({ ...prev, nationality: value }))}>
-                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
+                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]" data-testid="select-nationality-filter">
                   <SelectValue placeholder="Nationality" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="British">British</SelectItem>
-                  <SelectItem value="Indian">Indian</SelectItem>
-                  <SelectItem value="Philippines">Philippines</SelectItem>
-                  <SelectItem value="Ukrainian">Ukrainian</SelectItem>
-                  <SelectItem value="Romanian">Romanian</SelectItem>
-                  <SelectItem value="Polish">Polish</SelectItem>
+                <SelectContent className="max-h-[200px]">
+                  {nationalitiesLoading ? (
+                    <SelectItem value="loading" disabled>Loading...</SelectItem>
+                  ) : (
+                    nationalityMasterData.map(nationality => (
+                      <SelectItem key={nationality} value={nationality} data-testid={`nationality-option-${nationality}`}>{nationality}</SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
 
