@@ -2866,7 +2866,7 @@ const AdminModuleInner = (): JSX.Element => {
                 <TableHead className="text-white text-xs font-normal w-4 sticky top-0 z-30 bg-[#52baf3] shadow-sm"></TableHead>
                 <TableHead className="text-white text-xs font-normal sticky top-0 z-30 bg-[#52baf3] shadow-sm">Rank</TableHead>
                 {companyRankData.some(rank => rank.isRoleRow) && (
-                  <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Rank (Role)</TableHead>
+                  <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Position</TableHead>
                 )}
                 <TableHead className="text-white text-xs font-normal w-20 sticky top-0 z-30 bg-[#52baf3] shadow-sm">Rank ID (Sail)</TableHead>
                 <TableHead className="text-white text-xs font-normal w-16 text-center sticky top-0 z-30 bg-[#52baf3] shadow-sm">Officer</TableHead>
