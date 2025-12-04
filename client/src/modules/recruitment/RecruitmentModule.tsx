@@ -68,11 +68,12 @@ export const RecruitmentModule = (): JSX.Element => {
   });
 
   // Extract nationality names with fallback to static data
+  // Use static list if master data has fewer than 20 entries (incomplete data)
   const nationalityMasterData = useMemo(() => {
-    if (nationalityMasterDataRaw.length > 0) {
+    if (nationalityMasterDataRaw.length >= 20) {
       return nationalityMasterDataRaw.map(n => n.name);
     }
-    // Fallback to static NATIONALITIES list
+    // Fallback to comprehensive static NATIONALITIES list
     return [...NATIONALITIES];
   }, [nationalityMasterDataRaw]);
 
