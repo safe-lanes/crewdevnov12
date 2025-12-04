@@ -21,6 +21,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { type RecruitmentCandidate } from '@shared/schema';
 import { useToast } from '@/hooks/use-toast';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
+import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 
 // Status mapping for filtering
 const STATUS_MAPPING = {
@@ -40,6 +41,25 @@ export const RecruitmentModule = (): JSX.Element => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { rankNames, isLoading: ranksLoading } = useCompanyRanks();
+
+  // Fetch vessel types from Master 004 API
+  const { data: vesselTypeMasterDataRaw = [], isLoading: vesselTypesLoading } = useQuery<Array<{ entryId: string; name: string; level?: number }>>({
+    queryKey: ["/api/masters/004/data"],
+  });
+  
+  // Filter to Level 2 and Level 3 types for dropdown (not Level 1 categories)
+  // Default level to 2 when undefined to ensure all vessel types are included
+  const vesselTypeMasterData = useMemo(() => {
+    if (vesselTypeMasterDataRaw.length > 0) {
+      const filteredTypes = vesselTypeMasterDataRaw.filter(vt => {
+        const level = vt.level ?? 2; // Default to level 2 if undefined
+        return level >= 2;
+      });
+      if (filteredTypes.length > 0) return filteredTypes.map(vt => vt.name);
+    }
+    // Fallback to static data
+    return DEFAULT_DROPDOWN_VESSEL_TYPES;
+  }, [vesselTypeMasterDataRaw]);
 
   // Filter state (moved up to fix order)
   const [filters, setFilters] = useState({
@@ -392,15 +412,17 @@ export const RecruitmentModule = (): JSX.Element => {
               </Select>
 
               <Select value={filters.vesselType} onValueChange={(value) => setFilters(prev => ({ ...prev, vesselType: value }))}>
-                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
+                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]" data-testid="select-vessel-type-filter">
                   <SelectValue placeholder="Vessel Type" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Container">Container</SelectItem>
-                  <SelectItem value="Bulk">Bulk</SelectItem>
-                  <SelectItem value="Oil Tanker">Oil Tanker</SelectItem>
-                  <SelectItem value="LPG Tanker">LPG Tanker</SelectItem>
-                  <SelectItem value="General Cargo">General Cargo</SelectItem>
+                <SelectContent className="max-h-[200px]">
+                  {vesselTypesLoading ? (
+                    <SelectItem value="loading" disabled>Loading...</SelectItem>
+                  ) : (
+                    vesselTypeMasterData.map(vesselType => (
+                      <SelectItem key={vesselType} value={vesselType} data-testid={`vessel-type-option-${vesselType}`}>{vesselType}</SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
 
