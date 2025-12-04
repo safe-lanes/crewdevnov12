@@ -16,6 +16,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { toStorageCrew } from '@shared/crew-mapping';
 import type { CrewDashboardSummary } from '@shared/schema';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
+import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 import { LicenseSelectionDialog } from './LicenseSelectionDialog';
 import { TrainingCourseSelectionDialog } from './TrainingCourseSelectionDialog';
@@ -342,7 +343,11 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   // Get company ranks from shared hook
   const { data: companyRanks, isLoading: ranksLoading, rankNames, error: ranksError } = useCompanyRanks();
   
+  // Get rank normalization functions to convert positions to actual ranks
+  const { normalizeRank } = useRankNormalization();
+  
   // Sort crew members by rank hierarchy using company ranks sort order
+  // Uses normalizeRank to convert positions (e.g., "OS_1") to actual ranks (e.g., "OS")
   const allCrewMembers = useMemo(() => {
     if (allCrewMembersRaw.length === 0) return [];
     
@@ -353,17 +358,18 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     });
     
     return [...allCrewMembersRaw].sort((a, b) => {
-      const rankA = (a.presentRank || '').toLowerCase();
-      const rankB = (b.presentRank || '').toLowerCase();
+      // Normalize positions to actual ranks before sorting
+      const normalizedRankA = normalizeRank(a.presentRank || '').toLowerCase();
+      const normalizedRankB = normalizeRank(b.presentRank || '').toLowerCase();
       
-      const orderA = rankOrderMap.get(rankA) ?? 9999;
-      const orderB = rankOrderMap.get(rankB) ?? 9999;
+      const orderA = rankOrderMap.get(normalizedRankA) ?? 9999;
+      const orderB = rankOrderMap.get(normalizedRankB) ?? 9999;
       
       // Primary sort by rank order, secondary by name
       if (orderA !== orderB) return orderA - orderB;
       return `${a.firstName} ${a.familyName}`.localeCompare(`${b.firstName} ${b.familyName}`);
     });
-  }, [allCrewMembersRaw, companyRanks]);
+  }, [allCrewMembersRaw, companyRanks, normalizeRank]);
 
   // Data mappings with proper nullish coalescing
   const statusData = dashboardData?.status;
@@ -5004,7 +5010,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                 data-testid="button-crew-dropdown"
               >
                 <span>
-                  {crewMember ? `${crewMember.firstName} ${crewMember.familyName}, ${crewMember.presentRank || 'Crew Member'}` : 'Crew Member'}
+                  {crewMember ? `${crewMember.firstName} ${crewMember.familyName}, ${normalizeRank(crewMember.presentRank || '') || 'Crew Member'}` : 'Crew Member'}
                 </span>
                 <ChevronDown className="h-4 w-4 flex-shrink-0" />
               </button>
@@ -5040,7 +5046,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                                 {member.firstName} {member.familyName}
                               </div>
                               <div className="text-sm text-gray-500">
-                                {member.presentRank} • {member.empNo}
+                                {normalizeRank(member.presentRank || '') || member.presentRank} • {member.empNo}
                               </div>
                             </div>
                             {crewMember?.id === member.id && (
