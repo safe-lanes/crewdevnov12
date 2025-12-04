@@ -20,6 +20,8 @@ import {
 } from '@/components/ui/select';
 import CrewInfoForm from './CrewInfoForm';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { useCompanyRanks } from '@/hooks/useCompanyRanks';
+import { NATIONALITIES } from '@/utils/data/nationalities';
 
 const formatCompactDate = (value: any): string => {
     if (!value) return '';
@@ -57,6 +59,24 @@ export const CrewPoolModule = (): JSX.Element => {
     
     // Vessel lookup hook for ID to name translation
     const { getVesselName } = useVesselLookup();
+    
+    // Company ranks hook for dynamic rank dropdown
+    const { rankNames, isLoading: ranksLoading } = useCompanyRanks();
+    
+    // Fetch nationalities from Master Data 001
+    const { data: nationalityMasterDataRaw = [], isLoading: nationalitiesLoading } = useQuery<Array<{ entryId: string; name: string }>>({
+        queryKey: ["/api/masters/001/data"],
+    });
+    
+    // Extract nationality names with fallback to static data
+    // Use static list if master data has fewer than 20 entries (incomplete data)
+    const nationalityMasterData = useMemo(() => {
+        if (nationalityMasterDataRaw.length >= 20) {
+            return nationalityMasterDataRaw.map(n => n.name);
+        }
+        // Fallback to comprehensive static NATIONALITIES list
+        return [...NATIONALITIES];
+    }, [nationalityMasterDataRaw]);
     
     // Define allowed pages for the crew pool module
     const allowedPages = ["crew-database"];
@@ -486,18 +506,14 @@ export const CrewPoolModule = (): JSX.Element => {
                                 <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]" data-testid="select-rank">
                                     <SelectValue placeholder="Rank" />
                                 </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Master">Master</SelectItem>
-                                    <SelectItem value="Chief Engineer">Chief Engineer</SelectItem>
-                                    <SelectItem value="Chief Mate">Chief Mate</SelectItem>
-                                    <SelectItem value="First Officer">First Officer</SelectItem>
-                                    <SelectItem value="Second Officer">Second Officer</SelectItem>
-                                    <SelectItem value="Second Engineer">Second Engineer</SelectItem>
-                                    <SelectItem value="Third Engineer">Third Engineer</SelectItem>
-                                    <SelectItem value="Able Seaman">Able Seaman</SelectItem>
-                                    <SelectItem value="Electrician">Electrician</SelectItem>
-                                    <SelectItem value="Bosun">Bosun</SelectItem>
-                                    <SelectItem value="Cook">Cook</SelectItem>
+                                <SelectContent className="max-h-[200px]">
+                                    {ranksLoading ? (
+                                        <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
+                                    ) : (
+                                        rankNames.map(rank => (
+                                            <SelectItem key={rank} value={rank} data-testid={`rank-option-${rank}`}>{rank}</SelectItem>
+                                        ))
+                                    )}
                                 </SelectContent>
                             </Select>
 
@@ -505,13 +521,14 @@ export const CrewPoolModule = (): JSX.Element => {
                                 <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]" data-testid="select-nationality">
                                     <SelectValue placeholder="Nationality" />
                                 </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="British">British</SelectItem>
-                                    <SelectItem value="Indian">Indian</SelectItem>
-                                    <SelectItem value="Philippines">Philippines</SelectItem>
-                                    <SelectItem value="Ukrainian">Ukrainian</SelectItem>
-                                    <SelectItem value="Romanian">Romanian</SelectItem>
-                                    <SelectItem value="Polish">Polish</SelectItem>
+                                <SelectContent className="max-h-[200px]">
+                                    {nationalitiesLoading ? (
+                                        <SelectItem value="loading" disabled>Loading...</SelectItem>
+                                    ) : (
+                                        nationalityMasterData.map(nationality => (
+                                            <SelectItem key={nationality} value={nationality} data-testid={`nationality-option-${nationality}`}>{nationality}</SelectItem>
+                                        ))
+                                    )}
                                 </SelectContent>
                             </Select>
 
