@@ -317,7 +317,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   });
 
   // All crew members query for dropdown
-  const { data: allCrewMembers = [] } = useQuery<CrewMember[]>({
+  const { data: allCrewMembersRaw = [] } = useQuery<CrewMember[]>({
     queryKey: ['/api/crew-members'],
     enabled: isOpen,
   });
@@ -341,6 +341,29 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
 
   // Get company ranks from shared hook
   const { data: companyRanks, isLoading: ranksLoading, rankNames, error: ranksError } = useCompanyRanks();
+  
+  // Sort crew members by rank hierarchy using company ranks sort order
+  const allCrewMembers = useMemo(() => {
+    if (allCrewMembersRaw.length === 0) return [];
+    
+    // Create rank order lookup from company ranks (already sorted by sortOrder from API)
+    const rankOrderMap = new Map<string, number>();
+    companyRanks.forEach((rank, index) => {
+      rankOrderMap.set(rank.rank.toLowerCase(), index);
+    });
+    
+    return [...allCrewMembersRaw].sort((a, b) => {
+      const rankA = (a.presentRank || '').toLowerCase();
+      const rankB = (b.presentRank || '').toLowerCase();
+      
+      const orderA = rankOrderMap.get(rankA) ?? 9999;
+      const orderB = rankOrderMap.get(rankB) ?? 9999;
+      
+      // Primary sort by rank order, secondary by name
+      if (orderA !== orderB) return orderA - orderB;
+      return `${a.firstName} ${a.familyName}`.localeCompare(`${b.firstName} ${b.familyName}`);
+    });
+  }, [allCrewMembersRaw, companyRanks]);
 
   // Data mappings with proper nullish coalescing
   const statusData = dashboardData?.status;
