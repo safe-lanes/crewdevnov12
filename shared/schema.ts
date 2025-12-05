@@ -378,6 +378,8 @@ export const masterDataEntries = pgTable("master_data_entries", {
   shortCode: text("shortCode"),
   type: text("type"),
   department: text("department"),
+  // License & DCE Master (ID 016) - Officer Matrix Label
+  officerMatrixLabel: text("officerMatrixLabel"),
   // User Master (ID 013) fields
   uuid: text("uuid"),
   lastname: text("lastname"),

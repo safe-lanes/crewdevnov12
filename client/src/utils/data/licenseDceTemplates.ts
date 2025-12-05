@@ -3,6 +3,7 @@ export interface LicenseTemplate {
   name: string;        // Certificate/Document
   abbr: string;        // Abbreviation
   requirement: string; // STCW Requirement
+  officerMatrixLabel?: string; // Officer Matrix Label (for COC certificates)
 }
 
 // Static fallback data that mirrors Master 016 in database
@@ -10,34 +11,34 @@ export interface LicenseTemplate {
 // Ordered by type group: DCE (Oil, Chem, Gas each with Op/Mgt/Support), then COC, then COP
 export const LICENSE_DCE_TEMPLATES: LicenseTemplate[] = [
   // DCE Oil Certificates (Operation → Management → Support)
-  { id: 'L001', name: 'DCE_Oil_Operation', abbr: 'DC_O_O', requirement: 'STCW A-V1-1-1' },
-  { id: 'L002', name: 'DCE_Oil_Management', abbr: 'DC_O_M', requirement: 'STCW A-V1-1-2' },
-  { id: 'LIC018', name: 'DCE_Oil_Support', abbr: 'DC_O_S', requirement: 'STCW A-V1-1' },
+  { id: 'L001', name: 'DCE_Oil_Operation', abbr: 'DC_O_O', requirement: 'STCW A-V1-1-1', officerMatrixLabel: '' },
+  { id: 'L002', name: 'DCE_Oil_Management', abbr: 'DC_O_M', requirement: 'STCW A-V1-1-2', officerMatrixLabel: '' },
+  { id: 'LIC018', name: 'DCE_Oil_Support', abbr: 'DC_O_S', requirement: 'STCW A-V1-1', officerMatrixLabel: '' },
   
   // DCE Chem Certificates (Operation → Management → Support)
-  { id: 'L003', name: 'DCE_Chem_Operation', abbr: 'DC_C_O', requirement: 'STCW A-V1-1-1' },
-  { id: 'L004', name: 'DCE_Chem_Management', abbr: 'DC_C_M', requirement: 'STCW A-V1-1-3' },
-  { id: 'LIC019', name: 'DCE_Chem_Support', abbr: 'DC_C_S', requirement: 'STCW A-V1-1' },
+  { id: 'L003', name: 'DCE_Chem_Operation', abbr: 'DC_C_O', requirement: 'STCW A-V1-1-1', officerMatrixLabel: '' },
+  { id: 'L004', name: 'DCE_Chem_Management', abbr: 'DC_C_M', requirement: 'STCW A-V1-1-3', officerMatrixLabel: '' },
+  { id: 'LIC019', name: 'DCE_Chem_Support', abbr: 'DC_C_S', requirement: 'STCW A-V1-1', officerMatrixLabel: '' },
   
   // DCE Gas Certificates (Operation → Management → Support)
-  { id: 'L005', name: 'DCE_Gas_Operation', abbr: 'DC_G_O', requirement: 'STCW A-V1-2-1' },
-  { id: 'L006', name: 'DCE_Gas_Management', abbr: 'DC_G_M', requirement: 'STCW A-V1-2-2' },
-  { id: 'LIC020', name: 'DCE_Gas_Support', abbr: 'DC_G_S', requirement: 'STCW A-V1-2' },
+  { id: 'L005', name: 'DCE_Gas_Operation', abbr: 'DC_G_O', requirement: 'STCW A-V1-2-1', officerMatrixLabel: '' },
+  { id: 'L006', name: 'DCE_Gas_Management', abbr: 'DC_G_M', requirement: 'STCW A-V1-2-2', officerMatrixLabel: '' },
+  { id: 'LIC020', name: 'DCE_Gas_Support', abbr: 'DC_G_S', requirement: 'STCW A-V1-2', officerMatrixLabel: '' },
   
-  // COC Certificates
-  { id: 'L007', name: 'COC Master', abbr: 'COC_DM', requirement: 'STCW II/2' },
-  { id: 'L008', name: 'COC Chief Mate', abbr: 'COC_DC', requirement: 'STCW II/2' },
-  { id: 'L009', name: 'COC OIC Nav Watch', abbr: 'COC_DW', requirement: 'STCW II/1' },
-  { id: 'L010', name: 'COC Chief Engineer', abbr: 'COC_EC', requirement: 'STCW III/2' },
-  { id: 'L011', name: 'COC 2nd Engineer', abbr: 'COC_ES', requirement: 'STCW III/2' },
-  { id: 'L012', name: 'COC OIC Eng Watch', abbr: 'COC_EW', requirement: 'STCW III/1' },
-  { id: 'L013', name: 'COC ETO', abbr: 'COC_EO', requirement: 'STCW III/6' },
+  // COC Certificates (with Officer Matrix Labels)
+  { id: 'L007', name: 'COC Master', abbr: 'COC_DM', requirement: 'STCW II/2', officerMatrixLabel: 'Master II/2' },
+  { id: 'L008', name: 'COC Chief Mate', abbr: 'COC_DC', requirement: 'STCW II/2', officerMatrixLabel: 'Chief Mate II/2' },
+  { id: 'L009', name: 'COC OIC Nav Watch', abbr: 'COC_DW', requirement: 'STCW II/1', officerMatrixLabel: 'OOW Deck II/1' },
+  { id: 'L010', name: 'COC Chief Engineer', abbr: 'COC_EC', requirement: 'STCW III/2', officerMatrixLabel: 'Chief Eng III/2' },
+  { id: 'L011', name: 'COC 2nd Engineer', abbr: 'COC_ES', requirement: 'STCW III/2', officerMatrixLabel: 'Second Eng III/2' },
+  { id: 'L012', name: 'COC OIC Eng Watch', abbr: 'COC_EW', requirement: 'STCW III/1', officerMatrixLabel: 'OOW Eng III/1' },
+  { id: 'L013', name: 'COC ETO', abbr: 'COC_EO', requirement: 'STCW III/6', officerMatrixLabel: 'ETO III/6' },
   
   // COP Certificates
-  { id: 'L014', name: 'COP Deck Rating (AB)', abbr: 'COP_DRA', requirement: 'STCW II/5' },
-  { id: 'L015', name: 'COP Deck Rating (OS)', abbr: 'COP_DRB', requirement: 'STCW II/4' },
-  { id: 'L016', name: 'COP Engine Rating (ABE)', abbr: 'COP_ERA', requirement: 'STCW III/5' },
-  { id: 'L017', name: 'COP Engine Rating', abbr: 'COP_ERB', requirement: 'STCW III/4' },
+  { id: 'L014', name: 'COP Deck Rating (AB)', abbr: 'COP_DRA', requirement: 'STCW II/5', officerMatrixLabel: '' },
+  { id: 'L015', name: 'COP Deck Rating (OS)', abbr: 'COP_DRB', requirement: 'STCW II/4', officerMatrixLabel: '' },
+  { id: 'L016', name: 'COP Engine Rating (ABE)', abbr: 'COP_ERA', requirement: 'STCW III/5', officerMatrixLabel: '' },
+  { id: 'L017', name: 'COP Engine Rating', abbr: 'COP_ERB', requirement: 'STCW III/4', officerMatrixLabel: '' },
 ];
 
 // Master ID for License & DCE templates in the database
@@ -69,12 +70,14 @@ export function mapApiResponseToLicenseTemplates(apiData: Array<{
   name: string;
   shortCode?: string;
   description?: string;
+  officerMatrixLabel?: string;
 }>): LicenseTemplate[] {
   return apiData.map(entry => ({
     id: entry.entryId,
     name: entry.name,
     abbr: entry.shortCode || '',
     requirement: entry.description || '',
+    officerMatrixLabel: entry.officerMatrixLabel || '',
   }));
 }
 

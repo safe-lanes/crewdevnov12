@@ -39,6 +39,7 @@ export function LicenseSelectionDialog({
     name: string;
     shortCode?: string;
     description?: string;
+    officerMatrixLabel?: string;
   }>>({
     queryKey: ['/api/masters/016/data'],
     enabled: open,
@@ -57,7 +58,8 @@ export function LicenseSelectionDialog({
     return templates.filter(t => 
       t.name.toLowerCase().includes(term) ||
       t.abbr.toLowerCase().includes(term) ||
-      t.requirement.toLowerCase().includes(term)
+      t.requirement.toLowerCase().includes(term) ||
+      (t.officerMatrixLabel || '').toLowerCase().includes(term)
     );
   }, [templates, searchTerm]);
 
@@ -105,7 +107,7 @@ export function LicenseSelectionDialog({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+      <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Database className="h-5 w-5 text-blue-600" />
@@ -153,10 +155,11 @@ export function LicenseSelectionDialog({
         <div className="border rounded-lg overflow-hidden flex-1">
           <div className="bg-gray-100 grid grid-cols-12 gap-2 px-4 py-2 text-xs font-medium text-gray-600">
             <div className="col-span-1"></div>
-            <div className="col-span-2">ID</div>
-            <div className="col-span-4">Certificate / Document</div>
+            <div className="col-span-1">ID</div>
+            <div className="col-span-3">Certificate / Document</div>
             <div className="col-span-2">ABBR</div>
-            <div className="col-span-3">Requirement</div>
+            <div className="col-span-2">Requirement</div>
+            <div className="col-span-3">Officer Matrix Label</div>
           </div>
 
           <ScrollArea className="h-[300px]">
@@ -191,10 +194,10 @@ export function LicenseSelectionDialog({
                           className="h-4 w-4"
                         />
                       </div>
-                      <div className="col-span-2 text-sm text-gray-800 font-mono">
+                      <div className="col-span-1 text-sm text-gray-800 font-mono">
                         {template.id}
                       </div>
-                      <div className="col-span-4 text-sm text-gray-800">
+                      <div className="col-span-3 text-sm text-gray-800">
                         {template.name}
                         {isAlreadyAdded && (
                           <span className="ml-2 text-xs text-gray-400">(already added)</span>
@@ -203,8 +206,11 @@ export function LicenseSelectionDialog({
                       <div className="col-span-2 text-sm text-gray-600 font-mono">
                         {template.abbr}
                       </div>
-                      <div className="col-span-3 text-sm text-gray-600">
+                      <div className="col-span-2 text-sm text-gray-600">
                         {template.requirement}
+                      </div>
+                      <div className="col-span-3 text-sm text-gray-600">
+                        {template.officerMatrixLabel || ''}
                       </div>
                     </div>
                   );
