@@ -210,3 +210,73 @@ export function getDepartmentDisplayName(department: CocDepartment): string {
     case 'eto': return 'ETO';
   }
 }
+
+/**
+ * License record structure (from crew member licenses array)
+ */
+export interface LicenseRecord {
+  id: string;
+  licenseId: string;
+  certificateDocument: string;
+  abbr?: string;
+  requirement?: string;
+  certificateNo?: string;
+  issuingAuthority?: string;
+  issued?: string;
+  expiry?: string;
+  archivedAt?: string;
+  archivedReason?: string;
+}
+
+/**
+ * Result of finding the highest COC
+ */
+export interface HighestCocResult {
+  cocEntry: CocHierarchyEntry;
+  license: LicenseRecord;
+  officerMatrixLabel: string;
+  issuingCountry: string;
+}
+
+/**
+ * Find the highest active (non-archived) COC from a crew member's licenses.
+ * Returns the COC with the highest level across all departments.
+ * If multiple COCs exist (shouldn't happen with proper enforcement), returns highest overall.
+ */
+export function findHighestActiveCoc(licenses: LicenseRecord[]): HighestCocResult | null {
+  if (!licenses || licenses.length === 0) return null;
+  
+  // Filter to active (non-archived) licenses that are COCs
+  const activeCocs: Array<{ license: LicenseRecord; cocEntry: CocHierarchyEntry }> = [];
+  
+  for (const license of licenses) {
+    // Skip archived licenses
+    if (license.archivedAt) continue;
+    
+    const cocEntry = getCocHierarchyEntry(license.licenseId);
+    if (cocEntry) {
+      activeCocs.push({ license, cocEntry });
+    }
+  }
+  
+  if (activeCocs.length === 0) return null;
+  
+  // Sort by level (highest first), then by department priority (deck > engine > eto)
+  activeCocs.sort((a, b) => {
+    // First by level (higher is better)
+    if (b.cocEntry.level !== a.cocEntry.level) {
+      return b.cocEntry.level - a.cocEntry.level;
+    }
+    // Then by department priority
+    const deptPriority: Record<CocDepartment, number> = { deck: 3, engine: 2, eto: 1 };
+    return deptPriority[b.cocEntry.department] - deptPriority[a.cocEntry.department];
+  });
+  
+  const highest = activeCocs[0];
+  return {
+    cocEntry: highest.cocEntry,
+    license: highest.license,
+    officerMatrixLabel: highest.cocEntry.officerMatrixLabel,
+    issuingCountry: highest.license.issuingAuthority || '',
+  };
+}
