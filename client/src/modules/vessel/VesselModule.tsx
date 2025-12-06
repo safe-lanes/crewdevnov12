@@ -32,6 +32,7 @@ import { ComplianceMatrixDialog } from './ComplianceMatrixDialog';
 import { AppraisalForm } from '@/modules/crewing/AppraisalForm';
 import { CrewInfoForm } from '@/modules/crew-pool/CrewInfoForm';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { findHighestActiveCoc, LicenseRecord } from '@/utils/data/licenseDceTemplates';
 
 // Hook to fetch vessels from Master Data (ID 014)
 const useVessels = () => {
@@ -1624,6 +1625,17 @@ export const VesselModule = (): JSX.Element => {
         });
         return map;
     }, [availableRanks]);
+
+    // Create a lookup map from crewMemberId to crew member data (with licenses)
+    const crewMemberLookup = useMemo(() => {
+        const map = new Map<string, any>();
+        crewMembers.forEach((crew: any) => {
+            if (crew.id) {
+                map.set(crew.id, crew);
+            }
+        });
+        return map;
+    }, [crewMembers]);
     
     // Fetch vessel ranks for selected vessel (use vessel ID, e.g., VSL-003)
     const { data: vesselRanksRaw = [], isLoading: ranksLoading } = useVesselRanks(selectedVessel?.vesselId || null);
@@ -2485,6 +2497,12 @@ export const VesselModule = (): JSX.Element => {
                                                                 return false;
                                                             });
                                                             
+                                                            // Get crew member's license data for COC display
+                                                            const crewMemberId = rankPlanningData?.crewMemberId;
+                                                            const crewMemberData = crewMemberId ? crewMemberLookup.get(crewMemberId) : null;
+                                                            const licenses: LicenseRecord[] = crewMemberData?.licenses || [];
+                                                            const highestCoc = findHighestActiveCoc(licenses);
+                                                            
                                                             return (
                                                             <TableRow key={rank.id || index} className="hover:bg-gray-50 border-b border-gray-100">
                                                                 <TableCell className="text-xs text-gray-700 border-r border-gray-100" data-testid={`cell-officer-rank-${index + 1}`}>
@@ -2501,10 +2519,10 @@ export const VesselModule = (): JSX.Element => {
                                                                 
                                                                 {/* Certification & Qualification */}
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-cert-comp-${index + 1}`}>
-                                                                    {/* Will be populated with qualification data */}
+                                                                    {highestCoc?.officerMatrixLabel || ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-issuing-country-${index + 1}`}>
-                                                                    {/* Will be populated with qualification data */}
+                                                                    {highestCoc?.issuingCountry || ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-admin-accept-${index + 1}`}>
                                                                     {/* Will be populated with qualification data */}
