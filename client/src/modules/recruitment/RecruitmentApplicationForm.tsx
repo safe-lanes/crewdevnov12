@@ -3053,7 +3053,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             {formData.licenses.map((license) => (
               <TableRow key={license.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  <div className="text-[#4f5863] text-[13px]">{license.id}</div>
+                  <div className="text-[#4f5863] text-[13px]">{license.licenseId || '-'}</div>
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
