@@ -3624,7 +3624,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Abbr</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Requirement</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Certificate No</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Authority</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Country</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
@@ -3667,11 +3667,19 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                   />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    value={license.issuingAuthority}
-                    onChange={(e) => updateLicense(license.id, 'issuingAuthority', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
-                  />
+                  <Select 
+                    value={license.issuingAuthority} 
+                    onValueChange={(value) => updateLicense(license.id, 'issuingAuthority', value)}
+                  >
+                    <SelectTrigger className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto">
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {countryMasterData.map(country => (
+                        <SelectItem key={country} value={country}>{country}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
