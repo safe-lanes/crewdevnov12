@@ -2500,7 +2500,17 @@ export const VesselModule = (): JSX.Element => {
                                                             // Get crew member's license data for COC display
                                                             const crewMemberId = rankPlanningData?.crewMemberId;
                                                             const crewMemberData = crewMemberId ? crewMemberLookup.get(crewMemberId) : null;
-                                                            const licenses: LicenseRecord[] = crewMemberData?.licenses || [];
+                                                            // Parse licenses - it may be stored as JSON string
+                                                            let licenses: LicenseRecord[] = [];
+                                                            if (crewMemberData?.licenses) {
+                                                                try {
+                                                                    licenses = typeof crewMemberData.licenses === 'string' 
+                                                                        ? JSON.parse(crewMemberData.licenses) 
+                                                                        : crewMemberData.licenses;
+                                                                } catch (e) {
+                                                                    licenses = [];
+                                                                }
+                                                            }
                                                             // Infer department from the rank to prioritize matching COC
                                                             const rankDepartment = inferDepartmentFromRank(fullRankName);
                                                             const highestCoc = findHighestActiveCoc(licenses, rankDepartment);
