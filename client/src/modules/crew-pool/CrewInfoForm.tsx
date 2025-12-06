@@ -177,6 +177,8 @@ interface License {
   issued: string;
   expiry: string;
   attachments?: FileAttachment[];
+  archivedAt?: string;       // ISO date when COC was archived (superseded by upgrade)
+  archivedReason?: string;   // Reason for archiving
 }
 
 interface TrainingCourse {
@@ -1166,9 +1168,26 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   };
 
   // Add licenses from database selection
-  const addLicensesFromDatabase = (selectedTemplates: LicenseTemplate[]) => {
+  // cocsToArchive: Array of license IDs (template IDs) to archive when upgrading COCs
+  const addLicensesFromDatabase = (selectedTemplates: LicenseTemplate[], cocsToArchive?: string[]) => {
     setFormData(prev => {
-      const existingLicenses = prev.licenses.filter(l => l.certificateDocument.trim() !== '');
+      let existingLicenses = prev.licenses.filter(l => l.certificateDocument.trim() !== '');
+      
+      // If archiving COCs due to upgrade, mark them as archived
+      if (cocsToArchive && cocsToArchive.length > 0) {
+        const archiveSet = new Set(cocsToArchive);
+        existingLicenses = existingLicenses.map(license => {
+          if (archiveSet.has(license.licenseId)) {
+            return {
+              ...license,
+              archivedAt: new Date().toISOString(),
+              archivedReason: 'Superseded by higher-level COC upgrade',
+            };
+          }
+          return license;
+        });
+      }
+      
       const maxId = getMaxIdNum(prev.licenses, 'LIC');
       const newLicenses: License[] = selectedTemplates.map((template, index) => ({
         id: `LIC-${maxId + index + 1}`,
@@ -3632,17 +3651,28 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
           </TableHeader>
           <TableBody>
             {formData.licenses.map((license) => (
-              <TableRow key={license.id} className="border-b border-gray-200">
+              <TableRow 
+                key={license.id} 
+                className={`border-b border-gray-200 ${license.archivedAt ? 'bg-gray-50 opacity-60' : ''}`}
+              >
                 <TableCell className="p-3">
-                  <span className="text-[#4f5863] text-[13px] font-mono">
-                    {license.licenseId || '-'}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[#4f5863] text-[13px] font-mono">
+                      {license.licenseId || '-'}
+                    </span>
+                    {license.archivedAt && (
+                      <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">
+                        ARCHIVED
+                      </span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
                     value={license.certificateDocument}
                     onChange={(e) => updateLicense(license.id, 'certificateDocument', e.target.value)}
                     className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    disabled={!!license.archivedAt}
                   />
                 </TableCell>
                 <TableCell className="p-3">
@@ -5357,7 +5387,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
         open={isLicenseDialogOpen}
         onClose={() => setIsLicenseDialogOpen(false)}
         onConfirm={addLicensesFromDatabase}
-        existingLicenseIds={formData.licenses.map(l => l.licenseId).filter(Boolean)}
+        existingLicenseIds={formData.licenses.filter(l => !l.archivedAt).map(l => l.licenseId).filter(Boolean)}
       />
       
       {/* Training Course Selection Dialog - Add from Database */}

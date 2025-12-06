@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Dialog,
@@ -6,24 +6,51 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search, Database } from 'lucide-react';
+import { Search, Database, AlertTriangle, ArrowUp } from 'lucide-react';
 import { 
   LICENSE_DCE_TEMPLATES, 
   mapApiResponseToLicenseTemplates,
-  type LicenseTemplate 
+  type LicenseTemplate,
+  validateCocSelection,
+  isCocLicense,
+  getDepartmentDisplayName,
+  getCocHierarchyEntry,
+  type CocHierarchyEntry,
 } from '@/utils/data/licenseDceTemplates';
+import { useToast } from '@/hooks/use-toast';
 
 interface LicenseSelectionDialogProps {
   open: boolean;
   onClose: () => void;
-  onConfirm: (selectedTemplates: LicenseTemplate[]) => void;
+  onConfirm: (selectedTemplates: LicenseTemplate[], cocsToArchive?: string[]) => void;
   existingLicenseIds?: string[];
 }
+
+interface UpgradeConfirmation {
+  show: boolean;
+  existingCoc: CocHierarchyEntry | null;
+  newCoc: CocHierarchyEntry | null;
+  newLicenseId: string;
+}
+
+// Map of department -> license ID to archive
+type CocArchiveMap = Map<string, string>;
 
 export function LicenseSelectionDialog({
   open,
@@ -31,8 +58,17 @@ export function LicenseSelectionDialog({
   onConfirm,
   existingLicenseIds = [],
 }: LicenseSelectionDialogProps) {
+  const { toast } = useToast();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
+  // Track COCs to archive per department (supports multiple department upgrades in one session)
+  const [cocsToArchive, setCocsToArchive] = useState<CocArchiveMap>(new Map());
+  const [upgradeConfirmation, setUpgradeConfirmation] = useState<UpgradeConfirmation>({
+    show: false,
+    existingCoc: null,
+    newCoc: null,
+    newLicenseId: '',
+  });
 
   const { data: apiTemplates = [], isLoading } = useQuery<Array<{
     entryId: string;
@@ -67,16 +103,92 @@ export function LicenseSelectionDialog({
     return new Set(existingLicenseIds);
   }, [existingLicenseIds]);
 
+  // Get all license IDs that will be active after selection (existing + selected - archived)
+  const getEffectiveLicenseIds = useCallback((currentSelected: Set<string>): string[] => {
+    const archiveSet = new Set(cocsToArchive.values());
+    const baseIds = existingLicenseIds.filter(id => !archiveSet.has(id));
+    const selectedArray = Array.from(currentSelected);
+    return [...baseIds, ...selectedArray];
+  }, [existingLicenseIds, cocsToArchive]);
+
   const handleToggle = (id: string) => {
-    setSelectedIds(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
+    // If deselecting, just remove
+    if (selectedIds.has(id)) {
+      setSelectedIds(prev => {
+        const newSet = new Set(prev);
         newSet.delete(id);
-      } else {
-        newSet.add(id);
+        return newSet;
+      });
+      // If we're deselecting a COC, clear any archive for its department
+      const cocEntry = getCocHierarchyEntry(id);
+      if (cocEntry) {
+        setCocsToArchive(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(cocEntry.department);
+          return newMap;
+        });
       }
-      return newSet;
-    });
+      return;
+    }
+
+    // Validate COC selection
+    const effectiveIds = getEffectiveLicenseIds(selectedIds);
+    const validation = validateCocSelection(effectiveIds, id);
+
+    if (validation.action === 'allow') {
+      // No conflict, add normally
+      setSelectedIds(prev => new Set([...Array.from(prev), id]));
+    } else if (validation.action === 'upgrade') {
+      // Show upgrade confirmation dialog
+      setUpgradeConfirmation({
+        show: true,
+        existingCoc: validation.existingCoc,
+        newCoc: validation.newCoc,
+        newLicenseId: id,
+      });
+    } else if (validation.action === 'block_same_or_lower') {
+      // Block with toast message
+      const dept = getDepartmentDisplayName(validation.existingCoc.department);
+      toast({
+        title: "Cannot Add Certificate",
+        description: `You already have "${validation.existingCoc.officerMatrixLabel}" (${dept} Department). You can only upgrade to a higher-level COC, not add a same or lower level one.`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle upgrade confirmation
+  const handleUpgradeConfirm = () => {
+    const { existingCoc, newCoc, newLicenseId } = upgradeConfirmation;
+    if (existingCoc && newCoc) {
+      // Track the COC to archive by department
+      setCocsToArchive(prev => {
+        const newMap = new Map(prev);
+        newMap.set(existingCoc.department, existingCoc.id);
+        return newMap;
+      });
+      
+      // Remove any previously selected COC in the same department before adding the new one
+      // This ensures only the highest-level COC is selected when user upgrades multiple times
+      setSelectedIds(prev => {
+        const newSet = new Set(Array.from(prev));
+        // Remove any existing selected COCs from the same department
+        for (const selectedId of Array.from(newSet)) {
+          const selectedCoc = getCocHierarchyEntry(selectedId);
+          if (selectedCoc && selectedCoc.department === newCoc.department) {
+            newSet.delete(selectedId);
+          }
+        }
+        // Add the new (higher level) COC
+        newSet.add(newLicenseId);
+        return newSet;
+      });
+    }
+    setUpgradeConfirmation({ show: false, existingCoc: null, newCoc: null, newLicenseId: '' });
+  };
+
+  const handleUpgradeCancel = () => {
+    setUpgradeConfirmation({ show: false, existingCoc: null, newCoc: null, newLicenseId: '' });
   };
 
   const handleSelectAll = () => {
@@ -92,20 +204,42 @@ export function LicenseSelectionDialog({
 
   const handleConfirm = () => {
     const selected = templates.filter(t => selectedIds.has(t.id));
-    onConfirm(selected);
+    
+    // Recompute all COCs to archive based on final selection
+    // For each COC being added, find any existing COC in the same department to archive
+    const archiveIdsSet = new Set<string>();
+    for (const selectedId of Array.from(selectedIds)) {
+      const selectedCoc = getCocHierarchyEntry(selectedId);
+      if (selectedCoc) {
+        // Find existing COC in same department
+        for (const existingId of existingLicenseIds) {
+          const existingCoc = getCocHierarchyEntry(existingId);
+          if (existingCoc && existingCoc.department === selectedCoc.department) {
+            archiveIdsSet.add(existingId);
+          }
+        }
+      }
+    }
+    
+    const archiveIds = Array.from(archiveIdsSet);
+    onConfirm(selected, archiveIds.length > 0 ? archiveIds : undefined);
     setSelectedIds(new Set());
     setSearchTerm('');
+    setCocsToArchive(new Map());
   };
 
   const handleClose = () => {
     setSelectedIds(new Set());
     setSearchTerm('');
+    setCocsToArchive(new Map());
+    setUpgradeConfirmation({ show: false, existingCoc: null, newCoc: null, newLicenseId: '' });
     onClose();
   };
 
   const availableCount = filteredTemplates.filter(t => !alreadyAddedIds.has(t.id)).length;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
       <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col">
         <DialogHeader>
@@ -220,6 +354,16 @@ export function LicenseSelectionDialog({
           </ScrollArea>
         </div>
 
+        {/* Show archive notice if upgrading COC */}
+        {cocsToArchive.size > 0 && (
+          <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+            <ArrowUp className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-amber-800">
+              <span className="font-medium">COC Upgrade:</span> {cocsToArchive.size} existing certificate{cocsToArchive.size > 1 ? 's' : ''} will be archived when you save.
+            </div>
+          </div>
+        )}
+
         <DialogFooter className="mt-4">
           <Button variant="outline" onClick={handleClose} data-testid="button-cancel-license">
             Cancel
@@ -234,5 +378,47 @@ export function LicenseSelectionDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {/* COC Upgrade Confirmation Dialog */}
+    <AlertDialog open={upgradeConfirmation.show} onOpenChange={(open) => !open && handleUpgradeCancel()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <ArrowUp className="h-5 w-5 text-blue-600" />
+            Upgrade Certificate of Competency
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-left space-y-3">
+            <p>
+              You are about to upgrade your COC from:
+            </p>
+            <div className="bg-gray-50 p-3 rounded-lg space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500 text-sm">Current:</span>
+                <span className="font-medium text-gray-800">
+                  {upgradeConfirmation.existingCoc?.officerMatrixLabel}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <ArrowUp className="h-4 w-4 text-green-600" />
+                <span className="text-gray-500 text-sm">Upgrade to:</span>
+                <span className="font-medium text-green-700">
+                  {upgradeConfirmation.newCoc?.officerMatrixLabel}
+                </span>
+              </div>
+            </div>
+            <p className="text-amber-700 bg-amber-50 p-2 rounded border border-amber-200">
+              Your current COC will be archived and kept in your historical records.
+            </p>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={handleUpgradeCancel}>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleUpgradeConfirm} className="bg-blue-600 hover:bg-blue-700">
+            Confirm Upgrade
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

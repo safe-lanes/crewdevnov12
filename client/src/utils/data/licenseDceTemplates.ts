@@ -83,3 +83,130 @@ export function mapApiResponseToLicenseTemplates(apiData: Array<{
 
 // Pre-exported list of all templates
 export const DEFAULT_LICENSE_TEMPLATES = LICENSE_DCE_TEMPLATES;
+
+// ============================================================================
+// COC HIERARCHY CONFIGURATION
+// ============================================================================
+// Defines the progression hierarchy for Certificates of Competency (COC)
+// An officer can only hold ONE COC at a time within their department.
+// When upgrading, the old COC is archived.
+
+export type CocDepartment = 'deck' | 'engine' | 'eto';
+
+export interface CocHierarchyEntry {
+  id: string;           // License ID (e.g., 'L007')
+  department: CocDepartment;
+  level: number;        // Higher number = higher rank (1=entry, 2=mid, 3=senior)
+  name: string;         // Human-readable name
+  officerMatrixLabel: string;
+}
+
+// COC hierarchy: Defines which licenses are COCs and their rank order
+// Level 3 = highest (Master, Chief Engineer)
+// Level 2 = middle (Chief Mate, 2nd Engineer)  
+// Level 1 = entry (OOW Deck, OOW Engine)
+// ETO has single level as it's standalone
+export const COC_HIERARCHY: CocHierarchyEntry[] = [
+  // Deck Department - progression: OOW → Chief Mate → Master
+  { id: 'L009', department: 'deck', level: 1, name: 'COC OIC Nav Watch', officerMatrixLabel: 'OOW Deck II/1' },
+  { id: 'L008', department: 'deck', level: 2, name: 'COC Chief Mate', officerMatrixLabel: 'Chief Mate II/2' },
+  { id: 'L007', department: 'deck', level: 3, name: 'COC Master', officerMatrixLabel: 'Master II/2' },
+  
+  // Engine Department - progression: OOW → 2nd Engineer → Chief Engineer
+  { id: 'L012', department: 'engine', level: 1, name: 'COC OIC Eng Watch', officerMatrixLabel: 'OOW Eng III/1' },
+  { id: 'L011', department: 'engine', level: 2, name: 'COC 2nd Engineer', officerMatrixLabel: 'Second Eng III/2' },
+  { id: 'L010', department: 'engine', level: 3, name: 'COC Chief Engineer', officerMatrixLabel: 'Chief Eng III/2' },
+  
+  // ETO - standalone (no progression within ETO)
+  { id: 'L013', department: 'eto', level: 1, name: 'COC ETO', officerMatrixLabel: 'ETO III/6' },
+];
+
+// Set of all COC license IDs for quick lookup
+export const COC_LICENSE_IDS = new Set(COC_HIERARCHY.map(c => c.id));
+
+/**
+ * Check if a license ID is a COC (Certificate of Competency)
+ */
+export function isCocLicense(licenseId: string): boolean {
+  return COC_LICENSE_IDS.has(licenseId);
+}
+
+/**
+ * Get COC hierarchy entry by license ID
+ */
+export function getCocHierarchyEntry(licenseId: string): CocHierarchyEntry | undefined {
+  return COC_HIERARCHY.find(c => c.id === licenseId);
+}
+
+/**
+ * Get all COC entries for a specific department
+ */
+export function getCocsByDepartment(department: CocDepartment): CocHierarchyEntry[] {
+  return COC_HIERARCHY.filter(c => c.department === department).sort((a, b) => a.level - b.level);
+}
+
+/**
+ * Find existing COC in crew's licenses that belongs to the same department as the new COC
+ * Returns undefined if no conflicting COC found
+ */
+export function findExistingCocInDepartment(
+  existingLicenseIds: string[],
+  newCocId: string
+): CocHierarchyEntry | undefined {
+  const newCoc = getCocHierarchyEntry(newCocId);
+  if (!newCoc) return undefined;
+  
+  for (const licenseId of existingLicenseIds) {
+    const existingCoc = getCocHierarchyEntry(licenseId);
+    if (existingCoc && existingCoc.department === newCoc.department) {
+      return existingCoc;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Validate COC selection against existing licenses
+ * Returns validation result with action needed
+ */
+export type CocValidationResult = 
+  | { valid: true; action: 'allow' }
+  | { valid: true; action: 'upgrade'; existingCoc: CocHierarchyEntry; newCoc: CocHierarchyEntry }
+  | { valid: false; action: 'block_same_or_lower'; existingCoc: CocHierarchyEntry; newCoc: CocHierarchyEntry };
+
+export function validateCocSelection(
+  existingLicenseIds: string[],
+  newLicenseId: string
+): CocValidationResult {
+  // If new license is not a COC, always allow
+  if (!isCocLicense(newLicenseId)) {
+    return { valid: true, action: 'allow' };
+  }
+  
+  const newCoc = getCocHierarchyEntry(newLicenseId)!;
+  const existingCoc = findExistingCocInDepartment(existingLicenseIds, newLicenseId);
+  
+  // No existing COC in same department - allow
+  if (!existingCoc) {
+    return { valid: true, action: 'allow' };
+  }
+  
+  // New COC is higher level - allow with upgrade prompt
+  if (newCoc.level > existingCoc.level) {
+    return { valid: true, action: 'upgrade', existingCoc, newCoc };
+  }
+  
+  // New COC is same or lower level - block
+  return { valid: false, action: 'block_same_or_lower', existingCoc, newCoc };
+}
+
+/**
+ * Get human-readable department name
+ */
+export function getDepartmentDisplayName(department: CocDepartment): string {
+  switch (department) {
+    case 'deck': return 'Deck';
+    case 'engine': return 'Engine';
+    case 'eto': return 'ETO';
+  }
+}
