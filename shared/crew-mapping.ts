@@ -229,7 +229,7 @@ const REVERSE_FIELD_MAPPINGS = {
   age: 'ageInYears',
   presentRank: 'rank',
   presentVessel: 'vessel',
-  familyName: 'lastName', // For backward compatibility
+  // Note: familyName is the canonical field - no lastName alias needed
 } as const;
 
 // JSON fields that need parsing/stringifying
@@ -357,6 +357,15 @@ export function fromStorageCrew(dbCrew: CrewMember): CrewMemberDTO {
     dto.rank = dto.presentRank;
   } else if (!dto.presentRank && dto.rank) {
     dto.presentRank = dto.rank;
+  }
+  
+  // Handle familyName - ensure it's always populated (fallback to lastName for legacy data)
+  if (!dto.familyName && dto.lastName) {
+    dto.familyName = dto.lastName;
+  }
+  // Also ensure lastName is set for any components that might still use it
+  if (!dto.lastName && dto.familyName) {
+    dto.lastName = dto.familyName;
   }
   
   // Parse JSON fields
