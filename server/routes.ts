@@ -2722,7 +2722,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               id: crew.id,
               employeeId: crew.employeeId,
               firstName: crew.firstName,
-              lastName: crew.lastName,
+              familyName: crew.familyName || crew.lastName || '',
+              lastName: crew.familyName || crew.lastName || '',
               nationality: crew.nationality,
               presentRank: crew.presentRank,
               latestMedicalExpiry
@@ -2748,7 +2749,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               id: reliever.id,
               employeeId: reliever.employeeId,
               firstName: reliever.firstName,
-              lastName: reliever.lastName,
+              familyName: reliever.familyName || reliever.lastName || '',
+              lastName: reliever.familyName || reliever.lastName || '',
               nationality: reliever.nationality,
               presentRank: reliever.presentRank
             };
