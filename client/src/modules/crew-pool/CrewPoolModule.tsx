@@ -82,6 +82,19 @@ export const CrewPoolModule = (): JSX.Element => {
         return [...NATIONALITIES];
     }, [nationalityMasterDataRaw]);
     
+    // Fetch vessel master data (Master 014) for vessel filter dropdown
+    const { data: vesselMasterDataRaw = [], isLoading: vesselsLoading } = useQuery<Array<{ entryId: string; name: string }>>({
+        queryKey: ["/api/masters/014/data"],
+    });
+    
+    // Extract vessel entries (id and name) for dropdown - sorted by name
+    const vesselMasterData = useMemo(() => {
+        return vesselMasterDataRaw
+            .filter(v => v.name && v.entryId)
+            .map(v => ({ id: v.entryId, name: v.name }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+    }, [vesselMasterDataRaw]);
+    
     // Define allowed pages for the crew pool module
     const allowedPages = ["crew-database"];
 
@@ -531,12 +544,14 @@ export const CrewPoolModule = (): JSX.Element => {
                                 <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]" data-testid="select-vessel">
                                     <SelectValue placeholder="Vessel" />
                                 </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="MV Ocean Explorer">MV Ocean Explorer</SelectItem>
-                                    <SelectItem value="MV Sea Pioneer">MV Sea Pioneer</SelectItem>
-                                    <SelectItem value="MV Atlantic Star">MV Atlantic Star</SelectItem>
-                                    <SelectItem value="MV Pacific Dawn">MV Pacific Dawn</SelectItem>
-                                    <SelectItem value="MV Global Trader">MV Global Trader</SelectItem>
+                                <SelectContent className="max-h-[200px]">
+                                    {vesselsLoading ? (
+                                        <SelectItem value="loading" disabled>Loading vessels...</SelectItem>
+                                    ) : (
+                                        vesselMasterData.map(vessel => (
+                                            <SelectItem key={vessel.id} value={vessel.id} data-testid={`vessel-option-${vessel.id}`}>{vessel.name}</SelectItem>
+                                        ))
+                                    )}
                                 </SelectContent>
                             </Select>
 
