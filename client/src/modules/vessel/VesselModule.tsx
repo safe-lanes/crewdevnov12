@@ -32,7 +32,7 @@ import { ComplianceMatrixDialog } from './ComplianceMatrixDialog';
 import { AppraisalForm } from '@/modules/crewing/AppraisalForm';
 import { CrewInfoForm } from '@/modules/crew-pool/CrewInfoForm';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
-import { findHighestActiveCoc, LicenseRecord } from '@/utils/data/licenseDceTemplates';
+import { findHighestActiveCoc, inferDepartmentFromRank, LicenseRecord } from '@/utils/data/licenseDceTemplates';
 
 // Hook to fetch vessels from Master Data (ID 014)
 const useVessels = () => {
@@ -2501,7 +2501,9 @@ export const VesselModule = (): JSX.Element => {
                                                             const crewMemberId = rankPlanningData?.crewMemberId;
                                                             const crewMemberData = crewMemberId ? crewMemberLookup.get(crewMemberId) : null;
                                                             const licenses: LicenseRecord[] = crewMemberData?.licenses || [];
-                                                            const highestCoc = findHighestActiveCoc(licenses);
+                                                            // Infer department from the rank to prioritize matching COC
+                                                            const rankDepartment = inferDepartmentFromRank(fullRankName);
+                                                            const highestCoc = findHighestActiveCoc(licenses, rankDepartment);
                                                             
                                                             return (
                                                             <TableRow key={rank.id || index} className="hover:bg-gray-50 border-b border-gray-100">

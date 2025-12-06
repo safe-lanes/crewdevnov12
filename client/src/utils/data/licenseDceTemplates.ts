@@ -240,10 +240,16 @@ export interface HighestCocResult {
 
 /**
  * Find the highest active (non-archived) COC from a crew member's licenses.
- * Returns the COC with the highest level across all departments.
- * If multiple COCs exist (shouldn't happen with proper enforcement), returns highest overall.
+ * If targetDepartment is specified, prioritizes COCs from that department.
+ * Falls back to highest COC across all departments if no match in target department.
+ * 
+ * @param licenses - Array of crew member's licenses
+ * @param targetDepartment - Optional department to prioritize ('deck', 'engine', 'eto')
  */
-export function findHighestActiveCoc(licenses: LicenseRecord[]): HighestCocResult | null {
+export function findHighestActiveCoc(
+  licenses: LicenseRecord[], 
+  targetDepartment?: CocDepartment | null
+): HighestCocResult | null {
   if (!licenses || licenses.length === 0) return null;
   
   // Filter to active (non-archived) licenses that are COCs
@@ -261,7 +267,23 @@ export function findHighestActiveCoc(licenses: LicenseRecord[]): HighestCocResul
   
   if (activeCocs.length === 0) return null;
   
-  // Sort by level (highest first), then by department priority (deck > engine > eto)
+  // If target department specified, try to find COC in that department first
+  if (targetDepartment) {
+    const deptCocs = activeCocs.filter(c => c.cocEntry.department === targetDepartment);
+    if (deptCocs.length > 0) {
+      // Sort by level (highest first)
+      deptCocs.sort((a, b) => b.cocEntry.level - a.cocEntry.level);
+      const highest = deptCocs[0];
+      return {
+        cocEntry: highest.cocEntry,
+        license: highest.license,
+        officerMatrixLabel: highest.cocEntry.officerMatrixLabel,
+        issuingCountry: highest.license.issuingAuthority || '',
+      };
+    }
+  }
+  
+  // Fallback: sort by level (highest first), then by department priority (deck > engine > eto)
   activeCocs.sort((a, b) => {
     // First by level (higher is better)
     if (b.cocEntry.level !== a.cocEntry.level) {
@@ -279,4 +301,63 @@ export function findHighestActiveCoc(licenses: LicenseRecord[]): HighestCocResul
     officerMatrixLabel: highest.cocEntry.officerMatrixLabel,
     issuingCountry: highest.license.issuingAuthority || '',
   };
+}
+
+/**
+ * Infer department from a rank name based on common maritime rank patterns.
+ * Returns 'deck', 'engine', 'eto', or null if cannot be determined.
+ * 
+ * Note: Engine department checks run BEFORE deck checks to handle cases like
+ * "Engine Cadet" which contains both "engine" and "cadet".
+ */
+export function inferDepartmentFromRank(rankName: string): CocDepartment | null {
+  if (!rankName) return null;
+  
+  const lowerRank = rankName.toLowerCase();
+  
+  // ETO patterns - check first as it's most specific
+  if (
+    lowerRank.includes('eto') ||
+    lowerRank.includes('electro-technical') ||
+    lowerRank.includes('electrician')
+  ) {
+    return 'eto';
+  }
+  
+  // Engine department patterns - check BEFORE deck to handle "Engine Cadet" etc.
+  if (
+    lowerRank.includes('engineer') ||
+    lowerRank.includes('engine') ||       // Catches "Engine Cadet", "Engine Room"
+    lowerRank.includes('eng ') ||          // Catches "Eng Cadet", "Eng Rating"
+    lowerRank.startsWith('eng') ||         // Catches "Eng" at start
+    lowerRank.includes('motorman') ||
+    lowerRank.includes('fitter') ||
+    lowerRank.includes('oiler') ||
+    lowerRank.includes('wiper') ||
+    lowerRank.includes('greaser') ||
+    lowerRank.includes('pumpman') ||
+    lowerRank.includes('donkeyman')
+  ) {
+    return 'engine';
+  }
+  
+  // Deck department patterns (Master, Officers, Ratings)
+  if (
+    lowerRank.includes('master') ||
+    lowerRank.includes('officer') ||
+    lowerRank.includes('mate') ||
+    lowerRank.includes('bosun') ||
+    lowerRank.includes('boatswain') ||
+    lowerRank.includes('able seaman') ||
+    lowerRank.includes('ordinary seaman') ||
+    lowerRank.includes('cadet') ||         // Only reaches here if not "Engine Cadet"
+    lowerRank.includes('deck') ||
+    lowerRank.includes('helmsman') ||
+    lowerRank.includes('quartermaster') ||
+    lowerRank.includes('lookout')
+  ) {
+    return 'deck';
+  }
+  
+  return null;
 }
