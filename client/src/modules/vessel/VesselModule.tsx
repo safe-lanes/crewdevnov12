@@ -34,6 +34,29 @@ import { CrewInfoForm } from '@/modules/crew-pool/CrewInfoForm';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { findHighestActiveCoc, inferDepartmentFromRank, LicenseRecord } from '@/utils/data/licenseDceTemplates';
 
+// Helper function to check if crew member has valid GMDSS certificate
+const hasValidGmdss = (licenses: LicenseRecord[]): boolean => {
+    if (!licenses || licenses.length === 0) return false;
+    
+    // Find GMDSS certificate (LIC021)
+    const gmdss = licenses.find(license => license.licenseId === 'LIC021');
+    if (!gmdss) return false;
+    
+    // Check if expiry date exists and is valid (not expired)
+    if (!gmdss.expiry) return false;
+    
+    try {
+        const expiryDate = new Date(gmdss.expiry);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset time to start of day for fair comparison
+        
+        // Return true if certificate has not expired yet
+        return expiryDate >= today;
+    } catch {
+        return false;
+    }
+};
+
 // Hook to fetch vessels from Master Data (ID 014)
 const useVessels = () => {
     return useQuery({
@@ -2546,7 +2569,7 @@ export const VesselModule = (): JSX.Element => {
                                                                     {/* Will be populated with qualification data */}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700 border-r-2 border-gray-200" data-testid={`cell-officer-radio-${index + 1}`}>
-                                                                    {/* Will be populated with qualification data */}
+                                                                    {hasValidGmdss(licenses) ? 'Yes' : ''}
                                                                 </TableCell>
                                                                 
                                                                 {/* Years in Service */}
