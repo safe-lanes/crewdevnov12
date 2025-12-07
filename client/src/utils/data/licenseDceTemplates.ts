@@ -11,34 +11,34 @@ export interface LicenseTemplate {
 // Ordered by type group: DCE (Oil, Chem, Gas each with Op/Mgt/Support), then COC, then COP
 export const LICENSE_DCE_TEMPLATES: LicenseTemplate[] = [
   // DCE Oil Certificates (Operation → Management → Support)
-  { id: 'L001', name: 'DCE_Oil_Operation', abbr: 'DC_O_O', requirement: 'STCW A-V1-1-1', officerMatrixLabel: '' },
-  { id: 'L002', name: 'DCE_Oil_Management', abbr: 'DC_O_M', requirement: 'STCW A-V1-1-2', officerMatrixLabel: '' },
+  { id: 'LIC001', name: 'DCE_Oil_Operation', abbr: 'DC_O_O', requirement: 'STCW A-V1-1-1', officerMatrixLabel: '' },
+  { id: 'LIC002', name: 'DCE_Oil_Management', abbr: 'DC_O_M', requirement: 'STCW A-V1-1-2', officerMatrixLabel: '' },
   { id: 'LIC018', name: 'DCE_Oil_Support', abbr: 'DC_O_S', requirement: 'STCW A-V1-1', officerMatrixLabel: '' },
   
   // DCE Chem Certificates (Operation → Management → Support)
-  { id: 'L003', name: 'DCE_Chem_Operation', abbr: 'DC_C_O', requirement: 'STCW A-V1-1-1', officerMatrixLabel: '' },
-  { id: 'L004', name: 'DCE_Chem_Management', abbr: 'DC_C_M', requirement: 'STCW A-V1-1-3', officerMatrixLabel: '' },
+  { id: 'LIC003', name: 'DCE_Chem_Operation', abbr: 'DC_C_O', requirement: 'STCW A-V1-1-1', officerMatrixLabel: '' },
+  { id: 'LIC004', name: 'DCE_Chem_Management', abbr: 'DC_C_M', requirement: 'STCW A-V1-1-3', officerMatrixLabel: '' },
   { id: 'LIC019', name: 'DCE_Chem_Support', abbr: 'DC_C_S', requirement: 'STCW A-V1-1', officerMatrixLabel: '' },
   
   // DCE Gas Certificates (Operation → Management → Support)
-  { id: 'L005', name: 'DCE_Gas_Operation', abbr: 'DC_G_O', requirement: 'STCW A-V1-2-1', officerMatrixLabel: '' },
-  { id: 'L006', name: 'DCE_Gas_Management', abbr: 'DC_G_M', requirement: 'STCW A-V1-2-2', officerMatrixLabel: '' },
+  { id: 'LIC005', name: 'DCE_Gas_Operation', abbr: 'DC_G_O', requirement: 'STCW A-V1-2-1', officerMatrixLabel: '' },
+  { id: 'LIC006', name: 'DCE_Gas_Management', abbr: 'DC_G_M', requirement: 'STCW A-V1-2-2', officerMatrixLabel: '' },
   { id: 'LIC020', name: 'DCE_Gas_Support', abbr: 'DC_G_S', requirement: 'STCW A-V1-2', officerMatrixLabel: '' },
   
   // COC Certificates (with Officer Matrix Labels)
-  { id: 'L007', name: 'COC Master', abbr: 'COC_DM', requirement: 'STCW II/2', officerMatrixLabel: 'Master II/2' },
-  { id: 'L008', name: 'COC Chief Mate', abbr: 'COC_DC', requirement: 'STCW II/2', officerMatrixLabel: 'Chief Mate II/2' },
-  { id: 'L009', name: 'COC OIC Nav Watch', abbr: 'COC_DW', requirement: 'STCW II/1', officerMatrixLabel: 'OOW Deck II/1' },
-  { id: 'L010', name: 'COC Chief Engineer', abbr: 'COC_EC', requirement: 'STCW III/2', officerMatrixLabel: 'Chief Eng III/2' },
-  { id: 'L011', name: 'COC 2nd Engineer', abbr: 'COC_ES', requirement: 'STCW III/2', officerMatrixLabel: 'Second Eng III/2' },
-  { id: 'L012', name: 'COC OIC Eng Watch', abbr: 'COC_EW', requirement: 'STCW III/1', officerMatrixLabel: 'OOW Eng III/1' },
-  { id: 'L013', name: 'COC ETO', abbr: 'COC_EO', requirement: 'STCW III/6', officerMatrixLabel: 'ETO III/6' },
+  { id: 'LIC007', name: 'COC Master', abbr: 'COC_DM', requirement: 'STCW II/2', officerMatrixLabel: 'Master II/2' },
+  { id: 'LIC008', name: 'COC Chief Mate', abbr: 'COC_DC', requirement: 'STCW II/2', officerMatrixLabel: 'Chief Mate II/2' },
+  { id: 'LIC009', name: 'COC OIC Nav Watch', abbr: 'COC_DW', requirement: 'STCW II/1', officerMatrixLabel: 'OOW Deck II/1' },
+  { id: 'LIC010', name: 'COC Chief Engineer', abbr: 'COC_EC', requirement: 'STCW III/2', officerMatrixLabel: 'Chief Eng III/2' },
+  { id: 'LIC011', name: 'COC 2nd Engineer', abbr: 'COC_ES', requirement: 'STCW III/2', officerMatrixLabel: 'Second Eng III/2' },
+  { id: 'LIC012', name: 'COC OIC Eng Watch', abbr: 'COC_EW', requirement: 'STCW III/1', officerMatrixLabel: 'OOW Eng III/1' },
+  { id: 'LIC013', name: 'COC ETO', abbr: 'COC_EO', requirement: 'STCW III/6', officerMatrixLabel: 'ETO III/6' },
   
   // COP Certificates
-  { id: 'L014', name: 'COP Deck Rating (AB)', abbr: 'COP_DRA', requirement: 'STCW II/5', officerMatrixLabel: '' },
-  { id: 'L015', name: 'COP Deck Rating (OS)', abbr: 'COP_DRB', requirement: 'STCW II/4', officerMatrixLabel: '' },
-  { id: 'L016', name: 'COP Engine Rating (ABE)', abbr: 'COP_ERA', requirement: 'STCW III/5', officerMatrixLabel: '' },
-  { id: 'L017', name: 'COP Engine Rating', abbr: 'COP_ERB', requirement: 'STCW III/4', officerMatrixLabel: '' },
+  { id: 'LIC014', name: 'COP Deck Rating (AB)', abbr: 'COP_DRA', requirement: 'STCW II/5', officerMatrixLabel: '' },
+  { id: 'LIC015', name: 'COP Deck Rating (OS)', abbr: 'COP_DRB', requirement: 'STCW II/4', officerMatrixLabel: '' },
+  { id: 'LIC016', name: 'COP Engine Rating (ABE)', abbr: 'COP_ERA', requirement: 'STCW III/5', officerMatrixLabel: '' },
+  { id: 'LIC017', name: 'COP Engine Rating', abbr: 'COP_ERB', requirement: 'STCW III/4', officerMatrixLabel: '' },
   
   // GMDSS Certificate
   { id: 'LIC021', name: 'GMDSS', abbr: 'GMDSS', requirement: 'STCW IV/2', officerMatrixLabel: '' },
@@ -111,17 +111,17 @@ export interface CocHierarchyEntry {
 // ETO has single level as it's standalone
 export const COC_HIERARCHY: CocHierarchyEntry[] = [
   // Deck Department - progression: OOW → Chief Mate → Master
-  { id: 'L009', department: 'deck', level: 1, name: 'COC OIC Nav Watch', officerMatrixLabel: 'OOW Deck II/1' },
-  { id: 'L008', department: 'deck', level: 2, name: 'COC Chief Mate', officerMatrixLabel: 'Chief Mate II/2' },
-  { id: 'L007', department: 'deck', level: 3, name: 'COC Master', officerMatrixLabel: 'Master II/2' },
+  { id: 'LIC009', department: 'deck', level: 1, name: 'COC OIC Nav Watch', officerMatrixLabel: 'OOW Deck II/1' },
+  { id: 'LIC008', department: 'deck', level: 2, name: 'COC Chief Mate', officerMatrixLabel: 'Chief Mate II/2' },
+  { id: 'LIC007', department: 'deck', level: 3, name: 'COC Master', officerMatrixLabel: 'Master II/2' },
   
   // Engine Department - progression: OOW → 2nd Engineer → Chief Engineer
-  { id: 'L012', department: 'engine', level: 1, name: 'COC OIC Eng Watch', officerMatrixLabel: 'OOW Eng III/1' },
-  { id: 'L011', department: 'engine', level: 2, name: 'COC 2nd Engineer', officerMatrixLabel: 'Second Eng III/2' },
-  { id: 'L010', department: 'engine', level: 3, name: 'COC Chief Engineer', officerMatrixLabel: 'Chief Eng III/2' },
+  { id: 'LIC012', department: 'engine', level: 1, name: 'COC OIC Eng Watch', officerMatrixLabel: 'OOW Eng III/1' },
+  { id: 'LIC011', department: 'engine', level: 2, name: 'COC 2nd Engineer', officerMatrixLabel: 'Second Eng III/2' },
+  { id: 'LIC010', department: 'engine', level: 3, name: 'COC Chief Engineer', officerMatrixLabel: 'Chief Eng III/2' },
   
   // ETO - standalone (no progression within ETO)
-  { id: 'L013', department: 'eto', level: 1, name: 'COC ETO', officerMatrixLabel: 'ETO III/6' },
+  { id: 'LIC013', department: 'eto', level: 1, name: 'COC ETO', officerMatrixLabel: 'ETO III/6' },
 ];
 
 // Set of all COC license IDs for quick lookup
