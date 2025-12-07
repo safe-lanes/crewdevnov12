@@ -2438,7 +2438,12 @@ export const VesselModule = (): JSX.Element => {
                                                     <TableHead colSpan={5} className="text-white text-xs font-normal text-center sticky top-0 z-30 bg-[#52baf3] border-r-2 border-white/40">Years in Service (Today's Date)</TableHead>
                                                     
                                                     {/* Language Section */}
-                                                    <TableHead rowSpan={2} className="text-white text-xs font-normal text-center w-24 sticky top-0 z-30 bg-[#52baf3]">Language</TableHead>
+                                                    <TableHead rowSpan={2} className="text-white text-xs font-normal text-center w-24 sticky top-0 z-30 bg-[#52baf3]">
+                                                        <div className="flex flex-col items-center">
+                                                            <span>Language</span>
+                                                            <span className="text-[10px] font-light mt-0.5">English</span>
+                                                        </div>
+                                                    </TableHead>
                                                     
                                                     {/* Actions column */}
                                                     <TableHead rowSpan={2} className="text-white text-xs font-normal w-16 sticky top-0 z-30 bg-[#52baf3]"></TableHead>
@@ -2462,8 +2467,8 @@ export const VesselModule = (): JSX.Element => {
                                                     <TableHead className="text-white text-xs font-normal w-20 sticky top-[41px] z-30 bg-[#52baf3]">Rank</TableHead>
                                                     <TableHead className="text-white text-xs font-normal w-24 sticky top-[41px] z-30 bg-[#52baf3]">Tanker Type</TableHead>
                                                     <TableHead className="text-white text-xs font-normal w-20 sticky top-[41px] z-30 bg-[#52baf3]">All Types</TableHead>
-                                                    <TableHead className="text-white text-xs font-normal w-20 sticky top-[41px] z-30 bg-[#52baf3]">DOW</TableHead>
-                                                    <TableHead className="text-white text-xs font-normal w-20 sticky top-[41px] z-30 bg-[#52baf3] border-r-2 border-white/40">Time o/a</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-20 sticky top-[41px] z-30 bg-[#52baf3]">OOW</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-20 sticky top-[41px] z-30 bg-[#52baf3] border-r-2 border-white/40">Time o/b</TableHead>
                                                     
                                                     {/* Language column is rowSpan from first row */}
                                                     {/* Actions column is rowSpan from first row */}
