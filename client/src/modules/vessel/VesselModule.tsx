@@ -2611,19 +2611,19 @@ export const VesselModule = (): JSX.Element => {
                                                                     {companyYears > 0 ? companyYears : ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-rank-${index + 1}`}>
-                                                                    {/* Will be populated with experience data */}
+                                                                    {crewMemberData?.experienceMetrics?.rank > 0 ? crewMemberData.experienceMetrics.rank : ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-tanker-${index + 1}`}>
-                                                                    {/* Will be populated with experience data */}
+                                                                    {/* Will be populated with Tanker Type experience data */}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-all-${index + 1}`}>
-                                                                    {/* Will be populated with experience data */}
+                                                                    {crewMemberData?.experienceMetrics?.tankers > 0 ? crewMemberData.experienceMetrics.tankers : ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-dow-${index + 1}`}>
-                                                                    {/* Will be populated with experience data */}
+                                                                    {crewMemberData?.experienceMetrics?.oow > 0 ? crewMemberData.experienceMetrics.oow : ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700 border-r-2 border-gray-200" data-testid={`cell-officer-time-${index + 1}`}>
-                                                                    {/* Will be populated with experience data */}
+                                                                    {crewMemberData?.experienceMetrics?.timeOnBoard > 0 ? crewMemberData.experienceMetrics.timeOnBoard : ''}
                                                                 </TableCell>
                                                                 
                                                                 {/* Language */}

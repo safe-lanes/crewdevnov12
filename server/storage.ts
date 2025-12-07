@@ -194,17 +194,20 @@ function calculateShipTypeExperience(
   return { shipTypeExperience, totalMonths };
 }
 
-function calculateExperienceFromSeaService(
+export function calculateExperienceFromSeaService(
   companySeaService: any[],
   externalSeaService: any[],
   currentRank: string
 ): { company: number; rank: number; tankers: number; oow: number } {
-  const allSeaService = [...companySeaService, ...externalSeaService];
+  // Defensive: ensure inputs are arrays
+  const safeCompanySeaService = Array.isArray(companySeaService) ? companySeaService : [];
+  const safeExternalSeaService = Array.isArray(externalSeaService) ? externalSeaService : [];
+  const allSeaService = [...safeCompanySeaService, ...safeExternalSeaService];
   
   // 1. Company (Yrs) - Calendar time from earliest E1 "from" date to today
   let companyYears = 0;
-  if (companySeaService.length > 0) {
-    const fromDates = companySeaService
+  if (safeCompanySeaService.length > 0) {
+    const fromDates = safeCompanySeaService
       .map(s => s.from)
       .filter((d: any) => d && d.trim() !== '')
       .map((d: any) => new Date(d))

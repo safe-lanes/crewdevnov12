@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage, isConnected, connectionError } from "./storage";
+import { storage, isConnected, connectionError, calculateExperienceFromSeaService } from "./storage";
 import { type VesselPlanning, insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertCompanyProcessingSchema, insertPromotionFormSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertOfficeViolationCommentSchema, insertNCReportSchema, insertVesselDateLineAdjustmentSchema } from "@shared/schema";
 import { z } from "zod";
 import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew, calculateCrewStatus } from "@shared/crew-mapping";
@@ -5571,6 +5571,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
         normalized.status = calculateCrewStatus(isActive ? true : false, hasVesselAssignment);
         normalized.isActive = isActive;
         normalized.nextAvailability = crew.nextAvailability || null;
+        
+        // Calculate experience metrics for Officer Matrix display
+        const companySeaService = normalized.currentCompanySeaService || [];
+        const externalSeaService = normalized.externalSeaService || [];
+        const currentRank = normalized.presentRank || '';
+        
+        // Parse sea service if stored as JSON string, with error handling
+        let parsedCompanySeaService: any[] = [];
+        let parsedExternalSeaService: any[] = [];
+        
+        try {
+          if (typeof companySeaService === 'string') {
+            const parsed = JSON.parse(companySeaService);
+            parsedCompanySeaService = Array.isArray(parsed) ? parsed : [];
+          } else if (Array.isArray(companySeaService)) {
+            parsedCompanySeaService = companySeaService;
+          }
+        } catch (e) {
+          // Invalid JSON, default to empty array
+          parsedCompanySeaService = [];
+        }
+        
+        try {
+          if (typeof externalSeaService === 'string') {
+            const parsed = JSON.parse(externalSeaService);
+            parsedExternalSeaService = Array.isArray(parsed) ? parsed : [];
+          } else if (Array.isArray(externalSeaService)) {
+            parsedExternalSeaService = externalSeaService;
+          }
+        } catch (e) {
+          // Invalid JSON, default to empty array
+          parsedExternalSeaService = [];
+        }
+        
+        // Calculate experience metrics
+        normalized.experienceMetrics = calculateExperienceFromSeaService(
+          parsedCompanySeaService,
+          parsedExternalSeaService,
+          currentRank
+        );
+        
+        // Calculate time on board (months from sign-on date to today)
+        if (normalized.signOnDate) {
+          try {
+            const signOnDate = new Date(normalized.signOnDate);
+            const today = new Date();
+            const diffMs = today.getTime() - signOnDate.getTime();
+            const diffMonths = diffMs / (1000 * 60 * 60 * 24 * 30.44); // Average days per month
+            normalized.experienceMetrics.timeOnBoard = Math.round(diffMonths * 10) / 10;
+          } catch (e) {
+            normalized.experienceMetrics.timeOnBoard = 0;
+          }
+        } else {
+          normalized.experienceMetrics.timeOnBoard = 0;
+        }
         
         return normalized;
       });
