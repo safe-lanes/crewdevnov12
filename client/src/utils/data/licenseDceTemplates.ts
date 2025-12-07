@@ -39,6 +39,9 @@ export const LICENSE_DCE_TEMPLATES: LicenseTemplate[] = [
   { id: 'L015', name: 'COP Deck Rating (OS)', abbr: 'COP_DRB', requirement: 'STCW II/4', officerMatrixLabel: '' },
   { id: 'L016', name: 'COP Engine Rating (ABE)', abbr: 'COP_ERA', requirement: 'STCW III/5', officerMatrixLabel: '' },
   { id: 'L017', name: 'COP Engine Rating', abbr: 'COP_ERB', requirement: 'STCW III/4', officerMatrixLabel: '' },
+  
+  // GMDSS Certificate
+  { id: 'LIC021', name: 'GMDSS', abbr: 'GMDSS', requirement: 'STCW IV/2', officerMatrixLabel: '' },
 ];
 
 // Master ID for License & DCE templates in the database
