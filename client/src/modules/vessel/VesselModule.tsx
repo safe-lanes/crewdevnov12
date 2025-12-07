@@ -2435,7 +2435,7 @@ export const VesselModule = (): JSX.Element => {
                                                     <TableHead colSpan={6} className="text-white text-xs font-normal text-center sticky top-0 z-30 bg-[#52baf3] border-r-2 border-white/40">Certification & Qualification</TableHead>
                                                     
                                                     {/* Years in Service (Today's Date) Section */}
-                                                    <TableHead colSpan={5} className="text-white text-xs font-normal text-center sticky top-0 z-30 bg-[#52baf3] border-r-2 border-white/40">Years in Service (Today's Date)</TableHead>
+                                                    <TableHead colSpan={6} className="text-white text-xs font-normal text-center sticky top-0 z-30 bg-[#52baf3] border-r-2 border-white/40">Years in Service (Today's Date)</TableHead>
                                                     
                                                     {/* Language Section */}
                                                     <TableHead rowSpan={2} className="text-white text-xs font-normal text-center w-24 sticky top-0 z-30 bg-[#52baf3]">
@@ -2464,6 +2464,7 @@ export const VesselModule = (): JSX.Element => {
                                                     <TableHead className="text-white text-xs font-normal w-24 sticky top-[41px] z-30 bg-[#52baf3] border-r-2 border-white/40">Radio Qual.</TableHead>
                                                     
                                                     {/* Years in Service columns */}
+                                                    <TableHead className="text-white text-xs font-normal w-20 sticky top-[41px] z-30 bg-[#52baf3]">Company</TableHead>
                                                     <TableHead className="text-white text-xs font-normal w-20 sticky top-[41px] z-30 bg-[#52baf3]">Rank</TableHead>
                                                     <TableHead className="text-white text-xs font-normal w-24 sticky top-[41px] z-30 bg-[#52baf3]">Tanker Type</TableHead>
                                                     <TableHead className="text-white text-xs font-normal w-20 sticky top-[41px] z-30 bg-[#52baf3]">All Types</TableHead>
@@ -2477,19 +2478,19 @@ export const VesselModule = (): JSX.Element => {
                                             <TableBody>
                                                 {ranksLoading ? (
                                                     <TableRow>
-                                                        <TableCell colSpan={16} className="text-center text-xs text-gray-500 py-8">
+                                                        <TableCell colSpan={17} className="text-center text-xs text-gray-500 py-8">
                                                             Loading vessel positions...
                                                         </TableCell>
                                                     </TableRow>
                                                 ) : vesselRanks.length === 0 ? (
                                                     <TableRow>
-                                                        <TableCell colSpan={16} className="text-center text-xs text-gray-500 py-8">
+                                                        <TableCell colSpan={17} className="text-center text-xs text-gray-500 py-8">
                                                             {NO_RANKS_CONFIGURED_MESSAGE}
                                                         </TableCell>
                                                     </TableRow>
                                                 ) : vesselRanks.filter((r: any) => r.officer === true).length === 0 ? (
                                                     <TableRow>
-                                                        <TableCell colSpan={16} className="text-center text-xs text-gray-500 py-8">
+                                                        <TableCell colSpan={17} className="text-center text-xs text-gray-500 py-8">
                                                             No officer ranks configured for this vessel.
                                                         </TableCell>
                                                     </TableRow>
@@ -2543,6 +2544,34 @@ export const VesselModule = (): JSX.Element => {
                                                             const rankDepartment = inferDepartmentFromRank(fullRankName);
                                                             const highestCoc = findHighestActiveCoc(licenses, rankDepartment);
                                                             
+                                                            // Calculate company years from currentCompanySeaService
+                                                            let companyYears = 0;
+                                                            if (crewMemberData?.currentCompanySeaService) {
+                                                                try {
+                                                                    const companySeaService = typeof crewMemberData.currentCompanySeaService === 'string' 
+                                                                        ? JSON.parse(crewMemberData.currentCompanySeaService) 
+                                                                        : crewMemberData.currentCompanySeaService;
+                                                                    
+                                                                    if (Array.isArray(companySeaService) && companySeaService.length > 0) {
+                                                                        const fromDates = companySeaService
+                                                                            .map((s: any) => s.from)
+                                                                            .filter((d: any) => d && d.trim() !== '')
+                                                                            .map((d: any) => new Date(d))
+                                                                            .filter((d: any) => !isNaN(d.getTime()));
+                                                                        
+                                                                        if (fromDates.length > 0) {
+                                                                            const earliestDate = new Date(Math.min(...fromDates.map((d: any) => d.getTime())));
+                                                                            const today = new Date();
+                                                                            const diffMs = today.getTime() - earliestDate.getTime();
+                                                                            const diffYears = diffMs / (1000 * 60 * 60 * 24 * 365.25);
+                                                                            companyYears = Math.round(diffYears * 10) / 10;
+                                                                        }
+                                                                    }
+                                                                } catch (e) {
+                                                                    companyYears = 0;
+                                                                }
+                                                            }
+                                                            
                                                             return (
                                                             <TableRow key={rank.id || index} className="hover:bg-gray-50 border-b border-gray-100">
                                                                 <TableCell className="text-xs text-gray-700 border-r border-gray-100" data-testid={`cell-officer-rank-${index + 1}`}>
@@ -2578,6 +2607,9 @@ export const VesselModule = (): JSX.Element => {
                                                                 </TableCell>
                                                                 
                                                                 {/* Years in Service */}
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-company-${index + 1}`}>
+                                                                    {companyYears > 0 ? companyYears : ''}
+                                                                </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-rank-${index + 1}`}>
                                                                     {/* Will be populated with experience data */}
                                                                 </TableCell>
