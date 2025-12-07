@@ -2596,7 +2596,7 @@ export const VesselModule = (): JSX.Element => {
                                                                 
                                                                 {/* Language */}
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-language-${index + 1}`}>
-                                                                    {/* Will be populated with language proficiency */}
+                                                                    {crewMemberData?.englishProficiency || ''}
                                                                 </TableCell>
                                                                 
                                                                 {/* Actions */}
