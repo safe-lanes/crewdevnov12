@@ -264,6 +264,57 @@ export function calculateExperienceFromSeaService(
 }
 
 /**
+ * Calculate experience years on a specific vessel type from sea service records
+ * Matches vessel types using keyword matching to handle variations in naming
+ */
+export function calculateVesselTypeSpecificExperience(
+  companySeaService: any[],
+  externalSeaService: any[],
+  vesselTypeCode: string
+): number {
+  // Defensive: ensure inputs are arrays
+  const safeCompanySeaService = Array.isArray(companySeaService) ? companySeaService : [];
+  const safeExternalSeaService = Array.isArray(externalSeaService) ? externalSeaService : [];
+  const allSeaService = [...safeCompanySeaService, ...safeExternalSeaService];
+  
+  if (!vesselTypeCode) return 0;
+  
+  // Vessel type code to keywords mapping
+  const vesselTypeKeywords: Record<string, string[]> = {
+    'OIL_TANKER': ['oil tanker', 'crude oil', 'product oil', 'product tanker'],
+    'CHEMICAL_TANKER': ['chemical tanker', 'chem tanker'],
+    'GAS_TANKER': ['gas tanker', 'lng', 'lpg'],
+    'LNG_TANKER': ['lng', 'lng tanker'],
+    'LPG_TANKER': ['lpg', 'lpg tanker'],
+    'OIL_CHEMICAL_TANKER': ['oil chemical', 'oil/chemical'],
+    'BULK_CARRIER': ['bulk', 'bulk carrier', 'dry bulk'],
+    'CONTAINER': ['container'],
+    'GENERAL_CARGO': ['general cargo', 'cargo'],
+    'RORO': ['ro-ro', 'roro'],
+    'OFFSHORE_SUPPORT': ['offshore'],
+    'SHUTTLE_TANKERS': ['shuttle']
+  };
+  
+  const keywords = vesselTypeKeywords[vesselTypeCode] || [vesselTypeCode.toLowerCase().replace(/_/g, ' ')];
+  
+  // Sum months where vessel type matches
+  let totalMonths = 0;
+  for (const service of allSeaService) {
+    const vesselType = (service.vesselType || '').trim().toLowerCase();
+    if (!vesselType) continue;
+    
+    // Check if any keyword matches
+    const matches = keywords.some(keyword => vesselType.includes(keyword.toLowerCase()));
+    if (matches) {
+      const period = parseFloat(service.periodMonths) || 0;
+      totalMonths += period;
+    }
+  }
+  
+  return Math.round((totalMonths / 12) * 10) / 10;
+}
+
+/**
  * Derive endorsement code (O, C, G combinations) based on rank category and licenses held
  * 
  * Mapping by Rank Category:

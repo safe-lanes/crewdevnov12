@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage, isConnected, connectionError, calculateExperienceFromSeaService } from "./storage";
+import { storage, isConnected, connectionError, calculateExperienceFromSeaService, calculateVesselTypeSpecificExperience } from "./storage";
 import { type VesselPlanning, insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertCompanyProcessingSchema, insertPromotionFormSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertOfficeViolationCommentSchema, insertNCReportSchema, insertVesselDateLineAdjustmentSchema } from "@shared/schema";
 import { z } from "zod";
 import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew, calculateCrewStatus } from "@shared/crew-mapping";
@@ -5501,6 +5501,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all vessel planning records to derive vessel assignments
       const allVesselPlanning = await storage.getAllVesselPlanning();
       
+      // Get vessel master data (Master 014) for vessel type lookup
+      const vesselMasterData = await storage.getMasterDataEntries('014');
+      const vesselMap = new Map(vesselMasterData.map((v: any) => [v.entryId || v.entry_id, v]));
+      
+      // Get vessel type master data (Master 004) for vessel type display names
+      const vesselTypeMasterData = await storage.getMasterDataEntries('004');
+      const vesselTypeMap = new Map(vesselTypeMasterData.map((vt: any) => [vt.code, vt.name]));
+      
       // Build a map of crewMemberId -> vessel assignment (vesselId, crewStatus, joiningDate, reliefDue)
       // A crew can have multiple assignments (primary on one vessel, secondary on another)
       // For "Present Vessel" in Crew Database, show the PRIMARY assignment
@@ -5625,6 +5633,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         } else {
           normalized.experienceMetrics.timeOnBoard = 0;
+        }
+        
+        // Calculate vessel type-specific experience for Officer Matrix "Tanker Type" column
+        if (normalized.presentVessel) {
+          const vessel = vesselMap.get(normalized.presentVessel);
+          if (vessel && vessel.vesselType) {
+            const vesselTypeCode = vessel.vesselType;
+            const vesselTypeName = vesselTypeMap.get(vesselTypeCode) || vesselTypeCode;
+            const vesselTypeYears = calculateVesselTypeSpecificExperience(
+              parsedCompanySeaService,
+              parsedExternalSeaService,
+              vesselTypeCode
+            );
+            normalized.experienceMetrics.vesselType = {
+              code: vesselTypeCode,
+              name: vesselTypeName,
+              years: vesselTypeYears
+            };
+          } else {
+            normalized.experienceMetrics.vesselType = null;
+          }
+        } else {
+          normalized.experienceMetrics.vesselType = null;
         }
         
         return normalized;
