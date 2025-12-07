@@ -2614,7 +2614,10 @@ export const VesselModule = (): JSX.Element => {
                                                                     {crewMemberData?.experienceMetrics?.rank > 0 ? crewMemberData.experienceMetrics.rank : ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-tanker-${index + 1}`}>
-                                                                    {/* Will be populated with Tanker Type experience data */}
+                                                                    {crewMemberData?.experienceMetrics?.vesselType?.name && crewMemberData?.experienceMetrics?.vesselType?.years > 0
+                                                                        ? `${crewMemberData.experienceMetrics.vesselType.name}: ${crewMemberData.experienceMetrics.vesselType.years}`
+                                                                        : ''
+                                                                    }
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-all-${index + 1}`}>
                                                                     {crewMemberData?.experienceMetrics?.tankers > 0 ? crewMemberData.experienceMetrics.tankers : ''}

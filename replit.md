@@ -40,6 +40,7 @@ The application uses a modern web stack with a module-first architecture.
 - **Vessel Revision System**: Manages vessel rank assignments with draft/submission workflows.
 - **Rank Designation Synchronization**: Supports company and vessel-specific rank designations.
 - **Vessel Database Module**: Displays vessel data, Officer Matrix, Planning, and Training Matrix.
+    - **Officer Matrix Vessel Type Integration**: Displays vessel-type-specific experience in "Tanker Type" column by linking vessels (Master 014) to vessel types (Master 004) and calculating officer experience on current vessel type from sea service history.
     - **Crew Handover Workflow**: Manages crew transitions with primary/secondary status.
     - **Crew Archive System**: Manages historical crew records with sign-off workflow.
 - **Rotation Module**: Manages crew rotation planning with "Due" and "Plan" sections and visual timelines.
