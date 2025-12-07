@@ -2569,7 +2569,7 @@ export const VesselModule = (): JSX.Element => {
                                                                     {/* Will be populated with qualification data */}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700 border-r-2 border-gray-200" data-testid={`cell-officer-radio-${index + 1}`}>
-                                                                    {hasValidGmdss(licenses) ? 'Yes' : ''}
+                                                                    {rankDepartment === 'deck' && hasValidGmdss(licenses) ? 'Yes' : ''}
                                                                 </TableCell>
                                                                 
                                                                 {/* Years in Service */}
