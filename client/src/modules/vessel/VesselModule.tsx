@@ -2615,7 +2615,7 @@ export const VesselModule = (): JSX.Element => {
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-tanker-${index + 1}`}>
                                                                     {crewMemberData?.experienceMetrics?.vesselType?.name && crewMemberData?.experienceMetrics?.vesselType?.years > 0
-                                                                        ? `${crewMemberData.experienceMetrics.vesselType.name}: ${crewMemberData.experienceMetrics.vesselType.years}`
+                                                                        ? `${crewMemberData.experienceMetrics.vesselType.name}: ${crewMemberData.experienceMetrics.vesselType.years.toFixed(1)}`
                                                                         : ''
                                                                     }
                                                                 </TableCell>
