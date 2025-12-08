@@ -16,6 +16,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { toStorageCrew } from '@shared/crew-mapping';
 import type { CrewDashboardSummary } from '@shared/schema';
+import { getReportingDate, formatDateToISO, calculatePeriodMonths } from '@shared/dateUtils';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
@@ -4065,8 +4066,8 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                           // Check if this is an active contract (no 'to' date or isActive flag)
                           const isActiveContract = !service.to || service.to === '' || (service as any).isActive === true;
                           
-                          // Memoized today's date (same value used in calculations)
-                          const todayDate = new Date().toISOString().split('T')[0];
+                          // Use shared date utility for consistent date across frontend and backend
+                          const todayDate = formatDateToISO(getReportingDate());
                           
                           if (isActiveContract) {
                             // Active contract: show today's date in blue with tooltip (read-only)
@@ -4110,14 +4111,14 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                           let displayPeriod = service.periodMonths;
                           
                           if (isActiveContract && service.from) {
-                            // Calculate dynamic period for active contracts (using same date logic as backend)
+                            // Calculate dynamic period for active contracts using shared date utility
                             const from = new Date(service.from);
-                            const to = new Date();
+                            const to = getReportingDate();
                             if (!isNaN(from.getTime()) && to >= from) {
                               const timeDiff = to.getTime() - from.getTime();
                               const totalDays = timeDiff / (1000 * 60 * 60 * 24);
-                              const months = Math.max(0, Math.round((totalDays / 30.44) * 10) / 10);
-                              displayPeriod = months.toString();
+                              const months = Math.max(0, totalDays / 30.44);
+                              displayPeriod = months.toFixed(1);
                             }
                           }
                           
