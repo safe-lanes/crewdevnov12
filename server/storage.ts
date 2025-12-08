@@ -1,4 +1,10 @@
 import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type CompanyProcessing, type InsertCompanyProcessing, type PromotionForm, type InsertPromotionForm, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type RotationArchiveEntry, type InsertRotationArchive, type DrugAlcoholTestRecord, type InsertDrugAlcoholTestRecord, type RestHoursVesselRecord, type InsertRestHoursVesselRecord, type RestHoursCrewRecord, type InsertRestHoursCrewRecord, type RestHoursDailyRecord, type InsertRestHoursDailyRecord, type FixedTask, type InsertFixedTask, type VariableTask, type InsertVariableTask, type VesselViolationComment, type InsertVesselViolationComment, type OfficeViolationComment, type InsertOfficeViolationComment, type NCReport, type InsertNCReport, type VesselDateLineAdjustment, type InsertVesselDateLineAdjustment, type CrewDashboardSummary } from "@shared/schema";
+import { 
+  getReportingDate, 
+  safeParseDate, 
+  calculatePeriodMonths as calcPeriodMonths,
+  isActiveSeaService 
+} from "@shared/dateUtils";
 
 // Static vessel mapping for testing/development (MemStorage/PersistentFileStorage)
 // In production (DatabaseStorage), vessel codes are fetched from master data
@@ -145,32 +151,25 @@ function calculateShipTypeExperience(
   let totalMonths = 0;
   
   for (const service of allSeaService) {
-    // Recalculate period from dates, with fallback to stored periodMonths for legacy records
+    // Calculate period using shared utility with fallback to stored periodMonths for legacy records
     let period = 0;
     
-    if (service.from) {
-      const from = new Date(service.from);
-      const isActiveContract = !service.to || service.to === '' || service.isActive === true;
-      
-      if (isActiveContract) {
-        // Active contracts: always use today
-        const to = new Date();
-        if (!isNaN(from.getTime()) && to >= from) {
-          const timeDiff = to.getTime() - from.getTime();
-          const totalDays = timeDiff / (1000 * 60 * 60 * 24);
-          period = Math.max(0, totalDays / 30.44);
-        }
-      } else if (service.to) {
-        // Completed contracts with valid 'to' date: recalculate
-        const to = new Date(service.to);
-        if (!isNaN(from.getTime()) && !isNaN(to.getTime()) && to >= from) {
-          const timeDiff = to.getTime() - from.getTime();
-          const totalDays = timeDiff / (1000 * 60 * 60 * 24);
-          period = Math.max(0, totalDays / 30.44);
-        }
+    const from = safeParseDate(service.from);
+    const isActive = isActiveSeaService(service);
+    
+    if (from) {
+      if (isActive) {
+        // Active contracts: use shared reporting date (today)
+        period = calcPeriodMonths(from, getReportingDate());
       } else {
-        // Legacy completed records with no 'to' date: use stored periodMonths
-        period = parseFloat(service.periodMonths) || 0;
+        const to = safeParseDate(service.to);
+        if (to) {
+          // Completed contracts with valid 'to' date: calculate period
+          period = calcPeriodMonths(from, to);
+        } else {
+          // Legacy completed records with no valid 'to' date: fallback to stored periodMonths
+          period = parseFloat(service.periodMonths) || 0;
+        }
       }
     }
     
@@ -254,35 +253,26 @@ export function calculateExperienceFromSeaService(
   }
 
   // Helper function to get period in months for a service record
-  // Recalculate from dates, with fallback to stored periodMonths for legacy records
+  // Uses shared date utility with fallback to stored periodMonths for legacy records
   const getServicePeriodMonths = (service: any): number => {
-    if (!service.from) return 0;
+    const from = safeParseDate(service.from);
+    if (!from) return 0;
     
-    const from = new Date(service.from);
-    const isActiveContract = !service.to || service.to === '' || service.isActive === true;
+    const isActive = isActiveSeaService(service);
     
-    if (isActiveContract) {
-      // Active contracts: always use today
-      const to = new Date();
-      if (!isNaN(from.getTime()) && to >= from) {
-        const timeDiff = to.getTime() - from.getTime();
-        const totalDays = timeDiff / (1000 * 60 * 60 * 24);
-        return Math.max(0, totalDays / 30.44);
-      }
-    } else if (service.to) {
-      // Completed contracts with valid 'to' date: recalculate
-      const to = new Date(service.to);
-      if (!isNaN(from.getTime()) && !isNaN(to.getTime()) && to >= from) {
-        const timeDiff = to.getTime() - from.getTime();
-        const totalDays = timeDiff / (1000 * 60 * 60 * 24);
-        return Math.max(0, totalDays / 30.44);
-      }
+    if (isActive) {
+      // Active contracts: use shared reporting date (today)
+      return calcPeriodMonths(from, getReportingDate());
     } else {
-      // Legacy completed records with no 'to' date: use stored periodMonths
-      return parseFloat(service.periodMonths) || 0;
+      const to = safeParseDate(service.to);
+      if (to) {
+        // Completed contracts with valid 'to' date: calculate period
+        return calcPeriodMonths(from, to);
+      } else {
+        // Legacy completed records with no valid 'to' date: fallback to stored periodMonths
+        return parseFloat(service.periodMonths) || 0;
+      }
     }
-    
-    return 0;
   };
 
   // 2. Rank (Yrs) - Sum of Period(M) where rank = current rank / 12
