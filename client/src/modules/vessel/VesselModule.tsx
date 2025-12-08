@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Eye } from 'lucide-react';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ColDef, GridApi } from 'ag-grid-community';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -2614,10 +2615,16 @@ export const VesselModule = (): JSX.Element => {
                                                                     {crewMemberData?.experienceMetrics?.rank > 0 ? crewMemberData.experienceMetrics.rank : ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-tanker-${index + 1}`}>
-                                                                    {crewMemberData?.experienceMetrics?.vesselType?.name && crewMemberData?.experienceMetrics?.vesselType?.years > 0
-                                                                        ? `${crewMemberData.experienceMetrics.vesselType.name}: ${crewMemberData.experienceMetrics.vesselType.years.toFixed(1)}`
-                                                                        : ''
-                                                                    }
+                                                                    {crewMemberData?.experienceMetrics?.vesselType?.name && crewMemberData?.experienceMetrics?.vesselType?.years > 0 ? (
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger asChild>
+                                                                                <span className="cursor-help">{crewMemberData.experienceMetrics.vesselType.years.toFixed(1)}</span>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent>
+                                                                                <p>{crewMemberData.experienceMetrics.vesselType.name}</p>
+                                                                            </TooltipContent>
+                                                                        </Tooltip>
+                                                                    ) : ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-all-${index + 1}`}>
                                                                     {crewMemberData?.experienceMetrics?.tankers > 0 ? crewMemberData.experienceMetrics.tankers : ''}
