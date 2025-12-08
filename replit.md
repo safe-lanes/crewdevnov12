@@ -23,6 +23,7 @@ A comprehensive system designed to streamline seafarer and vessel management, op
 - **Audit schema vs migrations**: When working on database-related tasks, compare `shared/schema.ts` against existing migrations to identify any gaps
 - **Migration naming**: Use sequential numbering format `NNNN_descriptive_name.sql` (e.g., `0013_add_uploaded_photo_column.sql`)
 - **Idempotent migrations**: Use `IF NOT EXISTS` / `IF EXISTS` clauses to make migrations safe to re-run
+- **Data backfill migrations**: When consolidating or renaming fields, create separate backfill migrations to ensure existing data is properly migrated (e.g., `0016_backfill_crew_sign_on_date.sql`)
 
 ## System Architecture
 The application uses a modern web stack with a module-first architecture.
@@ -41,6 +42,7 @@ The application uses a modern web stack with a module-first architecture.
 - **Rank Designation Synchronization**: Supports company and vessel-specific rank designations.
 - **Vessel Database Module**: Displays vessel data, Officer Matrix, Planning, and Training Matrix.
     - **Officer Matrix Vessel Type Integration**: Displays vessel-type-specific experience in "Tanker Type" column by linking vessels (Master 014) to vessel types (Master 004) and calculating officer experience on current vessel type from sea service history.
+    - **Time on Board Calculation**: Calculated from crew_members.sign_on_date (months from sign-on to today), displayed in Officer Matrix "Time o/b (months)" column. Backfill migration ensures all deployed crew have sign_on_date populated.
     - **Crew Handover Workflow**: Manages crew transitions with primary/secondary status.
     - **Crew Archive System**: Manages historical crew records with sign-off workflow.
 - **Rotation Module**: Manages crew rotation planning with "Due" and "Plan" sections and visual timelines.
@@ -59,6 +61,11 @@ The application uses a modern web stack with a module-first architecture.
 - **Data Storage**: `PersistentFileStorage` for development, PostgreSQL/Drizzle ORM for production.
 - **Crew Member Update Protection**: Vessel assignment fields are protected from accidental clearing during updates.
 - **Crew Dashboard Timeline Card**: Canvas-based visualization of 6-month vessel assignments with color coding and appraisal/handover badges.
+- **Sign On Date Consolidation**: Unified joiningDate → signOnDate terminology across codebase (Dec 2024):
+    - crew_members: Uses sign_on_date (single source of truth)
+    - vessel_planning: Uses sign_on_date for primary crew, reliever_sign_on_date for planned relievers
+    - UI terminology: Changed from "Joined/Joining" to "Signed On/Sign On" throughout
+    - Dual-write strategy during transition: Frontend sends both new (signOnDate, relieverSignOnDate) and legacy (joiningDate) field names to backend
 
 ## External Dependencies
 - React 18
