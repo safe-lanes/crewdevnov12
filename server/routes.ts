@@ -2869,6 +2869,153 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // SIGN-ON DETECTION: Check if this is a sign-on action
+      // Sign-on happens when: 
+      // 1. signOnDate is newly set (wasn't set before), OR
+      // 2. joiningStatus changes to "Signed On", OR  
+      // 3. relieverSignOnDate is set (for relievers)
+      const isSignOnAction = (
+        (req.body.signOnDate && !existingPlanning.signOnDate) ||
+        (req.body.joiningStatus === "Signed On" && existingPlanning.joiningStatus !== "Signed On") ||
+        (req.body.relieverSignOnDate && !existingPlanning.relieverSignOnDate && req.body.joiningStatus === "Signed On")
+      );
+      
+      if (isSignOnAction) {
+        const crewMemberId = existingPlanning.crewMemberId;
+        console.log(`✅ [VESSEL-PLANNING] Sign-on detected for planning ${id}, crew ${crewMemberId}`);
+        
+        // CREATE SEA SERVICE RECORD ON SIGN-ON
+        if (crewMemberId) {
+          try {
+            const crewMemberData = await storage.getCrewMember(crewMemberId);
+            
+            if (crewMemberData) {
+              // Get vessel info for sea service record
+              let vesselName = 'Unknown Vessel';
+              let vesselType = '';
+              
+              if (vesselId) {
+                try {
+                  const masterEntries = await storage.getMasterDataEntries('014');
+                  const vesselEntry = masterEntries.find((e: any) => e.entryId === vesselId || e.entry_id === vesselId || e.nuid === vesselId);
+                  if (vesselEntry) {
+                    vesselName = vesselEntry.name || vesselName;
+                    if (vesselEntry.vtuid) {
+                      const typeEntries = await storage.getMasterDataEntries('004');
+                      const typeEntry = typeEntries.find((t: any) => t.entryId === vesselEntry.vtuid || t.entry_id === vesselEntry.vtuid);
+                      if (typeEntry) {
+                        vesselType = typeEntry.name || '';
+                      }
+                    }
+                  }
+                } catch (vesselError) {
+                  console.warn(`⚠️ [VESSEL-PLANNING] Could not fetch vessel details:`, vesselError);
+                }
+              }
+              
+              // Get rank display name
+              let rankDisplayName = crewMemberData.presentRank || '';
+              if (!rankDisplayName && existingPlanning.rankId) {
+                try {
+                  const companyRanks = await storage.getCompanyRanks();
+                  const rankEntry = companyRanks.find((r: any) => 
+                    r.rankId === existingPlanning.rankId || 
+                    r.id === existingPlanning.rankId ||
+                    String(r.id) === existingPlanning.rankId
+                  );
+                  if (rankEntry) {
+                    rankDisplayName = rankEntry.rank || '';
+                  }
+                } catch (rankError) {
+                  console.warn(`⚠️ [VESSEL-PLANNING] Could not fetch rank display name:`, rankError);
+                }
+              }
+              if (!rankDisplayName) {
+                rankDisplayName = existingPlanning.rank || existingPlanning.rankId || 'Unknown Rank';
+              }
+              
+              // Determine the sign-on date
+              const signOnDate = req.body.signOnDate || req.body.relieverSignOnDate || existingPlanning.signOnDate;
+              
+              if (signOnDate) {
+                // Parse existing sea service records
+                let currentSeaService: any[] = [];
+                if (crewMemberData.currentCompanySeaService) {
+                  try {
+                    currentSeaService = typeof crewMemberData.currentCompanySeaService === 'string' 
+                      ? JSON.parse(crewMemberData.currentCompanySeaService) 
+                      : crewMemberData.currentCompanySeaService;
+                    if (!Array.isArray(currentSeaService)) {
+                      currentSeaService = [];
+                    }
+                  } catch (e) {
+                    currentSeaService = [];
+                  }
+                }
+                
+                // Check if there's already an active record for this planning ID
+                // (prevents duplicates on repeated PATCH calls or retries)
+                const existingActiveIndex = currentSeaService.findIndex(record => 
+                  record.planningId === id && (!record.to || record.to === '' || record.isActive === true)
+                );
+                
+                let updatedSeaService: any[];
+                
+                if (existingActiveIndex >= 0) {
+                  // Update existing active record instead of creating duplicate
+                  console.log(`🔄 [VESSEL-PLANNING] Updating existing active sea service record (planningId: ${id}) instead of creating duplicate`);
+                  currentSeaService[existingActiveIndex] = {
+                    ...currentSeaService[existingActiveIndex],
+                    planningId: id, // Link to vessel planning record
+                    vesselName: vesselName,
+                    vesselCode: vesselId || '',
+                    vesselType: vesselType,
+                    rank: rankDisplayName,
+                    from: signOnDate,
+                    to: '', // Keep active
+                    isActive: true
+                  };
+                  updatedSeaService = currentSeaService;
+                } else {
+                  // Create new ACTIVE sea service record (without 'to' date - indicates currently onboard)
+                  const newSeaServiceRecord = {
+                    id: `auto-${Date.now()}`,
+                    planningId: id, // Link to vessel planning record for deduplication
+                    vesselName: vesselName,
+                    vesselCode: vesselId || '',
+                    vesselType: vesselType,
+                    deadweight: '',
+                    engineTypePower: '',
+                    ownerOperator: '',
+                    rank: rankDisplayName,
+                    from: signOnDate,
+                    to: '', // Empty 'to' date indicates active/ongoing service
+                    periodMonths: '', // Will be calculated dynamically based on current date
+                    isActive: true // Flag to identify active contracts
+                  };
+                  
+                  // Add new record at the beginning (latest on top)
+                  updatedSeaService = [newSeaServiceRecord, ...currentSeaService];
+                  console.log(`✅ [VESSEL-PLANNING] Created new active sea service record on sign-on: ${vesselName} (${rankDisplayName}) from ${signOnDate}`);
+                }
+                
+                // Update crew member with sea service records
+                await storage.updateCrewMember(crewMemberId, {
+                  currentCompanySeaService: JSON.stringify(updatedSeaService),
+                  status: 'On Board',
+                  presentVessel: vesselId || '',
+                  signOnDate: signOnDate
+                });
+              } else {
+                console.log(`⚠️ [VESSEL-PLANNING] Skipping sea service record - no sign-on date available`);
+              }
+            }
+          } catch (syncError) {
+            console.error(`⚠️ [VESSEL-PLANNING] Failed to create sea service record on sign-on:`, syncError);
+          }
+        }
+      }
+      
       // SIGN-OFF VALIDATION: Check if this is a sign-off action
       const isSignOffAction = req.body.reliefStatus === "Signed Off" && req.body.signOffDate;
       
@@ -2986,7 +3133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 reliefDue: null
               };
               
-              // Only add sea service record if we have valid sign-on and sign-off dates
+              // UPDATE existing active sea service record with sign-off date
               if (signOnDate && signOffDate) {
                 // Parse existing sea service records
                 let currentSeaService: any[] = [];
@@ -3003,39 +3150,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   }
                 }
                 
-                // Calculate period in months
-                let periodMonths = '';
-                const from = new Date(signOnDate);
-                const to = new Date(signOffDate);
-                if (!isNaN(from.getTime()) && !isNaN(to.getTime()) && to >= from) {
-                  const timeDiff = to.getTime() - from.getTime();
-                  const totalDays = timeDiff / (1000 * 60 * 60 * 24);
-                  const months = Math.max(0, Math.round((totalDays / 30.44) * 10) / 10);
-                  periodMonths = months.toString();
+                // Find the active sea service record (created on sign-on)
+                // It should have: matching vessel, matching from date, and empty/missing 'to' date OR isActive flag
+                let activeRecordFound = false;
+                const updatedSeaService = currentSeaService.map((record: any) => {
+                  const isActiveRecord = (
+                    record.vesselCode === vesselId &&
+                    record.from === signOnDate &&
+                    (!record.to || record.to === '' || record.isActive === true)
+                  );
+                  
+                  if (isActiveRecord && !activeRecordFound) {
+                    activeRecordFound = true;
+                    
+                    // Calculate period in months
+                    let periodMonths = '';
+                    const from = new Date(signOnDate);
+                    const to = new Date(signOffDate);
+                    if (!isNaN(from.getTime()) && !isNaN(to.getTime()) && to >= from) {
+                      const timeDiff = to.getTime() - from.getTime();
+                      const totalDays = timeDiff / (1000 * 60 * 60 * 24);
+                      const months = Math.max(0, Math.round((totalDays / 30.44) * 10) / 10);
+                      periodMonths = months.toString();
+                    }
+                    
+                    console.log(`✅ [VESSEL-PLANNING] Updating active sea service record with sign-off: ${record.vesselName} (${record.rank}) ${signOnDate} to ${signOffDate} = ${periodMonths} months`);
+                    
+                    // Update the active record with sign-off date and period
+                    return {
+                      ...record,
+                      to: signOffDate,
+                      periodMonths: periodMonths,
+                      isActive: false // Mark as no longer active
+                    };
+                  }
+                  
+                  return record;
+                });
+                
+                // If no active record was found, create a new one (fallback for legacy data)
+                if (!activeRecordFound) {
+                  console.log(`⚠️ [VESSEL-PLANNING] No active sea service record found, creating new one (legacy fallback)`);
+                  
+                  // Calculate period in months
+                  let periodMonths = '';
+                  const from = new Date(signOnDate);
+                  const to = new Date(signOffDate);
+                  if (!isNaN(from.getTime()) && !isNaN(to.getTime()) && to >= from) {
+                    const timeDiff = to.getTime() - from.getTime();
+                    const totalDays = timeDiff / (1000 * 60 * 60 * 24);
+                    const months = Math.max(0, Math.round((totalDays / 30.44) * 10) / 10);
+                    periodMonths = months.toString();
+                  }
+                  
+                  const newSeaServiceRecord = {
+                    id: `auto-${Date.now()}`,
+                    vesselName: vesselName,
+                    vesselCode: vesselId || '',
+                    vesselType: vesselType,
+                    deadweight: '',
+                    engineTypePower: '',
+                    ownerOperator: '',
+                    rank: rankDisplayName,
+                    from: signOnDate,
+                    to: signOffDate,
+                    periodMonths: periodMonths,
+                    isActive: false
+                  };
+                  
+                  updatedSeaService.unshift(newSeaServiceRecord);
+                  console.log(`✅ [VESSEL-PLANNING] Created sea service record: ${vesselName} (${rankDisplayName}) ${signOnDate} to ${signOffDate} = ${periodMonths} months`);
                 }
                 
-                // Create new sea service record (add at beginning - latest on top)
-                const newSeaServiceRecord = {
-                  id: `auto-${Date.now()}`,
-                  vesselName: vesselName,
-                  vesselCode: vesselId || '',
-                  vesselType: vesselType,
-                  deadweight: '',
-                  engineTypePower: '',
-                  ownerOperator: '',
-                  rank: rankDisplayName,
-                  from: signOnDate,
-                  to: signOffDate,
-                  periodMonths: periodMonths
-                };
-                
-                // Add new record at the beginning (latest on top)
-                const updatedSeaService = [newSeaServiceRecord, ...currentSeaService];
                 crewUpdate.currentCompanySeaService = JSON.stringify(updatedSeaService);
-                
-                console.log(`✅ [VESSEL-PLANNING] Adding sea service record: ${vesselName} (${rankDisplayName}) ${signOnDate} to ${signOffDate} = ${periodMonths} months`);
               } else {
-                console.log(`⚠️ [VESSEL-PLANNING] Skipping sea service record - missing dates (signOn: ${signOnDate}, signOff: ${signOffDate})`);
+                console.log(`⚠️ [VESSEL-PLANNING] Skipping sea service record update - missing dates (signOn: ${signOnDate}, signOff: ${signOffDate})`);
               }
               
               // Update crew member: status to "On Leave", clear vessel fields, optionally add sea service record

@@ -145,7 +145,35 @@ function calculateShipTypeExperience(
   let totalMonths = 0;
   
   for (const service of allSeaService) {
-    const period = parseFloat(service.periodMonths) || 0;
+    // Recalculate period from dates, with fallback to stored periodMonths for legacy records
+    let period = 0;
+    
+    if (service.from) {
+      const from = new Date(service.from);
+      const isActiveContract = !service.to || service.to === '' || service.isActive === true;
+      
+      if (isActiveContract) {
+        // Active contracts: always use today
+        const to = new Date();
+        if (!isNaN(from.getTime()) && to >= from) {
+          const timeDiff = to.getTime() - from.getTime();
+          const totalDays = timeDiff / (1000 * 60 * 60 * 24);
+          period = Math.max(0, totalDays / 30.44);
+        }
+      } else if (service.to) {
+        // Completed contracts with valid 'to' date: recalculate
+        const to = new Date(service.to);
+        if (!isNaN(from.getTime()) && !isNaN(to.getTime()) && to >= from) {
+          const timeDiff = to.getTime() - from.getTime();
+          const totalDays = timeDiff / (1000 * 60 * 60 * 24);
+          period = Math.max(0, totalDays / 30.44);
+        }
+      } else {
+        // Legacy completed records with no 'to' date: use stored periodMonths
+        period = parseFloat(service.periodMonths) || 0;
+      }
+    }
+    
     if (period <= 0) continue;
     
     totalMonths += period;
@@ -178,7 +206,10 @@ function calculateShipTypeExperience(
       }
     }
     
-    typeMonths[displayLabel] = (typeMonths[displayLabel] || 0) + period;
+    // Only add to typeMonths if we have a valid display label
+    if (displayLabel) {
+      typeMonths[displayLabel] = (typeMonths[displayLabel] || 0) + period;
+    }
   }
   
   // Convert to array and sort by months descending
@@ -222,14 +253,45 @@ export function calculateExperienceFromSeaService(
     }
   }
 
+  // Helper function to get period in months for a service record
+  // Recalculate from dates, with fallback to stored periodMonths for legacy records
+  const getServicePeriodMonths = (service: any): number => {
+    if (!service.from) return 0;
+    
+    const from = new Date(service.from);
+    const isActiveContract = !service.to || service.to === '' || service.isActive === true;
+    
+    if (isActiveContract) {
+      // Active contracts: always use today
+      const to = new Date();
+      if (!isNaN(from.getTime()) && to >= from) {
+        const timeDiff = to.getTime() - from.getTime();
+        const totalDays = timeDiff / (1000 * 60 * 60 * 24);
+        return Math.max(0, totalDays / 30.44);
+      }
+    } else if (service.to) {
+      // Completed contracts with valid 'to' date: recalculate
+      const to = new Date(service.to);
+      if (!isNaN(from.getTime()) && !isNaN(to.getTime()) && to >= from) {
+        const timeDiff = to.getTime() - from.getTime();
+        const totalDays = timeDiff / (1000 * 60 * 60 * 24);
+        return Math.max(0, totalDays / 30.44);
+      }
+    } else {
+      // Legacy completed records with no 'to' date: use stored periodMonths
+      return parseFloat(service.periodMonths) || 0;
+    }
+    
+    return 0;
+  };
+
   // 2. Rank (Yrs) - Sum of Period(M) where rank = current rank / 12
   let rankMonths = 0;
   if (currentRank) {
     const normalizedCurrentRank = currentRank.trim().toLowerCase();
     for (const service of allSeaService) {
       if (service.rank && service.rank.trim().toLowerCase() === normalizedCurrentRank) {
-        const period = parseFloat(service.periodMonths) || 0;
-        rankMonths += period;
+        rankMonths += getServicePeriodMonths(service);
       }
     }
   }
@@ -239,8 +301,7 @@ export function calculateExperienceFromSeaService(
   let tankerMonths = 0;
   for (const service of allSeaService) {
     if (isTankerVesselType(service.vesselType)) {
-      const period = parseFloat(service.periodMonths) || 0;
-      tankerMonths += period;
+      tankerMonths += getServicePeriodMonths(service);
     }
   }
   const tankerYears = Math.round((tankerMonths / 12) * 10) / 10;
@@ -249,8 +310,7 @@ export function calculateExperienceFromSeaService(
   let oowMonths = 0;
   for (const service of allSeaService) {
     if (isOfficerRank(service.rank)) {
-      const period = parseFloat(service.periodMonths) || 0;
-      oowMonths += period;
+      oowMonths += getServicePeriodMonths(service);
     }
   }
   const oowYears = Math.round((oowMonths / 12) * 10) / 10;

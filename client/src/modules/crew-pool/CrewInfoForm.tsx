@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { toStorageCrew } from '@shared/crew-mapping';
@@ -4060,20 +4061,76 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                         />
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
-                        <Input
-                          type="date"
-                          value={service.to}
-                          onChange={(e) => updateCurrentCompanySeaService(service.id, 'to', e.target.value)}
-                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                        />
+                        {(() => {
+                          // Check if this is an active contract (no 'to' date or isActive flag)
+                          const isActiveContract = !service.to || service.to === '' || (service as any).isActive === true;
+                          
+                          // Memoized today's date (same value used in calculations)
+                          const todayDate = new Date().toISOString().split('T')[0];
+                          
+                          if (isActiveContract) {
+                            // Active contract: show today's date in blue with tooltip (read-only)
+                            return (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div 
+                                      className="border-0 bg-transparent p-0 text-[13px] font-normal h-6 cursor-default" 
+                                      style={{ color: '#3b82f6' }}
+                                      data-testid={`date-to-active-${service.id}`}
+                                    >
+                                      {todayDate}
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Currently on board</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            );
+                          } else {
+                            // Completed contract: show normal 'to' date
+                            return (
+                              <Input
+                                type="date"
+                                value={service.to}
+                                onChange={(e) => updateCurrentCompanySeaService(service.id, 'to', e.target.value)}
+                                className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                                data-testid={`input-date-to-${service.id}`}
+                              />
+                            );
+                          }
+                        })()}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
-                        <Input
-                          value={service.periodMonths}
-                          readOnly
-                          className="border-0 bg-gray-50 p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6 cursor-not-allowed"
-                          title="Auto-calculated based on From & To dates"
-                        />
+                        {(() => {
+                          // For active contracts, calculate period from 'from' date to today
+                          const isActiveContract = !service.to || service.to === '' || (service as any).isActive === true;
+                          
+                          let displayPeriod = service.periodMonths;
+                          
+                          if (isActiveContract && service.from) {
+                            // Calculate dynamic period for active contracts (using same date logic as backend)
+                            const from = new Date(service.from);
+                            const to = new Date();
+                            if (!isNaN(from.getTime()) && to >= from) {
+                              const timeDiff = to.getTime() - from.getTime();
+                              const totalDays = timeDiff / (1000 * 60 * 60 * 24);
+                              const months = Math.max(0, Math.round((totalDays / 30.44) * 10) / 10);
+                              displayPeriod = months.toString();
+                            }
+                          }
+                          
+                          return (
+                            <Input
+                              value={displayPeriod}
+                              readOnly
+                              className={`border-0 bg-gray-50 p-0 focus-visible:ring-0 text-[13px] font-normal h-6 cursor-not-allowed ${isActiveContract ? 'text-blue-600' : 'text-[#4f5863]'}`}
+                              title={isActiveContract ? "Auto-calculated based on sign-on date to today" : "Auto-calculated based on From & To dates"}
+                              data-testid={`input-period-months-${service.id}`}
+                            />
+                          );
+                        })()}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         {service.vesselType === 'Oil Chemical Tanker' ? (
