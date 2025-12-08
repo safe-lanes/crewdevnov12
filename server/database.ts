@@ -1653,21 +1653,21 @@ export class DatabaseStorage implements IStorage {
         found: true
       });
       
-      // Map assignment fields correctly (fromDate→joiningDate, toDate→reliefDue)
+      // Map assignment fields correctly (fromDate→signOnDate, toDate→reliefDue)
       const crewMemberId = assignment.crewMemberId || assignment.crewId;
-      const joiningDate = assignment.fromDate || assignment.joiningDate;
+      const signOnDate = assignment.fromDate || assignment.signOnDate || assignment.joiningDate;
       let reliefDue = assignment.toDate || assignment.reliefDue;
       let contractPeriodMonths = assignment.contractPeriod || assignment.contractPeriodMonths;
       
       // Validate required fields for reliever deployment
-      if (!crewMemberId || !joiningDate) {
-        console.error('Missing required reliever fields:', { crewMemberId, joiningDate });
+      if (!crewMemberId || !signOnDate) {
+        console.error('Missing required reliever fields:', { crewMemberId, signOnDate });
         return { success: false };
       }
       
       // Calculate contract period from reliefDue if contractPeriod not provided
       if (!contractPeriodMonths && reliefDue) {
-        const fromDateObj = new Date(joiningDate);
+        const fromDateObj = new Date(signOnDate);
         const toDateObj = new Date(reliefDue);
         contractPeriodMonths = Math.max(1, 
           (toDateObj.getFullYear() - fromDateObj.getFullYear()) * 12 + 
@@ -1683,7 +1683,7 @@ export class DatabaseStorage implements IStorage {
       // Check for conflicts before deployment
       const conflicts = await this.checkAssignmentConflicts(
         crewMemberId,
-        joiningDate,
+        signOnDate,
         contractPeriodMonths,
         planId,
         assignmentIndex
@@ -1720,17 +1720,17 @@ export class DatabaseStorage implements IStorage {
       
       if (existingRecords.length > 0) {
         // UPDATE existing record with reliever data
-        console.log('📝 Updating existing vessel_planning record:', existingRecords[0].id, 'with joiningDate:', joiningDate);
+        console.log('📝 Updating existing vessel_planning record:', existingRecords[0].id, 'with relieverSignOnDate:', signOnDate);
         console.log('📋 Previous reliever data:', { 
           relieverCrewId: existingRecords[0].relieverCrewId, 
-          joiningDate: existingRecords[0].joiningDate 
+          relieverSignOnDate: existingRecords[0].relieverSignOnDate 
         });
         const [updated] = await this.db
           .update(vesselPlanning)
           .set({
             relieverCrewId: crewMemberId,
             relieverCrewName: relieverCrewName,
-            joiningDate: joiningDate,
+            relieverSignOnDate: signOnDate,
             joiningPort: assignment.joiningPort || null,
             joiningStatus: 'Planned',
             contractPeriodMonths: contractPeriodMonths,
@@ -1739,22 +1739,22 @@ export class DatabaseStorage implements IStorage {
           .where(eq(vesselPlanning.id, existingRecords[0].id))
           .returning();
         vesselPlanningRecord = updated;
-        console.log('✅ Updated vessel_planning record:', updated?.id, 'new joiningDate:', updated?.joiningDate);
+        console.log('✅ Updated vessel_planning record:', updated?.id, 'new relieverSignOnDate:', updated?.relieverSignOnDate);
         
         // Verify update was persisted by re-fetching
         const [verifyRecord] = await this.db
           .select()
           .from(vesselPlanning)
           .where(eq(vesselPlanning.id, existingRecords[0].id));
-        console.log('🔍 Verification fetch - joiningDate:', verifyRecord?.joiningDate, 'updatedAt:', verifyRecord?.updatedAt);
+        console.log('🔍 Verification fetch - relieverSignOnDate:', verifyRecord?.relieverSignOnDate, 'updatedAt:', verifyRecord?.updatedAt);
         
-        if (verifyRecord?.joiningDate !== joiningDate) {
-          console.error('⚠️ ALERT: joiningDate mismatch after update!', {
-            expected: joiningDate,
-            actual: verifyRecord?.joiningDate
+        if (verifyRecord?.relieverSignOnDate !== signOnDate) {
+          console.error('⚠️ ALERT: relieverSignOnDate mismatch after update!', {
+            expected: signOnDate,
+            actual: verifyRecord?.relieverSignOnDate
           });
           // This should never happen - throw to surface the issue to API consumers
-          throw new Error(`Database update failed: joiningDate not persisted. Expected "${joiningDate}", got "${verifyRecord?.joiningDate}"`);
+          throw new Error(`Database update failed: relieverSignOnDate not persisted. Expected "${signOnDate}", got "${verifyRecord?.relieverSignOnDate}"`);
         }
       } else {
         // No existing record found - create new one (fallback for positions without on-board crew)
@@ -1768,7 +1768,7 @@ export class DatabaseStorage implements IStorage {
             crewStatus: 'primary',
             relieverCrewId: crewMemberId,
             relieverCrewName: relieverCrewName,
-            joiningDate: joiningDate,
+            relieverSignOnDate: signOnDate,
             joiningPort: assignment.joiningPort || null,
             joiningStatus: 'Planned',
             contractPeriodMonths: contractPeriodMonths,
@@ -1808,7 +1808,7 @@ export class DatabaseStorage implements IStorage {
         crewId: crewMemberId,
         crewName: relieverCrewName || assignment.crewName,
         crewMemberId: crewMemberId || null,
-        joiningDate: joiningDate,
+        signOnDate: signOnDate,
         joiningPort: assignment.joiningPort || null,
         contractPeriod: contractPeriodMonths,
         signOffDate: assignment.signOffDate || null,
@@ -1881,7 +1881,7 @@ export class DatabaseStorage implements IStorage {
         crewId: assignment.crewId,
         crewName: assignment.crewName,
         crewMemberId: assignment.crewMemberId || null,
-        joiningDate: assignment.joiningDate,
+        signOnDate: assignment.signOnDate || assignment.joiningDate,
         joiningPort: assignment.joiningPort || null,
         contractPeriod: assignment.contractPeriod || null,
         signOffDate: assignment.signOffDate || null,
@@ -1904,14 +1904,14 @@ export class DatabaseStorage implements IStorage {
 
   async checkAssignmentConflicts(
     crewId: string, 
-    joiningDate: string, 
+    signOnDate: string, 
     contractPeriod: number,
     excludePlanId?: number,
     excludeAssignmentIndex?: number
   ): Promise<any[]> {
-    // Calculate end date from joining date + contract period (months)
-    const joiningDateObj = new Date(joiningDate);
-    const endDateObj = new Date(joiningDateObj);
+    // Calculate end date from sign-on date + contract period (months)
+    const signOnDateObj = new Date(signOnDate);
+    const endDateObj = new Date(signOnDateObj);
     endDateObj.setMonth(endDateObj.getMonth() + contractPeriod);
     const endDate = endDateObj.toISOString().split('T')[0];
     
@@ -1933,8 +1933,8 @@ export class DatabaseStorage implements IStorage {
       );
     
     for (const planning of vesselPlanningEntries) {
-      // Use joiningDate as start date
-      const planStart = planning.joiningDate;
+      // Use relieverSignOnDate or signOnDate as start date
+      const planStart = planning.relieverSignOnDate || planning.signOnDate;
       if (!planStart) continue;
       
       // Calculate end date from contract period
@@ -1953,7 +1953,7 @@ export class DatabaseStorage implements IStorage {
       }
       
       // Check date overlap
-      const hasOverlap = joiningDate <= planEnd && endDate >= planStart;
+      const hasOverlap = signOnDate <= planEnd && endDate >= planStart;
       
       if (hasOverlap) {
         conflicts.push({
@@ -1992,7 +1992,7 @@ export class DatabaseStorage implements IStorage {
         if (assignment.status === 'Rejected') continue;
         
         // Calculate assignment end date
-        const assignmentStart = assignment.joiningDate;
+        const assignmentStart = assignment.signOnDate || assignment.joiningDate;
         const assignmentPeriod = assignment.contractPeriod || 6;
         const assignmentStartObj = new Date(assignmentStart);
         const assignmentEndObj = new Date(assignmentStartObj);
@@ -2000,7 +2000,7 @@ export class DatabaseStorage implements IStorage {
         const assignmentEnd = assignmentEndObj.toISOString().split('T')[0];
         
         // Check date overlap: ranges overlap if start1 <= end2 AND end1 >= start2
-        const hasOverlap = joiningDate <= assignmentEnd && endDate >= assignmentStart;
+        const hasOverlap = signOnDate <= assignmentEnd && endDate >= assignmentStart;
         
         if (hasOverlap) {
           conflicts.push({
@@ -3232,7 +3232,7 @@ export class DatabaseStorage implements IStorage {
     const vesselName = await this.translateVesselCodeToNameFromDb(vesselCode);
     
     // Get dates from vessel_planning or crew member record
-    const joinedDate = primaryAssignment?.signOnDate || crewMember.joiningDate || crewMember.signOnDate;
+    const joinedDate = primaryAssignment?.signOnDate || crewMember.signOnDate;
     const reliefDue = primaryAssignment?.reliefDue || crewMember.reliefDue;
     const joinedDateFormatted = this.formatDateForDashboard(joinedDate);
     const reliefDueFormatted = this.formatDateForDashboard(reliefDue);

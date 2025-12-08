@@ -823,7 +823,7 @@ export interface IStorage {
   getProposedAssignments(filters?: { vessels?: string[]; ranks?: string[]; draftId?: string; dateFrom?: string; dateTo?: string; archived?: boolean }): Promise<any[]>;
   deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[]; vesselPlanningId?: number; vesselCode?: string }>;
   rejectAssignment(planId: number, assignmentIndex: number, rejectedBy?: string): Promise<RotationPlan | undefined>;
-  checkAssignmentConflicts(crewId: string, joiningDate: string, contractPeriod: number, excludePlanId?: number, excludeAssignmentIndex?: number): Promise<any[]>;
+  checkAssignmentConflicts(crewId: string, signOnDate: string, contractPeriod: number, excludePlanId?: number, excludeAssignmentIndex?: number): Promise<any[]>;
   // Rotation Archive - Independent historical records
   getArchivedAssignments(filters?: { vessels?: string[]; ranks?: string[]; dateFrom?: string; dateTo?: string }): Promise<RotationArchiveEntry[]>;
   createArchiveEntry(entry: InsertRotationArchive): Promise<RotationArchiveEntry>;
@@ -1687,7 +1687,7 @@ export class MemStorage implements IStorage {
     const appraisals = await this.getAppraisalResultsByCrewMember(crewId);
 
     const vesselName = crewMember.presentVessel ? translateVesselCodeToName(crewMember.presentVessel) : '';
-    const joinedDateFormatted = formatDateForDashboard(crewMember.joiningDate || crewMember.signOnDate);
+    const joinedDateFormatted = formatDateForDashboard(crewMember.signOnDate);
     const reliefDueFormatted = formatDateForDashboard(crewMember.reliefDue);
 
     // Parse sea service data for experience calculations
@@ -2152,12 +2152,12 @@ export class MemStorage implements IStorage {
                   currentCrew = {
                     id: crewOnBoard.id,
                     name: `${crewOnBoard.firstName} ${crewOnBoard.middleName || ''} ${crewOnBoard.familyName || crewOnBoard.familyName || ''}`.replace(/\s+/g, ' ').trim(),
-                    contractStartDate: planning.joiningDate || crewOnBoard.joiningDate || '',
+                    contractStartDate: planning.signOnDate || crewOnBoard.signOnDate || '',
                     contractEndDate: planning.reliefDue,
                     rangeStartDate: rangeStartDate.toISOString().split('T')[0],
                     rangeEndDate: rangeEndDate.toISOString().split('T')[0],
                   };
-                } else if (crewOnBoard.joiningDate && crewOnBoard.reliefDue) {
+                } else if (crewOnBoard.signOnDate && crewOnBoard.reliefDue) {
                   // Fallback to crew member data if no planning data
                   const reliefDueDate = new Date(crewOnBoard.reliefDue);
                   const rangeEndDate = new Date(reliefDueDate);
@@ -2166,7 +2166,7 @@ export class MemStorage implements IStorage {
                   currentCrew = {
                     id: crewOnBoard.id,
                     name: `${crewOnBoard.firstName} ${crewOnBoard.middleName || ''} ${crewOnBoard.familyName || crewOnBoard.familyName || ''}`.replace(/\s+/g, ' ').trim(),
-                    contractStartDate: crewOnBoard.joiningDate,
+                    contractStartDate: crewOnBoard.signOnDate,
                     contractEndDate: crewOnBoard.reliefDue,
                     rangeStartDate: crewOnBoard.reliefDue,
                     rangeEndDate: rangeEndDate.toISOString().split('T')[0],
@@ -2281,7 +2281,7 @@ export class MemStorage implements IStorage {
       await this.updateVesselPlanning(existingPlanningId, {
         relieverCrewId: assignment.crewId,
         relieverCrewName: assignment.crewName,
-        joiningDate: assignment.joiningDate,
+        relieverSignOnDate: assignment.signOnDate || assignment.joiningDate,
         joiningStatus: "Planned",
         contractPeriodMonths: assignment.contractPeriod,
         deploymentChecklistCompleted: false,
@@ -2295,7 +2295,7 @@ export class MemStorage implements IStorage {
         rank: assignment.rank,
         relieverCrewId: assignment.crewId,
         relieverCrewName: assignment.crewName,
-        joiningDate: assignment.joiningDate,
+        relieverSignOnDate: assignment.signOnDate || assignment.joiningDate,
         joiningStatus: "Planned",
         contractPeriodMonths: assignment.contractPeriod,
         deploymentChecklistCompleted: false,
@@ -2318,7 +2318,7 @@ export class MemStorage implements IStorage {
       crewId: assignment.crewId,
       crewName: assignment.crewName,
       crewMemberId: assignment.crewMemberId || null,
-      joiningDate: assignment.joiningDate,
+      signOnDate: assignment.signOnDate || assignment.joiningDate,
       joiningPort: assignment.joiningPort || null,
       contractPeriod: assignment.contractPeriod,
       signOffDate: assignment.signOffDate || null,
@@ -2384,7 +2384,7 @@ export class MemStorage implements IStorage {
       crewId: assignment.crewId,
       crewName: assignment.crewName,
       crewMemberId: assignment.crewMemberId || null,
-      joiningDate: assignment.joiningDate,
+      signOnDate: assignment.signOnDate || assignment.joiningDate,
       joiningPort: assignment.joiningPort || null,
       contractPeriod: assignment.contractPeriod,
       signOffDate: assignment.signOffDate || null,
@@ -2404,14 +2404,14 @@ export class MemStorage implements IStorage {
 
   async checkAssignmentConflicts(
     crewId: string, 
-    joiningDate: string, 
+    signOnDate: string, 
     contractPeriod: number,
     excludePlanId?: number,
     excludeAssignmentIndex?: number
   ): Promise<any[]> {
     const conflicts: any[] = [];
-    const joiningDateObj = new Date(joiningDate);
-    const contractEndDate = new Date(joiningDateObj);
+    const signOnDateObj = new Date(signOnDate);
+    const contractEndDate = new Date(signOnDateObj);
     contractEndDate.setMonth(contractEndDate.getMonth() + contractPeriod);
 
     // Check all proposed assignments
@@ -2429,20 +2429,20 @@ export class MemStorage implements IStorage {
           }
           
           if (assignment.crewId === crewId && assignment.proposalStatus === "proposed") {
-            const assignmentJoiningDate = new Date(assignment.joiningDate);
-            const assignmentEndDate = new Date(assignmentJoiningDate);
+            const assignmentSignOnDate = new Date(assignment.signOnDate || assignment.joiningDate);
+            const assignmentEndDate = new Date(assignmentSignOnDate);
             assignmentEndDate.setMonth(assignmentEndDate.getMonth() + assignment.contractPeriod);
 
             // Check for overlap
             if (
-              (joiningDateObj <= assignmentEndDate && contractEndDate >= assignmentJoiningDate)
+              (signOnDateObj <= assignmentEndDate && contractEndDate >= assignmentSignOnDate)
             ) {
               conflicts.push({
                 planId: plan.id,
                 draftId: plan.draftId,
                 vessel: assignment.vesselName,
                 rank: assignment.rank,
-                joiningDate: assignment.joiningDate,
+                signOnDate: assignment.signOnDate || assignment.joiningDate,
                 contractPeriod: assignment.contractPeriod
               });
             }
@@ -4164,7 +4164,6 @@ export class PersistentFileStorage implements IStorage {
       rankAppliedFor: null,
       employeeId: null,
       lastVessel: null,
-      joiningDate: null,
       signOffDate: null,
       contractPeriod: null,
       reliefDue: null,
@@ -4236,7 +4235,6 @@ export class PersistentFileStorage implements IStorage {
       rankAppliedFor: null,
       employeeId: null,
       lastVessel: null,
-      joiningDate: null,
       signOffDate: null,
       contractPeriod: null,
       reliefDue: null,
@@ -4308,7 +4306,6 @@ export class PersistentFileStorage implements IStorage {
       rankAppliedFor: null,
       employeeId: null,
       lastVessel: null,
-      joiningDate: null,
       signOffDate: null,
       contractPeriod: null,
       reliefDue: null,
@@ -4380,7 +4377,6 @@ export class PersistentFileStorage implements IStorage {
       rankAppliedFor: null,
       employeeId: null,
       lastVessel: null,
-      joiningDate: null,
       signOffDate: null,
       contractPeriod: null,
       reliefDue: null,
@@ -5023,7 +5019,6 @@ export class PersistentFileStorage implements IStorage {
       presentVessel: insertCrewMember.presentVessel,
       vesselType: insertCrewMember.vesselType,
       lastVessel: insertCrewMember.lastVessel ?? null,
-      joiningDate: insertCrewMember.joiningDate ?? null,
       signOnDate: insertCrewMember.signOnDate ?? null,
       signOffDate: insertCrewMember.signOffDate ?? null,
       contractPeriod: insertCrewMember.contractPeriod ?? null,
@@ -5164,7 +5159,7 @@ export class PersistentFileStorage implements IStorage {
     );
 
     const vesselName = crewMember.presentVessel ? translateVesselCodeToName(crewMember.presentVessel) : '';
-    const joinedDateFormatted = formatDateForDashboard(crewMember.joiningDate || crewMember.signOnDate);
+    const joinedDateFormatted = formatDateForDashboard(crewMember.signOnDate);
     const reliefDueFormatted = formatDateForDashboard(crewMember.reliefDue);
 
     // Build service timeline from sea service and vessel planning
@@ -5814,7 +5809,7 @@ export class PersistentFileStorage implements IStorage {
       relieverCrewId: insertPlanning.relieverCrewId ?? null,
       relieverCrewName: insertPlanning.relieverCrewName ?? null,
       relieverNationality: insertPlanning.relieverNationality ?? null,
-      joiningDate: insertPlanning.joiningDate ?? null,
+      relieverSignOnDate: insertPlanning.relieverSignOnDate ?? null,
       joiningPort: insertPlanning.joiningPort ?? null,
       joiningStatus: insertPlanning.joiningStatus ?? null,
       contractPeriodMonths: insertPlanning.contractPeriodMonths ?? null,
@@ -6018,12 +6013,12 @@ export class PersistentFileStorage implements IStorage {
                   currentCrew = {
                     id: crewOnBoard.id,
                     name: `${crewOnBoard.firstName} ${crewOnBoard.middleName || ''} ${crewOnBoard.familyName || crewOnBoard.familyName || ''}`.replace(/\s+/g, ' ').trim(),
-                    contractStartDate: planning.joiningDate || crewOnBoard.joiningDate || '',
+                    contractStartDate: planning.signOnDate || crewOnBoard.signOnDate || '',
                     contractEndDate: planning.reliefDue,
                     rangeStartDate: rangeStartDate.toISOString().split('T')[0],
                     rangeEndDate: rangeEndDate.toISOString().split('T')[0],
                   };
-                } else if (crewOnBoard.joiningDate && crewOnBoard.reliefDue) {
+                } else if (crewOnBoard.signOnDate && crewOnBoard.reliefDue) {
                   // Fallback to crew member data if no planning data
                   const reliefDueDate = new Date(crewOnBoard.reliefDue);
                   const rangeEndDate = new Date(reliefDueDate);
@@ -6032,7 +6027,7 @@ export class PersistentFileStorage implements IStorage {
                   currentCrew = {
                     id: crewOnBoard.id,
                     name: `${crewOnBoard.firstName} ${crewOnBoard.middleName || ''} ${crewOnBoard.familyName || crewOnBoard.familyName || ''}`.replace(/\s+/g, ' ').trim(),
-                    contractStartDate: crewOnBoard.joiningDate,
+                    contractStartDate: crewOnBoard.signOnDate,
                     contractEndDate: crewOnBoard.reliefDue,
                     rangeStartDate: crewOnBoard.reliefDue,
                     rangeEndDate: rangeEndDate.toISOString().split('T')[0],
@@ -6148,7 +6143,7 @@ export class PersistentFileStorage implements IStorage {
       await this.updateVesselPlanning(existingPlanningId, {
         relieverCrewId: assignment.crewId,
         relieverCrewName: assignment.crewName,
-        joiningDate: assignment.joiningDate,
+        relieverSignOnDate: assignment.signOnDate || assignment.joiningDate,
         joiningStatus: "Planned",
         contractPeriodMonths: assignment.contractPeriod,
         deploymentChecklistCompleted: false,
@@ -6162,7 +6157,7 @@ export class PersistentFileStorage implements IStorage {
         rank: assignment.rank,
         relieverCrewId: assignment.crewId,
         relieverCrewName: assignment.crewName,
-        joiningDate: assignment.joiningDate,
+        relieverSignOnDate: assignment.signOnDate || assignment.joiningDate,
         joiningStatus: "Planned",
         contractPeriodMonths: assignment.contractPeriod,
         deploymentChecklistCompleted: false,
@@ -6185,7 +6180,7 @@ export class PersistentFileStorage implements IStorage {
       crewId: assignment.crewId,
       crewName: assignment.crewName,
       crewMemberId: assignment.crewMemberId || null,
-      joiningDate: assignment.joiningDate,
+      signOnDate: assignment.signOnDate || assignment.joiningDate,
       joiningPort: assignment.joiningPort || null,
       contractPeriod: assignment.contractPeriod,
       signOffDate: assignment.signOffDate || null,
@@ -6251,7 +6246,7 @@ export class PersistentFileStorage implements IStorage {
       crewId: assignment.crewId,
       crewName: assignment.crewName,
       crewMemberId: assignment.crewMemberId || null,
-      joiningDate: assignment.joiningDate,
+      signOnDate: assignment.signOnDate || assignment.joiningDate,
       joiningPort: assignment.joiningPort || null,
       contractPeriod: assignment.contractPeriod,
       signOffDate: assignment.signOffDate || null,
@@ -6271,14 +6266,14 @@ export class PersistentFileStorage implements IStorage {
 
   async checkAssignmentConflicts(
     crewId: string, 
-    joiningDate: string, 
+    signOnDate: string, 
     contractPeriod: number,
     excludePlanId?: number,
     excludeAssignmentIndex?: number
   ): Promise<any[]> {
     const conflicts: any[] = [];
-    const joiningDateObj = new Date(joiningDate);
-    const contractEndDate = new Date(joiningDateObj);
+    const signOnDateObj = new Date(signOnDate);
+    const contractEndDate = new Date(signOnDateObj);
     contractEndDate.setMonth(contractEndDate.getMonth() + contractPeriod);
 
     // Check all proposed assignments
@@ -6296,20 +6291,20 @@ export class PersistentFileStorage implements IStorage {
           }
           
           if (assignment.crewId === crewId && assignment.proposalStatus === "proposed") {
-            const assignmentJoiningDate = new Date(assignment.joiningDate);
-            const assignmentEndDate = new Date(assignmentJoiningDate);
+            const assignmentSignOnDate = new Date(assignment.signOnDate || assignment.joiningDate);
+            const assignmentEndDate = new Date(assignmentSignOnDate);
             assignmentEndDate.setMonth(assignmentEndDate.getMonth() + assignment.contractPeriod);
 
             // Check for overlap
             if (
-              (joiningDateObj <= assignmentEndDate && contractEndDate >= assignmentJoiningDate)
+              (signOnDateObj <= assignmentEndDate && contractEndDate >= assignmentSignOnDate)
             ) {
               conflicts.push({
                 planId: plan.id,
                 draftId: plan.draftId,
                 vessel: assignment.vesselName,
                 rank: assignment.rank,
-                joiningDate: assignment.joiningDate,
+                signOnDate: assignment.signOnDate || assignment.joiningDate,
                 contractPeriod: assignment.contractPeriod
               });
             }
@@ -6359,7 +6354,7 @@ export class PersistentFileStorage implements IStorage {
       crewId: entry.crewId,
       crewName: entry.crewName,
       crewMemberId: entry.crewMemberId ?? null,
-      joiningDate: entry.joiningDate,
+      signOnDate: entry.signOnDate,
       joiningPort: entry.joiningPort ?? null,
       contractPeriod: entry.contractPeriod ?? null,
       signOffDate: entry.signOffDate ?? null,
