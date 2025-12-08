@@ -64,8 +64,7 @@ export const crewMembers = pgTable("crew_members", {
   // Contract and Status
   status: text("status"), // Computed: On Board, On Leave, Inactive
   isActive: boolean("is_active").default(true), // Manual toggle: true=Active (On Board/On Leave), false=Inactive
-  joiningDate: text("joining_date"), // Changed from signOnDate
-  signOnDate: text("sign_on_date"), // Keep both for backward compatibility
+  signOnDate: text("sign_on_date"), // Date crew signed on to vessel (planned or actual based on status)
   signOffDate: text("sign_off_date"),
   contractPeriod: text("contract_period"),
   reliefDue: text("relief_due"),
@@ -442,7 +441,7 @@ export const vesselPlanning = pgTable("vessel_planning", {
   relieverCrewId: text("reliever_crew_id"),
   relieverCrewName: text("reliever_crew_name"), // DEPRECATED - join with crewMembers
   relieverNationality: text("reliever_nationality"), // DEPRECATED - join with crewMembers
-  joiningDate: text("joining_date"),
+  relieverSignOnDate: text("reliever_sign_on_date"), // Planned or actual sign-on date based on joiningStatus
   joiningPort: text("joining_port"),
   joiningStatus: text("joining_status"), // Proposed, Planned, Confirmed, In Transit, Signed On
   contractPeriodMonths: integer("contract_period_months"),
@@ -471,7 +470,7 @@ export const rotationPlans = pgTable("rotation_plans", {
   planStatus: text("plan_status").notNull().default("In Draft"), // In Draft, Proposed, Partially Approved, Approved, Rejected, Archived
   proposedBy: text("proposed_by"), // Who proposed the plan
   proposedDate: text("proposed_date"), // When it was proposed
-  assignments: text("assignments"), // JSON array: [{vesselName, rank, crewId, crewName, joiningDate, contractPeriod, proposalStatus, proposedBy, proposedDate, deployedDate, deployedBy}]
+  assignments: text("assignments"), // JSON array: [{vesselName, rank, crewId, crewName, signOnDate, contractPeriod, proposalStatus, proposedBy, proposedDate, deployedDate, deployedBy}]
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -491,7 +490,7 @@ export const rotationArchive = pgTable("rotation_archive", {
   crewName: text("crew_name").notNull(),
   crewMemberId: text("crew_member_id"), // Database crew member ID if different from crewId
   
-  joiningDate: text("joining_date").notNull(),
+  signOnDate: text("sign_on_date").notNull(),
   joiningPort: text("joining_port"),
   contractPeriod: integer("contract_period"), // nullable for historical fidelity
   signOffDate: text("sign_off_date"), // Planned sign-off date
@@ -804,8 +803,7 @@ export const insertCrewMemberSchema = createInsertSchema(crewMembers).pick({
   status: true,
   isActive: true,
   nextAvailability: true,
-  joiningDate: true,
-  signOnDate: true, // Keep for backward compatibility
+  signOnDate: true,
   signOffDate: true,
   contractPeriod: true,
   reliefDue: true,
@@ -1157,7 +1155,7 @@ export const insertVesselPlanningSchema = createInsertSchema(vesselPlanning).pic
   relieverCrewId: true,
   relieverCrewName: true,
   relieverNationality: true,
-  joiningDate: true,
+  relieverSignOnDate: true,
   joiningPort: true,
   joiningStatus: true,
   contractPeriodMonths: true,

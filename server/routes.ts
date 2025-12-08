@@ -2543,7 +2543,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 reliefStatus: null,
                 relieverCrewId: null,
                 relieverCrewName: null,
-                joiningDate: null,
+                relieverSignOnDate: null,
                 joiningPort: null,
                 joiningStatus: null
               });
@@ -2975,7 +2975,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
               
               // Determine sign on/off dates
-              const signOnDate = existingPlanning.signOnDate || existingPlanning.joiningDate;
+              const signOnDate = existingPlanning.signOnDate;
               const signOffDate = req.body.signOffDate;
               
               // Prepare the update object
@@ -2983,7 +2983,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 status: 'On Leave',
                 presentVessel: '',
                 signOnDate: null,
-                joiningDate: null,
                 reliefDue: null
               };
               
@@ -3109,10 +3108,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Clear reliever planning fields since this crew is now primary
         // They don't have a reliever yet (a new reliever needs to be planned)
         // BUT preserve dual-purpose fields that are needed for the new primary:
-        // - joiningDate/joiningPort: shows when/where the new primary joined
+        // - relieverSignOnDate/joiningPort: shows when/where the new primary joined
         // - contractPeriodMonths: needed for Relief Due calculation
         // - contractEndRangeStartMonths/contractEndRangeEndMonths: contract range for on-board status
-        const preservedJoiningDate = req.body.joiningDate ?? existingPlanning.joiningDate;
+        const preservedRelieverSignOnDate = req.body.relieverSignOnDate ?? existingPlanning.relieverSignOnDate;
         const preservedJoiningPort = req.body.joiningPort ?? existingPlanning.joiningPort;
         const preservedContractPeriodMonths = req.body.contractPeriodMonths ?? existingPlanning.contractPeriodMonths;
         const preservedContractEndRangeStartMonths = req.body.contractEndRangeStartMonths ?? existingPlanning.contractEndRangeStartMonths;
@@ -3121,7 +3120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         clearAllRelieverFields(req.body);
         
         // Restore dual-purpose fields for On Board Status display and Relief Due calculation
-        req.body.joiningDate = preservedJoiningDate;
+        req.body.relieverSignOnDate = preservedRelieverSignOnDate;
         req.body.joiningPort = preservedJoiningPort;
         req.body.contractPeriodMonths = preservedContractPeriodMonths;
         req.body.contractEndRangeStartMonths = preservedContractEndRangeStartMonths;
@@ -3310,7 +3309,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           crewId: entry.crewId,
           crewName: entry.crewName,
           crewMemberId: entry.crewMemberId,
-          joiningDate: entry.joiningDate,
+          signOnDate: entry.signOnDate,
           joiningPort: entry.joiningPort,
           contractPeriod: entry.contractPeriod,
           signOffDate: entry.signOffDate,
@@ -6014,10 +6013,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           // Get dates from vesselPlanning if available, otherwise from crew record
-          // CRITICAL: Prioritize signOnDate over joiningDate because joiningDate may contain
-          // the reliever's planned arrival date (stored on primary record for planning purposes)
-          // while signOnDate contains the actual on-board crew's sign-on date for timeline calculations
-          const rawJoiningDate = matchingPlan?.signOnDate || matchingPlan?.joiningDate || crew.joiningDate;
+          // Use signOnDate for actual sign-on date (relieverSignOnDate is for planned relievers only)
+          const rawJoiningDate = matchingPlan?.signOnDate || crew.signOnDate;
           const rawReliefDue = matchingPlan?.reliefDue || matchingPlan?.reliefDueDate || crew.reliefDue;
           
           // Parse dates using centralized utility (handles all formats)
