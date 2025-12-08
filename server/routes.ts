@@ -2884,134 +2884,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const crewMemberId = existingPlanning.crewMemberId;
         console.log(`✅ [VESSEL-PLANNING] Sign-on detected for planning ${id}, crew ${crewMemberId}`);
         
-        // CREATE SEA SERVICE RECORD ON SIGN-ON
+        // CREATE/UPDATE SEA SERVICE RECORD ON SIGN-ON (idempotent)
         if (crewMemberId) {
           try {
-            const crewMemberData = await storage.getCrewMember(crewMemberId);
+            // Get vessel info for sea service record
+            let vesselName = 'Unknown Vessel';
+            let vesselType = '';
             
-            if (crewMemberData) {
-              // Get vessel info for sea service record
-              let vesselName = 'Unknown Vessel';
-              let vesselType = '';
-              
-              if (vesselId) {
-                try {
-                  const masterEntries = await storage.getMasterDataEntries('014');
-                  const vesselEntry = masterEntries.find((e: any) => e.entryId === vesselId || e.entry_id === vesselId || e.nuid === vesselId);
-                  if (vesselEntry) {
-                    vesselName = vesselEntry.name || vesselName;
-                    if (vesselEntry.vtuid) {
-                      const typeEntries = await storage.getMasterDataEntries('004');
-                      const typeEntry = typeEntries.find((t: any) => t.entryId === vesselEntry.vtuid || t.entry_id === vesselEntry.vtuid);
-                      if (typeEntry) {
-                        vesselType = typeEntry.name || '';
-                      }
+            if (vesselId) {
+              try {
+                const masterEntries = await storage.getMasterDataEntries('014');
+                const vesselEntry = masterEntries.find((e: any) => e.entryId === vesselId || e.entry_id === vesselId || e.nuid === vesselId);
+                if (vesselEntry) {
+                  vesselName = vesselEntry.name || vesselName;
+                  if (vesselEntry.vtuid) {
+                    const typeEntries = await storage.getMasterDataEntries('004');
+                    const typeEntry = typeEntries.find((t: any) => t.entryId === vesselEntry.vtuid || t.entry_id === vesselEntry.vtuid);
+                    if (typeEntry) {
+                      vesselType = typeEntry.name || '';
                     }
                   }
-                } catch (vesselError) {
-                  console.warn(`⚠️ [VESSEL-PLANNING] Could not fetch vessel details:`, vesselError);
                 }
-              }
-              
-              // Get rank display name
-              let rankDisplayName = crewMemberData.presentRank || '';
-              if (!rankDisplayName && existingPlanning.rankId) {
-                try {
-                  const companyRanks = await storage.getCompanyRanks();
-                  const rankEntry = companyRanks.find((r: any) => 
-                    r.rankId === existingPlanning.rankId || 
-                    r.id === existingPlanning.rankId ||
-                    String(r.id) === existingPlanning.rankId
-                  );
-                  if (rankEntry) {
-                    rankDisplayName = rankEntry.rank || '';
-                  }
-                } catch (rankError) {
-                  console.warn(`⚠️ [VESSEL-PLANNING] Could not fetch rank display name:`, rankError);
-                }
-              }
-              if (!rankDisplayName) {
-                rankDisplayName = existingPlanning.rank || existingPlanning.rankId || 'Unknown Rank';
-              }
-              
-              // Determine the sign-on date
-              const signOnDate = req.body.signOnDate || req.body.relieverSignOnDate || existingPlanning.signOnDate;
-              
-              if (signOnDate) {
-                // Parse existing sea service records
-                let currentSeaService: any[] = [];
-                if (crewMemberData.currentCompanySeaService) {
-                  try {
-                    currentSeaService = typeof crewMemberData.currentCompanySeaService === 'string' 
-                      ? JSON.parse(crewMemberData.currentCompanySeaService) 
-                      : crewMemberData.currentCompanySeaService;
-                    if (!Array.isArray(currentSeaService)) {
-                      currentSeaService = [];
-                    }
-                  } catch (e) {
-                    currentSeaService = [];
-                  }
-                }
-                
-                // Check if there's already an active record for this planning ID
-                // (prevents duplicates on repeated PATCH calls or retries)
-                const existingActiveIndex = currentSeaService.findIndex(record => 
-                  record.planningId === id && (!record.to || record.to === '' || record.isActive === true)
-                );
-                
-                let updatedSeaService: any[];
-                
-                if (existingActiveIndex >= 0) {
-                  // Update existing active record instead of creating duplicate
-                  console.log(`🔄 [VESSEL-PLANNING] Updating existing active sea service record (planningId: ${id}) instead of creating duplicate`);
-                  currentSeaService[existingActiveIndex] = {
-                    ...currentSeaService[existingActiveIndex],
-                    planningId: id, // Link to vessel planning record
-                    vesselName: vesselName,
-                    vesselCode: vesselId || '',
-                    vesselType: vesselType,
-                    rank: rankDisplayName,
-                    from: signOnDate,
-                    to: '', // Keep active
-                    isActive: true
-                  };
-                  updatedSeaService = currentSeaService;
-                } else {
-                  // Create new ACTIVE sea service record (without 'to' date - indicates currently onboard)
-                  const newSeaServiceRecord = {
-                    id: `auto-${Date.now()}`,
-                    planningId: id, // Link to vessel planning record for deduplication
-                    vesselName: vesselName,
-                    vesselCode: vesselId || '',
-                    vesselType: vesselType,
-                    deadweight: '',
-                    engineTypePower: '',
-                    ownerOperator: '',
-                    rank: rankDisplayName,
-                    from: signOnDate,
-                    to: '', // Empty 'to' date indicates active/ongoing service
-                    periodMonths: '', // Will be calculated dynamically based on current date
-                    isActive: true // Flag to identify active contracts
-                  };
-                  
-                  // Add new record at the beginning (latest on top)
-                  updatedSeaService = [newSeaServiceRecord, ...currentSeaService];
-                  console.log(`✅ [VESSEL-PLANNING] Created new active sea service record on sign-on: ${vesselName} (${rankDisplayName}) from ${signOnDate}`);
-                }
-                
-                // Update crew member with sea service records
-                await storage.updateCrewMember(crewMemberId, {
-                  currentCompanySeaService: JSON.stringify(updatedSeaService),
-                  status: 'On Board',
-                  presentVessel: vesselId || '',
-                  signOnDate: signOnDate
-                });
-              } else {
-                console.log(`⚠️ [VESSEL-PLANNING] Skipping sea service record - no sign-on date available`);
+              } catch (vesselError) {
+                console.warn(`⚠️ [VESSEL-PLANNING] Could not fetch vessel details:`, vesselError);
               }
             }
+            
+            // Get rank display name
+            const crewMemberData = await storage.getCrewMember(crewMemberId);
+            let rankDisplayName = crewMemberData?.presentRank || '';
+            if (!rankDisplayName && existingPlanning.rankId) {
+              try {
+                const companyRanks = await storage.getCompanyRanks();
+                const rankEntry = companyRanks.find((r: any) => 
+                  r.rankId === existingPlanning.rankId || 
+                  r.id === existingPlanning.rankId ||
+                  String(r.id) === existingPlanning.rankId
+                );
+                if (rankEntry) {
+                  rankDisplayName = rankEntry.rank || '';
+                }
+              } catch (rankError) {
+                console.warn(`⚠️ [VESSEL-PLANNING] Could not fetch rank display name:`, rankError);
+              }
+            }
+            if (!rankDisplayName) {
+              rankDisplayName = existingPlanning.rank || existingPlanning.rankId || 'Unknown Rank';
+            }
+            
+            // Determine the sign-on date
+            const signOnDate = req.body.signOnDate || req.body.relieverSignOnDate || existingPlanning.signOnDate;
+            
+            if (signOnDate) {
+              // Use idempotent upsert helper (prevents duplicates on retries)
+              await storage.upsertSeaServiceEntry({
+                crewId: crewMemberId,
+                planningId: id,
+                vesselName: vesselName,
+                vesselCode: vesselId || '',
+                vesselType: vesselType,
+                rank: rankDisplayName,
+                signOnDate: signOnDate
+              });
+              
+              // Update crew member status (separate from sea service record management)
+              await storage.updateCrewMember(crewMemberId, {
+                status: 'On Board',
+                presentVessel: vesselId || '',
+                signOnDate: signOnDate
+              });
+              
+              console.log(`✅ [VESSEL-PLANNING] Upserted sea service record on sign-on: ${vesselName} (${rankDisplayName}) from ${signOnDate}`);
+            } else {
+              console.log(`⚠️ [VESSEL-PLANNING] Skipping sea service record - no sign-on date available`);
+            }
           } catch (syncError) {
-            console.error(`⚠️ [VESSEL-PLANNING] Failed to create sea service record on sign-on:`, syncError);
+            console.error(`⚠️ [VESSEL-PLANNING] Failed to upsert sea service record on sign-on:`, syncError);
           }
         }
       }
