@@ -153,7 +153,7 @@ export const appraisalResults = pgTable("appraisal_results", {
 
 export const recruitmentCandidates = pgTable("recruitment_candidates", {
   id: text("id").primaryKey(),
-  fileNo: text("file_no").notNull().unique(),
+  fileNo: text("file_no").unique(),
   firstName: text("first_name").notNull(),
   middleName: text("middle_name"),
   familyName: text("family_name").notNull(),

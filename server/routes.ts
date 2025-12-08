@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError, calculateExperienceFromSeaService, calculateVesselTypeSpecificExperience } from "./storage";
-import { type VesselPlanning, insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertCompanyProcessingSchema, insertPromotionFormSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertOfficeViolationCommentSchema, insertNCReportSchema, insertVesselDateLineAdjustmentSchema } from "@shared/schema";
+import { type VesselPlanning, type InsertRecruitmentCandidate, insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertCompanyProcessingSchema, insertPromotionFormSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertOfficeViolationCommentSchema, insertNCReportSchema, insertVesselDateLineAdjustmentSchema } from "@shared/schema";
 import { z } from "zod";
 import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew, calculateCrewStatus } from "@shared/crew-mapping";
 import { 
@@ -6457,7 +6457,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentYearFileNos = candidates
         .filter(c => c.fileNo && yearPattern.test(c.fileNo))
         .map(c => {
-          const match = c.fileNo.match(yearPattern);
+          const match = c.fileNo!.match(yearPattern);
           return match ? parseInt(match[1], 10) : 0;
         })
         .filter(num => !isNaN(num) && num > 0);
@@ -6514,7 +6514,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!result.success) {
         return res.status(400).json({ error: "Invalid recruitment candidate data", details: result.error.issues });
       }
-      const candidate = await storage.createRecruitmentCandidate(result.data);
+      
+      // Convert empty fileNo to null (fileNo is generated later at "Submit for Screening" stage)
+      const candidateData = { ...result.data };
+      if (candidateData.fileNo === '' || candidateData.fileNo === null) {
+        candidateData.fileNo = null;
+      }
+      
+      const candidate = await storage.createRecruitmentCandidate(candidateData);
       res.status(201).json(candidate);
     } catch (error: any) {
       // Check for PostgreSQL UNIQUE constraint violation (error code 23505)
@@ -6536,7 +6543,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!result.success) {
         return res.status(400).json({ error: "Invalid recruitment candidate data", details: result.error.issues });
       }
-      const candidate = await storage.updateRecruitmentCandidate(id, result.data);
+      
+      // Convert empty fileNo to null, but preserve undefined (field not provided)
+      const updateData: Partial<InsertRecruitmentCandidate> = {};
+      for (const key in result.data) {
+        const value = (result.data as any)[key];
+        
+        // Special handling for fileNo: convert empty string to null, exclude undefined
+        if (key === 'fileNo') {
+          if (value === '' || value === null) {
+            updateData.fileNo = null;
+          } else if (value !== undefined) {
+            updateData.fileNo = value;
+          }
+          // If undefined, don't include in updateData to preserve existing value
+        } else {
+          (updateData as any)[key] = value;
+        }
+      }
+      
+      const candidate = await storage.updateRecruitmentCandidate(id, updateData);
       if (!candidate) {
         return res.status(404).json({ error: "Recruitment candidate not found" });
       }
