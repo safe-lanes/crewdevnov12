@@ -1780,11 +1780,11 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                         </div>
                       )}
                       
-                      {/* Joined and Relief Due - only show when On Board */}
+                      {/* Signed On and Relief Due - only show when On Board */}
                       {statusData?.status === 'On Board' && (
                         <div className="grid grid-cols-2 gap-4 mt-3">
                           <div>
-                            <div className="text-gray-600 text-xs">Joined</div>
+                            <div className="text-gray-600 text-xs">Signed On</div>
                             <div className="font-medium" data-testid="text-joined">
                               {statusData?.joinedDate || '—'}
                             </div>

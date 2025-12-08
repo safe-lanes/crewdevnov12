@@ -173,16 +173,16 @@ const parseDateString = (dateStr: string): Date | undefined => {
 // Consistent message for when vessel has no rank configuration
 const NO_RANKS_CONFIGURED_MESSAGE = "No positions configured for this vessel. Please configure positions in Admin > Rank Admin > Vessel.";
 
-// Form schema for Relief Status
+// Form schema for Relief Status - using sign-on terminology
 const reliefStatusFormSchema = z.object({
     relieverCrewName: z.string().optional(),
     relieverNationality: z.string().optional(),
-    joiningStatus: z.string().optional(),
+    signOnStatus: z.string().optional(),
     contractPeriodMonths: z.coerce.number().optional(),
     contractEndRangeStartMonths: z.coerce.number().optional(),
     contractEndRangeEndMonths: z.coerce.number().optional(),
-    joiningDate: z.string().optional(),
-    joiningPort: z.string().optional(),
+    relieverSignOnDate: z.string().optional(),
+    relieverSignOnPort: z.string().optional(),
     deploymentChecklistCompleted: z.boolean().optional(),
     applicableDocsChecked: z.boolean().optional(),
 });
@@ -215,12 +215,12 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
         defaultValues: {
             relieverCrewName: '',
             relieverNationality: '',
-            joiningStatus: '',
+            signOnStatus: '',
             contractPeriodMonths: undefined,
             contractEndRangeStartMonths: undefined,
             contractEndRangeEndMonths: undefined,
-            joiningDate: '',
-            joiningPort: '',
+            relieverSignOnDate: '',
+            relieverSignOnPort: '',
             deploymentChecklistCompleted: false,
             applicableDocsChecked: false,
         }
@@ -232,12 +232,12 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
             form.reset({
                 relieverCrewName: planningData.relieverCrewName || '',
                 relieverNationality: planningData.relieverNationality || '',
-                joiningStatus: planningData.joiningStatus || '',
+                signOnStatus: planningData.joiningStatus || '', // Map legacy joiningStatus to signOnStatus
                 contractPeriodMonths: planningData.contractPeriodMonths,
                 contractEndRangeStartMonths: planningData.contractEndRangeStartMonths,
                 contractEndRangeEndMonths: planningData.contractEndRangeEndMonths,
-                joiningDate: planningData.joiningDate || '', // Keep in ISO format for storage
-                joiningPort: planningData.joiningPort || '',
+                relieverSignOnDate: planningData.relieverSignOnDate || planningData.joiningDate || '', // Prefer new field, fallback to legacy
+                relieverSignOnPort: planningData.relieverSignOnPort || planningData.joiningPort || '', // Prefer new field, fallback to legacy
                 deploymentChecklistCompleted: planningData.deploymentChecklistCompleted || false,
                 applicableDocsChecked: planningData.applicableDocsChecked || false,
             });
@@ -246,12 +246,12 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
             form.reset({
                 relieverCrewName: '',
                 relieverNationality: '',
-                joiningStatus: '',
+                signOnStatus: '',
                 contractPeriodMonths: undefined,
                 contractEndRangeStartMonths: undefined,
                 contractEndRangeEndMonths: undefined,
-                joiningDate: '',
-                joiningPort: '',
+                relieverSignOnDate: '',
+                relieverSignOnPort: '',
                 deploymentChecklistCompleted: false,
                 applicableDocsChecked: false,
             });
@@ -260,8 +260,8 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
 
     const updatePlanningMutation = useMutation({
         mutationFn: async (data: ReliefStatusFormData) => {
-            // Check if reliever is signing on (joiningStatus = "Signed On")
-            const isSigningOn = data.joiningStatus === "Signed On";
+            // Check if reliever is signing on (signOnStatus = "Signed On")
+            const isSigningOn = data.signOnStatus === "Signed On";
             
             if (isSigningOn && planningData?.relieverCrewId) {
                 // Special handling for "Signed On" - check if position is vacant
@@ -288,7 +288,8 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                     // Exclude timestamp fields (createdAt, updatedAt) to avoid Date object errors
                     const { createdAt: _c1, updatedAt: _u1, ...cleanDataForPromote } = planningData || {};
                     // Calculate the sign-on date for the new primary
-                    const newPrimarySignOnDate = data.joiningDate || planningData.joiningDate;
+                    const newPrimarySignOnDate = data.relieverSignOnDate || planningData.relieverSignOnDate || planningData.joiningDate;
+                    const newPrimarySignOnPort = data.relieverSignOnPort || planningData.relieverSignOnPort || planningData.joiningPort;
                     const promoteToPrimaryPayload = {
                         ...cleanDataForPromote,
                         crewMemberId: planningData.relieverCrewId,
@@ -296,7 +297,7 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                         signOnDate: newPrimarySignOnDate,
                         // CRITICAL: Keep joiningDate in sync with signOnDate for timeline calculations
                         joiningDate: newPrimarySignOnDate,
-                        joiningPort: data.joiningPort || planningData.joiningPort,
+                        joiningPort: newPrimarySignOnPort,
                         contractPeriodMonths: data.contractPeriodMonths || planningData.contractPeriodMonths,
                         contractEndRangeStartMonths: data.contractEndRangeStartMonths || planningData.contractEndRangeStartMonths,
                         contractEndRangeEndMonths: data.contractEndRangeEndMonths || planningData.contractEndRangeEndMonths,
@@ -320,7 +321,8 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                 
                 // Step 1: Create NEW planning record for secondary crew
                 // Calculate the sign-on date for the secondary crew
-                const secondarySignOnDate = data.joiningDate || planningData.joiningDate;
+                const secondarySignOnDate = data.relieverSignOnDate || planningData.relieverSignOnDate || planningData.joiningDate;
+                const secondarySignOnPort = data.relieverSignOnPort || planningData.relieverSignOnPort || planningData.joiningPort;
                 
                 // CRITICAL FIX: Use the PRIMARY crew's rankId to ensure Take Over lookup works
                 // The rankId prop might be a company rank ID (e.g., "S3") while the primary
@@ -336,7 +338,7 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                     signOnDate: secondarySignOnDate,
                     // CRITICAL: Keep joiningDate in sync with signOnDate for timeline calculations
                     joiningDate: secondarySignOnDate,
-                    joiningPort: data.joiningPort || planningData.joiningPort,
+                    joiningPort: secondarySignOnPort,
                     contractPeriodMonths: data.contractPeriodMonths || planningData.contractPeriodMonths,
                     contractEndRangeStartMonths: data.contractEndRangeStartMonths || planningData.contractEndRangeStartMonths,
                     contractEndRangeEndMonths: data.contractEndRangeEndMonths || planningData.contractEndRangeEndMonths,
@@ -364,18 +366,30 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                 return apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, clearRelieverPayload);
             } else {
                 // Normal update flow - saving RELIEVER PLANNING data onto the PRIMARY crew record
-                // NOTE: The reliever's planned joiningDate IS stored here for planning purposes.
-                // The backend timeline calculation (routes.ts) now prioritizes signOnDate over joiningDate,
-                // so the reliever's planned date won't affect the primary crew's timeline display.
+                // Dual-write strategy: Send BOTH new and legacy field names for complete transition coverage
                 
-                // Exclude timestamp fields (createdAt, updatedAt) to avoid Date object errors
-                const { createdAt, updatedAt, ...cleanPlanningData } = planningData || {};
                 const payload = {
                     vesselId,
                     rankId,
                     rank,
-                    ...cleanPlanningData,
-                    ...data,
+                    // Reliever identification (read-only, preserve from planning data)
+                    crewId: planningData?.crewId,
+                    relieverCrewName: data.relieverCrewName,
+                    relieverNationality: data.relieverNationality,
+                    // Contract fields
+                    contractPeriodMonths: data.contractPeriodMonths,
+                    contractEndRangeStartMonths: data.contractEndRangeStartMonths,
+                    contractEndRangeEndMonths: data.contractEndRangeEndMonths,
+                    deploymentChecklistCompleted: data.deploymentChecklistCompleted,
+                    applicableDocsChecked: data.applicableDocsChecked,
+                    // DUAL-WRITE: New field names (for schema migration)
+                    signOnStatus: data.signOnStatus,
+                    relieverSignOnDate: data.relieverSignOnDate,
+                    relieverSignOnPort: data.relieverSignOnPort,
+                    // DUAL-WRITE: Legacy field names (for backend compatibility)
+                    joiningStatus: data.signOnStatus,
+                    joiningDate: data.relieverSignOnDate,
+                    joiningPort: data.relieverSignOnPort,
                 };
                 
                 if (planningData?.id) {
@@ -423,15 +437,15 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
     const handleSave = () => {
         const data = form.getValues();
         
-        // Normalize joiningDate to ISO format before submitting
-        if (data.joiningDate) {
-            data.joiningDate = normalizeToIsoDate(data.joiningDate);
+        // Normalize relieverSignOnDate to ISO format before submitting
+        if (data.relieverSignOnDate) {
+            data.relieverSignOnDate = normalizeToIsoDate(data.relieverSignOnDate);
         }
         
         // Validate: If no reliever crew name is assigned, clear all reliever fields before saving
         if (!data.relieverCrewName || data.relieverCrewName.trim() === '') {
             // If user tried to save other fields without a crew member, show warning
-            const hasOtherData = data.joiningStatus || data.joiningPort || data.joiningDate || 
+            const hasOtherData = data.signOnStatus || data.relieverSignOnPort || data.relieverSignOnDate || 
                                data.contractPeriodMonths || data.contractEndRangeStartMonths || 
                                data.contractEndRangeEndMonths;
             if (hasOtherData) {
@@ -447,12 +461,12 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
             const clearedData: ReliefStatusFormData = {
                 relieverCrewName: '',
                 relieverNationality: '',
-                joiningStatus: undefined,
+                signOnStatus: undefined,
                 contractPeriodMonths: undefined,
                 contractEndRangeStartMonths: undefined,
                 contractEndRangeEndMonths: undefined,
-                joiningDate: undefined,
-                joiningPort: undefined,
+                relieverSignOnDate: undefined,
+                relieverSignOnPort: undefined,
                 deploymentChecklistCompleted: undefined,
                 applicableDocsChecked: undefined,
             };
@@ -464,14 +478,14 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
     };
 
     const handleSubmit = form.handleSubmit((data) => {
-        // Normalize joiningDate to ISO format before submitting
-        if (data.joiningDate) {
-            data.joiningDate = normalizeToIsoDate(data.joiningDate);
+        // Normalize relieverSignOnDate to ISO format before submitting
+        if (data.relieverSignOnDate) {
+            data.relieverSignOnDate = normalizeToIsoDate(data.relieverSignOnDate);
         }
         
         // Same validation as handleSave - prevent saving reliever fields without crew member
         if (!data.relieverCrewName || data.relieverCrewName.trim() === '') {
-            const hasOtherData = data.joiningStatus || data.joiningPort || data.joiningDate || 
+            const hasOtherData = data.signOnStatus || data.relieverSignOnPort || data.relieverSignOnDate || 
                                data.contractPeriodMonths || data.contractEndRangeStartMonths || 
                                data.contractEndRangeEndMonths;
             if (hasOtherData) {
@@ -487,12 +501,12 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
             const clearedData: ReliefStatusFormData = {
                 relieverCrewName: '',
                 relieverNationality: '',
-                joiningStatus: undefined,
+                signOnStatus: undefined,
                 contractPeriodMonths: undefined,
                 contractEndRangeStartMonths: undefined,
                 contractEndRangeEndMonths: undefined,
-                joiningDate: undefined,
-                joiningPort: undefined,
+                relieverSignOnDate: undefined,
+                relieverSignOnPort: undefined,
                 deploymentChecklistCompleted: undefined,
                 applicableDocsChecked: undefined,
             };
@@ -553,18 +567,18 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                             )}
                         />
 
-                        {/* Joining Status */}
+                        {/* Sign On Status */}
                         <FormField
                             control={form.control}
-                            name="joiningStatus"
+                            name="signOnStatus"
                             render={({ field }) => (
                                 <FormItem>
                                     <div className="grid grid-cols-3 items-center gap-4">
-                                        <FormLabel className="text-sm text-gray-700">Joining Status:</FormLabel>
+                                        <FormLabel className="text-sm text-gray-700">Sign On Status:</FormLabel>
                                         <FormControl>
                                             <Select 
                                                 onValueChange={field.onChange} 
-                                                value={field.value || undefined} 
+                                                value={field.value} 
                                                 data-testid="select-joining-status"
                                                 disabled={!isRelieverAssigned}
                                             >
@@ -657,14 +671,14 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                             )}
                         />
 
-                        {/* Joining Date */}
+                        {/* Sign On Date */}
                         <FormField
                             control={form.control}
-                            name="joiningDate"
+                            name="relieverSignOnDate"
                             render={({ field }) => (
                                 <FormItem>
                                     <div className="grid grid-cols-3 items-center gap-4">
-                                        <FormLabel className="text-sm text-gray-700">Joining Date:</FormLabel>
+                                        <FormLabel className="text-sm text-gray-700">Sign On Date:</FormLabel>
                                         <Popover open={joiningDateOpen} onOpenChange={setJoiningDateOpen}>
                                             <PopoverTrigger asChild>
                                                 <FormControl>
@@ -675,14 +689,14 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                                                         disabled={!isRelieverAssigned}
                                                     >
                                                         <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {field.value ? formatDateOnly(field.value) : <span className="text-gray-400">Select date</span>}
+                                                        {field.value ? formatDateOnly(field.value as string) : <span className="text-gray-400">Select date</span>}
                                                     </Button>
                                                 </FormControl>
                                             </PopoverTrigger>
                                             <PopoverContent className="w-auto p-0" align="start">
                                                 <Calendar
                                                     mode="single"
-                                                    selected={field.value ? parseDateString(field.value) : undefined}
+                                                    selected={field.value ? parseDateString(field.value as string) : undefined}
                                                     onSelect={(date) => {
                                                         if (date) {
                                                             field.onChange(format(date, 'yyyy-MM-dd'));
@@ -698,18 +712,18 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                             )}
                         />
 
-                        {/* Joining Port */}
+                        {/* Sign On Port */}
                         <FormField
                             control={form.control}
-                            name="joiningPort"
+                            name="relieverSignOnPort"
                             render={({ field }) => (
                                 <FormItem>
                                     <div className="grid grid-cols-3 items-center gap-4">
-                                        <FormLabel className="text-sm text-gray-700">Joining Port:</FormLabel>
+                                        <FormLabel className="text-sm text-gray-700">Sign On Port:</FormLabel>
                                         <FormControl>
                                             <Select 
                                                 onValueChange={field.onChange} 
-                                                value={field.value || undefined} 
+                                                value={field.value as string} 
                                                 data-testid="select-joining-port"
                                                 disabled={!isRelieverAssigned}
                                             >
@@ -1263,18 +1277,18 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                             <span className="text-sm text-gray-900">{planningData?.nationality || planningData?.onBoardCrewNationality || '-'}</span>
                         </div>
 
-                        {/* 3. Joining Date (S/On) - Display only (read-only) */}
+                        {/* 3. Sign On Date - Display only (read-only) */}
                         <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                            <span className="text-sm text-gray-700">Joining Date (S/On):</span>
+                            <span className="text-sm text-gray-700">Sign On Date:</span>
                             <div className="flex items-center border rounded-md px-3 py-2 bg-gray-50">
                                 <CalendarIcon className="mr-2 h-4 w-4 text-gray-400" />
                                 <span className="text-sm text-gray-900">{planningData?.signOnDate ? formatDisplayDate(planningData.signOnDate) : '-'}</span>
                             </div>
                         </div>
 
-                        {/* 3.5 Joining Port - Display only (read-only) */}
+                        {/* 3.5 Sign On Port - Display only (read-only) */}
                         <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                            <span className="text-sm text-gray-700">Joining Port:</span>
+                            <span className="text-sm text-gray-700">Sign On Port:</span>
                             <div className="flex items-center border rounded-md px-3 py-2 bg-gray-50">
                                 <span className="text-sm text-gray-900">{planningData?.joiningPort || '-'}</span>
                             </div>
@@ -1973,7 +1987,7 @@ export const VesselModule = (): JSX.Element => {
                                                     <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Rank</TableHead>
                                                     <TableHead className="text-white text-xs font-normal sticky top-0 z-30 bg-[#52baf3]">Surname, Given Name</TableHead>
                                                     <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Nationality</TableHead>
-                                                    <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Joined</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Signed On</TableHead>
                                                     {showArchived ? (
                                                         <>
                                                             <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Actual Sign Off Date</TableHead>
@@ -2698,9 +2712,9 @@ export const VesselModule = (): JSX.Element => {
                                                     
                                                     {/* Reliever Status columns */}
                                                     <TableHead className="text-white text-xs font-normal sticky top-[41px] z-30 bg-[#52baf3]">Surname, Given Name</TableHead>
-                                                    <TableHead className="text-white text-xs font-normal w-28 sticky top-[41px] z-30 bg-[#52baf3]">Joining Date</TableHead>
-                                                    <TableHead className="text-white text-xs font-normal w-32 sticky top-[41px] z-30 bg-[#52baf3]">Joining Port</TableHead>
-                                                    <TableHead className="text-white text-xs font-normal w-28 sticky top-[41px] z-30 bg-[#52baf3]">Joining Status</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-28 sticky top-[41px] z-30 bg-[#52baf3]">Sign On Date</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-32 sticky top-[41px] z-30 bg-[#52baf3]">Sign On Port</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-28 sticky top-[41px] z-30 bg-[#52baf3]">Sign On Status</TableHead>
                                                     <TableHead className="text-white text-xs font-normal w-16 sticky top-[41px] z-30 bg-[#52baf3]"></TableHead>
                                                 </TableRow>
                                             </TableHeader>

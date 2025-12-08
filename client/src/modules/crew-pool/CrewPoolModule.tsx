@@ -379,8 +379,8 @@ export const CrewPoolModule = (): JSX.Element => {
                     }
                 },
                 {
-                    headerName: 'Joined',
-                    field: 'joiningDate',
+                    headerName: 'Signed On',
+                    field: 'signOnDate',
                     width: viewportConfig.isDesktopOrLaptop ? undefined : 90,
                     minWidth: 90,
                     cellStyle: { fontSize: '13px', color: '#4f5863', lineHeight: '1.2' },
