@@ -2544,6 +2544,17 @@ export const VesselModule = (): JSX.Element => {
                                                             // Get crew member's license data for COC display
                                                             const crewMemberId = rankPlanningData?.crewMemberId;
                                                             const crewMemberData = crewMemberId ? crewMemberLookup.get(crewMemberId) : null;
+                                                            
+                                                            // Debug: Log crew member data for experienceMetrics tracing
+                                                            if (crewMemberId === 'A0032') {
+                                                                console.log('[DEBUG] Robert Anderson:', {
+                                                                    crewMemberId,
+                                                                    hasCrewMemberData: !!crewMemberData,
+                                                                    experienceMetrics: crewMemberData?.experienceMetrics,
+                                                                    timeOnBoard: crewMemberData?.experienceMetrics?.timeOnBoard,
+                                                                    lookupSize: crewMemberLookup.size
+                                                                });
+                                                            }
                                                             // Parse licenses - it may be stored as JSON string
                                                             let licenses: LicenseRecord[] = [];
                                                             if (crewMemberData?.licenses) {
