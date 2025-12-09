@@ -2873,16 +2873,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Sign-on happens when: 
       // 1. signOnDate is newly set (wasn't set before), OR
       // 2. joiningStatus changes to "Signed On", OR  
-      // 3. relieverSignOnDate is set (for relievers)
+      // 3. relieverSignOnDate is set (for relievers), OR
+      // 4. Crew already has sign_on_date but sea service record is missing/empty (repair mode)
       const isSignOnAction = (
         (req.body.signOnDate && !existingPlanning.signOnDate) ||
         (req.body.joiningStatus === "Signed On" && existingPlanning.joiningStatus !== "Signed On") ||
         (req.body.relieverSignOnDate && !existingPlanning.relieverSignOnDate && req.body.joiningStatus === "Signed On")
       );
       
-      if (isSignOnAction) {
+      // REPAIR MODE: Check if sea service record needs to be created/fixed for existing assignments
+      let needsSeaServiceRepair = false;
+      const existingSignOnDate = existingPlanning.signOnDate || existingPlanning.relieverSignOnDate;
+      if (!isSignOnAction && existingPlanning.crewMemberId && existingSignOnDate && vesselId) {
+        try {
+          const crewMember = await storage.getCrewMember(existingPlanning.crewMemberId);
+          if (crewMember) {
+            let seaService: any[] = [];
+            if (crewMember.currentCompanySeaService) {
+              try {
+                seaService = typeof crewMember.currentCompanySeaService === 'string'
+                  ? JSON.parse(crewMember.currentCompanySeaService)
+                  : crewMember.currentCompanySeaService;
+                if (!Array.isArray(seaService)) seaService = [];
+              } catch (e) {
+                seaService = [];
+              }
+            }
+            
+            // Check if sea service record exists for this planning ID with valid data
+            const existingRecord = seaService.find((r: any) => r.planningId === id);
+            const hasValidRecord = existingRecord && 
+              existingRecord.vesselName && 
+              existingRecord.vesselCode && 
+              existingRecord.from;
+            
+            if (!hasValidRecord) {
+              needsSeaServiceRepair = true;
+              console.log(`🔧 [VESSEL-PLANNING] Repair mode: Sea service record missing/empty for planning ${id}, crew ${existingPlanning.crewMemberId}`);
+            }
+          }
+        } catch (checkError) {
+          console.warn(`⚠️ [VESSEL-PLANNING] Error checking sea service repair need:`, checkError);
+        }
+      }
+      
+      if (isSignOnAction || needsSeaServiceRepair) {
         const crewMemberId = existingPlanning.crewMemberId;
-        console.log(`✅ [VESSEL-PLANNING] Sign-on detected for planning ${id}, crew ${crewMemberId}`);
+        const actionType = needsSeaServiceRepair ? 'Sea service repair' : 'Sign-on';
+        console.log(`✅ [VESSEL-PLANNING] ${actionType} detected for planning ${id}, crew ${crewMemberId}`);
         
         // CREATE/UPDATE SEA SERVICE RECORD ON SIGN-ON (idempotent)
         if (crewMemberId) {
@@ -2954,7 +2992,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 signOnDate: signOnDate
               });
               
-              console.log(`✅ [VESSEL-PLANNING] Upserted sea service record on sign-on: ${vesselName} (${rankDisplayName}) from ${signOnDate}`);
+              console.log(`✅ [VESSEL-PLANNING] Upserted sea service record (${actionType}): ${vesselName} (${rankDisplayName}) from ${signOnDate}`);
             } else {
               console.log(`⚠️ [VESSEL-PLANNING] Skipping sea service record - no sign-on date available`);
             }

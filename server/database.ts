@@ -1095,6 +1095,137 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount !== null && result.rowCount > 0;
   }
 
+  // Sea Service Entry Helpers (for idempotent sign-on/sign-off)
+  async upsertSeaServiceEntry(params: {
+    crewId: string;
+    planningId: number;
+    vesselName: string;
+    vesselCode: string;
+    vesselType: string;
+    rank: string;
+    signOnDate: string;
+  }): Promise<void> {
+    const crewMember = await this.getCrewMember(params.crewId);
+    if (!crewMember) {
+      throw new Error(`Crew member ${params.crewId} not found`);
+    }
+
+    // Parse existing sea service records
+    let currentSeaService: any[] = [];
+    if (crewMember.currentCompanySeaService) {
+      try {
+        currentSeaService = typeof crewMember.currentCompanySeaService === 'string' 
+          ? JSON.parse(crewMember.currentCompanySeaService) 
+          : crewMember.currentCompanySeaService;
+        if (!Array.isArray(currentSeaService)) {
+          currentSeaService = [];
+        }
+      } catch (e) {
+        currentSeaService = [];
+      }
+    }
+
+    // Find existing active record for this planning ID
+    const existingIndex = currentSeaService.findIndex(record => 
+      record.planningId === params.planningId && (record.isActive || !record.to)
+    );
+
+    const seaServiceRecord = {
+      planningId: params.planningId,
+      vesselName: params.vesselName,
+      vesselCode: params.vesselCode,
+      vesselType: params.vesselType,
+      rank: params.rank,
+      from: params.signOnDate,
+      to: '', // Empty 'to' date indicates active service
+      periodMonths: '', // Calculated dynamically
+      isActive: true,
+      status: 'active',
+      createdVia: 'sign-on'
+    };
+
+    let updatedSeaService: any[];
+    if (existingIndex >= 0) {
+      // Update existing active record (idempotent)
+      currentSeaService[existingIndex] = {
+        ...currentSeaService[existingIndex],
+        ...seaServiceRecord,
+        id: currentSeaService[existingIndex].id // Preserve existing ID
+      };
+      updatedSeaService = currentSeaService;
+    } else {
+      // Create new record
+      const newRecord = {
+        id: `auto-${Date.now()}`,
+        ...seaServiceRecord
+      };
+      updatedSeaService = [newRecord, ...currentSeaService];
+    }
+
+    // Update only the sea service record (crew status updates happen in route layer)
+    await this.updateCrewMember(params.crewId, {
+      currentCompanySeaService: JSON.stringify(updatedSeaService)
+    });
+  }
+
+  async completeSeaServiceEntry(params: {
+    crewId: string;
+    planningId: number;
+    signOffDate: string;
+  }): Promise<void> {
+    const crewMember = await this.getCrewMember(params.crewId);
+    if (!crewMember) {
+      throw new Error(`Crew member ${params.crewId} not found`);
+    }
+
+    // Parse existing sea service records
+    let currentSeaService: any[] = [];
+    if (crewMember.currentCompanySeaService) {
+      try {
+        currentSeaService = typeof crewMember.currentCompanySeaService === 'string' 
+          ? JSON.parse(crewMember.currentCompanySeaService) 
+          : crewMember.currentCompanySeaService;
+        if (!Array.isArray(currentSeaService)) {
+          currentSeaService = [];
+        }
+      } catch (e) {
+        currentSeaService = [];
+      }
+    }
+
+    // Find active record for this planning ID
+    const activeIndex = currentSeaService.findIndex(record => 
+      record.planningId === params.planningId && (record.isActive || !record.to)
+    );
+
+    if (activeIndex < 0) {
+      console.warn(`No active sea service record found for planning ${params.planningId}`);
+      return;
+    }
+
+    // Calculate period months
+    const fromDate = new Date(currentSeaService[activeIndex].from);
+    const toDate = new Date(params.signOffDate);
+    const monthsDiff = (toDate.getFullYear() - fromDate.getFullYear()) * 12 + 
+                       (toDate.getMonth() - fromDate.getMonth());
+    const periodMonths = Math.max(0, monthsDiff).toString();
+
+    // Complete the record
+    currentSeaService[activeIndex] = {
+      ...currentSeaService[activeIndex],
+      to: params.signOffDate,
+      periodMonths: periodMonths,
+      isActive: false,
+      status: 'completed',
+      completedVia: 'sign-off'
+    };
+
+    // Update sea service record
+    await this.updateCrewMember(params.crewId, {
+      currentCompanySeaService: JSON.stringify(currentSeaService)
+    });
+  }
+
   async getNextCrewId(): Promise<string> {
     // Check if id_counters table has crew_id counter
     const result = await this.pool.query(
