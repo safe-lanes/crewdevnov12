@@ -2544,17 +2544,6 @@ export const VesselModule = (): JSX.Element => {
                                                             // Get crew member's license data for COC display
                                                             const crewMemberId = rankPlanningData?.crewMemberId;
                                                             const crewMemberData = crewMemberId ? crewMemberLookup.get(crewMemberId) : null;
-                                                            
-                                                            // Debug: Log crew member data for experienceMetrics tracing
-                                                            if (crewMemberId === 'A0032') {
-                                                                console.log('[DEBUG] Robert Anderson:', {
-                                                                    crewMemberId,
-                                                                    hasCrewMemberData: !!crewMemberData,
-                                                                    experienceMetrics: crewMemberData?.experienceMetrics,
-                                                                    timeOnBoard: crewMemberData?.experienceMetrics?.timeOnBoard,
-                                                                    lookupSize: crewMemberLookup.size
-                                                                });
-                                                            }
                                                             // Parse licenses - it may be stored as JSON string
                                                             let licenses: LicenseRecord[] = [];
                                                             if (crewMemberData?.licenses) {
@@ -2659,13 +2648,7 @@ export const VesselModule = (): JSX.Element => {
                                                                     {crewMemberData?.experienceMetrics?.oow > 0 ? crewMemberData.experienceMetrics.oow : ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700 border-r-2 border-gray-200" data-testid={`cell-officer-time-${index + 1}`}>
-                                                                    {(() => {
-                                                                        const tob = crewMemberData?.experienceMetrics?.timeOnBoard;
-                                                                        if (crewMemberId === 'A0032') {
-                                                                            console.log('[RENDER] Robert timeOnBoard:', tob, 'type:', typeof tob, 'condition:', tob > 0);
-                                                                        }
-                                                                        return tob > 0 ? tob : '';
-                                                                    })()}
+                                                                    {crewMemberData?.experienceMetrics?.timeOnBoard > 0 ? crewMemberData.experienceMetrics.timeOnBoard : ''}
                                                                 </TableCell>
                                                                 
                                                                 {/* Language */}
