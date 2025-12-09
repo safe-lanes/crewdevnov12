@@ -2659,7 +2659,13 @@ export const VesselModule = (): JSX.Element => {
                                                                     {crewMemberData?.experienceMetrics?.oow > 0 ? crewMemberData.experienceMetrics.oow : ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700 border-r-2 border-gray-200" data-testid={`cell-officer-time-${index + 1}`}>
-                                                                    {crewMemberData?.experienceMetrics?.timeOnBoard > 0 ? crewMemberData.experienceMetrics.timeOnBoard : ''}
+                                                                    {(() => {
+                                                                        const tob = crewMemberData?.experienceMetrics?.timeOnBoard;
+                                                                        if (crewMemberId === 'A0032') {
+                                                                            console.log('[RENDER] Robert timeOnBoard:', tob, 'type:', typeof tob, 'condition:', tob > 0);
+                                                                        }
+                                                                        return tob > 0 ? tob : '';
+                                                                    })()}
                                                                 </TableCell>
                                                                 
                                                                 {/* Language */}
