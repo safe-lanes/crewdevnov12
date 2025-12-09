@@ -3137,7 +3137,9 @@ export class DatabaseStorage implements IStorage {
         const today = new Date();
         const diffMs = today.getTime() - earliestDate.getTime();
         const diffYears = diffMs / (1000 * 60 * 60 * 24 * 365.25);
-        companyYears = Math.round(diffYears * 10) / 10; // Round to 1 decimal
+        // Ensure any positive company tenure shows at least 0.1 years
+        const roundedYears = Math.round(diffYears * 10) / 10;
+        companyYears = diffYears > 0 ? Math.max(0.1, roundedYears) : 0;
       }
     }
 
