@@ -2568,9 +2568,10 @@ export const VesselModule = (): JSX.Element => {
                                                                         : crewMemberData.currentCompanySeaService;
                                                                     
                                                                     if (Array.isArray(companySeaService) && companySeaService.length > 0) {
+                                                                        // Extract start dates - handle multiple key formats (from, fromDate, signOnDate)
                                                                         const fromDates = companySeaService
-                                                                            .map((s: any) => s.from)
-                                                                            .filter((d: any) => d && d.trim() !== '')
+                                                                            .map((s: any) => s.fromDate || s.signOnDate || s.from)
+                                                                            .filter((d: any) => d && typeof d === 'string' && d.trim() !== '')
                                                                             .map((d: any) => new Date(d))
                                                                             .filter((d: any) => !isNaN(d.getTime()));
                                                                         

@@ -94,12 +94,36 @@ export function calculatePeriodMonths(
 }
 
 /**
+ * Get the start date from a sea service record (handles multiple key formats)
+ * @param record Sea service record
+ * @returns The start date string or null
+ */
+export function getSeaServiceFromDate(record: any): string | null {
+  return record.fromDate || record.signOnDate || record.from || null;
+}
+
+/**
+ * Get the end date from a sea service record (handles multiple key formats)
+ * @param record Sea service record
+ * @returns The end date string or null
+ */
+export function getSeaServiceToDate(record: any): string | null {
+  return record.toDate || record.signOffDate || record.to || null;
+}
+
+/**
  * Check if a sea service record is active (currently on board)
- * @param record Sea service record with 'to' date and optional isActive flag
+ * @param record Sea service record with 'to'/'toDate'/'signOffDate' and optional isActive flag
  * @returns true if the record represents an active/ongoing contract
  */
 export function isActiveSeaService(record: any): boolean {
-  return !record.to || record.to === '' || record.isActive === true;
+  // Check explicit isActive flag first
+  if (record.isActive === true) return true;
+  if (record.isActive === false) return false;
+  
+  // Check end date fields - if none are set, it's active
+  const toDate = getSeaServiceToDate(record);
+  return !toDate || toDate.trim() === '';
 }
 
 /**

@@ -3,7 +3,9 @@ import {
   getReportingDate, 
   safeParseDate, 
   calculatePeriodMonths as calcPeriodMonths,
-  isActiveSeaService 
+  isActiveSeaService,
+  getSeaServiceFromDate,
+  getSeaServiceToDate
 } from "@shared/dateUtils";
 
 // Static vessel mapping for testing/development (MemStorage/PersistentFileStorage)
@@ -154,7 +156,9 @@ function calculateShipTypeExperience(
     // Calculate period using shared utility with fallback to stored periodMonths for legacy records
     let period = 0;
     
-    const from = safeParseDate(service.from);
+    // Use helper to get start date - handles multiple key formats (from, fromDate, signOnDate)
+    const fromStr = getSeaServiceFromDate(service);
+    const from = safeParseDate(fromStr);
     const isActive = isActiveSeaService(service);
     
     if (from) {
@@ -162,7 +166,9 @@ function calculateShipTypeExperience(
         // Active contracts: use shared reporting date (today)
         period = calcPeriodMonths(from, getReportingDate());
       } else {
-        const to = safeParseDate(service.to);
+        // Use helper to get end date - handles multiple key formats (to, toDate, signOffDate)
+        const toStr = getSeaServiceToDate(service);
+        const to = safeParseDate(toStr);
         if (to) {
           // Completed contracts with valid 'to' date: calculate period
           period = calcPeriodMonths(from, to);
@@ -237,9 +243,10 @@ export function calculateExperienceFromSeaService(
   // 1. Company (Yrs) - Calendar time from earliest E1 "from" date to today
   let companyYears = 0;
   if (safeCompanySeaService.length > 0) {
+    // Use helper to get start dates - handles multiple key formats (from, fromDate, signOnDate)
     const fromDates = safeCompanySeaService
-      .map(s => s.from)
-      .filter((d: any) => d && d.trim() !== '')
+      .map(s => getSeaServiceFromDate(s))
+      .filter((d: any) => d && typeof d === 'string' && d.trim() !== '')
       .map((d: any) => new Date(d))
       .filter((d: any) => !isNaN(d.getTime()));
     
@@ -255,7 +262,9 @@ export function calculateExperienceFromSeaService(
   // Helper function to get period in months for a service record
   // Uses shared date utility with fallback to stored periodMonths for legacy records
   const getServicePeriodMonths = (service: any): number => {
-    const from = safeParseDate(service.from);
+    // Use helper to get start date - handles multiple key formats
+    const fromStr = getSeaServiceFromDate(service);
+    const from = safeParseDate(fromStr);
     if (!from) return 0;
     
     const isActive = isActiveSeaService(service);
@@ -264,7 +273,9 @@ export function calculateExperienceFromSeaService(
       // Active contracts: use shared reporting date (today)
       return calcPeriodMonths(from, getReportingDate());
     } else {
-      const to = safeParseDate(service.to);
+      // Use helper to get end date - handles multiple key formats
+      const toStr = getSeaServiceToDate(service);
+      const to = safeParseDate(toStr);
       if (to) {
         // Completed contracts with valid 'to' date: calculate period
         return calcPeriodMonths(from, to);
@@ -490,17 +501,21 @@ export function buildServiceTimeline(
   
   // Process sea service records (completed/historical assignments)
   for (const service of companySeaService) {
-    if (!service.from) continue;
+    // Use helper to get start/end dates - handles multiple key formats
+    const fromDateStr = getSeaServiceFromDate(service);
+    const toDateStr = getSeaServiceToDate(service);
     
-    const fromDate = new Date(service.from);
-    const toDate = service.to ? new Date(service.to) : null;
+    if (!fromDateStr) continue;
+    
+    const fromDate = new Date(fromDateStr);
+    const toDate = toDateStr ? new Date(toDateStr) : null;
     
     // Skip if entirely outside the 6-month window
     if (toDate && toDate < timelineStart) continue;
     if (fromDate > timelineEnd) continue;
     
     // Get vessel name - prefer database translation, then provided names, then fallback
-    const vesselId = service.vesselId || '';
+    const vesselId = service.vesselId || service.vesselCode || '';
     let vesselName = service.vesselName || service.vessel || 'Unknown Vessel';
     
     // If we have a vessel ID and a translation map, use the map to get the authoritative name
@@ -514,8 +529,8 @@ export function buildServiceTimeline(
     timeline.push({
       vessel: vesselName,
       vesselId,
-      startDate: service.from,
-      endDate: service.to || null,
+      startDate: fromDateStr,
+      endDate: toDateStr || null,
       contractEndDate: null,
       rangeEndDate: null,
       type: toDate && toDate < today ? 'completed' : 'onBoard',
