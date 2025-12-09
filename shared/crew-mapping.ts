@@ -519,18 +519,18 @@ export function mapFormDataToStorage(formData: any): Partial<InsertCrewMember> {
     nokRelationship: formData.nokRelationship || null,
     manningAgent: formData.manningAgent || null,
     
-    // JSON fields - stringify arrays and objects
-    vesselTypes: formData.vesselType ? JSON.stringify(formData.vesselType) : null,
-    documents: formData.documents ? JSON.stringify(formData.documents) : null,
-    visas: formData.visas ? JSON.stringify(formData.visas) : null,
-    education: formData.education ? JSON.stringify(formData.education) : null,
-    licenses: formData.licenses ? JSON.stringify(formData.licenses) : null,
-    trainingCourses: formData.trainingCourses ? JSON.stringify(formData.trainingCourses) : null,
-    currentCompanySeaService: formData.currentCompanySeaService ? JSON.stringify(formData.currentCompanySeaService) : null,
-    externalSeaService: formData.externalSeaService ? JSON.stringify(formData.externalSeaService) : null,
-    preJoiningMedicals: formData.preJoiningMedicals ? JSON.stringify(formData.preJoiningMedicals) : null,
-    doctorVisits: formData.doctorVisits ? JSON.stringify(formData.doctorVisits) : null,
-    children: formData.children ? JSON.stringify(formData.children) : null,
+    // JSON fields - stringify arrays and objects (but avoid double-stringifying if already a string)
+    vesselTypes: formData.vesselType ? (typeof formData.vesselType === 'string' ? formData.vesselType : JSON.stringify(formData.vesselType)) : null,
+    documents: formData.documents ? (typeof formData.documents === 'string' ? formData.documents : JSON.stringify(formData.documents)) : null,
+    visas: formData.visas ? (typeof formData.visas === 'string' ? formData.visas : JSON.stringify(formData.visas)) : null,
+    education: formData.education ? (typeof formData.education === 'string' ? formData.education : JSON.stringify(formData.education)) : null,
+    licenses: formData.licenses ? (typeof formData.licenses === 'string' ? formData.licenses : JSON.stringify(formData.licenses)) : null,
+    trainingCourses: formData.trainingCourses ? (typeof formData.trainingCourses === 'string' ? formData.trainingCourses : JSON.stringify(formData.trainingCourses)) : null,
+    currentCompanySeaService: formData.currentCompanySeaService ? (typeof formData.currentCompanySeaService === 'string' ? formData.currentCompanySeaService : JSON.stringify(formData.currentCompanySeaService)) : null,
+    externalSeaService: formData.externalSeaService ? (typeof formData.externalSeaService === 'string' ? formData.externalSeaService : JSON.stringify(formData.externalSeaService)) : null,
+    preJoiningMedicals: formData.preJoiningMedicals ? (typeof formData.preJoiningMedicals === 'string' ? formData.preJoiningMedicals : JSON.stringify(formData.preJoiningMedicals)) : null,
+    doctorVisits: formData.doctorVisits ? (typeof formData.doctorVisits === 'string' ? formData.doctorVisits : JSON.stringify(formData.doctorVisits)) : null,
+    children: formData.children ? (typeof formData.children === 'string' ? formData.children : JSON.stringify(formData.children)) : null,
   };
   
   return mapped;
