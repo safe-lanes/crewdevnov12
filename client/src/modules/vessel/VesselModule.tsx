@@ -2261,6 +2261,20 @@ export const VesselModule = (): JSX.Element => {
                                 </div>
 
                                 {/* Training Matrix Table */}
+                                {(() => {
+                                    // Filter out base ranks when variant positions exist for the same rankId
+                                    const filteredRanks = vesselRanks.filter((rank: any) => {
+                                        const fullRankName = rank.role || rank.rank;
+                                        const hasVariantSuffix = fullRankName?.includes('_');
+                                        if (hasVariantSuffix) return true;
+                                        const hasVariants = vesselRanks.some((other: any) => {
+                                            const otherName = other.role || other.rank;
+                                            return other.rankId === rank.rankId && otherName?.includes('_');
+                                        });
+                                        return !hasVariants;
+                                    });
+                                    
+                                    return (
                                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                                     <div className="overflow-auto h-[calc(100vh-300px)] w-full relative">
                                         <Table className="min-w-max relative">
@@ -2272,8 +2286,8 @@ export const VesselModule = (): JSX.Element => {
                                                         <TableHead className="text-white text-xs font-normal w-96 sticky left-16 z-40 bg-[#52baf3] border-r border-white/20">
                                                             List of courses/ Certificate
                                                         </TableHead>
-                                                    {vesselRanks.length > 0 ? (
-                                                        vesselRanks.map((rank: any, index: number) => (
+                                                    {filteredRanks.length > 0 ? (
+                                                        filteredRanks.map((rank: any, index: number) => (
                                                             <TableHead 
                                                                 key={rank.id || index} 
                                                                 className="text-white text-xs font-normal text-center w-24 sticky top-0 z-30 bg-[#52baf3]"
@@ -2292,11 +2306,11 @@ export const VesselModule = (): JSX.Element => {
                                             <TableBody>
                                                 {ranksLoading ? (
                                                     <TableRow>
-                                                        <TableCell colSpan={2 + vesselRanks.length} className="text-center text-xs text-gray-500 py-8">
+                                                        <TableCell colSpan={2 + filteredRanks.length} className="text-center text-xs text-gray-500 py-8">
                                                             Loading vessel positions...
                                                         </TableCell>
                                                     </TableRow>
-                                                ) : vesselRanks.length === 0 ? (
+                                                ) : filteredRanks.length === 0 ? (
                                                     <TableRow>
                                                         <TableCell colSpan={3} className="text-center text-xs text-gray-500 py-8">
                                                             {NO_RANKS_CONFIGURED_MESSAGE}
@@ -2306,14 +2320,14 @@ export const VesselModule = (): JSX.Element => {
                                                     <>
                                                         {/* Category A: LICENSES & DOC */}
                                                         <TableRow className="bg-blue-100 hover:bg-blue-100">
-                                                            <TableCell colSpan={2 + vesselRanks.length} className="text-xs font-semibold text-gray-900 sticky left-0 z-20 bg-blue-100">
+                                                            <TableCell colSpan={2 + filteredRanks.length} className="text-xs font-semibold text-gray-900 sticky left-0 z-20 bg-blue-100">
                                                                 A - LICENSES & DOC
                                                             </TableCell>
                                                         </TableRow>
                                                         <TableRow className="hover:bg-gray-50">
                                                             <TableCell className="text-xs text-gray-700 sticky left-0 z-20 bg-white border-r border-gray-200" data-testid="cell-row-01">01</TableCell>
                                                             <TableCell className="text-xs text-gray-700 sticky left-16 z-20 bg-white border-r border-gray-200" data-testid="cell-license-national">National License</TableCell>
-                                                            {vesselRanks.map((rank: any, index: number) => (
+                                                            {filteredRanks.map((rank: any, index: number) => (
                                                                 <TableCell 
                                                                     key={rank.id || index}
                                                                     className={`text-xs text-center ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
@@ -2328,7 +2342,7 @@ export const VesselModule = (): JSX.Element => {
                                                         <TableRow className="hover:bg-gray-50">
                                                             <TableCell className="text-xs text-gray-700 sticky left-0 z-20 bg-white border-r border-gray-200" data-testid="cell-row-02">02</TableCell>
                                                             <TableCell className="text-xs text-gray-700 sticky left-16 z-20 bg-white border-r border-gray-200" data-testid="cell-license-gmdss">GMDSS GOC Licence</TableCell>
-                                                            {vesselRanks.map((rank: any, index: number) => (
+                                                            {filteredRanks.map((rank: any, index: number) => (
                                                                 <TableCell 
                                                                     key={rank.id || index}
                                                                     className={`text-xs text-center ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
@@ -2349,14 +2363,14 @@ export const VesselModule = (): JSX.Element => {
 
                                                         {/* Category B: STATUTORY COURSES */}
                                                         <TableRow className="bg-blue-100 hover:bg-blue-100">
-                                                            <TableCell colSpan={2 + vesselRanks.length} className="text-xs font-semibold text-gray-900 sticky left-0 z-20 bg-blue-100">
+                                                            <TableCell colSpan={2 + filteredRanks.length} className="text-xs font-semibold text-gray-900 sticky left-0 z-20 bg-blue-100">
                                                                 B - STATUTORY COURSES
                                                             </TableCell>
                                                         </TableRow>
                                                         <TableRow className="hover:bg-gray-50">
                                                             <TableCell className="text-xs text-gray-700 sticky left-0 z-20 bg-white border-r border-gray-200" data-testid="cell-row-01-b">01</TableCell>
                                                             <TableCell className="text-xs text-gray-700 sticky left-16 z-20 bg-white border-r border-gray-200" data-testid="cell-course-fire">Basic Fire Fighting</TableCell>
-                                                            {vesselRanks.map((rank: any, index: number) => (
+                                                            {filteredRanks.map((rank: any, index: number) => (
                                                                 <TableCell 
                                                                     key={rank.id || index}
                                                                     className={`text-xs text-center ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
@@ -2371,7 +2385,7 @@ export const VesselModule = (): JSX.Element => {
                                                         <TableRow className="hover:bg-gray-50">
                                                             <TableCell className="text-xs text-gray-700 sticky left-0 z-20 bg-white border-r border-gray-200" data-testid="cell-row-02-b">02</TableCell>
                                                             <TableCell className="text-xs text-gray-700 sticky left-16 z-20 bg-white border-r border-gray-200" data-testid="cell-course-survival">Personal Survival Technique</TableCell>
-                                                            {vesselRanks.map((rank: any, index: number) => (
+                                                            {filteredRanks.map((rank: any, index: number) => (
                                                                 <TableCell 
                                                                     key={rank.id || index}
                                                                     className={`text-xs text-center ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
@@ -2386,14 +2400,14 @@ export const VesselModule = (): JSX.Element => {
 
                                                         {/* Category C: VALUE ADD COURSE */}
                                                         <TableRow className="bg-blue-100 hover:bg-blue-100">
-                                                            <TableCell colSpan={2 + vesselRanks.length} className="text-xs font-semibold text-gray-900 sticky left-0 z-20 bg-blue-100">
+                                                            <TableCell colSpan={2 + filteredRanks.length} className="text-xs font-semibold text-gray-900 sticky left-0 z-20 bg-blue-100">
                                                                 C - VALUE ADD COURSE
                                                             </TableCell>
                                                         </TableRow>
                                                         <TableRow className="hover:bg-gray-50">
                                                             <TableCell className="text-xs text-gray-700 sticky left-0 z-20 bg-white border-r border-gray-200" data-testid="cell-row-01-c">01</TableCell>
                                                             <TableCell className="text-xs text-gray-700 sticky left-16 z-20 bg-white border-r border-gray-200" data-testid="cell-course-risk">Risk Assessment</TableCell>
-                                                            {vesselRanks.map((rank: any, index: number) => (
+                                                            {filteredRanks.map((rank: any, index: number) => (
                                                                 <TableCell 
                                                                     key={rank.id || index}
                                                                     className={`text-xs text-center ${index % 2 === 0 ? 'bg-blue-50' : 'bg-white'}`}
@@ -2415,6 +2429,8 @@ export const VesselModule = (): JSX.Element => {
                                         </Table>
                                     </div>
                                 </div>
+                                    );
+                                })()}
                             </div>
                         </TabsContent>
 
