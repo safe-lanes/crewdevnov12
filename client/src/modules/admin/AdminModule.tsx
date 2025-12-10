@@ -807,10 +807,10 @@ const AdminModuleInner = (): JSX.Element => {
   const rq = useQueryClient();
 
 
-  // Sync company rank data with rank master data (show ALL ranks, not just applicable ones)
+  // Sync company rank data with rank master data (only show ranks where applicableToCompany is true)
   React.useEffect(() => {
-    // Show ALL ranks so users can toggle false→true for applicableToCompany
-    const allRanks = rankMasterData;
+    // Only show ranks that have applicableToCompany checked in Rank Master
+    const allRanks = rankMasterData.filter(rank => rank.applicableToCompany === true);
     
     // Don't update if we're currently editing to avoid losing unsaved changes
     if (isCompanyEditing || isRankMasterEditing) {
@@ -824,8 +824,9 @@ const AdminModuleInner = (): JSX.Element => {
     
     // PERFORMANCE FIX: Only sync if data actually changed (prevent infinite loops)
     // Include companyRankData length to detect when we've already processed this combination
+    // Use the filtered allRanks list (not full rankMasterData) for accurate change detection
     const syncKey = JSON.stringify({ 
-      allRanks: rankMasterData, 
+      allRanks: allRanks, 
       savedRanks: savedCompanyRanks,
       currentLength: companyRankData.length 
     });
@@ -846,8 +847,15 @@ const AdminModuleInner = (): JSX.Element => {
       existingCompanyData.set(item.id, item);
     });
     
-    // Preserve existing role variants from saved data (they don't exist in rank master data)
-    const existingRoleVariants = savedCompanyRanks.filter(item => item.isRoleRow);
+    // Preserve existing role variants from saved data (only if their parent rank is applicable)
+    // Build a set of applicable rank IDs to filter variants
+    const applicableRankIds = new Set(allRanks.map(r => r.id));
+    const existingRoleVariants = savedCompanyRanks.filter(item => {
+      if (!item.isRoleRow) return false;
+      // Only keep role variants whose parent is in the applicable ranks list
+      const parentId = item.originalRankId || item.parentId || item.id;
+      return applicableRankIds.has(parentId);
+    });
     
     // Build the new company rank data from ALL ranks
     const newCompanyRanks: CompanyRankData[] = allRanks.map(rank => {
