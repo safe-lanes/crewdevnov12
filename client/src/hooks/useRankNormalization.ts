@@ -11,30 +11,57 @@ interface CompanyRank {
 }
 
 // Common rank name aliases to handle variations (e.g., "2nd Officer" vs "Second Officer")
+// Keys are lowercase for lookup, values are canonical names from available_ranks
 const RANK_ALIASES: Record<string, string> = {
+  // Officers
   '2nd officer': 'Second Officer',
   '3rd officer': 'Third Officer',
   '2nd engineer': 'Second Engineer',
   '3rd engineer': 'Third Engineer',
   '4th engineer': 'Fourth Engineer',
   '5th engineer': 'Fifth Engineer',
+  // Electrical Officer variants
   'e/o': 'Electrical Officer',
   'e.o': 'Electrical Officer',
+  'e.o.': 'Electrical Officer',
   'eto': 'Electrical Officer',
+  'elect. officer': 'Electrical Officer',
+  // Bosun variants
+  'boatswain': 'Bosun',
+  'bosun/boatswain': 'Bosun',
+  'bo\'sun': 'Bosun',
+  // Cook variants
+  'ch. cook': 'Chief Cook',
+  'chief steward': 'Chief Cook',
+  // Rating variants
+  'asst. electrician': 'Electrician',
+  'assistant electrician': 'Electrician',
+  'jr. electrician': 'Electrician',
+  'ab': 'Able Seaman',
+  'a/b': 'Able Seaman',
+  'a.b': 'Able Seaman',
+  'os': 'Ordinary Seaman',
+  'o/s': 'Ordinary Seaman',
+  'o.s': 'Ordinary Seaman',
 };
 
 // Helper to populate a map with both canonical names and their aliases
 export function addRankAliasesToMap(map: Map<string, number>, rankName: string, sortOrder: number): void {
-  // Add the canonical name
+  // Add the canonical name in multiple case variants
   map.set(rankName, sortOrder);
+  map.set(rankName.toLowerCase(), sortOrder);
+  map.set(rankName.toUpperCase(), sortOrder);
   
   // Add common aliases that map TO this canonical name
   const lowerName = rankName.toLowerCase();
   Object.entries(RANK_ALIASES).forEach(([alias, canonical]) => {
     if (canonical.toLowerCase() === lowerName) {
-      // Add the alias (e.g., "2nd Officer" -> same sortOrder as "Second Officer")
-      const capitalizedAlias = alias.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-      map.set(capitalizedAlias, sortOrder);
+      // Add the alias in multiple case variants
+      map.set(alias, sortOrder);
+      map.set(alias.toUpperCase(), sortOrder);
+      // Also add title case version (e.g., "2nd Officer")
+      const titleCase = alias.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      map.set(titleCase, sortOrder);
     }
   });
 }
