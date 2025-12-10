@@ -1678,17 +1678,15 @@ export const VesselModule = (): JSX.Element => {
     // Fetch vessel ranks for selected vessel (use vessel ID, e.g., VSL-003)
     const { data: vesselRanksRaw = [], isLoading: ranksLoading } = useVesselRanks(selectedVessel?.vesselId || null);
     
-    // Sort vessel ranks according to Rank Admin order
+    // Sort vessel ranks according to Rank Admin order (backend provides sortOrder, use it directly)
     const vesselRanks = useMemo(() => {
         if (!vesselRanksRaw || !Array.isArray(vesselRanksRaw)) return [];
         return [...vesselRanksRaw].sort((a: any, b: any) => {
-            // Strip suffix from rank name (e.g., "3rd Officer_1" -> "3rd Officer") for lookup
-            const aRankBase = a.rank?.split('_')[0] || a.rank;
-            const bRankBase = b.rank?.split('_')[0] || b.rank;
-            const orderA = rankOrderMap.get(aRankBase) ?? 999999;
-            const orderB = rankOrderMap.get(bRankBase) ?? 999999;
+            // Use sortOrder from backend (already includes parent's sortOrder for variants)
+            const orderA = a.sortOrder ?? rankOrderMap.get(a.rank) ?? 999999;
+            const orderB = b.sortOrder ?? rankOrderMap.get(b.rank) ?? 999999;
             if (orderA !== orderB) return orderA - orderB;
-            // Secondary sort: if same base rank, sort by suffix number (e.g., _1 before _2)
+            // Secondary sort: if same sortOrder, sort by suffix number (e.g., _1 before _2)
             const aSuffix = a.rank?.includes('_') ? parseInt(a.rank.split('_')[1]) || 0 : 0;
             const bSuffix = b.rank?.includes('_') ? parseInt(b.rank.split('_')[1]) || 0 : 0;
             return aSuffix - bSuffix;

@@ -2326,20 +2326,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Merge with current available ranks to get sortOrder (only exists in available_ranks table)
       // Also merge with company ranks to get designation fields
       const availableRanks = await storage.getAvailableRanks();
-      const availableRanksMap = new Map(availableRanks.map((ar: any) => [String(ar.id), ar]));
+      // Create map indexed by numeric DB PK (originalRankId uses numeric IDs like "4", "15")
+      const availableRanksMapById = new Map(availableRanks.map((ar: any) => [String(ar.id), ar]));
       
       const companyRanks = await storage.getCompanyRanks();
-      const companyRanksMap = new Map(companyRanks.map((cr: any) => [cr.id, cr]));
+      // Company ranks use string IDs like "4_role_1_..."
+      const companyRanksMapById = new Map(companyRanks.map((cr: any) => [cr.id, cr]));
       
       const mergedRankData = rankData.map((vesselRank: any) => {
-        const companyRank: any = companyRanksMap.get(vesselRank.id);
-        const availableRank: any = availableRanksMap.get(vesselRank.id);
+        const companyRank: any = companyRanksMapById.get(vesselRank.id);
+        const availableRank: any = availableRanksMapById.get(vesselRank.id);
+        
+        // For variant positions (isRoleRow), look up parent's sortOrder using originalRankId
+        // originalRankId contains numeric DB PK (e.g., "4", "15"), not canonical ID (e.g., "R004")
+        let effectiveSortOrder = vesselRank.sortOrder ?? 0;
+        if (vesselRank.isRoleRow && vesselRank.originalRankId) {
+          // Look up parent rank's sortOrder from available_ranks using numeric ID
+          const parentAvailableRank: any = availableRanksMapById.get(String(vesselRank.originalRankId));
+          // Try to get sortOrder from parent available rank
+          effectiveSortOrder = parentAvailableRank?.sortOrder ?? vesselRank.sortOrder ?? 0;
+        } else if (availableRank) {
+          effectiveSortOrder = availableRank.sortOrder ?? vesselRank.sortOrder ?? 0;
+        }
         
         if (companyRank || availableRank) {
           return {
             ...vesselRank,
-            // Get sortOrder from available_ranks table (only place it exists)
-            sortOrder: availableRank?.sortOrder ?? vesselRank.sortOrder ?? 0,
+            // Use effective sortOrder (parent's for variants, own for base ranks)
+            sortOrder: effectiveSortOrder,
             // Update company-only designation fields from current company ranks
             officer: companyRank?.officer ?? vesselRank.officer ?? false,
             rating: companyRank?.rating ?? vesselRank.rating ?? false,
@@ -2359,7 +2373,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             emtOfficer: vesselRank.emtOfficer ?? companyRank?.emtOfficer ?? false,
           };
         }
-        return vesselRank;
+        // For variants not in company/available ranks, still apply parent sortOrder
+        return { ...vesselRank, sortOrder: effectiveSortOrder };
       });
       
       // Filter ranks that have "Actual Manning" checked
