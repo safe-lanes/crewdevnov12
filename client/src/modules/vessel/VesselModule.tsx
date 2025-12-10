@@ -1682,9 +1682,16 @@ export const VesselModule = (): JSX.Element => {
     const vesselRanks = useMemo(() => {
         if (!vesselRanksRaw || !Array.isArray(vesselRanksRaw)) return [];
         return [...vesselRanksRaw].sort((a: any, b: any) => {
-            const orderA = rankOrderMap.get(a.rank) ?? 999999;
-            const orderB = rankOrderMap.get(b.rank) ?? 999999;
-            return orderA - orderB;
+            // Strip suffix from rank name (e.g., "3rd Officer_1" -> "3rd Officer") for lookup
+            const aRankBase = a.rank?.split('_')[0] || a.rank;
+            const bRankBase = b.rank?.split('_')[0] || b.rank;
+            const orderA = rankOrderMap.get(aRankBase) ?? 999999;
+            const orderB = rankOrderMap.get(bRankBase) ?? 999999;
+            if (orderA !== orderB) return orderA - orderB;
+            // Secondary sort: if same base rank, sort by suffix number (e.g., _1 before _2)
+            const aSuffix = a.rank?.includes('_') ? parseInt(a.rank.split('_')[1]) || 0 : 0;
+            const bSuffix = b.rank?.includes('_') ? parseInt(b.rank.split('_')[1]) || 0 : 0;
+            return aSuffix - bSuffix;
         });
     }, [vesselRanksRaw, rankOrderMap]);
     
