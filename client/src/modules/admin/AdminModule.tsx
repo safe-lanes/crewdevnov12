@@ -873,25 +873,27 @@ const AdminModuleInner = (): JSX.Element => {
         };
       }
       
-      // For new ranks, create default company data
+      // For new ranks, create default company data with NO auto-detection
+      // User must manually select officer/rating checkboxes
+      // (Starter pack ranks have flags pre-set via database migration)
       return {
         id: rank.id,
         rank: rank.label || rank.rank,
         rankId: rank.rankId,
-        officer: rank.rank.toLowerCase().includes('officer') || rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('engineer'),
-        rating: !rank.rank.toLowerCase().includes('officer') && !rank.rank.toLowerCase().includes('master') && !rank.rank.toLowerCase().includes('engineer'),
-        seniorOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('chief'),
-        deckOfficer: rank.rank.toLowerCase().includes('officer') && !rank.rank.toLowerCase().includes('engineer'),
-        engOfficer: rank.rank.toLowerCase().includes('engineer'),
+        officer: false,
+        rating: false,
+        seniorOfficer: false,
+        deckOfficer: false,
+        engOfficer: false,
         pettyOfficer: false,
-        deckRating: rank.rank.toLowerCase().includes('cadet') || rank.rank.toLowerCase().includes('deck'),
+        deckRating: false,
         engineRating: false,
         generalRating: false,
         cateringRating: false,
-        safetyOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('chief'),
-        sso: rank.rank.toLowerCase().includes('master'),
+        safetyOfficer: false,
+        sso: false,
         medicalOfficer: false,
-        navigatingOfficer: rank.rank.toLowerCase().includes('master') || rank.rank.toLowerCase().includes('officer'),
+        navigatingOfficer: false,
         emtOfficer: false,
         hasMultiple: true // All ranks can have role variants including Master
       };

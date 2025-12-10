@@ -1586,10 +1586,22 @@ export class MemStorage implements IStorage {
     const existingRanks = await this.getAvailableRanks();
     const maxSortOrder = existingRanks.length > 0 ? Math.max(...existingRanks.map(r => r.sortOrder || 0)) : 0;
     
+    // Auto-generate Rank ID if not provided (format: R024, R025, etc.)
+    let rankId = insertAvailableRank.rankId;
+    if (!rankId) {
+      // Find the highest existing R-prefixed numeric ID and increment
+      const existingRIds = existingRanks
+        .map(r => r.rankId)
+        .filter(rid => rid && /^R\d{3}$/.test(rid))
+        .map(rid => parseInt(rid!.substring(1), 10));
+      const maxRId = existingRIds.length > 0 ? Math.max(...existingRIds) : 23; // Start after R023
+      rankId = `R${String(maxRId + 1).padStart(3, '0')}`;
+    }
+    
     const availableRank: AvailableRank = { 
       ...insertAvailableRank, 
       id,
-      rankId: insertAvailableRank.rankId ?? null,
+      rankId,
       label: insertAvailableRank.label ?? null,
       applicableToCompany: insertAvailableRank.applicableToCompany ?? null,
       sortOrder: insertAvailableRank.sortOrder ?? (maxSortOrder + 1),
@@ -4224,7 +4236,7 @@ export class PersistentFileStorage implements IStorage {
     this.currentUserId = 1;
     this.currentFormId = 2;
     this.currentRankGroupId = 1;
-    this.currentAvailableRankId = 11;
+    this.currentAvailableRankId = 24; // Next ID after 23 starter pack ranks
     this.currentAppraisalResultId = 1;
     this.currentCrewIdCounter = 1;
 
@@ -4239,17 +4251,34 @@ export class PersistentFileStorage implements IStorage {
       configuration: null,
     });
 
-    // Initialize with sample available ranks (system ranks cannot be edited or deleted)
-    this.availableRanks.set(1, { id: 1, name: "Master", category: "Senior Officers", rankId: "S1", label: "Master", applicableToCompany: true, sortOrder: 1, isSystemRank: true });
-    this.availableRanks.set(2, { id: 2, name: "Chief Officer", category: "Senior Officers", rankId: "S2", label: "Chief Officer", applicableToCompany: true, sortOrder: 2, isSystemRank: true });
-    this.availableRanks.set(3, { id: 3, name: "Chief Engineer", category: "Senior Officers", rankId: "S7", label: "Chief Engineer", applicableToCompany: true, sortOrder: 3, isSystemRank: true });
-    this.availableRanks.set(4, { id: 4, name: "Second Officer", category: "Junior Officers", rankId: "S3", label: "Second Officer", applicableToCompany: true, sortOrder: 4, isSystemRank: true });
-    this.availableRanks.set(5, { id: 5, name: "Third Officer", category: "Junior Officers", rankId: "S4", label: "Third Officer", applicableToCompany: true, sortOrder: 5, isSystemRank: true });
-    this.availableRanks.set(6, { id: 6, name: "Second Engineer", category: "Junior Officers", rankId: "S9", label: "Second Engineer", applicableToCompany: true, sortOrder: 6, isSystemRank: true });
-    this.availableRanks.set(7, { id: 7, name: "Third Engineer", category: "Junior Officers", rankId: "S10", label: "Third Engineer", applicableToCompany: true, sortOrder: 7, isSystemRank: true });
-    this.availableRanks.set(8, { id: 8, name: "Bosun", category: "Ratings", rankId: "S12", label: "Bosun", applicableToCompany: true, sortOrder: 8, isSystemRank: true });
-    this.availableRanks.set(9, { id: 9, name: "Able Bodied Seaman", category: "Ratings", rankId: "S14", label: "Able Bodied Seaman", applicableToCompany: true, sortOrder: 9, isSystemRank: true });
-    this.availableRanks.set(10, { id: 10, name: "Ordinary Seaman", category: "Ratings", rankId: "S15", label: "Ordinary Seaman", applicableToCompany: false, sortOrder: 10, isSystemRank: true });
+    // Initialize with Starter Pack available ranks (23 ranks with new sequential R001-R023 IDs)
+    // Officers (Officer flag = true in company_ranks)
+    this.availableRanks.set(1, { id: 1, name: "Master", category: "Senior Officers", rankId: "R001", label: "Master", applicableToCompany: true, sortOrder: 1, isSystemRank: true });
+    this.availableRanks.set(2, { id: 2, name: "Chief Officer", category: "Senior Officers", rankId: "R002", label: "Chief Officer", applicableToCompany: true, sortOrder: 2, isSystemRank: true });
+    this.availableRanks.set(3, { id: 3, name: "Second Officer", category: "Junior Officers", rankId: "R003", label: "Second Officer", applicableToCompany: true, sortOrder: 3, isSystemRank: true });
+    this.availableRanks.set(4, { id: 4, name: "Third Officer", category: "Junior Officers", rankId: "R004", label: "Third Officer", applicableToCompany: true, sortOrder: 4, isSystemRank: true });
+    this.availableRanks.set(5, { id: 5, name: "Chief Engineer", category: "Senior Officers", rankId: "R005", label: "Chief Engineer", applicableToCompany: true, sortOrder: 5, isSystemRank: true });
+    this.availableRanks.set(6, { id: 6, name: "Second Engineer", category: "Junior Officers", rankId: "R006", label: "Second Engineer", applicableToCompany: true, sortOrder: 6, isSystemRank: true });
+    this.availableRanks.set(7, { id: 7, name: "Third Engineer", category: "Junior Officers", rankId: "R007", label: "Third Engineer", applicableToCompany: true, sortOrder: 7, isSystemRank: true });
+    this.availableRanks.set(8, { id: 8, name: "Fourth Engineer", category: "Junior Officers", rankId: "R008", label: "Fourth Engineer", applicableToCompany: true, sortOrder: 8, isSystemRank: true });
+    this.availableRanks.set(9, { id: 9, name: "Fifth Engineer", category: "Junior Officers", rankId: "R009", label: "Fifth Engineer", applicableToCompany: true, sortOrder: 9, isSystemRank: true });
+    this.availableRanks.set(10, { id: 10, name: "Electrical Officer", category: "Junior Officers", rankId: "R010", label: "Electrical Officer", applicableToCompany: true, sortOrder: 10, isSystemRank: true });
+    this.availableRanks.set(11, { id: 11, name: "Gas Engineer", category: "Junior Officers", rankId: "R011", label: "Gas Engineer", applicableToCompany: true, sortOrder: 11, isSystemRank: true });
+    // Cadets (neither Officer nor Rating pre-set)
+    this.availableRanks.set(12, { id: 12, name: "Deck Cadet", category: "Cadets", rankId: "R012", label: "Deck Cadet", applicableToCompany: true, sortOrder: 12, isSystemRank: true });
+    this.availableRanks.set(13, { id: 13, name: "Engine Cadet", category: "Cadets", rankId: "R013", label: "Engine Cadet", applicableToCompany: true, sortOrder: 13, isSystemRank: true });
+    // Ratings (Rating flag = true in company_ranks)
+    this.availableRanks.set(14, { id: 14, name: "Bosun", category: "Ratings", rankId: "R014", label: "Bosun", applicableToCompany: true, sortOrder: 14, isSystemRank: true });
+    this.availableRanks.set(15, { id: 15, name: "Able Bodied Seaman", category: "Ratings", rankId: "R015", label: "Able Bodied Seaman", applicableToCompany: true, sortOrder: 15, isSystemRank: true });
+    this.availableRanks.set(16, { id: 16, name: "Ordinary Seaman", category: "Ratings", rankId: "R016", label: "Ordinary Seaman", applicableToCompany: true, sortOrder: 16, isSystemRank: true });
+    this.availableRanks.set(17, { id: 17, name: "Pumpman", category: "Ratings", rankId: "R017", label: "Pumpman", applicableToCompany: true, sortOrder: 17, isSystemRank: true });
+    this.availableRanks.set(18, { id: 18, name: "Fitter", category: "Ratings", rankId: "R018", label: "Fitter", applicableToCompany: true, sortOrder: 18, isSystemRank: true });
+    this.availableRanks.set(19, { id: 19, name: "Motorman", category: "Ratings", rankId: "R019", label: "Motorman", applicableToCompany: true, sortOrder: 19, isSystemRank: true });
+    this.availableRanks.set(20, { id: 20, name: "Wiper", category: "Ratings", rankId: "R020", label: "Wiper", applicableToCompany: true, sortOrder: 20, isSystemRank: true });
+    this.availableRanks.set(21, { id: 21, name: "Oiler", category: "Ratings", rankId: "R021", label: "Oiler", applicableToCompany: true, sortOrder: 21, isSystemRank: true });
+    // Catering
+    this.availableRanks.set(22, { id: 22, name: "Chief Cook", category: "Catering", rankId: "R022", label: "Chief Cook", applicableToCompany: true, sortOrder: 22, isSystemRank: true });
+    this.availableRanks.set(23, { id: 23, name: "Messman", category: "Catering", rankId: "R023", label: "Messman", applicableToCompany: true, sortOrder: 23, isSystemRank: true });
 
     // Initialize sample recruitment candidate
     const sampleCandidate: RecruitmentCandidate = {
@@ -4939,10 +4968,22 @@ export class PersistentFileStorage implements IStorage {
     const existingRanks = await this.getAvailableRanks();
     const maxSortOrder = existingRanks.length > 0 ? Math.max(...existingRanks.map(r => r.sortOrder || 0)) : 0;
     
+    // Auto-generate Rank ID if not provided (format: R024, R025, etc.)
+    let rankId = insertAvailableRank.rankId;
+    if (!rankId) {
+      // Find the highest existing R-prefixed numeric ID and increment
+      const existingRIds = existingRanks
+        .map(r => r.rankId)
+        .filter(rid => rid && /^R\d{3}$/.test(rid))
+        .map(rid => parseInt(rid!.substring(1), 10));
+      const maxRId = existingRIds.length > 0 ? Math.max(...existingRIds) : 23; // Start after R023
+      rankId = `R${String(maxRId + 1).padStart(3, '0')}`;
+    }
+    
     const availableRank: AvailableRank = { 
       ...insertAvailableRank, 
       id: this.currentAvailableRankId++,
-      rankId: insertAvailableRank.rankId ?? null,
+      rankId,
       label: insertAvailableRank.label ?? null,
       applicableToCompany: insertAvailableRank.applicableToCompany ?? null,
       sortOrder: insertAvailableRank.sortOrder ?? (maxSortOrder + 1),

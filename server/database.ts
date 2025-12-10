@@ -848,7 +848,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAvailableRank(insertAvailableRank: InsertAvailableRank): Promise<AvailableRank> {
-    const [created] = await this.db.insert(availableRanks).values(insertAvailableRank).returning();
+    // Auto-generate Rank ID if not provided (format: R024, R025, etc.)
+    let rankId = insertAvailableRank.rankId;
+    if (!rankId) {
+      const existingRanks = await this.getAvailableRanks();
+      const existingRIds = existingRanks
+        .map(r => r.rankId)
+        .filter(rid => rid && /^R\d{3}$/.test(rid))
+        .map(rid => parseInt(rid!.substring(1), 10));
+      const maxRId = existingRIds.length > 0 ? Math.max(...existingRIds) : 23; // Start after R023
+      rankId = `R${String(maxRId + 1).padStart(3, '0')}`;
+    }
+    
+    const [created] = await this.db.insert(availableRanks).values({
+      ...insertAvailableRank,
+      rankId
+    }).returning();
     return created;
   }
 
