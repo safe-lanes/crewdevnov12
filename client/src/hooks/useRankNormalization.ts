@@ -10,6 +10,35 @@ interface CompanyRank {
   isRoleRow: boolean;
 }
 
+// Common rank name aliases to handle variations (e.g., "2nd Officer" vs "Second Officer")
+const RANK_ALIASES: Record<string, string> = {
+  '2nd officer': 'Second Officer',
+  '3rd officer': 'Third Officer',
+  '2nd engineer': 'Second Engineer',
+  '3rd engineer': 'Third Engineer',
+  '4th engineer': 'Fourth Engineer',
+  '5th engineer': 'Fifth Engineer',
+  'e/o': 'Electrical Officer',
+  'e.o': 'Electrical Officer',
+  'eto': 'Electrical Officer',
+};
+
+// Helper to populate a map with both canonical names and their aliases
+export function addRankAliasesToMap(map: Map<string, number>, rankName: string, sortOrder: number): void {
+  // Add the canonical name
+  map.set(rankName, sortOrder);
+  
+  // Add common aliases that map TO this canonical name
+  const lowerName = rankName.toLowerCase();
+  Object.entries(RANK_ALIASES).forEach(([alias, canonical]) => {
+    if (canonical.toLowerCase() === lowerName) {
+      // Add the alias (e.g., "2nd Officer" -> same sortOrder as "Second Officer")
+      const capitalizedAlias = alias.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      map.set(capitalizedAlias, sortOrder);
+    }
+  });
+}
+
 export function useRankNormalization() {
   const { data: companyRanks = [], isLoading } = useQuery<CompanyRank[]>({
     queryKey: ['/api/company-ranks'],
@@ -100,6 +129,16 @@ export function useRankNormalization() {
     });
   }, [isVariantRank]);
 
+  // Get canonical rank name using aliases (for sortOrder lookup)
+  const getCanonicalRankName = useCallback((rankName: string | null | undefined): string => {
+    if (!rankName) return '';
+    // Strip variant suffix first (e.g., "Oiler_1" -> "Oiler")
+    const baseRank = rankName.includes('_') ? rankName.split('_')[0] : rankName;
+    // Check alias map (case-insensitive)
+    const alias = RANK_ALIASES[baseRank.toLowerCase()];
+    return alias || baseRank;
+  }, []);
+
   return {
     normalizeRank,
     getParentRankByRankId,
@@ -109,5 +148,6 @@ export function useRankNormalization() {
     isParentWithVariants,
     filterCrewWithVariants,
     ranksWithVariants,
+    getCanonicalRankName,
   };
 }

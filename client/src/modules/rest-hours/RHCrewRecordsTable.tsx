@@ -10,7 +10,7 @@ import { RHRecordingForm } from './RHRecordingForm';
 import { ViolationsDetailDialog } from './ViolationsDetailDialog';
 import { NCReportDialog } from './NCReportDialog';
 import { type ComplianceMode } from './violationFilters';
-import { useRankNormalization } from '@/hooks/useRankNormalization';
+import { useRankNormalization, addRankAliasesToMap } from '@/hooks/useRankNormalization';
 
 interface RHCrewRecordsTableProps {
   vesselId?: string;
@@ -322,7 +322,7 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
   const [ncReportDialogOpen, setNCReportDialogOpen] = useState(false);
   const [selectedNCReportRecord, setSelectedNCReportRecord] = useState<RestHoursCrewRecord | null>(null);
   
-  const { filterCrewWithVariants } = useRankNormalization();
+  const { filterCrewWithVariants, getCanonicalRankName } = useRankNormalization();
 
   // Handler for opening the recording form
   const handleEditRecord = (record: RestHoursCrewRecord) => {
@@ -353,11 +353,11 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
     queryKey: ['/api/available-ranks'],
   });
 
-  // Create a map of rank name to sortOrder for sorting
+  // Create a map of rank name to sortOrder for sorting (includes aliases)
   const rankOrderMap = useMemo(() => {
     const map = new Map<string, number>();
     availableRanks.forEach((rank: any) => {
-      map.set(rank.name, rank.sortOrder || 0);
+      addRankAliasesToMap(map, rank.name, rank.sortOrder || 0);
     });
     return map;
   }, [availableRanks]);
@@ -385,16 +385,35 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
     },
   });
 
+  // Helper to get sortOrder with fallback for unknown ranks
+  const getRankSortOrder = (rankName: string | null | undefined): number => {
+    if (!rankName) return 999999;
+    // First try exact match
+    const exact = rankOrderMap.get(rankName);
+    if (exact !== undefined) return exact;
+    // Try base rank (strip suffix like _1, _2)
+    const baseRank = rankName.split('_')[0];
+    const base = rankOrderMap.get(baseRank);
+    if (base !== undefined) return base;
+    // Try canonical name (e.g., "2nd Officer" -> "Second Officer")
+    const canonical = getCanonicalRankName(rankName);
+    const canonicalOrder = rankOrderMap.get(canonical);
+    if (canonicalOrder !== undefined) return canonicalOrder;
+    // Fallback: unknown rank goes to end
+    return 999999;
+  };
+
   // Filter and sort records by rank order (exclude base ranks when variants exist)
   const records = useMemo(() => {
     const filteredRecords = filterCrewWithVariants(rawRecords, (r: RestHoursCrewRecord) => r.rank || '');
     return filteredRecords.sort((a, b) => {
-      // Strip suffix from rank name (e.g., "3rd Officer_1" -> "3rd Officer")
-      const aRankBase = a.rank?.split('_')[0] || a.rank;
-      const bRankBase = b.rank?.split('_')[0] || b.rank;
-      const aOrder = rankOrderMap.get(aRankBase) ?? 999;
-      const bOrder = rankOrderMap.get(bRankBase) ?? 999;
-      return aOrder - bOrder;
+      const aOrder = getRankSortOrder(a.rank);
+      const bOrder = getRankSortOrder(b.rank);
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      // Secondary sort: if same sortOrder, sort by suffix number (e.g., _1 before _2)
+      const aSuffix = a.rank?.includes('_') ? parseInt(a.rank.split('_')[1]) || 0 : 0;
+      const bSuffix = b.rank?.includes('_') ? parseInt(b.rank.split('_')[1]) || 0 : 0;
+      return aSuffix - bSuffix;
     });
   }, [rawRecords, rankOrderMap, filterCrewWithVariants]);
 

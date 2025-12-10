@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
 import type { ColDef, ICellRendererParams, IHeaderParams } from 'ag-grid-community';
 import { format, addMonths, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
-import { useRankNormalization } from '@/hooks/useRankNormalization';
+import { useRankNormalization, addRankAliasesToMap } from '@/hooks/useRankNormalization';
 
 // Utility to clamp values between 0 and 100 for percentage positioning
 const clamp = (value: number, min = 0, max = 100) => Math.max(min, Math.min(max, value));
@@ -217,7 +217,7 @@ export const DueCrewTable: FC<DueCrewTableProps> = ({
   rankValue,
 }) => {
   const gridApiRef = useRef<any>(null);
-  const { filterCrewWithVariants } = useRankNormalization();
+  const { filterCrewWithVariants, getCanonicalRankName } = useRankNormalization();
   
   const { data: rawCrewData = [], isLoading } = useDueCrew({
     filterType,
@@ -228,10 +228,51 @@ export const DueCrewTable: FC<DueCrewTableProps> = ({
     rankValue,
   });
   
-  // Filter crew data to exclude base ranks when variants exist
+  // Fetch available ranks to get sortOrder
+  const { data: availableRanks = [] } = useQuery<any[]>({
+    queryKey: ['/api/available-ranks'],
+  });
+  
+  // Create a map of rank name to sortOrder for sorting (includes aliases)
+  const rankOrderMap = useMemo(() => {
+    const map = new Map<string, number>();
+    availableRanks.forEach((rank: any) => {
+      addRankAliasesToMap(map, rank.name, rank.sortOrder || 0);
+    });
+    return map;
+  }, [availableRanks]);
+  
+  // Helper to get sortOrder with fallback for unknown ranks
+  const getRankSortOrder = (rankName: string | null | undefined): number => {
+    if (!rankName) return 999999;
+    // First try exact match
+    const exact = rankOrderMap.get(rankName);
+    if (exact !== undefined) return exact;
+    // Try base rank (strip suffix like _1, _2)
+    const baseRank = rankName.split('_')[0];
+    const base = rankOrderMap.get(baseRank);
+    if (base !== undefined) return base;
+    // Try canonical name (e.g., "2nd Officer" -> "Second Officer")
+    const canonical = getCanonicalRankName(rankName);
+    const canonicalOrder = rankOrderMap.get(canonical);
+    if (canonicalOrder !== undefined) return canonicalOrder;
+    // Fallback: unknown rank goes to end
+    return 999999;
+  };
+  
+  // Filter and sort crew data (exclude base ranks when variants exist)
   const crewData = useMemo(() => {
-    return filterCrewWithVariants(rawCrewData, (crew: CrewMember) => crew.rank || '');
-  }, [rawCrewData, filterCrewWithVariants]);
+    const filtered = filterCrewWithVariants(rawCrewData, (crew: CrewMember) => crew.rank || '');
+    return filtered.sort((a, b) => {
+      const aOrder = getRankSortOrder(a.rank);
+      const bOrder = getRankSortOrder(b.rank);
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      // Secondary sort: if same sortOrder, sort by suffix number (e.g., _1 before _2)
+      const aSuffix = a.rank?.includes('_') ? parseInt(a.rank.split('_')[1]) || 0 : 0;
+      const bSuffix = b.rank?.includes('_') ? parseInt(b.rank.split('_')[1]) || 0 : 0;
+      return aSuffix - bSuffix;
+    });
+  }, [rawCrewData, filterCrewWithVariants, rankOrderMap]);
 
   // Column definitions with timeline as a pinned right column
   const columnDefs = useMemo((): ColDef<CrewMember>[] => {
