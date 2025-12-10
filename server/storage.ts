@@ -776,6 +776,7 @@ export interface IStorage {
   deleteRankGroup(id: number): Promise<boolean>;
   getFormForRank(rankLabel: string, category: string): Promise<Form | undefined>;
   getAvailableRanks(): Promise<AvailableRank[]>;
+  getAvailableRank(id: number): Promise<AvailableRank | undefined>;
   createAvailableRank(rank: InsertAvailableRank): Promise<AvailableRank>;
   updateAvailableRank(id: number, rank: Partial<InsertAvailableRank>): Promise<AvailableRank | undefined>;
   deleteAvailableRank(id: number): Promise<boolean>;
@@ -1575,6 +1576,10 @@ export class MemStorage implements IStorage {
     return Array.from(this.availableRanks.values()).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   }
 
+  async getAvailableRank(id: number): Promise<AvailableRank | undefined> {
+    return this.availableRanks.get(id);
+  }
+
   async createAvailableRank(insertAvailableRank: InsertAvailableRank): Promise<AvailableRank> {
     const id = this.currentAvailableRankId++;
     // Get the next sortOrder value
@@ -1587,7 +1592,8 @@ export class MemStorage implements IStorage {
       rankId: insertAvailableRank.rankId ?? null,
       label: insertAvailableRank.label ?? null,
       applicableToCompany: insertAvailableRank.applicableToCompany ?? null,
-      sortOrder: insertAvailableRank.sortOrder ?? (maxSortOrder + 1)
+      sortOrder: insertAvailableRank.sortOrder ?? (maxSortOrder + 1),
+      isSystemRank: insertAvailableRank.isSystemRank ?? false
     };
     this.availableRanks.set(id, availableRank);
     return availableRank;
@@ -4233,17 +4239,17 @@ export class PersistentFileStorage implements IStorage {
       configuration: null,
     });
 
-    // Initialize with sample available ranks
-    this.availableRanks.set(1, { id: 1, name: "Master", category: "Senior Officers", rankId: "S1", label: "Master", applicableToCompany: true, sortOrder: 1 });
-    this.availableRanks.set(2, { id: 2, name: "Chief Officer", category: "Senior Officers", rankId: "S2", label: "Chief Officer", applicableToCompany: true, sortOrder: 2 });
-    this.availableRanks.set(3, { id: 3, name: "Chief Engineer", category: "Senior Officers", rankId: "S7", label: "Chief Engineer", applicableToCompany: true, sortOrder: 3 });
-    this.availableRanks.set(4, { id: 4, name: "2nd Officer", category: "Junior Officers", rankId: "S3", label: "2nd Officer", applicableToCompany: true, sortOrder: 4 });
-    this.availableRanks.set(5, { id: 5, name: "3rd Officer", category: "Junior Officers", rankId: "S4", label: "3rd Officer", applicableToCompany: true, sortOrder: 5 });
-    this.availableRanks.set(6, { id: 6, name: "2nd Engineer", category: "Junior Officers", rankId: "S9", label: "2nd Engineer", applicableToCompany: true, sortOrder: 6 });
-    this.availableRanks.set(7, { id: 7, name: "3rd Engineer", category: "Junior Officers", rankId: "S10", label: "3rd Engineer", applicableToCompany: true, sortOrder: 7 });
-    this.availableRanks.set(8, { id: 8, name: "Bosun", category: "Ratings", rankId: "S12", label: "Bosun", applicableToCompany: true, sortOrder: 8 });
-    this.availableRanks.set(9, { id: 9, name: "AB", category: "Ratings", rankId: "S14", label: "AB", applicableToCompany: true, sortOrder: 9 });
-    this.availableRanks.set(10, { id: 10, name: "OS", category: "Ratings", rankId: "S15", label: "OS", applicableToCompany: false, sortOrder: 10 });
+    // Initialize with sample available ranks (system ranks cannot be edited or deleted)
+    this.availableRanks.set(1, { id: 1, name: "Master", category: "Senior Officers", rankId: "S1", label: "Master", applicableToCompany: true, sortOrder: 1, isSystemRank: true });
+    this.availableRanks.set(2, { id: 2, name: "Chief Officer", category: "Senior Officers", rankId: "S2", label: "Chief Officer", applicableToCompany: true, sortOrder: 2, isSystemRank: true });
+    this.availableRanks.set(3, { id: 3, name: "Chief Engineer", category: "Senior Officers", rankId: "S7", label: "Chief Engineer", applicableToCompany: true, sortOrder: 3, isSystemRank: true });
+    this.availableRanks.set(4, { id: 4, name: "Second Officer", category: "Junior Officers", rankId: "S3", label: "Second Officer", applicableToCompany: true, sortOrder: 4, isSystemRank: true });
+    this.availableRanks.set(5, { id: 5, name: "Third Officer", category: "Junior Officers", rankId: "S4", label: "Third Officer", applicableToCompany: true, sortOrder: 5, isSystemRank: true });
+    this.availableRanks.set(6, { id: 6, name: "Second Engineer", category: "Junior Officers", rankId: "S9", label: "Second Engineer", applicableToCompany: true, sortOrder: 6, isSystemRank: true });
+    this.availableRanks.set(7, { id: 7, name: "Third Engineer", category: "Junior Officers", rankId: "S10", label: "Third Engineer", applicableToCompany: true, sortOrder: 7, isSystemRank: true });
+    this.availableRanks.set(8, { id: 8, name: "Bosun", category: "Ratings", rankId: "S12", label: "Bosun", applicableToCompany: true, sortOrder: 8, isSystemRank: true });
+    this.availableRanks.set(9, { id: 9, name: "Able Bodied Seaman", category: "Ratings", rankId: "S14", label: "Able Bodied Seaman", applicableToCompany: true, sortOrder: 9, isSystemRank: true });
+    this.availableRanks.set(10, { id: 10, name: "Ordinary Seaman", category: "Ratings", rankId: "S15", label: "Ordinary Seaman", applicableToCompany: false, sortOrder: 10, isSystemRank: true });
 
     // Initialize sample recruitment candidate
     const sampleCandidate: RecruitmentCandidate = {
@@ -4924,6 +4930,10 @@ export class PersistentFileStorage implements IStorage {
     return Array.from(this.availableRanks.values()).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   }
 
+  async getAvailableRank(id: number): Promise<AvailableRank | undefined> {
+    return this.availableRanks.get(id);
+  }
+
   async createAvailableRank(insertAvailableRank: InsertAvailableRank): Promise<AvailableRank> {
     // Get the next sortOrder value
     const existingRanks = await this.getAvailableRanks();
@@ -4935,7 +4945,8 @@ export class PersistentFileStorage implements IStorage {
       rankId: insertAvailableRank.rankId ?? null,
       label: insertAvailableRank.label ?? null,
       applicableToCompany: insertAvailableRank.applicableToCompany ?? null,
-      sortOrder: insertAvailableRank.sortOrder ?? (maxSortOrder + 1)
+      sortOrder: insertAvailableRank.sortOrder ?? (maxSortOrder + 1),
+      isSystemRank: insertAvailableRank.isSystemRank ?? false
     };
     this.availableRanks.set(availableRank.id, availableRank);
     this.saveToFile();
@@ -7345,6 +7356,7 @@ if (databaseUrlForceDisabled) {
       async updateRankGroup(): Promise<any> { this.throwConnectionError(); }
       async deleteRankGroup(): Promise<any> { this.throwConnectionError(); }
       async getAvailableRanks(): Promise<any> { this.throwConnectionError(); }
+      async getAvailableRank(): Promise<any> { this.throwConnectionError(); }
       async createAvailableRank(): Promise<any> { this.throwConnectionError(); }
       async updateAvailableRank(): Promise<any> { this.throwConnectionError(); }
       async deleteAvailableRank(): Promise<any> { this.throwConnectionError(); }

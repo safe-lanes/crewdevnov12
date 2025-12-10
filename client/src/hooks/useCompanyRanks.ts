@@ -9,6 +9,7 @@ export interface RankMasterData {
   rankId: string;
   applicableToCompany: boolean;
   label: string;
+  isSystemRank?: boolean; // Protected starter pack ranks - cannot edit name or delete
 }
 
 // Function to map AvailableRank from database to RankMasterData format
@@ -52,6 +53,7 @@ const mapAvailableRankToRankMasterData = (availableRank: AvailableRank): RankMas
     rankId: availableRank.rankId ?? generateRankId(availableRank.name, availableRank.id),
     label: availableRank.label ?? generateLabel(availableRank.name),
     applicableToCompany: availableRank.applicableToCompany ?? generateApplicableToCompany(availableRank.category),
+    isSystemRank: availableRank.isSystemRank ?? false,
   };
 };
 

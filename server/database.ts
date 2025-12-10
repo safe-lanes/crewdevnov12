@@ -842,6 +842,11 @@ export class DatabaseStorage implements IStorage {
     return sorted;
   }
 
+  async getAvailableRank(id: number): Promise<AvailableRank | undefined> {
+    const result = await this.db.select().from(availableRanks).where(eq(availableRanks.id, id));
+    return result[0] || undefined;
+  }
+
   async createAvailableRank(insertAvailableRank: InsertAvailableRank): Promise<AvailableRank> {
     const [created] = await this.db.insert(availableRanks).values(insertAvailableRank).returning();
     return created;

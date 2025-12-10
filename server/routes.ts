@@ -1571,6 +1571,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertAvailableRankSchema.partial().parse(req.body);
+      
+      // Check if this is a system rank and prevent name changes
+      const existingRank = await storage.getAvailableRank(id);
+      if (existingRank?.isSystemRank && validatedData.name && validatedData.name !== existingRank.name) {
+        return res.status(403).json({ error: "Cannot change the name of a system rank. System ranks are protected." });
+      }
+      
       const rank = await storage.updateAvailableRank(id, validatedData);
       if (!rank) {
         return res.status(404).json({ error: "Rank not found" });
@@ -1584,6 +1591,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/available-ranks/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      
+      // Check if this is a system rank and prevent deletion
+      const existingRank = await storage.getAvailableRank(id);
+      if (existingRank?.isSystemRank) {
+        return res.status(403).json({ error: "Cannot delete a system rank. System ranks are protected and part of the starter pack." });
+      }
+      
       const deleted = await storage.deleteAvailableRank(id);
       if (!deleted) {
         return res.status(404).json({ error: "Rank not found" });
@@ -4355,7 +4369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const month = monthNames[date.getMonth()];
           const year = date.getFullYear();
           
-          const isOfficer = ['Master', 'Chief Officer', 'Chief Engineer', '2nd Officer', '3rd Officer', '2nd Engineer', '3rd Engineer'].includes(crew.presentRank || crew.rank || '');
+          const isOfficer = ['Master', 'Chief Officer', 'Chief Engineer', '2nd Officer', 'Second Officer', '3rd Officer', 'Third Officer', '2nd Engineer', 'Second Engineer', '3rd Engineer', 'Third Engineer', '4th Engineer', 'Fourth Engineer', 'Fifth Engineer', 'Electrical Officer', 'Gas Engineer', 'Cargo/ Gas Engineer'].includes(crew.presentRank || crew.rank || '');
           const role = isOfficer ? 'Officer' : 'Rating';
           
           return `S.On / ${day}-${month}-${year} / ${role}`;

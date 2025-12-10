@@ -34,6 +34,7 @@ export const availableRanks = pgTable("available_ranks", {
   label: text("label"), // User-editable label (e.g., "Master", "2nd Off")
   applicableToCompany: boolean("applicable_to_company"), // User-editable company applicability
   sortOrder: integer("sort_order").default(0), // For drag-and-drop reordering
+  isSystemRank: boolean("is_system_rank").default(false), // Protected starter pack ranks - cannot edit name or delete
 });
 
 export const crewMembers = pgTable("crew_members", {
@@ -765,6 +766,7 @@ export const insertAvailableRankSchema = createInsertSchema(availableRanks).pick
   label: true,
   applicableToCompany: true,
   sortOrder: true,
+  isSystemRank: true,
 });
 
 export const updateAvailableRankSchema = createInsertSchema(availableRanks).pick({
@@ -774,6 +776,7 @@ export const updateAvailableRankSchema = createInsertSchema(availableRanks).pick
   label: true,
   applicableToCompany: true,
   sortOrder: true,
+  isSystemRank: true,
 }).partial();
 
 export const insertCrewMemberSchema = createInsertSchema(crewMembers).pick({

@@ -3517,7 +3517,7 @@ const AdminModuleInner = (): JSX.Element => {
                         </TableCell>
                         
                         <TableCell className="py-3 text-center border-r">
-                          {isRankMasterEditing ? (
+                          {isRankMasterEditing && !rank.isSystemRank ? (
                             <input
                               type="text"
                               value={rank.rank || ''}
@@ -3527,7 +3527,7 @@ const AdminModuleInner = (): JSX.Element => {
                               data-testid={`input-rank-${rank.id}`}
                             />
                           ) : (
-                            <span className="text-sm" data-testid={`text-rank-${rank.id}`}>{rank.rank || ''}</span>
+                            <span className={`text-sm ${rank.isSystemRank ? 'text-gray-700' : ''}`} data-testid={`text-rank-${rank.id}`} title={rank.isSystemRank ? 'System rank - cannot be edited' : ''}>{rank.rank || ''}</span>
                           )}
                         </TableCell>
                         
@@ -3584,16 +3584,18 @@ const AdminModuleInner = (): JSX.Element => {
                                 >
                                   <ChevronDown className="h-3 w-3" />
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleDeleteRank(rank.id)}
-                                  className="h-6 w-6 p-0 text-red-600 hover:bg-red-50"
-                                  data-testid={`button-delete-rank-${rank.id}`}
-                                  title="Delete rank"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
+                                {!rank.isSystemRank && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleDeleteRank(rank.id)}
+                                    className="h-6 w-6 p-0 text-red-600 hover:bg-red-50"
+                                    data-testid={`button-delete-rank-${rank.id}`}
+                                    title="Delete rank"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                )}
                               </>
                             )}
                           </div>
