@@ -3649,7 +3649,7 @@ const AdminModuleInner = (): JSX.Element => {
                             {vesselOptions.map((vessel: VesselOption) => (
                               <CommandItem
                                 key={vessel.value}
-                                value={vessel.value}
+                                value={`${vessel.label} ${vessel.value}`}
                                 onSelect={() => {
                                   // Handle vessel group selection
                                   if (vessel.type === 'group' && vessel.vesselIds) {
