@@ -2537,8 +2537,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const rankId = rank.rankId || rank.id;
           const rankName = rank.rank || rank.role;
           
-          // Skip if no rankId or if it's a role row (these are variants, not primary positions)
-          if (!rankId || rank.isRoleRow) {
+          // Skip if no rankId, if it's a role row (variants), or if actualManningFlag is not set
+          // Only ranks with Actual Manning checked should appear in vessel planning
+          if (!rankId || rank.isRoleRow || !rank.actualManningFlag) {
             continue;
           }
           
