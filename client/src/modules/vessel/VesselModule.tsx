@@ -2738,7 +2738,26 @@ export const VesselModule = (): JSX.Element => {
                                                     // Transform vessel planning data into separate rows for Primary and Secondary crew
                                                     const normalizedRows: any[] = [];
                                                     
-                                                    vesselRanks.forEach((rank: any, rankIndex: number) => {
+                                                    // Filter out base ranks when variant positions exist for the same rankId
+                                                    // This prevents showing duplicate rows (e.g., "3rd Officer" + "3rd Officer_1" + "3rd Officer_2")
+                                                    const filteredVesselRanks = vesselRanks.filter((rank: any) => {
+                                                        const fullRankName = rank.role || rank.rank;
+                                                        const hasVariantSuffix = fullRankName?.includes('_');
+                                                        
+                                                        // Keep variant positions (they have suffix like _1, _2)
+                                                        if (hasVariantSuffix) return true;
+                                                        
+                                                        // For base ranks, check if any variant positions exist with the same rankId
+                                                        const hasVariants = vesselRanks.some((other: any) => {
+                                                            const otherName = other.role || other.rank;
+                                                            return other.rankId === rank.rankId && otherName?.includes('_');
+                                                        });
+                                                        
+                                                        // Exclude base rank if variants exist
+                                                        return !hasVariants;
+                                                    });
+                                                    
+                                                    filteredVesselRanks.forEach((rank: any, rankIndex: number) => {
                                                         // Get full rank name (with suffix like _1, _2 for variant positions)
                                                         const fullRankName = rank.role || rank.rank;
                                                         // Strip suffix for fallback matching (e.g., "3rd Officer_1" -> "3rd Officer")
