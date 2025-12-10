@@ -2539,9 +2539,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                     <SelectValue placeholder="Select proficiency" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Excellent">Excellent</SelectItem>
                     <SelectItem value="Good">Good</SelectItem>
-                    <SelectItem value="Average">Average</SelectItem>
+                    <SelectItem value="Fair">Fair</SelectItem>
                     <SelectItem value="Poor">Poor</SelectItem>
                   </SelectContent>
                 </Select>
