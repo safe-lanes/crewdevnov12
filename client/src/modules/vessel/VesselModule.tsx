@@ -34,6 +34,7 @@ import { AppraisalForm } from '@/modules/crewing/AppraisalForm';
 import { CrewInfoForm } from '@/modules/crew-pool/CrewInfoForm';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { findHighestActiveCoc, inferDepartmentFromRank, LicenseRecord } from '@/utils/data/licenseDceTemplates';
+import { useRankNormalization } from '@/hooks/useRankNormalization';
 
 // Helper function to check if crew member has valid GMDSS certificate
 const hasValidGmdss = (licenses: LicenseRecord[]): boolean => {
@@ -1650,6 +1651,9 @@ export const VesselModule = (): JSX.Element => {
     const { data: vessels = [], isLoading: vesselsLoading } = useVessels();
     const { data: crewMembers = [], isLoading: crewLoading } = useCrewMembers();
     
+    // Get rank normalization utilities for filtering variants
+    const { filterCrewWithVariants, isVariantRank } = useRankNormalization();
+    
     // Fetch available ranks to get sortOrder
     const { data: availableRanks = [] } = useQuery<any[]>({
         queryKey: ['/api/available-ranks'],
@@ -1695,6 +1699,29 @@ export const VesselModule = (): JSX.Element => {
     
     // Fetch vessel planning for selected vessel (use vessel ID, e.g., VSL-003)
     const { data: vesselPlanning = [], isLoading: planningLoading } = useVesselPlanning(selectedVessel?.vesselId || null);
+    
+    // Filter vesselRanks for Officer Matrix - exclude base ranks when variants exist
+    const officerMatrixRanks = useMemo(() => {
+        const officerRanks = vesselRanks.filter((rank: any) => rank.officer === true);
+        const variantBaseRanks = new Set<string>();
+        officerRanks.forEach((rank: any) => {
+            const rankName = rank.role || rank.rank;
+            if (isVariantRank(rankName)) {
+                const baseRank = rankName.split('_')[0];
+                variantBaseRanks.add(baseRank);
+            }
+        });
+        return officerRanks.filter((rank: any) => {
+            const rankName = rank.role || rank.rank;
+            if (isVariantRank(rankName)) return true;
+            return !variantBaseRanks.has(rankName);
+        });
+    }, [vesselRanks, isVariantRank]);
+    
+    // Filter vesselPlanning for Crew List - exclude base ranks when variants exist
+    const filteredVesselPlanning = useMemo(() => {
+        return filterCrewWithVariants(vesselPlanning, (p: any) => p.rank || '');
+    }, [vesselPlanning, filterCrewWithVariants]);
     
     // Fetch all appraisals to determine button state
     const { data: allAppraisals = [] } = useAppraisals();
@@ -2034,9 +2061,9 @@ export const VesselModule = (): JSX.Element => {
                                                         </TableCell>
                                                     </TableRow>
                                                 ) : (() => {
-                                                    // Use vessel planning data and sort by rank order
+                                                    // Use filtered vessel planning data (excludes base ranks when variants exist) and sort by rank order
                                                     // Filter based on showArchived: when false, exclude archived; when true, show only archived
-                                                    const vesselCrew = vesselPlanning
+                                                    const vesselCrew = filteredVesselPlanning
                                                         .filter((planning: any) => {
                                                             if (!planning.crewMemberId) return false;
                                                             const isArchived = planning.isArchived === true;
@@ -2524,15 +2551,14 @@ export const VesselModule = (): JSX.Element => {
                                                             {NO_RANKS_CONFIGURED_MESSAGE}
                                                         </TableCell>
                                                     </TableRow>
-                                                ) : vesselRanks.filter((r: any) => r.officer === true).length === 0 ? (
+                                                ) : officerMatrixRanks.length === 0 ? (
                                                     <TableRow>
                                                         <TableCell colSpan={17} className="text-center text-xs text-gray-500 py-8">
                                                             No officer ranks configured for this vessel.
                                                         </TableCell>
                                                     </TableRow>
                                                 ) : (
-                                                    vesselRanks
-                                                        .filter((rank: any) => rank.officer === true)
+                                                    officerMatrixRanks
                                                         .map((rank: any, index: number) => {
                                                             // Get full rank name (with suffix like _1, _2 for variant positions)
                                                             const fullRankName = rank.role || rank.rank;

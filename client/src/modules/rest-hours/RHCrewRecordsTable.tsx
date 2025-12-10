@@ -10,6 +10,7 @@ import { RHRecordingForm } from './RHRecordingForm';
 import { ViolationsDetailDialog } from './ViolationsDetailDialog';
 import { NCReportDialog } from './NCReportDialog';
 import { type ComplianceMode } from './violationFilters';
+import { useRankNormalization } from '@/hooks/useRankNormalization';
 
 interface RHCrewRecordsTableProps {
   vesselId?: string;
@@ -320,6 +321,8 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
   const [selectedPredictedViolationsRecord, setSelectedPredictedViolationsRecord] = useState<RestHoursCrewRecord | null>(null);
   const [ncReportDialogOpen, setNCReportDialogOpen] = useState(false);
   const [selectedNCReportRecord, setSelectedNCReportRecord] = useState<RestHoursCrewRecord | null>(null);
+  
+  const { filterCrewWithVariants } = useRankNormalization();
 
   // Handler for opening the recording form
   const handleEditRecord = (record: RestHoursCrewRecord) => {
@@ -382,9 +385,10 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
     },
   });
 
-  // Sort records by rank order
+  // Filter and sort records by rank order (exclude base ranks when variants exist)
   const records = useMemo(() => {
-    return [...rawRecords].sort((a, b) => {
+    const filteredRecords = filterCrewWithVariants(rawRecords, (r: RestHoursCrewRecord) => r.rank || '');
+    return filteredRecords.sort((a, b) => {
       // Strip suffix from rank name (e.g., "3rd Officer_1" -> "3rd Officer")
       const aRankBase = a.rank?.split('_')[0] || a.rank;
       const bRankBase = b.rank?.split('_')[0] || b.rank;
@@ -392,7 +396,7 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
       const bOrder = rankOrderMap.get(bRankBase) ?? 999;
       return aOrder - bOrder;
     });
-  }, [rawRecords, rankOrderMap]);
+  }, [rawRecords, rankOrderMap, filterCrewWithVariants]);
 
   const columnDefs: ColDef[] = useMemo(() => [
     {

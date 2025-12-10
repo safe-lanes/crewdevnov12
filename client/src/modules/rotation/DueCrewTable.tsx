@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
 import type { ColDef, ICellRendererParams, IHeaderParams } from 'ag-grid-community';
 import { format, addMonths, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
+import { useRankNormalization } from '@/hooks/useRankNormalization';
 
 // Utility to clamp values between 0 and 100 for percentage positioning
 const clamp = (value: number, min = 0, max = 100) => Math.max(min, Math.min(max, value));
@@ -216,8 +217,9 @@ export const DueCrewTable: FC<DueCrewTableProps> = ({
   rankValue,
 }) => {
   const gridApiRef = useRef<any>(null);
+  const { filterCrewWithVariants } = useRankNormalization();
   
-  const { data: crewData = [], isLoading } = useDueCrew({
+  const { data: rawCrewData = [], isLoading } = useDueCrew({
     filterType,
     selectedVessels,
     fleetValue,
@@ -225,6 +227,11 @@ export const DueCrewTable: FC<DueCrewTableProps> = ({
     dueInValue,
     rankValue,
   });
+  
+  // Filter crew data to exclude base ranks when variants exist
+  const crewData = useMemo(() => {
+    return filterCrewWithVariants(rawCrewData, (crew: CrewMember) => crew.rank || '');
+  }, [rawCrewData, filterCrewWithVariants]);
 
   // Column definitions with timeline as a pinned right column
   const columnDefs = useMemo((): ColDef<CrewMember>[] => {
