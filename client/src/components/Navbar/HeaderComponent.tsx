@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { Link, useLocation } from 'wouter'
 import { ModuleNavigator } from '../ModuleNavigator'
 import { 
@@ -13,8 +13,10 @@ import {
     Clock, 
     BarChart3, 
     User, 
-    Settings 
-} from "lucide-react"; // Import icons
+    Settings,
+    Menu,
+    X
+} from "lucide-react";
 
 const navItems = [
     {
@@ -126,8 +128,11 @@ const navItems = [
         inactiveText: "#4f5863",
     },
 ];
+
 export default function HeaderComponent() {
     const [location, navigate] = useLocation();
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    
     const handleModuleChange = useCallback((moduleId: string) => {
         switch (moduleId) {
             case "crewing":
@@ -140,31 +145,42 @@ export default function HeaderComponent() {
                 navigate("/");
         }
     }, [navigate]);
+
+    const handleNavClick = (href: string) => {
+        setIsMobileMenuOpen(false);
+        navigate(href);
+    };
+
     return (
         <>
             {/* Header */}
             <header className="fixed top-0 left-0 right-0 w-full h-[67px] bg-[#f1f1f1] border-b-2 border-[#51baf4] z-[100]">
-                <div className="flex items-center h-[65px] bg-[#f1f1f1]">
-                    {/* Logo */}
-                    <div className="flex items-center ml-4">
-                        <Link to='/'>
-                            <img
-                                className="w-14 h-10"
-                                alt="Logo"
-                                src="/figmaAssets/group-2.png"
-                            />
-                        </Link>
-                    </div>
+                <div className="flex items-center justify-between h-[65px] bg-[#f1f1f1]">
+                    {/* Left section: Logo + Module Navigator */}
+                    <div className="flex items-center h-full">
+                        {/* Logo */}
+                        <div className="flex items-center ml-4">
+                            <Link to='/'>
+                                <img
+                                    className="w-14 h-10"
+                                    alt="Logo"
+                                    src="/figmaAssets/group-2.png"
+                                    data-testid="header-logo"
+                                />
+                            </Link>
+                        </div>
 
-                    {/* Navigation Menu */}
-                    <nav className="flex ml-8 h-[65px]">
-                        {/* Module Navigator */}
-                        <div className="flex flex-col items-center justify-center w-[100px] h-full bg-[#f1f1f1] border-r border-gray-300">
+                        {/* Module Navigator - always visible */}
+                        <div className="flex flex-col items-center justify-center w-[80px] lg:w-[100px] h-full bg-[#f1f1f1] border-r border-gray-300 ml-4 lg:ml-8">
                             <ModuleNavigator
                                 currentModule="crewing"
                                 onModuleChange={handleModuleChange}
                             />
                         </div>
+                    </div>
+
+                    {/* Desktop Navigation Menu - hidden on smaller screens */}
+                    <nav className="hidden xl:flex h-[65px] flex-1">
                         <div className="flex h-full">
                             {navItems.map(({ label, href, icon: Icon, activeBg, activeText, inactiveBg, inactiveText }) => {
                                 const isActive = location === href;
@@ -175,6 +191,7 @@ export default function HeaderComponent() {
                                             style={{
                                                 backgroundColor: isActive ? activeBg : inactiveBg,
                                             }}
+                                            data-testid={`nav-${label.toLowerCase().replace(' ', '-')}`}
                                         >
                                             <Icon size={24} color={isActive ? activeText : "#6B7280"} className="mb-1" />
                                             <div
@@ -189,8 +206,62 @@ export default function HeaderComponent() {
                             })}
                         </div>
                     </nav>
+
+                    {/* Hamburger Menu Button - visible on smaller screens */}
+                    <button
+                        className="xl:hidden flex items-center justify-center w-12 h-12 mr-4"
+                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                        data-testid="hamburger-menu-button"
+                        aria-label="Toggle menu"
+                    >
+                        {isMobileMenuOpen ? (
+                            <X size={28} className="text-gray-700" />
+                        ) : (
+                            <Menu size={28} className="text-gray-700" />
+                        )}
+                    </button>
                 </div>
             </header>
+
+            {/* Mobile/Tablet Dropdown Menu */}
+            {isMobileMenuOpen && (
+                <nav className="xl:hidden fixed top-[67px] left-0 right-0 bg-[#f1f1f1] border-b-2 border-[#51baf4] shadow-lg z-[99] max-h-[calc(100vh-67px)] overflow-y-auto" aria-label="Mobile navigation">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-0">
+                        {navItems.map(({ label, href, icon: Icon, activeBg, activeText, inactiveBg, inactiveText }) => {
+                            const isActive = location === href;
+                            return (
+                                <Link
+                                    key={href}
+                                    href={href}
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className={`flex flex-col items-center justify-center h-[70px] border-r border-b border-gray-300 cursor-pointer hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-[#51baf4] focus:ring-inset`}
+                                    style={{
+                                        backgroundColor: isActive ? activeBg : inactiveBg,
+                                    }}
+                                    data-testid={`mobile-nav-${label.toLowerCase().replace(' ', '-')}`}
+                                >
+                                    <Icon size={22} color={isActive ? activeText : "#6B7280"} className="mb-1" />
+                                    <div
+                                        className="text-[9px] sm:text-[10px] font-normal font-['Roboto',Helvetica] text-center px-1"
+                                        style={{ color: isActive ? activeText : inactiveText }}
+                                    >
+                                        {label}
+                                    </div>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                </nav>
+            )}
+
+            {/* Overlay to close menu when clicking outside */}
+            {isMobileMenuOpen && (
+                <div 
+                    className="xl:hidden fixed inset-0 top-[67px] bg-black bg-opacity-25 z-[98]"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    data-testid="menu-overlay"
+                />
+            )}
         </>
     )
 }
