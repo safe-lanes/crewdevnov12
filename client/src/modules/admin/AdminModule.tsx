@@ -592,16 +592,16 @@ const AdminModuleInner = (): JSX.Element => {
   });
   
   // Vessels Master Data (for vessel selection dropdown - ID 014)
-  // PERFORMANCE: Only fetch when on masters tab
+  // PERFORMANCE: Only fetch when on masters or rank-admin tab (Rank Admin needs vessel dropdown)
   const { data: vesselMasterData = [], isLoading: vesselMasterLoading } = useMasterDataEntries('014', { 
-    enabled: selectedAdminPage === "masters" 
+    enabled: selectedAdminPage === "masters" || selectedAdminPage === "rank-admin"
   });
   
   // Vessel Groups Data (for vessel group selection)
-  // PERFORMANCE: Only fetch when on masters tab
+  // PERFORMANCE: Only fetch when on masters or rank-admin tab (Rank Admin needs vessel dropdown)
   const { data: vesselGroupsData = [], isLoading: vesselGroupsLoading } = useQuery({
     queryKey: ['/api/vessel-groups'],
-    enabled: selectedAdminPage === "masters"
+    enabled: selectedAdminPage === "masters" || selectedAdminPage === "rank-admin"
   });
   
   // Mutations for Data Masters
