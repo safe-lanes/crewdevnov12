@@ -56,6 +56,12 @@ The application uses a modern web stack with a module-first architecture.
     - **Dashboard (Office)**: Fleet-wide overview with AG Charts, performance cards, and drill-down.
     - **Record**: Interactive RH Recording Form with real-time violation detection.
     - **Plan**: Work planning with full CRUD for variable tasks and automated synchronization.
+- **Oil Major Compliance Engine**: Validates crew officer experience against oil major requirements (BP, Chevron, Shell, etc.)
+    - **7 Compliance Categories**: Years with operator, years in rank, years on tanker types, years on all tankers, years as OOW, date joined gaps, and language proficiency.
+    - **Rank Pair Logic**: Supports combined rank pairs (Master + Chief Officer) and individual rank rules.
+    - **CSV Import**: Import compliance rules from CSV files for 70+ oil majors.
+    - **Real-time Validation**: Color-coded compliance status (green/yellow/red) per oil major.
+    - **ComplianceMatrixDialog**: Interactive UI showing all oil majors and their rule-by-rule validation results.
 - **Rank Ordering System**: All crew-displaying modules use rank-based sorting.
 - **Performance Optimization**: Utilizes map-based lookups, TanStack Query, `useRef`, `useMemo`, and optimized `PersistentFileStorage`.
 - **Data Storage**: `PersistentFileStorage` for development, PostgreSQL/Drizzle ORM for production.
