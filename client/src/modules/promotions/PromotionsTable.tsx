@@ -431,7 +431,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
   }, []);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col flex-1">
       <AgGridTable
         rowData={filteredData}
         columnDefs={columnDefs}

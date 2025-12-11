@@ -534,7 +534,7 @@ export const MonthlyTestTable: React.FC<MonthlyTestTableProps> = ({
   ];
 
   return (
-    <div className="w-full flex flex-col">
+    <div className="w-full flex flex-col flex-1">
       {/* Static Due In Legend */}
       <div className="flex gap-2 items-center mb-4">
         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Due in:</span>
@@ -572,7 +572,6 @@ export const MonthlyTestTable: React.FC<MonthlyTestTableProps> = ({
             autoSizeContentColumns();
           },
           onCellValueChanged: async (event: CellValueChangedEvent) => {
-            // Only handle changes to plannedComments, plannedPort, or plannedDate
             const field = event.colDef.field;
             if (field === 'plannedComments' || field === 'plannedPort' || field === 'plannedDate') {
               try {
@@ -581,28 +580,15 @@ export const MonthlyTestTable: React.FC<MonthlyTestTableProps> = ({
                 
                 await apiRequest('PUT', `/api/drug-alcohol-tests/${recordId}`, updateData);
                 
-                // Invalidate cache to refresh data
                 queryClient.invalidateQueries({ queryKey: ['/api/drug-alcohol-tests'] });
               } catch (error) {
                 console.error('Failed to update test record:', error);
-                // Optionally show error toast to user
               }
             }
           },
         }}
+        className="monthly-test-table"
       />
-      <style>{`
-        .ag-header-cell,
-        .ag-header-group-cell {
-          background-color: #52baf3 !important;
-          color: white !important;
-          font-weight: 600 !important;
-        }
-
-        .ag-header-cell-label {
-          justify-content: center !important;
-        }
-      `}</style>
     </div>
   );
 };

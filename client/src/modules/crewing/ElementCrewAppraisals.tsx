@@ -678,8 +678,8 @@ export const ElementCrewAppraisals = (): JSX.Element => {
         )}
 
         {/* AG Grid Enterprise Table with Actions */}
-        <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
-          <CardContent className="p-4 pl-0 bg-[#f7fafc]">
+        <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg flex flex-col flex-1">
+          <CardContent className="p-4 pl-0 bg-[#f7fafc] flex flex-col flex-1">
             <AgGridTable
               rowData={crewData}
               columnDefs={columnDefs}

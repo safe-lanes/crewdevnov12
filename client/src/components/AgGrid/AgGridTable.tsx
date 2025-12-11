@@ -130,36 +130,108 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
   const viewportConfig = getViewportConfig(viewport);
   const gridApiRef = useRef<GridApi | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [calculatedHeight, setCalculatedHeight] = useState<string | number>(height);
+  const [computedHeight, setComputedHeight] = useState<string>('400px');
+  const lastTopRef = useRef<number>(0);
 
-  // Calculate height to fill available viewport space
+  // Dynamic height calculation for fillAvailableHeight mode
+  // Uses the container's position to calculate remaining viewport height
   useEffect(() => {
-    if (!fillAvailableHeight) return;
+    if (!fillAvailableHeight || !containerRef.current) return;
 
     const calculateHeight = () => {
       if (!containerRef.current) return;
-      
       const rect = containerRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
       const availableHeight = viewportHeight - rect.top - bottomPadding;
-      const minHeightValue = 400; // Minimum 400px as per user preference
+      // Enforce minimum height of 400px
+      const finalHeight = Math.max(400, availableHeight);
       
-      const finalHeight = Math.max(minHeightValue, availableHeight);
-      setCalculatedHeight(`${finalHeight}px`);
+      // Only update if the calculated height changed significantly (more than 1px)
+      // This prevents unnecessary re-renders
+      const newHeight = `${finalHeight}px`;
+      setComputedHeight(prev => {
+        const prevNum = parseInt(prev);
+        if (Math.abs(prevNum - finalHeight) > 1) {
+          return newHeight;
+        }
+        return prev;
+      });
+      
+      // Track top position for polling comparison
+      lastTopRef.current = rect.top;
     };
 
     // Initial calculation
     calculateHeight();
 
     // Recalculate on window resize
-    window.addEventListener('resize', calculateHeight);
-    
-    // Also recalculate after a short delay to handle any layout shifts
-    const timeoutId = setTimeout(calculateHeight, 100);
+    const handleResize = () => calculateHeight();
+    window.addEventListener('resize', handleResize);
+
+    // Use ResizeObserver to detect container and ancestor size changes
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => {
+        requestAnimationFrame(calculateHeight);
+      });
+      // Observe the container itself
+      resizeObserver.observe(containerRef.current);
+      // Observe parent elements up to 3 levels
+      let parent = containerRef.current.parentElement;
+      for (let i = 0; i < 3 && parent; i++) {
+        resizeObserver.observe(parent);
+        parent = parent.parentElement;
+      }
+    }
+
+    // Use MutationObserver to detect DOM changes that might affect layout
+    // (like filter panels being shown/hidden)
+    let mutationObserver: MutationObserver | null = null;
+    if (typeof MutationObserver !== 'undefined') {
+      mutationObserver = new MutationObserver(() => {
+        // Recalculate after DOM mutations
+        requestAnimationFrame(calculateHeight);
+      });
+      // Observe the parent container for child list changes and attribute changes
+      const parent = containerRef.current.parentElement;
+      if (parent) {
+        mutationObserver.observe(parent, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['class', 'style', 'hidden', 'data-state']
+        });
+      }
+    }
+
+    // Polling fallback: check if top position changed every 500ms
+    // This catches cases where neither observer fires
+    const pollInterval = setInterval(() => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      if (Math.abs(rect.top - lastTopRef.current) > 5) {
+        calculateHeight();
+      }
+    }, 500);
+
+    // Recalculate after delays to catch dynamic content loading
+    const timeouts = [
+      setTimeout(calculateHeight, 100),
+      setTimeout(calculateHeight, 300),
+      setTimeout(calculateHeight, 500),
+      setTimeout(calculateHeight, 1000),
+    ];
 
     return () => {
-      window.removeEventListener('resize', calculateHeight);
-      clearTimeout(timeoutId);
+      window.removeEventListener('resize', handleResize);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+      if (mutationObserver) {
+        mutationObserver.disconnect();
+      }
+      clearInterval(pollInterval);
+      timeouts.forEach(clearTimeout);
     };
   }, [fillAvailableHeight, bottomPadding]);
 
@@ -426,10 +498,6 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
 
   // Determine the container height
   const containerHeight = useMemo(() => {
-    // If fillAvailableHeight is enabled, use the calculated height
-    if (fillAvailableHeight) {
-      return calculatedHeight;
-    }
     // If domLayout is 'normal' and a height prop is provided, use it
     if (finalGridOptions.domLayout === 'normal') {
       return height;
@@ -440,7 +508,7 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
     }
     // Otherwise, auto height
     return 'auto';
-  }, [fillAvailableHeight, calculatedHeight, finalGridOptions.domLayout, height, needsScroll, dynamicHeight]);
+  }, [finalGridOptions.domLayout, height, needsScroll, dynamicHeight]);
 
   // When fillAvailableHeight is used, we need normal layout with scrolling
   const effectiveGridOptions = useMemo(() => {
@@ -455,15 +523,35 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
 
   const showScroll = fillAvailableHeight || needsScroll;
 
+  // Compute final container styles for fillAvailableHeight mode
+  // Uses computed height from ResizeObserver for dynamic sizing
+  const containerStyles = useMemo((): React.CSSProperties => {
+    const baseStyles: React.CSSProperties = {
+      width,
+      overflow: showScroll ? 'auto' : 'visible'
+    };
+    
+    if (fillAvailableHeight) {
+      // Use dynamically computed height that fills remaining viewport space
+      return {
+        ...baseStyles,
+        height: computedHeight,
+        minHeight: '400px',
+        overflow: 'auto'
+      };
+    }
+    
+    return {
+      ...baseStyles,
+      height: containerHeight
+    };
+  }, [fillAvailableHeight, computedHeight, containerHeight, width, showScroll]);
+
   return (
     <div 
       ref={containerRef}
       className={`ag-theme-${theme} ${showScroll ? 'needs-scroll' : 'no-scroll'} bg-white rounded-lg shadow-md ${className}`} 
-      style={{ 
-        height: containerHeight, 
-        width,
-        overflow: showScroll ? 'auto' : 'visible'
-      }}
+      style={containerStyles}
     >
       <AgGridReact
         rowData={rowData}

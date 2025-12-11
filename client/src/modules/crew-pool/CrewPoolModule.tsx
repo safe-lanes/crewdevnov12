@@ -630,31 +630,33 @@ export const CrewPoolModule = (): JSX.Element => {
                 )}
 
                 {/* AG Grid Table */}
-                {isCrewLoading ? (
-                    <div className="flex items-center justify-center h-40">
-                        <div className="text-gray-500">Loading crew members...</div>
-                    </div>
-                ) : crewError ? (
-                    <div className="flex items-center justify-center h-40">
-                        <div className="text-red-500">Error loading crew members: {crewError.message}</div>
-                    </div>
-                ) : (
-                    <AgGridTable
-                        rowData={crewData}
-                        columnDefs={columnDefs}
-                        onGridReady={onGridReady}
-                        width="100%"
-                        enableExport={true}
-                        enableSideBar={true}
-                        enableStatusBar={false}
-                        enableRowGrouping={true}
-                        enablePivoting={true}
-                        enableAdvancedFilter={false}
-                        rowSelection={false}
-                        fillAvailableHeight={true}
-                        bottomPadding={20}
-                    />
-                )}
+                <div className="flex flex-col flex-1">
+                    {isCrewLoading ? (
+                        <div className="flex items-center justify-center h-40">
+                            <div className="text-gray-500">Loading crew members...</div>
+                        </div>
+                    ) : crewError ? (
+                        <div className="flex items-center justify-center h-40">
+                            <div className="text-red-500">Error loading crew members: {crewError.message}</div>
+                        </div>
+                    ) : (
+                        <AgGridTable
+                            rowData={crewData}
+                            columnDefs={columnDefs}
+                            onGridReady={onGridReady}
+                            width="100%"
+                            enableExport={true}
+                            enableSideBar={true}
+                            enableStatusBar={false}
+                            enableRowGrouping={true}
+                            enablePivoting={true}
+                            enableAdvancedFilter={false}
+                            rowSelection={false}
+                            fillAvailableHeight={true}
+                            bottomPadding={20}
+                        />
+                    )}
+                </div>
             </>
         );
     };

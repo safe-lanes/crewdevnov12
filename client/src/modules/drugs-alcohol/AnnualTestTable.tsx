@@ -551,7 +551,7 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
   ];
 
   return (
-    <div className="w-full flex flex-col">
+    <div className="w-full flex flex-col flex-1">
       {/* Static Due In Legend */}
       <div className="flex gap-2 items-center mb-4">
         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Due in:</span>
@@ -583,13 +583,12 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
           getRowStyle: () => ({ backgroundColor: 'white' }),
           onGridReady: (params) => {
             gridApiRef.current = params.api;
-            setGridApi(params.api); // Set gridApi here
+            setGridApi(params.api);
           },
           onFirstDataRendered: () => {
             autoSizeContentColumns();
           },
           onCellValueChanged: async (event: CellValueChangedEvent) => {
-            // Only handle changes to plannedComments, plannedPort, or plannedDate
             const field = event.colDef.field;
             if (field === 'plannedComments' || field === 'plannedPort' || field === 'plannedDate') {
               try {
@@ -598,28 +597,15 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
                 
                 await apiRequest('PUT', `/api/drug-alcohol-tests/${recordId}`, updateData);
                 
-                // Invalidate cache to refresh data
                 queryClient.invalidateQueries({ queryKey: ['/api/drug-alcohol-tests'] });
               } catch (error) {
                 console.error('Failed to update test record:', error);
-                // Optionally show error toast to user
               }
             }
           },
         }}
+        className="annual-test-table"
       />
-      <style>{`
-        .ag-header-cell,
-        .ag-header-group-cell {
-          background-color: #52baf3 !important;
-          color: white !important;
-          font-weight: 600 !important;
-        }
-
-        .ag-header-cell-label {
-          justify-content: center !important;
-        }
-      `}</style>
     </div>
   );
 };
