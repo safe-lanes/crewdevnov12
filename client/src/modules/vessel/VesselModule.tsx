@@ -3240,6 +3240,7 @@ export const VesselModule = (): JSX.Element => {
             <ComplianceMatrixDialog
                 open={complianceDialogOpen}
                 onOpenChange={setComplianceDialogOpen}
+                vesselId={selectedVessel?.vesselId}
             />
 
             {showAppraisalForm && selectedCrewForAppraisal && (
