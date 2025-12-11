@@ -93,9 +93,83 @@ function createDateJoinedRule(label: string, rankPair: string, value: string): D
   };
 }
 
+/**
+ * Validates that a string is a valid oil major company name, not requirement text.
+ * Uses multiple heuristics to detect requirement sentences masquerading as company names.
+ */
+function isValidOilMajorName(name: string): boolean {
+  if (!name || name.trim() === '') return false;
+  
+  const lowerName = name.toLowerCase();
+  
+  // Reject if name is too long (company names are typically short)
+  if (name.length > 50) return false;
+  
+  // Reject if contains common requirement phrase patterns (specific to avoid false positives)
+  const requirementPhrases = [
+    'experience as', 'months as', 'officer has', 'officer must', 'must have at least',
+    'should not be', 'less than', 'at least', 'years as', 'years in', 'years on',
+    'below', 'onboard', 'junior officer', 'junior deck', 'junior eng',
+    'deck officer', 'eng officer', 'as oow', 'as eoow', 'required to', 'minimum of'
+  ];
+  if (requirementPhrases.some(phrase => lowerName.includes(phrase))) return false;
+  
+  // Reject if contains numeric values with context words (e.g., "6 months", "2 years")
+  if (/\d+\s*(months?|years?|days?)/.test(lowerName)) return false;
+  
+  // Reject if it looks like a sentence (has multiple spaces and common verbs)
+  const sentencePatterns = ['has ', 'have ', 'is ', 'are ', 'to be', 'not be', 'should', 'if '];
+  if (sentencePatterns.some(pattern => lowerName.includes(pattern))) return false;
+  
+  // Reject if it contains commas followed by "if" (common in conditional requirements)
+  if (/,\s*if\s/i.test(name)) return false;
+  
+  // Accept if it matches typical company name patterns
+  // (alphanumeric, spaces, common punctuation like parentheses, ampersands, periods)
+  const validCompanyNamePattern = /^[A-Za-z0-9\s\-&'.()/<>]+$/;
+  return validCompanyNamePattern.test(name);
+}
+
+// Known valid oil major names (built dynamically from successful imports)
+const KNOWN_OIL_MAJORS = new Set([
+  'Adnoc', 'Ampol', 'ATCQAG', 'BASF', 'BHP Billiton Petroleum', 'BP', 'Borealis Polymers',
+  'Cepsa', 'Cheniere', 'Chevron', 'Citgo', 'ConocoPhillips', 'ENEL', 'ENI', 'Equinor',
+  'ExxonMobil (Spot)', 'ExxonMobil (T/C)', 'ExxonMobil (Spot - 3 Engr)', 'ExxonMobil (T/C - 3 Engr)',
+  'Gazprom', 'Hoegh LNG', 'Idemitsu', 'Ineos', 'KPI', 'Koch', 'LUKOIL',
+  'Lyondellbasell (<20k dwt)', 'Lyondellbasell (>20k dwt)', 'MISC Maritime Services', 'Marathon',
+  'NCSP Group', 'Neste', 'Nustar', 'OMV', 'OTEKO Terminal', 'PETROBRAS', 'PMI', 'PTT Marine',
+  'Petroplus', 'Phillips 66', 'Preem', 'Primorsk Oil Terminal', 'Qatar Gas', 'Qatar Petroleum',
+  'Reliance', 'Repsol (Spot/COA)', 'Repsol (T/C)', 'Rightship', 'SABIC', 'SARAS', 'SHELL',
+  'SHIPVET Services Ltd', 'SIGGTO LPG', 'SIGTTO LNG and LPG', 'Sonangol', 'TOTAL (Spot)', 'TOTAL (T/C)',
+  'Tesoro', 'The Company (Internal)', 'Tonengeneral Sekiyu K.K', 'Turpas', 'YPF', 'Yara'
+]);
+
+/**
+ * Validates a row structurally - checks that the pattern matches expected CSV format:
+ * Column 0: Company name, Columns 1-18: Rule data (labels, rank pairs, values)
+ */
+function isValidDataRow(columns: string[]): boolean {
+  if (columns.length < 4) return false;
+  
+  // A valid data row should have at least one rank pair in columns 2, 5, 8, 11, 14, or 17
+  // These columns contain rank designations like "Master", "Chief Officer", "Master + Chief Officer"
+  const rankColumns = [2, 5, 8, 11, 14, 17];
+  const rankPatterns = /^(master|chief|second|third|fourth|officer|engineer|2\/o|3\/o|c\/o|c\/e|2\/e|3\/e|4\/e|e\/o|eto|\+)/i;
+  
+  for (const idx of rankColumns) {
+    const col = columns[idx]?.trim() || '';
+    if (col && rankPatterns.test(col)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
 export function parseCSVContent(csvContent: string): Map<string, OilMajorRulesConfig> {
   const lines = csvContent.split('\n');
   const oilMajorRules = new Map<string, OilMajorRulesConfig>();
+  let skippedRows = 0;
   
   // Skip header rows (first 2 rows)
   for (let i = 2; i < lines.length; i++) {
@@ -107,6 +181,22 @@ export function parseCSVContent(csvContent: string): Map<string, OilMajorRulesCo
     
     const oilMajor = columns[0]?.trim();
     if (!oilMajor || oilMajor === '') continue;
+    
+    // Primary validation: Check if this is a known oil major
+    const isKnownMajor = KNOWN_OIL_MAJORS.has(oilMajor);
+    
+    // Secondary validation: Check if name passes heuristic validation
+    const passesHeuristic = isValidOilMajorName(oilMajor);
+    
+    // Structural validation: Check if row has valid rank data in expected columns
+    const hasValidStructure = isValidDataRow(columns);
+    
+    // Accept row if: (known OR passes heuristic) AND has valid structure
+    if (!((isKnownMajor || passesHeuristic) && hasValidStructure)) {
+      skippedRows++;
+      console.log(`[CSV Parser] Skipped row ${i + 1}: "${oilMajor.substring(0, 40)}..." (known: ${isKnownMajor}, heuristic: ${passesHeuristic}, structure: ${hasValidStructure})`);
+      continue;
+    }
     
     // Get or create the config for this oil major
     let config = oilMajorRules.get(oilMajor);
@@ -213,13 +303,13 @@ export function parseCSVFile(filePath: string): Map<string, OilMajorRulesConfig>
 export function convertToStorageFormat(oilMajorRules: Map<string, OilMajorRulesConfig>): Array<{ oilMajorName: string; rules: string; isActive: boolean }> {
   const result: Array<{ oilMajorName: string; rules: string; isActive: boolean }> = [];
   
-  for (const [name, config] of oilMajorRules.entries()) {
+  oilMajorRules.forEach((config, name) => {
     result.push({
       oilMajorName: name,
       rules: JSON.stringify(config),
       isActive: true
     });
-  }
+  });
   
   return result;
 }
