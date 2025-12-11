@@ -233,24 +233,25 @@ const AdminModuleInner = (): JSX.Element => {
   const [newRanks, setNewRanks] = useState<Set<string>>(new Set());
   const [deletedRanks, setDeletedRanks] = useState<Set<string>>(new Set());
   
-  // Use ref to track previous server data to prevent unnecessary re-syncs
-  const prevServerDataRef = useRef<RankMasterData[] | null>(null);
+  // Use ref to track previous server data to prevent unnecessary re-syncs (stable ID-based)
+  const prevServerDataKeyRef = useRef<string>('');
   
   // Sync local state with shared data while preserving unsaved changes
   useEffect(() => {
-    if (!sharedRankMasterData) return;
+    if (!sharedRankMasterData || sharedRankMasterData.length === 0) return;
     
     // Don't sync if we're currently editing to avoid losing unsaved changes
     if (isRankMasterEditing || isCompanyEditing) {
       return;
     }
     
-    // Skip if data hasn't actually changed (prevents infinite loop)
-    if (prevServerDataRef.current === sharedRankMasterData) {
+    // Skip if data hasn't actually changed (use stable IDs to prevent infinite loop from new object references)
+    const currentDataKey = sharedRankMasterData.map(r => `${r.id}:${r.applicableToCompany}`).sort().join(',');
+    if (prevServerDataKeyRef.current === currentDataKey) {
       return;
     }
     
-    prevServerDataRef.current = sharedRankMasterData;
+    prevServerDataKeyRef.current = currentDataKey;
     const serverRankIds = new Set(sharedRankMasterData.map(rank => rank.id));
     
     setRankMasterData(prev => {
@@ -328,6 +329,9 @@ const AdminModuleInner = (): JSX.Element => {
   // Only sync when data actually changes (not just reference)
   const prevVesselOptionsRef = React.useRef<string>('');
   const prevCompanyRankSyncRef = React.useRef<string>('');
+  
+  // FIX: Gate initial sync to prevent render loop during first mount
+  const isInitialSyncCompleted = React.useRef(false);
   
   // PERFORMANCE OPTIMIZATION: Only build lookup for the CURRENT vessel being displayed
   // This avoids rebuilding Maps for all vessels on every checkbox click
@@ -809,36 +813,37 @@ const AdminModuleInner = (): JSX.Element => {
 
   // Sync company rank data with rank master data (only show ranks where applicableToCompany is true)
   React.useEffect(() => {
-    // Only show ranks that have applicableToCompany checked in Rank Master
-    const allRanks = rankMasterData.filter(rank => rank.applicableToCompany === true);
-    
     // Don't update if we're currently editing to avoid losing unsaved changes
     if (isCompanyEditing || isRankMasterEditing) {
       return;
     }
     
-    // Don't run until we have both rank master data and saved company ranks
-    if (isCompanyRanksLoading || rankMasterLoading || allRanks.length === 0) {
+    // Don't run until queries have fully resolved (prevents initial render loop)
+    if (isCompanyRanksLoading || rankMasterLoading) {
+      return;
+    }
+    
+    // Only show ranks that have applicableToCompany checked in Rank Master
+    const allRanks = rankMasterData.filter(rank => rank.applicableToCompany === true);
+    
+    // Don't run if no applicable ranks
+    if (allRanks.length === 0) {
       return;
     }
     
     // PERFORMANCE FIX: Only sync if data actually changed (prevent infinite loops)
-    // Include companyRankData length to detect when we've already processed this combination
-    // Use the filtered allRanks list (not full rankMasterData) for accurate change detection
-    const syncKey = JSON.stringify({ 
-      allRanks: allRanks, 
-      savedRanks: savedCompanyRanks,
-      currentLength: companyRankData.length 
-    });
-    if (prevCompanyRankSyncRef.current === syncKey) {
-      return; // No change, skip sync
+    // Use stable IDs instead of full objects to prevent new array references from triggering re-syncs
+    const allRankIds = allRanks.map(r => r.id).sort().join(',');
+    const savedRankIds = savedCompanyRanks.map(r => r.id).sort().join(',');
+    const syncKey = `${allRankIds}:${savedRankIds}`;
+    if (prevCompanyRankSyncRef.current === syncKey && isInitialSyncCompleted.current) {
+      return; // No change and initial sync done, skip sync
     }
     prevCompanyRankSyncRef.current = syncKey;
     
     console.log('🔍 [DEBUG] Syncing company rank data with rank master', {
       allRanksCount: allRanks.length,
-      savedCompanyRanksCount: savedCompanyRanks.length,
-      currentCompanyDataCount: companyRankData.length
+      savedCompanyRanksCount: savedCompanyRanks.length
     });
     
     // Create a map of existing company data from saved backend data
@@ -961,7 +966,10 @@ const AdminModuleInner = (): JSX.Element => {
       console.log('🔍 [DEBUG] Updating company rank data with role variants preserved');
       setCompanyRankData(finalCompanyRanks);
     }
-  }, [rankMasterData, savedCompanyRanks, isCompanyEditing, isCompanyRanksLoading, rankMasterLoading, isRankMasterEditing, companyRankData.length]);
+    
+    // Mark initial sync as complete to prevent re-running on same data
+    isInitialSyncCompleted.current = true;
+  }, [rankMasterData, savedCompanyRanks, isCompanyEditing, isCompanyRanksLoading, rankMasterLoading, isRankMasterEditing]);
 
   // Sync vessel rank data with company rank data changes for all vessels
   React.useEffect(() => {
@@ -2842,7 +2850,7 @@ const AdminModuleInner = (): JSX.Element => {
   );
 
   const renderCompanyTab = () => (
-    <div>
+    <div className="h-full flex flex-col">
       {/* Company Header with Edit/Save buttons */}
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-2">
@@ -2868,8 +2876,8 @@ const AdminModuleInner = (): JSX.Element => {
       </div>
       
       {/* Company Table with Vertical Scroll */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <ScrollArea className="h-[500px] w-full">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex-1 flex flex-col">
+        <ScrollArea className="flex-1 w-full">
           <Table>
             <TableHeader>
               <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
@@ -3207,7 +3215,7 @@ const AdminModuleInner = (): JSX.Element => {
   // PERFORMANCE: Removed debug logging to avoid re-render console noise
 
   const renderRankAdminModule = () => (
-    <div>
+    <div className="h-full flex flex-col">
       {/* Responsive Header Layout */}
       <div className={`mb-4 ${currentBreakpoint === 'mobile' ? 'space-y-3' : currentBreakpoint === 'tablet' ? 'space-y-3' : 'grid grid-cols-3 items-center'}`}>
         {/* Title */}
@@ -3492,12 +3500,12 @@ const AdminModuleInner = (): JSX.Element => {
       </div>
 
       {/* Tab Content */}
-      <div className="pt-4 pb-4 pl-0">
-        <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
-          <CardContent className="pt-4 pb-4 pl-0">
+      <div className="flex-1 flex flex-col overflow-hidden pt-4 pb-4 pl-0">
+        <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg flex-1 flex flex-col overflow-hidden">
+          <CardContent className="pt-4 pb-4 pl-0 flex-1 flex flex-col overflow-hidden">
             {selectedRankAdminTab === "rank-master" && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div className="max-h-[500px] overflow-auto relative">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex-1 flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-auto relative">
                   <Table className="relative">
                   <TableHeader className="sticky top-0 z-40">
                     <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
@@ -3620,7 +3628,7 @@ const AdminModuleInner = (): JSX.Element => {
             
             {selectedRankAdminTab === "company" && renderCompanyTab()}
             {selectedRankAdminTab === "vessel" && (
-              <div className="-mt-8">
+              <div className="h-full flex flex-col">
                 {/* Vessel Filters */}
                 <div className={`flex ${currentBreakpoint === 'mobile' ? 'flex-col space-y-3' : 'flex-wrap gap-4'} mb-4 p-4 pl-0 bg-[#f7fafc] rounded-lg`}>
                   <div className={`flex ${currentBreakpoint === 'mobile' ? 'flex-col space-y-3' : 'gap-4 flex-wrap'}`}>
@@ -3771,8 +3779,8 @@ const AdminModuleInner = (): JSX.Element => {
                 )}
 
                 {/* Vessel Table */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                  <div className={`overflow-auto ${currentBreakpoint === 'mobile' ? 'h-[400px]' : currentBreakpoint === 'tablet' ? 'h-[450px]' : 'h-[500px]'}`}>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex-1 flex flex-col">
+                  <div className="overflow-auto flex-1">
                     <Table className="min-w-full">
                       <TableHeader>
                         <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
