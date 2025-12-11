@@ -1,173 +1,54 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Loader2, AlertCircle, Upload, FileUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
 
 interface ComplianceMatrixDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    vesselId?: string;
 }
 
-// Mock data - will be configurable in admin later
-const oilMajors = [
-    { id: 'adnoc', name: 'ADNOC', status: 'green' },
-    { id: 'bhp', name: 'BHP', status: 'green' },
-    { id: 'bp', name: 'BP', status: 'yellow' },
-    { id: 'chevron', name: 'Chevron', status: 'red' },
-    { id: 'conoco', name: 'Conoco', status: 'yellow' },
-    { id: 'enel', name: 'Enel', status: 'yellow' },
-    { id: 'eni', name: 'ENI', status: 'green' },
-    { id: 'erg', name: 'Erg', status: 'red' },
-    { id: 'international-energy', name: 'International Energy', status: 'red' },
-    { id: 'idemitsu', name: 'Idemitsu', status: 'yellow' },
-    { id: 'talisman', name: 'Talisman', status: 'yellow' },
-    { id: 'koch', name: 'Koch', status: 'yellow' },
-    { id: 'kpi', name: 'KPI', status: 'green' },
-    { id: 'lukoil', name: 'Lukoil', status: 'red' },
-];
+interface ComplianceRuleResult {
+    category: string;
+    label: string;
+    rankPair: string;
+    requiredValue: number;
+    actualValue: number;
+    unit: string;
+    status: 'pass' | 'fail';
+}
 
-// Mock requirements data
-const requirementsByMajor: Record<string, any[]> = {
-    'bp': [
-        {
-            category: 'Years with Operator',
-            requirements: [
-                {
-                    description: 'Combined aggregate for master and C/O shall not be less than 2 years.',
-                    reqValue: '2.0 Years',
-                    matrixValue: '23.1 Years',
-                    status: 'green'
-                },
-                {
-                    description: 'Combined aggregate for C/E and 2/E shall not be less than 2 years.',
-                    reqValue: '2.0 Years',
-                    matrixValue: '11.0 Years',
-                    status: 'green'
-                }
-            ]
-        },
-        {
-            category: 'Years in Rank',
-            requirements: [
-                {
-                    description: 'Combined aggregate for master and C/O shall not be less than 2 years.',
-                    reqValue: '2.0 Years',
-                    matrixValue: '23.1 Years',
-                    status: 'green'
-                },
-                {
-                    description: 'Combined aggregate for C/E and 2/E shall not be less than 2 years.',
-                    reqValue: '2.0 Years',
-                    matrixValue: '11.0 Years',
-                    status: 'red'
-                },
-                {
-                    description: 'Combined aggregate for C/E and 2/E shall not be less than 2 years.',
-                    reqValue: '2.0 Years',
-                    matrixValue: '11.0 Years',
-                    status: 'red'
-                },
-                {
-                    description: 'Combined aggregate for C/E and 2/E shall not be less than 2 years.',
-                    reqValue: '2.0 Years',
-                    matrixValue: '11.0 Years',
-                    status: 'green'
-                }
-            ]
-        },
-        {
-            category: 'Years on All Types of Tankers',
-            requirements: [
-                {
-                    description: 'Combined aggregate for master and C/O shall not be less than 2 years.',
-                    reqValue: '',
-                    matrixValue: '',
-                    status: 'green'
-                },
-                {
-                    description: 'Combined aggregate for C/E and 2/E shall not be less than 2 years.',
-                    reqValue: '2.0 Years',
-                    matrixValue: '11.0 Years',
-                    status: 'green'
-                },
-                {
-                    description: 'Combined aggregate for C/E and 2/E shall not be less than 2 years.',
-                    reqValue: '2.0 Years',
-                    matrixValue: '11.0 Years',
-                    status: 'green'
-                },
-                {
-                    description: 'Combined aggregate for C/E and 2/E shall not be less than 2 years.',
-                    reqValue: '2.0 Years',
-                    matrixValue: '11.0 Years',
-                    status: 'yellow'
-                }
-            ]
-        },
-        {
-            category: 'Date Joined',
-            requirements: [
-                {
-                    description: 'A minimum of 14 days shall lapse between replacement of the master and chief officer',
-                    reqValue: '',
-                    matrixValue: '',
-                    status: 'green'
-                },
-                {
-                    description: 'A minimum of 14 days shall lapse between replacement of the Chief Engineer and Second Engineer',
-                    reqValue: '',
-                    matrixValue: '',
-                    status: 'green'
-                },
-                {
-                    description: '',
-                    reqValue: '',
-                    matrixValue: '',
-                    status: 'green'
-                },
-                {
-                    description: '',
-                    reqValue: '',
-                    matrixValue: '',
-                    status: 'green'
-                }
-            ]
-        }
-    ],
-    'adnoc': [
-        {
-            category: 'Years with Operator',
-            requirements: [
-                {
-                    description: 'Combined aggregate for master and C/O shall not be less than 3 years.',
-                    reqValue: '3.0 Years',
-                    matrixValue: '23.1 Years',
-                    status: 'green'
-                }
-            ]
-        }
-    ],
-    'bhp': [
-        {
-            category: 'Years in Rank',
-            requirements: [
-                {
-                    description: 'Master shall have minimum 2 years experience.',
-                    reqValue: '2.0 Years',
-                    matrixValue: '15.0 Years',
-                    status: 'green'
-                }
-            ]
-        }
-    ]
-};
+interface ComplianceCheckResult {
+    oilMajorName: string;
+    overallStatus: 'green' | 'yellow' | 'red';
+    results: ComplianceRuleResult[];
+    summary: {
+        passed: number;
+        failed: number;
+        total: number;
+    };
+}
 
-// Status dot component
-const StatusDot = ({ status }: { status: 'green' | 'yellow' | 'red' }) => {
+interface OilMajorRule {
+    id: number;
+    oilMajorName: string;
+    isActive: boolean;
+    rules: any;
+}
+
+const StatusDot = ({ status }: { status: 'green' | 'yellow' | 'red' | 'pass' | 'fail' }) => {
     const colors = {
         green: 'bg-green-500',
         yellow: 'bg-yellow-500',
-        red: 'bg-red-500'
+        red: 'bg-red-500',
+        pass: 'bg-green-500',
+        fail: 'bg-red-500'
     };
     
     return (
@@ -175,116 +56,254 @@ const StatusDot = ({ status }: { status: 'green' | 'yellow' | 'red' }) => {
     );
 };
 
+function groupResultsByCategory(results: ComplianceRuleResult[]): Record<string, ComplianceRuleResult[]> {
+    const grouped: Record<string, ComplianceRuleResult[]> = {};
+    for (const result of results) {
+        if (!grouped[result.category]) {
+            grouped[result.category] = [];
+        }
+        grouped[result.category].push(result);
+    }
+    return grouped;
+}
+
 export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
     open,
-    onOpenChange
+    onOpenChange,
+    vesselId
 }) => {
-    const [selectedMajor, setSelectedMajor] = useState(oilMajors[2]); // Default to BP (as shown in image)
-    
-    const currentRequirements = requirementsByMajor[selectedMajor.id] || [];
-    
+    const { toast } = useToast();
+    const [selectedMajor, setSelectedMajor] = useState<{ id: number; name: string; status: string } | null>(null);
+    const [selectedResult, setSelectedResult] = useState<ComplianceCheckResult | null>(null);
+    const [isImporting, setIsImporting] = useState(false);
+
+    const { data: oilMajorRules = [], isLoading: isLoadingRules, refetch: refetchRules } = useQuery<OilMajorRule[]>({
+        queryKey: ['/api/oil-major-rules'],
+        enabled: open
+    });
+
+    const { data: complianceData, isLoading: isLoadingCompliance } = useQuery<{ vesselId: string; results: ComplianceCheckResult[]; message?: string }>({
+        queryKey: ['/api/compliance/matrix', vesselId],
+        enabled: open && !!vesselId && oilMajorRules.length > 0
+    });
+
+    const oilMajors = complianceData?.results?.map(result => ({
+        id: oilMajorRules.find(r => r.oilMajorName === result.oilMajorName)?.id || 0,
+        name: result.oilMajorName,
+        status: result.overallStatus
+    })) || [];
+
+    useEffect(() => {
+        if (oilMajors.length > 0 && !selectedMajor) {
+            setSelectedMajor(oilMajors[0]);
+        }
+    }, [oilMajors, selectedMajor]);
+
+    useEffect(() => {
+        if (selectedMajor && complianceData?.results) {
+            const result = complianceData.results.find(r => r.oilMajorName === selectedMajor.name);
+            setSelectedResult(result || null);
+        }
+    }, [selectedMajor, complianceData]);
+
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setIsImporting(true);
+        try {
+            const content = await file.text();
+            await apiRequest('POST', '/api/oil-major-rules/import-csv', { csvContent: content });
+            
+            toast({
+                title: 'Import Successful',
+                description: 'Oil major rules have been imported successfully.',
+            });
+            
+            refetchRules();
+        } catch (error) {
+            toast({
+                title: 'Import Failed',
+                description: 'Failed to import oil major rules. Please check the file format.',
+                variant: 'destructive'
+            });
+        } finally {
+            setIsImporting(false);
+            event.target.value = '';
+        }
+    };
+
+    const groupedResults = selectedResult ? groupResultsByCategory(selectedResult.results) : {};
+    const isLoading = isLoadingRules || isLoadingCompliance;
+    const hasNoRules = oilMajorRules.length === 0;
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-hidden p-0">
                 <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-200">
-                    <DialogTitle className="text-lg font-medium text-[#16569e]">
-                        Compliance Matrix
-                    </DialogTitle>
+                    <div className="flex items-center justify-between">
+                        <DialogTitle className="text-lg font-medium text-[#16569e]">
+                            Compliance Matrix
+                        </DialogTitle>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="file"
+                                id="csv-upload"
+                                accept=".csv"
+                                className="hidden"
+                                onChange={handleFileUpload}
+                                disabled={isImporting}
+                            />
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => document.getElementById('csv-upload')?.click()}
+                                disabled={isImporting}
+                                data-testid="button-import-csv"
+                            >
+                                {isImporting ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                    <FileUp className="w-4 h-4 mr-2" />
+                                )}
+                                Import Rules
+                            </Button>
+                        </div>
+                    </div>
                 </DialogHeader>
 
                 <div className="flex h-[calc(90vh-120px)]">
                     {/* Left Table - Oil Majors List */}
                     <div className="w-64 border-r border-gray-200 flex flex-col">
-                        <ScrollArea className="flex-1">
-                            <Table>
-                                <TableBody>
-                                    {oilMajors.map((major) => (
-                                        <TableRow
-                                            key={major.id}
-                                            className={`cursor-pointer hover:bg-gray-50 ${
-                                                selectedMajor.id === major.id ? 'bg-blue-50' : ''
-                                            }`}
-                                            onClick={() => setSelectedMajor(major)}
-                                            data-testid={`row-oil-major-${major.id}`}
-                                        >
-                                            <TableCell className="py-3 px-4">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-sm text-gray-700">{major.name}</span>
-                                                    <StatusDot status={major.status as 'green' | 'yellow' | 'red'} />
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </ScrollArea>
+                        {isLoading ? (
+                            <div className="flex items-center justify-center h-full">
+                                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                            </div>
+                        ) : hasNoRules ? (
+                            <div className="flex flex-col items-center justify-center h-full p-4 text-center">
+                                <AlertCircle className="w-10 h-10 text-gray-400 mb-3" />
+                                <p className="text-sm text-gray-500 mb-2">No oil major rules configured</p>
+                                <p className="text-xs text-gray-400">Import a CSV file to get started</p>
+                            </div>
+                        ) : oilMajors.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-full p-4 text-center">
+                                <AlertCircle className="w-10 h-10 text-gray-400 mb-3" />
+                                <p className="text-sm text-gray-500 mb-2">No vessel data available</p>
+                                <p className="text-xs text-gray-400">Select a vessel with crew to check compliance</p>
+                            </div>
+                        ) : (
+                            <ScrollArea className="flex-1">
+                                <Table>
+                                    <TableBody>
+                                        {oilMajors.map((major) => (
+                                            <TableRow
+                                                key={major.id}
+                                                className={`cursor-pointer hover:bg-gray-50 ${
+                                                    selectedMajor?.id === major.id ? 'bg-blue-50' : ''
+                                                }`}
+                                                onClick={() => setSelectedMajor(major)}
+                                                data-testid={`row-oil-major-${major.id}`}
+                                            >
+                                                <TableCell className="py-3 px-4">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-sm text-gray-700">{major.name}</span>
+                                                        <StatusDot status={major.status as 'green' | 'yellow' | 'red'} />
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </ScrollArea>
+                        )}
                     </div>
 
                     {/* Right Table - Requirements */}
                     <div className="flex-1 flex flex-col">
                         <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
-                            <h3 className="text-sm font-medium text-gray-700" data-testid="text-requirements-for">
-                                Requirements For: {selectedMajor.name}
-                            </h3>
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-medium text-gray-700" data-testid="text-requirements-for">
+                                    Requirements For: {selectedMajor?.name || 'Select an oil major'}
+                                </h3>
+                                {selectedResult && (
+                                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                                        <span className="flex items-center gap-1">
+                                            <StatusDot status="green" />
+                                            Passed: {selectedResult.summary.passed}
+                                        </span>
+                                        <span className="flex items-center gap-1">
+                                            <StatusDot status="red" />
+                                            Failed: {selectedResult.summary.failed}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                         
                         <ScrollArea className="flex-1">
                             <div className="px-6 py-4">
-                                {currentRequirements.length === 0 ? (
+                                {isLoading ? (
+                                    <div className="flex items-center justify-center py-12">
+                                        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                                    </div>
+                                ) : !selectedResult || Object.keys(groupedResults).length === 0 ? (
                                     <div className="text-center text-gray-500 py-8">
-                                        No requirements configured for {selectedMajor.name}
+                                        {hasNoRules 
+                                            ? 'Import oil major rules to see compliance requirements'
+                                            : `No requirements configured for ${selectedMajor?.name || 'this oil major'}`
+                                        }
                                     </div>
                                 ) : (
                                     <div className="space-y-6">
-                                        {currentRequirements.map((category, categoryIndex) => (
+                                        {Object.entries(groupedResults).map(([category, requirements], categoryIndex) => (
                                             <div key={categoryIndex}>
-                                                {/* Category Header */}
-                                                {category.category && (
-                                                    <h4 className="text-sm font-semibold text-gray-800 mb-3">
-                                                        {category.category}
-                                                    </h4>
-                                                )}
+                                                <h4 className="text-sm font-semibold text-gray-800 mb-3">
+                                                    {category}
+                                                </h4>
                                                 
-                                                {/* Requirements Table */}
                                                 <Table>
                                                     <TableHeader>
                                                         <TableRow className="bg-gray-50">
-                                                            <TableHead className="text-xs font-medium text-gray-700 w-[45%]">
-                                                                {/* Empty header for description */}
+                                                            <TableHead className="text-xs font-medium text-gray-700 w-[35%]">
+                                                                Rank Pair
                                                             </TableHead>
-                                                            <TableHead className="text-xs font-medium text-gray-700 text-center w-[20%]">
-                                                                Req. Value
-                                                            </TableHead>
-                                                            <TableHead className="text-xs font-medium text-gray-700 text-center w-[20%]">
-                                                                Matrix Value
+                                                            <TableHead className="text-xs font-medium text-gray-700 w-[25%]">
+                                                                Description
                                                             </TableHead>
                                                             <TableHead className="text-xs font-medium text-gray-700 text-center w-[15%]">
-                                                                {/* Empty header for status */}
+                                                                Required
+                                                            </TableHead>
+                                                            <TableHead className="text-xs font-medium text-gray-700 text-center w-[15%]">
+                                                                Actual
+                                                            </TableHead>
+                                                            <TableHead className="text-xs font-medium text-gray-700 text-center w-[10%]">
+                                                                Status
                                                             </TableHead>
                                                         </TableRow>
                                                     </TableHeader>
                                                     <TableBody>
-                                                        {category.requirements.map((req: any, reqIndex: number) => (
+                                                        {requirements.map((req, reqIndex) => (
                                                             <TableRow 
                                                                 key={reqIndex} 
                                                                 className="border-b border-gray-100"
                                                                 data-testid={`row-requirement-${categoryIndex}-${reqIndex}`}
                                                             >
                                                                 <TableCell className="text-xs text-gray-700 py-3">
-                                                                    {req.description}
+                                                                    {req.rankPair}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-600">
+                                                                    {req.label}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700 text-center">
-                                                                    {req.reqValue}
+                                                                    {req.requiredValue} {req.unit}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700 text-center">
-                                                                    {req.matrixValue}
+                                                                    {req.actualValue} {req.unit}
                                                                 </TableCell>
                                                                 <TableCell className="text-center">
-                                                                    {req.status && (
-                                                                        <div className="flex justify-center">
-                                                                            <StatusDot status={req.status as 'green' | 'yellow' | 'red'} />
-                                                                        </div>
-                                                                    )}
+                                                                    <div className="flex justify-center">
+                                                                        <StatusDot status={req.status} />
+                                                                    </div>
                                                                 </TableCell>
                                                             </TableRow>
                                                         ))}

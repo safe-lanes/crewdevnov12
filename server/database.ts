@@ -88,7 +88,10 @@ import {
   type DataMaster,
   type InsertDataMaster,
   type MasterDataEntry,
-  type InsertMasterDataEntry
+  type InsertMasterDataEntry,
+  oilMajorRules,
+  type OilMajorRules,
+  type InsertOilMajorRules
 } from "@shared/schema";
 import { eq, desc, asc, sql, and, inArray, or, like, ilike, isNull } from "drizzle-orm";
 import { type IStorage } from "./storage";
@@ -4143,5 +4146,75 @@ export class DatabaseStorage implements IStorage {
       console.error("Error pushing schema:", error);
       // Don't throw - tables will be created automatically by Drizzle on first access
     }
+  }
+
+  // Oil Major Compliance Rules Methods
+  async getOilMajorRules(): Promise<OilMajorRules[]> {
+    try {
+      return await this.db.select().from(oilMajorRules).orderBy(asc(oilMajorRules.oilMajorName));
+    } catch (error) {
+      console.error("Error getting oil major rules:", error);
+      return [];
+    }
+  }
+
+  async getOilMajorRule(id: number): Promise<OilMajorRules | undefined> {
+    try {
+      const result = await this.db.select().from(oilMajorRules).where(eq(oilMajorRules.id, id));
+      return result[0];
+    } catch (error) {
+      console.error("Error getting oil major rule:", error);
+      return undefined;
+    }
+  }
+
+  async getOilMajorRuleByName(oilMajorName: string): Promise<OilMajorRules | undefined> {
+    try {
+      const result = await this.db.select().from(oilMajorRules)
+        .where(ilike(oilMajorRules.oilMajorName, oilMajorName.trim()));
+      return result[0];
+    } catch (error) {
+      console.error("Error getting oil major rule by name:", error);
+      return undefined;
+    }
+  }
+
+  async createOilMajorRule(rule: InsertOilMajorRules): Promise<OilMajorRules> {
+    const result = await this.db.insert(oilMajorRules).values({
+      oilMajorName: rule.oilMajorName,
+      isActive: rule.isActive ?? true,
+      rules: rule.rules,
+    }).returning();
+    return result[0];
+  }
+
+  async updateOilMajorRule(id: number, rule: Partial<InsertOilMajorRules>): Promise<OilMajorRules | undefined> {
+    const result = await this.db.update(oilMajorRules)
+      .set({ ...rule, updatedAt: new Date() })
+      .where(eq(oilMajorRules.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteOilMajorRule(id: number): Promise<boolean> {
+    const result = await this.db.delete(oilMajorRules).where(eq(oilMajorRules.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async bulkCreateOilMajorRules(rules: InsertOilMajorRules[]): Promise<OilMajorRules[]> {
+    const createdRules: OilMajorRules[] = [];
+    
+    for (const rule of rules) {
+      const existing = await this.getOilMajorRuleByName(rule.oilMajorName);
+      if (existing) {
+        const updated = await this.updateOilMajorRule(existing.id, rule);
+        if (updated) createdRules.push(updated);
+      } else {
+        const created = await this.createOilMajorRule(rule);
+        createdRules.push(created);
+      }
+    }
+    
+    return createdRules;
   }
 }

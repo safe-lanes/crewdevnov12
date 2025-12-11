@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type CompanyProcessing, type InsertCompanyProcessing, type PromotionForm, type InsertPromotionForm, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type RotationArchiveEntry, type InsertRotationArchive, type DrugAlcoholTestRecord, type InsertDrugAlcoholTestRecord, type RestHoursVesselRecord, type InsertRestHoursVesselRecord, type RestHoursCrewRecord, type InsertRestHoursCrewRecord, type RestHoursDailyRecord, type InsertRestHoursDailyRecord, type FixedTask, type InsertFixedTask, type VariableTask, type InsertVariableTask, type VesselViolationComment, type InsertVesselViolationComment, type OfficeViolationComment, type InsertOfficeViolationComment, type NCReport, type InsertNCReport, type VesselDateLineAdjustment, type InsertVesselDateLineAdjustment, type CrewDashboardSummary } from "@shared/schema";
+import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type CompanyProcessing, type InsertCompanyProcessing, type PromotionForm, type InsertPromotionForm, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type RotationArchiveEntry, type InsertRotationArchive, type DrugAlcoholTestRecord, type InsertDrugAlcoholTestRecord, type RestHoursVesselRecord, type InsertRestHoursVesselRecord, type RestHoursCrewRecord, type InsertRestHoursCrewRecord, type RestHoursDailyRecord, type InsertRestHoursDailyRecord, type FixedTask, type InsertFixedTask, type VariableTask, type InsertVariableTask, type VesselViolationComment, type InsertVesselViolationComment, type OfficeViolationComment, type InsertOfficeViolationComment, type NCReport, type InsertNCReport, type VesselDateLineAdjustment, type InsertVesselDateLineAdjustment, type CrewDashboardSummary, type OilMajorRules, type InsertOilMajorRules } from "@shared/schema";
 import { 
   getReportingDate, 
   safeParseDate, 
@@ -968,6 +968,14 @@ export interface IStorage {
   saveVesselDateLineAdjustment(adjustment: InsertVesselDateLineAdjustment): Promise<VesselDateLineAdjustment>;
   deleteVesselDateLineAdjustment(vesselId: string, monthValue: string): Promise<boolean>;
   clearAdvancedDaysData(vesselId: string, monthValue: string, advancedDays: number[]): Promise<boolean>;
+  // Oil Major Compliance Rules
+  getOilMajorRules(): Promise<OilMajorRules[]>;
+  getOilMajorRule(id: number): Promise<OilMajorRules | undefined>;
+  getOilMajorRuleByName(oilMajorName: string): Promise<OilMajorRules | undefined>;
+  createOilMajorRule(rule: InsertOilMajorRules): Promise<OilMajorRules>;
+  updateOilMajorRule(id: number, rule: Partial<InsertOilMajorRules>): Promise<OilMajorRules | undefined>;
+  deleteOilMajorRule(id: number): Promise<boolean>;
+  bulkCreateOilMajorRules(rules: InsertOilMajorRules[]): Promise<OilMajorRules[]>;
 }
 
 /* MemStorage commented out - contains test seed data with type mismatches and is never used in production.
@@ -3585,6 +3593,7 @@ export class PersistentFileStorage implements IStorage {
   private officeViolationComments: Map<number, OfficeViolationComment>;
   private ncReports: Map<number, NCReport>;
   private vesselDateLineAdjustments: Map<number, VesselDateLineAdjustment>;
+  private oilMajorRules: Map<number, OilMajorRules>;
   private currentUserId: number;
   private currentFormId: number;
   private currentRankGroupId: number;
@@ -3608,6 +3617,7 @@ export class PersistentFileStorage implements IStorage {
   private currentOfficeViolationCommentId: number;
   private currentNCReportId: number;
   private currentVesselDateLineAdjustmentId: number;
+  private currentOilMajorRuleId: number;
   private filePath: string;
   private saveTimeout: NodeJS.Timeout | null = null;
   private isSaving: boolean = false;
@@ -3642,6 +3652,7 @@ export class PersistentFileStorage implements IStorage {
     this.officeViolationComments = new Map();
     this.ncReports = new Map();
     this.vesselDateLineAdjustments = new Map();
+    this.oilMajorRules = new Map();
     this.currentUserId = 1;
     this.currentFormId = 1;
     this.currentRankGroupId = 1;
@@ -3665,6 +3676,7 @@ export class PersistentFileStorage implements IStorage {
     this.currentOfficeViolationCommentId = 1;
     this.currentNCReportId = 1;
     this.currentVesselDateLineAdjustmentId = 1;
+    this.currentOilMajorRuleId = 1;
     
     this.filePath = path.join(process.cwd(), 'test-data.json');
     this.loadFromFile();
@@ -4027,6 +4039,78 @@ export class PersistentFileStorage implements IStorage {
     return true;
   }
 
+  // Oil Major Compliance Rules Methods
+  async getOilMajorRules(): Promise<OilMajorRules[]> {
+    return Array.from(this.oilMajorRules.values());
+  }
+
+  async getOilMajorRule(id: number): Promise<OilMajorRules | undefined> {
+    return this.oilMajorRules.get(id);
+  }
+
+  async getOilMajorRuleByName(oilMajorName: string): Promise<OilMajorRules | undefined> {
+    const normalizedName = oilMajorName.toLowerCase().trim();
+    return Array.from(this.oilMajorRules.values()).find(
+      rule => rule.oilMajorName.toLowerCase().trim() === normalizedName
+    );
+  }
+
+  async createOilMajorRule(rule: InsertOilMajorRules): Promise<OilMajorRules> {
+    const id = this.currentOilMajorRuleId++;
+    const newRule: OilMajorRules = {
+      id,
+      oilMajorName: rule.oilMajorName,
+      isActive: rule.isActive ?? true,
+      rules: rule.rules,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.oilMajorRules.set(id, newRule);
+    this.saveToFile();
+    return newRule;
+  }
+
+  async updateOilMajorRule(id: number, rule: Partial<InsertOilMajorRules>): Promise<OilMajorRules | undefined> {
+    const existing = this.oilMajorRules.get(id);
+    if (!existing) return undefined;
+    
+    const updated: OilMajorRules = {
+      ...existing,
+      ...rule,
+      id,
+      updatedAt: new Date(),
+    };
+    this.oilMajorRules.set(id, updated);
+    this.saveToFile();
+    return updated;
+  }
+
+  async deleteOilMajorRule(id: number): Promise<boolean> {
+    const deleted = this.oilMajorRules.delete(id);
+    if (deleted) {
+      this.saveToFile();
+    }
+    return deleted;
+  }
+
+  async bulkCreateOilMajorRules(rules: InsertOilMajorRules[]): Promise<OilMajorRules[]> {
+    const createdRules: OilMajorRules[] = [];
+    
+    for (const rule of rules) {
+      // Check if oil major already exists and update it
+      const existing = await this.getOilMajorRuleByName(rule.oilMajorName);
+      if (existing) {
+        const updated = await this.updateOilMajorRule(existing.id, rule);
+        if (updated) createdRules.push(updated);
+      } else {
+        const created = await this.createOilMajorRule(rule);
+        createdRules.push(created);
+      }
+    }
+    
+    return createdRules;
+  }
+
   private loadFromFile(): void {
     try {
       if (fs.existsSync(this.filePath)) {
@@ -4122,6 +4206,10 @@ export class PersistentFileStorage implements IStorage {
         this.ncReports = new Map(data.ncReports || []);
         this.currentNCReportId = data.currentNCReportId || 1;
         
+        // Load oil major rules and counter
+        this.oilMajorRules = new Map(data.oilMajorRules || []);
+        this.currentOilMajorRuleId = data.currentOilMajorRuleId || 1;
+        
         console.log("📄 Loaded existing data from test-data.json");
         
         // Run data migration to fix rotation plan assignments
@@ -4172,6 +4260,7 @@ export class PersistentFileStorage implements IStorage {
       officeViolationComments: Array.from(this.officeViolationComments.entries()),
       ncReports: Array.from(this.ncReports.entries()),
       masterDataEntries: Array.from(this.masterDataEntries.entries()),
+      oilMajorRules: Array.from(this.oilMajorRules.entries()),
       currentUserId: this.currentUserId,
       currentFormId: this.currentFormId,
       currentRankGroupId: this.currentRankGroupId,
@@ -4193,7 +4282,8 @@ export class PersistentFileStorage implements IStorage {
       currentFixedTaskId: this.currentFixedTaskId,
       currentVesselViolationCommentId: this.currentVesselViolationCommentId,
       currentOfficeViolationCommentId: this.currentOfficeViolationCommentId,
-      currentNCReportId: this.currentNCReportId
+      currentNCReportId: this.currentNCReportId,
+      currentOilMajorRuleId: this.currentOilMajorRuleId
     };
     
     if (this.saveTimeout) {

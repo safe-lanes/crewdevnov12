@@ -1465,3 +1465,77 @@ export type ComplianceItem = z.infer<typeof complianceItemSchema>;
 export type CareerStep = z.infer<typeof careerStepSchema>;
 export type AppraisalPoint = z.infer<typeof appraisalPointSchema>;
 export type CrewDashboardSummary = z.infer<typeof crewDashboardSummarySchema>;
+
+// Oil Major Compliance Rules Schema
+export const oilMajorRules = pgTable("oil_major_rules", {
+  id: serial("id").primaryKey(),
+  oilMajorName: text("oil_major_name").notNull(),
+  isActive: boolean("is_active").default(true),
+  rules: text("rules").notNull(), // JSON string containing all rules for this oil major
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertOilMajorRulesSchema = createInsertSchema(oilMajorRules).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertOilMajorRules = z.infer<typeof insertOilMajorRulesSchema>;
+export type OilMajorRules = typeof oilMajorRules.$inferSelect;
+
+// Zod schema for the rule structure (for validation and typing)
+export const rankPairRuleSchema = z.object({
+  label: z.string(),
+  rankPair: z.string(), // e.g., "Master + Chief Officer"
+  requiredValue: z.number(), // in years
+  unit: z.enum(["years", "days"]).default("years"),
+});
+
+export const experienceCategoryRulesSchema = z.object({
+  yearsWithOperator: z.array(rankPairRuleSchema).optional(),
+  yearsInRank: z.array(rankPairRuleSchema).optional(),
+  yearsOnTankerType: z.array(rankPairRuleSchema).optional(),
+  yearsOnAllTankers: z.array(rankPairRuleSchema).optional(),
+  yearsAsOOW: z.array(rankPairRuleSchema).optional(),
+});
+
+export const dateJoinedRuleSchema = z.object({
+  label: z.string(),
+  rankPair: z.string(), // e.g., "Master Joining Date - Chief Officer Joining Date"
+  requiredDays: z.number(), // minimum days gap
+});
+
+export const languageRuleSchema = z.object({
+  rank: z.string(),
+  requiredLevel: z.string(), // e.g., "Good"
+});
+
+export const oilMajorRulesConfigSchema = z.object({
+  experienceRules: experienceCategoryRulesSchema,
+  dateJoinedRules: z.array(dateJoinedRuleSchema).optional(),
+  languageRules: z.array(languageRuleSchema).optional(),
+});
+
+export type RankPairRule = z.infer<typeof rankPairRuleSchema>;
+export type ExperienceCategoryRules = z.infer<typeof experienceCategoryRulesSchema>;
+export type DateJoinedRule = z.infer<typeof dateJoinedRuleSchema>;
+export type LanguageRule = z.infer<typeof languageRuleSchema>;
+export type OilMajorRulesConfig = z.infer<typeof oilMajorRulesConfigSchema>;
+
+// Compliance check result types
+export const complianceRuleResultSchema = z.object({
+  category: z.string(),
+  label: z.string(),
+  rankPair: z.string(),
+  requiredValue: z.number(),
+  actualValue: z.number(),
+  unit: z.enum(["years", "days"]),
+  status: z.enum(["pass", "fail"]),
+});
+
+export const oilMajorComplianceResultSchema = z.object({
+  oilMajorId: z.number(),
+  oilMajorName: z.string(),
+  overallStatus: z.enum(["green", "yellow", "red"]),
+  results: z.array(complianceRuleResultSchema),
+});
+
+export type ComplianceRuleResult = z.infer<typeof complianceRuleResultSchema>;
+export type OilMajorComplianceResult = z.infer<typeof oilMajorComplianceResultSchema>;

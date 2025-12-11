@@ -1,7 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError, calculateExperienceFromSeaService, calculateVesselTypeSpecificExperience } from "./storage";
-import { type VesselPlanning, type InsertRecruitmentCandidate, insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertCompanyProcessingSchema, insertPromotionFormSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertOfficeViolationCommentSchema, insertNCReportSchema, insertVesselDateLineAdjustmentSchema } from "@shared/schema";
+import { type VesselPlanning, type InsertRecruitmentCandidate, insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertCompanyProcessingSchema, insertPromotionFormSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertOfficeViolationCommentSchema, insertNCReportSchema, insertVesselDateLineAdjustmentSchema, insertOilMajorRulesSchema, type OilMajorRulesConfig } from "@shared/schema";
+import { parseCSVContent, convertToStorageFormat } from "./oilMajorRulesParser";
+import { evaluateCompliance, convertCrewToExperience, type ComplianceCheckResult } from "./complianceEngine";
 import { z } from "zod";
 import { normalizeCrewMemberForTable, mapFormDataToStorage, fromStorageCrew, toStorageCrew, calculateCrewStatus } from "@shared/crew-mapping";
 import { 
@@ -7077,6 +7079,290 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.log(`💥 [DEBUG DELETE] Exception:`, error);
       res.status(500).json({ error: "Failed to delete master data entry" });
+    }
+  });
+
+  // ==================== OIL MAJOR COMPLIANCE RULES ====================
+  
+  // Get all oil major rules
+  app.get("/api/oil-major-rules", async (req, res) => {
+    try {
+      const rules = await storage.getOilMajorRules();
+      const parsedRules = rules.map(rule => ({
+        ...rule,
+        rules: typeof rule.rules === 'string' ? JSON.parse(rule.rules) : rule.rules
+      }));
+      res.json(parsedRules);
+    } catch (error) {
+      console.error("Error fetching oil major rules:", error);
+      res.status(500).json({ error: "Failed to fetch oil major rules" });
+    }
+  });
+
+  // Get a specific oil major rule by ID
+  app.get("/api/oil-major-rules/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const rule = await storage.getOilMajorRule(id);
+      if (!rule) {
+        return res.status(404).json({ error: "Oil major rule not found" });
+      }
+      res.json({
+        ...rule,
+        rules: typeof rule.rules === 'string' ? JSON.parse(rule.rules) : rule.rules
+      });
+    } catch (error) {
+      console.error("Error fetching oil major rule:", error);
+      res.status(500).json({ error: "Failed to fetch oil major rule" });
+    }
+  });
+
+  // Get oil major rule by name
+  app.get("/api/oil-major-rules/by-name/:name", async (req, res) => {
+    try {
+      const name = decodeURIComponent(req.params.name);
+      const rule = await storage.getOilMajorRuleByName(name);
+      if (!rule) {
+        return res.status(404).json({ error: "Oil major rule not found" });
+      }
+      res.json({
+        ...rule,
+        rules: typeof rule.rules === 'string' ? JSON.parse(rule.rules) : rule.rules
+      });
+    } catch (error) {
+      console.error("Error fetching oil major rule by name:", error);
+      res.status(500).json({ error: "Failed to fetch oil major rule" });
+    }
+  });
+
+  // Create a new oil major rule
+  app.post("/api/oil-major-rules", async (req, res) => {
+    try {
+      const { oilMajorName, rules, isActive } = req.body;
+      if (!oilMajorName || !rules) {
+        return res.status(400).json({ error: "Oil major name and rules are required" });
+      }
+      
+      const rulesString = typeof rules === 'string' ? rules : JSON.stringify(rules);
+      const result = await storage.createOilMajorRule({
+        oilMajorName,
+        rules: rulesString,
+        isActive: isActive ?? true
+      });
+      
+      res.status(201).json({
+        ...result,
+        rules: typeof result.rules === 'string' ? JSON.parse(result.rules) : result.rules
+      });
+    } catch (error) {
+      console.error("Error creating oil major rule:", error);
+      res.status(500).json({ error: "Failed to create oil major rule" });
+    }
+  });
+
+  // Update an oil major rule
+  app.patch("/api/oil-major-rules/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { oilMajorName, rules, isActive } = req.body;
+      
+      const updateData: any = {};
+      if (oilMajorName !== undefined) updateData.oilMajorName = oilMajorName;
+      if (rules !== undefined) updateData.rules = typeof rules === 'string' ? rules : JSON.stringify(rules);
+      if (isActive !== undefined) updateData.isActive = isActive;
+      
+      const result = await storage.updateOilMajorRule(id, updateData);
+      if (!result) {
+        return res.status(404).json({ error: "Oil major rule not found" });
+      }
+      
+      res.json({
+        ...result,
+        rules: typeof result.rules === 'string' ? JSON.parse(result.rules) : result.rules
+      });
+    } catch (error) {
+      console.error("Error updating oil major rule:", error);
+      res.status(500).json({ error: "Failed to update oil major rule" });
+    }
+  });
+
+  // Delete an oil major rule
+  app.delete("/api/oil-major-rules/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteOilMajorRule(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Oil major rule not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting oil major rule:", error);
+      res.status(500).json({ error: "Failed to delete oil major rule" });
+    }
+  });
+
+  // Bulk import oil major rules from CSV content
+  app.post("/api/oil-major-rules/import-csv", async (req, res) => {
+    try {
+      const { csvContent } = req.body;
+      if (!csvContent) {
+        return res.status(400).json({ error: "CSV content is required" });
+      }
+      
+      const parsedRules = parseCSVContent(csvContent);
+      const storageFormat = convertToStorageFormat(parsedRules);
+      
+      const createdRules = await storage.bulkCreateOilMajorRules(storageFormat);
+      
+      res.status(201).json({
+        success: true,
+        imported: createdRules.length,
+        rules: createdRules.map(rule => ({
+          ...rule,
+          rules: typeof rule.rules === 'string' ? JSON.parse(rule.rules) : rule.rules
+        }))
+      });
+    } catch (error) {
+      console.error("Error importing oil major rules from CSV:", error);
+      res.status(500).json({ error: "Failed to import oil major rules" });
+    }
+  });
+
+  // Check compliance for a vessel against one or more oil majors
+  app.post("/api/compliance/check", async (req, res) => {
+    try {
+      const { vesselId, oilMajorIds, crewData } = req.body;
+      
+      if (!oilMajorIds || !Array.isArray(oilMajorIds) || oilMajorIds.length === 0) {
+        return res.status(400).json({ error: "Oil major IDs are required" });
+      }
+      
+      let crewExperience;
+      
+      if (crewData && Array.isArray(crewData)) {
+        // Use provided crew data
+        crewExperience = convertCrewToExperience(crewData);
+      } else if (vesselId) {
+        // Fetch crew from vessel planning
+        const vesselPlanning = await storage.getVesselPlanningByVessel(vesselId, true);
+        if (!vesselPlanning || vesselPlanning.length === 0) {
+          return res.status(404).json({ error: "No active vessel planning found" });
+        }
+        
+        // Get crew details from the planning
+        const activePlan = vesselPlanning[0];
+        const crewMembers = [];
+        
+        // Parse positions and get crew details
+        if (activePlan.positions) {
+          const positions = typeof activePlan.positions === 'string' 
+            ? JSON.parse(activePlan.positions) 
+            : activePlan.positions;
+          
+          for (const pos of positions) {
+            if (pos.crewId) {
+              const crew = await storage.getCrewMember(pos.crewId);
+              if (crew) {
+                crewMembers.push({
+                  ...crew,
+                  rank: pos.rank || crew.rank
+                });
+              }
+            }
+          }
+        }
+        
+        crewExperience = convertCrewToExperience(crewMembers);
+      } else {
+        return res.status(400).json({ error: "Either vesselId or crewData is required" });
+      }
+      
+      const results: ComplianceCheckResult[] = [];
+      
+      for (const oilMajorId of oilMajorIds) {
+        const rule = await storage.getOilMajorRule(parseInt(oilMajorId));
+        if (!rule) continue;
+        
+        const rulesConfig: OilMajorRulesConfig = typeof rule.rules === 'string' 
+          ? JSON.parse(rule.rules) 
+          : rule.rules;
+        
+        const complianceResult = evaluateCompliance(rule.oilMajorName, rulesConfig, crewExperience);
+        results.push(complianceResult);
+      }
+      
+      res.json({ results });
+    } catch (error) {
+      console.error("Error checking compliance:", error);
+      res.status(500).json({ error: "Failed to check compliance" });
+    }
+  });
+
+  // Check compliance for a vessel against ALL oil majors (for matrix view)
+  app.get("/api/compliance/matrix/:vesselId", async (req, res) => {
+    try {
+      const vesselId = req.params.vesselId;
+      
+      // Get all oil major rules
+      const allRules = await storage.getOilMajorRules();
+      if (allRules.length === 0) {
+        return res.json({ 
+          vesselId, 
+          results: [],
+          message: "No oil major rules configured. Please import rules first."
+        });
+      }
+      
+      // Get crew from vessel planning
+      const vesselPlanning = await storage.getVesselPlanningByVessel(vesselId, true);
+      let crewExperience: any[] = [];
+      
+      if (vesselPlanning && vesselPlanning.length > 0) {
+        const activePlan = vesselPlanning[0];
+        const crewMembers = [];
+        
+        if (activePlan.positions) {
+          const positions = typeof activePlan.positions === 'string' 
+            ? JSON.parse(activePlan.positions) 
+            : activePlan.positions;
+          
+          for (const pos of positions) {
+            if (pos.crewId) {
+              const crew = await storage.getCrewMember(pos.crewId);
+              if (crew) {
+                crewMembers.push({
+                  ...crew,
+                  rank: pos.rank || crew.rank
+                });
+              }
+            }
+          }
+        }
+        
+        crewExperience = convertCrewToExperience(crewMembers);
+      }
+      
+      // Check compliance against all oil majors
+      const results: ComplianceCheckResult[] = [];
+      
+      for (const rule of allRules) {
+        if (!rule.isActive) continue;
+        
+        const rulesConfig: OilMajorRulesConfig = typeof rule.rules === 'string' 
+          ? JSON.parse(rule.rules) 
+          : rule.rules;
+        
+        const complianceResult = evaluateCompliance(rule.oilMajorName, rulesConfig, crewExperience);
+        results.push(complianceResult);
+      }
+      
+      // Sort by oil major name
+      results.sort((a, b) => a.oilMajorName.localeCompare(b.oilMajorName));
+      
+      res.json({ vesselId, results });
+    } catch (error) {
+      console.error("Error generating compliance matrix:", error);
+      res.status(500).json({ error: "Failed to generate compliance matrix" });
     }
   });
 
