@@ -166,37 +166,94 @@ function isValidDataRow(columns: string[]): boolean {
   return false;
 }
 
+/**
+ * Parse CSV content handling multi-line quoted fields properly.
+ * This splits on newlines but merges lines that are inside quoted fields.
+ */
+function parseCSVRows(csvContent: string): string[][] {
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentCell = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < csvContent.length; i++) {
+    const char = csvContent[i];
+    const nextChar = csvContent[i + 1];
+    
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        // Escaped quote
+        currentCell += '"';
+        i++;
+      } else {
+        // Toggle quote state
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      currentRow.push(currentCell);
+      currentCell = '';
+    } else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
+      // End of row (not inside quotes)
+      currentRow.push(currentCell);
+      if (currentRow.some(cell => cell.trim() !== '')) {
+        rows.push(currentRow);
+      }
+      currentRow = [];
+      currentCell = '';
+      if (char === '\r') i++; // Skip \n after \r
+    } else if (char === '\r' && !inQuotes) {
+      // Standalone \r as line break
+      currentRow.push(currentCell);
+      if (currentRow.some(cell => cell.trim() !== '')) {
+        rows.push(currentRow);
+      }
+      currentRow = [];
+      currentCell = '';
+    } else {
+      currentCell += char;
+    }
+  }
+  
+  // Handle last row
+  if (currentCell || currentRow.length > 0) {
+    currentRow.push(currentCell);
+    if (currentRow.some(cell => cell.trim() !== '')) {
+      rows.push(currentRow);
+    }
+  }
+  
+  return rows;
+}
+
 export function parseCSVContent(csvContent: string): Map<string, OilMajorRulesConfig> {
-  const lines = csvContent.split('\n');
+  const rows = parseCSVRows(csvContent);
   const oilMajorRules = new Map<string, OilMajorRulesConfig>();
   let skippedRows = 0;
+  let acceptedRows = 0;
   
   // Skip header rows (first 2 rows)
-  for (let i = 2; i < lines.length; i++) {
-    const line = lines[i];
-    if (!line || line.trim() === '') continue;
+  for (let i = 2; i < rows.length; i++) {
+    const columns = rows[i];
+    if (!columns || columns.length < 2) continue;
     
-    const columns = parseCSVLine(line);
-    if (columns.length < 2) continue;
-    
-    const oilMajor = columns[0]?.trim();
+    // Normalize oil major name: replace embedded newlines/carriage returns with space
+    const oilMajor = columns[0]?.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
     if (!oilMajor || oilMajor === '') continue;
     
     // Primary validation: Check if this is a known oil major
     const isKnownMajor = KNOWN_OIL_MAJORS.has(oilMajor);
     
-    // Secondary validation: Check if name passes heuristic validation
+    // Secondary validation: Check if name passes heuristic validation  
     const passesHeuristic = isValidOilMajorName(oilMajor);
     
-    // Structural validation: Check if row has valid rank data in expected columns
-    const hasValidStructure = isValidDataRow(columns);
-    
-    // Accept row if: (known OR passes heuristic) AND has valid structure
-    if (!((isKnownMajor || passesHeuristic) && hasValidStructure)) {
+    // Accept row if: known OR passes heuristic (removed overly strict structural validation)
+    if (!(isKnownMajor || passesHeuristic)) {
       skippedRows++;
-      console.log(`[CSV Parser] Skipped row ${i + 1}: "${oilMajor.substring(0, 40)}..." (known: ${isKnownMajor}, heuristic: ${passesHeuristic}, structure: ${hasValidStructure})`);
+      console.log(`[CSV Parser] Skipped row ${i + 1}: "${oilMajor.substring(0, 40)}..." (known: ${isKnownMajor}, heuristic: ${passesHeuristic})`);
       continue;
     }
+    
+    acceptedRows++;
     
     // Get or create the config for this oil major
     let config = oilMajorRules.get(oilMajor);
@@ -265,34 +322,8 @@ export function parseCSVContent(csvContent: string): Map<string, OilMajorRulesCo
     }
   }
   
+  console.log(`[CSV Parser] Completed: ${acceptedRows} rows accepted, ${skippedRows} rows skipped, ${oilMajorRules.size} oil majors found`);
   return oilMajorRules;
-}
-
-function parseCSVLine(line: string): string[] {
-  const result: string[] = [];
-  let current = '';
-  let inQuotes = false;
-  
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    
-    if (char === '"') {
-      if (inQuotes && line[i + 1] === '"') {
-        current += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (char === ',' && !inQuotes) {
-      result.push(current);
-      current = '';
-    } else {
-      current += char;
-    }
-  }
-  
-  result.push(current);
-  return result;
 }
 
 export function parseCSVFile(filePath: string): Map<string, OilMajorRulesConfig> {
