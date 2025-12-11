@@ -500,9 +500,8 @@ export const RecruitmentModule = (): JSX.Element => {
               rowData={filteredData}
               columnDefs={columnDefs}
               onGridReady={onGridReady}
-              autoHeight={true}
-              maxHeight="500px"
-              minHeight="200px"
+              fillAvailableHeight={true}
+              bottomPadding={20}
               width="100%"
               enableExport={true}
               enableSideBar={true}

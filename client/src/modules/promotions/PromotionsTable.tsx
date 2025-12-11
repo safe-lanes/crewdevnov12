@@ -432,18 +432,15 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
 
   return (
     <div className="flex flex-col h-full">
-      <div>
-        <AgGridTable
-          rowData={filteredData}
-          columnDefs={columnDefs}
-          onGridReady={handleGridReady}
-          loading={isLoading || isLoadingHierarchies}
-          autoHeight={true}
-          maxHeight="600px"
-          minHeight="200px"
-          data-testid="promotions-table"
-        />
-      </div>
+      <AgGridTable
+        rowData={filteredData}
+        columnDefs={columnDefs}
+        onGridReady={handleGridReady}
+        loading={isLoading || isLoadingHierarchies}
+        fillAvailableHeight={true}
+        bottomPadding={60}
+        data-testid="promotions-table"
+      />
       
       {/* Pagination info */}
       <div className="flex justify-between items-center px-4 py-2 text-sm text-gray-600">

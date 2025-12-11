@@ -534,7 +534,7 @@ export const MonthlyTestTable: React.FC<MonthlyTestTableProps> = ({
   ];
 
   return (
-    <div className="w-full flex flex-col" style={{ height: 'calc(100vh - 250px)' }}>
+    <div className="w-full flex flex-col">
       {/* Static Due In Legend */}
       <div className="flex gap-2 items-center mb-4">
         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Due in:</span>
@@ -549,16 +549,16 @@ export const MonthlyTestTable: React.FC<MonthlyTestTableProps> = ({
         ))}
       </div>
       
-      <div className="flex-1">
-        <AgGridTable
+      <AgGridTable
         rowData={tableData}
         columnDefs={columnDefs}
         context={context}
-        height="100%"
         loading={testsLoading || vesselsLoading}
         enableSideBar={false}
         enableStatusBar={false}
         rowSelection={false}
+        fillAvailableHeight={true}
+        bottomPadding={20}
         gridOptions={{
           headerHeight: 48,
           rowHeight: 70,
@@ -603,7 +603,6 @@ export const MonthlyTestTable: React.FC<MonthlyTestTableProps> = ({
           justify-content: center !important;
         }
       `}</style>
-      </div>
     </div>
   );
 };

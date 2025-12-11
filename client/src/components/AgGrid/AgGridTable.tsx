@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useEffect, useRef } from 'react';
+import React, { useMemo, useCallback, useEffect, useRef, useState } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { 
   ColDef, 
@@ -92,6 +92,8 @@ export interface AgGridTableProps {
   enableRangeSelection?: boolean;
   enableCharts?: boolean;
   suppressRowClickSelection?: boolean;
+  fillAvailableHeight?: boolean;
+  bottomPadding?: number;
 }
 
 export const AgGridTable: React.FC<AgGridTableProps> = ({
@@ -121,10 +123,45 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
   enableRangeSelection = false,
   enableCharts = false,
   suppressRowClickSelection = false,
+  fillAvailableHeight = false,
+  bottomPadding = 20,
 }) => {
   const viewport = useViewport();
   const viewportConfig = getViewportConfig(viewport);
   const gridApiRef = useRef<GridApi | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [calculatedHeight, setCalculatedHeight] = useState<string | number>(height);
+
+  // Calculate height to fill available viewport space
+  useEffect(() => {
+    if (!fillAvailableHeight) return;
+
+    const calculateHeight = () => {
+      if (!containerRef.current) return;
+      
+      const rect = containerRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const availableHeight = viewportHeight - rect.top - bottomPadding;
+      const minHeightValue = 400; // Minimum 400px as per user preference
+      
+      const finalHeight = Math.max(minHeightValue, availableHeight);
+      setCalculatedHeight(`${finalHeight}px`);
+    };
+
+    // Initial calculation
+    calculateHeight();
+
+    // Recalculate on window resize
+    window.addEventListener('resize', calculateHeight);
+    
+    // Also recalculate after a short delay to handle any layout shifts
+    const timeoutId = setTimeout(calculateHeight, 100);
+
+    return () => {
+      window.removeEventListener('resize', calculateHeight);
+      clearTimeout(timeoutId);
+    };
+  }, [fillAvailableHeight, bottomPadding]);
 
   // Responsive grid handler
   const handleResponsiveGrid = useCallback((gridApi: GridApi) => {
@@ -389,6 +426,10 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
 
   // Determine the container height
   const containerHeight = useMemo(() => {
+    // If fillAvailableHeight is enabled, use the calculated height
+    if (fillAvailableHeight) {
+      return calculatedHeight;
+    }
     // If domLayout is 'normal' and a height prop is provided, use it
     if (finalGridOptions.domLayout === 'normal') {
       return height;
@@ -399,15 +440,29 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
     }
     // Otherwise, auto height
     return 'auto';
-  }, [finalGridOptions.domLayout, height, needsScroll, dynamicHeight]);
+  }, [fillAvailableHeight, calculatedHeight, finalGridOptions.domLayout, height, needsScroll, dynamicHeight]);
+
+  // When fillAvailableHeight is used, we need normal layout with scrolling
+  const effectiveGridOptions = useMemo(() => {
+    if (fillAvailableHeight) {
+      return {
+        ...finalGridOptions,
+        domLayout: 'normal' as const
+      };
+    }
+    return finalGridOptions;
+  }, [fillAvailableHeight, finalGridOptions]);
+
+  const showScroll = fillAvailableHeight || needsScroll;
 
   return (
     <div 
-      className={`ag-theme-${theme} ${needsScroll ? 'needs-scroll' : 'no-scroll'} bg-white rounded-lg shadow-md ${className}`} 
+      ref={containerRef}
+      className={`ag-theme-${theme} ${showScroll ? 'needs-scroll' : 'no-scroll'} bg-white rounded-lg shadow-md ${className}`} 
       style={{ 
         height: containerHeight, 
         width,
-        overflow: needsScroll ? 'auto' : 'visible'
+        overflow: showScroll ? 'auto' : 'visible'
       }}
     >
       <AgGridReact
@@ -415,7 +470,7 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
         columnDefs={columnDefs}
         onGridReady={handleGridReady}
         context={context}
-        {...finalGridOptions}
+        {...effectiveGridOptions}
       />
     </div>
   );
