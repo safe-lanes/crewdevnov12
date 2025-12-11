@@ -143,7 +143,7 @@ export default function HeaderComponent() {
     return (
         <>
             {/* Header */}
-            <header className="w-full h-[67px] bg-[#f1f1f1] border-b-2 border-[#51baf4]">
+            <header className="fixed top-0 left-0 right-0 w-full h-[67px] bg-[#f1f1f1] border-b-2 border-[#51baf4] z-[100]">
                 <div className="flex items-center h-[65px] bg-[#f1f1f1]">
                     {/* Logo */}
                     <div className="flex items-center ml-4">

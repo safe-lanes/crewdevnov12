@@ -22,8 +22,8 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <div className="bg-transparent flex flex-row justify-center w-full">
-          <div className="overflow-hidden bg-[url(/figmaAssets/vector.svg)] bg-[100%_100%]  h-[900px] w-full">
+        <div className="bg-transparent flex flex-row justify-center w-full h-screen">
+          <div className="bg-[url(/figmaAssets/vector.svg)] bg-[100%_100%] h-screen w-full pt-[67px] overflow-y-auto">
             <HeaderComponent />
             <Switch>
               <Route path="/" component={ElementCrewAppraisals} />

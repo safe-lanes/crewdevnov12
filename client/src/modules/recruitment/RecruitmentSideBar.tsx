@@ -33,7 +33,7 @@ const recruitmentSideBarList: { name: string; icon: React.ReactNode; page: strin
 export default function RecruitmentSideBar({ selectedRecruitmentPage, setSelectedRecruitmentPage, allowedPages }: RecruitmentSideBarProps) {
     return (
         <>
-            <aside className="w-[67px] absolute left-0 top-[67px] h-[calc(100vh-67px)]">
+            <aside className="w-[67px] fixed left-0 top-[67px] h-[calc(100vh-67px)] z-50">
                 {
                     recruitmentSideBarList.filter(item => allowedPages.includes(item.page)).map(item => (
                         <div

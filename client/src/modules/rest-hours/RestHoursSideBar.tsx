@@ -27,7 +27,7 @@ const restHoursSideBarList: { name: string; icon: React.ReactNode; page: string 
 export default function RestHoursSideBar({ selectedRestHoursPage, setSelectedRestHoursPage, allowedPages }: RestHoursSideBarProps) {
     return (
         <>
-            <aside className="w-[67px] absolute left-0 top-[67px] h-[calc(100vh-67px)] z-50">
+            <aside className="w-[67px] fixed left-0 top-[67px] h-[calc(100vh-67px)] z-50">
                 {
                     restHoursSideBarList.filter(item => allowedPages.includes(item.page)).map(item => (
                         <div

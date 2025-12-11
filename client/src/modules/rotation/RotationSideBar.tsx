@@ -28,7 +28,7 @@ const rotationSideBarList: { name: string; icon: React.ReactNode; page: string }
 export default function RotationSideBar({ selectedRotationPage, setSelectedRotationPage, allowedPages }: RotationSideBarProps) {
     return (
         <>
-            <aside className="w-[67px] absolute left-0 top-[67px] h-[calc(100vh-67px)] z-50">
+            <aside className="w-[67px] fixed left-0 top-[67px] h-[calc(100vh-67px)] z-50">
                 {
                     rotationSideBarList.filter(item => allowedPages.includes(item.page)).map(item => (
                         <div
