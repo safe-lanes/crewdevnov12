@@ -33,7 +33,7 @@ export const StandardFormPopup = React.forwardRef<
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4">
       <div
         ref={ref}
         className={cn(
@@ -75,7 +75,7 @@ const FormPopupOverlay = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4",
+      "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4",
       className
     )}
     {...props}
