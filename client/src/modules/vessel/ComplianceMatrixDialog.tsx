@@ -83,7 +83,7 @@ export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
     });
 
     const { data: complianceData, isLoading: isLoadingCompliance } = useQuery<{ vesselId: string; results: ComplianceCheckResult[]; message?: string }>({
-        queryKey: ['/api/compliance/matrix', vesselId],
+        queryKey: [`/api/compliance/matrix/${vesselId}`],
         enabled: open && !!vesselId && oilMajorRules.length > 0
     });
 
