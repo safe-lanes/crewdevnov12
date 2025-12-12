@@ -7313,16 +7313,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Get vessel details to determine vessel type for tanker type experience calculation
-      const vessel = await storage.getVessel(vesselId);
+      // Get vessel details from Master Data 014 to determine vessel type
+      const vessels = await storage.getMasterDataEntries('014');
+      const vessel = vessels.find((v: any) => v.id?.toString() === vesselId || v.vesselId === vesselId);
       const vesselTypeCode = vessel?.vesselType || '';
       
       // Get vessel type name from master data for display (if needed)
-      const vesselTypes = await storage.getMasterDataByMasterId('004');
+      const vesselTypes = await storage.getMasterDataEntries('004');
       const vesselTypeMap = new Map(vesselTypes.map((vt: any) => [vt.id?.toString() || vt.vtuid, vt.name || vt.vesselType]));
       
       // Get crew from vessel planning - each row is a position with rank and on_board_crew_id
-      const vesselPlanning = await storage.getVesselPlanningByVessel(vesselId, true);
+      const vesselPlanning = await storage.getVesselPlanningByVessel(vesselId);
       let crewExperience: any[] = [];
       
       if (vesselPlanning && vesselPlanning.length > 0) {
