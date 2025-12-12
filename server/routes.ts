@@ -7313,12 +7313,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Get vessel details to determine vessel type for tanker type experience calculation
+      const vessel = await storage.getVessel(vesselId);
+      const vesselTypeCode = vessel?.vesselType || '';
+      
+      // Get vessel type name from master data for display (if needed)
+      const vesselTypes = await storage.getMasterDataByMasterId('004');
+      const vesselTypeMap = new Map(vesselTypes.map((vt: any) => [vt.id?.toString() || vt.vtuid, vt.name || vt.vesselType]));
+      
       // Get crew from vessel planning - each row is a position with rank and on_board_crew_id
       const vesselPlanning = await storage.getVesselPlanningByVessel(vesselId, true);
       let crewExperience: any[] = [];
       
       if (vesselPlanning && vesselPlanning.length > 0) {
-        const crewMembers: any[] = [];
+        const crewExperienceData: any[] = [];
         
         // Each vesselPlanning row represents a position with rank and assigned crew
         for (const position of vesselPlanning) {
@@ -7327,16 +7335,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (crewId) {
             const crew = await storage.getCrewMember(crewId);
             if (crew) {
-              crewMembers.push({
-                ...crew,
-                // Use the position's rank, which is the assigned rank for this slot
-                rank: position.rank || crew.presentRank || ''
+              // Parse sea service data for experience calculations (same as Officer Matrix)
+              let companySeaService: any[] = [];
+              let externalSeaService: any[] = [];
+              try {
+                companySeaService = crew.currentCompanySeaService 
+                  ? JSON.parse(crew.currentCompanySeaService as string) 
+                  : [];
+              } catch (e) {
+                companySeaService = [];
+              }
+              try {
+                externalSeaService = crew.externalSeaService 
+                  ? JSON.parse(crew.externalSeaService as string) 
+                  : [];
+              } catch (e) {
+                externalSeaService = [];
+              }
+              
+              const currentRank = position.rank || crew.presentRank || '';
+              
+              // Calculate experience from sea service - uses same function as Officer Matrix
+              const experience = calculateExperienceFromSeaService(companySeaService, externalSeaService, currentRank);
+              
+              // Calculate vessel-type-specific tanker experience (same as Officer Matrix "Tanker Type" column)
+              const tankerTypeYears = calculateVesselTypeSpecificExperience(companySeaService, externalSeaService, vesselTypeCode);
+              
+              // Calculate time on board (months from sign-on date to today) - same as Officer Matrix
+              let timeOnboardMonths = 0;
+              if (crew.signOnDate || position.signOnDate) {
+                try {
+                  const signOnDate = new Date(crew.signOnDate || position.signOnDate);
+                  const today = new Date();
+                  const diffMs = today.getTime() - signOnDate.getTime();
+                  const diffMonths = diffMs / (1000 * 60 * 60 * 24 * 30.44);
+                  timeOnboardMonths = Math.round(diffMonths * 10) / 10;
+                } catch (e) {
+                  timeOnboardMonths = 0;
+                }
+              }
+              
+              crewExperienceData.push({
+                rank: currentRank,
+                yearsWithOperator: experience.company, // Company (Yrs) column
+                yearsInRank: experience.rank,          // Rank column
+                yearsOnTankerType: tankerTypeYears,    // Tanker Type column - vessel-type-specific
+                yearsOnAllTankers: experience.tankers, // All Type column - all tanker experience
+                yearsAsOOW: experience.oow,            // OOW column
+                timeOnboardMonths: timeOnboardMonths,  // Time o/b (months)
+                signOnDate: crew.signOnDate || position.signOnDate || new Date().toISOString(),
+                languageProficiency: crew.englishProficiency || '' // Language column from crew_members
               });
             }
           }
         }
         
-        crewExperience = convertCrewToExperience(crewMembers);
+        crewExperience = crewExperienceData;
       }
       
       // Check compliance against all oil majors
