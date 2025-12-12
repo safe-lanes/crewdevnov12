@@ -3,10 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, AlertCircle, Upload, FileUp } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
+import { Loader2, AlertCircle } from 'lucide-react';
 
 interface ComplianceMatrixDialogProps {
     open: boolean;
@@ -99,12 +96,10 @@ export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
     onOpenChange,
     vesselId
 }) => {
-    const { toast } = useToast();
     const [selectedMajor, setSelectedMajor] = useState<{ id: number; name: string; status: string } | null>(null);
     const [selectedResult, setSelectedResult] = useState<ComplianceCheckResult | null>(null);
-    const [isImporting, setIsImporting] = useState(false);
 
-    const { data: oilMajorRules = [], isLoading: isLoadingRules, refetch: refetchRules } = useQuery<OilMajorRule[]>({
+    const { data: oilMajorRules = [], isLoading: isLoadingRules } = useQuery<OilMajorRule[]>({
         queryKey: ['/api/oil-major-rules'],
         enabled: open
     });
@@ -133,33 +128,6 @@ export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
         }
     }, [selectedMajor, complianceData]);
 
-    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        setIsImporting(true);
-        try {
-            const content = await file.text();
-            await apiRequest('POST', '/api/oil-major-rules/import-csv', { csvContent: content });
-            
-            toast({
-                title: 'Import Successful',
-                description: 'Oil major rules have been imported successfully.',
-            });
-            
-            refetchRules();
-        } catch (error) {
-            toast({
-                title: 'Import Failed',
-                description: 'Failed to import oil major rules. Please check the file format.',
-                variant: 'destructive'
-            });
-        } finally {
-            setIsImporting(false);
-            event.target.value = '';
-        }
-    };
-
     const groupedResults = selectedResult ? groupResultsByCategory(selectedResult.results) : {};
     const isLoading = isLoadingRules || isLoadingCompliance;
     const hasNoRules = oilMajorRules.length === 0;
@@ -168,35 +136,9 @@ export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-hidden p-0">
                 <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-200">
-                    <div className="flex items-center justify-between">
-                        <DialogTitle className="text-lg font-medium text-[#16569e]">
-                            Compliance Matrix
-                        </DialogTitle>
-                        <div className="flex items-center gap-2">
-                            <input
-                                type="file"
-                                id="csv-upload"
-                                accept=".csv"
-                                className="hidden"
-                                onChange={handleFileUpload}
-                                disabled={isImporting}
-                            />
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => document.getElementById('csv-upload')?.click()}
-                                disabled={isImporting}
-                                data-testid="button-import-csv"
-                            >
-                                {isImporting ? (
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                ) : (
-                                    <FileUp className="w-4 h-4 mr-2" />
-                                )}
-                                Import Rules
-                            </Button>
-                        </div>
-                    </div>
+                    <DialogTitle className="text-lg font-medium text-[#16569e]">
+                        Compliance Matrix
+                    </DialogTitle>
                 </DialogHeader>
 
                 <div className="flex h-[calc(90vh-120px)]">
@@ -210,7 +152,7 @@ export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
                             <div className="flex flex-col items-center justify-center h-full p-4 text-center">
                                 <AlertCircle className="w-10 h-10 text-gray-400 mb-3" />
                                 <p className="text-sm text-gray-500 mb-2">No oil major rules configured</p>
-                                <p className="text-xs text-gray-400">Import a CSV file to get started</p>
+                                <p className="text-xs text-gray-400">Contact administrator to configure rules</p>
                             </div>
                         ) : oilMajors.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-full p-4 text-center">
@@ -276,7 +218,7 @@ export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
                                 ) : !selectedResult || Object.keys(groupedResults).length === 0 ? (
                                     <div className="text-center text-gray-500 py-8">
                                         {hasNoRules 
-                                            ? 'Import oil major rules to see compliance requirements'
+                                            ? 'No oil major rules configured for this oil major'
                                             : `No requirements configured for ${selectedMajor?.name || 'this oil major'}`
                                         }
                                     </div>
