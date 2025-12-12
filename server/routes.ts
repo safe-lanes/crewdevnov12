@@ -7313,28 +7313,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Get crew from vessel planning
+      // Get crew from vessel planning - each row is a position with rank and on_board_crew_id
       const vesselPlanning = await storage.getVesselPlanningByVessel(vesselId, true);
       let crewExperience: any[] = [];
       
       if (vesselPlanning && vesselPlanning.length > 0) {
-        const activePlan = vesselPlanning[0];
-        const crewMembers = [];
+        const crewMembers: any[] = [];
         
-        if (activePlan.positions) {
-          const positions = typeof activePlan.positions === 'string' 
-            ? JSON.parse(activePlan.positions) 
-            : activePlan.positions;
-          
-          for (const pos of positions) {
-            if (pos.crewId) {
-              const crew = await storage.getCrewMember(pos.crewId);
-              if (crew) {
-                crewMembers.push({
-                  ...crew,
-                  rank: pos.rank || crew.rank
-                });
-              }
+        // Each vesselPlanning row represents a position with rank and assigned crew
+        for (const position of vesselPlanning) {
+          // Use onBoardCrewId to get the actual crew member assigned to this position
+          const crewId = position.onBoardCrewId || position.crewMemberId;
+          if (crewId) {
+            const crew = await storage.getCrewMember(crewId);
+            if (crew) {
+              crewMembers.push({
+                ...crew,
+                // Use the position's rank, which is the assigned rank for this slot
+                rank: position.rank || crew.presentRank || ''
+              });
             }
           }
         }

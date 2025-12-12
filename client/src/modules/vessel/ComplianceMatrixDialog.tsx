@@ -73,13 +73,18 @@ const PROFICIENCY_LEVELS = ['Poor', 'Fair', 'Good', 'Excellent', 'Native'];
 function formatRequirementValue(req: ComplianceRuleResult): { required: string; actual: string } {
     if (req.category === 'English Proficiency') {
         // Convert numeric index to proficiency level text
-        // -1 means Unknown, >= 0 maps to PROFICIENCY_LEVELS
+        // -2 means No crew assigned, -1 means Unknown, >= 0 maps to PROFICIENCY_LEVELS
         const requiredLevel = req.requiredValue >= 0 
             ? (PROFICIENCY_LEVELS[req.requiredValue] || 'Unknown')
             : 'Unknown';
-        const actualLevel = req.actualValue >= 0 
-            ? (PROFICIENCY_LEVELS[req.actualValue] || 'Unknown')
-            : 'Unknown';
+        let actualLevel: string;
+        if (req.actualValue === -2) {
+            actualLevel = 'N/A';
+        } else if (req.actualValue >= 0) {
+            actualLevel = PROFICIENCY_LEVELS[req.actualValue] || 'Unknown';
+        } else {
+            actualLevel = 'Unknown';
+        }
         return { required: requiredLevel, actual: actualLevel };
     }
     // For other categories, show numeric value with unit

@@ -203,16 +203,26 @@ function evaluateEnglishProficiencyRuleAll(
   
   for (const targetRank of targetRanks) {
     const matchingCrew = findCrewByRank(crew, targetRank);
+    const requiredIndex = PROFICIENCY_ORDER.findIndex(l => l.toLowerCase() === rule.requiredLevel.toLowerCase());
+    
     if (matchingCrew.length === 0) {
-      continue; // Skip if rank not on board
+      // No crew assigned - still show the rule but mark as N/A (use -2 for "No crew")
+      results.push({
+        category: 'English Proficiency',
+        label: rule.label || `${targetRank} requires ${rule.requiredLevel} English`,
+        rankPair: targetRank,
+        requiredValue: requiredIndex,
+        actualValue: -2, // -2 indicates "No crew assigned"
+        unit: 'proficiency',
+        status: 'fail' // Fail because requirement cannot be verified
+      });
+      continue;
     }
     
     const crewMember = matchingCrew[0];
     const crewLevel = crewMember.languageProficiency || 'Unknown';
-    const requiredLevel = rule.requiredLevel;
     
     const crewIndex = PROFICIENCY_ORDER.findIndex(l => l.toLowerCase() === crewLevel.toLowerCase());
-    const requiredIndex = PROFICIENCY_ORDER.findIndex(l => l.toLowerCase() === requiredLevel.toLowerCase());
     
     // If crew proficiency is unknown (crewIndex = -1), fail the check
     // Required must be known (requiredIndex >= 0) for a valid check
@@ -222,10 +232,10 @@ function evaluateEnglishProficiencyRuleAll(
       category: 'English Proficiency',
       label: rule.label || `${targetRank} requires ${rule.requiredLevel} English`,
       rankPair: targetRank,
-      // Use -1 for unknown levels so UI can display appropriately
+      // Use -1 for unknown levels, -2 for no crew assigned
       requiredValue: requiredIndex,
       actualValue: crewIndex,
-      unit: 'days', // Use 'days' as a marker - UI will detect this is proficiency by category
+      unit: 'proficiency',
       status: passed ? 'pass' : 'fail'
     });
   }
