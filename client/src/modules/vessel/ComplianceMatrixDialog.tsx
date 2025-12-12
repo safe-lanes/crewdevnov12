@@ -67,6 +67,28 @@ function groupResultsByCategory(results: ComplianceRuleResult[]): Record<string,
     return grouped;
 }
 
+// Helper to convert proficiency level index to text
+const PROFICIENCY_LEVELS = ['Poor', 'Fair', 'Good', 'Excellent', 'Native'];
+
+function formatRequirementValue(req: ComplianceRuleResult): { required: string; actual: string } {
+    if (req.category === 'English Proficiency') {
+        // Convert numeric index to proficiency level text
+        // -1 means Unknown, >= 0 maps to PROFICIENCY_LEVELS
+        const requiredLevel = req.requiredValue >= 0 
+            ? (PROFICIENCY_LEVELS[req.requiredValue] || 'Unknown')
+            : 'Unknown';
+        const actualLevel = req.actualValue >= 0 
+            ? (PROFICIENCY_LEVELS[req.actualValue] || 'Unknown')
+            : 'Unknown';
+        return { required: requiredLevel, actual: actualLevel };
+    }
+    // For other categories, show numeric value with unit
+    return { 
+        required: `${req.requiredValue} ${req.unit}`, 
+        actual: `${req.actualValue} ${req.unit}` 
+    };
+}
+
 export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
     open,
     onOpenChange,
@@ -295,10 +317,10 @@ export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
                                                                     {req.label}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700 text-center">
-                                                                    {req.requiredValue} {req.unit}
+                                                                    {formatRequirementValue(req).required}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700 text-center">
-                                                                    {req.actualValue} {req.unit}
+                                                                    {formatRequirementValue(req).actual}
                                                                 </TableCell>
                                                                 <TableCell className="text-center">
                                                                     <div className="flex justify-center">

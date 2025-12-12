@@ -1,4 +1,4 @@
-import type { OilMajorRulesConfig, RankPairRule, DateJoinedRule, LanguageRule, ComplianceRuleResult } from '@shared/schema';
+import type { OilMajorRulesConfig, RankPairRule, DateJoinedRule, EnglishProficiencyRule, ComplianceRuleResult } from '@shared/schema';
 
 interface CrewMemberExperience {
   rank: string;
@@ -189,35 +189,48 @@ function evaluateDateJoinedRule(
   };
 }
 
-function evaluateLanguageRule(
-  rule: LanguageRule,
+// Evaluates English proficiency rules for all officers in the rule
+function evaluateEnglishProficiencyRuleAll(
+  rule: EnglishProficiencyRule,
   crew: CrewMemberExperience[]
-): ComplianceRuleResult | null {
+): ComplianceRuleResult[] {
   const PROFICIENCY_ORDER = ['Poor', 'Fair', 'Good', 'Excellent', 'Native'];
   
-  const matchingCrew = findCrewByRank(crew, rule.rank);
-  if (matchingCrew.length === 0) {
-    return null; // Skip if rank not on board
+  // Parse ranks from the rule.rankPair (can be "Master", "Chief Officer", or "Master, Chief Officer")
+  const targetRanks = rule.rankPair.split(/[,&]/).map(r => r.trim()).filter(r => r.length > 0);
+  
+  const results: ComplianceRuleResult[] = [];
+  
+  for (const targetRank of targetRanks) {
+    const matchingCrew = findCrewByRank(crew, targetRank);
+    if (matchingCrew.length === 0) {
+      continue; // Skip if rank not on board
+    }
+    
+    const crewMember = matchingCrew[0];
+    const crewLevel = crewMember.languageProficiency || 'Unknown';
+    const requiredLevel = rule.requiredLevel;
+    
+    const crewIndex = PROFICIENCY_ORDER.findIndex(l => l.toLowerCase() === crewLevel.toLowerCase());
+    const requiredIndex = PROFICIENCY_ORDER.findIndex(l => l.toLowerCase() === requiredLevel.toLowerCase());
+    
+    // If crew proficiency is unknown (crewIndex = -1), fail the check
+    // Required must be known (requiredIndex >= 0) for a valid check
+    const passed = crewIndex >= 0 && requiredIndex >= 0 && crewIndex >= requiredIndex;
+    
+    results.push({
+      category: 'English Proficiency',
+      label: rule.label || `${targetRank} requires ${rule.requiredLevel} English`,
+      rankPair: targetRank,
+      // Use -1 for unknown levels so UI can display appropriately
+      requiredValue: requiredIndex,
+      actualValue: crewIndex,
+      unit: 'days', // Use 'days' as a marker - UI will detect this is proficiency by category
+      status: passed ? 'pass' : 'fail'
+    });
   }
   
-  const crewMember = matchingCrew[0];
-  const crewLevel = crewMember.languageProficiency || 'Unknown';
-  const requiredLevel = rule.requiredLevel;
-  
-  const crewIndex = PROFICIENCY_ORDER.findIndex(l => l.toLowerCase() === crewLevel.toLowerCase());
-  const requiredIndex = PROFICIENCY_ORDER.findIndex(l => l.toLowerCase() === requiredLevel.toLowerCase());
-  
-  const passed = crewIndex >= requiredIndex;
-  
-  return {
-    category: 'English Proficiency',
-    label: `${rule.rank} requires ${rule.requiredLevel} English`,
-    rankPair: rule.rank,
-    requiredValue: requiredIndex,
-    actualValue: crewIndex,
-    unit: 'years', // Will display as proficiency level in UI
-    status: passed ? 'pass' : 'fail'
-  };
+  return results;
 }
 
 export function evaluateCompliance(
@@ -269,13 +282,11 @@ export function evaluateCompliance(
     }
   }
   
-  // Evaluate Language rules
-  if (rulesConfig.languageRules) {
-    for (const rule of rulesConfig.languageRules) {
-      const langResult = evaluateLanguageRule(rule, crew);
-      if (langResult) {
-        results.push(langResult);
-      }
+  // Evaluate English Proficiency rules
+  if (rulesConfig.englishProficiencyRules) {
+    for (const rule of rulesConfig.englishProficiencyRules) {
+      const profResults = evaluateEnglishProficiencyRuleAll(rule, crew);
+      results.push(...profResults);
     }
   }
   
@@ -323,7 +334,7 @@ export function convertCrewToExperience(crewMembers: any[]): CrewMemberExperienc
       yearsAsOOW: parseYears(crew.oowExperience || crew.yearsAsOOW || 0),
       timeOnboardMonths: parseYears(crew.timeOnboard || crew.timeOnboardMonths || 0),
       signOnDate: crew.signOnDate || crew.joinDate || new Date().toISOString(),
-      languageProficiency: crew.englishProficiency || crew.languageProficiency || 'Good'
+      languageProficiency: crew.englishProficiency || crew.languageProficiency || ''
     };
   });
 }

@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import type { OilMajorRulesConfig, RankPairRule, DateJoinedRule, LanguageRule } from '@shared/schema';
+import type { OilMajorRulesConfig, RankPairRule, DateJoinedRule, EnglishProficiencyRule } from '@shared/schema';
 
 interface ParsedCSVRow {
   oilMajor: string;
@@ -22,7 +22,9 @@ interface ParsedCSVRow {
   dateJoinedLabel: string;
   dateJoinedRankPair: string;
   dateJoinedValue: string;
-  languageValue: string;
+  englishProficiencyLabel: string;
+  englishProficiencyOfficer: string;
+  englishProficiencyValue: string;
 }
 
 function parseValue(valueStr: string): number {
@@ -48,24 +50,19 @@ function normalizeRankPair(rankPairStr: string): string {
     .trim();
 }
 
-function parseLanguageRules(languageStr: string): LanguageRule[] {
-  if (!languageStr || languageStr.trim() === '') return [];
+function createEnglishProficiencyRule(label: string, officer: string, value: string): EnglishProficiencyRule | null {
+  // Need at least officer and value for a valid rule
+  const normalizedOfficer = officer?.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim() || '';
+  const normalizedValue = value?.trim() || '';
+  const normalizedLabel = label?.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim() || '';
   
-  const rules: LanguageRule[] = [];
-  const lines = languageStr.split('\n').filter(l => l.trim());
+  if (!normalizedOfficer || !normalizedValue) return null;
   
-  for (const line of lines) {
-    const match = line.match(/^([^=]+)=?\s*(Good|Fair|Excellent|Native|Poor)?/i);
-    if (match) {
-      const rank = match[1].replace(/[=:]/g, '').trim();
-      const level = match[2] || 'Good';
-      if (rank) {
-        rules.push({ rank, requiredLevel: level });
-      }
-    }
-  }
-  
-  return rules;
+  return {
+    label: normalizedLabel,
+    rankPair: normalizedOfficer,
+    requiredLevel: normalizedValue
+  };
 }
 
 function createRankPairRule(label: string, rankPair: string, value: string): RankPairRule | null {
@@ -267,7 +264,7 @@ export function parseCSVContent(csvContent: string): Map<string, OilMajorRulesCo
           yearsAsOOW: []
         },
         dateJoinedRules: [],
-        languageRules: []
+        englishProficiencyRules: []
       };
       oilMajorRules.set(oilMajor, config);
     }
@@ -314,11 +311,11 @@ export function parseCSVContent(csvContent: string): Map<string, OilMajorRulesCo
       config.dateJoinedRules.push(djRule);
     }
     
-    // Parse Language (column 19)
-    const langRules = parseLanguageRules(columns[19] || '');
-    if (langRules.length > 0) {
-      config.languageRules = config.languageRules || [];
-      config.languageRules.push(...langRules);
+    // Parse English Proficiency (columns 19, 20, 21)
+    const epRule = createEnglishProficiencyRule(columns[19] || '', columns[20] || '', columns[21] || '');
+    if (epRule) {
+      config.englishProficiencyRules = config.englishProficiencyRules || [];
+      config.englishProficiencyRules.push(epRule);
     }
   }
   

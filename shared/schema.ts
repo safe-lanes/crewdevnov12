@@ -1502,21 +1502,22 @@ export const dateJoinedRuleSchema = z.object({
   requiredDays: z.number(), // minimum days gap
 });
 
-export const languageRuleSchema = z.object({
-  rank: z.string(),
+export const englishProficiencyRuleSchema = z.object({
+  label: z.string(), // Description e.g., "English proficiency of Master must be good"
+  rankPair: z.string(), // Officer(s) this applies to e.g., "Master", "Chief Officer"
   requiredLevel: z.string(), // e.g., "Good"
 });
 
 export const oilMajorRulesConfigSchema = z.object({
   experienceRules: experienceCategoryRulesSchema,
   dateJoinedRules: z.array(dateJoinedRuleSchema).optional(),
-  languageRules: z.array(languageRuleSchema).optional(),
+  englishProficiencyRules: z.array(englishProficiencyRuleSchema).optional(),
 });
 
 export type RankPairRule = z.infer<typeof rankPairRuleSchema>;
 export type ExperienceCategoryRules = z.infer<typeof experienceCategoryRulesSchema>;
 export type DateJoinedRule = z.infer<typeof dateJoinedRuleSchema>;
-export type LanguageRule = z.infer<typeof languageRuleSchema>;
+export type EnglishProficiencyRule = z.infer<typeof englishProficiencyRuleSchema>;
 export type OilMajorRulesConfig = z.infer<typeof oilMajorRulesConfigSchema>;
 
 // Compliance check result types
