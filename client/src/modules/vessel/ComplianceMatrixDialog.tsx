@@ -355,7 +355,7 @@ export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
                                                                         <TableCell className="text-xs text-gray-600">
                                                                             <HoverCard openDelay={200} closeDelay={100}>
                                                                                 <HoverCardTrigger asChild>
-                                                                                    <span className="cursor-pointer underline decoration-dotted underline-offset-2 hover:text-blue-600">
+                                                                                    <span className="cursor-pointer hover:text-blue-600">
                                                                                         {group.label}
                                                                                     </span>
                                                                                 </HoverCardTrigger>
@@ -422,7 +422,7 @@ export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
                                                                     <TableCell className="text-xs text-gray-600">
                                                                         <HoverCard openDelay={200} closeDelay={100}>
                                                                             <HoverCardTrigger asChild>
-                                                                                <span className="cursor-pointer underline decoration-dotted underline-offset-2 hover:text-blue-600">
+                                                                                <span className="cursor-pointer hover:text-blue-600">
                                                                                     {req.label}
                                                                                 </span>
                                                                             </HoverCardTrigger>
