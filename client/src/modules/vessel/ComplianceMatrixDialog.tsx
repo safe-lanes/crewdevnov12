@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -40,11 +40,12 @@ interface OilMajorRule {
     rules: any;
 }
 
-const StatusDot = ({ status }: { status: 'green' | 'yellow' | 'red' | 'pass' | 'fail' | 'not_applicable' }) => {
+const StatusDot = ({ status }: { status: 'green' | 'yellow' | 'red' | 'gray' | 'pass' | 'fail' | 'not_applicable' }) => {
     const colors = {
         green: 'bg-green-500',
         yellow: 'bg-yellow-500',
         red: 'bg-red-500',
+        gray: 'bg-gray-400',
         pass: 'bg-green-500',
         fail: 'bg-red-500',
         not_applicable: 'bg-gray-400'
@@ -185,11 +186,25 @@ export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
         enabled: open && !!vesselId && oilMajorRules.length > 0
     });
 
-    const oilMajors = complianceData?.results?.map(result => ({
-        id: oilMajorRules.find(r => r.oilMajorName === result.oilMajorName)?.id || 0,
-        name: result.oilMajorName,
-        status: result.overallStatus
-    })) || [];
+    const oilMajors = useMemo(() => {
+        const baseList = oilMajorRules.map(rule => ({
+            id: rule.id,
+            name: rule.oilMajorName,
+            status: 'gray' as const
+        }));
+        
+        if (complianceData?.results) {
+            return baseList.map(item => {
+                const result = complianceData.results.find(r => r.oilMajorName === item.name);
+                return {
+                    ...item,
+                    status: result?.overallStatus || 'gray'
+                };
+            });
+        }
+        
+        return baseList;
+    }, [oilMajorRules, complianceData]);
 
     useEffect(() => {
         if (oilMajors.length > 0 && !selectedMajor) {
@@ -220,7 +235,7 @@ export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
                 <div className="flex h-[calc(90vh-120px)]">
                     {/* Left Table - Oil Majors List */}
                     <div className="w-64 border-r border-gray-200 flex flex-col">
-                        {isLoading ? (
+                        {isLoadingRules ? (
                             <div className="flex items-center justify-center h-full">
                                 <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
                             </div>
@@ -252,7 +267,7 @@ export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
                                                 <TableCell className="py-3 px-4">
                                                     <div className="flex items-center justify-between">
                                                         <span className="text-sm text-gray-700">{major.name}</span>
-                                                        <StatusDot status={major.status as 'green' | 'yellow' | 'red'} />
+                                                        <StatusDot status={major.status as 'green' | 'yellow' | 'red' | 'gray'} />
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
