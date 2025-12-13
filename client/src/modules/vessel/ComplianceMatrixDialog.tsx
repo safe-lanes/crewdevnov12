@@ -356,10 +356,13 @@ export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
                                                                         data-testid={`row-requirement-${categoryIndex}-${groupIndex}`}
                                                                     >
                                                                         <TableCell className="text-xs text-gray-700 py-3">
+                                                                            {group.groupName}
+                                                                        </TableCell>
+                                                                        <TableCell className="text-xs text-gray-600">
                                                                             <HoverCard openDelay={200} closeDelay={100}>
                                                                                 <HoverCardTrigger asChild>
                                                                                     <span className="cursor-pointer underline decoration-dotted underline-offset-2 hover:text-blue-600">
-                                                                                        {group.groupName}
+                                                                                        {group.label}
                                                                                     </span>
                                                                                 </HoverCardTrigger>
                                                                                 <HoverCardContent className="w-80 p-0" align="start">
@@ -399,9 +402,6 @@ export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
                                                                                     </Table>
                                                                                 </HoverCardContent>
                                                                             </HoverCard>
-                                                                        </TableCell>
-                                                                        <TableCell className="text-xs text-gray-600">
-                                                                            {group.label}
                                                                         </TableCell>
                                                                         <TableCell className="text-xs text-gray-700 text-center">
                                                                             {requiredLevel}
