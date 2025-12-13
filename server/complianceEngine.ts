@@ -1,4 +1,4 @@
-import type { OilMajorRulesConfig, RankPairRule, DateJoinedRule, EnglishProficiencyRule, ComplianceRuleResult } from '@shared/schema';
+import type { OilMajorRulesConfig, RankPairRule, DateJoinedRule, EnglishProficiencyRule, ConditionalRule, ComplianceRuleResult } from '@shared/schema';
 
 interface CrewMemberExperience {
   rank: string;
@@ -284,6 +284,129 @@ function evaluateEnglishProficiencyRuleAll(
   return results;
 }
 
+// Evaluates conditional rules with "If X then Y" logic
+function evaluateConditionalRule(
+  rule: ConditionalRule,
+  crew: CrewMemberExperience[]
+): ComplianceRuleResult {
+  // Find matching crew members for target ranks
+  const matchingCrew: CrewMemberExperience[] = [];
+  for (const targetRank of rule.targetRanks) {
+    const crewForRank = findCrewByRank(crew, targetRank);
+    matchingCrew.push(...crewForRank);
+  }
+  
+  // Get experience values for matching crew (convert to months if needed)
+  const getExperienceInMonths = (crewMember: CrewMemberExperience): number => {
+    const category = rule.experienceCategory;
+    let value = 0;
+    switch (category) {
+      case 'yearsWithOperator':
+        value = crewMember.yearsWithOperator;
+        break;
+      case 'yearsInRank':
+        value = crewMember.yearsInRank;
+        break;
+      case 'yearsOnTankerType':
+        value = crewMember.yearsOnTankerType;
+        break;
+      case 'yearsOnAllTankers':
+        value = crewMember.yearsOnAllTankers;
+        break;
+      case 'yearsAsOOW':
+        value = crewMember.yearsAsOOW;
+        break;
+      default:
+        value = 0;
+    }
+    // Convert to months (experience is typically stored in years)
+    return value * 12;
+  };
+  
+  const experienceValues = matchingCrew.map(c => getExperienceInMonths(c));
+  const officerCount = matchingCrew.length;
+  
+  // Normalize requiredValue to months for comparison
+  const requiredValueInMonths = rule.unit === 'years' ? rule.requiredValue * 12 : rule.requiredValue;
+  const thresholdInMonths = rule.thresholdValue 
+    ? (rule.unit === 'years' ? rule.thresholdValue * 12 : rule.thresholdValue)
+    : 6; // Default 6 months threshold
+  
+  // Check if condition applies (e.g., "If 3 junior deck officers onboard")
+  const conditionCount = rule.conditionCount || officerCount;
+  const conditionApplies = officerCount >= conditionCount;
+  
+  // If condition doesn't apply, rule passes (not applicable)
+  if (!conditionApplies) {
+    return {
+      category: 'Conditional Rule',
+      label: rule.label,
+      rankPair: rule.targetRanks.join(' + '),
+      requiredValue: rule.requiredValue,
+      actualValue: officerCount,
+      unit: 'conditional',
+      status: 'not_applicable'
+    };
+  }
+  
+  let passed = false;
+  let actualValue = 0;
+  
+  let displayUnit: 'years' | 'months' | 'officers' = rule.unit === 'years' ? 'years' : 'months';
+  
+  switch (rule.conditionType) {
+    case 'officer_count_aggregate':
+      // Sum all experience and check against required (in months internally)
+      actualValue = experienceValues.reduce((sum, val) => sum + val, 0);
+      passed = actualValue >= requiredValueInMonths;
+      // Convert actualValue back to original unit for display
+      if (rule.unit === 'years') {
+        actualValue = actualValue / 12;
+      }
+      break;
+      
+    case 'officer_below_threshold':
+      // If one officer is below threshold, another must meet requirement (all in months internally)
+      const belowThreshold = experienceValues.filter(v => v < thresholdInMonths);
+      const aboveThreshold = experienceValues.filter(v => v >= thresholdInMonths);
+      
+      if (belowThreshold.length > 0) {
+        // Someone is below threshold - check if others meet requirement
+        const othersAboveReq = aboveThreshold.filter(v => v >= requiredValueInMonths);
+        passed = othersAboveReq.length > 0;
+        actualValue = Math.max(...aboveThreshold, 0);
+      } else {
+        // No one below threshold - rule passes
+        passed = true;
+        actualValue = Math.min(...experienceValues);
+      }
+      // Convert actualValue back to original unit for display
+      if (rule.unit === 'years') {
+        actualValue = actualValue / 12;
+      }
+      break;
+      
+    case 'officer_count_minimum':
+      // X officers must have at least Y experience (in months internally)
+      const minOfficers = rule.minimumOfficersMeetingReq || 2;
+      const meetingReq = experienceValues.filter(v => v >= requiredValueInMonths);
+      passed = meetingReq.length >= minOfficers;
+      actualValue = meetingReq.length;
+      displayUnit = 'officers'; // This is a count, not time
+      break;
+  }
+  
+  return {
+    category: 'Conditional Rule',
+    label: rule.label,
+    rankPair: rule.targetRanks.join(' + '),
+    requiredValue: rule.requiredValue,
+    actualValue: Math.round(actualValue * 10) / 10,
+    unit: displayUnit,
+    status: passed ? 'pass' : 'fail'
+  };
+}
+
 export function evaluateCompliance(
   oilMajorName: string,
   rulesConfig: OilMajorRulesConfig,
@@ -338,6 +461,13 @@ export function evaluateCompliance(
     for (const rule of rulesConfig.englishProficiencyRules) {
       const profResults = evaluateEnglishProficiencyRuleAll(rule, crew);
       results.push(...profResults);
+    }
+  }
+  
+  // Evaluate Conditional rules
+  if (rulesConfig.conditionalRules) {
+    for (const rule of rulesConfig.conditionalRules) {
+      results.push(evaluateConditionalRule(rule, crew));
     }
   }
   

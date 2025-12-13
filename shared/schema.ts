@@ -1508,16 +1508,35 @@ export const englishProficiencyRuleSchema = z.object({
   requiredLevel: z.string(), // e.g., "Good"
 });
 
+// Conditional rule schema for complex "If X then Y" requirements
+export const conditionalRuleSchema = z.object({
+  label: z.string(), // Full text of the conditional rule
+  conditionType: z.enum([
+    "officer_count_aggregate", // "If 3 junior deck officers onboard, aggregated experience..."
+    "officer_below_threshold", // "If one of the 3 deck officers is below X months..."
+    "officer_count_minimum", // "If 3 junior officers onboard, 2 must have at least..."
+  ]),
+  targetRanks: z.array(z.string()), // e.g., ["Second Officer", "Third Officer"] for junior deck
+  conditionCount: z.number().optional(), // e.g., 3 for "If 3 junior deck officers"
+  experienceCategory: z.string(), // e.g., "yearsAsOOW"
+  requiredValue: z.number(), // Required experience value (in months or years)
+  unit: z.enum(["months", "years"]).default("months"),
+  thresholdValue: z.number().optional(), // For "below X months" conditions
+  minimumOfficersMeetingReq: z.number().optional(), // For "2 of the officers must have..."
+});
+
 export const oilMajorRulesConfigSchema = z.object({
   experienceRules: experienceCategoryRulesSchema,
   dateJoinedRules: z.array(dateJoinedRuleSchema).optional(),
   englishProficiencyRules: z.array(englishProficiencyRuleSchema).optional(),
+  conditionalRules: z.array(conditionalRuleSchema).optional(),
 });
 
 export type RankPairRule = z.infer<typeof rankPairRuleSchema>;
 export type ExperienceCategoryRules = z.infer<typeof experienceCategoryRulesSchema>;
 export type DateJoinedRule = z.infer<typeof dateJoinedRuleSchema>;
 export type EnglishProficiencyRule = z.infer<typeof englishProficiencyRuleSchema>;
+export type ConditionalRule = z.infer<typeof conditionalRuleSchema>;
 export type OilMajorRulesConfig = z.infer<typeof oilMajorRulesConfigSchema>;
 
 // Compliance check result types
@@ -1527,8 +1546,8 @@ export const complianceRuleResultSchema = z.object({
   rankPair: z.string(),
   requiredValue: z.number(),
   actualValue: z.number(),
-  unit: z.enum(["years", "days"]),
-  status: z.enum(["pass", "fail"]),
+  unit: z.enum(["years", "days", "months", "proficiency", "officers", "conditional", "count"]),
+  status: z.enum(["pass", "fail", "not_applicable"]),
 });
 
 export const oilMajorComplianceResultSchema = z.object({

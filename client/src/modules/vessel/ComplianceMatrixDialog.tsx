@@ -18,7 +18,7 @@ interface ComplianceRuleResult {
     requiredValue: number;
     actualValue: number;
     unit: string;
-    status: 'pass' | 'fail';
+    status: 'pass' | 'fail' | 'not_applicable';
 }
 
 interface ComplianceCheckResult {
@@ -39,13 +39,14 @@ interface OilMajorRule {
     rules: any;
 }
 
-const StatusDot = ({ status }: { status: 'green' | 'yellow' | 'red' | 'pass' | 'fail' }) => {
+const StatusDot = ({ status }: { status: 'green' | 'yellow' | 'red' | 'pass' | 'fail' | 'not_applicable' }) => {
     const colors = {
         green: 'bg-green-500',
         yellow: 'bg-yellow-500',
         red: 'bg-red-500',
         pass: 'bg-green-500',
-        fail: 'bg-red-500'
+        fail: 'bg-red-500',
+        not_applicable: 'bg-gray-400'
     };
     
     return (
@@ -84,6 +85,23 @@ function formatRequirementValue(req: ComplianceRuleResult): { required: string; 
         }
         return { required: requiredLevel, actual: actualLevel };
     }
+    
+    // For conditional rules with "not_applicable" status
+    if (req.status === 'not_applicable') {
+        return {
+            required: `${req.requiredValue} ${req.unit}`,
+            actual: 'N/A (condition not met)'
+        };
+    }
+    
+    // For conditional rules (unit may be 'months', 'conditional', or 'officers')
+    if (req.unit === 'conditional' || req.unit === 'officers') {
+        return {
+            required: `${req.requiredValue} ${req.unit}`,
+            actual: `${req.actualValue} ${req.unit}`
+        };
+    }
+    
     // For other categories, show numeric value with unit
     return { 
         required: `${req.requiredValue} ${req.unit}`, 

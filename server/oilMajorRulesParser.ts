@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import type { OilMajorRulesConfig, RankPairRule, DateJoinedRule, EnglishProficiencyRule } from '@shared/schema';
+import type { OilMajorRulesConfig, RankPairRule, DateJoinedRule, EnglishProficiencyRule, ConditionalRule } from '@shared/schema';
 
 interface ParsedCSVRow {
   oilMajor: string;
@@ -87,6 +87,117 @@ function createDateJoinedRule(label: string, rankPair: string, value: string): D
     label: label.trim(),
     rankPair: normalizeRankPair(rankPair),
     requiredDays: numValue
+  };
+}
+
+// Junior deck officers are Second Officer and Third Officer
+const JUNIOR_DECK_OFFICERS = ['Second Officer', 'Third Officer'];
+// Junior engineer officers are Third Engineer and Fourth Engineer  
+const JUNIOR_ENGINEER_OFFICERS = ['Third Engineer', 'Fourth Engineer'];
+// All deck officers (for reference)
+const ALL_DECK_OFFICERS = ['Master', 'Chief Officer', 'Second Officer', 'Third Officer'];
+// All engineer officers (for reference)
+const ALL_ENGINEER_OFFICERS = ['Chief Engineer', 'Second Engineer', 'Third Engineer', 'Fourth Engineer'];
+
+function isConditionalRule(label: string, rankPair: string): boolean {
+  const combinedText = `${label} ${rankPair}`.toLowerCase();
+  return combinedText.includes('if ') && (
+    combinedText.includes('onboard') ||
+    combinedText.includes('officers') ||
+    combinedText.includes('below') ||
+    combinedText.includes('less than')
+  );
+}
+
+function parseConditionalRule(label: string, rankPair: string, value: string): ConditionalRule | null {
+  const combinedText = `${label} ${rankPair}`.toLowerCase();
+  const fullLabel = `${label} ${rankPair}`.replace(/\s+/g, ' ').trim();
+  
+  if (!isConditionalRule(label, rankPair)) return null;
+  
+  // Parse the numeric value (could be months or years)
+  const numValue = parseValue(value);
+  
+  // Determine target ranks
+  let targetRanks: string[] = [];
+  if (combinedText.includes('junior deck') || combinedText.includes('2/o') || combinedText.includes('3/o')) {
+    targetRanks = [...JUNIOR_DECK_OFFICERS];
+  } else if (combinedText.includes('junior eng') || combinedText.includes('3/e') || combinedText.includes('4/e')) {
+    targetRanks = [...JUNIOR_ENGINEER_OFFICERS];
+  } else if (combinedText.includes('deck officer')) {
+    targetRanks = [...ALL_DECK_OFFICERS];
+  } else if (combinedText.includes('eng officer') || combinedText.includes('engineer officer')) {
+    targetRanks = [...ALL_ENGINEER_OFFICERS];
+  }
+  
+  // Determine experience category
+  let experienceCategory = 'yearsAsOOW'; // Default
+  if (combinedText.includes('as oow') || combinedText.includes('as eoow')) {
+    experienceCategory = 'yearsAsOOW';
+  } else if (combinedText.includes('in rank')) {
+    experienceCategory = 'yearsInRank';
+  } else if (combinedText.includes('with company') || combinedText.includes('with operator')) {
+    experienceCategory = 'yearsWithOperator';
+  } else if (combinedText.includes('tanker type') || combinedText.includes('this type')) {
+    experienceCategory = 'yearsOnTankerType';
+  } else if (combinedText.includes('all tanker') || combinedText.includes('all type')) {
+    experienceCategory = 'yearsOnAllTankers';
+  }
+  
+  // Determine unit (months vs years)
+  let unit: 'months' | 'years' = 'months';
+  if (combinedText.includes('year')) {
+    unit = 'years';
+  }
+  
+  // Extract officer count from patterns like "If 3 junior deck officers" or "If 2 junior"
+  let conditionCount: number | undefined;
+  const countMatch = combinedText.match(/if\s+(\d+)\s+(junior|deck|eng)/i);
+  if (countMatch) {
+    conditionCount = parseInt(countMatch[1], 10);
+  }
+  
+  // Determine condition type based on patterns
+  let conditionType: 'officer_count_aggregate' | 'officer_below_threshold' | 'officer_count_minimum' = 'officer_count_aggregate';
+  let thresholdValue: number | undefined;
+  let minimumOfficersMeetingReq: number | undefined;
+  
+  // Pattern: "If one of the X officers is below Y months"
+  if (combinedText.includes('one of') && (combinedText.includes('below') || combinedText.includes('less than'))) {
+    conditionType = 'officer_below_threshold';
+    const thresholdMatch = combinedText.match(/below\s+(\d+)\s*month/i) || combinedText.match(/less than\s+(\d+)\s*month/i);
+    if (thresholdMatch) {
+      thresholdValue = parseInt(thresholdMatch[1], 10);
+    }
+  }
+  // Pattern: "X of the officers must have at least Y months"
+  else if (combinedText.includes('must have at least') || combinedText.includes('should have')) {
+    conditionType = 'officer_count_minimum';
+    const minOfficersMatch = combinedText.match(/(\d+)\s+of\s+(the\s+)?officers/i);
+    if (minOfficersMatch) {
+      minimumOfficersMeetingReq = parseInt(minOfficersMatch[1], 10);
+    }
+  }
+  // Pattern: "aggregated experience" or "combined" 
+  else if (combinedText.includes('aggregat') || combinedText.includes('combin') || combinedText.includes('total')) {
+    conditionType = 'officer_count_aggregate';
+  }
+  
+  // Only create rule if we have enough information
+  if (targetRanks.length === 0 && !conditionCount) {
+    return null;
+  }
+  
+  return {
+    label: fullLabel,
+    conditionType,
+    targetRanks,
+    conditionCount,
+    experienceCategory,
+    requiredValue: numValue,
+    unit,
+    thresholdValue,
+    minimumOfficersMeetingReq
   };
 }
 
@@ -264,58 +375,86 @@ export function parseCSVContent(csvContent: string): Map<string, OilMajorRulesCo
           yearsAsOOW: []
         },
         dateJoinedRules: [],
-        englishProficiencyRules: []
+        englishProficiencyRules: [],
+        conditionalRules: []
       };
       oilMajorRules.set(oilMajor, config);
     }
     
+    // Helper function to check if a rule is conditional and parse accordingly
+    const tryParseConditional = (label: string, rankPair: string, value: string): boolean => {
+      if (isConditionalRule(label, rankPair)) {
+        const conditionalRule = parseConditionalRule(label, rankPair, value);
+        if (conditionalRule) {
+          config!.conditionalRules = config!.conditionalRules || [];
+          config!.conditionalRules.push(conditionalRule);
+          return true;
+        }
+      }
+      return false;
+    };
+    
     // Parse Years with Operator (columns 1, 2, 3)
-    const ywOperatorRule = createRankPairRule(columns[1] || '', columns[2] || '', columns[3] || '');
-    if (ywOperatorRule) {
-      config.experienceRules.yearsWithOperator = config.experienceRules.yearsWithOperator || [];
-      config.experienceRules.yearsWithOperator.push(ywOperatorRule);
+    if (!tryParseConditional(columns[1] || '', columns[2] || '', columns[3] || '')) {
+      const ywOperatorRule = createRankPairRule(columns[1] || '', columns[2] || '', columns[3] || '');
+      if (ywOperatorRule) {
+        config.experienceRules.yearsWithOperator = config.experienceRules.yearsWithOperator || [];
+        config.experienceRules.yearsWithOperator.push(ywOperatorRule);
+      }
     }
     
     // Parse Years in Rank (columns 4, 5, 6)
-    const yrRule = createRankPairRule(columns[4] || '', columns[5] || '', columns[6] || '');
-    if (yrRule) {
-      config.experienceRules.yearsInRank = config.experienceRules.yearsInRank || [];
-      config.experienceRules.yearsInRank.push(yrRule);
+    if (!tryParseConditional(columns[4] || '', columns[5] || '', columns[6] || '')) {
+      const yrRule = createRankPairRule(columns[4] || '', columns[5] || '', columns[6] || '');
+      if (yrRule) {
+        config.experienceRules.yearsInRank = config.experienceRules.yearsInRank || [];
+        config.experienceRules.yearsInRank.push(yrRule);
+      }
     }
     
     // Parse Years on This Type of Tanker (columns 7, 8, 9)
-    const ytRule = createRankPairRule(columns[7] || '', columns[8] || '', columns[9] || '');
-    if (ytRule) {
-      config.experienceRules.yearsOnTankerType = config.experienceRules.yearsOnTankerType || [];
-      config.experienceRules.yearsOnTankerType.push(ytRule);
+    if (!tryParseConditional(columns[7] || '', columns[8] || '', columns[9] || '')) {
+      const ytRule = createRankPairRule(columns[7] || '', columns[8] || '', columns[9] || '');
+      if (ytRule) {
+        config.experienceRules.yearsOnTankerType = config.experienceRules.yearsOnTankerType || [];
+        config.experienceRules.yearsOnTankerType.push(ytRule);
+      }
     }
     
     // Parse Years on All Types of Tankers (columns 10, 11, 12)
-    const yaRule = createRankPairRule(columns[10] || '', columns[11] || '', columns[12] || '');
-    if (yaRule) {
-      config.experienceRules.yearsOnAllTankers = config.experienceRules.yearsOnAllTankers || [];
-      config.experienceRules.yearsOnAllTankers.push(yaRule);
+    if (!tryParseConditional(columns[10] || '', columns[11] || '', columns[12] || '')) {
+      const yaRule = createRankPairRule(columns[10] || '', columns[11] || '', columns[12] || '');
+      if (yaRule) {
+        config.experienceRules.yearsOnAllTankers = config.experienceRules.yearsOnAllTankers || [];
+        config.experienceRules.yearsOnAllTankers.push(yaRule);
+      }
     }
     
     // Parse Years as Watch Officer/Engineer (columns 13, 14, 15)
-    const oowRule = createRankPairRule(columns[13] || '', columns[14] || '', columns[15] || '');
-    if (oowRule) {
-      config.experienceRules.yearsAsOOW = config.experienceRules.yearsAsOOW || [];
-      config.experienceRules.yearsAsOOW.push(oowRule);
+    if (!tryParseConditional(columns[13] || '', columns[14] || '', columns[15] || '')) {
+      const oowRule = createRankPairRule(columns[13] || '', columns[14] || '', columns[15] || '');
+      if (oowRule) {
+        config.experienceRules.yearsAsOOW = config.experienceRules.yearsAsOOW || [];
+        config.experienceRules.yearsAsOOW.push(oowRule);
+      }
     }
     
     // Parse Date Joined (columns 16, 17, 18)
-    const djRule = createDateJoinedRule(columns[16] || '', columns[17] || '', columns[18] || '');
-    if (djRule) {
-      config.dateJoinedRules = config.dateJoinedRules || [];
-      config.dateJoinedRules.push(djRule);
+    if (!tryParseConditional(columns[16] || '', columns[17] || '', columns[18] || '')) {
+      const djRule = createDateJoinedRule(columns[16] || '', columns[17] || '', columns[18] || '');
+      if (djRule) {
+        config.dateJoinedRules = config.dateJoinedRules || [];
+        config.dateJoinedRules.push(djRule);
+      }
     }
     
     // Parse English Proficiency (columns 19, 20, 21)
-    const epRule = createEnglishProficiencyRule(columns[19] || '', columns[20] || '', columns[21] || '');
-    if (epRule) {
-      config.englishProficiencyRules = config.englishProficiencyRules || [];
-      config.englishProficiencyRules.push(epRule);
+    if (!tryParseConditional(columns[19] || '', columns[20] || '', columns[21] || '')) {
+      const epRule = createEnglishProficiencyRule(columns[19] || '', columns[20] || '', columns[21] || '');
+      if (epRule) {
+        config.englishProficiencyRules = config.englishProficiencyRules || [];
+        config.englishProficiencyRules.push(epRule);
+      }
     }
   }
   
