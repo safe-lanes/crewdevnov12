@@ -42,6 +42,12 @@ const RANK_GROUPS: Record<string, string[]> = {
   'All Officers': ['Master', 'Chief Officer', 'Second Officer', 'Third Officer', 'Chief Engineer', 'Second Engineer', 'Third Engineer', 'Fourth Engineer', 'Electrical Officer'],
   'All Senior Officers': ['Master', 'Chief Officer', 'Chief Engineer', 'Second Engineer'],
   'All Junior Officers': ['Second Officer', 'Third Officer', 'Third Engineer', 'Fourth Engineer'],
+  'Junior Deck Officer': ['Second Officer', 'Third Officer'],
+  'Junior Deck Officers': ['Second Officer', 'Third Officer'],
+  'Junior Engineer Officer': ['Third Engineer', 'Fourth Engineer'],
+  'Junior Eng Officer': ['Third Engineer', 'Fourth Engineer'],
+  'Junior Eng Officers': ['Third Engineer', 'Fourth Engineer'],
+  'Junior Engineer Officers': ['Third Engineer', 'Fourth Engineer'],
 };
 
 function expandRankGroups(rankStr: string): string[] {
