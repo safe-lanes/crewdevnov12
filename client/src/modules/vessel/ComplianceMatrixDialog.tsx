@@ -316,16 +316,13 @@ export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
                                                 <Table>
                                                     <TableHeader>
                                                         <TableRow className="bg-gray-50">
-                                                            <TableHead className="text-xs font-medium text-gray-700 w-[35%]">
-                                                                Rank Pair
-                                                            </TableHead>
-                                                            <TableHead className="text-xs font-medium text-gray-700 w-[25%]">
+                                                            <TableHead className="text-xs font-medium text-gray-700 w-[50%]">
                                                                 Description
                                                             </TableHead>
-                                                            <TableHead className="text-xs font-medium text-gray-700 text-center w-[15%]">
+                                                            <TableHead className="text-xs font-medium text-gray-700 text-center w-[20%]">
                                                                 Required
                                                             </TableHead>
-                                                            <TableHead className="text-xs font-medium text-gray-700 text-center w-[15%]">
+                                                            <TableHead className="text-xs font-medium text-gray-700 text-center w-[20%]">
                                                                 Actual
                                                             </TableHead>
                                                             <TableHead className="text-xs font-medium text-gray-700 text-center w-[10%]">
@@ -355,9 +352,6 @@ export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
                                                                         className="border-b border-gray-100"
                                                                         data-testid={`row-requirement-${categoryIndex}-${groupIndex}`}
                                                                     >
-                                                                        <TableCell className="text-xs text-gray-700 py-3">
-                                                                            {group.groupName}
-                                                                        </TableCell>
                                                                         <TableCell className="text-xs text-gray-600">
                                                                             <HoverCard openDelay={200} closeDelay={100}>
                                                                                 <HoverCardTrigger asChild>
@@ -418,18 +412,25 @@ export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
                                                                 );
                                                             })
                                                         ) : (
-                                                            // Render standard requirements rows
+                                                            // Render standard requirements rows with hover on description showing rank pair
                                                             requirements.map((req, reqIndex) => (
                                                                 <TableRow 
                                                                     key={reqIndex} 
                                                                     className="border-b border-gray-100"
                                                                     data-testid={`row-requirement-${categoryIndex}-${reqIndex}`}
                                                                 >
-                                                                    <TableCell className="text-xs text-gray-700 py-3">
-                                                                        {req.rankPair}
-                                                                    </TableCell>
                                                                     <TableCell className="text-xs text-gray-600">
-                                                                        {req.label}
+                                                                        <HoverCard openDelay={200} closeDelay={100}>
+                                                                            <HoverCardTrigger asChild>
+                                                                                <span className="cursor-pointer underline decoration-dotted underline-offset-2 hover:text-blue-600">
+                                                                                    {req.label}
+                                                                                </span>
+                                                                            </HoverCardTrigger>
+                                                                            <HoverCardContent className="w-64 p-3" align="start">
+                                                                                <p className="text-xs font-medium text-gray-700 mb-1">Rank Pair</p>
+                                                                                <p className="text-xs text-gray-600">{req.rankPair}</p>
+                                                                            </HoverCardContent>
+                                                                        </HoverCard>
                                                                     </TableCell>
                                                                     <TableCell className="text-xs text-gray-700 text-center">
                                                                         {formatRequirementValue(req).required}
