@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Loader2, AlertCircle } from 'lucide-react';
 
 interface ComplianceMatrixDialogProps {
@@ -63,6 +64,63 @@ function groupResultsByCategory(results: ComplianceRuleResult[]): Record<string,
         grouped[result.category].push(result);
     }
     return grouped;
+}
+
+// Interface for grouped English Proficiency results
+interface GroupedProficiencyResult {
+    label: string;
+    groupName: string;  // e.g., "All Deck Officers"
+    requiredValue: number;
+    worstActualValue: number;
+    overallStatus: 'pass' | 'fail' | 'not_applicable';
+    individualResults: ComplianceRuleResult[];
+}
+
+// Group English Proficiency results by their description (label) to avoid repetition
+function groupEnglishProficiencyResults(results: ComplianceRuleResult[]): GroupedProficiencyResult[] {
+    const groupMap = new Map<string, GroupedProficiencyResult>();
+    
+    for (const result of results) {
+        const key = result.label;
+        
+        if (!groupMap.has(key)) {
+            // Determine group name from the label
+            let groupName = 'Officers';
+            if (result.label.toLowerCase().includes('all deck officer')) {
+                groupName = 'All Deck Officers';
+            } else if (result.label.toLowerCase().includes('all engineering officer') || 
+                       result.label.toLowerCase().includes('all engineer officer')) {
+                groupName = 'All Engineering Officers';
+            } else if (result.label.toLowerCase().includes('all officer')) {
+                groupName = 'All Officers';
+            }
+            
+            groupMap.set(key, {
+                label: result.label,
+                groupName: groupName,
+                requiredValue: result.requiredValue,
+                worstActualValue: result.actualValue,
+                overallStatus: result.status,
+                individualResults: [result]
+            });
+        } else {
+            const existing = groupMap.get(key)!;
+            existing.individualResults.push(result);
+            
+            // Find the worst actual value (lowest proficiency level)
+            // -2 = No crew, -1 = Unknown, 0 = Poor, 1 = Fair, 2 = Good, 3 = Excellent, 4 = Native
+            if (result.actualValue < existing.worstActualValue) {
+                existing.worstActualValue = result.actualValue;
+            }
+            
+            // If any result fails, overall status is fail
+            if (result.status === 'fail') {
+                existing.overallStatus = 'fail';
+            }
+        }
+    }
+    
+    return Array.from(groupMap.values());
 }
 
 // Helper to convert proficiency level index to text
@@ -242,7 +300,14 @@ export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
                                     </div>
                                 ) : (
                                     <div className="space-y-6">
-                                        {Object.entries(groupedResults).map(([category, requirements], categoryIndex) => (
+                                        {Object.entries(groupedResults).map(([category, requirements], categoryIndex) => {
+                                            // For English Proficiency, group results by description
+                                            const isEnglishProficiency = category === 'English Proficiency';
+                                            const groupedProficiency = isEnglishProficiency 
+                                                ? groupEnglishProficiencyResults(requirements)
+                                                : null;
+                                            
+                                            return (
                                             <div key={categoryIndex}>
                                                 <h4 className="text-sm font-semibold text-gray-800 mb-3">
                                                     {category}
@@ -269,35 +334,122 @@ export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
                                                         </TableRow>
                                                     </TableHeader>
                                                     <TableBody>
-                                                        {requirements.map((req, reqIndex) => (
-                                                            <TableRow 
-                                                                key={reqIndex} 
-                                                                className="border-b border-gray-100"
-                                                                data-testid={`row-requirement-${categoryIndex}-${reqIndex}`}
-                                                            >
-                                                                <TableCell className="text-xs text-gray-700 py-3">
-                                                                    {req.rankPair}
-                                                                </TableCell>
-                                                                <TableCell className="text-xs text-gray-600">
-                                                                    {req.label}
-                                                                </TableCell>
-                                                                <TableCell className="text-xs text-gray-700 text-center">
-                                                                    {formatRequirementValue(req).required}
-                                                                </TableCell>
-                                                                <TableCell className="text-xs text-gray-700 text-center">
-                                                                    {formatRequirementValue(req).actual}
-                                                                </TableCell>
-                                                                <TableCell className="text-center">
-                                                                    <div className="flex justify-center">
-                                                                        <StatusDot status={req.status} />
-                                                                    </div>
-                                                                </TableCell>
-                                                            </TableRow>
-                                                        ))}
+                                                        {isEnglishProficiency && groupedProficiency ? (
+                                                            // Render grouped English Proficiency rows with hover
+                                                            groupedProficiency.map((group, groupIndex) => {
+                                                                const requiredLevel = group.requiredValue >= 0 
+                                                                    ? (PROFICIENCY_LEVELS[group.requiredValue] || 'Unknown')
+                                                                    : 'Unknown';
+                                                                let actualLevel: string;
+                                                                if (group.worstActualValue === -2) {
+                                                                    actualLevel = 'N/A';
+                                                                } else if (group.worstActualValue >= 0) {
+                                                                    actualLevel = PROFICIENCY_LEVELS[group.worstActualValue] || 'Unknown';
+                                                                } else {
+                                                                    actualLevel = 'Unknown';
+                                                                }
+                                                                
+                                                                return (
+                                                                    <TableRow 
+                                                                        key={groupIndex} 
+                                                                        className="border-b border-gray-100"
+                                                                        data-testid={`row-requirement-${categoryIndex}-${groupIndex}`}
+                                                                    >
+                                                                        <TableCell className="text-xs text-gray-700 py-3">
+                                                                            <HoverCard openDelay={200} closeDelay={100}>
+                                                                                <HoverCardTrigger asChild>
+                                                                                    <span className="cursor-pointer underline decoration-dotted underline-offset-2 hover:text-blue-600">
+                                                                                        {group.groupName}
+                                                                                    </span>
+                                                                                </HoverCardTrigger>
+                                                                                <HoverCardContent className="w-80 p-0" align="start">
+                                                                                    <div className="p-3 bg-gray-50 border-b">
+                                                                                        <p className="text-xs font-medium text-gray-700">Individual Officer Breakdown</p>
+                                                                                    </div>
+                                                                                    <Table>
+                                                                                        <TableHeader>
+                                                                                            <TableRow className="bg-gray-50/50">
+                                                                                                <TableHead className="text-xs font-medium text-gray-600 py-2">Rank Pair</TableHead>
+                                                                                                <TableHead className="text-xs font-medium text-gray-600 py-2 text-center">Required</TableHead>
+                                                                                                <TableHead className="text-xs font-medium text-gray-600 py-2 text-center">Actual</TableHead>
+                                                                                            </TableRow>
+                                                                                        </TableHeader>
+                                                                                        <TableBody>
+                                                                                            {group.individualResults.map((indiv, indivIndex) => {
+                                                                                                const indivRequired = indiv.requiredValue >= 0 
+                                                                                                    ? (PROFICIENCY_LEVELS[indiv.requiredValue] || 'Unknown')
+                                                                                                    : 'Unknown';
+                                                                                                let indivActual: string;
+                                                                                                if (indiv.actualValue === -2) {
+                                                                                                    indivActual = 'N/A';
+                                                                                                } else if (indiv.actualValue >= 0) {
+                                                                                                    indivActual = PROFICIENCY_LEVELS[indiv.actualValue] || 'Unknown';
+                                                                                                } else {
+                                                                                                    indivActual = 'Unknown';
+                                                                                                }
+                                                                                                return (
+                                                                                                    <TableRow key={indivIndex} className="border-b border-gray-100">
+                                                                                                        <TableCell className="text-xs text-gray-700 py-2">{indiv.rankPair}</TableCell>
+                                                                                                        <TableCell className="text-xs text-gray-700 py-2 text-center">{indivRequired}</TableCell>
+                                                                                                        <TableCell className="text-xs text-gray-700 py-2 text-center">{indivActual}</TableCell>
+                                                                                                    </TableRow>
+                                                                                                );
+                                                                                            })}
+                                                                                        </TableBody>
+                                                                                    </Table>
+                                                                                </HoverCardContent>
+                                                                            </HoverCard>
+                                                                        </TableCell>
+                                                                        <TableCell className="text-xs text-gray-600">
+                                                                            {group.label}
+                                                                        </TableCell>
+                                                                        <TableCell className="text-xs text-gray-700 text-center">
+                                                                            {requiredLevel}
+                                                                        </TableCell>
+                                                                        <TableCell className="text-xs text-gray-700 text-center">
+                                                                            {actualLevel}
+                                                                        </TableCell>
+                                                                        <TableCell className="text-center">
+                                                                            <div className="flex justify-center">
+                                                                                <StatusDot status={group.overallStatus} />
+                                                                            </div>
+                                                                        </TableCell>
+                                                                    </TableRow>
+                                                                );
+                                                            })
+                                                        ) : (
+                                                            // Render standard requirements rows
+                                                            requirements.map((req, reqIndex) => (
+                                                                <TableRow 
+                                                                    key={reqIndex} 
+                                                                    className="border-b border-gray-100"
+                                                                    data-testid={`row-requirement-${categoryIndex}-${reqIndex}`}
+                                                                >
+                                                                    <TableCell className="text-xs text-gray-700 py-3">
+                                                                        {req.rankPair}
+                                                                    </TableCell>
+                                                                    <TableCell className="text-xs text-gray-600">
+                                                                        {req.label}
+                                                                    </TableCell>
+                                                                    <TableCell className="text-xs text-gray-700 text-center">
+                                                                        {formatRequirementValue(req).required}
+                                                                    </TableCell>
+                                                                    <TableCell className="text-xs text-gray-700 text-center">
+                                                                        {formatRequirementValue(req).actual}
+                                                                    </TableCell>
+                                                                    <TableCell className="text-center">
+                                                                        <div className="flex justify-center">
+                                                                            <StatusDot status={req.status} />
+                                                                        </div>
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            ))
+                                                        )}
                                                     </TableBody>
                                                 </Table>
                                             </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>
