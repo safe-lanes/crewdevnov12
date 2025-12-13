@@ -36,6 +36,24 @@ const RANK_ALIASES: Record<string, string[]> = {
   'Electrical Officer': ['Electrical Officer', 'E/O', 'ETO', 'Electro-Technical Officer'],
 };
 
+const RANK_GROUPS: Record<string, string[]> = {
+  'All Deck Officers': ['Master', 'Chief Officer', 'Second Officer', 'Third Officer'],
+  'All Engineer Officers': ['Chief Engineer', 'Second Engineer', 'Third Engineer', 'Fourth Engineer'],
+  'All Officers': ['Master', 'Chief Officer', 'Second Officer', 'Third Officer', 'Chief Engineer', 'Second Engineer', 'Third Engineer', 'Fourth Engineer', 'Electrical Officer'],
+  'All Senior Officers': ['Master', 'Chief Officer', 'Chief Engineer', 'Second Engineer'],
+  'All Junior Officers': ['Second Officer', 'Third Officer', 'Third Engineer', 'Fourth Engineer'],
+};
+
+function expandRankGroups(rankStr: string): string[] {
+  const trimmed = rankStr.trim();
+  for (const [groupName, ranks] of Object.entries(RANK_GROUPS)) {
+    if (trimmed.toLowerCase() === groupName.toLowerCase()) {
+      return ranks;
+    }
+  }
+  return [trimmed];
+}
+
 function normalizeRankName(rank: string): string {
   if (!rank) return '';
   const normalized = rank.trim();
@@ -52,10 +70,20 @@ function normalizeRankName(rank: string): string {
 function parseRankPair(rankPairStr: string): string[] {
   if (!rankPairStr) return [];
   
-  return rankPairStr
-    .split('+')
-    .map(r => normalizeRankName(r.trim()))
-    .filter(r => r.length > 0);
+  const parts = rankPairStr.split('+').map(r => r.trim()).filter(r => r.length > 0);
+  const expandedRanks: string[] = [];
+  
+  for (const part of parts) {
+    const expanded = expandRankGroups(part);
+    for (const rank of expanded) {
+      const normalized = normalizeRankName(rank);
+      if (normalized && !expandedRanks.includes(normalized)) {
+        expandedRanks.push(normalized);
+      }
+    }
+  }
+  
+  return expandedRanks;
 }
 
 function findCrewByRank(crew: CrewMemberExperience[], targetRank: string): CrewMemberExperience[] {
@@ -196,8 +224,21 @@ function evaluateEnglishProficiencyRuleAll(
 ): ComplianceRuleResult[] {
   const PROFICIENCY_ORDER = ['Poor', 'Fair', 'Good', 'Excellent', 'Native'];
   
-  // Parse ranks from the rule.rankPair (can be "Master", "Chief Officer", or "Master, Chief Officer")
-  const targetRanks = rule.rankPair.split(/[,&]/).map(r => r.trim()).filter(r => r.length > 0);
+  // Parse ranks from the rule.rankPair - split on comma, ampersand, or plus sign
+  // and expand any rank group terms (e.g., "All Deck Officers" -> individual ranks)
+  const rawParts = rule.rankPair.split(/[,&+]/).map(r => r.trim()).filter(r => r.length > 0);
+  
+  // Expand rank groups and normalize all ranks
+  const targetRanks: string[] = [];
+  for (const part of rawParts) {
+    const expanded = expandRankGroups(part);
+    for (const rank of expanded) {
+      const normalized = normalizeRankName(rank);
+      if (normalized && !targetRanks.includes(normalized)) {
+        targetRanks.push(normalized);
+      }
+    }
+  }
   
   const results: ComplianceRuleResult[] = [];
   
