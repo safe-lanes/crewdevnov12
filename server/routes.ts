@@ -7354,6 +7354,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 externalSeaService = [];
               }
               
+              // Get rank - compliance engine's normalizeRankName handles role suffixes like "_1", "_2"
               const currentRank = position.rank || crew.presentRank || '';
               
               // Calculate experience from sea service - uses same function as Officer Matrix

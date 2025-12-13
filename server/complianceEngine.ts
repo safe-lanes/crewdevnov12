@@ -39,6 +39,7 @@ const RANK_ALIASES: Record<string, string[]> = {
 const RANK_GROUPS: Record<string, string[]> = {
   'All Deck Officers': ['Master', 'Chief Officer', 'Second Officer', 'Third Officer'],
   'All Engineer Officers': ['Chief Engineer', 'Second Engineer', 'Third Engineer', 'Fourth Engineer'],
+  'All Engineering Officers': ['Chief Engineer', 'Second Engineer', 'Third Engineer', 'Fourth Engineer'],
   'All Officers': ['Master', 'Chief Officer', 'Second Officer', 'Third Officer', 'Chief Engineer', 'Second Engineer', 'Third Engineer', 'Fourth Engineer', 'Electrical Officer'],
   'All Senior Officers': ['Master', 'Chief Officer', 'Chief Engineer', 'Second Engineer'],
   'All Junior Officers': ['Second Officer', 'Third Officer', 'Third Engineer', 'Fourth Engineer'],
@@ -62,7 +63,11 @@ function expandRankGroups(rankStr: string): string[] {
 
 function normalizeRankName(rank: string): string {
   if (!rank) return '';
-  const normalized = rank.trim();
+  let normalized = rank.trim();
+  
+  // Strip role suffixes like "_1", "_2" that indicate multiple crew in same rank
+  // e.g., "3rd Officer_1" -> "3rd Officer", "3rd Officer_2" -> "3rd Officer"
+  normalized = normalized.replace(/_\d+$/, '');
   
   for (const [standardName, aliases] of Object.entries(RANK_ALIASES)) {
     if (aliases.some(alias => alias.toLowerCase() === normalized.toLowerCase())) {
