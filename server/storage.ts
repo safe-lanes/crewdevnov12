@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type CompanyProcessing, type InsertCompanyProcessing, type PromotionForm, type InsertPromotionForm, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type RotationArchiveEntry, type InsertRotationArchive, type DrugAlcoholTestRecord, type InsertDrugAlcoholTestRecord, type RestHoursVesselRecord, type InsertRestHoursVesselRecord, type RestHoursCrewRecord, type InsertRestHoursCrewRecord, type RestHoursDailyRecord, type InsertRestHoursDailyRecord, type FixedTask, type InsertFixedTask, type VariableTask, type InsertVariableTask, type VesselViolationComment, type InsertVesselViolationComment, type OfficeViolationComment, type InsertOfficeViolationComment, type NCReport, type InsertNCReport, type VesselDateLineAdjustment, type InsertVesselDateLineAdjustment, type CrewDashboardSummary, type OilMajorRules, type InsertOilMajorRules, type TrainingMaster, type InsertTrainingMaster, type UpdateTrainingMaster } from "@shared/schema";
+import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type CompanyProcessing, type InsertCompanyProcessing, type PromotionForm, type InsertPromotionForm, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type RotationArchiveEntry, type InsertRotationArchive, type DrugAlcoholTestRecord, type InsertDrugAlcoholTestRecord, type RestHoursVesselRecord, type InsertRestHoursVesselRecord, type RestHoursCrewRecord, type InsertRestHoursCrewRecord, type RestHoursDailyRecord, type InsertRestHoursDailyRecord, type FixedTask, type InsertFixedTask, type VariableTask, type InsertVariableTask, type VesselViolationComment, type InsertVesselViolationComment, type OfficeViolationComment, type InsertOfficeViolationComment, type NCReport, type InsertNCReport, type VesselDateLineAdjustment, type InsertVesselDateLineAdjustment, type CrewDashboardSummary, type OilMajorRules, type InsertOilMajorRules, type TrainingMaster, type InsertTrainingMaster, type UpdateTrainingMaster, type CompanyTraining, type InsertCompanyTraining, type UpdateCompanyTraining } from "@shared/schema";
 import { 
   getReportingDate, 
   safeParseDate, 
@@ -983,6 +983,13 @@ export interface IStorage {
   updateTrainingMaster(id: number, training: Partial<UpdateTrainingMaster>): Promise<TrainingMaster | undefined>;
   deleteTrainingMaster(id: number): Promise<boolean>;
   reorderTrainingMasters(orders: Array<{ id: number; sortOrder: number }>): Promise<boolean>;
+  // Company Training
+  getCompanyTrainings(): Promise<CompanyTraining[]>;
+  getCompanyTraining(id: number): Promise<CompanyTraining | undefined>;
+  createCompanyTraining(training: InsertCompanyTraining): Promise<CompanyTraining>;
+  updateCompanyTraining(id: number, training: Partial<UpdateCompanyTraining>): Promise<CompanyTraining | undefined>;
+  deleteCompanyTraining(id: number): Promise<boolean>;
+  importCompanyTrainingsFromMaster(): Promise<CompanyTraining[]>;
 }
 
 /* MemStorage commented out - contains test seed data with type mismatches and is never used in production.
@@ -7425,6 +7432,31 @@ export class PersistentFileStorage implements IStorage {
 
   async reorderTrainingMasters(orders: Array<{ id: number; sortOrder: number }>): Promise<boolean> {
     throw new Error("PersistentFileStorage doesn't support training master. Use DatabaseStorage instead.");
+  }
+
+  // Company Training Methods (stub - use DatabaseStorage for full functionality)
+  async getCompanyTrainings(): Promise<CompanyTraining[]> {
+    throw new Error("PersistentFileStorage doesn't support company training. Use DatabaseStorage instead.");
+  }
+
+  async getCompanyTraining(id: number): Promise<CompanyTraining | undefined> {
+    throw new Error("PersistentFileStorage doesn't support company training. Use DatabaseStorage instead.");
+  }
+
+  async createCompanyTraining(training: InsertCompanyTraining): Promise<CompanyTraining> {
+    throw new Error("PersistentFileStorage doesn't support company training. Use DatabaseStorage instead.");
+  }
+
+  async updateCompanyTraining(id: number, training: Partial<UpdateCompanyTraining>): Promise<CompanyTraining | undefined> {
+    throw new Error("PersistentFileStorage doesn't support company training. Use DatabaseStorage instead.");
+  }
+
+  async deleteCompanyTraining(id: number): Promise<boolean> {
+    throw new Error("PersistentFileStorage doesn't support company training. Use DatabaseStorage instead.");
+  }
+
+  async importCompanyTrainingsFromMaster(): Promise<CompanyTraining[]> {
+    throw new Error("PersistentFileStorage doesn't support company training. Use DatabaseStorage instead.");
   }
 }
 

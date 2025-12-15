@@ -93,9 +93,13 @@ import {
   type OilMajorRules,
   type InsertOilMajorRules,
   trainingMaster,
+  companyTrainings,
   type TrainingMaster,
   type InsertTrainingMaster,
-  type UpdateTrainingMaster
+  type UpdateTrainingMaster,
+  type CompanyTraining,
+  type InsertCompanyTraining,
+  type UpdateCompanyTraining
 } from "@shared/schema";
 import { eq, desc, asc, sql, and, inArray, or, like, ilike, isNull } from "drizzle-orm";
 import { type IStorage } from "./storage";
@@ -4283,5 +4287,70 @@ export class DatabaseStorage implements IStorage {
       console.error("Error reordering training masters:", error);
       return false;
     }
+  }
+
+  // Company Training Methods
+  async getCompanyTrainings(): Promise<CompanyTraining[]> {
+    return await this.db.select().from(companyTrainings).orderBy(asc(companyTrainings.sortOrder));
+  }
+
+  async getCompanyTraining(id: number): Promise<CompanyTraining | undefined> {
+    const result = await this.db.select().from(companyTrainings).where(eq(companyTrainings.id, id));
+    return result[0];
+  }
+
+  async createCompanyTraining(training: InsertCompanyTraining): Promise<CompanyTraining> {
+    const result = await this.db.insert(companyTrainings).values({
+      trainingMasterId: training.trainingMasterId,
+      companyId: training.companyId,
+      trainingLabel: training.trainingLabel,
+      abr: training.abr || null,
+      requirement: training.requirement || null,
+      sortOrder: training.sortOrder ?? 0,
+    }).returning();
+    return result[0];
+  }
+
+  async updateCompanyTraining(id: number, training: Partial<UpdateCompanyTraining>): Promise<CompanyTraining | undefined> {
+    const result = await this.db.update(companyTrainings)
+      .set(training)
+      .where(eq(companyTrainings.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteCompanyTraining(id: number): Promise<boolean> {
+    const result = await this.db.delete(companyTrainings).where(eq(companyTrainings.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async importCompanyTrainingsFromMaster(): Promise<CompanyTraining[]> {
+    // Get all trainings from master that are applicable to company
+    const masterTrainings = await this.db.select().from(trainingMaster)
+      .where(eq(trainingMaster.applicableToCompany, true));
+    
+    // Get existing company trainings to avoid duplicates
+    const existingCompanyTrainings = await this.db.select().from(companyTrainings);
+    const existingMasterIds = new Set(existingCompanyTrainings.map(ct => ct.trainingMasterId));
+    
+    // Filter out trainings that already exist
+    const newTrainings = masterTrainings.filter(mt => !existingMasterIds.has(mt.id));
+    
+    if (newTrainings.length === 0) {
+      return existingCompanyTrainings;
+    }
+    
+    // Create company trainings from master data
+    const insertData = newTrainings.map((mt, index) => ({
+      trainingMasterId: mt.id,
+      companyId: mt.trainingId, // Copy trainingId as initial companyId
+      trainingLabel: mt.trainingLabel || mt.trainingName, // Use label or fall back to name
+      abr: null as string | null, // Blank by default
+      requirement: mt.requirementReference || null, // Copy requirement reference
+      sortOrder: existingCompanyTrainings.length + index,
+    }));
+    
+    const result = await this.db.insert(companyTrainings).values(insertData).returning();
+    return [...existingCompanyTrainings, ...result];
   }
 }

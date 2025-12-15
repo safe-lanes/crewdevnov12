@@ -50,6 +50,18 @@ export const trainingMaster = pgTable("training_master", {
   isDefault: boolean("is_default").default(false), // True for CSV-loaded trainings (cannot delete/edit name)
 });
 
+// Company Training - stores company-specific overrides for trainings
+// Created via one-time import from Training Master, then editable independently
+export const companyTrainings = pgTable("company_trainings", {
+  id: serial("id").primaryKey(),
+  trainingMasterId: integer("training_master_id").notNull().references(() => trainingMaster.id), // Link to source training
+  companyId: text("company_id").notNull(), // Initially copied from trainingId, but editable
+  trainingLabel: text("training_label").notNull(), // Initially copied from trainingLabel/trainingName
+  abr: text("abr"), // Abbreviation - blank by default, company adds their own
+  requirement: text("requirement"), // Initially copied from requirementReference, editable
+  sortOrder: integer("sort_order").default(0), // For ordering in Company tab
+});
+
 export const crewMembers = pgTable("crew_members", {
   id: text("id").primaryKey(),
   
@@ -816,6 +828,23 @@ export const updateTrainingMasterSchema = createInsertSchema(trainingMaster).pic
   isDefault: true,
 }).partial();
 
+export const insertCompanyTrainingSchema = createInsertSchema(companyTrainings).pick({
+  trainingMasterId: true,
+  companyId: true,
+  trainingLabel: true,
+  abr: true,
+  requirement: true,
+  sortOrder: true,
+});
+
+export const updateCompanyTrainingSchema = createInsertSchema(companyTrainings).pick({
+  companyId: true,
+  trainingLabel: true,
+  abr: true,
+  requirement: true,
+  sortOrder: true,
+}).partial();
+
 export const insertCrewMemberSchema = createInsertSchema(crewMembers).pick({
   // Photo
   uploadedPhoto: true,
@@ -1297,9 +1326,12 @@ export type RankGroup = typeof rankGroups.$inferSelect;
 export type InsertAvailableRank = z.infer<typeof insertAvailableRankSchema>;
 export type UpdateAvailableRank = z.infer<typeof updateAvailableRankSchema>;
 export type AvailableRank = typeof availableRanks.$inferSelect;
+export type TrainingMaster = typeof trainingMaster.$inferSelect;
 export type InsertTrainingMaster = z.infer<typeof insertTrainingMasterSchema>;
 export type UpdateTrainingMaster = z.infer<typeof updateTrainingMasterSchema>;
-export type TrainingMaster = typeof trainingMaster.$inferSelect;
+export type CompanyTraining = typeof companyTrainings.$inferSelect;
+export type InsertCompanyTraining = z.infer<typeof insertCompanyTrainingSchema>;
+export type UpdateCompanyTraining = z.infer<typeof updateCompanyTrainingSchema>;
 export type InsertCrewMember = z.infer<typeof insertCrewMemberSchema>;
 export type CrewMember = typeof crewMembers.$inferSelect;
 export type InsertAppraisalResult = z.infer<typeof insertAppraisalResultSchema>;

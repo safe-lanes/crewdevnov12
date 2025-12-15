@@ -7589,6 +7589,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Company Training endpoints
+  app.get("/api/company-trainings", async (req, res) => {
+    try {
+      const trainings = await storage.getCompanyTrainings();
+      res.json(trainings);
+    } catch (error) {
+      console.error("Error fetching company trainings:", error);
+      res.status(500).json({ error: "Failed to fetch company trainings" });
+    }
+  });
+
+  app.get("/api/company-trainings/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid training ID" });
+      }
+      const training = await storage.getCompanyTraining(id);
+      if (!training) {
+        return res.status(404).json({ error: "Company training not found" });
+      }
+      res.json(training);
+    } catch (error) {
+      console.error("Error fetching company training:", error);
+      res.status(500).json({ error: "Failed to fetch company training" });
+    }
+  });
+
+  app.patch("/api/company-trainings/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid training ID" });
+      }
+      const updated = await storage.updateCompanyTraining(id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Company training not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating company training:", error);
+      res.status(500).json({ error: "Failed to update company training" });
+    }
+  });
+
+  app.delete("/api/company-trainings/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid training ID" });
+      }
+      const success = await storage.deleteCompanyTraining(id);
+      if (success) {
+        res.status(204).send();
+      } else {
+        res.status(500).json({ error: "Failed to delete company training" });
+      }
+    } catch (error) {
+      console.error("Error deleting company training:", error);
+      res.status(500).json({ error: "Failed to delete company training" });
+    }
+  });
+
+  // Import company trainings from Training Master (one-time)
+  app.post("/api/company-trainings/import", async (req, res) => {
+    try {
+      const trainings = await storage.importCompanyTrainingsFromMaster();
+      res.json(trainings);
+    } catch (error) {
+      console.error("Error importing company trainings:", error);
+      res.status(500).json({ error: "Failed to import company trainings" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
