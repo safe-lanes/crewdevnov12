@@ -679,10 +679,10 @@ export const ElementCrewAppraisals = (): JSX.Element => {
               </div>
             )}
 
-            {/* Tablet: 4-column grid layout */}
+            {/* Tablet: 3-column grid layout */}
             {isTablet && (
               <div className="space-y-3">
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <Input
                     placeholder="Search by name..."
                     className="h-8 w-full text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
@@ -712,7 +712,9 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
 
+                <div className="grid grid-cols-3 gap-3">
                   <Select value={filters.vesselType} onValueChange={(value) => setFilters(prev => ({ ...prev, vesselType: value }))}>
                     <SelectTrigger className="h-8 w-full text-xs text-[#0f172a]" data-testid="select-vessel-type">
                       <SelectValue placeholder="Type" />
@@ -723,9 +725,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
 
-                <div className="grid grid-cols-4 gap-3">
                   <Select value={filters.nationality} onValueChange={(value) => setFilters(prev => ({ ...prev, nationality: value }))}>
                     <SelectTrigger className="h-8 w-full text-xs text-[#0f172a]" data-testid="select-nationality">
                       <SelectValue placeholder="Nationality" />
@@ -748,7 +748,9 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                       <SelectItem value="Promotion">Promotion</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
 
+                <div className="grid grid-cols-3 gap-3">
                   <Select value={filters.rating} onValueChange={(value) => setFilters(prev => ({ ...prev, rating: value }))}>
                     <SelectTrigger className="h-8 w-full text-xs text-[#0f172a]" data-testid="select-rating">
                       <SelectValue placeholder="Rating" />
@@ -760,17 +762,16 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                     </SelectContent>
                   </Select>
 
-                  <div className="flex gap-2">
-                    <Button className="h-8 flex-1 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px]" data-testid="button-apply">Apply</Button>
-                    <Button
-                      variant="outline"
-                      className="h-8 flex-1 text-[#8798ad] text-xs border-[#e1e8ed]"
-                      onClick={() => setFilters({ searchName: "", rank: "", vessel: "", vesselType: "", nationality: "", appraisalType: "", rating: "" })}
-                      data-testid="button-clear-filters"
-                    >
-                      Clear
-                    </Button>
-                  </div>
+                  <Button className="h-8 w-full bg-[#16569e] hover:bg-[#0d4a8f] text-[11px]" data-testid="button-apply">Apply</Button>
+
+                  <Button
+                    variant="outline"
+                    className="h-8 w-full text-[#8798ad] text-xs border-[#e1e8ed]"
+                    onClick={() => setFilters({ searchName: "", rank: "", vessel: "", vesselType: "", nationality: "", appraisalType: "", rating: "" })}
+                    data-testid="button-clear-filters"
+                  >
+                    Clear
+                  </Button>
                 </div>
               </div>
             )}
