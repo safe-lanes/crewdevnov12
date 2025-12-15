@@ -200,6 +200,7 @@ export default function HeaderComponent({
                         </div>
                     </div>
 
+                    {/* Desktop navigation - full width, no scroll (xl and above) */}
                     <nav className="hidden xl:flex h-[65px] flex-1">
                         <div className="flex h-full">
                             {navItems.map(({ label, href, icon: Icon, activeBg, activeText, inactiveBg, inactiveText }) => {
@@ -227,28 +228,58 @@ export default function HeaderComponent({
                         </div>
                     </nav>
 
+                    {/* Tablet navigation - horizontal scroll (md to lg, 768px-1279px) */}
+                    <nav className="hidden md:flex xl:hidden h-[65px] flex-1 overflow-x-auto overflow-y-hidden" data-testid="tablet-nav">
+                        <div className="flex h-full min-w-max">
+                            {navItems.map(({ label, href, icon: Icon, activeBg, activeText, inactiveBg, inactiveText }) => {
+                                const isActive = location === href;
+                                return (
+                                    <Link key={href} href={href}>
+                                        <div
+                                            className="flex flex-col items-center justify-center w-[80px] lg:w-[90px] h-full border-r border-gray-300 cursor-pointer hover:bg-gray-300 flex-shrink-0"
+                                            style={{
+                                                backgroundColor: isActive ? activeBg : inactiveBg,
+                                            }}
+                                            data-testid={`tablet-nav-${label.toLowerCase().replace(' ', '-')}`}
+                                        >
+                                            <Icon size={20} color={isActive ? activeText : "#6B7280"} className="mb-1" />
+                                            <div
+                                                className="text-[9px] lg:text-[10px] font-normal font-['Roboto',Helvetica] text-center"
+                                                style={{ color: isActive ? activeText : inactiveText }}
+                                            >
+                                                {label}
+                                            </div>
+                                        </div>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </nav>
+
+                    {/* Hamburger menu button - phone only (below 768px) */}
                     <button
-                        className="xl:hidden flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 mr-2 sm:mr-4"
+                        className="md:hidden flex items-center justify-center w-10 h-10 mr-2"
                         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                         data-testid="hamburger-menu-button"
                         aria-label="Toggle menu"
                     >
                         {isMobileMenuOpen ? (
-                            <X size={24} className="text-gray-700 sm:w-7 sm:h-7" />
+                            <X size={24} className="text-gray-700" />
                         ) : (
-                            <Menu size={24} className="text-gray-700 sm:w-7 sm:h-7" />
+                            <Menu size={24} className="text-gray-700" />
                         )}
                     </button>
                 </div>
             </header>
 
+            {/* Mobile dropdown menu - phone only (below 768px) */}
             {isMobileMenuOpen && (
                 <nav 
-                    className="xl:hidden fixed top-[67px] left-0 right-0 bg-[#f1f1f1] border-b-2 border-[#51baf4] shadow-lg z-[99] max-h-[calc(100vh-67px)] overflow-y-auto" 
+                    className="md:hidden fixed top-[67px] left-0 right-0 bg-[#f1f1f1] border-b-2 border-[#51baf4] shadow-lg z-[99] max-h-[calc(100vh-67px)] overflow-y-auto" 
                     aria-label="Mobile navigation"
                     data-testid="mobile-nav-menu"
                 >
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-0">
+                    <div className="grid grid-cols-3 gap-0">
                         {navItems.map(({ label, href, icon: Icon, activeBg, activeText, inactiveBg, inactiveText }) => {
                             const isActive = location === href;
                             return (
@@ -256,15 +287,15 @@ export default function HeaderComponent({
                                     key={href}
                                     href={href}
                                     onClick={() => setIsMobileMenuOpen(false)}
-                                    className="flex flex-col items-center justify-center h-[60px] sm:h-[70px] border-r border-b border-gray-300 cursor-pointer hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-[#51baf4] focus:ring-inset"
+                                    className="flex flex-col items-center justify-center h-[60px] border-r border-b border-gray-300 cursor-pointer hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-[#51baf4] focus:ring-inset"
                                     style={{
                                         backgroundColor: isActive ? activeBg : inactiveBg,
                                     }}
                                     data-testid={`mobile-nav-${label.toLowerCase().replace(' ', '-')}`}
                                 >
-                                    <Icon size={20} color={isActive ? activeText : "#6B7280"} className="mb-1 sm:w-[22px] sm:h-[22px]" />
+                                    <Icon size={20} color={isActive ? activeText : "#6B7280"} className="mb-1" />
                                     <div
-                                        className="text-[8px] sm:text-[10px] font-normal font-['Roboto',Helvetica] text-center px-1"
+                                        className="text-[8px] font-normal font-['Roboto',Helvetica] text-center px-1"
                                         style={{ color: isActive ? activeText : inactiveText }}
                                     >
                                         {label}
@@ -278,7 +309,7 @@ export default function HeaderComponent({
 
             {isMobileMenuOpen && (
                 <div 
-                    className="xl:hidden fixed inset-0 top-[67px] bg-black bg-opacity-25 z-[98]"
+                    className="md:hidden fixed inset-0 top-[67px] bg-black bg-opacity-25 z-[98]"
                     onClick={() => setIsMobileMenuOpen(false)}
                     data-testid="menu-overlay"
                 />
