@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { Link, useLocation } from 'wouter'
 import { ModuleNavigator } from '../ModuleNavigator'
+import { useViewport, getLayoutConfig } from '@/hooks/useViewport';
 import { 
     LayoutGrid, 
     UserPlus,
@@ -15,7 +16,8 @@ import {
     User, 
     Settings,
     Menu,
-    X
+    X,
+    PanelLeft
 } from "lucide-react";
 
 const navItems = [
@@ -129,9 +131,21 @@ const navItems = [
     },
 ];
 
-export default function HeaderComponent() {
+interface HeaderComponentProps {
+    showSidebarToggle?: boolean;
+    onSidebarToggle?: () => void;
+    isSidebarOpen?: boolean;
+}
+
+export default function HeaderComponent({ 
+    showSidebarToggle = false, 
+    onSidebarToggle,
+    isSidebarOpen = false
+}: HeaderComponentProps) {
     const [location, navigate] = useLocation();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const viewport = useViewport();
+    const layoutConfig = getLayoutConfig(viewport);
     
     const handleModuleChange = useCallback((moduleId: string) => {
         switch (moduleId) {
@@ -153,16 +167,24 @@ export default function HeaderComponent() {
 
     return (
         <>
-            {/* Header */}
             <header className="fixed top-0 left-0 right-0 w-full h-[67px] bg-[#f1f1f1] border-b-2 border-[#51baf4] z-[100]">
                 <div className="flex items-center justify-between h-[65px] bg-[#f1f1f1]">
-                    {/* Left section: Logo + Module Navigator */}
                     <div className="flex items-center h-full">
-                        {/* Logo */}
-                        <div className="flex items-center ml-4">
+                        {showSidebarToggle && layoutConfig.showMobileSidebarToggle && (
+                            <button
+                                className="flex items-center justify-center w-10 h-10 ml-2 text-[#16569e] hover:bg-gray-200 rounded"
+                                onClick={onSidebarToggle}
+                                data-testid="sidebar-toggle-button"
+                                aria-label="Toggle sidebar"
+                            >
+                                <PanelLeft size={24} />
+                            </button>
+                        )}
+                        
+                        <div className={`flex items-center ${showSidebarToggle && layoutConfig.showMobileSidebarToggle ? 'ml-1' : 'ml-2 sm:ml-4'}`}>
                             <Link to='/'>
                                 <img
-                                    className="w-14 h-10"
+                                    className="w-10 h-8 sm:w-14 sm:h-10"
                                     alt="Logo"
                                     src="/figmaAssets/group-2.png"
                                     data-testid="header-logo"
@@ -170,8 +192,7 @@ export default function HeaderComponent() {
                             </Link>
                         </div>
 
-                        {/* Module Navigator - always visible */}
-                        <div className="flex flex-col items-center justify-center w-[80px] lg:w-[100px] h-full bg-[#f1f1f1] border-r border-gray-300 ml-4 lg:ml-8">
+                        <div className="flex flex-col items-center justify-center w-[60px] sm:w-[80px] lg:w-[100px] h-full bg-[#f1f1f1] border-r border-gray-300 ml-2 sm:ml-4 lg:ml-8">
                             <ModuleNavigator
                                 currentModule="crewing"
                                 onModuleChange={handleModuleChange}
@@ -179,7 +200,6 @@ export default function HeaderComponent() {
                         </div>
                     </div>
 
-                    {/* Desktop Navigation Menu - hidden on smaller screens */}
                     <nav className="hidden xl:flex h-[65px] flex-1">
                         <div className="flex h-full">
                             {navItems.map(({ label, href, icon: Icon, activeBg, activeText, inactiveBg, inactiveText }) => {
@@ -187,7 +207,7 @@ export default function HeaderComponent() {
                                 return (
                                     <Link key={href} href={href}>
                                         <div
-                                            className={`flex flex-col items-center justify-center w-[100px] h-full border-r border-gray-300 cursor-pointer hover:bg-gray-300`}
+                                            className="flex flex-col items-center justify-center w-[100px] h-full border-r border-gray-300 cursor-pointer hover:bg-gray-300"
                                             style={{
                                                 backgroundColor: isActive ? activeBg : inactiveBg,
                                             }}
@@ -207,25 +227,27 @@ export default function HeaderComponent() {
                         </div>
                     </nav>
 
-                    {/* Hamburger Menu Button - visible on smaller screens */}
                     <button
-                        className="xl:hidden flex items-center justify-center w-12 h-12 mr-4"
+                        className="xl:hidden flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 mr-2 sm:mr-4"
                         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                         data-testid="hamburger-menu-button"
                         aria-label="Toggle menu"
                     >
                         {isMobileMenuOpen ? (
-                            <X size={28} className="text-gray-700" />
+                            <X size={24} className="text-gray-700 sm:w-7 sm:h-7" />
                         ) : (
-                            <Menu size={28} className="text-gray-700" />
+                            <Menu size={24} className="text-gray-700 sm:w-7 sm:h-7" />
                         )}
                     </button>
                 </div>
             </header>
 
-            {/* Mobile/Tablet Dropdown Menu */}
             {isMobileMenuOpen && (
-                <nav className="xl:hidden fixed top-[67px] left-0 right-0 bg-[#f1f1f1] border-b-2 border-[#51baf4] shadow-lg z-[99] max-h-[calc(100vh-67px)] overflow-y-auto" aria-label="Mobile navigation">
+                <nav 
+                    className="xl:hidden fixed top-[67px] left-0 right-0 bg-[#f1f1f1] border-b-2 border-[#51baf4] shadow-lg z-[99] max-h-[calc(100vh-67px)] overflow-y-auto" 
+                    aria-label="Mobile navigation"
+                    data-testid="mobile-nav-menu"
+                >
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-0">
                         {navItems.map(({ label, href, icon: Icon, activeBg, activeText, inactiveBg, inactiveText }) => {
                             const isActive = location === href;
@@ -234,15 +256,15 @@ export default function HeaderComponent() {
                                     key={href}
                                     href={href}
                                     onClick={() => setIsMobileMenuOpen(false)}
-                                    className={`flex flex-col items-center justify-center h-[70px] border-r border-b border-gray-300 cursor-pointer hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-[#51baf4] focus:ring-inset`}
+                                    className="flex flex-col items-center justify-center h-[60px] sm:h-[70px] border-r border-b border-gray-300 cursor-pointer hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-[#51baf4] focus:ring-inset"
                                     style={{
                                         backgroundColor: isActive ? activeBg : inactiveBg,
                                     }}
                                     data-testid={`mobile-nav-${label.toLowerCase().replace(' ', '-')}`}
                                 >
-                                    <Icon size={22} color={isActive ? activeText : "#6B7280"} className="mb-1" />
+                                    <Icon size={20} color={isActive ? activeText : "#6B7280"} className="mb-1 sm:w-[22px] sm:h-[22px]" />
                                     <div
-                                        className="text-[9px] sm:text-[10px] font-normal font-['Roboto',Helvetica] text-center px-1"
+                                        className="text-[8px] sm:text-[10px] font-normal font-['Roboto',Helvetica] text-center px-1"
                                         style={{ color: isActive ? activeText : inactiveText }}
                                     >
                                         {label}
@@ -254,7 +276,6 @@ export default function HeaderComponent() {
                 </nav>
             )}
 
-            {/* Overlay to close menu when clicking outside */}
             {isMobileMenuOpen && (
                 <div 
                     className="xl:hidden fixed inset-0 top-[67px] bg-black bg-opacity-25 z-[98]"

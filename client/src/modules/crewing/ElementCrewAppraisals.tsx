@@ -155,6 +155,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
   const [showAppraisalForm, setShowAppraisalForm] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Filter state
   const [filters, setFilters] = useState({
@@ -552,8 +553,24 @@ export const ElementCrewAppraisals = (): JSX.Element => {
 
   return (
     <>
-      <SideBarComponent selectedAdminPage={selectedAdminPage} setSelectedAdminPage={setSelectedAdminPage} allowedPages={["all"]} />
-      <MainLayout>
+      <SideBarComponent 
+        selectedAdminPage={selectedAdminPage} 
+        setSelectedAdminPage={setSelectedAdminPage} 
+        allowedPages={["all"]}
+        isMobileSidebarOpen={isMobileSidebarOpen}
+        onCloseMobileSidebar={() => setIsMobileSidebarOpen(false)}
+      />
+      <MainLayout hasSidebar={true}>
+        <div className="lg:hidden flex items-center gap-2 mb-4">
+          <button
+            onClick={() => setIsMobileSidebarOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-[#16569e] bg-white border border-[#16569e] rounded hover:bg-[#16569e] hover:text-white transition-colors"
+            data-testid="mobile-sidebar-toggle"
+          >
+            <span>☰</span>
+            <span>Menu</span>
+          </button>
+        </div>
         <SectionTitleComponents title="Crew Appraisals">
           <div className="flex gap-2">
             <Button

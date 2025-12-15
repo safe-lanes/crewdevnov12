@@ -171,6 +171,7 @@ const AdminModuleInner = (): JSX.Element => {
   const [location, navigate] = useLocation();
   const [selectedAdminPage, setSelectedAdminPage] = useState("forms");
   const [selectedRankAdminTab, setSelectedRankAdminTab] = useState("rank-master");
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [editingForm, setEditingForm] = useState<Form | null>(null);
   const [editingRankGroup, setEditingRankGroup] = useState<string | null>(null);
   const [isAddRankGroupOpen, setIsAddRankGroupOpen] = useState(false);
@@ -4889,8 +4890,24 @@ const AdminModuleInner = (): JSX.Element => {
 
   return (
     <>
-      <SideBarComponent selectedAdminPage={selectedAdminPage} setSelectedAdminPage={setSelectedAdminPage} allowedPages={["forms", "rank-admin", "masters", "training-matrix"]} />
-      <MainLayout>
+      <SideBarComponent 
+        selectedAdminPage={selectedAdminPage} 
+        setSelectedAdminPage={setSelectedAdminPage} 
+        allowedPages={["forms", "rank-admin", "masters", "training-matrix"]}
+        isMobileSidebarOpen={isMobileSidebarOpen}
+        onCloseMobileSidebar={() => setIsMobileSidebarOpen(false)}
+      />
+      <MainLayout hasSidebar={true}>
+        <div className="lg:hidden flex items-center gap-2 mb-4">
+          <button
+            onClick={() => setIsMobileSidebarOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-[#16569e] bg-white border border-[#16569e] rounded hover:bg-[#16569e] hover:text-white transition-colors"
+            data-testid="mobile-sidebar-toggle"
+          >
+            <span>☰</span>
+            <span>Menu</span>
+          </button>
+        </div>
         {selectedAdminPage === "forms" && renderFormsTable()}
         {selectedAdminPage === "rank-admin" && renderRankAdminModule()}
         {selectedAdminPage === "masters" && renderDataMastersModule()}

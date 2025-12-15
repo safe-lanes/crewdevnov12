@@ -45,3 +45,12 @@ export const getViewportConfig = (viewport: ViewportSize) => ({
   headerHeight: viewport === 'phone' ? 40 : 50,
   alwaysShowHorizontalScroll: viewport === 'tablet' || viewport === 'phone'
 });
+
+export const getLayoutConfig = (viewport: ViewportSize) => ({
+  showFixedSidebar: viewport === 'desktop' || viewport === 'laptop',
+  sidebarWidth: viewport === 'desktop' || viewport === 'laptop' ? 67 : 0,
+  mainMarginLeft: viewport === 'desktop' || viewport === 'laptop' ? 67 : 0,
+  mainPadding: viewport === 'phone' ? 12 : viewport === 'tablet' ? 16 : 24,
+  headerHeight: 67,
+  showMobileSidebarToggle: viewport === 'tablet' || viewport === 'phone',
+});
