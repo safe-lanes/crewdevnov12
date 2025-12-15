@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown, Trash2, ChevronUp, ChevronDown, Settings } from "lucide-react";
+import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown, Trash2, ChevronUp, ChevronDown, Settings, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UnsavedChangesDialog } from "@/components/dialogs/UnsavedChangesDialog";
 import { PromotionHierarchyDialog } from "@/components/dialogs/PromotionHierarchyDialog";
@@ -173,6 +173,8 @@ const AdminModuleInner = (): JSX.Element => {
   const [selectedRankAdminTab, setSelectedRankAdminTab] = useState("rank-master");
   const [selectedTrainingMatrixTab, setSelectedTrainingMatrixTab] = useState("training-master");
   const [isTrainingMasterEditing, setIsTrainingMasterEditing] = useState(false);
+  const [showTrainingFilters, setShowTrainingFilters] = useState(true);
+  const [trainingSearchFilter, setTrainingSearchFilter] = useState("");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [editingForm, setEditingForm] = useState<Form | null>(null);
   const [editingRankGroup, setEditingRankGroup] = useState<string | null>(null);
@@ -4136,6 +4138,16 @@ const AdminModuleInner = (): JSX.Element => {
             {selectedTrainingMatrixTab === "training-master" && (
               <div className="flex gap-2">
                 <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowTrainingFilters(!showTrainingFilters)}
+                  className="h-8 gap-2 bg-white text-[#0f172a] border-gray-300"
+                  data-testid="button-toggle-training-filters"
+                >
+                  <Filter className="h-4 w-4" />
+                  Filters
+                </Button>
+                <Button
                   variant={isTrainingMasterEditing ? "default" : "outline"}
                   onClick={isTrainingMasterEditing ? handleSaveTraining : handleEditTraining}
                   className={`h-8 text-xs ${
@@ -4191,6 +4203,16 @@ const AdminModuleInner = (): JSX.Element => {
               {selectedTrainingMatrixTab === "training-master" && (
                 <div className="flex gap-2">
                   <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowTrainingFilters(!showTrainingFilters)}
+                    className="h-8 gap-2 bg-white text-[#0f172a] border-gray-300"
+                    data-testid="button-toggle-training-filters-mobile"
+                  >
+                    <Filter className="h-4 w-4" />
+                    Filters
+                  </Button>
+                  <Button
                     variant={isTrainingMasterEditing ? "default" : "outline"}
                     onClick={isTrainingMasterEditing ? handleSaveTraining : handleEditTraining}
                     className={`h-8 text-xs ${
@@ -4215,6 +4237,23 @@ const AdminModuleInner = (): JSX.Element => {
           </div>
         )}
       </div>
+
+      {/* Filter Bar - Search Training */}
+      {showTrainingFilters && selectedTrainingMatrixTab === "training-master" && (
+        <div className="mb-4 p-3 md:p-4 pl-0 bg-[#f7fafc] rounded-lg">
+          <div className="flex flex-nowrap items-center gap-2">
+            <div className="shrink-0 w-48">
+              <Input
+                placeholder="Search Training"
+                className="h-8 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full"
+                value={trainingSearchFilter}
+                onChange={(e) => setTrainingSearchFilter(e.target.value)}
+                data-testid="input-search-training"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tab Content Area */}
       <div className="flex-1">
