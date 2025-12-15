@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError, calculateExperienceFromSeaService, calculateVesselTypeSpecificExperience } from "./storage";
-import { type VesselPlanning, type InsertRecruitmentCandidate, insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertCompanyProcessingSchema, insertPromotionFormSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertOfficeViolationCommentSchema, insertNCReportSchema, insertVesselDateLineAdjustmentSchema, insertOilMajorRulesSchema, type OilMajorRulesConfig } from "@shared/schema";
+import { type VesselPlanning, type InsertRecruitmentCandidate, insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertCompanyProcessingSchema, insertPromotionFormSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertOfficeViolationCommentSchema, insertNCReportSchema, insertVesselDateLineAdjustmentSchema, insertOilMajorRulesSchema, type OilMajorRulesConfig, insertTrainingMasterSchema, updateTrainingMasterSchema, trainingMaster } from "@shared/schema";
 import { parseCSVContent, convertToStorageFormat } from "./oilMajorRulesParser";
 import { evaluateCompliance, convertCrewToExperience, type ComplianceCheckResult } from "./complianceEngine";
 import { z } from "zod";
@@ -7416,6 +7416,155 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating compliance matrix:", error);
       res.status(500).json({ error: "Failed to generate compliance matrix" });
+    }
+  });
+
+  // ============================================
+  // Training Master API Routes
+  // ============================================
+
+  // Get all training masters
+  app.get("/api/training-master", async (req, res) => {
+    try {
+      const trainings = await storage.getTrainingMasters();
+      res.json(trainings);
+    } catch (error) {
+      console.error("Error fetching training masters:", error);
+      res.status(500).json({ error: "Failed to fetch training masters" });
+    }
+  });
+
+  // Get single training master by ID
+  app.get("/api/training-master/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid training ID" });
+      }
+      const training = await storage.getTrainingMaster(id);
+      if (!training) {
+        return res.status(404).json({ error: "Training not found" });
+      }
+      res.json(training);
+    } catch (error) {
+      console.error("Error fetching training master:", error);
+      res.status(500).json({ error: "Failed to fetch training master" });
+    }
+  });
+
+  // Create new training master
+  app.post("/api/training-master", async (req, res) => {
+    try {
+      const validationResult = insertTrainingMasterSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: "Validation failed", 
+          details: validationResult.error.errors 
+        });
+      }
+      const training = await storage.createTrainingMaster(validationResult.data);
+      res.status(201).json(training);
+    } catch (error: any) {
+      console.error("Error creating training master:", error);
+      if (error.code === '23505') {
+        return res.status(409).json({ error: "Training ID already exists" });
+      }
+      res.status(500).json({ error: "Failed to create training master" });
+    }
+  });
+
+  // Update training master
+  app.patch("/api/training-master/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid training ID" });
+      }
+
+      const validationResult = updateTrainingMasterSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: "Validation failed", 
+          details: validationResult.error.errors 
+        });
+      }
+
+      // Check if training exists and handle default training restrictions
+      const existing = await storage.getTrainingMaster(id);
+      if (!existing) {
+        return res.status(404).json({ error: "Training not found" });
+      }
+
+      // Default trainings: cannot edit trainingName, category, or trainingGroup
+      if (existing.isDefault) {
+        const { trainingName, category, trainingGroup, ...allowedUpdates } = validationResult.data;
+        if (trainingName || category || trainingGroup) {
+          return res.status(403).json({ 
+            error: "Cannot modify name, category, or group of default trainings" 
+          });
+        }
+        const updated = await storage.updateTrainingMaster(id, allowedUpdates);
+        return res.json(updated);
+      }
+
+      const updated = await storage.updateTrainingMaster(id, validationResult.data);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating training master:", error);
+      res.status(500).json({ error: "Failed to update training master" });
+    }
+  });
+
+  // Delete training master
+  app.delete("/api/training-master/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid training ID" });
+      }
+
+      // Check if training exists and is not a default training
+      const existing = await storage.getTrainingMaster(id);
+      if (!existing) {
+        return res.status(404).json({ error: "Training not found" });
+      }
+
+      if (existing.isDefault) {
+        return res.status(403).json({ error: "Cannot delete default trainings" });
+      }
+
+      const success = await storage.deleteTrainingMaster(id);
+      if (success) {
+        res.status(204).send();
+      } else {
+        res.status(500).json({ error: "Failed to delete training" });
+      }
+    } catch (error) {
+      console.error("Error deleting training master:", error);
+      res.status(500).json({ error: "Failed to delete training master" });
+    }
+  });
+
+  // Reorder training masters within same category+group
+  app.post("/api/training-master/reorder", async (req, res) => {
+    try {
+      const orders = req.body;
+      if (!Array.isArray(orders)) {
+        return res.status(400).json({ error: "Expected array of {id, sortOrder}" });
+      }
+
+      // Validate order items
+      for (const item of orders) {
+        if (typeof item.id !== 'number' || typeof item.sortOrder !== 'number') {
+          return res.status(400).json({ error: "Each item must have numeric id and sortOrder" });
+        }
+      }
+
+      await storage.reorderTrainingMasters(orders);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error reordering training masters:", error);
+      res.status(500).json({ error: "Failed to reorder training masters" });
     }
   });
 

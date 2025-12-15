@@ -7401,6 +7401,31 @@ export class PersistentFileStorage implements IStorage {
   async deleteMasterDataEntry(id: number): Promise<boolean> {
     throw new Error("PersistentFileStorage doesn't support master data entries. Use DatabaseStorage instead.");
   }
+
+  // Training Master Methods (stub - use DatabaseStorage for full functionality)
+  async getTrainingMasters(): Promise<TrainingMaster[]> {
+    throw new Error("PersistentFileStorage doesn't support training master. Use DatabaseStorage instead.");
+  }
+
+  async getTrainingMaster(id: number): Promise<TrainingMaster | undefined> {
+    throw new Error("PersistentFileStorage doesn't support training master. Use DatabaseStorage instead.");
+  }
+
+  async createTrainingMaster(training: InsertTrainingMaster): Promise<TrainingMaster> {
+    throw new Error("PersistentFileStorage doesn't support training master. Use DatabaseStorage instead.");
+  }
+
+  async updateTrainingMaster(id: number, training: Partial<UpdateTrainingMaster>): Promise<TrainingMaster | undefined> {
+    throw new Error("PersistentFileStorage doesn't support training master. Use DatabaseStorage instead.");
+  }
+
+  async deleteTrainingMaster(id: number): Promise<boolean> {
+    throw new Error("PersistentFileStorage doesn't support training master. Use DatabaseStorage instead.");
+  }
+
+  async reorderTrainingMasters(orders: Array<{ id: number; sortOrder: number }>): Promise<boolean> {
+    throw new Error("PersistentFileStorage doesn't support training master. Use DatabaseStorage instead.");
+  }
 }
 
 // DatabaseStorage - PostgreSQL backend (Phase 4: ENABLED!)

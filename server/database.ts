@@ -91,7 +91,11 @@ import {
   type InsertMasterDataEntry,
   oilMajorRules,
   type OilMajorRules,
-  type InsertOilMajorRules
+  type InsertOilMajorRules,
+  trainingMaster,
+  type TrainingMaster,
+  type InsertTrainingMaster,
+  type UpdateTrainingMaster
 } from "@shared/schema";
 import { eq, desc, asc, sql, and, inArray, or, like, ilike, isNull } from "drizzle-orm";
 import { type IStorage } from "./storage";
@@ -4216,5 +4220,68 @@ export class DatabaseStorage implements IStorage {
     }
     
     return createdRules;
+  }
+
+  // Training Master Methods
+  async getTrainingMasters(): Promise<TrainingMaster[]> {
+    try {
+      return await this.db.select().from(trainingMaster)
+        .orderBy(asc(trainingMaster.category), asc(trainingMaster.trainingGroup), asc(trainingMaster.sortOrder));
+    } catch (error) {
+      console.error("Error getting training masters:", error);
+      return [];
+    }
+  }
+
+  async getTrainingMaster(id: number): Promise<TrainingMaster | undefined> {
+    try {
+      const result = await this.db.select().from(trainingMaster).where(eq(trainingMaster.id, id));
+      return result[0];
+    } catch (error) {
+      console.error("Error getting training master:", error);
+      return undefined;
+    }
+  }
+
+  async createTrainingMaster(training: InsertTrainingMaster): Promise<TrainingMaster> {
+    const result = await this.db.insert(trainingMaster).values({
+      trainingId: training.trainingId,
+      trainingName: training.trainingName,
+      category: training.category,
+      trainingGroup: training.trainingGroup,
+      requirementReference: training.requirementReference,
+      applicableToCompany: training.applicableToCompany ?? false,
+      trainingLabel: training.trainingLabel || training.trainingName,
+      sortOrder: training.sortOrder ?? 0,
+      isDefault: training.isDefault ?? false,
+    }).returning();
+    return result[0];
+  }
+
+  async updateTrainingMaster(id: number, training: Partial<UpdateTrainingMaster>): Promise<TrainingMaster | undefined> {
+    const result = await this.db.update(trainingMaster)
+      .set(training)
+      .where(eq(trainingMaster.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteTrainingMaster(id: number): Promise<boolean> {
+    const result = await this.db.delete(trainingMaster).where(eq(trainingMaster.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async reorderTrainingMasters(orders: Array<{ id: number; sortOrder: number }>): Promise<boolean> {
+    try {
+      for (const order of orders) {
+        await this.db.update(trainingMaster)
+          .set({ sortOrder: order.sortOrder })
+          .where(eq(trainingMaster.id, order.id));
+      }
+      return true;
+    } catch (error) {
+      console.error("Error reordering training masters:", error);
+      return false;
+    }
   }
 }
