@@ -4479,6 +4479,7 @@ const AdminModuleInner = (): JSX.Element => {
   };
 
   const filteredTrainingData = useMemo(() => {
+    const categoryPriority: Record<string, number> = { 'S': 1, 'I': 2, 'O': 3 };
     return localTrainingData.filter(training => {
       const matchesSearch = trainingSearchFilter === '' || 
         training.trainingName.toLowerCase().includes(trainingSearchFilter.toLowerCase()) ||
@@ -4487,7 +4488,9 @@ const AdminModuleInner = (): JSX.Element => {
       const matchesGroup = trainingGroupFilter === 'all' || training.trainingGroup === trainingGroupFilter;
       return matchesSearch && matchesCategory && matchesGroup;
     }).sort((a, b) => {
-      if (a.category !== b.category) return a.category.localeCompare(b.category);
+      const aPriority = categoryPriority[a.category] ?? 99;
+      const bPriority = categoryPriority[b.category] ?? 99;
+      if (aPriority !== bPriority) return aPriority - bPriority;
       if (a.trainingGroup !== b.trainingGroup) return a.trainingGroup.localeCompare(b.trainingGroup);
       return a.sortOrder - b.sortOrder;
     });
