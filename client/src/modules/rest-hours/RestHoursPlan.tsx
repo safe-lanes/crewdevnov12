@@ -10,8 +10,13 @@ import { useToast } from '@/hooks/use-toast';
 import type { FixedTask } from '@shared/schema';
 import { PeriodFilter, type PeriodFilterValue } from '@/components/filters/PeriodFilter';
 import { parseRestHoursFilters, serializeRestHoursFilters, periodFilterToPart, partToPeriodFilter, type RestHoursFilters } from './utils/filterParams';
+import { useViewport } from '@/hooks/useViewport';
 
 export const RestHoursPlan = (): JSX.Element => {
+  const viewport = useViewport();
+  const isPhone = viewport === 'phone';
+  const isTablet = viewport === 'tablet';
+
   const [location, setLocation] = useLocation();
   const hasSyncedFromUrl = useRef(false);
   const { toast } = useToast();
@@ -182,114 +187,19 @@ export const RestHoursPlan = (): JSX.Element => {
 
   const title = selectedTab === "fixed" ? "RH Planning - Fixed Tasks" : "RH Planning - Variable Tasks";
 
-  return (
-    <div className="flex flex-col h-full">
-      {/* Custom header with 3-column layout */}
-      <div className="mb-4 grid grid-cols-3 items-center">
-        {/* Left: Title */}
-        <div>
-          <h1 className="text-2xl font-bold text-black">{title}</h1>
-        </div>
-        
-        {/* Center: Period Display + Module Switcher */}
-        <div className="flex justify-center items-center gap-4">
-          {/* Period Display */}
-          <div className="text-sm font-medium text-[#16569e] bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded">
-            {displayPeriod}
-          </div>
+  // Responsive filter bar for Plan page
+  const renderFilterBar = () => {
+    if (!showFilters) return null;
 
-          {/* Module Switcher */}
-          <div className="flex items-center bg-transparent rounded-full p-1 border border-gray-300 h-8">
-            {[
-              { id: "fixed", label: "Fixed Tasks" },
-              { id: "variable", label: "Variable Tasks" }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setSelectedTab(tab.id as "fixed" | "variable")}
-                className={`px-4 text-xs rounded-full transition-all duration-200 h-6 flex items-center ${
-                  selectedTab === tab.id
-                    ? "text-[#16569e] font-bold underline"
-                    : "text-gray-600 hover:text-gray-800 font-medium"
-                }`}
-                data-testid={`tab-${tab.id}`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Right: Action Buttons + Filters */}
-        <div className="flex justify-end gap-2">
-          {selectedTab === "fixed" && (
-            <>
-              {!isEditMode ? (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsEditMode(true)}
-                    disabled={!selectedVessel || !periodValueString}
-                    className="h-8 gap-2"
-                    data-testid="button-edit"
-                  >
-                    <Edit2 className="h-4 w-4" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleNewMonth}
-                    disabled={!selectedVessel || !periodValueString}
-                    className="h-8 gap-2"
-                    data-testid="button-new-month"
-                  >
-                    <Plus className="h-4 w-4" />
-                    New Month
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => {
-                    if (saveHandler) {
-                      saveHandler();
-                    }
-                  }}
-                  disabled={!saveHandler}
-                  className="h-8 gap-2"
-                  data-testid="button-save"
-                >
-                  <Save className="h-4 w-4" />
-                  Save
-                </Button>
-              )}
-            </>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowFilters(!showFilters)}
-            className="h-8 gap-2 bg-white dark:bg-gray-800 text-[#0f172a] dark:text-white border-gray-300 dark:border-gray-600"
-            data-testid="button-toggle-filters"
-          >
-            <Filter className="h-4 w-4" />
-            Filters
-          </Button>
-        </div>
-      </div>
-
-      {showFilters && (
-        <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
-          {/* Period Filter */}
+    // Phone layout: vertical stack
+    if (isPhone) {
+      return (
+        <div className="flex flex-col gap-3 mb-4 p-3 bg-transparent rounded-lg" data-testid="filter-container">
           <PeriodFilter value={periodValue} onChange={setPeriodValue} />
 
-          {/* Vessel Single-Select */}
           <Select value={selectedVessel} onValueChange={setSelectedVessel}>
             <SelectTrigger 
-              className="h-8 w-40 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
+              className="h-8 w-full text-xs text-[#0f172a] dark:text-white placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
               disabled={vesselsLoading}
               data-testid="select-vessel"
             >
@@ -304,17 +214,317 @@ export const RestHoursPlan = (): JSX.Element => {
             </SelectContent>
           </Select>
 
-          {/* Clear Button */}
           <Button
             variant="outline"
             onClick={handleClearFilters}
-            className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
+            className="h-8 w-full text-[#8798ad] text-[11px] border-[#e1e8ed]"
             data-testid="button-clear-filters"
           >
             Clear
           </Button>
         </div>
+      );
+    }
+
+    // Tablet and Desktop: horizontal layout
+    return (
+      <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
+        <PeriodFilter value={periodValue} onChange={setPeriodValue} />
+
+        <Select value={selectedVessel} onValueChange={setSelectedVessel}>
+          <SelectTrigger 
+            className="h-8 w-40 text-xs text-[#0f172a] dark:text-white placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
+            disabled={vesselsLoading}
+            data-testid="select-vessel"
+          >
+            <SelectValue placeholder={vesselsLoading ? "Loading..." : "Vessel"} />
+          </SelectTrigger>
+          <SelectContent>
+            {vessels.map((vessel: any) => (
+              <SelectItem key={vessel.id} value={vessel.entryId}>
+                {vessel.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Button
+          variant="outline"
+          onClick={handleClearFilters}
+          className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
+          data-testid="button-clear-filters"
+        >
+          Clear
+        </Button>
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Custom header - responsive layout */}
+      {isPhone ? (
+        /* Phone: vertical stack */
+        <div className="mb-4 flex flex-col gap-3">
+          <h1 className="text-xl font-bold text-black">{title}</h1>
+          
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="text-sm font-medium text-[#16569e] bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded">
+              {displayPeriod}
+            </div>
+
+            <div className="flex items-center bg-transparent rounded-full p-1 border border-gray-300 h-8">
+              {[
+                { id: "fixed", label: "Fixed" },
+                { id: "variable", label: "Variable" }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setSelectedTab(tab.id as "fixed" | "variable")}
+                  className={`px-3 text-xs rounded-full transition-all duration-200 h-6 flex items-center ${
+                    selectedTab === tab.id
+                      ? "text-[#16569e] font-bold underline"
+                      : "text-gray-600 hover:text-gray-800 font-medium"
+                  }`}
+                  data-testid={`tab-${tab.id}`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {selectedTab === "fixed" && (
+              <>
+                {!isEditMode ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsEditMode(true)}
+                      disabled={!selectedVessel || !periodValueString}
+                      className="h-8 gap-1"
+                      data-testid="button-edit"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleNewMonth}
+                      disabled={!selectedVessel || !periodValueString}
+                      className="h-8 gap-1"
+                      data-testid="button-new-month"
+                    >
+                      <Plus className="h-4 w-4" />
+                      New
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => { if (saveHandler) saveHandler(); }}
+                    disabled={!saveHandler}
+                    className="h-8 gap-1"
+                    data-testid="button-save"
+                  >
+                    <Save className="h-4 w-4" />
+                    Save
+                  </Button>
+                )}
+              </>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              className="h-8 gap-1 bg-white dark:bg-gray-800"
+              data-testid="button-toggle-filters"
+            >
+              <Filter className="h-4 w-4" />
+              Filters
+            </Button>
+          </div>
+        </div>
+      ) : isTablet ? (
+        /* Tablet: 2-column layout */
+        <div className="mb-4 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-black">{title}</h1>
+            <div className="flex items-center gap-2">
+              <div className="text-sm font-medium text-[#16569e] bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded">
+                {displayPeriod}
+              </div>
+              <div className="flex items-center bg-transparent rounded-full p-1 border border-gray-300 h-8">
+                {[
+                  { id: "fixed", label: "Fixed Tasks" },
+                  { id: "variable", label: "Variable Tasks" }
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setSelectedTab(tab.id as "fixed" | "variable")}
+                    className={`px-4 text-xs rounded-full transition-all duration-200 h-6 flex items-center ${
+                      selectedTab === tab.id
+                        ? "text-[#16569e] font-bold underline"
+                        : "text-gray-600 hover:text-gray-800 font-medium"
+                    }`}
+                    data-testid={`tab-${tab.id}`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            {selectedTab === "fixed" && (
+              <>
+                {!isEditMode ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsEditMode(true)}
+                      disabled={!selectedVessel || !periodValueString}
+                      className="h-8 gap-2"
+                      data-testid="button-edit"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleNewMonth}
+                      disabled={!selectedVessel || !periodValueString}
+                      className="h-8 gap-2"
+                      data-testid="button-new-month"
+                    >
+                      <Plus className="h-4 w-4" />
+                      New Month
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => { if (saveHandler) saveHandler(); }}
+                    disabled={!saveHandler}
+                    className="h-8 gap-2"
+                    data-testid="button-save"
+                  >
+                    <Save className="h-4 w-4" />
+                    Save
+                  </Button>
+                )}
+              </>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              className="h-8 gap-2 bg-white dark:bg-gray-800 text-[#0f172a] dark:text-white border-gray-300 dark:border-gray-600"
+              data-testid="button-toggle-filters"
+            >
+              <Filter className="h-4 w-4" />
+              Filters
+            </Button>
+          </div>
+        </div>
+      ) : (
+        /* Desktop: 3-column layout (original) */
+        <div className="mb-4 grid grid-cols-3 items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-black">{title}</h1>
+          </div>
+          
+          <div className="flex justify-center items-center gap-4">
+            <div className="text-sm font-medium text-[#16569e] bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded">
+              {displayPeriod}
+            </div>
+
+            <div className="flex items-center bg-transparent rounded-full p-1 border border-gray-300 h-8">
+              {[
+                { id: "fixed", label: "Fixed Tasks" },
+                { id: "variable", label: "Variable Tasks" }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setSelectedTab(tab.id as "fixed" | "variable")}
+                  className={`px-4 text-xs rounded-full transition-all duration-200 h-6 flex items-center ${
+                    selectedTab === tab.id
+                      ? "text-[#16569e] font-bold underline"
+                      : "text-gray-600 hover:text-gray-800 font-medium"
+                  }`}
+                  data-testid={`tab-${tab.id}`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            {selectedTab === "fixed" && (
+              <>
+                {!isEditMode ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsEditMode(true)}
+                      disabled={!selectedVessel || !periodValueString}
+                      className="h-8 gap-2"
+                      data-testid="button-edit"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleNewMonth}
+                      disabled={!selectedVessel || !periodValueString}
+                      className="h-8 gap-2"
+                      data-testid="button-new-month"
+                    >
+                      <Plus className="h-4 w-4" />
+                      New Month
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => { if (saveHandler) saveHandler(); }}
+                    disabled={!saveHandler}
+                    className="h-8 gap-2"
+                    data-testid="button-save"
+                  >
+                    <Save className="h-4 w-4" />
+                    Save
+                  </Button>
+                )}
+              </>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              className="h-8 gap-2 bg-white dark:bg-gray-800 text-[#0f172a] dark:text-white border-gray-300 dark:border-gray-600"
+              data-testid="button-toggle-filters"
+            >
+              <Filter className="h-4 w-4" />
+              Filters
+            </Button>
+          </div>
+        </div>
       )}
+
+      {renderFilterBar()}
 
       {/* Content Area */}
       <div className="px-0 pb-6">

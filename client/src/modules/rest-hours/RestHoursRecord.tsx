@@ -12,8 +12,13 @@ import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { RHRecordsTable } from './RHRecordsTable';
 import { PeriodFilter, type PeriodFilterValue } from '@/components/filters/PeriodFilter';
 import { parseRestHoursFilters, serializeRestHoursFilters, periodFilterToPart, partToPeriodFilter, type RestHoursFilters } from './utils/filterParams';
+import { useViewport } from '@/hooks/useViewport';
 
 export const RestHoursRecord = (): JSX.Element => {
+  const viewport = useViewport();
+  const isPhone = viewport === 'phone';
+  const isTablet = viewport === 'tablet';
+
   const [location, setLocation] = useLocation();
   const hasSyncedFromUrl = useRef(false);
   const currentYear = new Date().getFullYear();
@@ -170,10 +175,331 @@ export const RestHoursRecord = (): JSX.Element => {
     });
   };
 
+  // Vessel multi-select popover component (shared across layouts)
+  const renderVesselSelect = () => (
+    <Popover modal={false}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className={`h-8 text-xs text-[#0f172a] dark:text-white justify-between bg-transparent dark:bg-neutral-900 border-input ${isPhone ? 'w-full' : 'w-40'}`}
+          disabled={vesselsLoading}
+          data-testid="select-vessel-multi"
+        >
+          <span className="truncate">
+            {selectedVessels.length > 0 
+              ? `${selectedVessels.length} selected` 
+              : vesselsLoading ? "Loading..." : "Vessel"
+            }
+          </span>
+          <ChevronDown className="h-4 w-4 opacity-50 ml-2" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-60 p-2" align="start">
+        <div className="max-h-60 overflow-y-auto">
+          {vessels.map((vessel: any) => (
+            <div 
+              key={vessel.id} 
+              className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer"
+              data-testid={`vessel-row-${vessel.entryId || vessel.id}`}
+              onClick={() => toggleVessel(vessel.name)}
+            >
+              <Checkbox 
+                checked={selectedVessels.includes(vessel.name)}
+                onCheckedChange={() => toggleVessel(vessel.name)}
+                data-testid={`checkbox-vessel-${vessel.entryId || vessel.id}`}
+                onClick={(e) => e.stopPropagation()}
+              />
+              <span 
+                className="text-sm flex-1"
+                data-testid={`label-vessel-${vessel.entryId || vessel.id}`}
+              >
+                {vessel.name}
+              </span>
+            </div>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+
+  // Fleet select component (shared across layouts)
+  const renderFleetSelect = () => (
+    <Select value={fleetValue} onValueChange={setFleetValue}>
+      <SelectTrigger 
+        className={`h-8 text-xs text-[#0f172a] dark:text-white placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900 ${isPhone ? 'w-full' : 'w-40'}`}
+        data-testid="select-fleet-value"
+      >
+        <SelectValue placeholder="Select Fleet" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="fleet1">Fleet Group 1</SelectItem>
+        <SelectItem value="fleet2">Fleet Group 2</SelectItem>
+        <SelectItem value="fleet3">Fleet Group 3</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
+  // Additional Group select component (shared across layouts)
+  const renderAddGroupSelect = () => (
+    <Select value={addGroupValue} onValueChange={setAddGroupValue}>
+      <SelectTrigger 
+        className={`h-8 text-xs text-[#0f172a] dark:text-white placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900 ${isPhone ? 'w-full' : 'w-40'}`}
+        data-testid="select-addgroup-value"
+      >
+        <SelectValue placeholder="Select Group" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="group1">Additional Group 1</SelectItem>
+        <SelectItem value="group2">Additional Group 2</SelectItem>
+        <SelectItem value="group3">Additional Group 3</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
+  // Responsive filter bar render function
+  const renderFilterBar = () => {
+    if (!showFilters) return null;
+
+    // Phone layout: vertical stack with full-width controls, show only active filter select
+    if (isPhone) {
+      return (
+        <div className="flex flex-col gap-3 mb-4 p-3 bg-transparent rounded-lg" data-testid="filter-container">
+          <PeriodFilter value={periodValue} onChange={setPeriodValue} />
+
+          <RadioGroup 
+            value={filterType} 
+            onValueChange={(value: "vessel" | "fleet" | "addGroup") => setFilterType(value)}
+            className="flex flex-col gap-3"
+          >
+            {/* Vessel option */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <RadioGroupItem 
+                  value="vessel" 
+                  id="filter-vessel"
+                  className="h-4 w-4"
+                  data-testid="radio-vessel"
+                />
+                <Label 
+                  htmlFor="filter-vessel" 
+                  className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
+                >
+                  Vessel
+                </Label>
+              </div>
+              {filterType === 'vessel' && renderVesselSelect()}
+            </div>
+
+            {/* Fleet option */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <RadioGroupItem 
+                  value="fleet" 
+                  id="filter-fleet"
+                  className="h-4 w-4"
+                  data-testid="radio-fleet"
+                />
+                <Label 
+                  htmlFor="filter-fleet" 
+                  className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
+                >
+                  Fleet Group
+                </Label>
+              </div>
+              {filterType === 'fleet' && renderFleetSelect()}
+            </div>
+
+            {/* Additional Group option */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <RadioGroupItem 
+                  value="addGroup" 
+                  id="filter-addgroup"
+                  className="h-4 w-4"
+                  data-testid="radio-addgroup"
+                />
+                <Label 
+                  htmlFor="filter-addgroup" 
+                  className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
+                >
+                  Additional Group
+                </Label>
+              </div>
+              {filterType === 'addGroup' && renderAddGroupSelect()}
+            </div>
+          </RadioGroup>
+
+          <Button
+            variant="outline"
+            onClick={handleClearFilters}
+            className="h-8 w-full text-[#8798ad] text-[11px] border-[#e1e8ed]"
+            data-testid="button-clear-filters"
+          >
+            Clear
+          </Button>
+        </div>
+      );
+    }
+
+    // Tablet layout: 3-column grid with stacked radio + select pairs
+    if (isTablet) {
+      return (
+        <div className="flex flex-col gap-3 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
+          <PeriodFilter value={periodValue} onChange={setPeriodValue} />
+
+          <RadioGroup 
+            value={filterType} 
+            onValueChange={(value: "vessel" | "fleet" | "addGroup") => setFilterType(value)}
+            className="grid grid-cols-3 gap-4"
+          >
+            {/* Vessel option */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <RadioGroupItem 
+                  value="vessel" 
+                  id="filter-vessel"
+                  className="h-4 w-4"
+                  data-testid="radio-vessel"
+                />
+                <Label 
+                  htmlFor="filter-vessel" 
+                  className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
+                >
+                  Vessel
+                </Label>
+              </div>
+              {filterType === 'vessel' && renderVesselSelect()}
+            </div>
+
+            {/* Fleet option */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <RadioGroupItem 
+                  value="fleet" 
+                  id="filter-fleet"
+                  className="h-4 w-4"
+                  data-testid="radio-fleet"
+                />
+                <Label 
+                  htmlFor="filter-fleet" 
+                  className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
+                >
+                  Fleet Group
+                </Label>
+              </div>
+              {filterType === 'fleet' && renderFleetSelect()}
+            </div>
+
+            {/* Additional Group option */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <RadioGroupItem 
+                  value="addGroup" 
+                  id="filter-addgroup"
+                  className="h-4 w-4"
+                  data-testid="radio-addgroup"
+                />
+                <Label 
+                  htmlFor="filter-addgroup" 
+                  className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
+                >
+                  Additional Group
+                </Label>
+              </div>
+              {filterType === 'addGroup' && renderAddGroupSelect()}
+            </div>
+          </RadioGroup>
+
+          <Button
+            variant="outline"
+            onClick={handleClearFilters}
+            className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
+            data-testid="button-clear-filters"
+          >
+            Clear
+          </Button>
+        </div>
+      );
+    }
+
+    // Desktop/Laptop layout: horizontal flex (original layout)
+    return (
+      <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
+        <PeriodFilter value={periodValue} onChange={setPeriodValue} />
+
+        <RadioGroup 
+          value={filterType} 
+          onValueChange={(value: "vessel" | "fleet" | "addGroup") => setFilterType(value)}
+          className="flex items-center gap-6"
+        >
+          {/* Vessel Radio + Multi-Select */}
+          <div className="flex items-center gap-2">
+            <RadioGroupItem 
+              value="vessel" 
+              id="filter-vessel"
+              className="h-4 w-4"
+              data-testid="radio-vessel"
+            />
+            <Label 
+              htmlFor="filter-vessel" 
+              className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
+            >
+              Vessel
+            </Label>
+            {filterType === 'vessel' && renderVesselSelect()}
+          </div>
+
+          {/* Fleet Radio + Select */}
+          <div className="flex items-center gap-2">
+            <RadioGroupItem 
+              value="fleet" 
+              id="filter-fleet"
+              className="h-4 w-4"
+              data-testid="radio-fleet"
+            />
+            <Label 
+              htmlFor="filter-fleet" 
+              className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
+            >
+              Fleet Group
+            </Label>
+            {filterType === 'fleet' && renderFleetSelect()}
+          </div>
+
+          {/* Additional Group Radio + Select */}
+          <div className="flex items-center gap-2">
+            <RadioGroupItem 
+              value="addGroup" 
+              id="filter-addgroup"
+              className="h-4 w-4"
+              data-testid="radio-addgroup"
+            />
+            <Label 
+              htmlFor="filter-addgroup" 
+              className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
+            >
+              Additional Group
+            </Label>
+            {filterType === 'addGroup' && renderAddGroupSelect()}
+          </div>
+        </RadioGroup>
+
+        <Button
+          variant="outline"
+          onClick={handleClearFilters}
+          className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
+          data-testid="button-clear-filters"
+        >
+          Clear
+        </Button>
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col h-full">
       <SectionTitleComponents title="RH Records - Office Overview">
-        <div className="flex gap-4 items-center">
+        <div className={`flex items-center ${isPhone ? 'flex-col gap-2' : 'flex-row gap-4'}`}>
           <div className="flex items-center gap-1">
             <span className="text-xs text-[#4f5863]">Rest</span>
             <button
@@ -206,146 +532,7 @@ export const RestHoursRecord = (): JSX.Element => {
         </div>
       </SectionTitleComponents>
 
-      {showFilters && (
-        <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
-          {/* Period Filter */}
-          <PeriodFilter value={periodValue} onChange={setPeriodValue} />
-
-          {/* Radio Group for Vessel/Fleet/Add Group */}
-          <RadioGroup 
-            value={filterType} 
-            onValueChange={(value: "vessel" | "fleet" | "addGroup") => setFilterType(value)}
-            className="flex items-center gap-6"
-          >
-            {/* Vessel Radio + Multi-Select */}
-            <div className="flex items-center gap-2">
-              <RadioGroupItem 
-                value="vessel" 
-                id="filter-vessel"
-                className="h-4 w-4"
-                data-testid="radio-vessel"
-              />
-              <Label 
-                htmlFor="filter-vessel" 
-                className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-              >
-                Vessel
-              </Label>
-              <Popover modal={false}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="h-8 w-40 ml-2 text-xs text-[#0f172a] justify-between bg-transparent dark:bg-neutral-900 border-input"
-                    disabled={vesselsLoading}
-                    data-testid="select-vessel-multi"
-                  >
-                    <span className="truncate">
-                      {selectedVessels.length > 0 
-                        ? `${selectedVessels.length} selected` 
-                        : vesselsLoading ? "Loading..." : "Vessel"
-                      }
-                    </span>
-                    <ChevronDown className="h-4 w-4 opacity-50 ml-2" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-60 p-2" align="start">
-                  <div className="max-h-60 overflow-y-auto">
-                    {vessels.map((vessel: any) => (
-                      <div 
-                        key={vessel.id} 
-                        className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer"
-                        data-testid={`vessel-row-${vessel.entryId || vessel.id}`}
-                        onClick={() => toggleVessel(vessel.name)}
-                      >
-                        <Checkbox 
-                          checked={selectedVessels.includes(vessel.name)}
-                          onCheckedChange={() => toggleVessel(vessel.name)}
-                          data-testid={`checkbox-vessel-${vessel.entryId || vessel.id}`}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                        <span 
-                          className="text-sm flex-1"
-                          data-testid={`label-vessel-${vessel.entryId || vessel.id}`}
-                        >
-                          {vessel.name}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            {/* Fleet Radio + Select */}
-            <div className="flex items-center gap-2">
-              <RadioGroupItem 
-                value="fleet" 
-                id="filter-fleet"
-                className="h-4 w-4"
-                data-testid="radio-fleet"
-              />
-              <Label 
-                htmlFor="filter-fleet" 
-                className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-              >
-                Fleet Group
-              </Label>
-              <Select value={fleetValue} onValueChange={setFleetValue}>
-                <SelectTrigger 
-                  className="h-8 w-40 ml-2 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
-                  data-testid="select-fleet-value"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="fleet1">Fleet Group 1</SelectItem>
-                  <SelectItem value="fleet2">Fleet Group 2</SelectItem>
-                  <SelectItem value="fleet3">Fleet Group 3</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Add Group Radio + Select */}
-            <div className="flex items-center gap-2">
-              <RadioGroupItem 
-                value="addGroup" 
-                id="filter-addgroup"
-                className="h-4 w-4"
-                data-testid="radio-addgroup"
-              />
-              <Label 
-                htmlFor="filter-addgroup" 
-                className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-              >
-                Additional Group
-              </Label>
-              <Select value={addGroupValue} onValueChange={setAddGroupValue}>
-                <SelectTrigger 
-                  className="h-8 w-40 ml-2 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
-                  data-testid="select-addgroup-value"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="group1">Additional Group 1</SelectItem>
-                  <SelectItem value="group2">Additional Group 2</SelectItem>
-                  <SelectItem value="group3">Additional Group 3</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </RadioGroup>
-
-          {/* Clear Button */}
-          <Button
-            variant="outline"
-            onClick={handleClearFilters}
-            className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
-            data-testid="button-clear-filters"
-          >
-            Clear
-          </Button>
-        </div>
-      )}
+      {renderFilterBar()}
 
       {/* RH Records Table */}
       <div className="pr-4 pb-4">
