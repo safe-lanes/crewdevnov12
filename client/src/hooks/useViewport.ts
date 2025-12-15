@@ -46,11 +46,18 @@ export const getViewportConfig = (viewport: ViewportSize) => ({
   alwaysShowHorizontalScroll: viewport === 'tablet' || viewport === 'phone'
 });
 
-export const getLayoutConfig = (viewport: ViewportSize) => ({
-  showFixedSidebar: viewport === 'desktop' || viewport === 'laptop',
-  sidebarWidth: viewport === 'desktop' || viewport === 'laptop' ? 67 : 0,
-  mainMarginLeft: viewport === 'desktop' || viewport === 'laptop' ? 67 : 0,
-  mainPadding: viewport === 'phone' ? 12 : viewport === 'tablet' ? 16 : 24,
-  headerHeight: 67,
-  showMobileSidebarToggle: viewport === 'tablet' || viewport === 'phone',
-});
+export const getLayoutConfig = (viewport: ViewportSize) => {
+  const isDesktopOrLaptop = viewport === 'desktop' || viewport === 'laptop';
+  const isCompact = viewport === 'tablet' || viewport === 'phone';
+  
+  return {
+    showFixedSidebar: true,
+    sidebarMode: isDesktopOrLaptop ? 'full' : 'compact' as 'full' | 'compact',
+    sidebarWidth: isDesktopOrLaptop ? 67 : 56,
+    mainMarginLeft: isDesktopOrLaptop ? 67 : 56,
+    mainPadding: viewport === 'phone' ? 8 : viewport === 'tablet' ? 12 : 24,
+    headerHeight: 67,
+    showMobileSidebarToggle: false,
+    showSidebarLabels: isDesktopOrLaptop,
+  };
+};

@@ -10,7 +10,7 @@ export default function MainLayout({ children, hasSidebar = false }: MainLayoutP
     const viewport = useViewport();
     const layoutConfig = getLayoutConfig(viewport);
     
-    const marginLeft = hasSidebar && layoutConfig.showFixedSidebar ? layoutConfig.sidebarWidth : 0;
+    const marginLeft = hasSidebar ? layoutConfig.sidebarWidth : 0;
     const padding = layoutConfig.mainPadding;
 
     return (
