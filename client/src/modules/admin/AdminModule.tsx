@@ -4678,35 +4678,52 @@ const AdminModuleInner = (): JSX.Element => {
       <div className="flex-1 overflow-auto">
         {selectedTrainingMatrixTab === "training-master" && (
           <div data-testid="content-training-master">
-            {trainingMasterLoading ? (
-              <div className="flex items-center justify-center h-40">
-                <div className="text-gray-500">Loading training data...</div>
-              </div>
-            ) : filteredTrainingData.length === 0 ? (
-              <div className="flex items-center justify-center h-40">
-                <div className="text-gray-500">No training data found</div>
-              </div>
-            ) : (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <ScrollArea className="h-[calc(100vh-300px)]">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
-                        <TableHead className="w-12 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">#</TableHead>
-                        <TableHead className="w-20 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">ID</TableHead>
-                        <TableHead className="min-w-[200px] text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Training Name</TableHead>
-                        <TableHead className="w-24 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Category</TableHead>
-                        <TableHead className="w-24 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Group</TableHead>
-                        <TableHead className="w-32 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Requirement/Ref</TableHead>
-                        <TableHead className="w-32 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Applicable to Company</TableHead>
-                        <TableHead className="w-[180px] text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Training Label</TableHead>
-                        {isTrainingMasterEditing && (
-                          <TableHead className="w-20 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Actions</TableHead>
-                        )}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <ScrollArea className="h-[calc(100vh-300px)]">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                      <TableHead className="w-12 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">#</TableHead>
+                      <TableHead className="w-20 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">ID</TableHead>
+                      <TableHead className="min-w-[200px] text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Training Name</TableHead>
+                      <TableHead className="w-24 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Category</TableHead>
+                      <TableHead className="w-24 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Group</TableHead>
+                      <TableHead className="w-32 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Requirement/Ref</TableHead>
+                      <TableHead className="w-32 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Applicable to Company</TableHead>
+                      <TableHead className="w-[180px] text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Training Label</TableHead>
+                      {isTrainingMasterEditing && (
+                        <TableHead className="w-20 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Actions</TableHead>
+                      )}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {/* Loading State - Show skeleton rows */}
+                    {trainingMasterLoading && (
+                      <>
+                        {Array.from({ length: 10 }).map((_, index) => (
+                          <TableRow key={`skeleton-${index}`} className="border-b border-gray-100">
+                            <TableCell className="text-center"><div className="h-4 w-6 bg-gray-200 rounded animate-pulse mx-auto" /></TableCell>
+                            <TableCell><div className="h-4 w-14 bg-gray-200 rounded animate-pulse" /></TableCell>
+                            <TableCell><div className="h-4 w-40 bg-gray-200 rounded animate-pulse" /></TableCell>
+                            <TableCell><div className="h-4 w-16 bg-gray-200 rounded animate-pulse" /></TableCell>
+                            <TableCell><div className="h-4 w-16 bg-gray-200 rounded animate-pulse" /></TableCell>
+                            <TableCell><div className="h-4 w-20 bg-gray-200 rounded animate-pulse" /></TableCell>
+                            <TableCell className="text-center"><div className="h-4 w-4 bg-gray-200 rounded animate-pulse mx-auto" /></TableCell>
+                            <TableCell><div className="h-4 w-24 bg-gray-200 rounded animate-pulse" /></TableCell>
+                          </TableRow>
+                        ))}
+                      </>
+                    )}
+                    {/* Empty State - No data found */}
+                    {!trainingMasterLoading && filteredTrainingData.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                          No training data found
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                      <TableBody>
-                        {filteredTrainingData.map((training, index) => {
+                    )}
+                    {/* Data Rows */}
+                    {!trainingMasterLoading && filteredTrainingData.map((training, index) => {
                           const sameGroupTrainings = filteredTrainingData.filter(
                             t => t.category === training.category && t.trainingGroup === training.trainingGroup
                           );
@@ -4855,7 +4872,6 @@ const AdminModuleInner = (): JSX.Element => {
                   </Table>
                 </ScrollArea>
               </div>
-            )}
           </div>
         )}
         {selectedTrainingMatrixTab === "company" && (
