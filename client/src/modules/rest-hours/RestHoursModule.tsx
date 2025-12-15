@@ -61,7 +61,7 @@ export const RestHoursModule = (): JSX.Element => {
         setSelectedRestHoursPage={setSelectedRestHoursPage}
         allowedPages={allowedPages}
       />
-      <MainLayout>
+      <MainLayout hasSidebar={true}>
         {renderContent()}
       </MainLayout>
     </>

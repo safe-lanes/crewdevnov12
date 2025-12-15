@@ -53,7 +53,7 @@ export function PromotionsModule() {
                 setSelectedPromotionsPage={setSelectedPromotionsPage}
                 allowedPages={['all']}
             />
-            <MainLayout>
+            <MainLayout hasSidebar={true}>
             <div className="flex flex-col h-full">
                 <SectionTitleComponents title="Crew Promotion">
                     <div className="flex gap-2">

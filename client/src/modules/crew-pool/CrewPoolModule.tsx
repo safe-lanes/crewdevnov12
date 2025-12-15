@@ -682,7 +682,7 @@ export const CrewPoolModule = (): JSX.Element => {
                 setSelectedCrewPoolPage={setSelectedCrewPoolPage}
                 allowedPages={allowedPages}
             />
-            <MainLayout>
+            <MainLayout hasSidebar={true}>
                 <SectionTitleComponents title={getTitle()}>
                     <div className="flex gap-2">
                         <Button

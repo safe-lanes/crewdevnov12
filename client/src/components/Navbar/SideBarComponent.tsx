@@ -60,13 +60,13 @@ export default function SideBarComponent({
     if (layoutConfig.showFixedSidebar) {
         return (
             <aside 
-                className="w-[67px] fixed left-0 top-[67px] h-[calc(100vh-67px)] z-50"
+                className="w-[67px] fixed left-0 top-[67px] h-[calc(100vh-67px)] z-50 flex flex-col"
                 data-testid="sidebar-desktop"
             >
                 {filteredItems.map(item => (
                     <div
                         key={item.page}
-                        className={`w-full h-[79px] flex flex-col items-center justify-center cursor-pointer px-1 ${
+                        className={`w-full h-[79px] flex flex-col items-center justify-center cursor-pointer px-1 flex-shrink-0 ${
                             selectedAdminPage === item.page ? "bg-[#52baf3]" : "bg-[#16569e] hover:bg-[#1e5fa8]"
                         }`}
                         onClick={() => handlePageSelect(item.page)}

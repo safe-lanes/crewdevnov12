@@ -3228,7 +3228,7 @@ export const VesselModule = (): JSX.Element => {
                 setSelectedVesselPage={setSelectedVesselPage} 
                 allowedPages={allowedPages} 
             />
-            <MainLayout>
+            <MainLayout hasSidebar={true}>
                 {selectedVessel ? (
                     renderVesselDetail()
                 ) : (

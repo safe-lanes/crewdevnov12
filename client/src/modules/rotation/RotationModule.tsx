@@ -525,7 +525,7 @@ export function RotationModule() {
                 setSelectedRotationPage={setSelectedRotationPage}
                 allowedPages={allowedPages}
             />
-            <MainLayout>
+            <MainLayout hasSidebar={true}>
                 {renderContent()}
             </MainLayout>
         </>

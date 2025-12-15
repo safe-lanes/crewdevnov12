@@ -467,7 +467,7 @@ export function DrugsAlcoholModule() {
                 setSelectedDrugsAlcoholPage={setSelectedDrugsAlcoholPage}
                 allowedPages={allowedPages}
             />
-            <MainLayout>
+            <MainLayout hasSidebar={true}>
                 {renderContent()}
             </MainLayout>
             

@@ -141,7 +141,7 @@ export const RestHoursVesselOverview = (): JSX.Element => {
         setSelectedRestHoursPage={setSelectedRestHoursPage}
         allowedPages={["dashboard", "record", "plan"]}
       />
-      <MainLayout>
+      <MainLayout hasSidebar={true}>
         <div className="flex flex-col h-full">
           <SectionTitleComponents title={`RH Records - ${vesselName} - ${monthDisplay}`}>
         <div className="flex gap-4 items-center">
