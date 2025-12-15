@@ -7568,6 +7568,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Batch update training masters
+  app.patch("/api/training-master/batch", async (req, res) => {
+    try {
+      const updates = req.body;
+      if (!Array.isArray(updates)) {
+        return res.status(400).json({ error: "Expected array of updates" });
+      }
+
+      const results = await Promise.all(
+        updates.map(async (item: any) => {
+          if (!item.id) return null;
+          return storage.updateTrainingMaster(item.id, item.data);
+        })
+      );
+      res.json(results.filter(Boolean));
+    } catch (error) {
+      console.error("Error batch updating training masters:", error);
+      res.status(500).json({ error: "Failed to batch update training masters" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

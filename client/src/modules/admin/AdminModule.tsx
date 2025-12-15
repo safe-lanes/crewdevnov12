@@ -4330,24 +4330,29 @@ const AdminModuleInner = (): JSX.Element => {
   const handleSaveTraining = async () => {
     try {
       const changedIds = Array.from(changedTrainings);
-      for (const id of changedIds) {
+      const updates = changedIds.map(id => {
         const training = localTrainingData.find(t => t.id === id);
-        if (training) {
-          await updateTrainingMutation.mutateAsync({
-            id: training.id,
-            data: {
-              requirementReference: training.requirementReference,
-              applicableToCompany: training.applicableToCompany,
-              trainingLabel: training.trainingLabel,
-              ...(training.isDefault ? {} : {
-                trainingName: training.trainingName,
-                category: training.category,
-                trainingGroup: training.trainingGroup,
-              }),
-            },
-          });
-        }
+        if (!training) return null;
+        return {
+          id: training.id,
+          data: {
+            requirementReference: training.requirementReference,
+            applicableToCompany: training.applicableToCompany,
+            trainingLabel: training.trainingLabel,
+            ...(training.isDefault ? {} : {
+              trainingName: training.trainingName,
+              category: training.category,
+              trainingGroup: training.trainingGroup,
+            }),
+          },
+        };
+      }).filter(Boolean);
+
+      if (updates.length > 0) {
+        await apiRequest('PATCH', '/api/training-master/batch', updates);
+        queryClient.invalidateQueries({ queryKey: ['/api/training-master'] });
       }
+
       setIsTrainingMasterEditing(false);
       setChangedTrainings(new Set());
       toast({
