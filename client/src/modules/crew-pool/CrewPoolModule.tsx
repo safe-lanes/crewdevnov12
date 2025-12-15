@@ -210,7 +210,6 @@ export const CrewPoolModule = (): JSX.Element => {
             sort: 'asc',
             sortIndex: 1,
             resizable: true,
-            pinned: 'left',
             headerClass: 'ag-header-cell-text-wrap'
         },
         // General Particulars group (for remaining columns)
@@ -497,8 +496,6 @@ export const CrewPoolModule = (): JSX.Element => {
             sortable: false,
             filter: false,
             cellClass: 'flex items-center justify-center',
-            pinned: 'right',
-            lockPosition: true,
             suppressHeaderMenuButton: true,
             suppressColumnsToolPanel: true
         }

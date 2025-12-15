@@ -327,7 +327,6 @@ export const DueCrewTable: FC<DueCrewTableProps> = ({
         field: 'timeline' as keyof CrewMember,
         flex: 1,
         minWidth: 400,
-        pinned: 'right',
         sortable: false,
         resizable: false,
         cellRenderer: TimelineCellRenderer,

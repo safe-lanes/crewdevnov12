@@ -423,7 +423,6 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
       field: 'rank',
       flex: 2,
       minWidth: 130,
-      pinned: 'left',
       cellStyle: { fontWeight: 500, fontSize: '13px', display: 'flex', alignItems: 'center' } as any
     },
     {
@@ -506,7 +505,6 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
       headerName: '',
       width: 60,
       cellRenderer: ActionsRenderer,
-      pinned: 'right',
       sortable: false,
       filter: false,
       resizable: false,

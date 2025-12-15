@@ -1919,9 +1919,7 @@ export const VesselModule = (): JSX.Element => {
             cellRenderer: ActionsCellRenderer,
             sortable: false,
             filter: false,
-            cellClass: 'flex items-center justify-center',
-            pinned: 'right',
-            lockPosition: true
+            cellClass: 'flex items-center justify-center'
         }
     ], []);
 

@@ -434,7 +434,6 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
         headerName: 'Vessel',
         field: 'vesselName',
         width: 150,
-        pinned: 'left',
         cellStyle: { fontSize: '13px', color: '#4f5863' },
         sortable: true,
         resizable: false,

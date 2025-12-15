@@ -278,8 +278,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       width: 110,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       sortable: true,
-      resizable: false,
-      pinned: 'left'
+      resizable: false
     },
     {
       headerName: 'Name',
@@ -417,8 +416,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         onEdit: handleEditPromotion
       },
       sortable: false,
-      resizable: false,
-      pinned: 'right'
+      resizable: false
     }
   ], [handleEditPromotion]);
 

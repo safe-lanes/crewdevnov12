@@ -281,7 +281,6 @@ export function SummaryTable({ selectedVessel, onAdd }: SummaryTableProps) {
         field: 'testTypeLabel',
         width: 120,
         cellClass: 'flex items-center text-[13px] font-medium',
-        pinned: 'left',
       },
       {
         headerName: 'Last',

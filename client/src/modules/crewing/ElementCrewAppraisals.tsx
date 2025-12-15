@@ -369,7 +369,6 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       filter: 'agTextColumnFilter',
       sortable: true,
       resizable: true,
-      pinned: 'left',
       hide: true
     },
     {
@@ -380,8 +379,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       filter: 'agTextColumnFilter',
       sortable: true,
-      resizable: true,
-      pinned: 'left'
+      resizable: true
     },
     {
       headerName: 'Rank',
@@ -516,9 +514,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
       cellRenderer: ActionsCellRenderer,
       sortable: false,
       filter: false,
-      cellClass: 'flex items-center justify-center',
-      pinned: 'right',
-      lockPosition: true
+      cellClass: 'flex items-center justify-center'
     }
   ], []);
 
