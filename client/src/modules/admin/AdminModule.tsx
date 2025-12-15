@@ -4692,20 +4692,17 @@ const AdminModuleInner = (): JSX.Element => {
                   <ScrollArea className="h-[calc(100vh-300px)]">
                     <Table>
                       <TableHeader>
-                        <TableRow className="bg-gray-50">
-                          <TableHead className="w-12 text-center text-xs font-semibold">#</TableHead>
-                          <TableHead className="w-20 text-xs font-semibold">ID</TableHead>
-                          <TableHead className="min-w-[200px] text-xs font-semibold">Training Name</TableHead>
-                          <TableHead className="w-24 text-xs font-semibold">Category</TableHead>
-                          <TableHead className="w-24 text-xs font-semibold">Group</TableHead>
-                          <TableHead className="w-32 text-xs font-semibold">Requirement/Ref</TableHead>
-                          <TableHead className="w-32 text-xs font-semibold">Training Label</TableHead>
-                          <TableHead className="w-24 text-center text-xs font-semibold">Company</TableHead>
+                        <TableRow className="bg-[#1e3a5f]">
+                          <TableHead className="w-12 text-center text-xs font-semibold text-white">#</TableHead>
+                          <TableHead className="w-20 text-xs font-semibold text-white">ID</TableHead>
+                          <TableHead className="min-w-[200px] text-xs font-semibold text-white">Training Name</TableHead>
+                          <TableHead className="w-24 text-xs font-semibold text-white">Category</TableHead>
+                          <TableHead className="w-24 text-xs font-semibold text-white">Group</TableHead>
+                          <TableHead className="w-32 text-xs font-semibold text-white">Requirement/Ref</TableHead>
+                          <TableHead className="w-32 text-center text-xs font-semibold text-white">Applicable to Company</TableHead>
+                          <TableHead className="w-32 text-xs font-semibold text-white">Training Label</TableHead>
                           {isTrainingMasterEditing && (
-                            <TableHead className="w-20 text-center text-xs font-semibold">Order</TableHead>
-                          )}
-                          {isTrainingMasterEditing && (
-                            <TableHead className="w-16 text-center text-xs font-semibold">Delete</TableHead>
+                            <TableHead className="w-20 text-center text-xs font-semibold text-white">Actions</TableHead>
                           )}
                         </TableRow>
                       </TableHeader>
@@ -4789,19 +4786,6 @@ const AdminModuleInner = (): JSX.Element => {
                                   training.requirementReference || '-'
                                 )}
                               </TableCell>
-                              <TableCell className="text-xs">
-                                {isTrainingMasterEditing ? (
-                                  <Input
-                                    value={training.trainingLabel || ''}
-                                    onChange={(e) => handleTrainingFieldChange(training.id, 'trainingLabel', e.target.value || null)}
-                                    className="h-7 text-xs"
-                                    placeholder="Label"
-                                    data-testid={`input-label-${training.id}`}
-                                  />
-                                ) : (
-                                  training.trainingLabel || '-'
-                                )}
-                              </TableCell>
                               <TableCell className="text-center">
                                 <input
                                   type="checkbox"
@@ -4812,9 +4796,26 @@ const AdminModuleInner = (): JSX.Element => {
                                   data-testid={`checkbox-company-${training.id}`}
                                 />
                               </TableCell>
+                              <TableCell className="text-xs">
+                                {training.applicableToCompany ? (
+                                  isTrainingMasterEditing ? (
+                                    <Input
+                                      value={training.trainingLabel || ''}
+                                      onChange={(e) => handleTrainingFieldChange(training.id, 'trainingLabel', e.target.value || null)}
+                                      className="h-7 text-xs"
+                                      placeholder="Label"
+                                      data-testid={`input-label-${training.id}`}
+                                    />
+                                  ) : (
+                                    training.trainingLabel || '-'
+                                  )
+                                ) : (
+                                  <span className="text-gray-400">N/A</span>
+                                )}
+                              </TableCell>
                               {isTrainingMasterEditing && (
                                 <TableCell className="text-center">
-                                  <div className="flex justify-center gap-1">
+                                  <div className="flex justify-center gap-2">
                                     <Button
                                       variant="ghost"
                                       size="sm"
@@ -4835,21 +4836,17 @@ const AdminModuleInner = (): JSX.Element => {
                                     >
                                       <ChevronDown className="h-4 w-4" />
                                     </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleDeleteTraining(training)}
+                                      disabled={training.isDefault}
+                                      className={`h-6 w-6 p-0 ${training.isDefault ? 'opacity-30' : 'text-red-500 hover:text-red-700'}`}
+                                      data-testid={`button-delete-${training.id}`}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
                                   </div>
-                                </TableCell>
-                              )}
-                              {isTrainingMasterEditing && (
-                                <TableCell className="text-center">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleDeleteTraining(training)}
-                                    disabled={training.isDefault}
-                                    className={`h-6 w-6 p-0 ${training.isDefault ? 'opacity-30' : 'text-red-500 hover:text-red-700'}`}
-                                    data-testid={`button-delete-${training.id}`}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
                                 </TableCell>
                               )}
                             </TableRow>
