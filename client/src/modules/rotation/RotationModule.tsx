@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useViewport } from '@/hooks/useViewport';
 import RotationSideBar from './RotationSideBar';
 import MainLayout from '@/components/main/MainLayout';
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
@@ -42,6 +43,11 @@ const useCompanyRanks = () => {
 
 // Approval Screen Component
 function ApprovalScreen() {
+    const viewport = useViewport();
+    const isPhone = viewport === 'phone';
+    const isTablet = viewport === 'tablet';
+    const isSmallScreen = isPhone || isTablet;
+    
     const [selectedVessels, setSelectedVessels] = useState<string[]>([]);
     const [selectedRanks, setSelectedRanks] = useState<string[]>([]);
     const [draftIdFilter, setDraftIdFilter] = useState("");
@@ -102,159 +108,253 @@ function ApprovalScreen() {
             </SectionTitleComponents>
 
             {showFilters && (
-                <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
-                    {/* Vessel Multi-Select */}
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button
-                                variant="outline"
-                                className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] justify-between min-w-[140px]"
-                                data-testid="filter-vessel"
-                            >
-                                {selectedVessels.length === 0 ? "Vessel" : `${selectedVessels.length} selected`}
-                                <ChevronDown className="ml-2 h-4 w-4" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-56 p-2" align="start">
-                            <div className="space-y-2">
-                                {vessels.map((vessel: any) => (
-                                    <div key={vessel.name} className="flex items-center space-x-2">
-                                        <Checkbox
-                                            id={`vessel-${vessel.name}`}
-                                            checked={selectedVessels.includes(vessel.name)}
-                                            onCheckedChange={() => toggleVessel(vessel.name)}
-                                            data-testid={`checkbox-vessel-${vessel.name}`}
-                                        />
-                                        <label
-                                            htmlFor={`vessel-${vessel.name}`}
-                                            className="text-sm font-normal cursor-pointer"
+                <div className="mb-4 p-3 md:p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
+                    {/* Desktop/Laptop: Horizontal flex layout */}
+                    {!isSmallScreen && (
+                        <div className="flex flex-nowrap items-center gap-3">
+                            <div className="shrink-0">
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] justify-between w-[130px]"
+                                            data-testid="filter-vessel"
                                         >
-                                            {vessel.name}
-                                        </label>
-                                    </div>
-                                ))}
+                                            {selectedVessels.length === 0 ? "Vessel" : `${selectedVessels.length} selected`}
+                                            <ChevronDown className="ml-2 h-4 w-4" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-56 p-2" align="start">
+                                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                                            {vessels.map((vessel: any) => (
+                                                <div key={vessel.name} className="flex items-center space-x-2">
+                                                    <Checkbox
+                                                        id={`vessel-${vessel.name}`}
+                                                        checked={selectedVessels.includes(vessel.name)}
+                                                        onCheckedChange={() => toggleVessel(vessel.name)}
+                                                        data-testid={`checkbox-vessel-${vessel.name}`}
+                                                    />
+                                                    <label htmlFor={`vessel-${vessel.name}`} className="text-sm font-normal cursor-pointer">
+                                                        {vessel.name}
+                                                    </label>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
                             </div>
-                        </PopoverContent>
-                    </Popover>
 
-                    {/* Rank Multi-Select */}
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button
-                                variant="outline"
-                                className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] justify-between min-w-[140px]"
-                                data-testid="filter-rank"
-                            >
-                                {selectedRanks.length === 0 ? "Rank" : `${selectedRanks.length} selected`}
-                                <ChevronDown className="ml-2 h-4 w-4" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-56 p-2" align="start">
-                            <div className="space-y-2">
-                                {companyRanks.map((rank: any) => (
-                                    <div key={rank.rank} className="flex items-center space-x-2">
-                                        <Checkbox
-                                            id={`rank-${rank.rank}`}
-                                            checked={selectedRanks.includes(rank.rank)}
-                                            onCheckedChange={() => toggleRank(rank.rank)}
-                                            data-testid={`checkbox-rank-${rank.rank}`}
-                                        />
-                                        <label
-                                            htmlFor={`rank-${rank.rank}`}
-                                            className="text-sm font-normal cursor-pointer"
+                            <div className="shrink-0">
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] justify-between w-[130px]"
+                                            data-testid="filter-rank"
                                         >
-                                            {rank.rank}
-                                        </label>
+                                            {selectedRanks.length === 0 ? "Rank" : `${selectedRanks.length} selected`}
+                                            <ChevronDown className="ml-2 h-4 w-4" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-56 p-2" align="start">
+                                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                                            {companyRanks.map((rank: any) => (
+                                                <div key={rank.rank} className="flex items-center space-x-2">
+                                                    <Checkbox
+                                                        id={`rank-${rank.rank}`}
+                                                        checked={selectedRanks.includes(rank.rank)}
+                                                        onCheckedChange={() => toggleRank(rank.rank)}
+                                                        data-testid={`checkbox-rank-${rank.rank}`}
+                                                    />
+                                                    <label htmlFor={`rank-${rank.rank}`} className="text-sm font-normal cursor-pointer">
+                                                        {rank.rank}
+                                                    </label>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+
+                            <div className="shrink-0 w-[100px]">
+                                <input
+                                    type="text"
+                                    placeholder="Draft ID"
+                                    value={draftIdFilter}
+                                    onChange={(e) => setDraftIdFilter(e.target.value)}
+                                    className="h-8 w-full px-3 text-[11px] border border-[#e1e8ed] rounded-md focus:outline-none focus:ring-2 focus:ring-[#16569e]"
+                                    data-testid="input-draft-id"
+                                />
+                            </div>
+
+                            <div className="shrink-0">
+                                <Popover open={dateRangeDialogOpen} onOpenChange={setDateRangeDialogOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            className="h-8 w-56 text-[11px] border-[#e1e8ed] justify-between"
+                                            data-testid="select-date-range"
+                                        >
+                                            <span className="truncate flex items-center gap-2">
+                                                <CalendarIcon className="h-4 w-4" />
+                                                {format(dateRange.start, 'dd-MMM-yy')} - {format(dateRange.end, 'dd-MMM-yy')}
+                                            </span>
+                                            <ChevronDown className="h-4 w-4 opacity-50 ml-1" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-4" align="start">
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="text-sm font-medium mb-2 block">Start Date</label>
+                                                <Calendar mode="single" selected={dateRange.start} onSelect={(date) => date && setDateRange({ ...dateRange, start: date })} disabled={(date) => date > dateRange.end} data-testid="calendar-start-date" />
+                                            </div>
+                                            <div>
+                                                <label className="text-sm font-medium mb-2 block">End Date</label>
+                                                <Calendar mode="single" selected={dateRange.end} onSelect={(date) => date && setDateRange({ ...dateRange, end: date })} disabled={(date) => date < dateRange.start} data-testid="calendar-end-date" />
+                                            </div>
+                                            <div className="flex gap-2 pt-2 border-t">
+                                                <Button variant="outline" size="sm" onClick={() => { const resetToday = new Date(); setDateRange({ start: addMonths(resetToday, -2), end: addMonths(resetToday, 5) }); }} data-testid="button-reset-date-range">Reset</Button>
+                                                <Button size="sm" onClick={() => setDateRangeDialogOpen(false)} className="bg-blue-600 hover:bg-blue-700" data-testid="button-apply-date-range">Apply</Button>
+                                            </div>
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+
+                            <Button variant="outline" onClick={handleClearFilters} className="h-8 px-3 text-[#8798ad] text-[11px] border-[#e1e8ed] shrink-0" data-testid="button-clear-filters">Clear</Button>
+                        </div>
+                    )}
+
+                    {/* Tablet: Grid layout */}
+                    {isTablet && (
+                        <div className="space-y-3">
+                            <div className="grid grid-cols-3 gap-3">
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] justify-between w-full" data-testid="filter-vessel">
+                                            {selectedVessels.length === 0 ? "Vessel" : `${selectedVessels.length} selected`}
+                                            <ChevronDown className="ml-2 h-4 w-4" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-56 p-2" align="start">
+                                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                                            {vessels.map((vessel: any) => (
+                                                <div key={vessel.name} className="flex items-center space-x-2">
+                                                    <Checkbox id={`vessel-tablet-${vessel.name}`} checked={selectedVessels.includes(vessel.name)} onCheckedChange={() => toggleVessel(vessel.name)} data-testid={`checkbox-vessel-${vessel.name}`} />
+                                                    <label htmlFor={`vessel-tablet-${vessel.name}`} className="text-sm font-normal cursor-pointer">{vessel.name}</label>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] justify-between w-full" data-testid="filter-rank">
+                                            {selectedRanks.length === 0 ? "Rank" : `${selectedRanks.length} selected`}
+                                            <ChevronDown className="ml-2 h-4 w-4" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-56 p-2" align="start">
+                                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                                            {companyRanks.map((rank: any) => (
+                                                <div key={rank.rank} className="flex items-center space-x-2">
+                                                    <Checkbox id={`rank-tablet-${rank.rank}`} checked={selectedRanks.includes(rank.rank)} onCheckedChange={() => toggleRank(rank.rank)} data-testid={`checkbox-rank-${rank.rank}`} />
+                                                    <label htmlFor={`rank-tablet-${rank.rank}`} className="text-sm font-normal cursor-pointer">{rank.rank}</label>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+
+                                <input type="text" placeholder="Draft ID" value={draftIdFilter} onChange={(e) => setDraftIdFilter(e.target.value)} className="h-8 w-full px-3 text-[11px] border border-[#e1e8ed] rounded-md focus:outline-none focus:ring-2 focus:ring-[#16569e]" data-testid="input-draft-id" />
+                            </div>
+
+                            <div className="flex gap-3">
+                                <Popover open={dateRangeDialogOpen} onOpenChange={setDateRangeDialogOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" className="h-8 flex-1 text-[11px] border-[#e1e8ed] justify-between" data-testid="select-date-range">
+                                            <span className="truncate flex items-center gap-2"><CalendarIcon className="h-4 w-4" />{format(dateRange.start, 'dd-MMM-yy')} - {format(dateRange.end, 'dd-MMM-yy')}</span>
+                                            <ChevronDown className="h-4 w-4 opacity-50 ml-1" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-4" align="start">
+                                        <div className="space-y-4">
+                                            <div><label className="text-sm font-medium mb-2 block">Start Date</label><Calendar mode="single" selected={dateRange.start} onSelect={(date) => date && setDateRange({ ...dateRange, start: date })} disabled={(date) => date > dateRange.end} data-testid="calendar-start-date" /></div>
+                                            <div><label className="text-sm font-medium mb-2 block">End Date</label><Calendar mode="single" selected={dateRange.end} onSelect={(date) => date && setDateRange({ ...dateRange, end: date })} disabled={(date) => date < dateRange.start} data-testid="calendar-end-date" /></div>
+                                            <div className="flex gap-2 pt-2 border-t"><Button variant="outline" size="sm" onClick={() => { const resetToday = new Date(); setDateRange({ start: addMonths(resetToday, -2), end: addMonths(resetToday, 5) }); }} data-testid="button-reset-date-range">Reset</Button><Button size="sm" onClick={() => setDateRangeDialogOpen(false)} className="bg-blue-600 hover:bg-blue-700" data-testid="button-apply-date-range">Apply</Button></div>
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                                <Button variant="outline" onClick={handleClearFilters} className="h-8 w-20 text-[#8798ad] text-[11px] border-[#e1e8ed]" data-testid="button-clear-filters">Clear</Button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Phone: Vertical layout */}
+                    {isPhone && (
+                        <div className="space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] justify-between w-full" data-testid="filter-vessel">
+                                            {selectedVessels.length === 0 ? "Vessel" : `${selectedVessels.length} sel`}
+                                            <ChevronDown className="ml-1 h-4 w-4" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-56 p-2" align="start">
+                                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                                            {vessels.map((vessel: any) => (
+                                                <div key={vessel.name} className="flex items-center space-x-2">
+                                                    <Checkbox id={`vessel-phone-${vessel.name}`} checked={selectedVessels.includes(vessel.name)} onCheckedChange={() => toggleVessel(vessel.name)} data-testid={`checkbox-vessel-${vessel.name}`} />
+                                                    <label htmlFor={`vessel-phone-${vessel.name}`} className="text-sm font-normal cursor-pointer">{vessel.name}</label>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] justify-between w-full" data-testid="filter-rank">
+                                            {selectedRanks.length === 0 ? "Rank" : `${selectedRanks.length} sel`}
+                                            <ChevronDown className="ml-1 h-4 w-4" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-56 p-2" align="start">
+                                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                                            {companyRanks.map((rank: any) => (
+                                                <div key={rank.rank} className="flex items-center space-x-2">
+                                                    <Checkbox id={`rank-phone-${rank.rank}`} checked={selectedRanks.includes(rank.rank)} onCheckedChange={() => toggleRank(rank.rank)} data-testid={`checkbox-rank-${rank.rank}`} />
+                                                    <label htmlFor={`rank-phone-${rank.rank}`} className="text-sm font-normal cursor-pointer">{rank.rank}</label>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+
+                            <input type="text" placeholder="Draft ID" value={draftIdFilter} onChange={(e) => setDraftIdFilter(e.target.value)} className="h-8 w-full px-3 text-[11px] border border-[#e1e8ed] rounded-md focus:outline-none focus:ring-2 focus:ring-[#16569e]" data-testid="input-draft-id" />
+
+                            <Popover open={dateRangeDialogOpen} onOpenChange={setDateRangeDialogOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" className="h-8 w-full text-[11px] border-[#e1e8ed] justify-between" data-testid="select-date-range">
+                                        <span className="truncate flex items-center gap-2"><CalendarIcon className="h-4 w-4" />{format(dateRange.start, 'dd-MMM-yy')} - {format(dateRange.end, 'dd-MMM-yy')}</span>
+                                        <ChevronDown className="h-4 w-4 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-4" align="start">
+                                    <div className="space-y-4">
+                                        <div><label className="text-sm font-medium mb-2 block">Start Date</label><Calendar mode="single" selected={dateRange.start} onSelect={(date) => date && setDateRange({ ...dateRange, start: date })} disabled={(date) => date > dateRange.end} data-testid="calendar-start-date" /></div>
+                                        <div><label className="text-sm font-medium mb-2 block">End Date</label><Calendar mode="single" selected={dateRange.end} onSelect={(date) => date && setDateRange({ ...dateRange, end: date })} disabled={(date) => date < dateRange.start} data-testid="calendar-end-date" /></div>
+                                        <div className="flex gap-2 pt-2 border-t"><Button variant="outline" size="sm" onClick={() => { const resetToday = new Date(); setDateRange({ start: addMonths(resetToday, -2), end: addMonths(resetToday, 5) }); }} data-testid="button-reset-date-range">Reset</Button><Button size="sm" onClick={() => setDateRangeDialogOpen(false)} className="bg-blue-600 hover:bg-blue-700" data-testid="button-apply-date-range">Apply</Button></div>
                                     </div>
-                                ))}
-                            </div>
-                        </PopoverContent>
-                    </Popover>
+                                </PopoverContent>
+                            </Popover>
 
-                    {/* Draft ID Input */}
-                    <input
-                        type="text"
-                        placeholder="Draft ID"
-                        value={draftIdFilter}
-                        onChange={(e) => setDraftIdFilter(e.target.value)}
-                        className="h-8 px-3 text-[11px] border border-[#e1e8ed] rounded-md focus:outline-none focus:ring-2 focus:ring-[#16569e]"
-                        data-testid="input-draft-id"
-                    />
-
-                    {/* Date Range Picker */}
-                    <Popover open={dateRangeDialogOpen} onOpenChange={setDateRangeDialogOpen}>
-                        <PopoverTrigger asChild>
-                            <Button
-                                variant="outline"
-                                className="h-8 w-64 text-[11px] border-[#e1e8ed] justify-between"
-                                data-testid="select-date-range"
-                            >
-                                <span className="truncate flex items-center gap-2">
-                                    <CalendarIcon className="h-4 w-4" />
-                                    {format(dateRange.start, 'dd-MMM-yyyy')} - {format(dateRange.end, 'dd-MMM-yyyy')}
-                                </span>
-                                <ChevronDown className="h-4 w-4 opacity-50 ml-2" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-4" align="start">
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="text-sm font-medium mb-2 block">Start Date</label>
-                                    <Calendar
-                                        mode="single"
-                                        selected={dateRange.start}
-                                        onSelect={(date) => date && setDateRange({ ...dateRange, start: date })}
-                                        disabled={(date) => date > dateRange.end}
-                                        data-testid="calendar-start-date"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium mb-2 block">End Date</label>
-                                    <Calendar
-                                        mode="single"
-                                        selected={dateRange.end}
-                                        onSelect={(date) => date && setDateRange({ ...dateRange, end: date })}
-                                        disabled={(date) => date < dateRange.start}
-                                        data-testid="calendar-end-date"
-                                    />
-                                </div>
-                                <div className="flex gap-2 pt-2 border-t">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => {
-                                            const resetToday = new Date();
-                                            setDateRange({
-                                                start: addMonths(resetToday, -2),
-                                                end: addMonths(resetToday, 5)
-                                            });
-                                        }}
-                                        data-testid="button-reset-date-range"
-                                    >
-                                        Reset to Default
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        onClick={() => setDateRangeDialogOpen(false)}
-                                        className="bg-blue-600 hover:bg-blue-700"
-                                        data-testid="button-apply-date-range"
-                                    >
-                                        Apply
-                                    </Button>
-                                </div>
-                            </div>
-                        </PopoverContent>
-                    </Popover>
-
-                    {/* Clear Button */}
-                    <Button
-                        variant="outline"
-                        onClick={handleClearFilters}
-                        className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
-                        data-testid="button-clear-filters"
-                    >
-                        Clear
-                    </Button>
+                            <Button variant="outline" onClick={handleClearFilters} className="h-8 w-full text-[#8798ad] text-[11px] border-[#e1e8ed]" data-testid="button-clear-filters">Clear</Button>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -271,6 +371,11 @@ function ApprovalScreen() {
 }
 
 export function RotationModule() {
+    const viewport = useViewport();
+    const isPhone = viewport === 'phone';
+    const isTablet = viewport === 'tablet';
+    const isSmallScreen = isPhone || isTablet;
+    
     const [selectedRotationPage, setSelectedRotationPage] = useState<string>("due");
     const allowedPages = ["due", "plan", "approval"];
 
@@ -323,172 +428,524 @@ export function RotationModule() {
                 </SectionTitleComponents>
 
                 {showFilters && (
-                    <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
-                        {/* Radio Group for Vessel/Fleet/Add Group */}
-                        <RadioGroup 
-                            value={filterType} 
-                            onValueChange={(value: "vessel" | "fleet" | "addGroup") => setFilterType(value)}
-                            className="flex items-center gap-6"
-                        >
-                            {/* Vessel Radio + Multi-Select */}
-                            <div className="flex items-center gap-2">
-                                <RadioGroupItem 
-                                    value="vessel" 
-                                    id="filter-vessel"
-                                    className="h-4 w-4"
-                                    data-testid="radio-vessel"
-                                />
-                                <Label 
-                                    htmlFor="filter-vessel" 
-                                    className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
+                    <div className="mb-4 p-3 md:p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
+                        {/* Desktop/Laptop: Horizontal flex layout */}
+                        {!isSmallScreen && (
+                            <div className="flex flex-nowrap items-center gap-3">
+                                {/* Radio Group for Vessel/Fleet/Add Group */}
+                                <RadioGroup 
+                                    value={filterType} 
+                                    onValueChange={(value: "vessel" | "fleet" | "addGroup") => setFilterType(value)}
+                                    className="flex items-center gap-4 shrink-0"
                                 >
-                                    Vessel
-                                </Label>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            className="h-8 w-40 ml-2 text-xs text-[#0f172a] justify-between bg-transparent dark:bg-neutral-900 border-input"
-                                            disabled={vesselsLoading}
-                                            data-testid="select-vessel-multi"
+                                    {/* Vessel Radio + Multi-Select */}
+                                    <div className="flex items-center gap-2">
+                                        <RadioGroupItem 
+                                            value="vessel" 
+                                            id="filter-vessel"
+                                            className="h-4 w-4"
+                                            data-testid="radio-vessel"
+                                        />
+                                        <Label 
+                                            htmlFor="filter-vessel" 
+                                            className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
                                         >
-                                            <span className="truncate">
-                                                {selectedVessels.length > 0 
-                                                    ? `${selectedVessels.length} selected` 
-                                                    : vesselsLoading ? "Loading..." : "Vessel"
-                                                }
-                                            </span>
-                                            <ChevronDown className="h-4 w-4 opacity-50 ml-2" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-60 p-2" align="start">
-                                        <div className="max-h-60 overflow-y-auto">
-                                            {vessels.map((vessel: any) => (
-                                                <div 
-                                                    key={vessel.id} 
-                                                    className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+                                            Vessel
+                                        </Label>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    className="h-8 w-36 ml-1 text-xs text-[#0f172a] justify-between bg-transparent dark:bg-neutral-900 border-input"
+                                                    disabled={vesselsLoading}
+                                                    data-testid="select-vessel-multi"
                                                 >
-                                                    <Checkbox 
-                                                        checked={selectedVessels.includes(vessel.name)}
-                                                        onCheckedChange={() => toggleVessel(vessel.name)}
-                                                        data-testid={`checkbox-vessel-${vessel.id}`}
-                                                    />
-                                                    <label 
-                                                        className="text-sm cursor-pointer flex-1"
-                                                        onClick={() => toggleVessel(vessel.name)}
-                                                    >
-                                                        {vessel.name}
-                                                    </label>
+                                                    <span className="truncate">
+                                                        {selectedVessels.length > 0 
+                                                            ? `${selectedVessels.length} selected` 
+                                                            : vesselsLoading ? "Loading..." : "Vessel"
+                                                        }
+                                                    </span>
+                                                    <ChevronDown className="h-4 w-4 opacity-50 ml-1" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-60 p-2" align="start">
+                                                <div className="max-h-60 overflow-y-auto">
+                                                    {vessels.map((vessel: any) => (
+                                                        <div 
+                                                            key={vessel.id} 
+                                                            className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+                                                        >
+                                                            <Checkbox 
+                                                                checked={selectedVessels.includes(vessel.name)}
+                                                                onCheckedChange={() => toggleVessel(vessel.name)}
+                                                                data-testid={`checkbox-vessel-${vessel.id}`}
+                                                            />
+                                                            <label 
+                                                                className="text-sm cursor-pointer flex-1"
+                                                                onClick={() => toggleVessel(vessel.name)}
+                                                            >
+                                                                {vessel.name}
+                                                            </label>
+                                                        </div>
+                                                    ))}
                                                 </div>
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
+
+                                    {/* Fleet Radio + Select */}
+                                    <div className="flex items-center gap-2">
+                                        <RadioGroupItem 
+                                            value="fleet" 
+                                            id="filter-fleet"
+                                            className="h-4 w-4"
+                                            data-testid="radio-fleet"
+                                        />
+                                        <Label 
+                                            htmlFor="filter-fleet" 
+                                            className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
+                                        >
+                                            Fleet
+                                        </Label>
+                                        <Select value={fleetValue} onValueChange={setFleetValue}>
+                                            <SelectTrigger 
+                                                className="h-8 w-32 ml-1 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
+                                                data-testid="select-fleet-value"
+                                            >
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="fleet1">Fleet Group 1</SelectItem>
+                                                <SelectItem value="fleet2">Fleet Group 2</SelectItem>
+                                                <SelectItem value="fleet3">Fleet Group 3</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {/* Add Group Radio + Select */}
+                                    <div className="flex items-center gap-2">
+                                        <RadioGroupItem 
+                                            value="addGroup" 
+                                            id="filter-addgroup"
+                                            className="h-4 w-4"
+                                            data-testid="radio-addgroup"
+                                        />
+                                        <Label 
+                                            htmlFor="filter-addgroup" 
+                                            className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
+                                        >
+                                            Add Group
+                                        </Label>
+                                        <Select value={addGroupValue} onValueChange={setAddGroupValue}>
+                                            <SelectTrigger 
+                                                className="h-8 w-36 ml-1 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
+                                                data-testid="select-addgroup-value"
+                                            >
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="group1">Additional Group 1</SelectItem>
+                                                <SelectItem value="group2">Additional Group 2</SelectItem>
+                                                <SelectItem value="group3">Additional Group 3</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </RadioGroup>
+
+                                {/* Independent Due In Filter */}
+                                <div className="shrink-0 w-[120px]">
+                                    <Select value={dueInValue} onValueChange={setDueInValue}>
+                                        <SelectTrigger 
+                                            className="h-8 w-full text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
+                                            data-testid="select-due-in"
+                                        >
+                                            <SelectValue placeholder="Due in" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="3m">Due in 3M</SelectItem>
+                                            <SelectItem value="2m">Due in 2M</SelectItem>
+                                            <SelectItem value="1m">Due in 1M</SelectItem>
+                                            <SelectItem value="overdue1m">Overdue in 1M</SelectItem>
+                                            <SelectItem value="overdue">Overdue</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Independent Rank Filter */}
+                                <div className="shrink-0 w-[120px]">
+                                    <Select value={rankValue} onValueChange={setRankValue}>
+                                        <SelectTrigger 
+                                            className="h-8 w-full text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
+                                            data-testid="select-rank"
+                                            disabled={ranksLoading}
+                                        >
+                                            <SelectValue placeholder={ranksLoading ? "Loading..." : "Rank"} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {companyRanks.map((rank: any) => (
+                                                <SelectItem key={rank.id} value={rank.rank}>
+                                                    {rank.rank}
+                                                </SelectItem>
                                             ))}
-                                        </div>
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
 
-                            {/* Fleet Radio + Select */}
-                            <div className="flex items-center gap-2">
-                                <RadioGroupItem 
-                                    value="fleet" 
-                                    id="filter-fleet"
-                                    className="h-4 w-4"
-                                    data-testid="radio-fleet"
-                                />
-                                <Label 
-                                    htmlFor="filter-fleet" 
-                                    className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
+                                {/* Clear Button */}
+                                <Button
+                                    variant="outline"
+                                    onClick={handleClearFilters}
+                                    className="h-8 px-3 text-[#8798ad] text-[11px] border-[#e1e8ed] shrink-0"
+                                    data-testid="button-clear-filters"
                                 >
-                                    Fleet
-                                </Label>
-                                <Select value={fleetValue} onValueChange={setFleetValue}>
-                                    <SelectTrigger 
-                                        className="h-8 w-40 ml-2 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
-                                        data-testid="select-fleet-value"
-                                    >
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="fleet1">Fleet Group 1</SelectItem>
-                                        <SelectItem value="fleet2">Fleet Group 2</SelectItem>
-                                        <SelectItem value="fleet3">Fleet Group 3</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                    Clear
+                                </Button>
                             </div>
+                        )}
 
-                            {/* Add Group Radio + Select */}
-                            <div className="flex items-center gap-2">
-                                <RadioGroupItem 
-                                    value="addGroup" 
-                                    id="filter-addgroup"
-                                    className="h-4 w-4"
-                                    data-testid="radio-addgroup"
-                                />
-                                <Label 
-                                    htmlFor="filter-addgroup" 
-                                    className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
+                        {/* Tablet: Grid layout with stacked radio options */}
+                        {isTablet && (
+                            <div className="space-y-3">
+                                {/* Radio Group - stacked vertically */}
+                                <RadioGroup 
+                                    value={filterType} 
+                                    onValueChange={(value: "vessel" | "fleet" | "addGroup") => setFilterType(value)}
+                                    className="space-y-2"
                                 >
-                                    Add Group
-                                </Label>
-                                <Select value={addGroupValue} onValueChange={setAddGroupValue}>
-                                    <SelectTrigger 
-                                        className="h-8 w-40 ml-2 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
-                                        data-testid="select-addgroup-value"
+                                    {/* Vessel Radio + Multi-Select */}
+                                    <div className="flex items-center gap-2">
+                                        <RadioGroupItem 
+                                            value="vessel" 
+                                            id="filter-vessel-tablet"
+                                            className="h-4 w-4"
+                                            data-testid="radio-vessel"
+                                        />
+                                        <Label 
+                                            htmlFor="filter-vessel-tablet" 
+                                            className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer w-20"
+                                        >
+                                            Vessel
+                                        </Label>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    className="h-8 w-44 text-xs text-[#0f172a] justify-between bg-transparent dark:bg-neutral-900 border-input"
+                                                    disabled={vesselsLoading}
+                                                    data-testid="select-vessel-multi"
+                                                >
+                                                    <span className="truncate">
+                                                        {selectedVessels.length > 0 
+                                                            ? `${selectedVessels.length} selected` 
+                                                            : vesselsLoading ? "Loading..." : "Vessel"
+                                                        }
+                                                    </span>
+                                                    <ChevronDown className="h-4 w-4 opacity-50 ml-1" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-60 p-2" align="start">
+                                                <div className="max-h-60 overflow-y-auto">
+                                                    {vessels.map((vessel: any) => (
+                                                        <div 
+                                                            key={vessel.id} 
+                                                            className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+                                                        >
+                                                            <Checkbox 
+                                                                checked={selectedVessels.includes(vessel.name)}
+                                                                onCheckedChange={() => toggleVessel(vessel.name)}
+                                                                data-testid={`checkbox-vessel-${vessel.id}`}
+                                                            />
+                                                            <label 
+                                                                className="text-sm cursor-pointer flex-1"
+                                                                onClick={() => toggleVessel(vessel.name)}
+                                                            >
+                                                                {vessel.name}
+                                                            </label>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
+
+                                    {/* Fleet Radio + Select */}
+                                    <div className="flex items-center gap-2">
+                                        <RadioGroupItem 
+                                            value="fleet" 
+                                            id="filter-fleet-tablet"
+                                            className="h-4 w-4"
+                                            data-testid="radio-fleet"
+                                        />
+                                        <Label 
+                                            htmlFor="filter-fleet-tablet" 
+                                            className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer w-20"
+                                        >
+                                            Fleet
+                                        </Label>
+                                        <Select value={fleetValue} onValueChange={setFleetValue}>
+                                            <SelectTrigger 
+                                                className="h-8 w-44 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
+                                                data-testid="select-fleet-value"
+                                            >
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="fleet1">Fleet Group 1</SelectItem>
+                                                <SelectItem value="fleet2">Fleet Group 2</SelectItem>
+                                                <SelectItem value="fleet3">Fleet Group 3</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {/* Add Group Radio + Select */}
+                                    <div className="flex items-center gap-2">
+                                        <RadioGroupItem 
+                                            value="addGroup" 
+                                            id="filter-addgroup-tablet"
+                                            className="h-4 w-4"
+                                            data-testid="radio-addgroup"
+                                        />
+                                        <Label 
+                                            htmlFor="filter-addgroup-tablet" 
+                                            className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer w-20"
+                                        >
+                                            Add Group
+                                        </Label>
+                                        <Select value={addGroupValue} onValueChange={setAddGroupValue}>
+                                            <SelectTrigger 
+                                                className="h-8 w-44 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
+                                                data-testid="select-addgroup-value"
+                                            >
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="group1">Additional Group 1</SelectItem>
+                                                <SelectItem value="group2">Additional Group 2</SelectItem>
+                                                <SelectItem value="group3">Additional Group 3</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </RadioGroup>
+
+                                {/* Additional filters in grid */}
+                                <div className="grid grid-cols-3 gap-3">
+                                    <Select value={dueInValue} onValueChange={setDueInValue}>
+                                        <SelectTrigger 
+                                            className="h-8 w-full text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
+                                            data-testid="select-due-in"
+                                        >
+                                            <SelectValue placeholder="Due in" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="3m">Due in 3M</SelectItem>
+                                            <SelectItem value="2m">Due in 2M</SelectItem>
+                                            <SelectItem value="1m">Due in 1M</SelectItem>
+                                            <SelectItem value="overdue1m">Overdue in 1M</SelectItem>
+                                            <SelectItem value="overdue">Overdue</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+
+                                    <Select value={rankValue} onValueChange={setRankValue}>
+                                        <SelectTrigger 
+                                            className="h-8 w-full text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
+                                            data-testid="select-rank"
+                                            disabled={ranksLoading}
+                                        >
+                                            <SelectValue placeholder={ranksLoading ? "Loading..." : "Rank"} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {companyRanks.map((rank: any) => (
+                                                <SelectItem key={rank.id} value={rank.rank}>
+                                                    {rank.rank}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+
+                                    <Button
+                                        variant="outline"
+                                        onClick={handleClearFilters}
+                                        className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed]"
+                                        data-testid="button-clear-filters"
                                     >
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="group1">Additional Group 1</SelectItem>
-                                        <SelectItem value="group2">Additional Group 2</SelectItem>
-                                        <SelectItem value="group3">Additional Group 3</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                        Clear
+                                    </Button>
+                                </div>
                             </div>
-                        </RadioGroup>
+                        )}
 
-                        {/* Independent Due In Filter */}
-                        <Select value={dueInValue} onValueChange={setDueInValue}>
-                            <SelectTrigger 
-                                className="h-8 w-40 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
-                                data-testid="select-due-in"
-                            >
-                                <SelectValue placeholder="Due in" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="3m">Due in 3M</SelectItem>
-                                <SelectItem value="2m">Due in 2M</SelectItem>
-                                <SelectItem value="1m">Due in 1M</SelectItem>
-                                <SelectItem value="overdue1m">Overdue in 1M</SelectItem>
-                                <SelectItem value="overdue">Overdue</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        {/* Phone: Fully vertical layout */}
+                        {isPhone && (
+                            <div className="space-y-3">
+                                {/* Radio Group - fully stacked */}
+                                <RadioGroup 
+                                    value={filterType} 
+                                    onValueChange={(value: "vessel" | "fleet" | "addGroup") => setFilterType(value)}
+                                    className="space-y-2"
+                                >
+                                    {/* Vessel Radio + Multi-Select */}
+                                    <div className="flex items-center gap-2">
+                                        <RadioGroupItem 
+                                            value="vessel" 
+                                            id="filter-vessel-phone"
+                                            className="h-4 w-4"
+                                            data-testid="radio-vessel"
+                                        />
+                                        <Label 
+                                            htmlFor="filter-vessel-phone" 
+                                            className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer w-16"
+                                        >
+                                            Vessel
+                                        </Label>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    className="h-8 flex-1 text-xs text-[#0f172a] justify-between bg-transparent dark:bg-neutral-900 border-input"
+                                                    disabled={vesselsLoading}
+                                                    data-testid="select-vessel-multi"
+                                                >
+                                                    <span className="truncate">
+                                                        {selectedVessels.length > 0 
+                                                            ? `${selectedVessels.length} selected` 
+                                                            : vesselsLoading ? "Loading..." : "Vessel"
+                                                        }
+                                                    </span>
+                                                    <ChevronDown className="h-4 w-4 opacity-50 ml-1" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-60 p-2" align="start">
+                                                <div className="max-h-60 overflow-y-auto">
+                                                    {vessels.map((vessel: any) => (
+                                                        <div 
+                                                            key={vessel.id} 
+                                                            className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+                                                        >
+                                                            <Checkbox 
+                                                                checked={selectedVessels.includes(vessel.name)}
+                                                                onCheckedChange={() => toggleVessel(vessel.name)}
+                                                                data-testid={`checkbox-vessel-${vessel.id}`}
+                                                            />
+                                                            <label 
+                                                                className="text-sm cursor-pointer flex-1"
+                                                                onClick={() => toggleVessel(vessel.name)}
+                                                            >
+                                                                {vessel.name}
+                                                            </label>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
 
-                        {/* Independent Rank Filter */}
-                        <Select value={rankValue} onValueChange={setRankValue}>
-                            <SelectTrigger 
-                                className="h-8 w-40 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
-                                data-testid="select-rank"
-                                disabled={ranksLoading}
-                            >
-                                <SelectValue placeholder={ranksLoading ? "Loading..." : "Rank"} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {companyRanks.map((rank: any) => (
-                                    <SelectItem key={rank.id} value={rank.rank}>
-                                        {rank.rank}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                                    {/* Fleet Radio + Select */}
+                                    <div className="flex items-center gap-2">
+                                        <RadioGroupItem 
+                                            value="fleet" 
+                                            id="filter-fleet-phone"
+                                            className="h-4 w-4"
+                                            data-testid="radio-fleet"
+                                        />
+                                        <Label 
+                                            htmlFor="filter-fleet-phone" 
+                                            className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer w-16"
+                                        >
+                                            Fleet
+                                        </Label>
+                                        <Select value={fleetValue} onValueChange={setFleetValue}>
+                                            <SelectTrigger 
+                                                className="h-8 flex-1 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
+                                                data-testid="select-fleet-value"
+                                            >
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="fleet1">Fleet Group 1</SelectItem>
+                                                <SelectItem value="fleet2">Fleet Group 2</SelectItem>
+                                                <SelectItem value="fleet3">Fleet Group 3</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
 
-                        {/* Clear Button */}
-                        <Button
-                            variant="outline"
-                            onClick={handleClearFilters}
-                            className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
-                            data-testid="button-clear-filters"
-                        >
-                            Clear
-                        </Button>
+                                    {/* Add Group Radio + Select */}
+                                    <div className="flex items-center gap-2">
+                                        <RadioGroupItem 
+                                            value="addGroup" 
+                                            id="filter-addgroup-phone"
+                                            className="h-4 w-4"
+                                            data-testid="radio-addgroup"
+                                        />
+                                        <Label 
+                                            htmlFor="filter-addgroup-phone" 
+                                            className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer w-16"
+                                        >
+                                            Add Group
+                                        </Label>
+                                        <Select value={addGroupValue} onValueChange={setAddGroupValue}>
+                                            <SelectTrigger 
+                                                className="h-8 flex-1 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
+                                                data-testid="select-addgroup-value"
+                                            >
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="group1">Additional Group 1</SelectItem>
+                                                <SelectItem value="group2">Additional Group 2</SelectItem>
+                                                <SelectItem value="group3">Additional Group 3</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </RadioGroup>
+
+                                {/* Additional filters - 2 column grid */}
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Select value={dueInValue} onValueChange={setDueInValue}>
+                                        <SelectTrigger 
+                                            className="h-8 w-full text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
+                                            data-testid="select-due-in"
+                                        >
+                                            <SelectValue placeholder="Due in" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="3m">Due in 3M</SelectItem>
+                                            <SelectItem value="2m">Due in 2M</SelectItem>
+                                            <SelectItem value="1m">Due in 1M</SelectItem>
+                                            <SelectItem value="overdue1m">Overdue in 1M</SelectItem>
+                                            <SelectItem value="overdue">Overdue</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+
+                                    <Select value={rankValue} onValueChange={setRankValue}>
+                                        <SelectTrigger 
+                                            className="h-8 w-full text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
+                                            data-testid="select-rank"
+                                            disabled={ranksLoading}
+                                        >
+                                            <SelectValue placeholder={ranksLoading ? "Loading..." : "Rank"} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {companyRanks.map((rank: any) => (
+                                                <SelectItem key={rank.id} value={rank.rank}>
+                                                    {rank.rank}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Clear button full width */}
+                                <Button
+                                    variant="outline"
+                                    onClick={handleClearFilters}
+                                    className="h-8 w-full text-[#8798ad] text-[11px] border-[#e1e8ed]"
+                                    data-testid="button-clear-filters"
+                                >
+                                    Clear
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 )}
 
