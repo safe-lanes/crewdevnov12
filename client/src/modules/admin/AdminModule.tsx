@@ -4722,7 +4722,7 @@ const AdminModuleInner = (): JSX.Element => {
                             >
                               <TableCell className="text-center text-gray-600">{index + 1}</TableCell>
                               <TableCell className="text-gray-600">{training.trainingId}</TableCell>
-                              <TableCell>
+                              <TableCell className="text-gray-600">
                                 {isTrainingMasterEditing && !training.isDefault ? (
                                   <Input
                                     value={training.trainingName}
@@ -4731,7 +4731,7 @@ const AdminModuleInner = (): JSX.Element => {
                                     data-testid={`input-training-name-${training.id}`}
                                   />
                                 ) : (
-                                  <span className={training.isDefault ? "font-medium" : ""}>{training.trainingName}</span>
+                                  <span>{training.trainingName}</span>
                                 )}
                               </TableCell>
                               <TableCell className="text-gray-600">
@@ -4795,7 +4795,7 @@ const AdminModuleInner = (): JSX.Element => {
                                   data-testid={`checkbox-company-${training.id}`}
                                 />
                               </TableCell>
-                              <TableCell className="text-xs">
+                              <TableCell className="text-gray-600">
                                 {training.applicableToCompany ? (
                                   isTrainingMasterEditing ? (
                                     <Input
