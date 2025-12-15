@@ -450,87 +450,262 @@ export const RecruitmentModule = (): JSX.Element => {
       <>
         {/* Filters Section - Responsive */}
         {showFilters && (
-          <div className={`mb-4 p-3 md:p-4 pl-0 bg-[#f7fafc] rounded-lg ${isPhone ? 'space-y-3' : ''}`}>
-            <div className={`grid gap-2 md:gap-3 ${isPhone ? 'grid-cols-2' : isTablet ? 'grid-cols-3 lg:grid-cols-4' : 'flex flex-wrap gap-4'}`}>
-              <Input
-                placeholder="Search Name..."
-                className={`h-8 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] ${isPhone ? 'col-span-2' : isTablet ? '' : 'w-48'}`}
-                value={filters.searchName}
-                onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
-                data-testid="input-search-name"
-              />
+          <div className="mb-4 p-3 md:p-4 pl-0 bg-[#f7fafc] rounded-lg">
+            {/* Desktop/Laptop: Single row flex layout with all filters and buttons inline */}
+            {!isSmallScreen && (
+              <div className="flex flex-nowrap items-center gap-2">
+                <div className="shrink-0 w-36">
+                  <Input
+                    placeholder="Search Name..."
+                    className="h-8 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full"
+                    value={filters.searchName}
+                    onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
+                    data-testid="input-search-name"
+                  />
+                </div>
 
-              <Select value={filters.rankAppliedFor} onValueChange={(value) => setFilters(prev => ({ ...prev, rankAppliedFor: value }))}>
-                <SelectTrigger className={`h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] ${isSmallScreen ? 'w-full' : 'w-40'}`} data-testid="select-rank-filter">
-                  <SelectValue placeholder="Rank Applied" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[200px]">
-                  {ranksLoading ? (
-                    <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
-                  ) : (
-                    rankNames.map(rank => (
-                      <SelectItem key={rank} value={rank} data-testid={`rank-option-${rank}`}>{rank}</SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
+                <div className="shrink-0 w-[120px]">
+                  <Select value={filters.rankAppliedFor} onValueChange={(value) => setFilters(prev => ({ ...prev, rankAppliedFor: value }))}>
+                    <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-rank-filter">
+                      <SelectValue placeholder="Rank Applied" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {ranksLoading ? (
+                        <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
+                      ) : (
+                        rankNames.map(rank => (
+                          <SelectItem key={rank} value={rank} data-testid={`rank-option-${rank}`}>{rank}</SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <Select value={filters.vesselType} onValueChange={(value) => setFilters(prev => ({ ...prev, vesselType: value }))}>
-                <SelectTrigger className={`h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] ${isSmallScreen ? 'w-full' : 'w-32'}`} data-testid="select-vessel-type-filter">
-                  <SelectValue placeholder="Vessel Type" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[200px]">
-                  {vesselTypesLoading ? (
-                    <SelectItem value="loading" disabled>Loading...</SelectItem>
-                  ) : (
-                    vesselTypeMasterData.map(vesselType => (
-                      <SelectItem key={vesselType} value={vesselType} data-testid={`vessel-type-option-${vesselType}`}>{vesselType}</SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
+                <div className="shrink-0 w-[110px]">
+                  <Select value={filters.vesselType} onValueChange={(value) => setFilters(prev => ({ ...prev, vesselType: value }))}>
+                    <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-vessel-type-filter">
+                      <SelectValue placeholder="Vessel Type" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {vesselTypesLoading ? (
+                        <SelectItem value="loading" disabled>Loading...</SelectItem>
+                      ) : (
+                        vesselTypeMasterData.map(vesselType => (
+                          <SelectItem key={vesselType} value={vesselType} data-testid={`vessel-type-option-${vesselType}`}>{vesselType}</SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              {!isPhone && (
-                <Select value={filters.nationality} onValueChange={(value) => setFilters(prev => ({ ...prev, nationality: value }))}>
-                  <SelectTrigger className={`h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] ${isSmallScreen ? 'w-full' : 'w-32'}`} data-testid="select-nationality-filter">
-                    <SelectValue placeholder="Nationality" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[200px]">
-                    {nationalitiesLoading ? (
-                      <SelectItem value="loading" disabled>Loading...</SelectItem>
-                    ) : (
-                      nationalityMasterData.map(nationality => (
-                        <SelectItem key={nationality} value={nationality} data-testid={`nationality-option-${nationality}`}>{nationality}</SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              )}
+                <div className="shrink-0 w-[110px]">
+                  <Select value={filters.nationality} onValueChange={(value) => setFilters(prev => ({ ...prev, nationality: value }))}>
+                    <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-nationality-filter">
+                      <SelectValue placeholder="Nationality" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {nationalitiesLoading ? (
+                        <SelectItem value="loading" disabled>Loading...</SelectItem>
+                      ) : (
+                        nationalityMasterData.map(nationality => (
+                          <SelectItem key={nationality} value={nationality} data-testid={`nationality-option-${nationality}`}>{nationality}</SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
-                <SelectTrigger className={`h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] ${isSmallScreen ? 'w-full' : 'w-32'}`} data-testid="select-status-filter">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {getStatusOptions()}
-                </SelectContent>
-              </Select>
-            </div>
+                <div className="shrink-0 w-[100px]">
+                  <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
+                    <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-status-filter">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getStatusOptions()}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <div className={`flex gap-2 ${isPhone ? 'mt-3' : 'mt-3 md:mt-0 md:ml-auto'}`}>
-              <Button className={`h-8 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px] ${isPhone ? 'flex-1' : 'w-20'}`} data-testid="button-apply-filters">
-                Apply
-              </Button>
+                <Button className="h-8 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px] px-4 shrink-0" data-testid="button-apply-filters">
+                  Apply
+                </Button>
 
-              <Button 
-                variant="outline" 
-                className={`h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] ${isPhone ? 'flex-1' : 'w-16'}`}
-                onClick={() => setFilters({ searchName: "", rankAppliedFor: "", vesselType: "", nationality: "", status: "" })}
-                data-testid="button-clear-filters"
-              >
-                Clear
-              </Button>
-            </div>
+                <Button 
+                  variant="outline" 
+                  className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3 shrink-0"
+                  onClick={() => setFilters({ searchName: "", rankAppliedFor: "", vesselType: "", nationality: "", status: "" })}
+                  data-testid="button-clear-filters"
+                >
+                  Clear
+                </Button>
+              </div>
+            )}
+
+            {/* Tablet: Grid layout with 3-4 columns */}
+            {isTablet && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 lg:grid-cols-4 gap-3">
+                  <Input
+                    placeholder="Search Name..."
+                    className="h-8 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full"
+                    value={filters.searchName}
+                    onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
+                    data-testid="input-search-name"
+                  />
+
+                  <Select value={filters.rankAppliedFor} onValueChange={(value) => setFilters(prev => ({ ...prev, rankAppliedFor: value }))}>
+                    <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-rank-filter">
+                      <SelectValue placeholder="Rank Applied" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {ranksLoading ? (
+                        <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
+                      ) : (
+                        rankNames.map(rank => (
+                          <SelectItem key={rank} value={rank} data-testid={`rank-option-${rank}`}>{rank}</SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={filters.vesselType} onValueChange={(value) => setFilters(prev => ({ ...prev, vesselType: value }))}>
+                    <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-vessel-type-filter">
+                      <SelectValue placeholder="Vessel Type" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {vesselTypesLoading ? (
+                        <SelectItem value="loading" disabled>Loading...</SelectItem>
+                      ) : (
+                        vesselTypeMasterData.map(vesselType => (
+                          <SelectItem key={vesselType} value={vesselType} data-testid={`vessel-type-option-${vesselType}`}>{vesselType}</SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={filters.nationality} onValueChange={(value) => setFilters(prev => ({ ...prev, nationality: value }))}>
+                    <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-nationality-filter">
+                      <SelectValue placeholder="Nationality" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {nationalitiesLoading ? (
+                        <SelectItem value="loading" disabled>Loading...</SelectItem>
+                      ) : (
+                        nationalityMasterData.map(nationality => (
+                          <SelectItem key={nationality} value={nationality} data-testid={`nationality-option-${nationality}`}>{nationality}</SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
+                    <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-status-filter">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getStatusOptions()}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button className="h-8 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px] w-20" data-testid="button-apply-filters">
+                    Apply
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] w-16"
+                    onClick={() => setFilters({ searchName: "", rankAppliedFor: "", vesselType: "", nationality: "", status: "" })}
+                    data-testid="button-clear-filters"
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Phone: 2-column grid layout */}
+            {isPhone && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    placeholder="Search Name..."
+                    className="h-8 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] col-span-2"
+                    value={filters.searchName}
+                    onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
+                    data-testid="input-search-name"
+                  />
+
+                  <Select value={filters.rankAppliedFor} onValueChange={(value) => setFilters(prev => ({ ...prev, rankAppliedFor: value }))}>
+                    <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-rank-filter">
+                      <SelectValue placeholder="Rank Applied" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {ranksLoading ? (
+                        <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
+                      ) : (
+                        rankNames.map(rank => (
+                          <SelectItem key={rank} value={rank} data-testid={`rank-option-${rank}`}>{rank}</SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={filters.vesselType} onValueChange={(value) => setFilters(prev => ({ ...prev, vesselType: value }))}>
+                    <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-vessel-type-filter">
+                      <SelectValue placeholder="Vessel Type" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {vesselTypesLoading ? (
+                        <SelectItem value="loading" disabled>Loading...</SelectItem>
+                      ) : (
+                        vesselTypeMasterData.map(vesselType => (
+                          <SelectItem key={vesselType} value={vesselType} data-testid={`vessel-type-option-${vesselType}`}>{vesselType}</SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={filters.nationality} onValueChange={(value) => setFilters(prev => ({ ...prev, nationality: value }))}>
+                    <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-nationality-filter">
+                      <SelectValue placeholder="Nationality" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {nationalitiesLoading ? (
+                        <SelectItem value="loading" disabled>Loading...</SelectItem>
+                      ) : (
+                        nationalityMasterData.map(nationality => (
+                          <SelectItem key={nationality} value={nationality} data-testid={`nationality-option-${nationality}`}>{nationality}</SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
+                    <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-status-filter">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getStatusOptions()}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button className="h-8 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px] flex-1" data-testid="button-apply-filters">
+                    Apply
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] flex-1"
+                    onClick={() => setFilters({ searchName: "", rankAppliedFor: "", vesselType: "", nationality: "", status: "" })}
+                    data-testid="button-clear-filters"
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
