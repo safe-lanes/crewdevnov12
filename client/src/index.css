@@ -326,12 +326,10 @@
 
 .ag-theme-alpine {
   border-radius: 8px !important;
-  overflow: hidden !important;
 }
 
 .ag-theme-alpine .ag-root-wrapper {
   border-radius: 8px !important;
-  overflow: hidden !important;
 }
 
 /* AG Grid scroll control removed - let AG Grid handle synchronized scrolling 
