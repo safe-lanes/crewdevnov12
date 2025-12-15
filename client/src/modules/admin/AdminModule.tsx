@@ -4502,6 +4502,23 @@ const AdminModuleInner = (): JSX.Element => {
     });
   }, [localTrainingData, trainingSearchFilter, trainingCategoryFilter, trainingGroupFilter]);
 
+  const filteredCompanyTrainingData = useMemo(() => {
+    const categoryPriority: Record<string, number> = { 'S': 1, 'I': 2, 'O': 3 };
+    return trainingMasterData.filter(training => {
+      if (!training.applicableToCompany) return false;
+      const matchesSearch = companyTrainingSearchFilter === '' || 
+        (training.trainingLabel || '').toLowerCase().includes(companyTrainingSearchFilter.toLowerCase()) ||
+        training.trainingName.toLowerCase().includes(companyTrainingSearchFilter.toLowerCase());
+      return matchesSearch;
+    }).sort((a, b) => {
+      const aPriority = categoryPriority[a.category] ?? 99;
+      const bPriority = categoryPriority[b.category] ?? 99;
+      if (aPriority !== bPriority) return aPriority - bPriority;
+      if (a.trainingGroup !== b.trainingGroup) return a.trainingGroup.localeCompare(b.trainingGroup);
+      return a.sortOrder - b.sortOrder;
+    });
+  }, [trainingMasterData, companyTrainingSearchFilter]);
+
   const renderTrainingMatrixModule = () => (
     <div className="h-full flex flex-col">
       {/* Responsive Header Layout */}
@@ -5001,10 +5018,51 @@ const AdminModuleInner = (): JSX.Element => {
                 </div>
               </div>
             )}
-            {/* Company Training Content Placeholder */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center text-gray-500">
-              <p className="text-sm">Company-specific training configuration will be displayed here.</p>
-              <p className="text-xs mt-2">Use the +New button to add company-specific trainings not yet in Training Master.</p>
+            {/* Company Training Table */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden h-full">
+              <ScrollArea className="h-[calc(100vh-220px)]">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                      <TableHead className="w-12 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">#</TableHead>
+                      <TableHead className="min-w-[200px] text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Training Label</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {trainingMasterLoading && (
+                      <>
+                        {Array.from({ length: 10 }).map((_, index) => (
+                          <TableRow key={`skeleton-company-${index}`} className="border-b border-gray-100">
+                            <TableCell className="text-center"><div className="h-4 w-6 bg-gray-200 rounded animate-pulse mx-auto" /></TableCell>
+                            <TableCell><div className="h-4 w-40 bg-gray-200 rounded animate-pulse" /></TableCell>
+                          </TableRow>
+                        ))}
+                      </>
+                    )}
+                    {!trainingMasterLoading && filteredCompanyTrainingData.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={2} className="text-center text-gray-500 py-8">
+                          No trainings marked as "Applicable to Company" found.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {!trainingMasterLoading && filteredCompanyTrainingData.map((training, index) => (
+                      <TableRow 
+                        key={training.id} 
+                        className="border-b border-gray-100 hover:bg-gray-50"
+                        data-training-master-id={training.id}
+                        data-training-id={training.trainingId}
+                        data-testid={`row-company-training-${training.id}`}
+                      >
+                        <TableCell className="text-center text-xs text-gray-600">{index + 1}</TableCell>
+                        <TableCell className="text-xs" data-testid={`text-company-training-label-${training.id}`}>
+                          {training.trainingLabel || training.trainingName}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
             </div>
           </div>
         )}
