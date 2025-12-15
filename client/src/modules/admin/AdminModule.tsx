@@ -4675,11 +4675,11 @@ const AdminModuleInner = (): JSX.Element => {
       )}
 
       {/* Tab Content Area */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-hidden">
         {selectedTrainingMatrixTab === "training-master" && (
-          <div data-testid="content-training-master">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-              <ScrollArea className="h-[calc(100vh-300px)]">
+          <div data-testid="content-training-master" className="h-full">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden h-full">
+              <ScrollArea className="h-[calc(100vh-220px)]">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
