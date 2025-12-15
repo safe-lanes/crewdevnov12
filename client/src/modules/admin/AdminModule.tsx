@@ -104,7 +104,7 @@ import {
   TRAINING_CATEGORIES,
   TRAINING_GROUPS
 } from "@/hooks/useTrainingMaster";
-import type { TrainingMaster, InsertTrainingMaster, UpdateTrainingMaster } from "@shared/schema";
+import type { TrainingMaster, InsertTrainingMaster, UpdateTrainingMaster, CompanyTraining } from "@shared/schema";
 
 const rankGroupSchema = z.object({
   name: z.string().min(1, "Rank group name is required"),
@@ -478,6 +478,63 @@ const AdminModuleInner = (): JSX.Element => {
   const [showCompanyTrainingFilters, setShowCompanyTrainingFilters] = useState(true);
   const [companyTrainingSearchFilter, setCompanyTrainingSearchFilter] = useState("");
   const [showNewCompanyTrainingDialog, setShowNewCompanyTrainingDialog] = useState(false);
+  const [localCompanyTrainingData, setLocalCompanyTrainingData] = useState<CompanyTraining[]>([]);
+  const [changedCompanyTrainings, setChangedCompanyTrainings] = useState<Set<number>>(new Set());
+  
+  // Company Training data hooks
+  const { data: companyTrainingData = [], isLoading: companyTrainingLoading, refetch: refetchCompanyTrainings } = useQuery<CompanyTraining[]>({
+    queryKey: ['/api/company-trainings'],
+    enabled: selectedAdminPage === "training-matrix"
+  });
+  
+  const importCompanyTrainingsMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('POST', '/api/company-trainings/import');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/company-trainings'] });
+      toast({
+        title: "Import successful",
+        description: "Company trainings imported from Training Master.",
+        duration: 3000,
+      });
+    },
+    onError: (error) => {
+      console.error('Failed to import company trainings:', error);
+      toast({
+        title: "Import failed",
+        description: "An error occurred while importing trainings.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    },
+  });
+  
+  const updateCompanyTrainingMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<CompanyTraining> }) => {
+      return apiRequest('PATCH', `/api/company-trainings/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/company-trainings'] });
+    },
+    onError: (error) => {
+      console.error('Failed to update company training:', error);
+      toast({
+        title: "Update failed",
+        description: "An error occurred while updating the training.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    },
+  });
+  
+  // Sync company training data with local state
+  useEffect(() => {
+    if (companyTrainingData.length > 0 && !isCompanyTrainingEditing) {
+      setLocalCompanyTrainingData(companyTrainingData);
+      setChangedCompanyTrainings(new Set());
+    }
+  }, [companyTrainingData, isCompanyTrainingEditing]);
   
   // Sync training master data with local state
   useEffect(() => {
@@ -4503,21 +4560,61 @@ const AdminModuleInner = (): JSX.Element => {
   }, [localTrainingData, trainingSearchFilter, trainingCategoryFilter, trainingGroupFilter]);
 
   const filteredCompanyTrainingData = useMemo(() => {
-    const categoryPriority: Record<string, number> = { 'S': 1, 'I': 2, 'O': 3 };
-    return trainingMasterData.filter(training => {
-      if (!training.applicableToCompany) return false;
+    return localCompanyTrainingData.filter(training => {
       const matchesSearch = companyTrainingSearchFilter === '' || 
         (training.trainingLabel || '').toLowerCase().includes(companyTrainingSearchFilter.toLowerCase()) ||
-        training.trainingName.toLowerCase().includes(companyTrainingSearchFilter.toLowerCase());
+        (training.companyId || '').toLowerCase().includes(companyTrainingSearchFilter.toLowerCase());
       return matchesSearch;
-    }).sort((a, b) => {
-      const aPriority = categoryPriority[a.category] ?? 99;
-      const bPriority = categoryPriority[b.category] ?? 99;
-      if (aPriority !== bPriority) return aPriority - bPriority;
-      if (a.trainingGroup !== b.trainingGroup) return a.trainingGroup.localeCompare(b.trainingGroup);
-      return a.sortOrder - b.sortOrder;
-    });
-  }, [trainingMasterData, companyTrainingSearchFilter]);
+    }).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  }, [localCompanyTrainingData, companyTrainingSearchFilter]);
+  
+  // Handler for company training field changes
+  const handleCompanyTrainingFieldChange = (id: number, field: keyof CompanyTraining, value: any) => {
+    setLocalCompanyTrainingData(prev => prev.map(t => {
+      if (t.id !== id) return t;
+      return { ...t, [field]: value };
+    }));
+    setChangedCompanyTrainings(prev => new Set(prev).add(id));
+  };
+  
+  // Handler for saving company training changes
+  const handleSaveCompanyTraining = async () => {
+    if (changedCompanyTrainings.size === 0) {
+      setIsCompanyTrainingEditing(false);
+      return;
+    }
+    
+    try {
+      const updatePromises = Array.from(changedCompanyTrainings).map(id => {
+        const training = localCompanyTrainingData.find(t => t.id === id);
+        if (!training) return Promise.resolve();
+        return updateCompanyTrainingMutation.mutateAsync({
+          id,
+          data: {
+            companyId: training.companyId,
+            abr: training.abr,
+            requirement: training.requirement,
+          }
+        });
+      });
+      
+      await Promise.all(updatePromises);
+      setChangedCompanyTrainings(new Set());
+      setIsCompanyTrainingEditing(false);
+      toast({
+        title: "Changes saved",
+        description: "Company training updates saved successfully.",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Failed to save company training changes:', error);
+    }
+  };
+  
+  // Handler for import button
+  const handleImportCompanyTrainings = async () => {
+    await importCompanyTrainingsMutation.mutateAsync();
+  };
 
   const renderTrainingMatrixModule = () => (
     <div className="h-full flex flex-col">
@@ -4604,9 +4701,22 @@ const AdminModuleInner = (): JSX.Element => {
                   <Filter className="h-4 w-4" />
                   Filters
                 </Button>
+                {companyTrainingData.length === 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleImportCompanyTrainings}
+                    disabled={importCompanyTrainingsMutation.isPending}
+                    className="h-8 text-xs border-[#5dc86f] text-[#5dc86f] hover:bg-[#5dc86f] hover:text-white"
+                    data-testid="button-import-company-training"
+                  >
+                    {importCompanyTrainingsMutation.isPending ? "Importing..." : "Import from Training Master"}
+                  </Button>
+                )}
                 <Button
                   variant={isCompanyTrainingEditing ? "default" : "outline"}
-                  onClick={() => setIsCompanyTrainingEditing(!isCompanyTrainingEditing)}
+                  onClick={isCompanyTrainingEditing ? handleSaveCompanyTraining : () => setIsCompanyTrainingEditing(true)}
+                  disabled={companyTrainingData.length === 0}
                   className={`h-8 text-xs ${
                     isCompanyTrainingEditing 
                       ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
@@ -4615,13 +4725,6 @@ const AdminModuleInner = (): JSX.Element => {
                   data-testid="button-edit-company-training"
                 >
                   {isCompanyTrainingEditing ? "Save" : "Edit"}
-                </Button>
-                <Button
-                  onClick={() => setShowNewCompanyTrainingDialog(true)}
-                  className="h-8 bg-[#5dc86f] hover:bg-[#22c55e] text-white text-xs"
-                  data-testid="button-new-company-training"
-                >
-                  + New
                 </Button>
               </div>
             )}
@@ -4691,7 +4794,7 @@ const AdminModuleInner = (): JSX.Element => {
                 </div>
               )}
               {selectedTrainingMatrixTab === "company" && (
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <Button
                     variant="outline"
                     size="sm"
@@ -4702,9 +4805,22 @@ const AdminModuleInner = (): JSX.Element => {
                     <Filter className="h-4 w-4" />
                     Filters
                   </Button>
+                  {companyTrainingData.length === 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleImportCompanyTrainings}
+                      disabled={importCompanyTrainingsMutation.isPending}
+                      className="h-8 text-xs border-[#5dc86f] text-[#5dc86f] hover:bg-[#5dc86f] hover:text-white"
+                      data-testid="button-import-company-training-mobile"
+                    >
+                      {importCompanyTrainingsMutation.isPending ? "Importing..." : "Import"}
+                    </Button>
+                  )}
                   <Button
                     variant={isCompanyTrainingEditing ? "default" : "outline"}
-                    onClick={() => setIsCompanyTrainingEditing(!isCompanyTrainingEditing)}
+                    onClick={isCompanyTrainingEditing ? handleSaveCompanyTraining : () => setIsCompanyTrainingEditing(true)}
+                    disabled={companyTrainingData.length === 0}
                     className={`h-8 text-xs ${
                       isCompanyTrainingEditing 
                         ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
@@ -4713,13 +4829,6 @@ const AdminModuleInner = (): JSX.Element => {
                     data-testid="button-edit-company-training-mobile"
                   >
                     {isCompanyTrainingEditing ? "Save" : "Edit"}
-                  </Button>
-                  <Button
-                    onClick={() => setShowNewCompanyTrainingDialog(true)}
-                    className="h-8 bg-[#5dc86f] hover:bg-[#22c55e] text-white text-xs"
-                    data-testid="button-new-company-training-mobile"
-                  >
-                    + New
                   </Button>
                 </div>
               )}
@@ -5025,14 +5134,14 @@ const AdminModuleInner = (): JSX.Element => {
                   <TableHeader>
                     <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
                       <TableHead className="w-12 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">#</TableHead>
-                      <TableHead className="w-24 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Company ID</TableHead>
+                      <TableHead className="w-28 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Company ID</TableHead>
                       <TableHead className="min-w-[200px] text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Training Label</TableHead>
-                      <TableHead className="w-20 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Abr</TableHead>
+                      <TableHead className="w-24 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Abr</TableHead>
                       <TableHead className="min-w-[150px] text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Requirement</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {trainingMasterLoading && (
+                    {companyTrainingLoading && (
                       <>
                         {Array.from({ length: 10 }).map((_, index) => (
                           <TableRow key={`skeleton-company-${index}`} className="border-b border-gray-100">
@@ -5045,33 +5154,62 @@ const AdminModuleInner = (): JSX.Element => {
                         ))}
                       </>
                     )}
-                    {!trainingMasterLoading && filteredCompanyTrainingData.length === 0 && (
+                    {!companyTrainingLoading && filteredCompanyTrainingData.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center text-gray-500 py-8">
-                          No trainings marked as "Applicable to Company" found.
+                          {companyTrainingData.length === 0 
+                            ? "No company trainings found. Click 'Import from Training Master' to import trainings."
+                            : "No trainings match your search."}
                         </TableCell>
                       </TableRow>
                     )}
-                    {!trainingMasterLoading && filteredCompanyTrainingData.map((training, index) => (
+                    {!companyTrainingLoading && filteredCompanyTrainingData.map((training, index) => (
                       <TableRow 
                         key={training.id} 
-                        className="border-b border-gray-100 hover:bg-gray-50"
-                        data-training-master-id={training.id}
-                        data-training-id={training.trainingId}
+                        className={`border-b border-gray-100 hover:bg-gray-50 ${changedCompanyTrainings.has(training.id) ? 'bg-yellow-50' : ''}`}
+                        data-company-training-id={training.id}
                         data-testid={`row-company-training-${training.id}`}
                       >
                         <TableCell className="text-center text-xs text-gray-600">{index + 1}</TableCell>
-                        <TableCell className="text-xs text-gray-600" data-testid={`text-company-id-${training.id}`}>
-                          {training.trainingId}
+                        <TableCell className="text-xs" data-testid={`cell-company-id-${training.id}`}>
+                          {isCompanyTrainingEditing ? (
+                            <Input
+                              value={training.companyId || ''}
+                              onChange={(e) => handleCompanyTrainingFieldChange(training.id, 'companyId', e.target.value)}
+                              className="h-7 text-xs w-full"
+                              data-testid={`input-company-id-${training.id}`}
+                            />
+                          ) : (
+                            <span className="text-gray-600">{training.companyId || '-'}</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-xs" data-testid={`text-company-training-label-${training.id}`}>
-                          {training.trainingLabel || training.trainingName}
-                        </TableCell>
-                        <TableCell className="text-xs text-gray-600" data-testid={`text-company-abr-${training.id}`}>
                           {training.trainingLabel || '-'}
                         </TableCell>
-                        <TableCell className="text-xs text-gray-600" data-testid={`text-company-requirement-${training.id}`}>
-                          {training.requirementReference || '-'}
+                        <TableCell className="text-xs" data-testid={`cell-company-abr-${training.id}`}>
+                          {isCompanyTrainingEditing ? (
+                            <Input
+                              value={training.abr || ''}
+                              onChange={(e) => handleCompanyTrainingFieldChange(training.id, 'abr', e.target.value)}
+                              className="h-7 text-xs w-full"
+                              placeholder="Enter abbreviation"
+                              data-testid={`input-company-abr-${training.id}`}
+                            />
+                          ) : (
+                            <span className="text-gray-600">{training.abr || '-'}</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs" data-testid={`cell-company-requirement-${training.id}`}>
+                          {isCompanyTrainingEditing ? (
+                            <Input
+                              value={training.requirement || ''}
+                              onChange={(e) => handleCompanyTrainingFieldChange(training.id, 'requirement', e.target.value)}
+                              className="h-7 text-xs w-full"
+                              data-testid={`input-company-requirement-${training.id}`}
+                            />
+                          ) : (
+                            <span className="text-gray-600">{training.requirement || '-'}</span>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
