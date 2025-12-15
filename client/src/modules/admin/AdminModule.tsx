@@ -4699,7 +4699,7 @@ const AdminModuleInner = (): JSX.Element => {
                         <TableHead className="w-24 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Group</TableHead>
                         <TableHead className="w-32 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Requirement/Ref</TableHead>
                         <TableHead className="w-32 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Applicable to Company</TableHead>
-                        <TableHead className="w-32 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Training Label</TableHead>
+                        <TableHead className="w-[180px] text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Training Label</TableHead>
                         {isTrainingMasterEditing && (
                           <TableHead className="w-20 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Actions</TableHead>
                         )}
