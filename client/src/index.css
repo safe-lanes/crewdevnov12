@@ -435,9 +435,22 @@
   }
 }
 
-/* Mobile/Tablet responsive AG Grid - let AG Grid handle scroll synchronization */
+/* AG Grid horizontal scrolling - enable for all viewports without breaking pinned column sync */
+.ag-theme-alpine .ag-body-horizontal-scroll {
+  display: block !important;
+}
+
+.ag-theme-alpine .ag-body-horizontal-scroll-viewport {
+  overflow-x: scroll !important;
+}
+
+/* Ensure the center columns container can expand beyond viewport for horizontal scroll */
+.ag-theme-alpine .ag-center-cols-container {
+  min-width: max-content;
+}
+
+/* Mobile/Tablet responsive - additional tweaks for smaller screens */
 @media screen and (max-width: 1365px) {
-  /* Allow horizontal scrolling on mobile/tablet without breaking pinned column sync */
   div.ag-theme-alpine .ag-center-cols-viewport {
     min-width: max-content !important;
   }
