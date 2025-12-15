@@ -37,6 +37,19 @@ export const availableRanks = pgTable("available_ranks", {
   isSystemRank: boolean("is_system_rank").default(false), // Protected starter pack ranks - cannot edit name or delete
 });
 
+export const trainingMaster = pgTable("training_master", {
+  id: serial("id").primaryKey(),
+  trainingId: text("training_id").notNull().unique(), // e.g., SA001, SB002 - Category+Group+Number
+  trainingName: text("training_name").notNull(),
+  category: text("category").notNull(), // Statutory (S), Industry (N), Others (M)
+  trainingGroup: text("training_group").notNull(), // Safety (A), Security (B), Cargo (C), Navigation (D), Engine (E), Environment (F), General (G)
+  requirementReference: text("requirement_reference"), // Free text - STCW reference, IMO Model Course, etc.
+  applicableToCompany: boolean("applicable_to_company").default(false),
+  trainingLabel: text("training_label"), // Company-specific custom name, defaults to trainingName
+  sortOrder: integer("sort_order").default(0), // For manual reordering within Category+Group
+  isDefault: boolean("is_default").default(false), // True for CSV-loaded trainings (cannot delete/edit name)
+});
+
 export const crewMembers = pgTable("crew_members", {
   id: text("id").primaryKey(),
   
@@ -777,6 +790,30 @@ export const updateAvailableRankSchema = createInsertSchema(availableRanks).pick
   applicableToCompany: true,
   sortOrder: true,
   isSystemRank: true,
+}).partial();
+
+export const insertTrainingMasterSchema = createInsertSchema(trainingMaster).pick({
+  trainingId: true,
+  trainingName: true,
+  category: true,
+  trainingGroup: true,
+  requirementReference: true,
+  applicableToCompany: true,
+  trainingLabel: true,
+  sortOrder: true,
+  isDefault: true,
+});
+
+export const updateTrainingMasterSchema = createInsertSchema(trainingMaster).pick({
+  trainingId: true,
+  trainingName: true,
+  category: true,
+  trainingGroup: true,
+  requirementReference: true,
+  applicableToCompany: true,
+  trainingLabel: true,
+  sortOrder: true,
+  isDefault: true,
 }).partial();
 
 export const insertCrewMemberSchema = createInsertSchema(crewMembers).pick({
