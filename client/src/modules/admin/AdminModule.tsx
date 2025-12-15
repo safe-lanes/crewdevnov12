@@ -4687,25 +4687,24 @@ const AdminModuleInner = (): JSX.Element => {
                 <div className="text-gray-500">No training data found</div>
               </div>
             ) : (
-              <Card>
-                <CardContent className="p-0">
-                  <ScrollArea className="h-[calc(100vh-300px)]">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-[#1e3a5f]">
-                          <TableHead className="w-12 text-center text-xs font-semibold text-white">#</TableHead>
-                          <TableHead className="w-20 text-xs font-semibold text-white">ID</TableHead>
-                          <TableHead className="min-w-[200px] text-xs font-semibold text-white">Training Name</TableHead>
-                          <TableHead className="w-24 text-xs font-semibold text-white">Category</TableHead>
-                          <TableHead className="w-24 text-xs font-semibold text-white">Group</TableHead>
-                          <TableHead className="w-32 text-xs font-semibold text-white">Requirement/Ref</TableHead>
-                          <TableHead className="w-32 text-center text-xs font-semibold text-white">Applicable to Company</TableHead>
-                          <TableHead className="w-32 text-xs font-semibold text-white">Training Label</TableHead>
-                          {isTrainingMasterEditing && (
-                            <TableHead className="w-20 text-center text-xs font-semibold text-white">Actions</TableHead>
-                          )}
-                        </TableRow>
-                      </TableHeader>
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                <ScrollArea className="h-[calc(100vh-300px)]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                        <TableHead className="w-12 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">#</TableHead>
+                        <TableHead className="w-20 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">ID</TableHead>
+                        <TableHead className="min-w-[200px] text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Training Name</TableHead>
+                        <TableHead className="w-24 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Category</TableHead>
+                        <TableHead className="w-24 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Group</TableHead>
+                        <TableHead className="w-32 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Requirement/Ref</TableHead>
+                        <TableHead className="w-32 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Applicable to Company</TableHead>
+                        <TableHead className="w-32 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Training Label</TableHead>
+                        {isTrainingMasterEditing && (
+                          <TableHead className="w-20 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Actions</TableHead>
+                        )}
+                      </TableRow>
+                    </TableHeader>
                       <TableBody>
                         {filteredTrainingData.map((training, index) => {
                           const sameGroupTrainings = filteredTrainingData.filter(
@@ -4718,11 +4717,11 @@ const AdminModuleInner = (): JSX.Element => {
                           return (
                             <TableRow 
                               key={training.id} 
-                              className={changedTrainings.has(training.id) ? "bg-yellow-50" : ""}
+                              className={`border-b border-gray-100 hover:bg-gray-50 text-xs ${changedTrainings.has(training.id) ? "bg-yellow-50" : ""}`}
                               data-testid={`row-training-${training.id}`}
                             >
-                              <TableCell className="text-center text-xs text-gray-500">{index + 1}</TableCell>
-                              <TableCell className="text-xs font-mono">{training.trainingId}</TableCell>
+                              <TableCell className="text-center text-gray-600">{index + 1}</TableCell>
+                              <TableCell className="text-gray-600 font-mono">{training.trainingId}</TableCell>
                               <TableCell className="text-xs">
                                 {isTrainingMasterEditing && !training.isDefault ? (
                                   <Input
@@ -4735,7 +4734,7 @@ const AdminModuleInner = (): JSX.Element => {
                                   <span className={training.isDefault ? "font-medium" : ""}>{training.trainingName}</span>
                                 )}
                               </TableCell>
-                              <TableCell className="text-xs">
+                              <TableCell className="text-gray-600">
                                 {isTrainingMasterEditing && !training.isDefault ? (
                                   <Select
                                     value={training.category}
@@ -4754,7 +4753,7 @@ const AdminModuleInner = (): JSX.Element => {
                                   getCategoryLabel(training.category)
                                 )}
                               </TableCell>
-                              <TableCell className="text-xs">
+                              <TableCell className="text-gray-600">
                                 {isTrainingMasterEditing && !training.isDefault ? (
                                   <Select
                                     value={training.trainingGroup}
@@ -4773,7 +4772,7 @@ const AdminModuleInner = (): JSX.Element => {
                                   getGroupLabel(training.trainingGroup)
                                 )}
                               </TableCell>
-                              <TableCell className="text-xs">
+                              <TableCell className="text-gray-600">
                                 {isTrainingMasterEditing ? (
                                   <Input
                                     value={training.requirementReference || ''}
@@ -4852,11 +4851,10 @@ const AdminModuleInner = (): JSX.Element => {
                             </TableRow>
                           );
                         })}
-                      </TableBody>
-                    </Table>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+              </div>
             )}
           </div>
         )}
