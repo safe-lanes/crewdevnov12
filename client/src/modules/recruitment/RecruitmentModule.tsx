@@ -24,6 +24,7 @@ import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 import { NATIONALITIES } from '@/utils/data/nationalities';
+import { useViewport, getViewportConfig } from '@/hooks/useViewport';
 
 // Status mapping for filtering
 const STATUS_MAPPING = {
@@ -44,6 +45,11 @@ export const RecruitmentModule = (): JSX.Element => {
   const { toast } = useToast();
   const { rankNames, isLoading: ranksLoading } = useCompanyRanks();
   const { normalizeRank } = useRankNormalization();
+  const viewport = useViewport();
+  const viewportConfig = getViewportConfig(viewport);
+  const isPhone = viewport === 'phone';
+  const isTablet = viewport === 'tablet';
+  const isSmallScreen = isPhone || isTablet;
 
   // Fetch vessel types from Master 004 API
   const { data: vesselTypeMasterDataRaw = [], isLoading: vesselTypesLoading } = useQuery<Array<{ entryId: string; name: string; level?: number }>>({
@@ -212,113 +218,147 @@ export const RecruitmentModule = (): JSX.Element => {
     );
   }, []);
 
-  // Column definitions for AG Grid
-  const columnDefs: ColDef[] = useMemo(() => [
-    {
-      headerName: 'File No',
-      field: 'fileNo',
-      flex: 0.8,
-      cellStyle: { fontSize: '13px', color: '#4f5863' },
-      filter: 'agTextColumnFilter',
-      sortable: true,
-      resizable: true
-    },
-    {
-      headerName: 'First Name',
-      field: 'firstName',
-      flex: 1,
-      cellStyle: { fontSize: '13px', color: '#4f5863' },
-      filter: 'agTextColumnFilter',
-      sortable: true,
-      resizable: true
-    },
-    {
-      headerName: 'Middle Name',
-      field: 'middleName',
-      flex: 1,
-      cellStyle: { fontSize: '13px', color: '#4f5863' },
-      filter: 'agTextColumnFilter',
-      sortable: true,
-      resizable: true
-    },
-    {
-      headerName: 'Family Name',
-      field: 'familyName',
-      flex: 1,
-      cellStyle: { fontSize: '13px', color: '#4f5863' },
-      filter: 'agTextColumnFilter',
-      sortable: true,
-      resizable: true
-    },
-    {
-      headerName: 'DOB',
-      field: 'dob',
-      flex: 0.9,
-      cellStyle: { fontSize: '13px', color: '#4f5863' },
-      filter: 'agDateColumnFilter',
-      sortable: true,
-      resizable: true
-    },
-    {
-      headerName: 'Nationality',
-      field: 'nationality',
-      flex: 1,
-      cellStyle: { fontSize: '13px', color: '#4f5863' },
-      filter: 'agSetColumnFilter',
-      sortable: true,
-      resizable: true,
-      enableRowGroup: false
-    },
-    {
-      headerName: 'Rank Applied for',
-      field: 'rankAppliedFor',
-      flex: 1.2,
-      cellStyle: { fontSize: '13px', color: '#4f5863' },
-      filter: 'agSetColumnFilter',
-      sortable: true,
-      resizable: true,
-      enableRowGroup: false
-    },
-    {
-      headerName: 'Present Rank',
-      field: 'presentRank',
-      flex: 1.1,
-      cellStyle: { fontSize: '13px', color: '#4f5863' },
-      filter: 'agSetColumnFilter',
-      sortable: true,
-      resizable: true,
-      enableRowGroup: false
-    },
-    {
-      headerName: 'Vessel Type',
-      field: 'vesselType',
-      flex: 1,
-      cellStyle: { fontSize: '13px', color: '#4f5863' },
-      filter: 'agSetColumnFilter',
-      sortable: true,
-      resizable: true,
-      enableRowGroup: false
-    },
-    {
-      headerName: 'Status',
-      field: 'status',
-      flex: 1,
-      cellStyle: { fontSize: '13px', color: '#4f5863' },
-      filter: 'agSetColumnFilter',
-      sortable: true,
-      resizable: true,
-      enableRowGroup: false
-    },
-    {
-      headerName: 'Actions',
-      field: 'actions',
-      flex: 0.8,
-      cellRenderer: ActionsCellRenderer,
-      sortable: false,
-      filter: false,
-      cellClass: 'flex items-center justify-center'
+  // Column definitions for AG Grid - responsive based on viewport
+  const columnDefs: ColDef[] = useMemo(() => {
+    const baseColumns: ColDef[] = [
+      {
+        headerName: 'File No',
+        field: 'fileNo',
+        flex: 0.8,
+        minWidth: 80,
+        cellStyle: { fontSize: isPhone ? '11px' : '13px', color: '#4f5863' },
+        filter: 'agTextColumnFilter',
+        sortable: true,
+        resizable: true
+      },
+      {
+        headerName: 'First Name',
+        field: 'firstName',
+        flex: 1,
+        minWidth: 100,
+        cellStyle: { fontSize: isPhone ? '11px' : '13px', color: '#4f5863' },
+        filter: 'agTextColumnFilter',
+        sortable: true,
+        resizable: true
+      },
+      {
+        headerName: 'Family Name',
+        field: 'familyName',
+        flex: 1,
+        minWidth: 100,
+        cellStyle: { fontSize: isPhone ? '11px' : '13px', color: '#4f5863' },
+        filter: 'agTextColumnFilter',
+        sortable: true,
+        resizable: true
+      },
+      {
+        headerName: 'Rank Applied',
+        field: 'rankAppliedFor',
+        flex: 1.2,
+        minWidth: 110,
+        cellStyle: { fontSize: isPhone ? '11px' : '13px', color: '#4f5863' },
+        filter: 'agSetColumnFilter',
+        sortable: true,
+        resizable: true,
+        enableRowGroup: false
+      },
+      {
+        headerName: 'Status',
+        field: 'status',
+        flex: 0.8,
+        minWidth: 80,
+        cellStyle: { fontSize: isPhone ? '11px' : '13px', color: '#4f5863' },
+        filter: 'agSetColumnFilter',
+        sortable: true,
+        resizable: true,
+        enableRowGroup: false
+      },
+      {
+        headerName: 'Actions',
+        field: 'actions',
+        flex: 0.6,
+        minWidth: 90,
+        cellRenderer: ActionsCellRenderer,
+        sortable: false,
+        filter: false,
+        cellClass: 'flex items-center justify-center'
+      }
+    ];
+
+    // Add additional columns for tablet and desktop
+    if (!isPhone) {
+      // Insert after Family Name (index 2)
+      baseColumns.splice(3, 0, {
+        headerName: 'Middle Name',
+        field: 'middleName',
+        flex: 1,
+        minWidth: 100,
+        cellStyle: { fontSize: '13px', color: '#4f5863' },
+        filter: 'agTextColumnFilter',
+        sortable: true,
+        resizable: true,
+        hide: isTablet // Hide on tablet, show on desktop
+      });
     }
-  ], [ActionsCellRenderer, normalizeRank]);
+
+    // Add more columns for desktop only
+    if (!isSmallScreen) {
+      // Insert DOB after names
+      baseColumns.splice(4, 0, {
+        headerName: 'DOB',
+        field: 'dob',
+        flex: 0.9,
+        minWidth: 90,
+        cellStyle: { fontSize: '13px', color: '#4f5863' },
+        filter: 'agDateColumnFilter',
+        sortable: true,
+        resizable: true
+      });
+      
+      // Insert Nationality
+      baseColumns.splice(5, 0, {
+        headerName: 'Nationality',
+        field: 'nationality',
+        flex: 1,
+        minWidth: 100,
+        cellStyle: { fontSize: '13px', color: '#4f5863' },
+        filter: 'agSetColumnFilter',
+        sortable: true,
+        resizable: true,
+        enableRowGroup: false
+      });
+      
+      // Insert Present Rank before Rank Applied
+      const rankAppliedIndex = baseColumns.findIndex(col => col.field === 'rankAppliedFor');
+      baseColumns.splice(rankAppliedIndex + 1, 0, {
+        headerName: 'Present Rank',
+        field: 'presentRank',
+        flex: 1.1,
+        minWidth: 100,
+        cellStyle: { fontSize: '13px', color: '#4f5863' },
+        filter: 'agSetColumnFilter',
+        sortable: true,
+        resizable: true,
+        enableRowGroup: false
+      });
+      
+      // Insert Vessel Type before Status
+      const statusIndex = baseColumns.findIndex(col => col.field === 'status');
+      baseColumns.splice(statusIndex, 0, {
+        headerName: 'Vessel Type',
+        field: 'vesselType',
+        flex: 1,
+        minWidth: 100,
+        cellStyle: { fontSize: '13px', color: '#4f5863' },
+        filter: 'agSetColumnFilter',
+        sortable: true,
+        resizable: true,
+        enableRowGroup: false
+      });
+    }
+
+    return baseColumns;
+  }, [ActionsCellRenderer, normalizeRank, isPhone, isTablet, isSmallScreen]);
 
   const onGridReady = useCallback((params: GridReadyEvent) => {
     setGridApi(params.api);
@@ -408,20 +448,21 @@ export const RecruitmentModule = (): JSX.Element => {
 
     return (
       <>
-        {/* Filters Section */}
+        {/* Filters Section - Responsive */}
         {showFilters && (
-          <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-[#f7fafc] rounded-lg">
-            <div className="flex gap-4 flex-wrap">
+          <div className={`mb-4 p-3 md:p-4 pl-0 bg-[#f7fafc] rounded-lg ${isPhone ? 'space-y-3' : ''}`}>
+            <div className={`grid gap-2 md:gap-3 ${isPhone ? 'grid-cols-2' : isTablet ? 'grid-cols-3 lg:grid-cols-4' : 'flex flex-wrap gap-4'}`}>
               <Input
                 placeholder="Search Name..."
-                className="h-8 w-48 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
+                className={`h-8 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] ${isPhone ? 'col-span-2' : isTablet ? '' : 'w-48'}`}
                 value={filters.searchName}
                 onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
+                data-testid="input-search-name"
               />
 
               <Select value={filters.rankAppliedFor} onValueChange={(value) => setFilters(prev => ({ ...prev, rankAppliedFor: value }))}>
-                <SelectTrigger className="h-8 w-40 text-xs text-[#0f172a] placeholder:text-[#8899ae]" data-testid="select-rank-filter">
-                  <SelectValue placeholder="Rank Applied for" />
+                <SelectTrigger className={`h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] ${isSmallScreen ? 'w-full' : 'w-40'}`} data-testid="select-rank-filter">
+                  <SelectValue placeholder="Rank Applied" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[200px]">
                   {ranksLoading ? (
@@ -435,7 +476,7 @@ export const RecruitmentModule = (): JSX.Element => {
               </Select>
 
               <Select value={filters.vesselType} onValueChange={(value) => setFilters(prev => ({ ...prev, vesselType: value }))}>
-                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]" data-testid="select-vessel-type-filter">
+                <SelectTrigger className={`h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] ${isSmallScreen ? 'w-full' : 'w-32'}`} data-testid="select-vessel-type-filter">
                   <SelectValue placeholder="Vessel Type" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[200px]">
@@ -449,23 +490,25 @@ export const RecruitmentModule = (): JSX.Element => {
                 </SelectContent>
               </Select>
 
-              <Select value={filters.nationality} onValueChange={(value) => setFilters(prev => ({ ...prev, nationality: value }))}>
-                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]" data-testid="select-nationality-filter">
-                  <SelectValue placeholder="Nationality" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[200px]">
-                  {nationalitiesLoading ? (
-                    <SelectItem value="loading" disabled>Loading...</SelectItem>
-                  ) : (
-                    nationalityMasterData.map(nationality => (
-                      <SelectItem key={nationality} value={nationality} data-testid={`nationality-option-${nationality}`}>{nationality}</SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
+              {!isPhone && (
+                <Select value={filters.nationality} onValueChange={(value) => setFilters(prev => ({ ...prev, nationality: value }))}>
+                  <SelectTrigger className={`h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] ${isSmallScreen ? 'w-full' : 'w-32'}`} data-testid="select-nationality-filter">
+                    <SelectValue placeholder="Nationality" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[200px]">
+                    {nationalitiesLoading ? (
+                      <SelectItem value="loading" disabled>Loading...</SelectItem>
+                    ) : (
+                      nationalityMasterData.map(nationality => (
+                        <SelectItem key={nationality} value={nationality} data-testid={`nationality-option-${nationality}`}>{nationality}</SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              )}
 
               <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
-                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
+                <SelectTrigger className={`h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] ${isSmallScreen ? 'w-full' : 'w-32'}`} data-testid="select-status-filter">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -474,15 +517,16 @@ export const RecruitmentModule = (): JSX.Element => {
               </Select>
             </div>
 
-            <div className="flex gap-2">
-              <Button className="h-8 w-20 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px]">
+            <div className={`flex gap-2 ${isPhone ? 'mt-3' : 'mt-3 md:mt-0 md:ml-auto'}`}>
+              <Button className={`h-8 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px] ${isPhone ? 'flex-1' : 'w-20'}`} data-testid="button-apply-filters">
                 Apply
               </Button>
 
               <Button 
                 variant="outline" 
-                className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
+                className={`h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] ${isPhone ? 'flex-1' : 'w-16'}`}
                 onClick={() => setFilters({ searchName: "", rankAppliedFor: "", vesselType: "", nationality: "", status: "" })}
+                data-testid="button-clear-filters"
               >
                 Clear
               </Button>
@@ -490,21 +534,21 @@ export const RecruitmentModule = (): JSX.Element => {
           </div>
         )}
 
-        {/* AG Grid Table */}
+        {/* AG Grid Table - Responsive */}
         <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg flex flex-col flex-1">
-          <CardContent className="p-4 pl-0 bg-[#f7fafc] flex flex-col flex-1">
+          <CardContent className={`bg-[#f7fafc] flex flex-col flex-1 ${isPhone ? 'p-2 pl-0' : 'p-4 pl-0'}`}>
             <AgGridTable
               rowData={filteredData}
               columnDefs={columnDefs}
               onGridReady={onGridReady}
               fillAvailableHeight={true}
-              bottomPadding={20}
+              bottomPadding={isPhone ? 10 : 20}
               width="100%"
-              enableExport={true}
-              enableSideBar={true}
+              enableExport={!isPhone}
+              enableSideBar={!isSmallScreen}
               enableStatusBar={false}
-              enableRowGrouping={true}
-              enablePivoting={true}
+              enableRowGrouping={!isSmallScreen}
+              enablePivoting={!isSmallScreen}
               enableAdvancedFilter={false}
               rowSelection={false}
             />
@@ -538,21 +582,23 @@ export const RecruitmentModule = (): JSX.Element => {
           <div className="flex gap-2">
             <Button
               variant="outline"
-              className="h-8 w-32 text-[#8798ad] text-xs border-[#e1e8ed]"
+              className={`h-8 text-[#8798ad] text-xs border-[#e1e8ed] ${isPhone ? 'w-auto px-3' : 'w-32'}`}
               onClick={() => setShowFilters(!showFilters)}
+              data-testid="button-toggle-filters"
             >
-              <FilterIcon className="h-3 w-3 mr-1" />
-              Filters
+              <FilterIcon className={`h-3 w-3 ${isPhone ? '' : 'mr-1'}`} />
+              {!isPhone && 'Filters'}
             </Button>
             <Button
-              className="h-8 w-32 bg-[#5dc86f] hover:bg-[#218838] text-xs text-white"
+              className={`h-8 bg-[#5dc86f] hover:bg-[#218838] text-xs text-white ${isPhone ? 'w-auto px-3' : 'w-32'}`}
               onClick={() => {
                 setSelectedCandidate(null);
                 setShowApplicationForm(true);
               }}
+              data-testid="button-new-crew"
             >
-              <PlusIcon className="h-3 w-3 mr-1" />
-              New Crew
+              <PlusIcon className={`h-3 w-3 ${isPhone ? '' : 'mr-1'}`} />
+              {!isPhone && 'New Crew'}
             </Button>
           </div>
         </SectionTitleComponents>
