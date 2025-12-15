@@ -4717,7 +4717,7 @@ const AdminModuleInner = (): JSX.Element => {
                           return (
                             <TableRow 
                               key={training.id} 
-                              className={`border-b border-gray-100 hover:bg-gray-50 text-sm ${changedTrainings.has(training.id) ? "bg-yellow-50" : ""}`}
+                              className={`border-b border-gray-100 hover:bg-gray-50 text-xs ${changedTrainings.has(training.id) ? "bg-yellow-50" : ""}`}
                               data-testid={`row-training-${training.id}`}
                             >
                               <TableCell className="text-center text-gray-600">{index + 1}</TableCell>
@@ -4727,7 +4727,7 @@ const AdminModuleInner = (): JSX.Element => {
                                   <Input
                                     value={training.trainingName}
                                     onChange={(e) => handleTrainingFieldChange(training.id, 'trainingName', e.target.value)}
-                                    className="h-7 text-sm"
+                                    className="h-7 text-xs"
                                     data-testid={`input-training-name-${training.id}`}
                                   />
                                 ) : (
@@ -4740,7 +4740,7 @@ const AdminModuleInner = (): JSX.Element => {
                                     value={training.category}
                                     onValueChange={(value) => handleTrainingFieldChange(training.id, 'category', value)}
                                   >
-                                    <SelectTrigger className="h-7 text-sm" data-testid={`select-category-${training.id}`}>
+                                    <SelectTrigger className="h-7 text-xs" data-testid={`select-category-${training.id}`}>
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -4759,7 +4759,7 @@ const AdminModuleInner = (): JSX.Element => {
                                     value={training.trainingGroup}
                                     onValueChange={(value) => handleTrainingFieldChange(training.id, 'trainingGroup', value)}
                                   >
-                                    <SelectTrigger className="h-7 text-sm" data-testid={`select-group-${training.id}`}>
+                                    <SelectTrigger className="h-7 text-xs" data-testid={`select-group-${training.id}`}>
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -4777,7 +4777,7 @@ const AdminModuleInner = (): JSX.Element => {
                                   <Input
                                     value={training.requirementReference || ''}
                                     onChange={(e) => handleTrainingFieldChange(training.id, 'requirementReference', e.target.value || null)}
-                                    className="h-7 text-sm"
+                                    className="h-7 text-xs"
                                     placeholder="Reference"
                                     data-testid={`input-requirement-${training.id}`}
                                   />
@@ -4801,7 +4801,7 @@ const AdminModuleInner = (): JSX.Element => {
                                     <Input
                                       value={training.trainingLabel || ''}
                                       onChange={(e) => handleTrainingFieldChange(training.id, 'trainingLabel', e.target.value || null)}
-                                      className="h-7 text-sm"
+                                      className="h-7 text-xs"
                                       placeholder="Label"
                                       data-testid={`input-label-${training.id}`}
                                     />
@@ -5650,7 +5650,7 @@ const AdminModuleInner = (): JSX.Element => {
                     {form.isFirstInGroup && (
                       <TableCell 
                         rowSpan={form.groupSize}
-                        className="text-[#4f5863] text-[13px] font-semibold py-3 border-r border-gray-200 bg-[#ffffff]"
+                        className="text-[#4f5863] text-xs font-semibold py-3 border-r border-gray-200 bg-[#ffffff]"
                       >
                         <div className="flex items-center justify-between">
                           <span>{form.name}</span>
@@ -5665,7 +5665,7 @@ const AdminModuleInner = (): JSX.Element => {
                         </div>
                       </TableCell>
                     )}
-                    <TableCell className="text-[#4f5863] text-[13px] font-normal pl-6">
+                    <TableCell className="text-[#4f5863] text-xs font-normal pl-6">
                       <div className="flex items-center justify-between">
                         <span>{form.rankGroup}</span>
                         <TooltipProvider>
@@ -5686,10 +5686,10 @@ const AdminModuleInner = (): JSX.Element => {
                         </TooltipProvider>
                       </div>
                     </TableCell>
-                    <TableCell className="text-[#4f5863] text-[13px] font-normal">
+                    <TableCell className="text-[#4f5863] text-xs font-normal">
                       {form.versionNo}
                     </TableCell>
-                    <TableCell className="text-[#4f5863] text-[13px] font-normal">
+                    <TableCell className="text-[#4f5863] text-xs font-normal">
                       {form.versionDate}
                     </TableCell>
                     <TableCell>
