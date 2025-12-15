@@ -986,9 +986,12 @@ export interface IStorage {
   // Company Training
   getCompanyTrainings(): Promise<CompanyTraining[]>;
   getCompanyTraining(id: number): Promise<CompanyTraining | undefined>;
+  getCompanyTrainingByMasterId(trainingMasterId: number): Promise<CompanyTraining | undefined>;
   createCompanyTraining(training: InsertCompanyTraining): Promise<CompanyTraining>;
+  createCompanyTrainingFromMaster(trainingMasterId: number): Promise<CompanyTraining | null>;
   updateCompanyTraining(id: number, training: Partial<UpdateCompanyTraining>): Promise<CompanyTraining | undefined>;
   deleteCompanyTraining(id: number): Promise<boolean>;
+  deleteCompanyTrainingByMasterId(trainingMasterId: number): Promise<boolean>;
   importCompanyTrainingsFromMaster(): Promise<CompanyTraining[]>;
 }
 
@@ -7443,7 +7446,15 @@ export class PersistentFileStorage implements IStorage {
     throw new Error("PersistentFileStorage doesn't support company training. Use DatabaseStorage instead.");
   }
 
+  async getCompanyTrainingByMasterId(trainingMasterId: number): Promise<CompanyTraining | undefined> {
+    throw new Error("PersistentFileStorage doesn't support company training. Use DatabaseStorage instead.");
+  }
+
   async createCompanyTraining(training: InsertCompanyTraining): Promise<CompanyTraining> {
+    throw new Error("PersistentFileStorage doesn't support company training. Use DatabaseStorage instead.");
+  }
+
+  async createCompanyTrainingFromMaster(trainingMasterId: number): Promise<CompanyTraining | null> {
     throw new Error("PersistentFileStorage doesn't support company training. Use DatabaseStorage instead.");
   }
 
@@ -7452,6 +7463,10 @@ export class PersistentFileStorage implements IStorage {
   }
 
   async deleteCompanyTraining(id: number): Promise<boolean> {
+    throw new Error("PersistentFileStorage doesn't support company training. Use DatabaseStorage instead.");
+  }
+
+  async deleteCompanyTrainingByMasterId(trainingMasterId: number): Promise<boolean> {
     throw new Error("PersistentFileStorage doesn't support company training. Use DatabaseStorage instead.");
   }
 

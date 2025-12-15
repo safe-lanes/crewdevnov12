@@ -51,12 +51,12 @@ export const trainingMaster = pgTable("training_master", {
 });
 
 // Company Training - stores company-specific overrides for trainings
-// Created via one-time import from Training Master, then editable independently
+// Created automatically when "Applicable to Company" is checked in Training Master
 export const companyTrainings = pgTable("company_trainings", {
   id: serial("id").primaryKey(),
-  trainingMasterId: integer("training_master_id").notNull().references(() => trainingMaster.id), // Link to source training
+  trainingMasterId: integer("training_master_id").notNull().references(() => trainingMaster.id).unique(), // Link to source training - unique to prevent duplicates
   companyId: text("company_id").notNull(), // Initially copied from trainingId, but editable
-  trainingLabel: text("training_label").notNull(), // Initially copied from trainingLabel/trainingName
+  trainingLabel: text("training_label").notNull(), // Synced from Training Master, displayed but not editable
   abr: text("abr"), // Abbreviation - blank by default, company adds their own
   requirement: text("requirement"), // Initially copied from requirementReference, editable
   sortOrder: integer("sort_order").default(0), // For ordering in Company tab

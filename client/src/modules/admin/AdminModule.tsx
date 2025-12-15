@@ -487,29 +487,6 @@ const AdminModuleInner = (): JSX.Element => {
     enabled: selectedAdminPage === "training-matrix"
   });
   
-  const importCompanyTrainingsMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest('POST', '/api/company-trainings/import');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/company-trainings'] });
-      toast({
-        title: "Import successful",
-        description: "Company trainings imported from Training Master.",
-        duration: 3000,
-      });
-    },
-    onError: (error) => {
-      console.error('Failed to import company trainings:', error);
-      toast({
-        title: "Import failed",
-        description: "An error occurred while importing trainings.",
-        variant: "destructive",
-        duration: 5000,
-      });
-    },
-  });
-  
   const updateCompanyTrainingMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: Partial<CompanyTraining> }) => {
       return apiRequest('PATCH', `/api/company-trainings/${id}`, data);
@@ -4611,11 +4588,6 @@ const AdminModuleInner = (): JSX.Element => {
     }
   };
   
-  // Handler for import button
-  const handleImportCompanyTrainings = async () => {
-    await importCompanyTrainingsMutation.mutateAsync();
-  };
-
   const renderTrainingMatrixModule = () => (
     <div className="h-full flex flex-col">
       {/* Responsive Header Layout */}
@@ -4701,18 +4673,6 @@ const AdminModuleInner = (): JSX.Element => {
                   <Filter className="h-4 w-4" />
                   Filters
                 </Button>
-                {companyTrainingData.length === 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleImportCompanyTrainings}
-                    disabled={importCompanyTrainingsMutation.isPending}
-                    className="h-8 text-xs border-[#5dc86f] text-[#5dc86f] hover:bg-[#5dc86f] hover:text-white"
-                    data-testid="button-import-company-training"
-                  >
-                    {importCompanyTrainingsMutation.isPending ? "Importing..." : "Import from Training Master"}
-                  </Button>
-                )}
                 <Button
                   variant={isCompanyTrainingEditing ? "default" : "outline"}
                   onClick={isCompanyTrainingEditing ? handleSaveCompanyTraining : () => setIsCompanyTrainingEditing(true)}
@@ -4805,18 +4765,6 @@ const AdminModuleInner = (): JSX.Element => {
                     <Filter className="h-4 w-4" />
                     Filters
                   </Button>
-                  {companyTrainingData.length === 0 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleImportCompanyTrainings}
-                      disabled={importCompanyTrainingsMutation.isPending}
-                      className="h-8 text-xs border-[#5dc86f] text-[#5dc86f] hover:bg-[#5dc86f] hover:text-white"
-                      data-testid="button-import-company-training-mobile"
-                    >
-                      {importCompanyTrainingsMutation.isPending ? "Importing..." : "Import"}
-                    </Button>
-                  )}
                   <Button
                     variant={isCompanyTrainingEditing ? "default" : "outline"}
                     onClick={isCompanyTrainingEditing ? handleSaveCompanyTraining : () => setIsCompanyTrainingEditing(true)}
@@ -5158,7 +5106,7 @@ const AdminModuleInner = (): JSX.Element => {
                       <TableRow>
                         <TableCell colSpan={5} className="text-center text-gray-500 py-8">
                           {companyTrainingData.length === 0 
-                            ? "No company trainings found. Click 'Import from Training Master' to import trainings."
+                            ? "No company trainings found. Mark trainings as 'Applicable to Company' in Training Master to add them here."
                             : "No trainings match your search."}
                         </TableCell>
                       </TableRow>

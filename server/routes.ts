@@ -7463,6 +7463,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       const training = await storage.createTrainingMaster(validationResult.data);
+      
+      // Auto-create Company Training if applicableToCompany is true on creation
+      if (training.applicableToCompany === true) {
+        await storage.createCompanyTrainingFromMaster(training.id);
+      }
+      
       res.status(201).json(training);
     } catch (error: any) {
       console.error("Error creating training master:", error);
@@ -7496,6 +7502,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Default trainings: cannot edit trainingName, category, or trainingGroup
+      let updated;
       if (existing.isDefault) {
         const { trainingName, category, trainingGroup, ...allowedUpdates } = validationResult.data;
         if (trainingName || category || trainingGroup) {
@@ -7503,11 +7510,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
             error: "Cannot modify name, category, or group of default trainings" 
           });
         }
-        const updated = await storage.updateTrainingMaster(id, allowedUpdates);
-        return res.json(updated);
+        updated = await storage.updateTrainingMaster(id, allowedUpdates);
+      } else {
+        updated = await storage.updateTrainingMaster(id, validationResult.data);
       }
 
-      const updated = await storage.updateTrainingMaster(id, validationResult.data);
+      // Auto-sync with Company Training when applicableToCompany changes
+      const wasApplicable = existing.applicableToCompany === true;
+      const isNowApplicable = updated?.applicableToCompany === true;
+
+      if (!wasApplicable && isNowApplicable) {
+        // Create Company Training record when newly marked as applicable
+        await storage.createCompanyTrainingFromMaster(id);
+      } else if (wasApplicable && !isNowApplicable) {
+        // Delete Company Training record when unmarked
+        // Note: Frontend should warn user before unchecking if record is in use
+        await storage.deleteCompanyTrainingByMasterId(id);
+      } else if (isNowApplicable && updated) {
+        // If training label changed, sync it to company training
+        const newLabel = updated.trainingLabel || updated.trainingName;
+        const oldLabel = existing.trainingLabel || existing.trainingName;
+        if (newLabel !== oldLabel) {
+          const companyTraining = await storage.getCompanyTrainingByMasterId(id);
+          if (companyTraining) {
+            await storage.updateCompanyTraining(companyTraining.id, { trainingLabel: newLabel });
+          }
+        }
+      }
+
       res.json(updated);
     } catch (error) {
       console.error("Error updating training master:", error);
@@ -7531,6 +7561,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (existing.isDefault) {
         return res.status(403).json({ error: "Cannot delete default trainings" });
+      }
+
+      // Clean up associated Company Training record before deleting master
+      if (existing.applicableToCompany === true) {
+        await storage.deleteCompanyTrainingByMasterId(id);
       }
 
       const success = await storage.deleteTrainingMaster(id);

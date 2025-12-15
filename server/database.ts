@@ -4299,6 +4299,12 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
+  async getCompanyTrainingByMasterId(trainingMasterId: number): Promise<CompanyTraining | undefined> {
+    const result = await this.db.select().from(companyTrainings)
+      .where(eq(companyTrainings.trainingMasterId, trainingMasterId));
+    return result[0];
+  }
+
   async createCompanyTraining(training: InsertCompanyTraining): Promise<CompanyTraining> {
     const result = await this.db.insert(companyTrainings).values({
       trainingMasterId: training.trainingMasterId,
@@ -4322,6 +4328,47 @@ export class DatabaseStorage implements IStorage {
   async deleteCompanyTraining(id: number): Promise<boolean> {
     const result = await this.db.delete(companyTrainings).where(eq(companyTrainings.id, id));
     return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async deleteCompanyTrainingByMasterId(trainingMasterId: number): Promise<boolean> {
+    const result = await this.db.delete(companyTrainings)
+      .where(eq(companyTrainings.trainingMasterId, trainingMasterId));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async createCompanyTrainingFromMaster(trainingMasterId: number): Promise<CompanyTraining | null> {
+    // First check if it already exists
+    const existing = await this.getCompanyTrainingByMasterId(trainingMasterId);
+    if (existing) {
+      return existing; // Already exists, return it
+    }
+
+    // Get the master training
+    const master = await this.db.select().from(trainingMaster)
+      .where(eq(trainingMaster.id, trainingMasterId));
+    
+    if (!master[0]) {
+      return null; // Master training not found
+    }
+
+    const mt = master[0];
+
+    // Get the current max sortOrder
+    const existingCompanyTrainings = await this.db.select().from(companyTrainings);
+    const maxSortOrder = existingCompanyTrainings.reduce((max, ct) => 
+      Math.max(max, ct.sortOrder ?? 0), 0);
+
+    // Create the company training
+    const result = await this.db.insert(companyTrainings).values({
+      trainingMasterId: mt.id,
+      companyId: mt.trainingId, // Copy trainingId as initial companyId
+      trainingLabel: mt.trainingLabel || mt.trainingName, // Use label or fall back to name
+      abr: null, // Blank by default - company customizes
+      requirement: mt.requirementReference || null,
+      sortOrder: maxSortOrder + 1,
+    }).returning();
+
+    return result[0];
   }
 
   async importCompanyTrainingsFromMaster(): Promise<CompanyTraining[]> {
