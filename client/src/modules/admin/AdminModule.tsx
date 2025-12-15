@@ -4717,17 +4717,17 @@ const AdminModuleInner = (): JSX.Element => {
                           return (
                             <TableRow 
                               key={training.id} 
-                              className={`border-b border-gray-100 hover:bg-gray-50 text-xs ${changedTrainings.has(training.id) ? "bg-yellow-50" : ""}`}
+                              className={`border-b border-gray-100 hover:bg-gray-50 text-sm ${changedTrainings.has(training.id) ? "bg-yellow-50" : ""}`}
                               data-testid={`row-training-${training.id}`}
                             >
                               <TableCell className="text-center text-gray-600">{index + 1}</TableCell>
-                              <TableCell className="text-gray-600 font-mono">{training.trainingId}</TableCell>
-                              <TableCell className="text-xs">
+                              <TableCell className="text-gray-600">{training.trainingId}</TableCell>
+                              <TableCell>
                                 {isTrainingMasterEditing && !training.isDefault ? (
                                   <Input
                                     value={training.trainingName}
                                     onChange={(e) => handleTrainingFieldChange(training.id, 'trainingName', e.target.value)}
-                                    className="h-7 text-xs"
+                                    className="h-7 text-sm"
                                     data-testid={`input-training-name-${training.id}`}
                                   />
                                 ) : (
@@ -4740,7 +4740,7 @@ const AdminModuleInner = (): JSX.Element => {
                                     value={training.category}
                                     onValueChange={(value) => handleTrainingFieldChange(training.id, 'category', value)}
                                   >
-                                    <SelectTrigger className="h-7 text-xs" data-testid={`select-category-${training.id}`}>
+                                    <SelectTrigger className="h-7 text-sm" data-testid={`select-category-${training.id}`}>
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -4759,7 +4759,7 @@ const AdminModuleInner = (): JSX.Element => {
                                     value={training.trainingGroup}
                                     onValueChange={(value) => handleTrainingFieldChange(training.id, 'trainingGroup', value)}
                                   >
-                                    <SelectTrigger className="h-7 text-xs" data-testid={`select-group-${training.id}`}>
+                                    <SelectTrigger className="h-7 text-sm" data-testid={`select-group-${training.id}`}>
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -4777,7 +4777,7 @@ const AdminModuleInner = (): JSX.Element => {
                                   <Input
                                     value={training.requirementReference || ''}
                                     onChange={(e) => handleTrainingFieldChange(training.id, 'requirementReference', e.target.value || null)}
-                                    className="h-7 text-xs"
+                                    className="h-7 text-sm"
                                     placeholder="Reference"
                                     data-testid={`input-requirement-${training.id}`}
                                   />
@@ -4801,7 +4801,7 @@ const AdminModuleInner = (): JSX.Element => {
                                     <Input
                                       value={training.trainingLabel || ''}
                                       onChange={(e) => handleTrainingFieldChange(training.id, 'trainingLabel', e.target.value || null)}
-                                      className="h-7 text-xs"
+                                      className="h-7 text-sm"
                                       placeholder="Label"
                                       data-testid={`input-label-${training.id}`}
                                     />
