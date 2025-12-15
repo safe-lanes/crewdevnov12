@@ -4689,7 +4689,36 @@ const AdminModuleInner = (): JSX.Element => {
                       <TableHead className="w-24 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Category</TableHead>
                       <TableHead className="w-24 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Group</TableHead>
                       <TableHead className="w-32 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Requirement/Ref</TableHead>
-                      <TableHead className="w-32 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Applicable to Company</TableHead>
+                      <TableHead className="w-32 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">
+                        <div className="flex items-center justify-center gap-2">
+                          <span>Applicable to Company</span>
+                          {isTrainingMasterEditing && (
+                            <input
+                              type="checkbox"
+                              checked={localTrainingData.length > 0 && localTrainingData.every(t => t.applicableToCompany)}
+                              ref={(el) => {
+                                if (el) {
+                                  const allChecked = localTrainingData.every(t => t.applicableToCompany);
+                                  const noneChecked = localTrainingData.every(t => !t.applicableToCompany);
+                                  el.indeterminate = !allChecked && !noneChecked;
+                                }
+                              }}
+                              onChange={(e) => {
+                                const newValue = e.target.checked;
+                                setLocalTrainingData(prev => prev.map(t => ({ ...t, applicableToCompany: newValue })));
+                                setChangedTrainings(prev => {
+                                  const updated = new Set(prev);
+                                  localTrainingData.forEach(t => updated.add(t.id));
+                                  return updated;
+                                });
+                              }}
+                              className="h-4 w-4 cursor-pointer"
+                              title="Select All"
+                              data-testid="checkbox-select-all-company"
+                            />
+                          )}
+                        </div>
+                      </TableHead>
                       <TableHead className="w-[180px] text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Training Label</TableHead>
                       {isTrainingMasterEditing && (
                         <TableHead className="w-20 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Actions</TableHead>
