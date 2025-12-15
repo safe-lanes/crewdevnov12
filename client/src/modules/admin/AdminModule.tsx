@@ -5025,7 +5025,10 @@ const AdminModuleInner = (): JSX.Element => {
                   <TableHeader>
                     <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
                       <TableHead className="w-12 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">#</TableHead>
+                      <TableHead className="w-24 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Company ID</TableHead>
                       <TableHead className="min-w-[200px] text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Training Label</TableHead>
+                      <TableHead className="w-20 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Abr</TableHead>
+                      <TableHead className="min-w-[150px] text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Requirement</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -5034,14 +5037,17 @@ const AdminModuleInner = (): JSX.Element => {
                         {Array.from({ length: 10 }).map((_, index) => (
                           <TableRow key={`skeleton-company-${index}`} className="border-b border-gray-100">
                             <TableCell className="text-center"><div className="h-4 w-6 bg-gray-200 rounded animate-pulse mx-auto" /></TableCell>
+                            <TableCell><div className="h-4 w-16 bg-gray-200 rounded animate-pulse" /></TableCell>
                             <TableCell><div className="h-4 w-40 bg-gray-200 rounded animate-pulse" /></TableCell>
+                            <TableCell><div className="h-4 w-12 bg-gray-200 rounded animate-pulse" /></TableCell>
+                            <TableCell><div className="h-4 w-28 bg-gray-200 rounded animate-pulse" /></TableCell>
                           </TableRow>
                         ))}
                       </>
                     )}
                     {!trainingMasterLoading && filteredCompanyTrainingData.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={2} className="text-center text-gray-500 py-8">
+                        <TableCell colSpan={5} className="text-center text-gray-500 py-8">
                           No trainings marked as "Applicable to Company" found.
                         </TableCell>
                       </TableRow>
@@ -5055,8 +5061,17 @@ const AdminModuleInner = (): JSX.Element => {
                         data-testid={`row-company-training-${training.id}`}
                       >
                         <TableCell className="text-center text-xs text-gray-600">{index + 1}</TableCell>
+                        <TableCell className="text-xs text-gray-600" data-testid={`text-company-id-${training.id}`}>
+                          {training.trainingId}
+                        </TableCell>
                         <TableCell className="text-xs" data-testid={`text-company-training-label-${training.id}`}>
                           {training.trainingLabel || training.trainingName}
+                        </TableCell>
+                        <TableCell className="text-xs text-gray-600" data-testid={`text-company-abr-${training.id}`}>
+                          {training.trainingLabel || '-'}
+                        </TableCell>
+                        <TableCell className="text-xs text-gray-600" data-testid={`text-company-requirement-${training.id}`}>
+                          {training.requirementReference || '-'}
                         </TableCell>
                       </TableRow>
                     ))}
