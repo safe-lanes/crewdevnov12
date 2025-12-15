@@ -7434,6 +7434,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Batch update training masters (MUST be before /:id to avoid "batch" being treated as an ID)
+  app.patch("/api/training-master/batch", async (req, res) => {
+    try {
+      const updates = req.body;
+      if (!Array.isArray(updates)) {
+        return res.status(400).json({ error: "Expected array of updates" });
+      }
+
+      const results = await Promise.all(
+        updates.map(async (item: any) => {
+          if (!item.id) return null;
+          return storage.updateTrainingMaster(item.id, item.data);
+        })
+      );
+      res.json(results.filter(Boolean));
+    } catch (error) {
+      console.error("Error batch updating training masters:", error);
+      res.status(500).json({ error: "Failed to batch update training masters" });
+    }
+  });
+
+  // Reorder training masters within same category+group (MUST be before /:id)
+  app.post("/api/training-master/reorder", async (req, res) => {
+    try {
+      const orders = req.body;
+      if (!Array.isArray(orders)) {
+        return res.status(400).json({ error: "Expected array of {id, sortOrder}" });
+      }
+
+      // Validate order items
+      for (const item of orders) {
+        if (typeof item.id !== 'number' || typeof item.sortOrder !== 'number') {
+          return res.status(400).json({ error: "Each item must have numeric id and sortOrder" });
+        }
+      }
+
+      await storage.reorderTrainingMasters(orders);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error reordering training masters:", error);
+      res.status(500).json({ error: "Failed to reorder training masters" });
+    }
+  });
+
   // Get single training master by ID
   app.get("/api/training-master/:id", async (req, res) => {
     try {
@@ -7577,50 +7621,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting training master:", error);
       res.status(500).json({ error: "Failed to delete training master" });
-    }
-  });
-
-  // Reorder training masters within same category+group
-  app.post("/api/training-master/reorder", async (req, res) => {
-    try {
-      const orders = req.body;
-      if (!Array.isArray(orders)) {
-        return res.status(400).json({ error: "Expected array of {id, sortOrder}" });
-      }
-
-      // Validate order items
-      for (const item of orders) {
-        if (typeof item.id !== 'number' || typeof item.sortOrder !== 'number') {
-          return res.status(400).json({ error: "Each item must have numeric id and sortOrder" });
-        }
-      }
-
-      await storage.reorderTrainingMasters(orders);
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error reordering training masters:", error);
-      res.status(500).json({ error: "Failed to reorder training masters" });
-    }
-  });
-
-  // Batch update training masters
-  app.patch("/api/training-master/batch", async (req, res) => {
-    try {
-      const updates = req.body;
-      if (!Array.isArray(updates)) {
-        return res.status(400).json({ error: "Expected array of updates" });
-      }
-
-      const results = await Promise.all(
-        updates.map(async (item: any) => {
-          if (!item.id) return null;
-          return storage.updateTrainingMaster(item.id, item.data);
-        })
-      );
-      res.json(results.filter(Boolean));
-    } catch (error) {
-      console.error("Error batch updating training masters:", error);
-      res.status(500).json({ error: "Failed to batch update training masters" });
     }
   });
 
