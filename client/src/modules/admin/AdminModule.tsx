@@ -473,6 +473,12 @@ const AdminModuleInner = (): JSX.Element => {
   const [trainingCategoryFilter, setTrainingCategoryFilter] = useState<string>("all");
   const [trainingGroupFilter, setTrainingGroupFilter] = useState<string>("all");
   
+  // Company Training tab state
+  const [isCompanyTrainingEditing, setIsCompanyTrainingEditing] = useState(false);
+  const [showCompanyTrainingFilters, setShowCompanyTrainingFilters] = useState(true);
+  const [companyTrainingSearchFilter, setCompanyTrainingSearchFilter] = useState("");
+  const [showNewCompanyTrainingDialog, setShowNewCompanyTrainingDialog] = useState(false);
+  
   // Sync training master data with local state
   useEffect(() => {
     if (trainingMasterData.length > 0 && !isTrainingMasterEditing) {
@@ -4569,6 +4575,39 @@ const AdminModuleInner = (): JSX.Element => {
                 </Button>
               </div>
             )}
+            {selectedTrainingMatrixTab === "company" && (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowCompanyTrainingFilters(!showCompanyTrainingFilters)}
+                  className="h-8 gap-2 bg-white text-[#0f172a] border-gray-300"
+                  data-testid="button-toggle-company-training-filters"
+                >
+                  <Filter className="h-4 w-4" />
+                  Filters
+                </Button>
+                <Button
+                  variant={isCompanyTrainingEditing ? "default" : "outline"}
+                  onClick={() => setIsCompanyTrainingEditing(!isCompanyTrainingEditing)}
+                  className={`h-8 text-xs ${
+                    isCompanyTrainingEditing 
+                      ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
+                      : "border-[#e1e8ed] text-[#16569e]"
+                  }`}
+                  data-testid="button-edit-company-training"
+                >
+                  {isCompanyTrainingEditing ? "Save" : "Edit"}
+                </Button>
+                <Button
+                  onClick={() => setShowNewCompanyTrainingDialog(true)}
+                  className="h-8 bg-[#5dc86f] hover:bg-[#22c55e] text-white text-xs"
+                  data-testid="button-new-company-training"
+                >
+                  + New
+                </Button>
+              </div>
+            )}
           </div>
         )}
         
@@ -4634,12 +4673,45 @@ const AdminModuleInner = (): JSX.Element => {
                   </Button>
                 </div>
               )}
+              {selectedTrainingMatrixTab === "company" && (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowCompanyTrainingFilters(!showCompanyTrainingFilters)}
+                    className="h-8 gap-2 bg-white text-[#0f172a] border-gray-300"
+                    data-testid="button-toggle-company-training-filters-mobile"
+                  >
+                    <Filter className="h-4 w-4" />
+                    Filters
+                  </Button>
+                  <Button
+                    variant={isCompanyTrainingEditing ? "default" : "outline"}
+                    onClick={() => setIsCompanyTrainingEditing(!isCompanyTrainingEditing)}
+                    className={`h-8 text-xs ${
+                      isCompanyTrainingEditing 
+                        ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
+                        : "border-[#e1e8ed] text-[#16569e]"
+                    }`}
+                    data-testid="button-edit-company-training-mobile"
+                  >
+                    {isCompanyTrainingEditing ? "Save" : "Edit"}
+                  </Button>
+                  <Button
+                    onClick={() => setShowNewCompanyTrainingDialog(true)}
+                    className="h-8 bg-[#5dc86f] hover:bg-[#22c55e] text-white text-xs"
+                    data-testid="button-new-company-training-mobile"
+                  >
+                    + New
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         )}
       </div>
 
-      {/* Filter Bar - Search Training */}
+      {/* Filter Bar - Search Training (Training Master) */}
       {showTrainingFilters && selectedTrainingMatrixTab === "training-master" && (
         <div className="mb-4 p-3 md:p-4 pl-0 bg-[#f7fafc] rounded-lg">
           <div className="flex flex-wrap items-center gap-2">
@@ -4912,8 +4984,28 @@ const AdminModuleInner = (): JSX.Element => {
           </div>
         )}
         {selectedTrainingMatrixTab === "company" && (
-          <div data-testid="content-training-company">
-            {/* Company tab content - to be implemented */}
+          <div data-testid="content-training-company" className="h-full">
+            {/* Company Filter Bar */}
+            {showCompanyTrainingFilters && (
+              <div className="mb-4 p-3 md:p-4 pl-0 bg-[#f7fafc] rounded-lg">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="shrink-0 w-48">
+                    <Input
+                      placeholder="Search Training"
+                      className="h-8 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full"
+                      value={companyTrainingSearchFilter}
+                      onChange={(e) => setCompanyTrainingSearchFilter(e.target.value)}
+                      data-testid="input-search-company-training"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* Company Training Content Placeholder */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center text-gray-500">
+              <p className="text-sm">Company-specific training configuration will be displayed here.</p>
+              <p className="text-xs mt-2">Use the +New button to add company-specific trainings not yet in Training Master.</p>
+            </div>
           </div>
         )}
         {selectedTrainingMatrixTab === "vessel" && (
@@ -4931,6 +5023,49 @@ const AdminModuleInner = (): JSX.Element => {
         existingIds={trainingMasterData.map(t => t.trainingId)}
         isLoading={createTrainingMutation.isPending}
       />
+
+      {/* New Company Training Dialog */}
+      <Dialog open={showNewCompanyTrainingDialog} onOpenChange={setShowNewCompanyTrainingDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Company Training</DialogTitle>
+            <DialogDescription>
+              Add a company-specific training that is not yet in Training Master.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-gray-600">
+              This feature allows you to add trainings specific to your company that are not part of the standard Training Master list.
+            </p>
+            <p className="text-xs text-gray-500">
+              Company-specific trainings will be tracked separately and can be assigned to crew members as needed.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowNewCompanyTrainingDialog(false)}
+              data-testid="button-cancel-company-training"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                toast({
+                  title: "Coming Soon",
+                  description: "Company-specific training creation will be available in a future update.",
+                  duration: 3000,
+                });
+                setShowNewCompanyTrainingDialog(false);
+              }}
+              className="bg-[#5dc86f] hover:bg-[#22c55e] text-white"
+              data-testid="button-save-company-training"
+            >
+              Save Training
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Training Confirmation Dialog */}
       <Dialog open={showDeleteTrainingDialog} onOpenChange={setShowDeleteTrainingDialog}>
