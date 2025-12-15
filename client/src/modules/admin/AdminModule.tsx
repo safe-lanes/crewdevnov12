@@ -92,11 +92,235 @@ import {
   type PortMasterEntry
 } from "@/utils/portMasterMapping";
 import { EditSessionProvider, useEditSession } from "@/contexts/EditSessionContext";
+import { 
+  useTrainingMasters, 
+  useCreateTrainingMaster, 
+  useUpdateTrainingMaster, 
+  useDeleteTrainingMaster, 
+  useReorderTrainingMasters,
+  getCategoryLabel,
+  getGroupLabel,
+  generateTrainingId,
+  TRAINING_CATEGORIES,
+  TRAINING_GROUPS
+} from "@/hooks/useTrainingMaster";
+import type { TrainingMaster, InsertTrainingMaster, UpdateTrainingMaster } from "@shared/schema";
 
 const rankGroupSchema = z.object({
   name: z.string().min(1, "Rank group name is required"),
   ranks: z.array(z.string()).min(1, "At least one rank must be selected"),
 });
+
+// New Training Dialog Component
+interface NewTrainingDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: InsertTrainingMaster) => Promise<void>;
+  existingIds: string[];
+  isLoading: boolean;
+}
+
+const newTrainingSchema = z.object({
+  trainingName: z.string().min(1, "Training name is required"),
+  category: z.string().min(1, "Category is required"),
+  trainingGroup: z.string().min(1, "Group is required"),
+  requirementReference: z.string().optional(),
+  trainingLabel: z.string().optional(),
+  applicableToCompany: z.boolean(),
+});
+
+function NewTrainingDialog({ open, onOpenChange, onSubmit, existingIds, isLoading }: NewTrainingDialogProps) {
+  const form = useForm({
+    resolver: zodResolver(newTrainingSchema),
+    defaultValues: {
+      trainingName: '',
+      category: 'S',
+      trainingGroup: 'A',
+      requirementReference: '',
+      trainingLabel: '',
+      applicableToCompany: true,
+    },
+  });
+
+  const watchCategory = form.watch('category');
+  const watchGroup = form.watch('trainingGroup');
+  
+  const generatedId = useMemo(() => {
+    return generateTrainingId(watchCategory, watchGroup, existingIds);
+  }, [watchCategory, watchGroup, existingIds]);
+
+  const handleSubmit = async (values: z.infer<typeof newTrainingSchema>) => {
+    const data: InsertTrainingMaster = {
+      trainingId: generatedId,
+      trainingName: values.trainingName,
+      category: values.category,
+      trainingGroup: values.trainingGroup,
+      requirementReference: values.requirementReference || null,
+      trainingLabel: values.trainingLabel || null,
+      applicableToCompany: values.applicableToCompany,
+      sortOrder: 0,
+      isDefault: false,
+    };
+    await onSubmit(data);
+    form.reset();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add New Training</DialogTitle>
+          <DialogDescription>
+            Create a new training record. ID will be auto-generated.
+          </DialogDescription>
+        </DialogHeader>
+        <FormComponent {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-medium">Training ID</label>
+                <Input 
+                  value={generatedId} 
+                  disabled 
+                  className="h-8 text-xs font-mono bg-gray-100" 
+                  data-testid="input-new-training-id"
+                />
+              </div>
+              <FormField
+                control={form.control}
+                name="applicableToCompany"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col justify-end">
+                    <div className="flex items-center gap-2 h-8">
+                      <input
+                        type="checkbox"
+                        checked={field.value}
+                        onChange={field.onChange}
+                        className="h-4 w-4"
+                        data-testid="checkbox-new-applicable-company"
+                      />
+                      <FormLabel className="text-xs">Applicable to Company</FormLabel>
+                    </div>
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="trainingName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs">Training Name *</FormLabel>
+                  <FormControl>
+                    <Input {...field} className="h-8 text-xs" data-testid="input-new-training-name" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">Category *</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className="h-8 text-xs" data-testid="select-new-category">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {TRAINING_CATEGORIES.map(cat => (
+                          <SelectItem key={cat.code} value={cat.code}>{cat.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="trainingGroup"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">Group *</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className="h-8 text-xs" data-testid="select-new-group">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {TRAINING_GROUPS.map(grp => (
+                          <SelectItem key={grp.code} value={grp.code}>{grp.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="requirementReference"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs">Requirement/Reference</FormLabel>
+                  <FormControl>
+                    <Input {...field} className="h-8 text-xs" placeholder="e.g., STCW III/1" data-testid="input-new-requirement" />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="trainingLabel"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs">Training Label</FormLabel>
+                  <FormControl>
+                    <Input {...field} className="h-8 text-xs" placeholder="Short label for display" data-testid="input-new-label" />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  form.reset();
+                  onOpenChange(false);
+                }}
+                data-testid="button-cancel-new-training"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="bg-[#5dc86f] hover:bg-[#22c55e] text-white"
+                data-testid="button-submit-new-training"
+              >
+                {isLoading ? "Creating..." : "Create Training"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </FormComponent>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 // Removed AG Grid CheckboxRenderer - using standard HTML checkbox components instead
 
@@ -231,6 +455,31 @@ const AdminModuleInner = (): JSX.Element => {
     },
   });
   
+  // Training Master data hooks
+  const { data: trainingMasterData = [], isLoading: trainingMasterLoading } = useTrainingMasters({ 
+    enabled: selectedAdminPage === "training-matrix" 
+  });
+  const createTrainingMutation = useCreateTrainingMaster();
+  const updateTrainingMutation = useUpdateTrainingMaster();
+  const deleteTrainingMutation = useDeleteTrainingMaster();
+  const reorderTrainingMutation = useReorderTrainingMasters();
+  
+  // Training Master local state
+  const [localTrainingData, setLocalTrainingData] = useState<TrainingMaster[]>([]);
+  const [changedTrainings, setChangedTrainings] = useState<Set<number>>(new Set());
+  const [showNewTrainingDialog, setShowNewTrainingDialog] = useState(false);
+  const [showDeleteTrainingDialog, setShowDeleteTrainingDialog] = useState(false);
+  const [trainingToDelete, setTrainingToDelete] = useState<TrainingMaster | null>(null);
+  const [trainingCategoryFilter, setTrainingCategoryFilter] = useState<string>("all");
+  const [trainingGroupFilter, setTrainingGroupFilter] = useState<string>("all");
+  
+  // Sync training master data with local state
+  useEffect(() => {
+    if (trainingMasterData.length > 0 && !isTrainingMasterEditing) {
+      setLocalTrainingData(trainingMasterData);
+      setChangedTrainings(new Set());
+    }
+  }, [trainingMasterData, isTrainingMasterEditing]);
   
   // Local state for editing (initialized from shared data)
   const [rankMasterData, setRankMasterData] = useState<RankMasterData[]>([]);
@@ -4078,22 +4327,166 @@ const AdminModuleInner = (): JSX.Element => {
     setIsTrainingMasterEditing(true);
   };
 
-  const handleSaveTraining = () => {
-    setIsTrainingMasterEditing(false);
-    toast({
-      title: "Changes saved",
-      description: "Training data has been saved successfully.",
-      duration: 3000,
-    });
+  const handleSaveTraining = async () => {
+    try {
+      const changedIds = Array.from(changedTrainings);
+      for (const id of changedIds) {
+        const training = localTrainingData.find(t => t.id === id);
+        if (training) {
+          await updateTrainingMutation.mutateAsync({
+            id: training.id,
+            data: {
+              requirementReference: training.requirementReference,
+              applicableToCompany: training.applicableToCompany,
+              trainingLabel: training.trainingLabel,
+              ...(training.isDefault ? {} : {
+                trainingName: training.trainingName,
+                category: training.category,
+                trainingGroup: training.trainingGroup,
+              }),
+            },
+          });
+        }
+      }
+      setIsTrainingMasterEditing(false);
+      setChangedTrainings(new Set());
+      toast({
+        title: "Changes saved",
+        description: "Training data has been saved successfully.",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Failed to save training changes:', error);
+      toast({
+        title: "Save failed",
+        description: "Failed to save training data. Please try again.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    }
   };
 
   const handleNewTraining = () => {
-    toast({
-      title: "New Training",
-      description: "New training form will be implemented.",
-      duration: 3000,
-    });
+    setShowNewTrainingDialog(true);
   };
+
+  const handleCreateTraining = async (data: InsertTrainingMaster) => {
+    try {
+      await createTrainingMutation.mutateAsync(data);
+      setShowNewTrainingDialog(false);
+      toast({
+        title: "Training created",
+        description: "New training has been added successfully.",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Failed to create training:', error);
+      toast({
+        title: "Creation failed",
+        description: "Failed to create training. Please try again.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    }
+  };
+
+  const handleDeleteTraining = async (training: TrainingMaster) => {
+    if (training.isDefault) {
+      toast({
+        title: "Cannot delete",
+        description: "Default trainings cannot be deleted.",
+        variant: "destructive",
+        duration: 3000,
+      });
+      return;
+    }
+    setTrainingToDelete(training);
+    setShowDeleteTrainingDialog(true);
+  };
+
+  const confirmDeleteTraining = async () => {
+    if (!trainingToDelete) return;
+    try {
+      await deleteTrainingMutation.mutateAsync(trainingToDelete.id);
+      setShowDeleteTrainingDialog(false);
+      setTrainingToDelete(null);
+      toast({
+        title: "Training deleted",
+        description: "Training has been removed successfully.",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Failed to delete training:', error);
+      toast({
+        title: "Delete failed",
+        description: "Failed to delete training. Please try again.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    }
+  };
+
+  const handleMoveTraining = async (training: TrainingMaster, direction: 'up' | 'down') => {
+    const sameGroupTrainings = localTrainingData
+      .filter(t => t.category === training.category && t.trainingGroup === training.trainingGroup)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    
+    const currentIndex = sameGroupTrainings.findIndex(t => t.id === training.id);
+    if (currentIndex === -1) return;
+    
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= sameGroupTrainings.length) return;
+    
+    const swapTraining = sameGroupTrainings[targetIndex];
+    
+    try {
+      await reorderTrainingMutation.mutateAsync([
+        { id: training.id, sortOrder: swapTraining.sortOrder },
+        { id: swapTraining.id, sortOrder: training.sortOrder },
+      ]);
+    } catch (error) {
+      console.error('Failed to reorder training:', error);
+      toast({
+        title: "Reorder failed",
+        description: "Failed to reorder training. Please try again.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    }
+  };
+
+  const handleTrainingFieldChange = (id: number, field: keyof TrainingMaster, value: any) => {
+    const protectedFields: (keyof TrainingMaster)[] = ['trainingName', 'category', 'trainingGroup'];
+    
+    setLocalTrainingData(prev => prev.map(t => {
+      if (t.id !== id) return t;
+      if (t.isDefault && protectedFields.includes(field)) {
+        return t;
+      }
+      return { ...t, [field]: value };
+    }));
+    
+    const training = localTrainingData.find(t => t.id === id);
+    if (training?.isDefault && protectedFields.includes(field)) {
+      return;
+    }
+    setChangedTrainings(prev => new Set(prev).add(id));
+  };
+
+  const filteredTrainingData = useMemo(() => {
+    return localTrainingData.filter(training => {
+      const matchesSearch = trainingSearchFilter === '' || 
+        training.trainingName.toLowerCase().includes(trainingSearchFilter.toLowerCase()) ||
+        training.trainingId.toLowerCase().includes(trainingSearchFilter.toLowerCase());
+      const matchesCategory = trainingCategoryFilter === 'all' || training.category === trainingCategoryFilter;
+      const matchesGroup = trainingGroupFilter === 'all' || training.trainingGroup === trainingGroupFilter;
+      return matchesSearch && matchesCategory && matchesGroup;
+    }).sort((a, b) => {
+      if (a.category !== b.category) return a.category.localeCompare(b.category);
+      if (a.trainingGroup !== b.trainingGroup) return a.trainingGroup.localeCompare(b.trainingGroup);
+      return a.sortOrder - b.sortOrder;
+    });
+  }, [localTrainingData, trainingSearchFilter, trainingCategoryFilter, trainingGroupFilter]);
 
   const renderTrainingMatrixModule = () => (
     <div className="h-full flex flex-col">
@@ -4241,7 +4634,7 @@ const AdminModuleInner = (): JSX.Element => {
       {/* Filter Bar - Search Training */}
       {showTrainingFilters && selectedTrainingMatrixTab === "training-master" && (
         <div className="mb-4 p-3 md:p-4 pl-0 bg-[#f7fafc] rounded-lg">
-          <div className="flex flex-nowrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <div className="shrink-0 w-48">
               <Input
                 placeholder="Search Training"
@@ -4251,15 +4644,223 @@ const AdminModuleInner = (): JSX.Element => {
                 data-testid="input-search-training"
               />
             </div>
+            <div className="shrink-0 w-36">
+              <Select value={trainingCategoryFilter} onValueChange={setTrainingCategoryFilter}>
+                <SelectTrigger className="h-8 text-xs" data-testid="select-training-category">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {TRAINING_CATEGORIES.map(cat => (
+                    <SelectItem key={cat.code} value={cat.code}>{cat.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="shrink-0 w-36">
+              <Select value={trainingGroupFilter} onValueChange={setTrainingGroupFilter}>
+                <SelectTrigger className="h-8 text-xs" data-testid="select-training-group">
+                  <SelectValue placeholder="Group" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Groups</SelectItem>
+                  {TRAINING_GROUPS.map(grp => (
+                    <SelectItem key={grp.code} value={grp.code}>{grp.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
       )}
 
       {/* Tab Content Area */}
-      <div className="flex-1">
+      <div className="flex-1 overflow-auto">
         {selectedTrainingMatrixTab === "training-master" && (
           <div data-testid="content-training-master">
-            {/* Training Master tab content - to be implemented */}
+            {trainingMasterLoading ? (
+              <div className="flex items-center justify-center h-40">
+                <div className="text-gray-500">Loading training data...</div>
+              </div>
+            ) : filteredTrainingData.length === 0 ? (
+              <div className="flex items-center justify-center h-40">
+                <div className="text-gray-500">No training data found</div>
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="p-0">
+                  <ScrollArea className="h-[calc(100vh-300px)]">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-gray-50">
+                          <TableHead className="w-12 text-center text-xs font-semibold">#</TableHead>
+                          <TableHead className="w-20 text-xs font-semibold">ID</TableHead>
+                          <TableHead className="min-w-[200px] text-xs font-semibold">Training Name</TableHead>
+                          <TableHead className="w-24 text-xs font-semibold">Category</TableHead>
+                          <TableHead className="w-24 text-xs font-semibold">Group</TableHead>
+                          <TableHead className="w-32 text-xs font-semibold">Requirement/Ref</TableHead>
+                          <TableHead className="w-32 text-xs font-semibold">Training Label</TableHead>
+                          <TableHead className="w-24 text-center text-xs font-semibold">Company</TableHead>
+                          {isTrainingMasterEditing && (
+                            <TableHead className="w-20 text-center text-xs font-semibold">Order</TableHead>
+                          )}
+                          {isTrainingMasterEditing && (
+                            <TableHead className="w-16 text-center text-xs font-semibold">Delete</TableHead>
+                          )}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredTrainingData.map((training, index) => {
+                          const sameGroupTrainings = filteredTrainingData.filter(
+                            t => t.category === training.category && t.trainingGroup === training.trainingGroup
+                          );
+                          const groupIndex = sameGroupTrainings.findIndex(t => t.id === training.id);
+                          const isFirstInGroup = groupIndex === 0;
+                          const isLastInGroup = groupIndex === sameGroupTrainings.length - 1;
+                          
+                          return (
+                            <TableRow 
+                              key={training.id} 
+                              className={changedTrainings.has(training.id) ? "bg-yellow-50" : ""}
+                              data-testid={`row-training-${training.id}`}
+                            >
+                              <TableCell className="text-center text-xs text-gray-500">{index + 1}</TableCell>
+                              <TableCell className="text-xs font-mono">{training.trainingId}</TableCell>
+                              <TableCell className="text-xs">
+                                {isTrainingMasterEditing && !training.isDefault ? (
+                                  <Input
+                                    value={training.trainingName}
+                                    onChange={(e) => handleTrainingFieldChange(training.id, 'trainingName', e.target.value)}
+                                    className="h-7 text-xs"
+                                    data-testid={`input-training-name-${training.id}`}
+                                  />
+                                ) : (
+                                  <span className={training.isDefault ? "font-medium" : ""}>{training.trainingName}</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-xs">
+                                {isTrainingMasterEditing && !training.isDefault ? (
+                                  <Select
+                                    value={training.category}
+                                    onValueChange={(value) => handleTrainingFieldChange(training.id, 'category', value)}
+                                  >
+                                    <SelectTrigger className="h-7 text-xs" data-testid={`select-category-${training.id}`}>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {TRAINING_CATEGORIES.map(cat => (
+                                        <SelectItem key={cat.code} value={cat.code}>{cat.label}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  getCategoryLabel(training.category)
+                                )}
+                              </TableCell>
+                              <TableCell className="text-xs">
+                                {isTrainingMasterEditing && !training.isDefault ? (
+                                  <Select
+                                    value={training.trainingGroup}
+                                    onValueChange={(value) => handleTrainingFieldChange(training.id, 'trainingGroup', value)}
+                                  >
+                                    <SelectTrigger className="h-7 text-xs" data-testid={`select-group-${training.id}`}>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {TRAINING_GROUPS.map(grp => (
+                                        <SelectItem key={grp.code} value={grp.code}>{grp.label}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  getGroupLabel(training.trainingGroup)
+                                )}
+                              </TableCell>
+                              <TableCell className="text-xs">
+                                {isTrainingMasterEditing ? (
+                                  <Input
+                                    value={training.requirementReference || ''}
+                                    onChange={(e) => handleTrainingFieldChange(training.id, 'requirementReference', e.target.value || null)}
+                                    className="h-7 text-xs"
+                                    placeholder="Reference"
+                                    data-testid={`input-requirement-${training.id}`}
+                                  />
+                                ) : (
+                                  training.requirementReference || '-'
+                                )}
+                              </TableCell>
+                              <TableCell className="text-xs">
+                                {isTrainingMasterEditing ? (
+                                  <Input
+                                    value={training.trainingLabel || ''}
+                                    onChange={(e) => handleTrainingFieldChange(training.id, 'trainingLabel', e.target.value || null)}
+                                    className="h-7 text-xs"
+                                    placeholder="Label"
+                                    data-testid={`input-label-${training.id}`}
+                                  />
+                                ) : (
+                                  training.trainingLabel || '-'
+                                )}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={training.applicableToCompany}
+                                  onChange={(e) => handleTrainingFieldChange(training.id, 'applicableToCompany', e.target.checked)}
+                                  disabled={!isTrainingMasterEditing}
+                                  className="h-4 w-4"
+                                  data-testid={`checkbox-company-${training.id}`}
+                                />
+                              </TableCell>
+                              {isTrainingMasterEditing && (
+                                <TableCell className="text-center">
+                                  <div className="flex justify-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleMoveTraining(training, 'up')}
+                                      disabled={isFirstInGroup}
+                                      className="h-6 w-6 p-0"
+                                      data-testid={`button-move-up-${training.id}`}
+                                    >
+                                      <ChevronUp className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleMoveTraining(training, 'down')}
+                                      disabled={isLastInGroup}
+                                      className="h-6 w-6 p-0"
+                                      data-testid={`button-move-down-${training.id}`}
+                                    >
+                                      <ChevronDown className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              )}
+                              {isTrainingMasterEditing && (
+                                <TableCell className="text-center">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDeleteTraining(training)}
+                                    disabled={training.isDefault}
+                                    className={`h-6 w-6 p-0 ${training.isDefault ? 'opacity-30' : 'text-red-500 hover:text-red-700'}`}
+                                    data-testid={`button-delete-${training.id}`}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TableCell>
+                              )}
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
         {selectedTrainingMatrixTab === "company" && (
@@ -4273,6 +4874,47 @@ const AdminModuleInner = (): JSX.Element => {
           </div>
         )}
       </div>
+
+      {/* New Training Dialog */}
+      <NewTrainingDialog
+        open={showNewTrainingDialog}
+        onOpenChange={setShowNewTrainingDialog}
+        onSubmit={handleCreateTraining}
+        existingIds={trainingMasterData.map(t => t.trainingId)}
+        isLoading={createTrainingMutation.isPending}
+      />
+
+      {/* Delete Training Confirmation Dialog */}
+      <Dialog open={showDeleteTrainingDialog} onOpenChange={setShowDeleteTrainingDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Training</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{trainingToDelete?.trainingName}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteTrainingDialog(false);
+                setTrainingToDelete(null);
+              }}
+              data-testid="button-cancel-delete-training"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteTraining}
+              disabled={deleteTrainingMutation.isPending}
+              data-testid="button-confirm-delete-training"
+            >
+              {deleteTrainingMutation.isPending ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 
