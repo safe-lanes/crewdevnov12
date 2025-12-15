@@ -171,6 +171,8 @@ const AdminModuleInner = (): JSX.Element => {
   const [location, navigate] = useLocation();
   const [selectedAdminPage, setSelectedAdminPage] = useState("forms");
   const [selectedRankAdminTab, setSelectedRankAdminTab] = useState("rank-master");
+  const [selectedTrainingMatrixTab, setSelectedTrainingMatrixTab] = useState("training-master");
+  const [isTrainingMasterEditing, setIsTrainingMasterEditing] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [editingForm, setEditingForm] = useState<Form | null>(null);
   const [editingRankGroup, setEditingRankGroup] = useState<string | null>(null);
@@ -4069,6 +4071,172 @@ const AdminModuleInner = (): JSX.Element => {
     </div>
   );
 
+  // Training Matrix Module - handles Training Master, Company, and Vessel tabs
+  const handleEditTraining = () => {
+    setIsTrainingMasterEditing(true);
+  };
+
+  const handleSaveTraining = () => {
+    setIsTrainingMasterEditing(false);
+    toast({
+      title: "Changes saved",
+      description: "Training data has been saved successfully.",
+      duration: 3000,
+    });
+  };
+
+  const handleNewTraining = () => {
+    toast({
+      title: "New Training",
+      description: "New training form will be implemented.",
+      duration: 3000,
+    });
+  };
+
+  const renderTrainingMatrixModule = () => (
+    <div className="h-full flex flex-col">
+      {/* Responsive Header Layout */}
+      <div className={`mb-4 ${currentBreakpoint === 'mobile' ? 'space-y-3' : currentBreakpoint === 'tablet' ? 'space-y-3' : 'grid grid-cols-3 items-center'}`}>
+        {/* Title */}
+        <div className={`${currentBreakpoint === 'mobile' || currentBreakpoint === 'tablet' ? 'text-center' : ''}`}>
+          <h1 className={`font-bold text-black ${currentBreakpoint === 'mobile' ? 'text-xl' : currentBreakpoint === 'tablet' ? 'text-xl' : 'text-2xl'}`} data-testid="title-training-matrix">
+            Training Matrix
+          </h1>
+        </div>
+        
+        {/* Desktop/Laptop Tab Switcher */}
+        {(currentBreakpoint === 'desktop' || currentBreakpoint === 'laptop') && (
+          <div className="flex justify-center">
+            <div className="flex items-center bg-transparent rounded-full p-1 border border-gray-300 h-8">
+              {[
+                { id: "training-master", label: "TrainingMaster" },
+                { id: "company", label: "Company" },
+                { id: "vessel", label: "Vessel" }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setSelectedTrainingMatrixTab(tab.id)}
+                  className={`px-4 text-xs rounded-full transition-all duration-200 h-6 flex items-center ${
+                    selectedTrainingMatrixTab === tab.id
+                      ? "text-[#16569e] font-bold underline"
+                      : "text-gray-600 hover:text-gray-800 font-medium"
+                  }`}
+                  data-testid={`tab-training-${tab.id}`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Desktop/Laptop Action Buttons */}
+        {(currentBreakpoint === 'desktop' || currentBreakpoint === 'laptop') && (
+          <div className="flex justify-end">
+            {selectedTrainingMatrixTab === "training-master" && (
+              <div className="flex gap-2">
+                <Button
+                  variant={isTrainingMasterEditing ? "default" : "outline"}
+                  onClick={isTrainingMasterEditing ? handleSaveTraining : handleEditTraining}
+                  className={`h-8 text-xs ${
+                    isTrainingMasterEditing 
+                      ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
+                      : "border-[#e1e8ed] text-[#16569e]"
+                  }`}
+                  data-testid="button-edit-training"
+                >
+                  {isTrainingMasterEditing ? "Save" : "Edit"}
+                </Button>
+                <Button
+                  onClick={handleNewTraining}
+                  className="h-8 bg-[#5dc86f] hover:bg-[#22c55e] text-white text-xs"
+                  data-testid="button-new-training"
+                >
+                  + New
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Tablet/Mobile Tab Switcher and Action Buttons Row */}
+        {(currentBreakpoint === 'tablet' || currentBreakpoint === 'mobile') && (
+          <div className={`${currentBreakpoint === 'mobile' ? 'space-y-2' : 'flex items-center justify-between'}`}>
+            {/* Tab Switcher */}
+            <div className={`flex ${currentBreakpoint === 'mobile' ? 'justify-center' : 'justify-start'}`}>
+              <div className="flex items-center bg-transparent rounded-full p-1 border border-gray-300 h-8">
+                {[
+                  { id: "training-master", label: currentBreakpoint === 'mobile' ? "T.Master" : "TrainingMaster" },
+                  { id: "company", label: "Company" },
+                  { id: "vessel", label: "Vessel" }
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setSelectedTrainingMatrixTab(tab.id)}
+                    className={`${currentBreakpoint === 'mobile' ? 'px-2' : 'px-3'} text-xs rounded-full transition-all duration-200 h-6 flex items-center ${
+                      selectedTrainingMatrixTab === tab.id
+                        ? "text-[#16569e] font-bold underline"
+                        : "text-gray-600 hover:text-gray-800 font-medium"
+                    }`}
+                    data-testid={`tab-training-${tab.id}-mobile`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            {/* Action Buttons for Tablet/Mobile */}
+            <div className={`flex ${currentBreakpoint === 'mobile' ? 'justify-center' : 'justify-end'}`}>
+              {selectedTrainingMatrixTab === "training-master" && (
+                <div className="flex gap-2">
+                  <Button
+                    variant={isTrainingMasterEditing ? "default" : "outline"}
+                    onClick={isTrainingMasterEditing ? handleSaveTraining : handleEditTraining}
+                    className={`h-8 text-xs ${
+                      isTrainingMasterEditing 
+                        ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
+                        : "border-[#e1e8ed] text-[#16569e]"
+                    }`}
+                    data-testid="button-edit-training-mobile"
+                  >
+                    {isTrainingMasterEditing ? "Save" : "Edit"}
+                  </Button>
+                  <Button
+                    onClick={handleNewTraining}
+                    className="h-8 bg-[#5dc86f] hover:bg-[#22c55e] text-white text-xs"
+                    data-testid="button-new-training-mobile"
+                  >
+                    + New
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Tab Content Area */}
+      <div className="flex-1">
+        {selectedTrainingMatrixTab === "training-master" && (
+          <div data-testid="content-training-master">
+            {/* Training Master tab content - to be implemented */}
+          </div>
+        )}
+        {selectedTrainingMatrixTab === "company" && (
+          <div data-testid="content-training-company">
+            {/* Company tab content - to be implemented */}
+          </div>
+        )}
+        {selectedTrainingMatrixTab === "vessel" && (
+          <div data-testid="content-training-vessel">
+            {/* Vessel tab content - to be implemented */}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   const renderDataMastersModule = () => (
     <div>
       {/* Responsive Header Layout */}
@@ -4911,6 +5079,7 @@ const AdminModuleInner = (): JSX.Element => {
         {selectedAdminPage === "forms" && renderFormsTable()}
         {selectedAdminPage === "rank-admin" && renderRankAdminModule()}
         {selectedAdminPage === "masters" && renderDataMastersModule()}
+        {selectedAdminPage === "training-matrix" && renderTrainingMatrixModule()}
       </MainLayout>
 
       {/* Main content */}
