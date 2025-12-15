@@ -10,12 +10,12 @@ export const useViewport = (): ViewportSize => {
       const width = window.innerWidth;
       
       // Desktop: 1440px+ (Full HD and above)
-      // Laptop: 1024px+ (Standard laptop screens)
-      // Tablet: 768px+ (iPad landscape and similar)
+      // Laptop: 1280px-1439px (Standard laptop screens)
+      // Tablet: 768px-1279px (iPad landscape and similar, includes 1024px)
       // Phone: below 768px
       if (width >= 1440) {
         setViewport('desktop');
-      } else if (width >= 1024) {
+      } else if (width >= 1280) {
         setViewport('laptop');
       } else if (width >= 768) {
         setViewport('tablet');

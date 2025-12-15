@@ -4,8 +4,9 @@ import {
   FilterIcon,
   Trash2Icon,
 } from "lucide-react";
-import React, { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useViewport } from "@/hooks/useViewport";
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
 import AgGridTableActions from '@/components/AgGrid/AgGridTableActions';
@@ -150,6 +151,11 @@ const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEd
 };
 
 export const ElementCrewAppraisals = (): JSX.Element => {
+  const viewport = useViewport();
+  const isPhone = viewport === 'phone';
+  const isTablet = viewport === 'tablet';
+  const isSmallScreen = isPhone || isTablet;
+
   const [selectedAdminPage, setSelectedAdminPage] = useState("all");
   const [selectedCrewMember, setSelectedCrewMember] = useState<CrewAppraisalData | null>(null);
   const [showAppraisalForm, setShowAppraisalForm] = useState(false);
@@ -581,112 +587,291 @@ export const ElementCrewAppraisals = (): JSX.Element => {
         </SectionTitleComponents>
         {/* Filters Section */}
         {showFilters && (
-          <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-[#f7fafc] rounded-lg">
-            <div className="flex gap-4 flex-wrap">
-              <Input
-                placeholder="Search by name..."
-                className="h-8 w-48 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
-                value={filters.searchName}
-                onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
-              />
+          <div className="mb-4 p-3 md:p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
+            {/* Desktop/Laptop: Horizontal flex layout */}
+            {!isSmallScreen && (
+              <div className="flex flex-nowrap items-center gap-3">
+                <Input
+                  placeholder="Search by name..."
+                  className="h-8 w-48 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] shrink-0"
+                  value={filters.searchName}
+                  onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
+                  data-testid="input-search-name"
+                />
 
-              <Select value={filters.rank} onValueChange={(value) => setFilters(prev => ({ ...prev, rank: value }))}>
-                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                  <SelectValue placeholder="Rank" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableRanks.map((rank) => (
-                    <SelectItem key={rank.id} value={rank.name}>
-                      {rank.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Select value={filters.rank} onValueChange={(value) => setFilters(prev => ({ ...prev, rank: value }))}>
+                  <SelectTrigger className="h-8 w-28 text-xs text-[#0f172a] shrink-0" data-testid="select-rank">
+                    <SelectValue placeholder="Rank" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableRanks.map((rank) => (
+                      <SelectItem key={rank.id} value={rank.name}>{rank.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-              <Select value={filters.vessel} onValueChange={(value) => setFilters(prev => ({ ...prev, vessel: value }))}>
-                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                  <SelectValue placeholder="Vessel" />
-                </SelectTrigger>
-                <SelectContent>
-                  {vesselMasterData.map((vessel) => (
-                    <SelectItem key={vessel.entryId} value={vessel.name}>
-                      {vessel.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Select value={filters.vessel} onValueChange={(value) => setFilters(prev => ({ ...prev, vessel: value }))}>
+                  <SelectTrigger className="h-8 w-28 text-xs text-[#0f172a] shrink-0" data-testid="select-vessel">
+                    <SelectValue placeholder="Vessel" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {vesselMasterData.map((vessel) => (
+                      <SelectItem key={vessel.entryId} value={vessel.name}>{vessel.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-              <Select value={filters.vesselType} onValueChange={(value) => setFilters(prev => ({ ...prev, vesselType: value }))}>
-                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                  <SelectValue placeholder="Vessel Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {uniqueVesselTypes.map((vesselType) => (
-                    <SelectItem key={vesselType.entryId} value={vesselType.name}>
-                      {vesselType.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Select value={filters.vesselType} onValueChange={(value) => setFilters(prev => ({ ...prev, vesselType: value }))}>
+                  <SelectTrigger className="h-8 w-28 text-xs text-[#0f172a] shrink-0" data-testid="select-vessel-type">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {uniqueVesselTypes.map((vesselType) => (
+                      <SelectItem key={vesselType.entryId} value={vesselType.name}>{vesselType.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-              <Select value={filters.nationality} onValueChange={(value) => setFilters(prev => ({ ...prev, nationality: value }))}>
-                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                  <SelectValue placeholder="Nationality" />
-                </SelectTrigger>
-                <SelectContent>
-                  {uniqueNationalities.map((nationality) => (
-                    <SelectItem key={nationality.entryId} value={nationality.countryName || nationality.name}>
-                      {nationality.countryName || nationality.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Select value={filters.nationality} onValueChange={(value) => setFilters(prev => ({ ...prev, nationality: value }))}>
+                  <SelectTrigger className="h-8 w-28 text-xs text-[#0f172a] shrink-0" data-testid="select-nationality">
+                    <SelectValue placeholder="Nationality" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {uniqueNationalities.map((nationality) => (
+                      <SelectItem key={nationality.entryId} value={nationality.countryName || nationality.name}>{nationality.countryName || nationality.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-              <Select value={filters.appraisalType} onValueChange={(value) => setFilters(prev => ({ ...prev, appraisalType: value }))}>
-                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                  <SelectValue placeholder="Appraisal Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Mid-Contract">Mid-Contract</SelectItem>
-                  <SelectItem value="End-Contract">End-Contract</SelectItem>
-                  <SelectItem value="Annual">Annual</SelectItem>
-                  <SelectItem value="Promotion">Promotion</SelectItem>
-                </SelectContent>
-              </Select>
+                <Select value={filters.appraisalType} onValueChange={(value) => setFilters(prev => ({ ...prev, appraisalType: value }))}>
+                  <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] shrink-0" data-testid="select-appraisal-type">
+                    <SelectValue placeholder="Appraisal Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Mid-Contract">Mid-Contract</SelectItem>
+                    <SelectItem value="End-Contract">End-Contract</SelectItem>
+                    <SelectItem value="Annual">Annual</SelectItem>
+                    <SelectItem value="Promotion">Promotion</SelectItem>
+                  </SelectContent>
+                </Select>
 
-              <Select value={filters.rating} onValueChange={(value) => setFilters(prev => ({ ...prev, rating: value }))}>
-                <SelectTrigger className="h-8 w-32 text-xs text-[#0f172a] placeholder:text-[#8899ae]">
-                  <SelectValue placeholder="Rating" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="high">High (4-5)</SelectItem>
-                  <SelectItem value="medium">Medium (3-4)</SelectItem>
-                  <SelectItem value="low">Low (1-3)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                <Select value={filters.rating} onValueChange={(value) => setFilters(prev => ({ ...prev, rating: value }))}>
+                  <SelectTrigger className="h-8 w-28 text-xs text-[#0f172a] shrink-0" data-testid="select-rating">
+                    <SelectValue placeholder="Rating" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="high">High (4-5)</SelectItem>
+                    <SelectItem value="medium">Medium (3-4)</SelectItem>
+                    <SelectItem value="low">Low (1-3)</SelectItem>
+                  </SelectContent>
+                </Select>
 
-            <div className="flex gap-2">
-              <Button className="h-8 w-20 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px]">
-                Apply
-              </Button>
+                <Button className="h-8 w-20 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px] shrink-0" data-testid="button-apply">Apply</Button>
 
-              <Button
-                variant="outline"
-                className="h-8 w-20 text-[#8798ad] text-xs border-[#e1e8ed]"
-                onClick={() => setFilters({
-                  searchName: "",
-                  rank: "",
-                  vessel: "",
-                  vesselType: "",
-                  nationality: "",
-                  appraisalType: "",
-                  rating: ""
-                })}
-              >
-                Clear
-              </Button>
-            </div>
+                <Button
+                  variant="outline"
+                  className="h-8 w-20 text-[#8798ad] text-xs border-[#e1e8ed] shrink-0"
+                  onClick={() => setFilters({ searchName: "", rank: "", vessel: "", vesselType: "", nationality: "", appraisalType: "", rating: "" })}
+                  data-testid="button-clear-filters"
+                >
+                  Clear
+                </Button>
+              </div>
+            )}
+
+            {/* Tablet: 4-column grid layout */}
+            {isTablet && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-4 gap-3">
+                  <Input
+                    placeholder="Search by name..."
+                    className="h-8 w-full text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
+                    value={filters.searchName}
+                    onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
+                    data-testid="input-search-name"
+                  />
+
+                  <Select value={filters.rank} onValueChange={(value) => setFilters(prev => ({ ...prev, rank: value }))}>
+                    <SelectTrigger className="h-8 w-full text-xs text-[#0f172a]" data-testid="select-rank">
+                      <SelectValue placeholder="Rank" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableRanks.map((rank) => (
+                        <SelectItem key={rank.id} value={rank.name}>{rank.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={filters.vessel} onValueChange={(value) => setFilters(prev => ({ ...prev, vessel: value }))}>
+                    <SelectTrigger className="h-8 w-full text-xs text-[#0f172a]" data-testid="select-vessel">
+                      <SelectValue placeholder="Vessel" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vesselMasterData.map((vessel) => (
+                        <SelectItem key={vessel.entryId} value={vessel.name}>{vessel.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={filters.vesselType} onValueChange={(value) => setFilters(prev => ({ ...prev, vesselType: value }))}>
+                    <SelectTrigger className="h-8 w-full text-xs text-[#0f172a]" data-testid="select-vessel-type">
+                      <SelectValue placeholder="Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {uniqueVesselTypes.map((vesselType) => (
+                        <SelectItem key={vesselType.entryId} value={vesselType.name}>{vesselType.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-4 gap-3">
+                  <Select value={filters.nationality} onValueChange={(value) => setFilters(prev => ({ ...prev, nationality: value }))}>
+                    <SelectTrigger className="h-8 w-full text-xs text-[#0f172a]" data-testid="select-nationality">
+                      <SelectValue placeholder="Nationality" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {uniqueNationalities.map((nationality) => (
+                        <SelectItem key={nationality.entryId} value={nationality.countryName || nationality.name}>{nationality.countryName || nationality.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={filters.appraisalType} onValueChange={(value) => setFilters(prev => ({ ...prev, appraisalType: value }))}>
+                    <SelectTrigger className="h-8 w-full text-xs text-[#0f172a]" data-testid="select-appraisal-type">
+                      <SelectValue placeholder="Appraisal Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Mid-Contract">Mid-Contract</SelectItem>
+                      <SelectItem value="End-Contract">End-Contract</SelectItem>
+                      <SelectItem value="Annual">Annual</SelectItem>
+                      <SelectItem value="Promotion">Promotion</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={filters.rating} onValueChange={(value) => setFilters(prev => ({ ...prev, rating: value }))}>
+                    <SelectTrigger className="h-8 w-full text-xs text-[#0f172a]" data-testid="select-rating">
+                      <SelectValue placeholder="Rating" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="high">High (4-5)</SelectItem>
+                      <SelectItem value="medium">Medium (3-4)</SelectItem>
+                      <SelectItem value="low">Low (1-3)</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <div className="flex gap-2">
+                    <Button className="h-8 flex-1 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px]" data-testid="button-apply">Apply</Button>
+                    <Button
+                      variant="outline"
+                      className="h-8 flex-1 text-[#8798ad] text-xs border-[#e1e8ed]"
+                      onClick={() => setFilters({ searchName: "", rank: "", vessel: "", vesselType: "", nationality: "", appraisalType: "", rating: "" })}
+                      data-testid="button-clear-filters"
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Phone: 2-column grid layout */}
+            {isPhone && (
+              <div className="space-y-2">
+                <Input
+                  placeholder="Search by name..."
+                  className="h-8 w-full text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
+                  value={filters.searchName}
+                  onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
+                  data-testid="input-search-name"
+                />
+
+                <div className="grid grid-cols-2 gap-2">
+                  <Select value={filters.rank} onValueChange={(value) => setFilters(prev => ({ ...prev, rank: value }))}>
+                    <SelectTrigger className="h-8 w-full text-xs text-[#0f172a]" data-testid="select-rank">
+                      <SelectValue placeholder="Rank" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableRanks.map((rank) => (
+                        <SelectItem key={rank.id} value={rank.name}>{rank.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={filters.vessel} onValueChange={(value) => setFilters(prev => ({ ...prev, vessel: value }))}>
+                    <SelectTrigger className="h-8 w-full text-xs text-[#0f172a]" data-testid="select-vessel">
+                      <SelectValue placeholder="Vessel" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vesselMasterData.map((vessel) => (
+                        <SelectItem key={vessel.entryId} value={vessel.name}>{vessel.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <Select value={filters.vesselType} onValueChange={(value) => setFilters(prev => ({ ...prev, vesselType: value }))}>
+                    <SelectTrigger className="h-8 w-full text-xs text-[#0f172a]" data-testid="select-vessel-type">
+                      <SelectValue placeholder="Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {uniqueVesselTypes.map((vesselType) => (
+                        <SelectItem key={vesselType.entryId} value={vesselType.name}>{vesselType.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={filters.nationality} onValueChange={(value) => setFilters(prev => ({ ...prev, nationality: value }))}>
+                    <SelectTrigger className="h-8 w-full text-xs text-[#0f172a]" data-testid="select-nationality">
+                      <SelectValue placeholder="Nationality" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {uniqueNationalities.map((nationality) => (
+                        <SelectItem key={nationality.entryId} value={nationality.countryName || nationality.name}>{nationality.countryName || nationality.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <Select value={filters.appraisalType} onValueChange={(value) => setFilters(prev => ({ ...prev, appraisalType: value }))}>
+                    <SelectTrigger className="h-8 w-full text-xs text-[#0f172a]" data-testid="select-appraisal-type">
+                      <SelectValue placeholder="App. Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Mid-Contract">Mid-Contract</SelectItem>
+                      <SelectItem value="End-Contract">End-Contract</SelectItem>
+                      <SelectItem value="Annual">Annual</SelectItem>
+                      <SelectItem value="Promotion">Promotion</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={filters.rating} onValueChange={(value) => setFilters(prev => ({ ...prev, rating: value }))}>
+                    <SelectTrigger className="h-8 w-full text-xs text-[#0f172a]" data-testid="select-rating">
+                      <SelectValue placeholder="Rating" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="high">High (4-5)</SelectItem>
+                      <SelectItem value="medium">Medium (3-4)</SelectItem>
+                      <SelectItem value="low">Low (1-3)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button className="h-8 flex-1 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px]" data-testid="button-apply">Apply</Button>
+                  <Button
+                    variant="outline"
+                    className="h-8 flex-1 text-[#8798ad] text-xs border-[#e1e8ed]"
+                    onClick={() => setFilters({ searchName: "", rank: "", vessel: "", vesselType: "", nationality: "", appraisalType: "", rating: "" })}
+                    data-testid="button-clear-filters"
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
