@@ -2807,18 +2807,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log(`✅ [TM SUBMIT] Starting Submit workflow for vessel:`, req.body.vesselId);
       
+      const { vesselId, revisionData, revisionDate } = req.body;
+      
+      // Pre-validate required fields before preprocessing
+      if (!vesselId || typeof vesselId !== 'string') {
+        return res.status(400).json({ error: "vesselId is required and must be a string" });
+      }
+      
+      if (!revisionDate) {
+        return res.status(400).json({ error: "revisionDate is required" });
+      }
+      
+      if (!revisionData) {
+        return res.status(400).json({ error: "revisionData is required" });
+      }
+      
+      // Convert revisionData to JSON string if it's an object
+      let revisionDataStr: string;
+      try {
+        revisionDataStr = typeof revisionData === 'string' ? revisionData : JSON.stringify(revisionData);
+      } catch (jsonError) {
+        return res.status(400).json({ error: "revisionData cannot be serialized to JSON" });
+      }
+      
+      // Convert date to dd/mm/yyyy format if needed
+      let formattedDate = revisionDate;
+      // Check if already in dd/mm/yyyy format
+      const ddmmyyyyRegex = /^\d{2}\/\d{2}\/\d{4}$/;
+      if (!ddmmyyyyRegex.test(revisionDate)) {
+        // Handle various date formats and convert to dd/mm/yyyy
+        const dateObj = new Date(revisionDate);
+        if (isNaN(dateObj.getTime())) {
+          return res.status(400).json({ error: "revisionDate must be a valid date" });
+        }
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const year = dateObj.getFullYear();
+        formattedDate = `${day}/${month}/${year}`;
+      }
+      
+      // Validate preprocessed data against schema (omitting revision as it's auto-generated)
       const submitSchema = insertTrainingMatrixVesselRevisionSchema.omit({ revision: true });
-      const validationResult = submitSchema.safeParse(req.body);
+      const preprocessedData = { vesselId, revisionDate: formattedDate, revisionData: revisionDataStr };
+      const validationResult = submitSchema.safeParse(preprocessedData);
       if (!validationResult.success) {
-        console.error(`✅ [TM SUBMIT ERROR] Validation failed:`, validationResult.error.issues);
+        console.error(`✅ [TM SUBMIT ERROR] Schema validation failed:`, validationResult.error.issues);
         return res.status(400).json({ 
           error: "Invalid training matrix vessel revision data", 
           details: validationResult.error.issues 
         });
       }
       
-      const { vesselId, revisionData, revisionDate } = validationResult.data;
-      console.log(`✅ [TM SUBMIT] Validation passed for vessel ${vesselId}, date: ${revisionDate}`);
+      console.log(`✅ [TM SUBMIT] Processed and validated data for vessel ${vesselId}, date: ${formattedDate}`);
       
       // Get next revision number
       const existingRevisions = await storage.getTrainingMatrixVesselRevisionsByVessel(vesselId);
@@ -2836,12 +2876,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const nextRevision = `R${nextRevisionNumber}`;
       console.log(`✅ [TM SUBMIT] Auto-assigned revision: ${nextRevision}`);
       
-      // Create the revision
+      // Create the revision with processed data
       const revisionToCreate = {
         vesselId,
         revision: nextRevision,
-        revisionDate,
-        revisionData
+        revisionDate: formattedDate,
+        revisionData: revisionDataStr
       };
       const createdRevision = await storage.createTrainingMatrixVesselRevision(revisionToCreate);
       console.log(`✅ [TM SUBMIT] Created revision with ID: ${createdRevision.id}`);
