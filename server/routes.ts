@@ -7779,6 +7779,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all company training requirements
+  app.get("/api/company-training-requirements", async (req, res) => {
+    try {
+      const requirements = await storage.getCompanyTrainingRequirements();
+      res.json(requirements);
+    } catch (error) {
+      console.error("Error fetching company training requirements:", error);
+      res.status(500).json({ error: "Failed to fetch company training requirements" });
+    }
+  });
+
+  // Upsert company training requirements (batch update M/R status)
+  app.post("/api/company-training-requirements/batch", async (req, res) => {
+    try {
+      const requirements = req.body;
+      if (!Array.isArray(requirements)) {
+        return res.status(400).json({ error: "Expected array of requirements" });
+      }
+
+      // Validate each requirement
+      for (const req of requirements) {
+        if (typeof req.companyTrainingId !== 'number' || typeof req.rankId !== 'number') {
+          return res.status(400).json({ error: "Each requirement must have numeric companyTrainingId and rankId" });
+        }
+        if (req.status !== null && req.status !== 'M' && req.status !== 'R') {
+          return res.status(400).json({ error: "Status must be 'M', 'R', or null" });
+        }
+      }
+
+      const result = await storage.upsertCompanyTrainingRequirements(requirements);
+      res.json(result);
+    } catch (error) {
+      console.error("Error upserting company training requirements:", error);
+      res.status(500).json({ error: "Failed to update company training requirements" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

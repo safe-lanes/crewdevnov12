@@ -95,6 +95,7 @@ import {
   trainingMaster,
   companyTrainingGroups,
   companyTrainings,
+  companyTrainingRequirements,
   type TrainingMaster,
   type InsertTrainingMaster,
   type UpdateTrainingMaster,
@@ -102,7 +103,9 @@ import {
   type UpdateCompanyTrainingGroup,
   type CompanyTraining,
   type InsertCompanyTraining,
-  type UpdateCompanyTraining
+  type UpdateCompanyTraining,
+  type CompanyTrainingRequirement,
+  type UpsertCompanyTrainingRequirement
 } from "@shared/schema";
 import { eq, desc, asc, sql, and, inArray, or, like, ilike, isNull } from "drizzle-orm";
 import { type IStorage } from "./storage";
@@ -4435,5 +4438,67 @@ export class DatabaseStorage implements IStorage {
       console.error("Error reordering company trainings:", error);
       return false;
     }
+  }
+
+  // Company Training Requirements Methods
+  async getCompanyTrainingRequirements(): Promise<CompanyTrainingRequirement[]> {
+    return await this.db.select().from(companyTrainingRequirements);
+  }
+
+  async getCompanyTrainingRequirementsByTrainingIds(trainingIds: number[]): Promise<CompanyTrainingRequirement[]> {
+    if (trainingIds.length === 0) return [];
+    return await this.db.select().from(companyTrainingRequirements)
+      .where(inArray(companyTrainingRequirements.companyTrainingId, trainingIds));
+  }
+
+  async upsertCompanyTrainingRequirements(requirements: UpsertCompanyTrainingRequirement[]): Promise<CompanyTrainingRequirement[]> {
+    if (requirements.length === 0) return [];
+    
+    const results: CompanyTrainingRequirement[] = [];
+    
+    for (const req of requirements) {
+      if (req.status === null) {
+        // Delete the record if status is null (unchecked)
+        await this.db.delete(companyTrainingRequirements)
+          .where(and(
+            eq(companyTrainingRequirements.companyTrainingId, req.companyTrainingId),
+            eq(companyTrainingRequirements.rankId, req.rankId)
+          ));
+      } else {
+        // Check if record exists
+        const existing = await this.db.select().from(companyTrainingRequirements)
+          .where(and(
+            eq(companyTrainingRequirements.companyTrainingId, req.companyTrainingId),
+            eq(companyTrainingRequirements.rankId, req.rankId)
+          ));
+        
+        if (existing.length > 0) {
+          // Update existing record
+          const updated = await this.db.update(companyTrainingRequirements)
+            .set({ status: req.status })
+            .where(eq(companyTrainingRequirements.id, existing[0].id))
+            .returning();
+          if (updated[0]) results.push(updated[0]);
+        } else {
+          // Insert new record
+          const inserted = await this.db.insert(companyTrainingRequirements)
+            .values({
+              companyTrainingId: req.companyTrainingId,
+              rankId: req.rankId,
+              status: req.status
+            })
+            .returning();
+          if (inserted[0]) results.push(inserted[0]);
+        }
+      }
+    }
+    
+    return results;
+  }
+
+  async deleteCompanyTrainingRequirementsByTrainingId(companyTrainingId: number): Promise<boolean> {
+    const result = await this.db.delete(companyTrainingRequirements)
+      .where(eq(companyTrainingRequirements.companyTrainingId, companyTrainingId));
+    return true;
   }
 }
