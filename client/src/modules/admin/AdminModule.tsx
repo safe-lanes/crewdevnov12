@@ -99,13 +99,15 @@ import {
   useDeleteTrainingMaster, 
   useReorderTrainingMasters,
   useReorderCompanyTrainings,
+  useCompanyTrainingRequirements,
+  useUpsertCompanyTrainingRequirements,
   getCategoryLabel,
   getGroupLabel,
   generateTrainingId,
   TRAINING_CATEGORIES,
   TRAINING_GROUPS
 } from "@/hooks/useTrainingMaster";
-import type { TrainingMaster, InsertTrainingMaster, UpdateTrainingMaster, CompanyTraining } from "@shared/schema";
+import type { TrainingMaster, InsertTrainingMaster, UpdateTrainingMaster, CompanyTraining, CompanyTrainingRequirement } from "@shared/schema";
 
 const rankGroupSchema = z.object({
   name: z.string().min(1, "Rank group name is required"),
@@ -597,6 +599,24 @@ const AdminModuleInner = (): JSX.Element => {
   });
   
   const reorderCompanyTrainingMutation = useReorderCompanyTrainings();
+  
+  // Company Training Requirements (M/R matrix by rank)
+  const { data: trainingRequirements = [], isLoading: requirementsLoading } = useCompanyTrainingRequirements();
+  const upsertRequirementsMutation = useUpsertCompanyTrainingRequirements();
+  const [localTrainingRequirements, setLocalTrainingRequirements] = useState<Map<string, 'M' | 'R' | null>>(new Map());
+  const [changedRequirements, setChangedRequirements] = useState<Set<string>>(new Set());
+  
+  // Sync training requirements with local state
+  useEffect(() => {
+    if (trainingRequirements.length > 0 && !isCompanyTrainingEditing) {
+      const reqMap = new Map<string, 'M' | 'R' | null>();
+      trainingRequirements.forEach(req => {
+        reqMap.set(`${req.companyTrainingId}-${req.rankId}`, req.status as 'M' | 'R' | null);
+      });
+      setLocalTrainingRequirements(reqMap);
+      setChangedRequirements(new Set());
+    }
+  }, [trainingRequirements, isCompanyTrainingEditing]);
   
   // Sync company training data with local state
   useEffect(() => {
@@ -4671,30 +4691,76 @@ const AdminModuleInner = (): JSX.Element => {
     setChangedCompanyTrainings(prev => new Set(prev).add(id));
   };
   
+  // Handler for M/R requirement changes
+  const handleRequirementChange = (trainingId: number, rankId: number, newStatus: 'M' | 'R' | null) => {
+    const key = `${trainingId}-${rankId}`;
+    const currentStatus = localTrainingRequirements.get(key);
+    
+    // Toggle logic: clicking same status = unchecked
+    const finalStatus = currentStatus === newStatus ? null : newStatus;
+    
+    setLocalTrainingRequirements(prev => {
+      const newMap = new Map(prev);
+      if (finalStatus === null) {
+        newMap.delete(key);
+      } else {
+        newMap.set(key, finalStatus);
+      }
+      return newMap;
+    });
+    setChangedRequirements(prev => new Set(prev).add(key));
+  };
+  
+  // Get applicable ranks for the training requirements matrix
+  const applicableRanksForTraining = useMemo(() => {
+    return rankMasterData.filter(rank => rank.applicableToCompany === true);
+  }, [rankMasterData]);
+  
   // Handler for saving company training changes
   const handleSaveCompanyTraining = async () => {
-    if (changedCompanyTrainings.size === 0) {
+    const hasTrainingChanges = changedCompanyTrainings.size > 0;
+    const hasRequirementChanges = changedRequirements.size > 0;
+    
+    if (!hasTrainingChanges && !hasRequirementChanges) {
       setIsCompanyTrainingEditing(false);
       return;
     }
     
     try {
-      const updatePromises = Array.from(changedCompanyTrainings).map(id => {
-        const training = localCompanyTrainingData.find(t => t.id === id);
-        if (!training) return Promise.resolve();
-        return updateCompanyTrainingMutation.mutateAsync({
-          id,
-          data: {
-            companyId: training.companyId,
-            abr: training.abr,
-            requirement: training.requirement,
-            groupCode: training.groupCode,
-          }
+      // Save company training changes
+      if (hasTrainingChanges) {
+        const updatePromises = Array.from(changedCompanyTrainings).map(id => {
+          const training = localCompanyTrainingData.find(t => t.id === id);
+          if (!training) return Promise.resolve();
+          return updateCompanyTrainingMutation.mutateAsync({
+            id,
+            data: {
+              companyId: training.companyId,
+              abr: training.abr,
+              requirement: training.requirement,
+              groupCode: training.groupCode,
+            }
+          });
         });
-      });
+        await Promise.all(updatePromises);
+      }
       
-      await Promise.all(updatePromises);
+      // Save M/R requirements changes
+      if (hasRequirementChanges) {
+        const requirementsToUpsert = Array.from(changedRequirements).map(key => {
+          const [trainingIdStr, rankIdStr] = key.split('-');
+          const status = localTrainingRequirements.get(key) || null;
+          return {
+            companyTrainingId: parseInt(trainingIdStr),
+            rankId: parseInt(rankIdStr),
+            status,
+          };
+        });
+        await upsertRequirementsMutation.mutateAsync(requirementsToUpsert);
+      }
+      
       setChangedCompanyTrainings(new Set());
+      setChangedRequirements(new Set());
       setIsCompanyTrainingEditing(false);
       toast({
         title: "Changes saved",
@@ -5269,38 +5335,55 @@ const AdminModuleInner = (): JSX.Element => {
             {/* Company Training Table */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden h-full">
               <ScrollArea className="h-[calc(100vh-220px)]">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
-                      <TableHead className="w-12 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">#</TableHead>
-                      <TableHead className="w-28 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Company ID</TableHead>
-                      <TableHead className="min-w-[200px] text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Training Label</TableHead>
-                      <TableHead className="w-24 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Abr</TableHead>
-                      <TableHead className="min-w-[150px] text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Requirement</TableHead>
-                      <TableHead className="w-28 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Company Group</TableHead>
-                      {isCompanyTrainingEditing && (
-                        <TableHead className="w-20 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Reorder</TableHead>
-                      )}
-                    </TableRow>
-                  </TableHeader>
+                <div className="overflow-x-auto">
+                  <Table style={{ minWidth: `${700 + applicableRanksForTraining.length * 60}px` }}>
+                    <TableHeader>
+                      <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                        <TableHead className="w-12 text-center text-xs font-normal text-white sticky top-0 left-0 z-40 bg-[#52baf3] shadow-sm">#</TableHead>
+                        <TableHead className="w-28 text-xs font-normal text-white sticky top-0 left-12 z-40 bg-[#52baf3] shadow-sm">Company ID</TableHead>
+                        <TableHead className="min-w-[200px] text-xs font-normal text-white sticky top-0 left-40 z-40 bg-[#52baf3] shadow-sm">Training Label</TableHead>
+                        <TableHead className="w-24 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Abr</TableHead>
+                        <TableHead className="min-w-[150px] text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Requirement</TableHead>
+                        <TableHead className="w-28 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Company Group</TableHead>
+                        {isCompanyTrainingEditing && (
+                          <TableHead className="w-20 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Reorder</TableHead>
+                        )}
+                        {/* Rank columns for M/R matrix */}
+                        {applicableRanksForTraining.map(rank => (
+                          <TableHead 
+                            key={rank.id} 
+                            className="w-14 text-center text-[10px] font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm px-1"
+                            title={rank.rank}
+                          >
+                            <div className="truncate">{rank.label || rank.rank?.slice(0, 4)}</div>
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
                   <TableBody>
                     {companyTrainingLoading && (
                       <>
                         {Array.from({ length: 10 }).map((_, index) => (
                           <TableRow key={`skeleton-company-${index}`} className="border-b border-gray-100">
-                            <TableCell className="text-center"><div className="h-4 w-6 bg-gray-200 rounded animate-pulse mx-auto" /></TableCell>
-                            <TableCell><div className="h-4 w-16 bg-gray-200 rounded animate-pulse" /></TableCell>
-                            <TableCell><div className="h-4 w-40 bg-gray-200 rounded animate-pulse" /></TableCell>
+                            <TableCell className="text-center sticky left-0 bg-white"><div className="h-4 w-6 bg-gray-200 rounded animate-pulse mx-auto" /></TableCell>
+                            <TableCell className="sticky left-12 bg-white"><div className="h-4 w-16 bg-gray-200 rounded animate-pulse" /></TableCell>
+                            <TableCell className="sticky left-40 bg-white"><div className="h-4 w-40 bg-gray-200 rounded animate-pulse" /></TableCell>
                             <TableCell><div className="h-4 w-12 bg-gray-200 rounded animate-pulse" /></TableCell>
                             <TableCell><div className="h-4 w-28 bg-gray-200 rounded animate-pulse" /></TableCell>
                             <TableCell><div className="h-4 w-16 bg-gray-200 rounded animate-pulse" /></TableCell>
+                            {isCompanyTrainingEditing && <TableCell />}
+                            {applicableRanksForTraining.map(rank => (
+                              <TableCell key={rank.id} className="text-center">
+                                <div className="h-4 w-8 bg-gray-200 rounded animate-pulse mx-auto" />
+                              </TableCell>
+                            ))}
                           </TableRow>
                         ))}
                       </>
                     )}
                     {!companyTrainingLoading && filteredCompanyTrainingData.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={isCompanyTrainingEditing ? 7 : 6} className="text-center text-gray-500 py-8">
+                        <TableCell colSpan={6 + (isCompanyTrainingEditing ? 1 : 0) + applicableRanksForTraining.length} className="text-center text-gray-500 py-8">
                           {companyTrainingData.length === 0 
                             ? "No company trainings found. Mark trainings as 'Applicable to Company' in Training Master to add them here."
                             : "No trainings match your search."}
@@ -5421,10 +5504,55 @@ const AdminModuleInner = (): JSX.Element => {
                             </TableCell>
                           );
                         })()}
+                        {/* M/R requirement cells for each rank */}
+                        {applicableRanksForTraining.map(rank => {
+                          const rankIdNum = parseInt(rank.id);
+                          const key = `${training.id}-${rankIdNum}`;
+                          const status = localTrainingRequirements.get(key);
+                          const isChanged = changedRequirements.has(key);
+                          
+                          return (
+                            <TableCell 
+                              key={rank.id} 
+                              className={`text-center px-1 ${isChanged ? 'bg-yellow-50' : ''}`}
+                              data-testid={`cell-requirement-${training.id}-${rankIdNum}`}
+                            >
+                              {isCompanyTrainingEditing ? (
+                                <div className="flex flex-col items-center gap-0.5">
+                                  <label className="flex items-center gap-0.5 cursor-pointer text-[10px]">
+                                    <input
+                                      type="checkbox"
+                                      checked={status === 'M'}
+                                      onChange={() => handleRequirementChange(training.id, rankIdNum, 'M')}
+                                      className="h-3 w-3 rounded border-gray-300"
+                                      data-testid={`checkbox-m-${training.id}-${rankIdNum}`}
+                                    />
+                                    <span className="text-gray-600">M</span>
+                                  </label>
+                                  <label className="flex items-center gap-0.5 cursor-pointer text-[10px]">
+                                    <input
+                                      type="checkbox"
+                                      checked={status === 'R'}
+                                      onChange={() => handleRequirementChange(training.id, rankIdNum, 'R')}
+                                      className="h-3 w-3 rounded border-gray-300"
+                                      data-testid={`checkbox-r-${training.id}-${rankIdNum}`}
+                                    />
+                                    <span className="text-gray-600">R</span>
+                                  </label>
+                                </div>
+                              ) : (
+                                <span className={`text-xs font-medium ${status === 'M' ? 'text-red-600' : status === 'R' ? 'text-blue-600' : 'text-gray-300'}`}>
+                                  {status || '-'}
+                                </span>
+                              )}
+                            </TableCell>
+                          );
+                        })}
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               </ScrollArea>
             </div>
           </div>
