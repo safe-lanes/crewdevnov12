@@ -2703,11 +2703,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existingDrafts.length > 0) {
         // Update existing draft
         const existingDraft = existingDrafts[0];
-        const updatedDraft = await storage.updateTrainingMatrixVesselDraft(existingDraft.id, { draftData });
+        const draftDataStr = typeof draftData === 'string' ? draftData : JSON.stringify(draftData);
+        const updatedDraft = await storage.updateTrainingMatrixVesselDraft(existingDraft.id, { draftData: draftDataStr });
         res.json(updatedDraft);
       } else {
-        // Create new draft
-        const result = insertTrainingMatrixVesselDraftSchema.safeParse({ vesselId, draftData });
+        // Create new draft - use R1 as default revision for new drafts
+        const draftDataStr = typeof draftData === 'string' ? draftData : JSON.stringify(draftData);
+        const result = insertTrainingMatrixVesselDraftSchema.safeParse({ 
+          vesselId, 
+          revision: "R1",
+          draftData: draftDataStr
+        });
         if (!result.success) {
           return res.status(400).json({ error: "Invalid data", details: result.error.issues });
         }
