@@ -7757,6 +7757,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Reorder company trainings (within a group)
+  app.post("/api/company-trainings/reorder", async (req, res) => {
+    try {
+      const orders = req.body;
+      if (!Array.isArray(orders)) {
+        return res.status(400).json({ error: "Expected array of {id, sortOrder}" });
+      }
+
+      for (const item of orders) {
+        if (typeof item.id !== 'number' || typeof item.sortOrder !== 'number') {
+          return res.status(400).json({ error: "Each item must have numeric id and sortOrder" });
+        }
+      }
+
+      await storage.reorderCompanyTrainings(orders);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error reordering company trainings:", error);
+      res.status(500).json({ error: "Failed to reorder company trainings" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

@@ -4422,4 +4422,18 @@ export class DatabaseStorage implements IStorage {
     const result = await this.db.insert(companyTrainings).values(insertData).returning();
     return [...existingCompanyTrainings, ...result];
   }
+
+  async reorderCompanyTrainings(orders: Array<{ id: number; sortOrder: number }>): Promise<boolean> {
+    try {
+      for (const order of orders) {
+        await this.db.update(companyTrainings)
+          .set({ sortOrder: order.sortOrder })
+          .where(eq(companyTrainings.id, order.id));
+      }
+      return true;
+    } catch (error) {
+      console.error("Error reordering company trainings:", error);
+      return false;
+    }
+  }
 }

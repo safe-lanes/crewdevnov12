@@ -996,6 +996,7 @@ export interface IStorage {
   deleteCompanyTraining(id: number): Promise<boolean>;
   deleteCompanyTrainingByMasterId(trainingMasterId: number): Promise<boolean>;
   importCompanyTrainingsFromMaster(): Promise<CompanyTraining[]>;
+  reorderCompanyTrainings(orders: Array<{ id: number; sortOrder: number }>): Promise<boolean>;
 }
 
 /* MemStorage commented out - contains test seed data with type mismatches and is never used in production.
@@ -7483,6 +7484,10 @@ export class PersistentFileStorage implements IStorage {
   }
 
   async importCompanyTrainingsFromMaster(): Promise<CompanyTraining[]> {
+    throw new Error("PersistentFileStorage doesn't support company training. Use DatabaseStorage instead.");
+  }
+
+  async reorderCompanyTrainings(orders: Array<{ id: number; sortOrder: number }>): Promise<boolean> {
     throw new Error("PersistentFileStorage doesn't support company training. Use DatabaseStorage instead.");
   }
 }

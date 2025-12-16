@@ -98,6 +98,7 @@ import {
   useUpdateTrainingMaster, 
   useDeleteTrainingMaster, 
   useReorderTrainingMasters,
+  useReorderCompanyTrainings,
   getCategoryLabel,
   getGroupLabel,
   generateTrainingId,
@@ -594,6 +595,8 @@ const AdminModuleInner = (): JSX.Element => {
       });
     },
   });
+  
+  const reorderCompanyTrainingMutation = useReorderCompanyTrainings();
   
   // Sync company training data with local state
   useEffect(() => {
@@ -4639,7 +4642,7 @@ const AdminModuleInner = (): JSX.Element => {
         (training.companyId || '').toLowerCase().includes(companyTrainingSearchFilter.toLowerCase());
       return matchesSearch;
     }).sort((a, b) => {
-      // Sort by: 1) Group (A-J first by displayOrder, NULL/unassigned last), 2) Alphabetically by training label within group
+      // Sort by: 1) Group (A-J first by displayOrder, NULL/unassigned last), 2) sortOrder within group
       const aGroup = a.groupCode;
       const bGroup = b.groupCode;
       
@@ -4654,10 +4657,8 @@ const AdminModuleInner = (): JSX.Element => {
         if (aOrder !== bOrder) return aOrder - bOrder;
       }
       
-      // Within same group (or both unassigned), sort alphabetically by training label
-      const aLabel = (a.trainingLabel || '').toLowerCase();
-      const bLabel = (b.trainingLabel || '').toLowerCase();
-      return aLabel.localeCompare(bLabel);
+      // Within same group (or both unassigned), sort by sortOrder
+      return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
     });
   }, [localCompanyTrainingData, companyTrainingSearchFilter, companyTrainingGroups]);
   
@@ -4702,6 +4703,55 @@ const AdminModuleInner = (): JSX.Element => {
       });
     } catch (error) {
       console.error('Failed to save company training changes:', error);
+    }
+  };
+  
+  // Handler for moving company training up/down within its group
+  const handleMoveCompanyTraining = async (training: CompanyTraining, direction: 'up' | 'down') => {
+    // Get trainings in the same group (including null for unassigned)
+    const sameGroupTrainings = localCompanyTrainingData
+      .filter(t => t.groupCode === training.groupCode)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    
+    const currentIndex = sameGroupTrainings.findIndex(t => t.id === training.id);
+    if (currentIndex === -1) return;
+    
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= sameGroupTrainings.length) return;
+    
+    // Reindex the entire group with new sort orders to ensure unique values
+    const reorderedList = [...sameGroupTrainings];
+    const [movedItem] = reorderedList.splice(currentIndex, 1);
+    reorderedList.splice(targetIndex, 0, movedItem);
+    
+    // Create update array with new sequential sort orders
+    const updates = reorderedList.map((t, idx) => ({
+      id: t.id,
+      sortOrder: idx
+    }));
+    
+    // Create a map of new sortOrder values for quick lookup
+    const sortOrderMap = new Map(updates.map(u => [u.id, u.sortOrder]));
+    
+    try {
+      await reorderCompanyTrainingMutation.mutateAsync(updates);
+      
+      // Update local state with new sortOrder values so UI reflects changes immediately
+      setLocalCompanyTrainingData(prev => prev.map(t => {
+        const newSortOrder = sortOrderMap.get(t.id);
+        if (newSortOrder !== undefined) {
+          return { ...t, sortOrder: newSortOrder };
+        }
+        return t;
+      }));
+    } catch (error) {
+      console.error('Failed to reorder company training:', error);
+      toast({
+        title: "Reorder failed",
+        description: "Failed to reorder training. Please try again.",
+        variant: "destructive",
+        duration: 5000,
+      });
     }
   };
   
@@ -5228,6 +5278,9 @@ const AdminModuleInner = (): JSX.Element => {
                       <TableHead className="w-24 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Abr</TableHead>
                       <TableHead className="min-w-[150px] text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Requirement</TableHead>
                       <TableHead className="w-28 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Company Group</TableHead>
+                      {isCompanyTrainingEditing && (
+                        <TableHead className="w-20 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Reorder</TableHead>
+                      )}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -5247,7 +5300,7 @@ const AdminModuleInner = (): JSX.Element => {
                     )}
                     {!companyTrainingLoading && filteredCompanyTrainingData.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center text-gray-500 py-8">
+                        <TableCell colSpan={isCompanyTrainingEditing ? 7 : 6} className="text-center text-gray-500 py-8">
                           {companyTrainingData.length === 0 
                             ? "No company trainings found. Mark trainings as 'Applicable to Company' in Training Master to add them here."
                             : "No trainings match your search."}
@@ -5333,6 +5386,41 @@ const AdminModuleInner = (): JSX.Element => {
                             </span>
                           )}
                         </TableCell>
+                        {isCompanyTrainingEditing && (() => {
+                          // Get trainings in the same group for determining first/last
+                          const sameGroupTrainings = filteredCompanyTrainingData.filter(t => t.groupCode === training.groupCode);
+                          const indexInGroup = sameGroupTrainings.findIndex(t => t.id === training.id);
+                          const isFirstInGroup = indexInGroup === 0;
+                          const isLastInGroup = indexInGroup === sameGroupTrainings.length - 1;
+                          const isReordering = reorderCompanyTrainingMutation.isPending;
+                          
+                          return (
+                            <TableCell className="text-center">
+                              <div className="flex justify-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleMoveCompanyTraining(training, 'up')}
+                                  disabled={isFirstInGroup || isReordering}
+                                  className="h-6 w-6 p-0"
+                                  data-testid={`button-company-move-up-${training.id}`}
+                                >
+                                  <ChevronUp className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleMoveCompanyTraining(training, 'down')}
+                                  disabled={isLastInGroup || isReordering}
+                                  className="h-6 w-6 p-0"
+                                  data-testid={`button-company-move-down-${training.id}`}
+                                >
+                                  <ChevronDown className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          );
+                        })()}
                       </TableRow>
                     ))}
                   </TableBody>

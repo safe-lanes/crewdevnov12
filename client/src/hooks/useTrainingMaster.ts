@@ -86,6 +86,20 @@ export function useReorderTrainingMasters() {
   });
 }
 
+export function useReorderCompanyTrainings() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (orders: Array<{ id: number; sortOrder: number }>) => {
+      const response = await apiRequest('POST', '/api/company-trainings/reorder', orders);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/company-trainings'] });
+    },
+  });
+}
+
 export const TRAINING_CATEGORIES = [
   { code: 'S', label: 'Statutory' },
   { code: 'N', label: 'Industry' },
