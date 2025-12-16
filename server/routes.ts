@@ -7624,6 +7624,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Company Training Groups endpoints
+  app.get("/api/company-training-groups", async (req, res) => {
+    try {
+      const groups = await storage.getCompanyTrainingGroups();
+      res.json(groups);
+    } catch (error) {
+      console.error("Error fetching company training groups:", error);
+      res.status(500).json({ error: "Failed to fetch company training groups" });
+    }
+  });
+
+  app.patch("/api/company-training-groups/:code", async (req, res) => {
+    try {
+      const { code } = req.params;
+      if (!code || code.length !== 1 || !/^[A-J]$/.test(code)) {
+        return res.status(400).json({ error: "Invalid group code. Must be A-J." });
+      }
+      // Only allow updating the label field - filter out any other fields
+      const { label } = req.body;
+      const validatedData = { label: label ?? null };
+      
+      const updated = await storage.updateCompanyTrainingGroup(code, validatedData);
+      if (!updated) {
+        return res.status(404).json({ error: "Company training group not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating company training group:", error);
+      res.status(500).json({ error: "Failed to update company training group" });
+    }
+  });
+
   // Company Training endpoints
   app.get("/api/company-trainings", async (req, res) => {
     try {

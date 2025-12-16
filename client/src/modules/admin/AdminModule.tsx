@@ -322,6 +322,90 @@ function NewTrainingDialog({ open, onOpenChange, onSubmit, existingIds, isLoadin
   );
 }
 
+// Configure Group Labels Dialog Component
+interface ConfigureGroupLabelsDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  companyTrainingGroups: {code: string; label: string | null; displayOrder: number}[];
+  onSave: (updates: {code: string; label: string | null}[]) => Promise<void>;
+}
+
+function ConfigureGroupLabelsDialog({ open, onOpenChange, companyTrainingGroups, onSave }: ConfigureGroupLabelsDialogProps) {
+  const [localLabels, setLocalLabels] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  
+  const GROUP_CODES = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+  
+  useEffect(() => {
+    if (open) {
+      const initial: Record<string, string> = {};
+      GROUP_CODES.forEach(code => {
+        const group = companyTrainingGroups.find(g => g.code === code);
+        initial[code] = group?.label || '';
+      });
+      setLocalLabels(initial);
+    }
+  }, [open, companyTrainingGroups]);
+  
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const updates = GROUP_CODES.map(code => ({
+        code,
+        label: localLabels[code]?.trim() || null
+      }));
+      await onSave(updates);
+      onOpenChange(false);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+  
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Configure Group Labels</DialogTitle>
+          <DialogDescription>
+            Define custom labels for each company group. Leave blank to show just the letter.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 py-4 max-h-[400px] overflow-y-auto">
+          {GROUP_CODES.map(code => (
+            <div key={code} className="flex items-center gap-3">
+              <span className="text-sm font-medium w-6">{code}.</span>
+              <Input
+                value={localLabels[code] || ''}
+                onChange={(e) => setLocalLabels(prev => ({ ...prev, [code]: e.target.value }))}
+                className="h-8 text-xs flex-1"
+                placeholder={`Label for group ${code}`}
+                data-testid={`input-group-label-${code}`}
+              />
+            </div>
+          ))}
+        </div>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            data-testid="button-cancel-group-labels"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="bg-[#16569e] hover:bg-[#0f4078] text-white"
+            data-testid="button-save-group-labels"
+          >
+            {isSaving ? "Saving..." : "Save Labels"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // Removed AG Grid CheckboxRenderer - using standard HTML checkbox components instead
 
 // Removed AG Grid DeleteButtonRenderer - using standard HTML button components instead
@@ -480,10 +564,16 @@ const AdminModuleInner = (): JSX.Element => {
   const [showNewCompanyTrainingDialog, setShowNewCompanyTrainingDialog] = useState(false);
   const [localCompanyTrainingData, setLocalCompanyTrainingData] = useState<CompanyTraining[]>([]);
   const [changedCompanyTrainings, setChangedCompanyTrainings] = useState<Set<number>>(new Set());
+  const [showConfigureGroupLabelsDialog, setShowConfigureGroupLabelsDialog] = useState(false);
   
   // Company Training data hooks
   const { data: companyTrainingData = [], isLoading: companyTrainingLoading, refetch: refetchCompanyTrainings } = useQuery<CompanyTraining[]>({
     queryKey: ['/api/company-trainings'],
+    enabled: selectedAdminPage === "training-matrix"
+  });
+  
+  const { data: companyTrainingGroups = [], refetch: refetchCompanyTrainingGroups } = useQuery<{code: string; label: string | null; displayOrder: number}[]>({
+    queryKey: ['/api/company-training-groups'],
     enabled: selectedAdminPage === "training-matrix"
   });
   
@@ -4571,6 +4661,7 @@ const AdminModuleInner = (): JSX.Element => {
             companyId: training.companyId,
             abr: training.abr,
             requirement: training.requirement,
+            groupCode: training.groupCode,
           }
         });
       });
@@ -4778,6 +4869,18 @@ const AdminModuleInner = (): JSX.Element => {
                   >
                     {isCompanyTrainingEditing ? "Save" : "Edit"}
                   </Button>
+                  {isCompanyTrainingEditing && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowConfigureGroupLabelsDialog(true)}
+                      className="h-8 gap-2 bg-white text-[#0f172a] border-gray-300"
+                      data-testid="button-configure-group-labels"
+                    >
+                      <Settings className="h-4 w-4" />
+                      Configure Labels
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
@@ -5086,6 +5189,7 @@ const AdminModuleInner = (): JSX.Element => {
                       <TableHead className="min-w-[200px] text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Training Label</TableHead>
                       <TableHead className="w-24 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Abr</TableHead>
                       <TableHead className="min-w-[150px] text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Requirement</TableHead>
+                      <TableHead className="w-28 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Company Group</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -5098,13 +5202,14 @@ const AdminModuleInner = (): JSX.Element => {
                             <TableCell><div className="h-4 w-40 bg-gray-200 rounded animate-pulse" /></TableCell>
                             <TableCell><div className="h-4 w-12 bg-gray-200 rounded animate-pulse" /></TableCell>
                             <TableCell><div className="h-4 w-28 bg-gray-200 rounded animate-pulse" /></TableCell>
+                            <TableCell><div className="h-4 w-16 bg-gray-200 rounded animate-pulse" /></TableCell>
                           </TableRow>
                         ))}
                       </>
                     )}
                     {!companyTrainingLoading && filteredCompanyTrainingData.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center text-gray-500 py-8">
+                        <TableCell colSpan={6} className="text-center text-gray-500 py-8">
                           {companyTrainingData.length === 0 
                             ? "No company trainings found. Mark trainings as 'Applicable to Company' in Training Master to add them here."
                             : "No trainings match your search."}
@@ -5157,6 +5262,37 @@ const AdminModuleInner = (): JSX.Element => {
                             />
                           ) : (
                             <span className="text-gray-600">{training.requirement || '-'}</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs" data-testid={`cell-company-group-${training.id}`}>
+                          {isCompanyTrainingEditing ? (
+                            <Select 
+                              value={training.groupCode || ''} 
+                              onValueChange={(value) => handleCompanyTrainingFieldChange(training.id, 'groupCode', value || null)}
+                            >
+                              <SelectTrigger className="h-7 text-xs w-full" data-testid={`select-company-group-${training.id}`}>
+                                <SelectValue placeholder="-" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="">-</SelectItem>
+                                {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].map(code => {
+                                  const group = companyTrainingGroups.find(g => g.code === code);
+                                  const displayLabel = group?.label ? `${code}. ${group.label}` : code;
+                                  return (
+                                    <SelectItem key={code} value={code}>{displayLabel}</SelectItem>
+                                  );
+                                })}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <span className="text-gray-600">
+                              {training.groupCode 
+                                ? (() => {
+                                    const group = companyTrainingGroups.find(g => g.code === training.groupCode);
+                                    return group?.label ? `${training.groupCode}. ${group.label}` : training.groupCode;
+                                  })()
+                                : '-'}
+                            </span>
                           )}
                         </TableCell>
                       </TableRow>
@@ -5225,6 +5361,34 @@ const AdminModuleInner = (): JSX.Element => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Configure Group Labels Dialog */}
+      <ConfigureGroupLabelsDialog
+        open={showConfigureGroupLabelsDialog}
+        onOpenChange={setShowConfigureGroupLabelsDialog}
+        companyTrainingGroups={companyTrainingGroups}
+        onSave={async (updates) => {
+          try {
+            for (const update of updates) {
+              await apiRequest('PATCH', `/api/company-training-groups/${update.code}`, { label: update.label });
+            }
+            queryClient.invalidateQueries({ queryKey: ['/api/company-training-groups'] });
+            toast({
+              title: "Labels saved",
+              description: "Group labels updated successfully.",
+              duration: 3000,
+            });
+          } catch (error) {
+            console.error('Failed to save group labels:', error);
+            toast({
+              title: "Save failed",
+              description: "An error occurred while saving group labels.",
+              variant: "destructive",
+              duration: 5000,
+            });
+          }
+        }}
+      />
 
       {/* Delete Training Confirmation Dialog */}
       <Dialog open={showDeleteTrainingDialog} onOpenChange={setShowDeleteTrainingDialog}>

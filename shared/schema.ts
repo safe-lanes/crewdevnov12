@@ -50,6 +50,13 @@ export const trainingMaster = pgTable("training_master", {
   isDefault: boolean("is_default").default(false), // True for CSV-loaded trainings (cannot delete/edit name)
 });
 
+// Company Training Groups - stores customizable labels for groups A-J
+export const companyTrainingGroups = pgTable("company_training_groups", {
+  code: text("code").primaryKey(), // A, B, C, D, E, F, G, H, I, J
+  label: text("label"), // Custom label (e.g., "Flag", "Value Add", "Class") - null means just show the letter
+  displayOrder: integer("display_order").notNull(), // 1, 2, 3... for ordering
+});
+
 // Company Training - stores company-specific overrides for trainings
 // Created automatically when "Applicable to Company" is checked in Training Master
 export const companyTrainings = pgTable("company_trainings", {
@@ -59,7 +66,8 @@ export const companyTrainings = pgTable("company_trainings", {
   trainingLabel: text("training_label").notNull(), // Synced from Training Master, displayed but not editable
   abr: text("abr"), // Abbreviation - blank by default, company adds their own
   requirement: text("requirement"), // Initially copied from requirementReference, editable
-  sortOrder: integer("sort_order").default(0), // For ordering in Company tab
+  groupCode: text("group_code"), // A-J, null means unassigned (appears at bottom)
+  sortOrder: integer("sort_order").default(0), // For ordering within group
 });
 
 export const crewMembers = pgTable("crew_members", {
@@ -828,12 +836,23 @@ export const updateTrainingMasterSchema = createInsertSchema(trainingMaster).pic
   isDefault: true,
 }).partial();
 
+export const insertCompanyTrainingGroupSchema = createInsertSchema(companyTrainingGroups).pick({
+  code: true,
+  label: true,
+  displayOrder: true,
+});
+
+export const updateCompanyTrainingGroupSchema = createInsertSchema(companyTrainingGroups).pick({
+  label: true,
+}).partial();
+
 export const insertCompanyTrainingSchema = createInsertSchema(companyTrainings).pick({
   trainingMasterId: true,
   companyId: true,
   trainingLabel: true,
   abr: true,
   requirement: true,
+  groupCode: true,
   sortOrder: true,
 });
 
@@ -842,6 +861,7 @@ export const updateCompanyTrainingSchema = createInsertSchema(companyTrainings).
   trainingLabel: true,
   abr: true,
   requirement: true,
+  groupCode: true,
   sortOrder: true,
 }).partial();
 
@@ -1329,6 +1349,9 @@ export type AvailableRank = typeof availableRanks.$inferSelect;
 export type TrainingMaster = typeof trainingMaster.$inferSelect;
 export type InsertTrainingMaster = z.infer<typeof insertTrainingMasterSchema>;
 export type UpdateTrainingMaster = z.infer<typeof updateTrainingMasterSchema>;
+export type CompanyTrainingGroup = typeof companyTrainingGroups.$inferSelect;
+export type InsertCompanyTrainingGroup = z.infer<typeof insertCompanyTrainingGroupSchema>;
+export type UpdateCompanyTrainingGroup = z.infer<typeof updateCompanyTrainingGroupSchema>;
 export type CompanyTraining = typeof companyTrainings.$inferSelect;
 export type InsertCompanyTraining = z.infer<typeof insertCompanyTrainingSchema>;
 export type UpdateCompanyTraining = z.infer<typeof updateCompanyTrainingSchema>;

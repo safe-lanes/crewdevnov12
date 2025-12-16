@@ -93,10 +93,13 @@ import {
   type OilMajorRules,
   type InsertOilMajorRules,
   trainingMaster,
+  companyTrainingGroups,
   companyTrainings,
   type TrainingMaster,
   type InsertTrainingMaster,
   type UpdateTrainingMaster,
+  type CompanyTrainingGroup,
+  type UpdateCompanyTrainingGroup,
   type CompanyTraining,
   type InsertCompanyTraining,
   type UpdateCompanyTraining
@@ -4289,9 +4292,28 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  // Company Training Groups Methods
+  async getCompanyTrainingGroups(): Promise<CompanyTrainingGroup[]> {
+    return await this.db.select().from(companyTrainingGroups).orderBy(asc(companyTrainingGroups.displayOrder));
+  }
+
+  async updateCompanyTrainingGroup(code: string, data: Partial<UpdateCompanyTrainingGroup>): Promise<CompanyTrainingGroup | undefined> {
+    const result = await this.db.update(companyTrainingGroups)
+      .set(data)
+      .where(eq(companyTrainingGroups.code, code))
+      .returning();
+    return result[0];
+  }
+
   // Company Training Methods
   async getCompanyTrainings(): Promise<CompanyTraining[]> {
-    return await this.db.select().from(companyTrainings).orderBy(asc(companyTrainings.sortOrder));
+    // Sort by: 1) Group code (A-J first, NULL/unassigned last), 2) Alphabetically by training label within group
+    return await this.db.select().from(companyTrainings)
+      .orderBy(
+        sql`CASE WHEN ${companyTrainings.groupCode} IS NULL THEN 1 ELSE 0 END`,
+        asc(companyTrainings.groupCode),
+        asc(companyTrainings.trainingLabel)
+      );
   }
 
   async getCompanyTraining(id: number): Promise<CompanyTraining | undefined> {
