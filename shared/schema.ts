@@ -248,6 +248,26 @@ export const vesselRevisions = pgTable("vessel_revisions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Training Matrix Vessel Drafts - stores draft training matrix data for vessels
+export const trainingMatrixVesselDrafts = pgTable("training_matrix_vessel_drafts", {
+  id: serial("id").primaryKey(),
+  vesselId: text("vessel_id").notNull(),
+  revision: text("revision").notNull().default("R1"),
+  draftData: text("draft_data").notNull(), // JSON string of vessel training matrix data
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Training Matrix Vessel Revisions - stores finalized training matrix revisions for vessels
+export const trainingMatrixVesselRevisions = pgTable("training_matrix_vessel_revisions", {
+  id: serial("id").primaryKey(),
+  vesselId: text("vessel_id").notNull(),
+  revision: text("revision").notNull(), // R0, R1, R2, etc.
+  revisionDate: text("revision_date").notNull(), // Mandatory field in dd/mm/yyyy format
+  revisionData: text("revision_data").notNull(), // JSON string of finalized vessel training matrix data
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const seafarers = pgTable("seafarers", {
   id: serial("id").primaryKey(),
   firstName: text("first_name").notNull(),
@@ -1052,6 +1072,34 @@ export const insertVesselRevisionSchema = createInsertSchema(vesselRevisions).pi
     })
 });
 
+export const insertTrainingMatrixVesselDraftSchema = createInsertSchema(trainingMatrixVesselDrafts).pick({
+  vesselId: true,
+  revision: true,
+  draftData: true,
+});
+
+export const insertTrainingMatrixVesselRevisionSchema = createInsertSchema(trainingMatrixVesselRevisions).pick({
+  vesselId: true,
+  revision: true,
+  revisionDate: true,
+  revisionData: true,
+}).extend({
+  revisionDate: z.string()
+    .min(1, "Revision date is required")
+    .regex(/^\d{2}\/\d{2}\/\d{4}$/, "Date must be in dd/mm/yyyy format")
+    .refine((dateStr) => {
+      const [day, month, year] = dateStr.split('/').map(Number);
+      const date = new Date(year, month - 1, day);
+      return (
+        date.getFullYear() === year &&
+        date.getMonth() === month - 1 &&
+        date.getDate() === day
+      );
+    }, {
+      message: "Invalid date - please provide a valid date in dd/mm/yyyy format"
+    })
+});
+
 export const insertSeafarerSchema = createInsertSchema(seafarers).pick({
   firstName: true,
   middleName: true,
@@ -1393,6 +1441,10 @@ export type InsertVesselDraft = z.infer<typeof insertVesselDraftSchema>;
 export type VesselDraft = typeof vesselDrafts.$inferSelect;
 export type InsertVesselRevision = z.infer<typeof insertVesselRevisionSchema>;
 export type VesselRevision = typeof vesselRevisions.$inferSelect;
+export type InsertTrainingMatrixVesselDraft = z.infer<typeof insertTrainingMatrixVesselDraftSchema>;
+export type TrainingMatrixVesselDraft = typeof trainingMatrixVesselDrafts.$inferSelect;
+export type InsertTrainingMatrixVesselRevision = z.infer<typeof insertTrainingMatrixVesselRevisionSchema>;
+export type TrainingMatrixVesselRevision = typeof trainingMatrixVesselRevisions.$inferSelect;
 export type InsertSeafarer = z.infer<typeof insertSeafarerSchema>;
 export type Seafarer = typeof seafarers.$inferSelect;
 export type InsertRevision = z.infer<typeof insertRevisionSchema>;

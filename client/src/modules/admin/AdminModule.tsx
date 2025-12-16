@@ -732,6 +732,129 @@ const AdminModuleInner = (): JSX.Element => {
   const [flexDate, setFlexDate] = useState("");
   const [revisionMode, setRevisionMode] = useState(false);
   
+  // Training Matrix Vessel state (separate from Rank Admin Vessel)
+  const [tmSelectedVessels, setTmSelectedVessels] = useState<string[]>([]);
+  const [tmNextRevision, setTmNextRevision] = useState<string>("R0");
+  const [tmFlexDate, setTmFlexDate] = useState("");
+  const [tmRevisionMode, setTmRevisionMode] = useState(false);
+  const [tmTrainingRequirements, setTmTrainingRequirements] = useState<Map<string, Map<number, string>>>(new Map()); // vesselId -> (trainingId -> M|R|null)
+  
+  // Training Matrix Vessel revision queries
+  const { data: tmVesselRevisions = [] } = useQuery<any[]>({
+    queryKey: ['/api/training-matrix-vessel-revisions/by-vessel', tmSelectedVessels[0]],
+    enabled: selectedAdminPage === "training-matrix" && selectedTrainingMatrixTab === "vessel" && tmSelectedVessels.length > 0
+  });
+  
+  const { data: tmNextRevisionData } = useQuery<{ nextRevision: string; currentRevisionCount: number }>({
+    queryKey: ['/api/training-matrix-vessel-revisions/next-revision', tmSelectedVessels[0]],
+    enabled: selectedAdminPage === "training-matrix" && selectedTrainingMatrixTab === "vessel" && tmSelectedVessels.length > 0
+  });
+  
+  // Training Matrix Vessel draft query
+  const { data: tmVesselDraft } = useQuery<{ id: number; vesselId: string; draftData: any; updatedAt: string } | null>({
+    queryKey: ['/api/training-matrix-vessel-drafts/by-vessel', tmSelectedVessels[0]],
+    enabled: selectedAdminPage === "training-matrix" && selectedTrainingMatrixTab === "vessel" && tmSelectedVessels.length > 0
+  });
+  
+  // Update tmNextRevision when query data changes
+  useEffect(() => {
+    if (tmNextRevisionData?.nextRevision) {
+      setTmNextRevision(tmNextRevisionData.nextRevision);
+    }
+  }, [tmNextRevisionData]);
+  
+  // Hydrate tmTrainingRequirements from draft or latest revision when vessel changes or data loads
+  useEffect(() => {
+    if (tmSelectedVessels.length === 0) return;
+    
+    const vesselId = tmSelectedVessels[0];
+    
+    // Priority: draft data first, then latest revision
+    let sourceData: any = null;
+    if (tmVesselDraft?.draftData) {
+      sourceData = tmVesselDraft.draftData;
+    } else if (tmVesselRevisions.length > 0) {
+      // Get the latest revision (sorted by revision number descending)
+      const latestRevision = tmVesselRevisions.sort((a: any, b: any) => {
+        const aNum = parseInt(a.revisionNumber?.replace('R', '') || '0');
+        const bNum = parseInt(b.revisionNumber?.replace('R', '') || '0');
+        return bNum - aNum;
+      })[0];
+      sourceData = latestRevision?.revisionData;
+    }
+    
+    if (sourceData && typeof sourceData === 'object') {
+      setTmTrainingRequirements(prev => {
+        const newMap = new Map(prev);
+        const vesselReqs = new Map<number, string>();
+        
+        // Parse the source data - expected format: { trainingId: 'M' | 'R' | null, ... }
+        Object.entries(sourceData).forEach(([key, value]) => {
+          const trainingId = parseInt(key);
+          if (!isNaN(trainingId) && (value === 'M' || value === 'R')) {
+            vesselReqs.set(trainingId, value as string);
+          }
+        });
+        
+        newMap.set(vesselId, vesselReqs);
+        return newMap;
+      });
+    }
+  }, [tmSelectedVessels, tmVesselDraft, tmVesselRevisions]);
+  
+  // Training Matrix Vessel Draft mutations
+  const tmSaveDraftMutation = useMutation({
+    mutationFn: async ({ vesselId, draftData }: { vesselId: string; draftData: any }) => {
+      return apiRequest('POST', '/api/training-matrix-vessel-drafts/upsert', { vesselId, draftData });
+    },
+    onSuccess: (_data, variables) => {
+      toast({
+        title: "Draft saved",
+        description: "Training matrix draft saved successfully.",
+        duration: 3000,
+      });
+      // Invalidate draft query to refresh the data
+      queryClient.invalidateQueries({ queryKey: ['/api/training-matrix-vessel-drafts/by-vessel', variables.vesselId] });
+    },
+    onError: (error: any) => {
+      console.error('Failed to save training matrix draft:', error);
+      toast({
+        title: "Save failed",
+        description: "Failed to save training matrix draft.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    },
+  });
+  
+  const tmSubmitRevisionMutation = useMutation({
+    mutationFn: async ({ vesselId, revisionDate, revisionData }: { vesselId: string; revisionDate: string; revisionData: any }) => {
+      return apiRequest('POST', '/api/training-matrix-vessel-revisions/submit', { vesselId, revisionDate, revisionData });
+    },
+    onSuccess: (_data, variables) => {
+      toast({
+        title: "Revision submitted",
+        description: "Training matrix revision submitted successfully.",
+        duration: 3000,
+      });
+      setTmRevisionMode(false);
+      // Invalidate both revisions and next-revision queries with correct keys
+      queryClient.invalidateQueries({ queryKey: ['/api/training-matrix-vessel-revisions/by-vessel', variables.vesselId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/training-matrix-vessel-revisions/next-revision', variables.vesselId] });
+      // Also invalidate draft query since draft should be cleared after submit
+      queryClient.invalidateQueries({ queryKey: ['/api/training-matrix-vessel-drafts/by-vessel', variables.vesselId] });
+    },
+    onError: (error: any) => {
+      console.error('Failed to submit training matrix revision:', error);
+      toast({
+        title: "Submit failed",
+        description: "Failed to submit training matrix revision.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    },
+  });
+  
   // Track which vessels have been loaded to prevent duplicate fetches
   const loadedVesselsRef = React.useRef<Set<string>>(new Set());
   
@@ -5645,8 +5768,341 @@ const AdminModuleInner = (): JSX.Element => {
           </div>
         )}
         {selectedTrainingMatrixTab === "vessel" && (
-          <div data-testid="content-training-vessel">
-            {/* Vessel tab content - to be implemented */}
+          <div className="h-full flex flex-col" data-testid="content-training-vessel">
+            {/* Vessel Filters */}
+            <div className={`flex ${currentBreakpoint === 'mobile' ? 'flex-col space-y-3' : 'flex-wrap gap-4'} mb-4 p-4 pl-0 bg-[#f7fafc] rounded-lg`}>
+              <div className={`flex ${currentBreakpoint === 'mobile' ? 'flex-col space-y-3' : 'gap-4 flex-wrap'}`}>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className={`h-8 ${currentBreakpoint === 'mobile' ? 'w-full' : 'w-48'} justify-between text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] bg-transparent hover:bg-transparent`}
+                      data-testid="tm-vessel-select"
+                    >
+                      {tmSelectedVessels.length === 0 
+                        ? "Select Vessel or Group" 
+                        : tmSelectedVessels.length === 1 
+                          ? vesselOptions.find((v: VesselOption) => v.value === tmSelectedVessels[0])?.label
+                          : `${tmSelectedVessels.length} vessels selected`
+                      }
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className={`${currentBreakpoint === 'mobile' ? 'w-[280px]' : 'w-[200px]'} p-0`}>
+                    <Command>
+                      <CommandInput placeholder="Search vessels..." className="h-9" />
+                      <CommandEmpty>No vessel found.</CommandEmpty>
+                      <CommandGroup>
+                        {vesselOptions.map((vessel: VesselOption) => (
+                          <CommandItem
+                            key={vessel.value}
+                            value={`${vessel.label} ${vessel.value}`}
+                            onSelect={() => {
+                              if (vessel.type === 'group' && vessel.vesselIds) {
+                                const groupVesselIds = Array.isArray(vessel.vesselIds) 
+                                  ? vessel.vesselIds 
+                                  : JSON.parse(vessel.vesselIds || '[]');
+                                const allGroupVesselsSelected = groupVesselIds.every((id: string) => tmSelectedVessels.includes(id));
+                                
+                                if (allGroupVesselsSelected) {
+                                  setTmSelectedVessels(tmSelectedVessels.filter(v => !groupVesselIds.includes(v)));
+                                } else {
+                                  const newVessels = groupVesselIds.filter((id: string) => !tmSelectedVessels.includes(id));
+                                  setTmSelectedVessels([...tmSelectedVessels, ...newVessels]);
+                                }
+                              } else {
+                                const isSelected = tmSelectedVessels.includes(vessel.value);
+                                if (isSelected) {
+                                  setTmSelectedVessels(tmSelectedVessels.filter(v => v !== vessel.value));
+                                } else {
+                                  setTmSelectedVessels([...tmSelectedVessels, vessel.value]);
+                                }
+                              }
+                            }}
+                            className="text-xs"
+                          >
+                            <div className="flex items-center space-x-2">
+                              <Checkbox 
+                                checked={(() => {
+                                  if (vessel.type === 'group' && vessel.vesselIds) {
+                                    const vesselIdArray = Array.isArray(vessel.vesselIds) 
+                                      ? vessel.vesselIds 
+                                      : JSON.parse(vessel.vesselIds || '[]');
+                                    return vesselIdArray.every((id: string) => tmSelectedVessels.includes(id));
+                                  }
+                                  return tmSelectedVessels.includes(vessel.value);
+                                })()}
+                                className="h-4 w-4"
+                              />
+                              <span>{vessel.label}</span>
+                            </div>
+                            <Check
+                              className={`ml-auto h-4 w-4 ${
+                                (() => {
+                                  if (vessel.type === 'group' && vessel.vesselIds) {
+                                    const vesselIdArray = Array.isArray(vessel.vesselIds) 
+                                      ? vessel.vesselIds 
+                                      : JSON.parse(vessel.vesselIds || '[]');
+                                    return vesselIdArray.every((id: string) => tmSelectedVessels.includes(id)) ? "opacity-100" : "opacity-0";
+                                  }
+                                  return tmSelectedVessels.includes(vessel.value) ? "opacity-100" : "opacity-0";
+                                })()
+                              }`}
+                            />
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+
+                {/* Settings icon for Vessel Group management */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-[#0f172a] hover:bg-gray-50"
+                  onClick={() => setIsVesselGroupModalOpen(true)}
+                  data-testid="tm-vessel-group-settings"
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
+
+                {/* Display auto-assigned next revision */}
+                <div className="h-8 w-32 px-3 flex items-center border border-gray-200 rounded-md bg-gray-50 text-xs text-[#0f172a]" data-testid="tm-next-revision-display">
+                  <span className="font-medium">Next: {tmNextRevision}</span>
+                </div>
+
+                <Input
+                  type="date"
+                  placeholder="dd/mm/yyyy"
+                  value={tmFlexDate}
+                  onChange={(e) => setTmFlexDate(e.target.value)}
+                  className="h-8 w-36 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] pr-8"
+                  disabled={!tmRevisionMode}
+                  data-testid="tm-flex-date-input"
+                />
+                
+                {/* Revision control buttons */}
+                <div className="flex gap-2 ml-auto">
+                  {!tmRevisionMode ? (
+                    <Button
+                      onClick={() => {
+                        if (tmSelectedVessels.length === 0) {
+                          toast({
+                            title: "No vessel selected",
+                            description: "Please select a vessel to start revision.",
+                            variant: "destructive",
+                            duration: 3000,
+                          });
+                          return;
+                        }
+                        setTmRevisionMode(true);
+                        setTmFlexDate(new Date().toISOString().split('T')[0]);
+                      }}
+                      disabled={tmSelectedVessels.length === 0}
+                      className={`h-8 text-xs ${
+                        tmSelectedVessels.length === 0 
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                          : 'bg-[#5dc86f] hover:bg-[#22c55e] text-white'
+                      }`}
+                      data-testid="tm-revision-button"
+                    >
+                      + Revision
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        onClick={() => {
+                          setTmRevisionMode(false);
+                          setTmTrainingRequirements(new Map());
+                        }}
+                        className="h-8 bg-[#ff6961] hover:bg-[#ff5449] text-[#fdfcfc] text-xs"
+                        data-testid="tm-cancel-button"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          if (tmSelectedVessels.length === 0) return;
+                          const vesselId = tmSelectedVessels[0];
+                          const draftData = Object.fromEntries(tmTrainingRequirements.get(vesselId) || new Map());
+                          tmSaveDraftMutation.mutate({ vesselId, draftData });
+                        }}
+                        className="h-8 bg-[#15569e] hover:bg-[#0f4078] text-white text-xs"
+                        data-testid="tm-save-draft-button"
+                      >
+                        Save Draft
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          if (tmSelectedVessels.length === 0) return;
+                          if (!tmFlexDate) {
+                            toast({
+                              title: "Date required",
+                              description: "Please select a revision date.",
+                              variant: "destructive",
+                              duration: 3000,
+                            });
+                            return;
+                          }
+                          const vesselId = tmSelectedVessels[0];
+                          const revisionData = Object.fromEntries(tmTrainingRequirements.get(vesselId) || new Map());
+                          tmSubmitRevisionMutation.mutate({ 
+                            vesselId, 
+                            revisionDate: tmFlexDate, 
+                            revisionData 
+                          });
+                        }}
+                        className="h-8 bg-[#00AF7B] hover:bg-[#0f4078] text-white text-xs"
+                        data-testid="tm-submit-button"
+                      >
+                        Submit
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Selected Vessels Revision Indicator */}
+            {tmRevisionMode && tmSelectedVessels.length > 0 && (
+              <div className={`bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 ${currentBreakpoint === 'mobile' ? 'text-sm' : ''}`} data-testid="tm-selected-vessels-indicator">
+                <div className={`flex ${currentBreakpoint === 'mobile' ? 'flex-col space-y-2' : 'items-center justify-between'}`}>
+                  <div className={`flex ${currentBreakpoint === 'mobile' ? 'flex-col space-y-1' : 'items-center space-x-2'}`}>
+                    <div className={`${currentBreakpoint === 'mobile' ? 'text-xs' : 'text-sm'} font-medium text-blue-800`}>
+                      Revision Mode - Editing {tmSelectedVessels.length} vessel{tmSelectedVessels.length > 1 ? 's' : ''}:
+                    </div>
+                    <div className="flex space-x-1">
+                      {tmSelectedVessels.map((vesselId) => (
+                        <span
+                          key={vesselId}
+                          className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800"
+                        >
+                          {vesselOptions.find((v: VesselOption) => v.value === vesselId)?.label || vesselId}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="text-xs text-blue-600">
+                    Changes apply to all selected vessels
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Training Matrix Vessel Table */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex-1 flex flex-col">
+              <div className="overflow-auto flex-1">
+                <Table className="min-w-full">
+                  <TableHeader>
+                    <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                      <TableHead className="text-white text-xs font-normal w-48 sticky top-0 z-30 bg-[#52baf3] shadow-sm">
+                        Training Name
+                      </TableHead>
+                      <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3] shadow-sm text-center">
+                        Category
+                      </TableHead>
+                      <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3] shadow-sm text-center">
+                        M/R Status
+                      </TableHead>
+                      <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3] shadow-sm text-center">
+                        Reference
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tmSelectedVessels.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                          Please select one or more vessels to configure training requirements
+                        </TableCell>
+                      </TableRow>
+                    ) : trainingMasterData.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                          No trainings found in Training Master. Add trainings in the Training Master tab first.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      trainingMasterData.map((training) => {
+                        const vesselId = tmSelectedVessels[0];
+                        const vesselRequirements = tmTrainingRequirements.get(vesselId) || new Map<number, string>();
+                        const status = vesselRequirements.get(training.id) || null;
+                        
+                        return (
+                          <TableRow key={training.id} className="hover:bg-gray-50">
+                            <TableCell className="text-xs font-medium">
+                              {training.trainingName}
+                            </TableCell>
+                            <TableCell className="text-xs text-center text-gray-600">
+                              {training.category || '-'}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {tmRevisionMode ? (
+                                <div className="flex items-center justify-center gap-3">
+                                  <label className="flex items-center gap-1 cursor-pointer text-xs">
+                                    <input
+                                      type="checkbox"
+                                      checked={status === 'M'}
+                                      onChange={() => {
+                                        setTmTrainingRequirements(prev => {
+                                          const newMap = new Map(prev);
+                                          const vesselReqs = new Map(newMap.get(vesselId) || []);
+                                          if (status === 'M') {
+                                            vesselReqs.delete(training.id);
+                                          } else {
+                                            vesselReqs.set(training.id, 'M');
+                                          }
+                                          newMap.set(vesselId, vesselReqs);
+                                          return newMap;
+                                        });
+                                      }}
+                                      className="h-3 w-3 rounded border-gray-300"
+                                      data-testid={`tm-checkbox-m-${training.id}`}
+                                    />
+                                    <span className="text-gray-600">M</span>
+                                  </label>
+                                  <label className="flex items-center gap-1 cursor-pointer text-xs">
+                                    <input
+                                      type="checkbox"
+                                      checked={status === 'R'}
+                                      onChange={() => {
+                                        setTmTrainingRequirements(prev => {
+                                          const newMap = new Map(prev);
+                                          const vesselReqs = new Map(newMap.get(vesselId) || []);
+                                          if (status === 'R') {
+                                            vesselReqs.delete(training.id);
+                                          } else {
+                                            vesselReqs.set(training.id, 'R');
+                                          }
+                                          newMap.set(vesselId, vesselReqs);
+                                          return newMap;
+                                        });
+                                      }}
+                                      className="h-3 w-3 rounded border-gray-300"
+                                      data-testid={`tm-checkbox-r-${training.id}`}
+                                    />
+                                    <span className="text-gray-600">R</span>
+                                  </label>
+                                </div>
+                              ) : (
+                                <span className={`text-xs font-medium ${status === 'M' ? 'text-red-600' : status === 'R' ? 'text-blue-600' : 'text-gray-300'}`}>
+                                  {status || '-'}
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-xs text-center text-gray-600">
+                              {training.requirementReference || '-'}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
           </div>
         )}
       </div>

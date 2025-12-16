@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError, calculateExperienceFromSeaService, calculateVesselTypeSpecificExperience } from "./storage";
-import { type VesselPlanning, type InsertRecruitmentCandidate, insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertCompanyProcessingSchema, insertPromotionFormSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertOfficeViolationCommentSchema, insertNCReportSchema, insertVesselDateLineAdjustmentSchema, insertOilMajorRulesSchema, type OilMajorRulesConfig, insertTrainingMasterSchema, updateTrainingMasterSchema, trainingMaster } from "@shared/schema";
+import { type VesselPlanning, type InsertRecruitmentCandidate, insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertCompanyProcessingSchema, insertPromotionFormSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertOfficeViolationCommentSchema, insertNCReportSchema, insertVesselDateLineAdjustmentSchema, insertOilMajorRulesSchema, type OilMajorRulesConfig, insertTrainingMasterSchema, updateTrainingMasterSchema, trainingMaster, insertTrainingMatrixVesselDraftSchema, insertTrainingMatrixVesselRevisionSchema } from "@shared/schema";
 import { parseCSVContent, convertToStorageFormat } from "./oilMajorRulesParser";
 import { evaluateCompliance, convertCrewToExperience, type ComplianceCheckResult } from "./complianceEngine";
 import { z } from "zod";
@@ -2608,6 +2608,263 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error(`✅ [SUBMIT ERROR] Submit workflow failed:`, error);
       res.status(500).json({ error: "Failed to submit vessel revision" });
+    }
+  });
+
+  // Training Matrix Vessel Drafts API routes
+  app.get("/api/training-matrix-vessel-drafts", async (req, res) => {
+    try {
+      const drafts = await storage.getTrainingMatrixVesselDrafts();
+      res.json(drafts);
+    } catch (error) {
+      console.error("Failed to fetch training matrix vessel drafts:", error);
+      res.status(500).json({ error: "Failed to fetch training matrix vessel drafts" });
+    }
+  });
+
+  app.get("/api/training-matrix-vessel-drafts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const draft = await storage.getTrainingMatrixVesselDraft(id);
+      if (!draft) {
+        return res.status(404).json({ error: "Training matrix vessel draft not found" });
+      }
+      res.json(draft);
+    } catch (error) {
+      console.error("Failed to fetch training matrix vessel draft:", error);
+      res.status(500).json({ error: "Failed to fetch training matrix vessel draft" });
+    }
+  });
+
+  app.get("/api/training-matrix-vessel-drafts/by-vessel/:vesselId", async (req, res) => {
+    try {
+      const { vesselId } = req.params;
+      const drafts = await storage.getTrainingMatrixVesselDraftsByVessel(vesselId);
+      res.json(drafts);
+    } catch (error) {
+      console.error("Failed to fetch training matrix vessel drafts by vessel:", error);
+      res.status(500).json({ error: "Failed to fetch training matrix vessel drafts by vessel" });
+    }
+  });
+
+  app.post("/api/training-matrix-vessel-drafts", async (req, res) => {
+    try {
+      const result = insertTrainingMatrixVesselDraftSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid training matrix vessel draft data", details: result.error.issues });
+      }
+      const draft = await storage.createTrainingMatrixVesselDraft(result.data);
+      res.status(201).json(draft);
+    } catch (error) {
+      console.error("Failed to create training matrix vessel draft:", error);
+      res.status(500).json({ error: "Failed to create training matrix vessel draft" });
+    }
+  });
+
+  app.patch("/api/training-matrix-vessel-drafts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const draft = await storage.updateTrainingMatrixVesselDraft(id, req.body);
+      if (!draft) {
+        return res.status(404).json({ error: "Training matrix vessel draft not found" });
+      }
+      res.json(draft);
+    } catch (error) {
+      console.error("Failed to update training matrix vessel draft:", error);
+      res.status(500).json({ error: "Failed to update training matrix vessel draft" });
+    }
+  });
+
+  app.delete("/api/training-matrix-vessel-drafts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteTrainingMatrixVesselDraft(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Training matrix vessel draft not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Failed to delete training matrix vessel draft:", error);
+      res.status(500).json({ error: "Failed to delete training matrix vessel draft" });
+    }
+  });
+
+  // Training Matrix Vessel Drafts upsert endpoint
+  app.post("/api/training-matrix-vessel-drafts/upsert", async (req, res) => {
+    try {
+      const { vesselId, draftData } = req.body;
+      if (!vesselId) {
+        return res.status(400).json({ error: "vesselId is required" });
+      }
+
+      // Look for existing draft for this vessel
+      const existingDrafts = await storage.getTrainingMatrixVesselDraftsByVessel(vesselId);
+      
+      if (existingDrafts.length > 0) {
+        // Update existing draft
+        const existingDraft = existingDrafts[0];
+        const updatedDraft = await storage.updateTrainingMatrixVesselDraft(existingDraft.id, { draftData });
+        res.json(updatedDraft);
+      } else {
+        // Create new draft
+        const result = insertTrainingMatrixVesselDraftSchema.safeParse({ vesselId, draftData });
+        if (!result.success) {
+          return res.status(400).json({ error: "Invalid data", details: result.error.issues });
+        }
+        const newDraft = await storage.createTrainingMatrixVesselDraft(result.data);
+        res.status(201).json(newDraft);
+      }
+    } catch (error) {
+      console.error("Failed to upsert training matrix vessel draft:", error);
+      res.status(500).json({ error: "Failed to upsert training matrix vessel draft" });
+    }
+  });
+
+  // Training Matrix Vessel Revisions API routes
+  app.get("/api/training-matrix-vessel-revisions", async (req, res) => {
+    try {
+      const revisions = await storage.getTrainingMatrixVesselRevisions();
+      res.json(revisions);
+    } catch (error) {
+      console.error("Failed to fetch training matrix vessel revisions:", error);
+      res.status(500).json({ error: "Failed to fetch training matrix vessel revisions" });
+    }
+  });
+
+  app.get("/api/training-matrix-vessel-revisions/by-vessel/:vesselId", async (req, res) => {
+    try {
+      const { vesselId } = req.params;
+      const revisions = await storage.getTrainingMatrixVesselRevisionsByVessel(vesselId);
+      res.json(revisions);
+    } catch (error) {
+      console.error("Failed to fetch training matrix vessel revisions by vessel:", error);
+      res.status(500).json({ error: "Failed to fetch training matrix vessel revisions by vessel" });
+    }
+  });
+
+  app.get("/api/training-matrix-vessel-revisions/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const revision = await storage.getTrainingMatrixVesselRevision(id);
+      if (!revision) {
+        return res.status(404).json({ error: "Training matrix vessel revision not found" });
+      }
+      res.json(revision);
+    } catch (error) {
+      console.error("Failed to fetch training matrix vessel revision:", error);
+      res.status(500).json({ error: "Failed to fetch training matrix vessel revision" });
+    }
+  });
+
+  app.post("/api/training-matrix-vessel-revisions", async (req, res) => {
+    try {
+      const result = insertTrainingMatrixVesselRevisionSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid training matrix vessel revision data", details: result.error.issues });
+      }
+      const revision = await storage.createTrainingMatrixVesselRevision(result.data);
+      res.status(201).json(revision);
+    } catch (error) {
+      console.error("Failed to create training matrix vessel revision:", error);
+      res.status(500).json({ error: "Failed to create training matrix vessel revision" });
+    }
+  });
+
+  // Get next revision number for training matrix vessel
+  app.get("/api/training-matrix-vessel-revisions/next-revision/:vesselId", async (req, res) => {
+    try {
+      const { vesselId } = req.params;
+      const existingRevisions = await storage.getTrainingMatrixVesselRevisionsByVessel(vesselId);
+      
+      let maxRevisionNumber = -1;
+      for (const revision of existingRevisions) {
+        const match = revision.revision.match(/^R(\d+)$/);
+        if (match) {
+          const revisionNumber = parseInt(match[1], 10);
+          if (revisionNumber > maxRevisionNumber) {
+            maxRevisionNumber = revisionNumber;
+          }
+        }
+      }
+      const nextRevisionNumber = maxRevisionNumber + 1;
+      const nextRevision = `R${nextRevisionNumber}`;
+      
+      res.json({ nextRevision, currentRevisionCount: existingRevisions.length });
+    } catch (error) {
+      console.error("Failed to get next training matrix vessel revision:", error);
+      res.status(500).json({ error: "Failed to get next revision" });
+    }
+  });
+
+  // Submit training matrix vessel revision - handles complete workflow
+  app.post("/api/training-matrix-vessel-revisions/submit", async (req, res) => {
+    try {
+      console.log(`✅ [TM SUBMIT] Starting Submit workflow for vessel:`, req.body.vesselId);
+      
+      const submitSchema = insertTrainingMatrixVesselRevisionSchema.omit({ revision: true });
+      const validationResult = submitSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        console.error(`✅ [TM SUBMIT ERROR] Validation failed:`, validationResult.error.issues);
+        return res.status(400).json({ 
+          error: "Invalid training matrix vessel revision data", 
+          details: validationResult.error.issues 
+        });
+      }
+      
+      const { vesselId, revisionData, revisionDate } = validationResult.data;
+      console.log(`✅ [TM SUBMIT] Validation passed for vessel ${vesselId}, date: ${revisionDate}`);
+      
+      // Get next revision number
+      const existingRevisions = await storage.getTrainingMatrixVesselRevisionsByVessel(vesselId);
+      let maxRevisionNumber = -1;
+      for (const revision of existingRevisions) {
+        const match = revision.revision.match(/^R(\d+)$/);
+        if (match) {
+          const revisionNumber = parseInt(match[1], 10);
+          if (revisionNumber > maxRevisionNumber) {
+            maxRevisionNumber = revisionNumber;
+          }
+        }
+      }
+      const nextRevisionNumber = maxRevisionNumber + 1;
+      const nextRevision = `R${nextRevisionNumber}`;
+      console.log(`✅ [TM SUBMIT] Auto-assigned revision: ${nextRevision}`);
+      
+      // Create the revision
+      const revisionToCreate = {
+        vesselId,
+        revision: nextRevision,
+        revisionDate,
+        revisionData
+      };
+      const createdRevision = await storage.createTrainingMatrixVesselRevision(revisionToCreate);
+      console.log(`✅ [TM SUBMIT] Created revision with ID: ${createdRevision.id}`);
+      
+      // Delete existing drafts for this vessel
+      const existingDrafts = await storage.getTrainingMatrixVesselDraftsByVessel(vesselId);
+      let deletedDraftsCount = 0;
+      for (const draft of existingDrafts) {
+        try {
+          const deleted = await storage.deleteTrainingMatrixVesselDraft(draft.id);
+          if (deleted) deletedDraftsCount++;
+        } catch (deleteError) {
+          console.warn(`✅ [TM SUBMIT WARNING] Failed to delete draft ${draft.id}:`, deleteError);
+        }
+      }
+      console.log(`✅ [TM SUBMIT] Cleaned up ${deletedDraftsCount} draft(s)`);
+      
+      res.status(201).json({
+        success: true,
+        revision: createdRevision,
+        metadata: {
+          autoAssignedRevision: nextRevision,
+          deletedDrafts: deletedDraftsCount
+        }
+      });
+      console.log(`✅ [TM SUBMIT] Submit workflow completed for vessel ${vesselId}`);
+    } catch (error) {
+      console.error(`✅ [TM SUBMIT ERROR] Submit workflow failed:`, error);
+      res.status(500).json({ error: "Failed to submit training matrix vessel revision" });
     }
   });
 

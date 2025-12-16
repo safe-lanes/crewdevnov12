@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type CompanyProcessing, type InsertCompanyProcessing, type PromotionForm, type InsertPromotionForm, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type RotationArchiveEntry, type InsertRotationArchive, type DrugAlcoholTestRecord, type InsertDrugAlcoholTestRecord, type RestHoursVesselRecord, type InsertRestHoursVesselRecord, type RestHoursCrewRecord, type InsertRestHoursCrewRecord, type RestHoursDailyRecord, type InsertRestHoursDailyRecord, type FixedTask, type InsertFixedTask, type VariableTask, type InsertVariableTask, type VesselViolationComment, type InsertVesselViolationComment, type OfficeViolationComment, type InsertOfficeViolationComment, type NCReport, type InsertNCReport, type VesselDateLineAdjustment, type InsertVesselDateLineAdjustment, type CrewDashboardSummary, type OilMajorRules, type InsertOilMajorRules, type TrainingMaster, type InsertTrainingMaster, type UpdateTrainingMaster, type CompanyTrainingGroup, type UpdateCompanyTrainingGroup, type CompanyTraining, type InsertCompanyTraining, type UpdateCompanyTraining, type CompanyTrainingRequirement, type UpsertCompanyTrainingRequirement } from "@shared/schema";
+import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type CompanyProcessing, type InsertCompanyProcessing, type PromotionForm, type InsertPromotionForm, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type RotationArchiveEntry, type InsertRotationArchive, type DrugAlcoholTestRecord, type InsertDrugAlcoholTestRecord, type RestHoursVesselRecord, type InsertRestHoursVesselRecord, type RestHoursCrewRecord, type InsertRestHoursCrewRecord, type RestHoursDailyRecord, type InsertRestHoursDailyRecord, type FixedTask, type InsertFixedTask, type VariableTask, type InsertVariableTask, type VesselViolationComment, type InsertVesselViolationComment, type OfficeViolationComment, type InsertOfficeViolationComment, type NCReport, type InsertNCReport, type VesselDateLineAdjustment, type InsertVesselDateLineAdjustment, type CrewDashboardSummary, type OilMajorRules, type InsertOilMajorRules, type TrainingMaster, type InsertTrainingMaster, type UpdateTrainingMaster, type CompanyTrainingGroup, type UpdateCompanyTrainingGroup, type CompanyTraining, type InsertCompanyTraining, type UpdateCompanyTraining, type CompanyTrainingRequirement, type UpsertCompanyTrainingRequirement, type TrainingMatrixVesselDraft, type InsertTrainingMatrixVesselDraft, type TrainingMatrixVesselRevision, type InsertTrainingMatrixVesselRevision } from "@shared/schema";
 import { 
   getReportingDate, 
   safeParseDate, 
@@ -880,6 +880,18 @@ export interface IStorage {
   getVesselRevision(id: number): Promise<VesselRevision | undefined>;
   getVesselRevisionsByVessel(vesselId: string): Promise<VesselRevision[]>;
   createVesselRevision(vesselRevision: InsertVesselRevision): Promise<VesselRevision>;
+  // Training Matrix Vessel Drafts
+  getTrainingMatrixVesselDrafts(): Promise<TrainingMatrixVesselDraft[]>;
+  getTrainingMatrixVesselDraft(id: number): Promise<TrainingMatrixVesselDraft | undefined>;
+  getTrainingMatrixVesselDraftsByVessel(vesselId: string): Promise<TrainingMatrixVesselDraft[]>;
+  createTrainingMatrixVesselDraft(draft: InsertTrainingMatrixVesselDraft): Promise<TrainingMatrixVesselDraft>;
+  updateTrainingMatrixVesselDraft(id: number, draft: Partial<InsertTrainingMatrixVesselDraft>): Promise<TrainingMatrixVesselDraft | undefined>;
+  deleteTrainingMatrixVesselDraft(id: number): Promise<boolean>;
+  // Training Matrix Vessel Revisions
+  getTrainingMatrixVesselRevisions(): Promise<TrainingMatrixVesselRevision[]>;
+  getTrainingMatrixVesselRevision(id: number): Promise<TrainingMatrixVesselRevision | undefined>;
+  getTrainingMatrixVesselRevisionsByVessel(vesselId: string): Promise<TrainingMatrixVesselRevision[]>;
+  createTrainingMatrixVesselRevision(revision: InsertTrainingMatrixVesselRevision): Promise<TrainingMatrixVesselRevision>;
   // Vessel Planning
   getVesselPlanningByVessel(vesselId: string): Promise<VesselPlanning[]>;
   getVesselPlanningByCrewMember(crewMemberId: string): Promise<VesselPlanning[]>;
@@ -3606,6 +3618,8 @@ export class PersistentFileStorage implements IStorage {
   private masterDataEntries: Map<string, any>;
   private vesselDrafts: Map<number, VesselDraft>;
   private vesselRevisions: Map<number, VesselRevision>;
+  private trainingMatrixVesselDrafts: Map<number, TrainingMatrixVesselDraft>;
+  private trainingMatrixVesselRevisions: Map<number, TrainingMatrixVesselRevision>;
   private vesselPlanning: Map<number, VesselPlanning>;
   private rotationPlans: Map<number, RotationPlan>;
   private rotationArchive: Map<number, RotationArchiveEntry>;
@@ -3630,6 +3644,8 @@ export class PersistentFileStorage implements IStorage {
   private currentVesselGroupId: number;
   private currentVesselDraftId: number;
   private currentVesselRevisionId: number;
+  private currentTrainingMatrixVesselDraftId: number;
+  private currentTrainingMatrixVesselRevisionId: number;
   private currentVesselPlanningId: number;
   private currentRotationPlanId: number;
   private currentRotationArchiveId: number;
@@ -3665,6 +3681,8 @@ export class PersistentFileStorage implements IStorage {
     this.masterDataEntries = new Map();
     this.vesselDrafts = new Map();
     this.vesselRevisions = new Map();
+    this.trainingMatrixVesselDrafts = new Map();
+    this.trainingMatrixVesselRevisions = new Map();
     this.vesselPlanning = new Map();
     this.rotationPlans = new Map();
     this.rotationArchive = new Map();
@@ -3689,6 +3707,8 @@ export class PersistentFileStorage implements IStorage {
     this.currentVesselGroupId = 1;
     this.currentVesselDraftId = 1;
     this.currentVesselRevisionId = 1;
+    this.currentTrainingMatrixVesselDraftId = 1;
+    this.currentTrainingMatrixVesselRevisionId = 1;
     this.currentVesselPlanningId = 1;
     this.currentRotationPlanId = 1;
     this.currentRotationArchiveId = 1;
@@ -4183,6 +4203,12 @@ export class PersistentFileStorage implements IStorage {
         this.vesselRevisions = this.loadNestedMapData(data.vesselRevisions || []);
         this.currentVesselRevisionId = data.currentVesselRevisionId || 1;
         
+        // Load training matrix vessel drafts and revisions (separate system)
+        this.trainingMatrixVesselDrafts = new Map(data.trainingMatrixVesselDrafts || []);
+        this.currentTrainingMatrixVesselDraftId = data.currentTrainingMatrixVesselDraftId || 1;
+        this.trainingMatrixVesselRevisions = this.loadNestedMapData(data.trainingMatrixVesselRevisions || []);
+        this.currentTrainingMatrixVesselRevisionId = data.currentTrainingMatrixVesselRevisionId || 1;
+        
         // Load vessel planning and counter
         this.vesselPlanning = new Map(data.vesselPlanning || []);
         this.currentVesselPlanningId = data.currentVesselPlanningId || 1;
@@ -4273,6 +4299,8 @@ export class PersistentFileStorage implements IStorage {
       vesselGroups: Array.from(this.vesselGroups.entries()),
       vesselDrafts: Array.from(this.vesselDrafts.entries()),
       vesselRevisions: Array.from(this.vesselRevisions.entries()),
+      trainingMatrixVesselDrafts: Array.from(this.trainingMatrixVesselDrafts.entries()),
+      trainingMatrixVesselRevisions: Array.from(this.trainingMatrixVesselRevisions.entries()),
       vesselPlanning: Array.from(this.vesselPlanning.entries()),
       rotationPlans: Array.from(this.rotationPlans.entries()),
       rotationArchive: Array.from(this.rotationArchive.entries()),
@@ -4297,6 +4325,8 @@ export class PersistentFileStorage implements IStorage {
       currentVesselGroupId: this.currentVesselGroupId,
       currentVesselDraftId: this.currentVesselDraftId,
       currentVesselRevisionId: this.currentVesselRevisionId,
+      currentTrainingMatrixVesselDraftId: this.currentTrainingMatrixVesselDraftId,
+      currentTrainingMatrixVesselRevisionId: this.currentTrainingMatrixVesselRevisionId,
       currentVesselPlanningId: this.currentVesselPlanningId,
       currentRotationPlanId: this.currentRotationPlanId,
       currentRotationArchiveId: this.currentRotationArchiveId,
@@ -5997,6 +6027,81 @@ export class PersistentFileStorage implements IStorage {
     this.vesselRevisions.set(id, vesselRevision);
     this.saveToFile(); // Persist the changes
     return vesselRevision;
+  }
+
+  // Training Matrix Vessel Drafts methods
+  async getTrainingMatrixVesselDrafts(): Promise<TrainingMatrixVesselDraft[]> {
+    return Array.from(this.trainingMatrixVesselDrafts.values());
+  }
+
+  async getTrainingMatrixVesselDraft(id: number): Promise<TrainingMatrixVesselDraft | undefined> {
+    return this.trainingMatrixVesselDrafts.get(id);
+  }
+
+  async getTrainingMatrixVesselDraftsByVessel(vesselId: string): Promise<TrainingMatrixVesselDraft[]> {
+    return Array.from(this.trainingMatrixVesselDrafts.values()).filter(draft => draft.vesselId === vesselId);
+  }
+
+  async createTrainingMatrixVesselDraft(insertDraft: InsertTrainingMatrixVesselDraft): Promise<TrainingMatrixVesselDraft> {
+    const id = this.currentTrainingMatrixVesselDraftId++;
+    const draft: TrainingMatrixVesselDraft = {
+      id,
+      vesselId: insertDraft.vesselId,
+      revision: insertDraft.revision ?? "",
+      draftData: insertDraft.draftData,
+      createdAt: null,
+      updatedAt: null
+    };
+    this.trainingMatrixVesselDrafts.set(id, draft);
+    this.saveToFile();
+    return draft;
+  }
+
+  async updateTrainingMatrixVesselDraft(id: number, draftData: Partial<InsertTrainingMatrixVesselDraft>): Promise<TrainingMatrixVesselDraft | undefined> {
+    const existingDraft = this.trainingMatrixVesselDrafts.get(id);
+    if (!existingDraft) return undefined;
+
+    const updatedDraft: TrainingMatrixVesselDraft = { 
+      ...existingDraft, 
+      ...draftData,
+      updatedAt: null as any
+    };
+    this.trainingMatrixVesselDrafts.set(id, updatedDraft);
+    this.saveToFile();
+    return updatedDraft;
+  }
+
+  async deleteTrainingMatrixVesselDraft(id: number): Promise<boolean> {
+    const result = this.trainingMatrixVesselDrafts.delete(id);
+    if (result) {
+      this.saveToFile();
+    }
+    return result;
+  }
+
+  // Training Matrix Vessel Revisions methods
+  async getTrainingMatrixVesselRevisions(): Promise<TrainingMatrixVesselRevision[]> {
+    return Array.from(this.trainingMatrixVesselRevisions.values());
+  }
+
+  async getTrainingMatrixVesselRevision(id: number): Promise<TrainingMatrixVesselRevision | undefined> {
+    return this.trainingMatrixVesselRevisions.get(id);
+  }
+
+  async getTrainingMatrixVesselRevisionsByVessel(vesselId: string): Promise<TrainingMatrixVesselRevision[]> {
+    return Array.from(this.trainingMatrixVesselRevisions.values()).filter(revision => revision.vesselId === vesselId);
+  }
+
+  async createTrainingMatrixVesselRevision(insertRevision: InsertTrainingMatrixVesselRevision): Promise<TrainingMatrixVesselRevision> {
+    const id = this.currentTrainingMatrixVesselRevisionId++;
+    const revision: TrainingMatrixVesselRevision = { 
+      ...insertRevision, 
+      id,
+      createdAt: null as any
+    };
+    this.trainingMatrixVesselRevisions.set(id, revision);
+    this.saveToFile();
+    return revision;
   }
 
   // Appraisal Result methods (same as MemStorage)
