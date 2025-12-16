@@ -7445,7 +7445,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const results = await Promise.all(
         updates.map(async (item: any) => {
           if (!item.id) return null;
-          return storage.updateTrainingMaster(item.id, item.data);
+          
+          // Fetch existing record to check if applicableToCompany changed
+          const existing = await storage.getTrainingMaster(item.id);
+          if (!existing) return null;
+          
+          const updated = await storage.updateTrainingMaster(item.id, item.data);
+          if (!updated) return null;
+          
+          // Auto-sync with Company Training when applicableToCompany changes
+          const wasApplicable = existing.applicableToCompany === true;
+          const isNowApplicable = updated.applicableToCompany === true;
+          
+          if (!wasApplicable && isNowApplicable) {
+            // Create Company Training record when newly marked as applicable
+            await storage.createCompanyTrainingFromMaster(item.id);
+          } else if (wasApplicable && !isNowApplicable) {
+            // Delete Company Training record when unmarked
+            await storage.deleteCompanyTrainingByMasterId(item.id);
+          } else if (isNowApplicable && updated) {
+            // If training label changed, sync it to company training
+            const newLabel = updated.trainingLabel || updated.trainingName;
+            const companyTraining = await storage.getCompanyTrainingByMasterId(item.id);
+            if (companyTraining && companyTraining.trainingLabel !== newLabel) {
+              await storage.updateCompanyTraining(companyTraining.id, { trainingLabel: newLabel });
+            }
+          }
+          
+          return updated;
         })
       );
       res.json(results.filter(Boolean));
