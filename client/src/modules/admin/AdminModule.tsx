@@ -5351,17 +5351,18 @@ const AdminModuleInner = (): JSX.Element => {
       <div className="flex-1 overflow-hidden">
         {selectedTrainingMatrixTab === "training-master" && (
           <div data-testid="content-training-master" className="h-full">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-auto h-[calc(100vh-220px)]">
-                <Table>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex-1 flex flex-col overflow-hidden" style={{ maxHeight: 'calc(100vh - 220px)' }}>
+              <div className="flex-1 overflow-auto relative">
+                <Table className="relative">
                   <TableHeader className="sticky top-0 z-50">
                     <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
-                      <TableHead className="w-12 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">#</TableHead>
-                      <TableHead className="w-20 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">ID</TableHead>
-                      <TableHead className="min-w-[200px] text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Training Name</TableHead>
-                      <TableHead className="w-24 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Category</TableHead>
-                      <TableHead className="w-24 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Group</TableHead>
-                      <TableHead className="w-32 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Requirement/Ref</TableHead>
-                      <TableHead className="w-32 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">
+                      <TableHead className="w-12 text-center text-xs font-normal text-white bg-[#52baf3]">#</TableHead>
+                      <TableHead className="w-20 text-xs font-normal text-white bg-[#52baf3]">ID</TableHead>
+                      <TableHead className="min-w-[200px] text-xs font-normal text-white bg-[#52baf3]">Training Name</TableHead>
+                      <TableHead className="w-24 text-xs font-normal text-white bg-[#52baf3]">Category</TableHead>
+                      <TableHead className="w-24 text-xs font-normal text-white bg-[#52baf3]">Group</TableHead>
+                      <TableHead className="w-32 text-xs font-normal text-white bg-[#52baf3]">Requirement/Ref</TableHead>
+                      <TableHead className="w-32 text-center text-xs font-normal text-white bg-[#52baf3]">
                         <div className="flex items-center justify-center gap-2">
                           <span>Applicable to Company</span>
                           {isTrainingMasterEditing && (
@@ -5391,9 +5392,9 @@ const AdminModuleInner = (): JSX.Element => {
                           )}
                         </div>
                       </TableHead>
-                      <TableHead className="w-[180px] text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Training Label</TableHead>
+                      <TableHead className="w-[180px] text-xs font-normal text-white bg-[#52baf3]">Training Label</TableHead>
                       {isTrainingMasterEditing && (
-                        <TableHead className="w-20 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Actions</TableHead>
+                        <TableHead className="w-20 text-center text-xs font-normal text-white bg-[#52baf3]">Actions</TableHead>
                       )}
                     </TableRow>
                   </TableHeader>
@@ -5571,6 +5572,7 @@ const AdminModuleInner = (): JSX.Element => {
                         })}
                     </TableBody>
                   </Table>
+              </div>
             </div>
           </div>
         )}
@@ -5593,21 +5595,22 @@ const AdminModuleInner = (): JSX.Element => {
               </div>
             )}
             {/* Company Training Table */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex-1 flex flex-col overflow-hidden" style={{ maxHeight: 'calc(100vh - 220px)' }}>
+              <div className="flex-1 overflow-auto relative">
                   <Table className="relative" style={{ minWidth: `${700 + applicableRanksForTraining.length * 85}px` }}>
                     <TableHeader className="sticky top-0 z-50">
                       <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
-                        <TableHead className="w-12 text-center text-xs font-normal text-white sticky top-0 left-0 z-40 bg-[#52baf3] shadow-sm">#</TableHead>
-                        <TableHead className="w-28 text-xs font-normal text-white sticky top-0 left-12 z-40 bg-[#52baf3] shadow-sm">Company ID</TableHead>
-                        <TableHead className="min-w-[200px] text-xs font-normal text-white sticky top-0 left-40 z-40 bg-[#52baf3] shadow-sm">Training Label</TableHead>
-                        <TableHead className="w-24 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Abr</TableHead>
-                        <TableHead className="min-w-[150px] text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Requirement</TableHead>
-                        <TableHead className="w-28 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Company Group</TableHead>
+                        <TableHead className="w-12 text-center text-xs font-normal text-white sticky left-0 z-40 bg-[#52baf3]">#</TableHead>
+                        <TableHead className="w-28 text-xs font-normal text-white sticky left-12 z-40 bg-[#52baf3]">Company ID</TableHead>
+                        <TableHead className="min-w-[200px] text-xs font-normal text-white sticky left-40 z-40 bg-[#52baf3]">Training Label</TableHead>
+                        <TableHead className="w-24 text-xs font-normal text-white bg-[#52baf3]">Abr</TableHead>
+                        <TableHead className="min-w-[150px] text-xs font-normal text-white bg-[#52baf3]">Requirement</TableHead>
+                        <TableHead className="w-28 text-xs font-normal text-white bg-[#52baf3]">Company Group</TableHead>
                         {isCompanyTrainingEditing && (
-                          <TableHead className="w-20 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Reorder</TableHead>
+                          <TableHead className="w-20 text-center text-xs font-normal text-white bg-[#52baf3]">Reorder</TableHead>
                         )}
                         {isCompanyTrainingEditing && (
-                          <TableHead className="w-16 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">
+                          <TableHead className="w-16 text-center text-xs font-normal text-white bg-[#52baf3]">
                             <div className="leading-tight">Select<br/>All</div>
                           </TableHead>
                         )}
@@ -5615,7 +5618,7 @@ const AdminModuleInner = (): JSX.Element => {
                         {applicableRanksForTraining.map(rank => (
                           <TableHead 
                             key={rank.id} 
-                            className="w-20 min-w-[80px] text-center text-[10px] font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm px-1"
+                            className="w-20 min-w-[80px] text-center text-[10px] font-normal text-white bg-[#52baf3] px-1"
                             title={rank.rank}
                           >
                             <div className="leading-tight whitespace-normal break-words h-8 flex items-center justify-center">
@@ -5625,7 +5628,7 @@ const AdminModuleInner = (): JSX.Element => {
                         ))}
                       </TableRow>
                     </TableHeader>
-                  <TableBody>
+                    <TableBody>
                     {companyTrainingLoading && (
                       <>
                         {Array.from({ length: 10 }).map((_, index) => (
@@ -5846,8 +5849,9 @@ const AdminModuleInner = (): JSX.Element => {
                         })}
                       </TableRow>
                     ))}
-                  </TableBody>
-                </Table>
+                    </TableBody>
+                  </Table>
+              </div>
             </div>
           </div>
         )}
@@ -6078,37 +6082,38 @@ const AdminModuleInner = (): JSX.Element => {
             )}
 
             {/* Training Matrix Vessel Table - Replicates Company Table with App to Vessel column */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-auto" style={{ maxHeight: 'calc(100vh - 280px)' }}>
-              <Table className="relative" style={{ minWidth: `${750 + applicableRanksForTraining.length * 85}px` }}>
-                <TableHeader className="sticky top-0 z-50">
-                  <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
-                    {/* App to Vessel column - first column */}
-                    <TableHead className="w-20 text-center text-xs font-normal text-white sticky top-0 left-0 z-40 bg-[#52baf3] shadow-sm">
-                      <div className="leading-tight">App. To<br/>Vessel</div>
-                    </TableHead>
-                    <TableHead className="w-12 text-center text-xs font-normal text-white sticky top-0 left-20 z-40 bg-[#52baf3] shadow-sm">#</TableHead>
-                    <TableHead className="w-28 text-xs font-normal text-white sticky top-0 left-32 z-40 bg-[#52baf3] shadow-sm">Company ID</TableHead>
-                    <TableHead className="min-w-[200px] text-xs font-normal text-white sticky top-0 left-60 z-40 bg-[#52baf3] shadow-sm">Training Label</TableHead>
-                    <TableHead className="min-w-[150px] text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Requirement</TableHead>
-                    <TableHead className="w-28 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Company Group</TableHead>
-                    {tmRevisionMode && (
-                      <TableHead className="w-20 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Reorder</TableHead>
-                    )}
-                    {/* Rank columns for M/R matrix - read-only from Company */}
-                    {applicableRanksForTraining.map(rank => (
-                      <TableHead 
-                        key={rank.id} 
-                        className="w-20 min-w-[80px] text-center text-[10px] font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm px-1"
-                        title={rank.rank}
-                      >
-                        <div className="leading-tight whitespace-normal break-words h-8 flex items-center justify-center">
-                          {rank.label || rank.rank}
-                        </div>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex-1 flex flex-col overflow-hidden" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+              <div className="flex-1 overflow-auto relative">
+                <Table className="relative" style={{ minWidth: `${750 + applicableRanksForTraining.length * 85}px` }}>
+                  <TableHeader className="sticky top-0 z-50">
+                    <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                      {/* App to Vessel column - first column */}
+                      <TableHead className="w-20 text-center text-xs font-normal text-white sticky left-0 z-40 bg-[#52baf3]">
+                        <div className="leading-tight">App. To<br/>Vessel</div>
                       </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+                      <TableHead className="w-12 text-center text-xs font-normal text-white sticky left-20 z-40 bg-[#52baf3]">#</TableHead>
+                      <TableHead className="w-28 text-xs font-normal text-white sticky left-32 z-40 bg-[#52baf3]">Company ID</TableHead>
+                      <TableHead className="min-w-[200px] text-xs font-normal text-white sticky left-60 z-40 bg-[#52baf3]">Training Label</TableHead>
+                      <TableHead className="min-w-[150px] text-xs font-normal text-white bg-[#52baf3]">Requirement</TableHead>
+                      <TableHead className="w-28 text-xs font-normal text-white bg-[#52baf3]">Company Group</TableHead>
+                      {tmRevisionMode && (
+                        <TableHead className="w-20 text-center text-xs font-normal text-white bg-[#52baf3]">Reorder</TableHead>
+                      )}
+                      {/* Rank columns for M/R matrix - read-only from Company */}
+                      {applicableRanksForTraining.map(rank => (
+                        <TableHead 
+                          key={rank.id} 
+                          className="w-20 min-w-[80px] text-center text-[10px] font-normal text-white bg-[#52baf3] px-1"
+                          title={rank.rank}
+                        >
+                          <div className="leading-tight whitespace-normal break-words h-8 flex items-center justify-center">
+                            {rank.label || rank.rank}
+                          </div>
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                   {tmSelectedVessels.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6 + (tmRevisionMode ? 1 : 0) + applicableRanksForTraining.length} className="text-center py-8 text-gray-500">
@@ -6236,8 +6241,9 @@ const AdminModuleInner = (): JSX.Element => {
                       );
                     })
                   )}
-                </TableBody>
-              </Table>
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           </div>
         )}
