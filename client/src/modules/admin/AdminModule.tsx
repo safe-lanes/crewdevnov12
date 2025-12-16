@@ -827,11 +827,21 @@ const AdminModuleInner = (): JSX.Element => {
     } else if (tmVesselRevisions.length > 0) {
       // Get the latest revision - copy array to avoid mutating cache
       const sortedRevisions = [...tmVesselRevisions].sort((a: any, b: any) => {
-        const aNum = parseInt(a.revisionNumber?.replace('R', '') || '0');
-        const bNum = parseInt(b.revisionNumber?.replace('R', '') || '0');
+        // Use 'revision' field (e.g., "R0", "R1") not 'revisionNumber'
+        const aNum = parseInt((a.revision || '').replace('R', '') || '0');
+        const bNum = parseInt((b.revision || '').replace('R', '') || '0');
         return bNum - aNum;
       });
-      sourceData = sortedRevisions[0]?.revisionData;
+      // Parse revisionData if it's a JSON string
+      let revData = sortedRevisions[0]?.revisionData;
+      if (typeof revData === 'string') {
+        try {
+          revData = JSON.parse(revData);
+        } catch (e) {
+          console.error('Failed to parse revisionData:', e);
+        }
+      }
+      sourceData = revData;
     }
     
     // Parse the source data - supports multiple formats for compatibility
