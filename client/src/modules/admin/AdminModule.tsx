@@ -605,6 +605,8 @@ const AdminModuleInner = (): JSX.Element => {
   const upsertRequirementsMutation = useUpsertCompanyTrainingRequirements();
   const [localTrainingRequirements, setLocalTrainingRequirements] = useState<Map<string, 'M' | 'R' | null>>(new Map());
   const [changedRequirements, setChangedRequirements] = useState<Set<string>>(new Set());
+  // Select All state: tracks whether "Select All M" or "Select All R" is checked per training
+  const [selectAllState, setSelectAllState] = useState<Map<number, { M: boolean; R: boolean }>>(new Map());
   
   // Sync training requirements with local state
   useEffect(() => {
@@ -615,6 +617,7 @@ const AdminModuleInner = (): JSX.Element => {
       });
       setLocalTrainingRequirements(reqMap);
       setChangedRequirements(new Set());
+      setSelectAllState(new Map()); // Reset select all state when exiting edit mode
     }
   }, [trainingRequirements, isCompanyTrainingEditing]);
   
@@ -4716,6 +4719,56 @@ const AdminModuleInner = (): JSX.Element => {
     return rankMasterData.filter(rank => rank.applicableToCompany === true);
   }, [rankMasterData]);
   
+  // Handler for "Select All" M/R - applies to all ranks for a training
+  const handleSelectAll = (trainingId: number, type: 'M' | 'R') => {
+    const currentState = selectAllState.get(trainingId) || { M: false, R: false };
+    const isCurrentlyChecked = currentState[type];
+    
+    // Toggle the select all state
+    setSelectAllState(prev => {
+      const newMap = new Map(prev);
+      newMap.set(trainingId, {
+        ...currentState,
+        [type]: !isCurrentlyChecked,
+        // If selecting one type, uncheck the other (mutually exclusive)
+        ...(type === 'M' && !isCurrentlyChecked ? { R: false } : {}),
+        ...(type === 'R' && !isCurrentlyChecked ? { M: false } : {}),
+      });
+      return newMap;
+    });
+    
+    // Update all rank requirements for this training
+    setLocalTrainingRequirements(prev => {
+      const newMap = new Map(prev);
+      applicableRanksForTraining.forEach(rank => {
+        const rankId = parseInt(rank.id);
+        const key = `${trainingId}-${rankId}`;
+        
+        if (!isCurrentlyChecked) {
+          // Checking "Select All" - set all ranks to this type
+          newMap.set(key, type);
+        } else {
+          // Unchecking "Select All" - clear all ranks that have this type
+          const currentStatus = newMap.get(key);
+          if (currentStatus === type) {
+            newMap.delete(key);
+          }
+        }
+      });
+      return newMap;
+    });
+    
+    // Mark all as changed
+    setChangedRequirements(prev => {
+      const newSet = new Set(prev);
+      applicableRanksForTraining.forEach(rank => {
+        const rankId = parseInt(rank.id);
+        newSet.add(`${trainingId}-${rankId}`);
+      });
+      return newSet;
+    });
+  };
+  
   // Handler for saving company training changes
   const handleSaveCompanyTraining = async () => {
     const hasTrainingChanges = changedCompanyTrainings.size > 0;
@@ -5346,6 +5399,11 @@ const AdminModuleInner = (): JSX.Element => {
                         {isCompanyTrainingEditing && (
                           <TableHead className="w-20 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Reorder</TableHead>
                         )}
+                        {isCompanyTrainingEditing && (
+                          <TableHead className="w-16 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">
+                            <div className="leading-tight">Select<br/>All</div>
+                          </TableHead>
+                        )}
                         {/* Rank columns for M/R matrix */}
                         {applicableRanksForTraining.map(rank => (
                           <TableHead 
@@ -5372,6 +5430,7 @@ const AdminModuleInner = (): JSX.Element => {
                             <TableCell><div className="h-4 w-28 bg-gray-200 rounded animate-pulse" /></TableCell>
                             <TableCell><div className="h-4 w-16 bg-gray-200 rounded animate-pulse" /></TableCell>
                             {isCompanyTrainingEditing && <TableCell />}
+                            {isCompanyTrainingEditing && <TableCell />}
                             {applicableRanksForTraining.map(rank => (
                               <TableCell key={rank.id} className="text-center min-w-[80px]">
                                 <div className="h-4 w-8 bg-gray-200 rounded animate-pulse mx-auto" />
@@ -5383,7 +5442,7 @@ const AdminModuleInner = (): JSX.Element => {
                     )}
                     {!companyTrainingLoading && filteredCompanyTrainingData.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={6 + (isCompanyTrainingEditing ? 1 : 0) + applicableRanksForTraining.length} className="text-center text-gray-500 py-8">
+                        <TableCell colSpan={6 + (isCompanyTrainingEditing ? 2 : 0) + applicableRanksForTraining.length} className="text-center text-gray-500 py-8">
                           {companyTrainingData.length === 0 
                             ? "No company trainings found. Mark trainings as 'Applicable to Company' in Training Master to add them here."
                             : "No trainings match your search."}
@@ -5500,6 +5559,36 @@ const AdminModuleInner = (): JSX.Element => {
                                 >
                                   <ChevronDown className="h-4 w-4" />
                                 </Button>
+                              </div>
+                            </TableCell>
+                          );
+                        })()}
+                        {/* Select All cell - only shown in edit mode */}
+                        {isCompanyTrainingEditing && (() => {
+                          const selectState = selectAllState.get(training.id) || { M: false, R: false };
+                          return (
+                            <TableCell className="text-center">
+                              <div className="flex flex-col items-center gap-0.5">
+                                <label className="flex items-center gap-0.5 cursor-pointer text-[10px]">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectState.M}
+                                    onChange={() => handleSelectAll(training.id, 'M')}
+                                    className="h-3 w-3 rounded border-gray-300"
+                                    data-testid={`checkbox-select-all-m-${training.id}`}
+                                  />
+                                  <span className="text-gray-600">M</span>
+                                </label>
+                                <label className="flex items-center gap-0.5 cursor-pointer text-[10px]">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectState.R}
+                                    onChange={() => handleSelectAll(training.id, 'R')}
+                                    className="h-3 w-3 rounded border-gray-300"
+                                    data-testid={`checkbox-select-all-r-${training.id}`}
+                                  />
+                                  <span className="text-gray-600">R</span>
+                                </label>
                               </div>
                             </TableCell>
                           );
