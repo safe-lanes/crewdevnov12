@@ -96,6 +96,8 @@ import {
   companyTrainingGroups,
   companyTrainings,
   companyTrainingRequirements,
+  trainingMatrixVesselDrafts,
+  trainingMatrixVesselRevisions,
   type TrainingMaster,
   type InsertTrainingMaster,
   type UpdateTrainingMaster,
@@ -105,7 +107,11 @@ import {
   type InsertCompanyTraining,
   type UpdateCompanyTraining,
   type CompanyTrainingRequirement,
-  type UpsertCompanyTrainingRequirement
+  type UpsertCompanyTrainingRequirement,
+  type TrainingMatrixVesselDraft,
+  type InsertTrainingMatrixVesselDraft,
+  type TrainingMatrixVesselRevision,
+  type InsertTrainingMatrixVesselRevision
 } from "@shared/schema";
 import { eq, desc, asc, sql, and, inArray, or, like, ilike, isNull } from "drizzle-orm";
 import { type IStorage } from "./storage";
@@ -4500,5 +4506,62 @@ export class DatabaseStorage implements IStorage {
     const result = await this.db.delete(companyTrainingRequirements)
       .where(eq(companyTrainingRequirements.companyTrainingId, companyTrainingId));
     return true;
+  }
+
+  // Training Matrix Vessel Drafts Methods
+  async getTrainingMatrixVesselDrafts(): Promise<TrainingMatrixVesselDraft[]> {
+    return await this.db.select().from(trainingMatrixVesselDrafts);
+  }
+
+  async getTrainingMatrixVesselDraft(id: number): Promise<TrainingMatrixVesselDraft | undefined> {
+    const result = await this.db.select().from(trainingMatrixVesselDrafts)
+      .where(eq(trainingMatrixVesselDrafts.id, id));
+    return result[0];
+  }
+
+  async getTrainingMatrixVesselDraftsByVessel(vesselId: string): Promise<TrainingMatrixVesselDraft[]> {
+    return await this.db.select().from(trainingMatrixVesselDrafts)
+      .where(eq(trainingMatrixVesselDrafts.vesselId, vesselId));
+  }
+
+  async createTrainingMatrixVesselDraft(insertDraft: InsertTrainingMatrixVesselDraft): Promise<TrainingMatrixVesselDraft> {
+    const result = await this.db.insert(trainingMatrixVesselDrafts).values(insertDraft).returning();
+    return result[0];
+  }
+
+  async updateTrainingMatrixVesselDraft(id: number, draftData: Partial<InsertTrainingMatrixVesselDraft>): Promise<TrainingMatrixVesselDraft | undefined> {
+    const result = await this.db.update(trainingMatrixVesselDrafts)
+      .set({ ...draftData, updatedAt: new Date() })
+      .where(eq(trainingMatrixVesselDrafts.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteTrainingMatrixVesselDraft(id: number): Promise<boolean> {
+    const result = await this.db.delete(trainingMatrixVesselDrafts)
+      .where(eq(trainingMatrixVesselDrafts.id, id));
+    return true;
+  }
+
+  // Training Matrix Vessel Revisions Methods
+  async getTrainingMatrixVesselRevisions(): Promise<TrainingMatrixVesselRevision[]> {
+    return await this.db.select().from(trainingMatrixVesselRevisions);
+  }
+
+  async getTrainingMatrixVesselRevision(id: number): Promise<TrainingMatrixVesselRevision | undefined> {
+    const result = await this.db.select().from(trainingMatrixVesselRevisions)
+      .where(eq(trainingMatrixVesselRevisions.id, id));
+    return result[0];
+  }
+
+  async getTrainingMatrixVesselRevisionsByVessel(vesselId: string): Promise<TrainingMatrixVesselRevision[]> {
+    return await this.db.select().from(trainingMatrixVesselRevisions)
+      .where(eq(trainingMatrixVesselRevisions.vesselId, vesselId))
+      .orderBy(desc(trainingMatrixVesselRevisions.createdAt));
+  }
+
+  async createTrainingMatrixVesselRevision(insertRevision: InsertTrainingMatrixVesselRevision): Promise<TrainingMatrixVesselRevision> {
+    const result = await this.db.insert(trainingMatrixVesselRevisions).values(insertRevision).returning();
+    return result[0];
   }
 }

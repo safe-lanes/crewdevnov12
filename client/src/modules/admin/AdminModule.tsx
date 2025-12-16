@@ -737,7 +737,7 @@ const AdminModuleInner = (): JSX.Element => {
   const [tmNextRevision, setTmNextRevision] = useState<string>("R0");
   const [tmFlexDate, setTmFlexDate] = useState("");
   const [tmRevisionMode, setTmRevisionMode] = useState(false);
-  const [tmTrainingRequirements, setTmTrainingRequirements] = useState<Map<string, Map<number, string>>>(new Map()); // vesselId -> (trainingId -> M|R|null)
+  const [tmApplicableTrainings, setTmApplicableTrainings] = useState<Map<string, Set<number>>>(new Map()); // vesselId -> Set of applicable training IDs
   
   // Training Matrix Vessel revision queries - use queryFn with explicit URL
   const tmCurrentVesselId = tmSelectedVessels[0];
@@ -796,14 +796,14 @@ const AdminModuleInner = (): JSX.Element => {
     }
   }, [tmNextRevisionData]);
   
-  // Hydrate tmTrainingRequirements from draft or latest revision when vessel changes or data loads
+  // Hydrate tmApplicableTrainings from draft or latest revision when vessel changes or data loads
   useEffect(() => {
     if (!tmCurrentVesselId) {
       return;
     }
     
     const vesselId = tmCurrentVesselId;
-    const vesselReqs = new Map<number, string>();
+    const applicableSet = new Set<number>();
     
     // Priority: draft data first, then latest revision
     let sourceData: any = null;
@@ -819,20 +819,38 @@ const AdminModuleInner = (): JSX.Element => {
       sourceData = sortedRevisions[0]?.revisionData;
     }
     
-    // Parse the source data if it exists
-    if (sourceData && typeof sourceData === 'object') {
-      Object.entries(sourceData).forEach(([key, value]) => {
-        const trainingId = parseInt(key);
-        if (!isNaN(trainingId) && (value === 'M' || value === 'R')) {
-          vesselReqs.set(trainingId, value as string);
-        }
-      });
+    // Parse the source data - supports multiple formats for compatibility
+    if (sourceData) {
+      if (Array.isArray(sourceData)) {
+        // Direct array of training IDs (new format)
+        sourceData.forEach((id: number) => {
+          if (typeof id === 'number') {
+            applicableSet.add(id);
+          }
+        });
+      } else if (sourceData.applicableTrainingIds && Array.isArray(sourceData.applicableTrainingIds)) {
+        // Object format with applicableTrainingIds (new format)
+        sourceData.applicableTrainingIds.forEach((id: number) => {
+          if (typeof id === 'number') {
+            applicableSet.add(id);
+          }
+        });
+      } else if (typeof sourceData === 'object' && !Array.isArray(sourceData)) {
+        // Legacy format: object with trainingId keys and M/R values
+        // Any training with an M or R value is considered "applicable"
+        Object.entries(sourceData).forEach(([key, value]) => {
+          const trainingId = parseInt(key);
+          if (!isNaN(trainingId) && (value === 'M' || value === 'R' || value === true)) {
+            applicableSet.add(trainingId);
+          }
+        });
+      }
     }
     
     // Always update state for this vessel (even if empty - clears stale data)
-    setTmTrainingRequirements(prev => {
+    setTmApplicableTrainings(prev => {
       const newMap = new Map(prev);
-      newMap.set(vesselId, vesselReqs);
+      newMap.set(vesselId, applicableSet);
       return newMap;
     });
   }, [tmCurrentVesselId, tmVesselDraft, tmVesselRevisions]);
@@ -5958,7 +5976,7 @@ const AdminModuleInner = (): JSX.Element => {
                       <Button
                         onClick={() => {
                           setTmRevisionMode(false);
-                          setTmTrainingRequirements(new Map());
+                          setTmApplicableTrainings(new Map());
                         }}
                         className="h-8 bg-[#ff6961] hover:bg-[#ff5449] text-[#fdfcfc] text-xs"
                         data-testid="tm-cancel-button"
@@ -5969,7 +5987,8 @@ const AdminModuleInner = (): JSX.Element => {
                         onClick={() => {
                           if (tmSelectedVessels.length === 0) return;
                           const vesselId = tmSelectedVessels[0];
-                          const draftData = Object.fromEntries(tmTrainingRequirements.get(vesselId) || new Map());
+                          const applicableIds = Array.from(tmApplicableTrainings.get(vesselId) || new Set());
+                          const draftData = { applicableTrainingIds: applicableIds };
                           tmSaveDraftMutation.mutate({ vesselId, draftData });
                         }}
                         className="h-8 bg-[#15569e] hover:bg-[#0f4078] text-white text-xs"
@@ -5990,7 +6009,8 @@ const AdminModuleInner = (): JSX.Element => {
                             return;
                           }
                           const vesselId = tmSelectedVessels[0];
-                          const revisionData = Object.fromEntries(tmTrainingRequirements.get(vesselId) || new Map());
+                          const applicableIds = Array.from(tmApplicableTrainings.get(vesselId) || new Set());
+                          const revisionData = { applicableTrainingIds: applicableIds };
                           tmSubmitRevisionMutation.mutate({ 
                             vesselId, 
                             revisionDate: tmFlexDate, 
@@ -6034,117 +6054,184 @@ const AdminModuleInner = (): JSX.Element => {
               </div>
             )}
 
-            {/* Training Matrix Vessel Table */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex-1 flex flex-col">
-              <div className="overflow-auto flex-1">
-                <Table className="min-w-full">
-                  <TableHeader>
-                    <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
-                      <TableHead className="text-white text-xs font-normal w-48 sticky top-0 z-30 bg-[#52baf3] shadow-sm">
-                        Training Name
+            {/* Training Matrix Vessel Table - Replicates Company Table with App to Vessel column */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-full overflow-auto" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+              <Table className="relative" style={{ minWidth: `${750 + applicableRanksForTraining.length * 85}px` }}>
+                <TableHeader>
+                  <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                    {/* App to Vessel column - first column */}
+                    <TableHead className="w-20 text-center text-xs font-normal text-white sticky top-0 left-0 z-40 bg-[#52baf3] shadow-sm">
+                      <div className="leading-tight">App. To<br/>Vessel</div>
+                    </TableHead>
+                    <TableHead className="w-12 text-center text-xs font-normal text-white sticky top-0 left-20 z-40 bg-[#52baf3] shadow-sm">#</TableHead>
+                    <TableHead className="w-28 text-xs font-normal text-white sticky top-0 left-32 z-40 bg-[#52baf3] shadow-sm">Company ID</TableHead>
+                    <TableHead className="min-w-[200px] text-xs font-normal text-white sticky top-0 left-60 z-40 bg-[#52baf3] shadow-sm">Training Label</TableHead>
+                    <TableHead className="min-w-[150px] text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Requirement</TableHead>
+                    <TableHead className="w-28 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Company Group</TableHead>
+                    {tmRevisionMode && (
+                      <TableHead className="w-20 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">Reorder</TableHead>
+                    )}
+                    {/* Rank columns for M/R matrix - read-only from Company */}
+                    {applicableRanksForTraining.map(rank => (
+                      <TableHead 
+                        key={rank.id} 
+                        className="w-20 min-w-[80px] text-center text-[10px] font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm px-1"
+                        title={rank.rank}
+                      >
+                        <div className="leading-tight whitespace-normal break-words h-8 flex items-center justify-center">
+                          {rank.label || rank.rank}
+                        </div>
                       </TableHead>
-                      <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3] shadow-sm text-center">
-                        Category
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3] shadow-sm text-center">
-                        M/R Status
-                      </TableHead>
-                      <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3] shadow-sm text-center">
-                        Reference
-                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {tmSelectedVessels.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6 + (tmRevisionMode ? 1 : 0) + applicableRanksForTraining.length} className="text-center py-8 text-gray-500">
+                        Please select a vessel to view and configure training applicability
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {tmSelectedVessels.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center py-8 text-gray-500">
-                          Please select one or more vessels to configure training requirements
-                        </TableCell>
-                      </TableRow>
-                    ) : trainingMasterData.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center py-8 text-gray-500">
-                          No trainings found in Training Master. Add trainings in the Training Master tab first.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      trainingMasterData.map((training) => {
-                        const vesselId = tmSelectedVessels[0];
-                        const vesselRequirements = tmTrainingRequirements.get(vesselId) || new Map<number, string>();
-                        const status = vesselRequirements.get(training.id) || null;
-                        
-                        return (
-                          <TableRow key={training.id} className="hover:bg-gray-50">
-                            <TableCell className="text-xs font-medium">
-                              {training.trainingName}
+                  ) : companyTrainingLoading ? (
+                    <>
+                      {Array.from({ length: 10 }).map((_, index) => (
+                        <TableRow key={`skeleton-vessel-${index}`} className="border-b border-gray-100">
+                          <TableCell className="text-center sticky left-0 bg-white"><div className="h-4 w-6 bg-gray-200 rounded animate-pulse mx-auto" /></TableCell>
+                          <TableCell className="text-center sticky left-20 bg-white"><div className="h-4 w-6 bg-gray-200 rounded animate-pulse mx-auto" /></TableCell>
+                          <TableCell className="sticky left-32 bg-white"><div className="h-4 w-16 bg-gray-200 rounded animate-pulse" /></TableCell>
+                          <TableCell className="sticky left-60 bg-white"><div className="h-4 w-40 bg-gray-200 rounded animate-pulse" /></TableCell>
+                          <TableCell><div className="h-4 w-28 bg-gray-200 rounded animate-pulse" /></TableCell>
+                          <TableCell><div className="h-4 w-16 bg-gray-200 rounded animate-pulse" /></TableCell>
+                          {tmRevisionMode && <TableCell />}
+                          {applicableRanksForTraining.map(rank => (
+                            <TableCell key={rank.id} className="text-center min-w-[80px]">
+                              <div className="h-4 w-8 bg-gray-200 rounded animate-pulse mx-auto" />
                             </TableCell>
-                            <TableCell className="text-xs text-center text-gray-600">
-                              {training.category || '-'}
-                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </>
+                  ) : filteredCompanyTrainingData.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6 + (tmRevisionMode ? 1 : 0) + applicableRanksForTraining.length} className="text-center text-gray-500 py-8">
+                        {companyTrainingData.length === 0 
+                          ? "No company trainings found. Add trainings in the Company tab first."
+                          : "No trainings match your search."}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredCompanyTrainingData.map((training, index) => {
+                      const vesselId = tmSelectedVessels[0];
+                      const applicableSet = tmApplicableTrainings.get(vesselId) || new Set<number>();
+                      const isApplicable = applicableSet.has(training.id);
+                      
+                      return (
+                        <TableRow 
+                          key={training.id} 
+                          className={`border-b border-gray-100 hover:bg-gray-50 ${isApplicable ? 'bg-green-50' : ''}`}
+                          data-testid={`row-vessel-training-${training.id}`}
+                        >
+                          {/* App to Vessel checkbox - only editable column */}
+                          <TableCell className="text-center sticky left-0 z-10 bg-white">
+                            {tmRevisionMode ? (
+                              <input
+                                type="checkbox"
+                                checked={isApplicable}
+                                onChange={() => {
+                                  setTmApplicableTrainings(prev => {
+                                    const newMap = new Map(prev);
+                                    const vesselSet = new Set(newMap.get(vesselId) || []);
+                                    if (isApplicable) {
+                                      vesselSet.delete(training.id);
+                                    } else {
+                                      vesselSet.add(training.id);
+                                    }
+                                    newMap.set(vesselId, vesselSet);
+                                    return newMap;
+                                  });
+                                }}
+                                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                data-testid={`checkbox-app-to-vessel-${training.id}`}
+                              />
+                            ) : (
+                              <input
+                                type="checkbox"
+                                checked={isApplicable}
+                                disabled
+                                className="h-4 w-4 rounded border-gray-300 text-blue-600 opacity-60"
+                              />
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center text-xs text-gray-600 sticky left-20 z-10 bg-white">{index + 1}</TableCell>
+                          <TableCell className="text-xs sticky left-32 z-10 bg-white">
+                            <span className="text-gray-600">{training.companyId || '-'}</span>
+                          </TableCell>
+                          <TableCell className="text-xs sticky left-60 z-10 bg-white" data-testid={`text-vessel-training-label-${training.id}`}>
+                            {training.trainingLabel || '-'}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            <span className="text-gray-600">{training.requirement || '-'}</span>
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            <span className="text-gray-600">
+                              {training.groupCode 
+                                ? (() => {
+                                    const group = companyTrainingGroups.find(g => g.code === training.groupCode);
+                                    return group?.label ? `${training.groupCode}. ${group.label}` : training.groupCode;
+                                  })()
+                                : '-'}
+                            </span>
+                          </TableCell>
+                          {tmRevisionMode && (
                             <TableCell className="text-center">
-                              {tmRevisionMode ? (
-                                <div className="flex items-center justify-center gap-3">
-                                  <label className="flex items-center gap-1 cursor-pointer text-xs">
+                              <div className="flex justify-center gap-1">
+                                <ChevronUp className="h-4 w-4 text-gray-300" />
+                                <ChevronDown className="h-4 w-4 text-gray-300" />
+                              </div>
+                            </TableCell>
+                          )}
+                          {/* M/R requirement cells for each rank - read-only from Company level */}
+                          {applicableRanksForTraining.map(rank => {
+                            const rankIdNum = parseInt(rank.id);
+                            const key = `${training.id}-${rankIdNum}`;
+                            const status = localTrainingRequirements.get(key);
+                            
+                            return (
+                              <TableCell 
+                                key={rank.id} 
+                                className="text-center px-1 min-w-[80px]"
+                                data-testid={`cell-vessel-requirement-${training.id}-${rankIdNum}`}
+                              >
+                                {/* Read-only display of Company-level M/R requirements */}
+                                <div className="flex flex-col items-center gap-0.5">
+                                  <label className="flex items-center gap-0.5 text-[10px]">
                                     <input
                                       type="checkbox"
                                       checked={status === 'M'}
-                                      onChange={() => {
-                                        setTmTrainingRequirements(prev => {
-                                          const newMap = new Map(prev);
-                                          const vesselReqs = new Map(newMap.get(vesselId) || []);
-                                          if (status === 'M') {
-                                            vesselReqs.delete(training.id);
-                                          } else {
-                                            vesselReqs.set(training.id, 'M');
-                                          }
-                                          newMap.set(vesselId, vesselReqs);
-                                          return newMap;
-                                        });
-                                      }}
-                                      className="h-3 w-3 rounded border-gray-300"
-                                      data-testid={`tm-checkbox-m-${training.id}`}
+                                      disabled
+                                      className="h-3 w-3 rounded border-gray-300 opacity-60"
                                     />
-                                    <span className="text-gray-600">M</span>
+                                    <span className="text-gray-400">M</span>
                                   </label>
-                                  <label className="flex items-center gap-1 cursor-pointer text-xs">
+                                  <label className="flex items-center gap-0.5 text-[10px]">
                                     <input
                                       type="checkbox"
                                       checked={status === 'R'}
-                                      onChange={() => {
-                                        setTmTrainingRequirements(prev => {
-                                          const newMap = new Map(prev);
-                                          const vesselReqs = new Map(newMap.get(vesselId) || []);
-                                          if (status === 'R') {
-                                            vesselReqs.delete(training.id);
-                                          } else {
-                                            vesselReqs.set(training.id, 'R');
-                                          }
-                                          newMap.set(vesselId, vesselReqs);
-                                          return newMap;
-                                        });
-                                      }}
-                                      className="h-3 w-3 rounded border-gray-300"
-                                      data-testid={`tm-checkbox-r-${training.id}`}
+                                      disabled
+                                      className="h-3 w-3 rounded border-gray-300 opacity-60"
                                     />
-                                    <span className="text-gray-600">R</span>
+                                    <span className="text-gray-400">R</span>
                                   </label>
                                 </div>
-                              ) : (
-                                <span className={`text-xs font-medium ${status === 'M' ? 'text-red-600' : status === 'R' ? 'text-blue-600' : 'text-gray-300'}`}>
-                                  {status || '-'}
-                                </span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-xs text-center text-gray-600">
-                              {training.requirementReference || '-'}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
             </div>
           </div>
         )}
