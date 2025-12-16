@@ -739,21 +739,54 @@ const AdminModuleInner = (): JSX.Element => {
   const [tmRevisionMode, setTmRevisionMode] = useState(false);
   const [tmTrainingRequirements, setTmTrainingRequirements] = useState<Map<string, Map<number, string>>>(new Map()); // vesselId -> (trainingId -> M|R|null)
   
-  // Training Matrix Vessel revision queries
+  // Training Matrix Vessel revision queries - use queryFn with explicit URL
+  const tmCurrentVesselId = tmSelectedVessels[0];
+  const tmQueryEnabled = selectedAdminPage === "training-matrix" && selectedTrainingMatrixTab === "vessel" && !!tmCurrentVesselId;
+  
   const { data: tmVesselRevisions = [] } = useQuery<any[]>({
-    queryKey: ['/api/training-matrix-vessel-revisions/by-vessel', tmSelectedVessels[0]],
-    enabled: selectedAdminPage === "training-matrix" && selectedTrainingMatrixTab === "vessel" && tmSelectedVessels.length > 0
+    queryKey: ['tm-vessel-revisions', tmCurrentVesselId],
+    queryFn: async ({ queryKey }) => {
+      const vesselId = queryKey[1];
+      if (!vesselId) return [];
+      const res = await fetch(`/api/training-matrix-vessel-revisions/by-vessel/${vesselId}`);
+      if (!res.ok) throw new Error('Failed to fetch revisions');
+      return res.json();
+    },
+    enabled: tmQueryEnabled,
+    staleTime: 0,
+    refetchOnMount: 'always'
   });
   
   const { data: tmNextRevisionData } = useQuery<{ nextRevision: string; currentRevisionCount: number }>({
-    queryKey: ['/api/training-matrix-vessel-revisions/next-revision', tmSelectedVessels[0]],
-    enabled: selectedAdminPage === "training-matrix" && selectedTrainingMatrixTab === "vessel" && tmSelectedVessels.length > 0
+    queryKey: ['tm-next-revision', tmCurrentVesselId],
+    queryFn: async ({ queryKey }) => {
+      const vesselId = queryKey[1];
+      if (!vesselId) return { nextRevision: 'R0', currentRevisionCount: 0 };
+      const res = await fetch(`/api/training-matrix-vessel-revisions/next-revision/${vesselId}`);
+      if (!res.ok) throw new Error('Failed to fetch next revision');
+      return res.json();
+    },
+    enabled: tmQueryEnabled,
+    staleTime: 0,
+    refetchOnMount: 'always'
   });
   
-  // Training Matrix Vessel draft query
+  // Training Matrix Vessel draft query - use queryFn with explicit URL
   const { data: tmVesselDraft } = useQuery<{ id: number; vesselId: string; draftData: any; updatedAt: string } | null>({
-    queryKey: ['/api/training-matrix-vessel-drafts/by-vessel', tmSelectedVessels[0]],
-    enabled: selectedAdminPage === "training-matrix" && selectedTrainingMatrixTab === "vessel" && tmSelectedVessels.length > 0
+    queryKey: ['tm-vessel-draft', tmCurrentVesselId],
+    queryFn: async ({ queryKey }) => {
+      const vesselId = queryKey[1];
+      if (!vesselId) return null;
+      const res = await fetch(`/api/training-matrix-vessel-drafts/by-vessel/${vesselId}`);
+      if (!res.ok) {
+        if (res.status === 404) return null;
+        throw new Error('Failed to fetch draft');
+      }
+      return res.json();
+    },
+    enabled: tmQueryEnabled,
+    staleTime: 0,
+    refetchOnMount: 'always'
   });
   
   // Update tmNextRevision when query data changes
@@ -765,42 +798,44 @@ const AdminModuleInner = (): JSX.Element => {
   
   // Hydrate tmTrainingRequirements from draft or latest revision when vessel changes or data loads
   useEffect(() => {
-    if (tmSelectedVessels.length === 0) return;
+    if (!tmCurrentVesselId) {
+      return;
+    }
     
-    const vesselId = tmSelectedVessels[0];
+    const vesselId = tmCurrentVesselId;
+    const vesselReqs = new Map<number, string>();
     
     // Priority: draft data first, then latest revision
     let sourceData: any = null;
     if (tmVesselDraft?.draftData) {
       sourceData = tmVesselDraft.draftData;
     } else if (tmVesselRevisions.length > 0) {
-      // Get the latest revision (sorted by revision number descending)
-      const latestRevision = tmVesselRevisions.sort((a: any, b: any) => {
+      // Get the latest revision - copy array to avoid mutating cache
+      const sortedRevisions = [...tmVesselRevisions].sort((a: any, b: any) => {
         const aNum = parseInt(a.revisionNumber?.replace('R', '') || '0');
         const bNum = parseInt(b.revisionNumber?.replace('R', '') || '0');
         return bNum - aNum;
-      })[0];
-      sourceData = latestRevision?.revisionData;
+      });
+      sourceData = sortedRevisions[0]?.revisionData;
     }
     
+    // Parse the source data if it exists
     if (sourceData && typeof sourceData === 'object') {
-      setTmTrainingRequirements(prev => {
-        const newMap = new Map(prev);
-        const vesselReqs = new Map<number, string>();
-        
-        // Parse the source data - expected format: { trainingId: 'M' | 'R' | null, ... }
-        Object.entries(sourceData).forEach(([key, value]) => {
-          const trainingId = parseInt(key);
-          if (!isNaN(trainingId) && (value === 'M' || value === 'R')) {
-            vesselReqs.set(trainingId, value as string);
-          }
-        });
-        
-        newMap.set(vesselId, vesselReqs);
-        return newMap;
+      Object.entries(sourceData).forEach(([key, value]) => {
+        const trainingId = parseInt(key);
+        if (!isNaN(trainingId) && (value === 'M' || value === 'R')) {
+          vesselReqs.set(trainingId, value as string);
+        }
       });
     }
-  }, [tmSelectedVessels, tmVesselDraft, tmVesselRevisions]);
+    
+    // Always update state for this vessel (even if empty - clears stale data)
+    setTmTrainingRequirements(prev => {
+      const newMap = new Map(prev);
+      newMap.set(vesselId, vesselReqs);
+      return newMap;
+    });
+  }, [tmCurrentVesselId, tmVesselDraft, tmVesselRevisions]);
   
   // Training Matrix Vessel Draft mutations
   const tmSaveDraftMutation = useMutation({
@@ -814,7 +849,7 @@ const AdminModuleInner = (): JSX.Element => {
         duration: 3000,
       });
       // Invalidate draft query to refresh the data
-      queryClient.invalidateQueries({ queryKey: ['/api/training-matrix-vessel-drafts/by-vessel', variables.vesselId] });
+      queryClient.invalidateQueries({ queryKey: ['tm-vessel-draft', variables.vesselId] });
     },
     onError: (error: any) => {
       console.error('Failed to save training matrix draft:', error);
@@ -838,11 +873,19 @@ const AdminModuleInner = (): JSX.Element => {
         duration: 3000,
       });
       setTmRevisionMode(false);
-      // Invalidate both revisions and next-revision queries with correct keys
-      queryClient.invalidateQueries({ queryKey: ['/api/training-matrix-vessel-revisions/by-vessel', variables.vesselId] });
-      queryClient.invalidateQueries({ queryKey: ['/api/training-matrix-vessel-revisions/next-revision', variables.vesselId] });
-      // Also invalidate draft query since draft should be cleared after submit
-      queryClient.invalidateQueries({ queryKey: ['/api/training-matrix-vessel-drafts/by-vessel', variables.vesselId] });
+      // Invalidate all training matrix queries for this vessel using predicate for robust matching
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey;
+          if (!Array.isArray(key) || key.length < 2) return false;
+          const prefix = key[0] as string;
+          const vesselId = key[1];
+          return (
+            (prefix === 'tm-vessel-revisions' || prefix === 'tm-next-revision' || prefix === 'tm-vessel-draft') &&
+            vesselId === variables.vesselId
+          );
+        }
+      });
     },
     onError: (error: any) => {
       console.error('Failed to submit training matrix revision:', error);
