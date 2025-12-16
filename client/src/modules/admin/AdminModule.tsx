@@ -6227,27 +6227,10 @@ const AdminModuleInner = (): JSX.Element => {
                                 className="text-center px-1 min-w-[80px]"
                                 data-testid={`cell-vessel-requirement-${training.id}-${rankIdNum}`}
                               >
-                                {/* Read-only display of Company-level M/R requirements */}
-                                <div className="flex flex-col items-center gap-0.5">
-                                  <label className="flex items-center gap-0.5 text-[10px]">
-                                    <input
-                                      type="checkbox"
-                                      checked={status === 'M'}
-                                      disabled
-                                      className="h-3 w-3 rounded border-gray-300 opacity-60"
-                                    />
-                                    <span className="text-gray-400">M</span>
-                                  </label>
-                                  <label className="flex items-center gap-0.5 text-[10px]">
-                                    <input
-                                      type="checkbox"
-                                      checked={status === 'R'}
-                                      disabled
-                                      className="h-3 w-3 rounded border-gray-300 opacity-60"
-                                    />
-                                    <span className="text-gray-400">R</span>
-                                  </label>
-                                </div>
+                                {/* Read-only display of Company-level M/R requirements - text only */}
+                                <span className={`text-xs font-medium ${status === 'M' ? 'text-red-600' : status === 'R' ? 'text-blue-600' : 'text-gray-300'}`}>
+                                  {status || '-'}
+                                </span>
                               </TableCell>
                             );
                           })}
