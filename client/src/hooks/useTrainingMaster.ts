@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { TrainingMaster, InsertTrainingMaster, UpdateTrainingMaster } from "@shared/schema";
+import { TrainingMaster, InsertTrainingMaster, UpdateTrainingMaster, CompanyTrainingRequirement, UpsertCompanyTrainingRequirement } from "@shared/schema";
 
 export function useTrainingMasters(options?: { enabled?: boolean }) {
   return useQuery<TrainingMaster[]>({
@@ -136,4 +136,32 @@ export function generateTrainingId(category: string, group: string, existingIds:
     : 1;
   
   return `${prefix}${String(nextNumber).padStart(3, '0')}`;
+}
+
+// Hooks for Company Training Requirements (M/R matrix by rank)
+export function useCompanyTrainingRequirements() {
+  return useQuery<CompanyTrainingRequirement[]>({
+    queryKey: ['/api/company-training-requirements'],
+    queryFn: async () => {
+      const response = await fetch('/api/company-training-requirements');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    },
+  });
+}
+
+export function useUpsertCompanyTrainingRequirements() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (requirements: UpsertCompanyTrainingRequirement[]) => {
+      const response = await apiRequest('POST', '/api/company-training-requirements/batch', requirements);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/company-training-requirements'] });
+    },
+  });
 }
