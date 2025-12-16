@@ -5333,10 +5333,8 @@ const AdminModuleInner = (): JSX.Element => {
               </div>
             )}
             {/* Company Training Table */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden h-full">
-              <ScrollArea className="h-[calc(100vh-220px)]">
-                <div className="overflow-x-auto">
-                  <Table style={{ minWidth: `${700 + applicableRanksForTraining.length * 60}px` }}>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-full overflow-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
+                  <Table className="relative" style={{ minWidth: `${700 + applicableRanksForTraining.length * 85}px` }}>
                     <TableHeader>
                       <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
                         <TableHead className="w-12 text-center text-xs font-normal text-white sticky top-0 left-0 z-40 bg-[#52baf3] shadow-sm">#</TableHead>
@@ -5352,10 +5350,12 @@ const AdminModuleInner = (): JSX.Element => {
                         {applicableRanksForTraining.map(rank => (
                           <TableHead 
                             key={rank.id} 
-                            className="w-14 text-center text-[10px] font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm px-1"
+                            className="w-20 min-w-[80px] text-center text-[10px] font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm px-1"
                             title={rank.rank}
                           >
-                            <div className="truncate">{rank.label || rank.rank?.slice(0, 4)}</div>
+                            <div className="leading-tight whitespace-normal break-words h-8 flex items-center justify-center">
+                              {rank.label || rank.rank}
+                            </div>
                           </TableHead>
                         ))}
                       </TableRow>
@@ -5373,7 +5373,7 @@ const AdminModuleInner = (): JSX.Element => {
                             <TableCell><div className="h-4 w-16 bg-gray-200 rounded animate-pulse" /></TableCell>
                             {isCompanyTrainingEditing && <TableCell />}
                             {applicableRanksForTraining.map(rank => (
-                              <TableCell key={rank.id} className="text-center">
+                              <TableCell key={rank.id} className="text-center min-w-[80px]">
                                 <div className="h-4 w-8 bg-gray-200 rounded animate-pulse mx-auto" />
                               </TableCell>
                             ))}
@@ -5397,8 +5397,8 @@ const AdminModuleInner = (): JSX.Element => {
                         data-company-training-id={training.id}
                         data-testid={`row-company-training-${training.id}`}
                       >
-                        <TableCell className="text-center text-xs text-gray-600">{index + 1}</TableCell>
-                        <TableCell className="text-xs" data-testid={`cell-company-id-${training.id}`}>
+                        <TableCell className="text-center text-xs text-gray-600 sticky left-0 z-10 bg-white">{index + 1}</TableCell>
+                        <TableCell className="text-xs sticky left-12 z-10 bg-white" data-testid={`cell-company-id-${training.id}`}>
                           {isCompanyTrainingEditing ? (
                             <Input
                               value={training.companyId || ''}
@@ -5410,7 +5410,7 @@ const AdminModuleInner = (): JSX.Element => {
                             <span className="text-gray-600">{training.companyId || '-'}</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-xs" data-testid={`text-company-training-label-${training.id}`}>
+                        <TableCell className="text-xs sticky left-40 z-10 bg-white" data-testid={`text-company-training-label-${training.id}`}>
                           {training.trainingLabel || '-'}
                         </TableCell>
                         <TableCell className="text-xs" data-testid={`cell-company-abr-${training.id}`}>
@@ -5514,7 +5514,7 @@ const AdminModuleInner = (): JSX.Element => {
                           return (
                             <TableCell 
                               key={rank.id} 
-                              className={`text-center px-1 ${isChanged ? 'bg-yellow-50' : ''}`}
+                              className={`text-center px-1 min-w-[80px] ${isChanged ? 'bg-yellow-50' : ''}`}
                               data-testid={`cell-requirement-${training.id}-${rankIdNum}`}
                             >
                               {isCompanyTrainingEditing ? (
@@ -5552,8 +5552,6 @@ const AdminModuleInner = (): JSX.Element => {
                     ))}
                   </TableBody>
                 </Table>
-                </div>
-              </ScrollArea>
             </div>
           </div>
         )}
