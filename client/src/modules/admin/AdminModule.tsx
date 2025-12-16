@@ -4627,13 +4627,39 @@ const AdminModuleInner = (): JSX.Element => {
   }, [localTrainingData, trainingSearchFilter, trainingCategoryFilter, trainingGroupFilter]);
 
   const filteredCompanyTrainingData = useMemo(() => {
+    // Create a map of group code to display order for sorting
+    const groupDisplayOrder: Record<string, number> = {};
+    companyTrainingGroups.forEach(g => {
+      groupDisplayOrder[g.code] = g.displayOrder;
+    });
+    
     return localCompanyTrainingData.filter(training => {
       const matchesSearch = companyTrainingSearchFilter === '' || 
         (training.trainingLabel || '').toLowerCase().includes(companyTrainingSearchFilter.toLowerCase()) ||
         (training.companyId || '').toLowerCase().includes(companyTrainingSearchFilter.toLowerCase());
       return matchesSearch;
-    }).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-  }, [localCompanyTrainingData, companyTrainingSearchFilter]);
+    }).sort((a, b) => {
+      // Sort by: 1) Group (A-J first by displayOrder, NULL/unassigned last), 2) Alphabetically by training label within group
+      const aGroup = a.groupCode;
+      const bGroup = b.groupCode;
+      
+      // If one has group and other doesn't, group comes first
+      if (aGroup && !bGroup) return -1;
+      if (!aGroup && bGroup) return 1;
+      
+      // If both have groups, sort by displayOrder
+      if (aGroup && bGroup) {
+        const aOrder = groupDisplayOrder[aGroup] ?? 99;
+        const bOrder = groupDisplayOrder[bGroup] ?? 99;
+        if (aOrder !== bOrder) return aOrder - bOrder;
+      }
+      
+      // Within same group (or both unassigned), sort alphabetically by training label
+      const aLabel = (a.trainingLabel || '').toLowerCase();
+      const bLabel = (b.trainingLabel || '').toLowerCase();
+      return aLabel.localeCompare(bLabel);
+    });
+  }, [localCompanyTrainingData, companyTrainingSearchFilter, companyTrainingGroups]);
   
   // Handler for company training field changes
   const handleCompanyTrainingFieldChange = (id: number, field: keyof CompanyTraining, value: any) => {
