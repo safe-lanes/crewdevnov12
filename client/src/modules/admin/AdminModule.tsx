@@ -5351,10 +5351,9 @@ const AdminModuleInner = (): JSX.Element => {
       <div className="flex-1 overflow-hidden">
         {selectedTrainingMatrixTab === "training-master" && (
           <div data-testid="content-training-master" className="h-full">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden h-full">
-              <ScrollArea className="h-[calc(100vh-220px)]">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-auto h-[calc(100vh-220px)]">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="sticky top-0 z-50">
                     <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
                       <TableHead className="w-12 text-center text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">#</TableHead>
                       <TableHead className="w-20 text-xs font-normal text-white sticky top-0 z-30 bg-[#52baf3] shadow-sm">ID</TableHead>
@@ -5572,8 +5571,7 @@ const AdminModuleInner = (): JSX.Element => {
                         })}
                     </TableBody>
                   </Table>
-                </ScrollArea>
-              </div>
+            </div>
           </div>
         )}
         {selectedTrainingMatrixTab === "company" && (
@@ -5595,9 +5593,9 @@ const AdminModuleInner = (): JSX.Element => {
               </div>
             )}
             {/* Company Training Table */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-full overflow-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
                   <Table className="relative" style={{ minWidth: `${700 + applicableRanksForTraining.length * 85}px` }}>
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 z-50">
                       <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
                         <TableHead className="w-12 text-center text-xs font-normal text-white sticky top-0 left-0 z-40 bg-[#52baf3] shadow-sm">#</TableHead>
                         <TableHead className="w-28 text-xs font-normal text-white sticky top-0 left-12 z-40 bg-[#52baf3] shadow-sm">Company ID</TableHead>
@@ -6080,9 +6078,9 @@ const AdminModuleInner = (): JSX.Element => {
             )}
 
             {/* Training Matrix Vessel Table - Replicates Company Table with App to Vessel column */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-full overflow-auto" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-auto" style={{ maxHeight: 'calc(100vh - 280px)' }}>
               <Table className="relative" style={{ minWidth: `${750 + applicableRanksForTraining.length * 85}px` }}>
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-50">
                   <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
                     {/* App to Vessel column - first column */}
                     <TableHead className="w-20 text-center text-xs font-normal text-white sticky top-0 left-0 z-40 bg-[#52baf3] shadow-sm">
