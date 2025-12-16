@@ -5267,14 +5267,14 @@ const AdminModuleInner = (): JSX.Element => {
                         <TableCell className="text-xs" data-testid={`cell-company-group-${training.id}`}>
                           {isCompanyTrainingEditing ? (
                             <Select 
-                              value={training.groupCode || ''} 
-                              onValueChange={(value) => handleCompanyTrainingFieldChange(training.id, 'groupCode', value || null)}
+                              value={training.groupCode || '__none__'} 
+                              onValueChange={(value) => handleCompanyTrainingFieldChange(training.id, 'groupCode', value === '__none__' ? null : value)}
                             >
                               <SelectTrigger className="h-7 text-xs w-full" data-testid={`select-company-group-${training.id}`}>
                                 <SelectValue placeholder="-" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="">-</SelectItem>
+                                <SelectItem value="__none__">-</SelectItem>
                                 {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].map(code => {
                                   const group = companyTrainingGroups.find(g => g.code === code);
                                   const displayLabel = group?.label ? `${code}. ${group.label}` : code;
