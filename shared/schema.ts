@@ -70,6 +70,15 @@ export const companyTrainings = pgTable("company_trainings", {
   sortOrder: integer("sort_order").default(0), // For ordering within group
 });
 
+// Company Training Requirements - stores M/R status per training-rank combination
+// M = Mandatory, R = Recommended, null = not set (checkbox unchecked)
+export const companyTrainingRequirements = pgTable("company_training_requirements", {
+  id: serial("id").primaryKey(),
+  companyTrainingId: integer("company_training_id").notNull().references(() => companyTrainings.id, { onDelete: 'cascade' }),
+  rankId: integer("rank_id").notNull().references(() => availableRanks.id, { onDelete: 'cascade' }),
+  status: text("status"), // 'M' for Mandatory, 'R' for Recommended, null for neither
+});
+
 export const crewMembers = pgTable("crew_members", {
   id: text("id").primaryKey(),
   
@@ -865,6 +874,18 @@ export const updateCompanyTrainingSchema = createInsertSchema(companyTrainings).
   sortOrder: true,
 }).partial();
 
+export const insertCompanyTrainingRequirementSchema = createInsertSchema(companyTrainingRequirements).pick({
+  companyTrainingId: true,
+  rankId: true,
+  status: true,
+});
+
+export const upsertCompanyTrainingRequirementSchema = z.object({
+  companyTrainingId: z.number(),
+  rankId: z.number(),
+  status: z.enum(['M', 'R']).nullable(),
+});
+
 export const insertCrewMemberSchema = createInsertSchema(crewMembers).pick({
   // Photo
   uploadedPhoto: true,
@@ -1355,6 +1376,9 @@ export type UpdateCompanyTrainingGroup = z.infer<typeof updateCompanyTrainingGro
 export type CompanyTraining = typeof companyTrainings.$inferSelect;
 export type InsertCompanyTraining = z.infer<typeof insertCompanyTrainingSchema>;
 export type UpdateCompanyTraining = z.infer<typeof updateCompanyTrainingSchema>;
+export type CompanyTrainingRequirement = typeof companyTrainingRequirements.$inferSelect;
+export type InsertCompanyTrainingRequirement = z.infer<typeof insertCompanyTrainingRequirementSchema>;
+export type UpsertCompanyTrainingRequirement = z.infer<typeof upsertCompanyTrainingRequirementSchema>;
 export type InsertCrewMember = z.infer<typeof insertCrewMemberSchema>;
 export type CrewMember = typeof crewMembers.$inferSelect;
 export type InsertAppraisalResult = z.infer<typeof insertAppraisalResultSchema>;
