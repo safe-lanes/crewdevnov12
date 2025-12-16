@@ -772,6 +772,7 @@ const AdminModuleInner = (): JSX.Element => {
   });
   
   // Training Matrix Vessel draft query - use queryFn with explicit URL
+  // API returns an array of drafts, we take the first one (should be only one per vessel)
   const { data: tmVesselDraft } = useQuery<{ id: number; vesselId: string; draftData: any; updatedAt: string } | null>({
     queryKey: ['tm-vessel-draft', tmCurrentVesselId],
     queryFn: async ({ queryKey }) => {
@@ -782,7 +783,21 @@ const AdminModuleInner = (): JSX.Element => {
         if (res.status === 404) return null;
         throw new Error('Failed to fetch draft');
       }
-      return res.json();
+      const drafts = await res.json();
+      // API returns array, take first draft if exists
+      if (Array.isArray(drafts) && drafts.length > 0) {
+        const draft = drafts[0];
+        // Parse draftData if it's a string
+        if (typeof draft.draftData === 'string') {
+          try {
+            draft.draftData = JSON.parse(draft.draftData);
+          } catch (e) {
+            console.error('Failed to parse draftData:', e);
+          }
+        }
+        return draft;
+      }
+      return null;
     },
     enabled: tmQueryEnabled,
     staleTime: 0,
