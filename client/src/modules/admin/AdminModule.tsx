@@ -4777,6 +4777,18 @@ const AdminModuleInner = (): JSX.Element => {
                 >
                   {isCompanyTrainingEditing ? "Save" : "Edit"}
                 </Button>
+                {isCompanyTrainingEditing && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowConfigureGroupLabelsDialog(true)}
+                    className="h-8 gap-2 bg-white text-[#0f172a] border-gray-300"
+                    data-testid="button-configure-group-labels-desktop"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Configure Labels
+                  </Button>
+                )}
               </div>
             )}
           </div>
