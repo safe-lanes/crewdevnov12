@@ -112,6 +112,77 @@ const useAppraisals = () => {
     });
 };
 
+// Hook to fetch company trainings (for Training Matrix)
+const useCompanyTrainings = () => {
+    return useQuery<any[]>({
+        queryKey: ['/api/company-trainings'],
+        queryFn: async () => {
+            const response = await fetch('/api/company-trainings');
+            if (!response.ok) throw new Error('Failed to fetch company trainings');
+            return response.json();
+        },
+    });
+};
+
+// Hook to fetch company training groups (A-J labels)
+const useCompanyTrainingGroups = () => {
+    return useQuery<any[]>({
+        queryKey: ['/api/company-training-groups'],
+        queryFn: async () => {
+            const response = await fetch('/api/company-training-groups');
+            if (!response.ok) throw new Error('Failed to fetch company training groups');
+            return response.json();
+        },
+    });
+};
+
+// Hook to fetch company training requirements (M/R status per rank)
+const useCompanyTrainingRequirements = () => {
+    return useQuery<any[]>({
+        queryKey: ['/api/company-training-requirements'],
+        queryFn: async () => {
+            const response = await fetch('/api/company-training-requirements');
+            if (!response.ok) throw new Error('Failed to fetch company training requirements');
+            return response.json();
+        },
+    });
+};
+
+// Hook to fetch training matrix vessel revisions (for App to Vessel data)
+const useTrainingMatrixVesselRevisions = (vesselId: string | null) => {
+    return useQuery<any[]>({
+        queryKey: ['/api/training-matrix-vessel-revisions/by-vessel', vesselId],
+        queryFn: async () => {
+            if (!vesselId) return [];
+            const response = await fetch(`/api/training-matrix-vessel-revisions/by-vessel/${vesselId}`);
+            if (!response.ok) throw new Error('Failed to fetch training matrix vessel revisions');
+            return response.json();
+        },
+        enabled: !!vesselId,
+    });
+};
+
+// Hook to fetch training matrix vessel draft (for App to Vessel data - draft state)
+const useTrainingMatrixVesselDraft = (vesselId: string | null) => {
+    return useQuery<any[]>({
+        queryKey: ['/api/training-matrix-vessel-drafts/by-vessel', vesselId],
+        queryFn: async () => {
+            if (!vesselId) return [];
+            const response = await fetch(`/api/training-matrix-vessel-drafts/by-vessel/${vesselId}`);
+            if (!response.ok) throw new Error('Failed to fetch training matrix vessel draft');
+            return response.json();
+        },
+        enabled: !!vesselId,
+    });
+};
+
+// Hook to fetch available ranks (for rank ID lookup)
+const useAvailableRanks = () => {
+    return useQuery<any[]>({
+        queryKey: ['/api/available-ranks'],
+    });
+};
+
 // Hook to fetch ports from Port Master (ID 005)
 const usePorts = () => {
     return useQuery({
@@ -1756,6 +1827,157 @@ export const VesselModule = (): JSX.Element => {
     
     // Fetch all appraisals to determine button state
     const { data: allAppraisals = [] } = useAppraisals();
+    
+    // Training Matrix data hooks
+    const { data: companyTrainings = [] } = useCompanyTrainings();
+    const { data: companyTrainingGroups = [] } = useCompanyTrainingGroups();
+    const { data: companyTrainingRequirements = [] } = useCompanyTrainingRequirements();
+    const { data: trainingMatrixRevisions = [] } = useTrainingMatrixVesselRevisions(selectedVessel?.vesselId || null);
+    const { data: trainingMatrixDrafts = [] } = useTrainingMatrixVesselDraft(selectedVessel?.vesselId || null);
+    
+    // Get applicable training IDs for the selected vessel (from draft or latest revision)
+    const applicableTrainingIds = useMemo(() => {
+        // Priority: draft data first (if draft has valid data), then latest revision
+        let sourceData: any = null;
+        
+        // Check if draft has valid data with applicableTrainingIds
+        if (trainingMatrixDrafts.length > 0) {
+            const draft = trainingMatrixDrafts[0];
+            try {
+                const parsedDraft = typeof draft.draftData === 'string' ? JSON.parse(draft.draftData) : draft.draftData;
+                // Only use draft if it has applicableTrainingIds array with items
+                if (parsedDraft?.applicableTrainingIds && Array.isArray(parsedDraft.applicableTrainingIds) && parsedDraft.applicableTrainingIds.length > 0) {
+                    sourceData = parsedDraft;
+                }
+            } catch (e) {
+                console.error('Failed to parse training matrix draft data:', e);
+            }
+        }
+        
+        // Fall back to latest revision if no valid draft data
+        if (!sourceData && trainingMatrixRevisions.length > 0) {
+            // Get the latest revision
+            const sortedRevisions = [...trainingMatrixRevisions].sort((a: any, b: any) => {
+                const aNum = parseInt((a.revision || '').replace('R', '') || '0');
+                const bNum = parseInt((b.revision || '').replace('R', '') || '0');
+                return bNum - aNum;
+            });
+            const latestRevision = sortedRevisions[0];
+            try {
+                sourceData = typeof latestRevision.revisionData === 'string' 
+                    ? JSON.parse(latestRevision.revisionData) 
+                    : latestRevision.revisionData;
+            } catch (e) {
+                console.error('Failed to parse training matrix revision data:', e);
+            }
+        }
+        
+        if (sourceData?.applicableTrainingIds) {
+            return new Set<number>(sourceData.applicableTrainingIds);
+        }
+        return new Set<number>();
+    }, [trainingMatrixDrafts, trainingMatrixRevisions]);
+    
+    // Filter and group company trainings for the Training Matrix tab
+    const groupedTrainingsForMatrix = useMemo(() => {
+        // Filter trainings that are applicable to this vessel
+        const applicableTrainings = companyTrainings.filter((training: any) => 
+            applicableTrainingIds.has(training.id)
+        );
+        
+        // Create a map of group code to group label
+        const groupLabelMap = new Map<string, string>();
+        companyTrainingGroups.forEach((group: any) => {
+            if (group.code && group.label) {
+                groupLabelMap.set(group.code, group.label);
+            }
+        });
+        
+        // Group trainings by groupCode and sort
+        const grouped: { groupCode: string; groupLabel: string; trainings: any[] }[] = [];
+        const groupMap = new Map<string, any[]>();
+        const noGroupTrainings: any[] = [];
+        
+        applicableTrainings.forEach((training: any) => {
+            if (training.groupCode) {
+                if (!groupMap.has(training.groupCode)) {
+                    groupMap.set(training.groupCode, []);
+                }
+                groupMap.get(training.groupCode)!.push(training);
+            } else {
+                noGroupTrainings.push(training);
+            }
+        });
+        
+        // Sort groups alphabetically by code (A, B, C, etc.)
+        const sortedGroupCodes = Array.from(groupMap.keys()).sort();
+        
+        sortedGroupCodes.forEach(code => {
+            const trainings = groupMap.get(code) || [];
+            // Sort trainings within group by sortOrder
+            trainings.sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
+            grouped.push({
+                groupCode: code,
+                groupLabel: groupLabelMap.get(code) || code,
+                trainings
+            });
+        });
+        
+        // Add trainings without a group at the end
+        if (noGroupTrainings.length > 0) {
+            noGroupTrainings.sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
+            grouped.push({
+                groupCode: '',
+                groupLabel: 'Unassigned',
+                trainings: noGroupTrainings
+            });
+        }
+        
+        return grouped;
+    }, [companyTrainings, companyTrainingGroups, applicableTrainingIds]);
+    
+    // Create a lookup for training requirements by companyTrainingId and rankId
+    const trainingRequirementsLookup = useMemo(() => {
+        const lookup = new Map<string, string>(); // key: "trainingId-rankId", value: "M" or "R"
+        companyTrainingRequirements.forEach((req: any) => {
+            if (req.companyTrainingId && req.rankId && req.status) {
+                lookup.set(`${req.companyTrainingId}-${req.rankId}`, req.status);
+            }
+        });
+        return lookup;
+    }, [companyTrainingRequirements]);
+    
+    // Create a lookup from rank name to rankId (for looking up requirements)
+    const rankNameToIdLookup = useMemo(() => {
+        const lookup = new Map<string, number>();
+        availableRanks.forEach((rank: any) => {
+            if (rank.name && rank.id) {
+                lookup.set(rank.name, rank.id);
+                lookup.set(rank.name.toLowerCase(), rank.id);
+            }
+        });
+        return lookup;
+    }, [availableRanks]);
+    
+    // Helper function to get requirement status for a training and rank
+    const getTrainingRequirementStatus = (trainingId: number, rankName: string): string | null => {
+        // Normalize variant ranks (e.g., "3rd Officer_1" -> "Third Officer")
+        let lookupRank = rankName;
+        
+        // Check if it's a variant rank (contains _1, _2, etc.)
+        if (rankName.includes('_')) {
+            const baseRank = rankName.split('_')[0];
+            lookupRank = baseRank;
+        }
+        
+        // Get the rankId for the lookup rank
+        const rankId = rankNameToIdLookup.get(lookupRank) || rankNameToIdLookup.get(lookupRank.toLowerCase());
+        
+        if (!rankId) return null;
+        
+        // Look up the requirement
+        return trainingRequirementsLookup.get(`${trainingId}-${rankId}`) || null;
+    };
 
     // Helper function to get the latest appraisal for a crew member
     const getLatestAppraisal = (crewId: string) => {
@@ -2317,26 +2539,14 @@ export const VesselModule = (): JSX.Element => {
                                 {/* Legend */}
                                 <div className="flex items-center gap-6 text-xs">
                                     <div className="flex items-center gap-2">
-                                        <div className="w-20 h-5 bg-gray-100 border border-gray-300 flex items-center justify-center">
+                                        <div className="w-20 h-5 bg-gray-200 border border-gray-300 flex items-center justify-center">
                                             Mandatory
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <div className="w-24 h-5 bg-blue-50 border border-gray-300 flex items-center justify-center">
+                                        <div className="w-24 h-5 bg-blue-100 border border-gray-300 flex items-center justify-center">
                                             Recommended
                                         </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-4 h-4 rounded-full bg-green-500"></div>
-                                        <span>Valid</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-4 h-4 rounded-full bg-yellow-400"></div>
-                                        <span>Expiring in 2 months</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-4 h-4 rounded-full bg-red-500"></div>
-                                        <span>Expired</span>
                                     </div>
                                 </div>
 
@@ -2354,17 +2564,21 @@ export const VesselModule = (): JSX.Element => {
                                         return !hasVariants;
                                     });
                                     
+                                    // Check if there are any applicable trainings
+                                    const hasApplicableTrainings = groupedTrainingsForMatrix.length > 0 && 
+                                        groupedTrainingsForMatrix.some(group => group.trainings.length > 0);
+                                    
                                     return (
                                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                                     <div className="overflow-auto h-[calc(100vh-300px)] w-full relative">
                                         <Table className="min-w-max relative">
                                                 <TableHeader>
                                                     <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
-                                                        <TableHead className="text-white text-xs font-normal w-16 sticky left-0 z-40 bg-[#52baf3] border-r border-white/20">
-                                                            S.No.
+                                                        <TableHead className="text-white text-xs font-normal w-24 sticky left-0 z-40 bg-[#52baf3] border-r border-white/20">
+                                                            Company ID
                                                         </TableHead>
-                                                        <TableHead className="text-white text-xs font-normal w-96 sticky left-16 z-40 bg-[#52baf3] border-r border-white/20">
-                                                            List of courses/ Certificate
+                                                        <TableHead className="text-white text-xs font-normal w-96 sticky left-24 z-40 bg-[#52baf3] border-r border-white/20">
+                                                            Training Label
                                                         </TableHead>
                                                     {filteredRanks.length > 0 ? (
                                                         filteredRanks.map((rank: any, index: number) => (
@@ -2396,113 +2610,67 @@ export const VesselModule = (): JSX.Element => {
                                                             {NO_RANKS_CONFIGURED_MESSAGE}
                                                         </TableCell>
                                                     </TableRow>
+                                                ) : !hasApplicableTrainings ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={2 + filteredRanks.length} className="text-center text-xs text-gray-500 py-8">
+                                                            No trainings configured for this vessel. Configure trainings in Admin &gt; Training Matrix &gt; Vessel.
+                                                        </TableCell>
+                                                    </TableRow>
                                                 ) : (
                                                     <>
-                                                        {/* Category A: LICENSES & DOC */}
-                                                        <TableRow className="bg-blue-100 hover:bg-blue-100">
-                                                            <TableCell colSpan={2 + filteredRanks.length} className="text-xs font-semibold text-gray-900 sticky left-0 z-20 bg-blue-100">
-                                                                A - LICENSES & DOC
-                                                            </TableCell>
-                                                        </TableRow>
-                                                        <TableRow className="hover:bg-gray-50">
-                                                            <TableCell className="text-xs text-gray-700 sticky left-0 z-20 bg-white border-r border-gray-200" data-testid="cell-row-01">01</TableCell>
-                                                            <TableCell className="text-xs text-gray-700 sticky left-16 z-20 bg-white border-r border-gray-200" data-testid="cell-license-national">National License</TableCell>
-                                                            {filteredRanks.map((rank: any, index: number) => (
-                                                                <TableCell 
-                                                                    key={rank.id || index}
-                                                                    className={`text-xs text-center ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
-                                                                    data-testid={`cell-national-license-${index}`}
-                                                                >
-                                                                    <div className="flex items-center justify-center">
-                                                                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                                                                    </div>
-                                                                </TableCell>
-                                                            ))}
-                                                        </TableRow>
-                                                        <TableRow className="hover:bg-gray-50">
-                                                            <TableCell className="text-xs text-gray-700 sticky left-0 z-20 bg-white border-r border-gray-200" data-testid="cell-row-02">02</TableCell>
-                                                            <TableCell className="text-xs text-gray-700 sticky left-16 z-20 bg-white border-r border-gray-200" data-testid="cell-license-gmdss">GMDSS GOC Licence</TableCell>
-                                                            {filteredRanks.map((rank: any, index: number) => (
-                                                                <TableCell 
-                                                                    key={rank.id || index}
-                                                                    className={`text-xs text-center ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
-                                                                    data-testid={`cell-gmdss-license-${index}`}
-                                                                >
-                                                                    <div className="flex items-center justify-center">
-                                                                        {index < 2 ? (
-                                                                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                                                                        ) : index < 4 ? (
-                                                                            <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-                                                                        ) : (
-                                                                            <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                                                                        )}
-                                                                    </div>
-                                                                </TableCell>
-                                                            ))}
-                                                        </TableRow>
-
-                                                        {/* Category B: STATUTORY COURSES */}
-                                                        <TableRow className="bg-blue-100 hover:bg-blue-100">
-                                                            <TableCell colSpan={2 + filteredRanks.length} className="text-xs font-semibold text-gray-900 sticky left-0 z-20 bg-blue-100">
-                                                                B - STATUTORY COURSES
-                                                            </TableCell>
-                                                        </TableRow>
-                                                        <TableRow className="hover:bg-gray-50">
-                                                            <TableCell className="text-xs text-gray-700 sticky left-0 z-20 bg-white border-r border-gray-200" data-testid="cell-row-01-b">01</TableCell>
-                                                            <TableCell className="text-xs text-gray-700 sticky left-16 z-20 bg-white border-r border-gray-200" data-testid="cell-course-fire">Basic Fire Fighting</TableCell>
-                                                            {filteredRanks.map((rank: any, index: number) => (
-                                                                <TableCell 
-                                                                    key={rank.id || index}
-                                                                    className={`text-xs text-center ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
-                                                                    data-testid={`cell-fire-fighting-${index}`}
-                                                                >
-                                                                    <div className="flex items-center justify-center">
-                                                                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                                                                    </div>
-                                                                </TableCell>
-                                                            ))}
-                                                        </TableRow>
-                                                        <TableRow className="hover:bg-gray-50">
-                                                            <TableCell className="text-xs text-gray-700 sticky left-0 z-20 bg-white border-r border-gray-200" data-testid="cell-row-02-b">02</TableCell>
-                                                            <TableCell className="text-xs text-gray-700 sticky left-16 z-20 bg-white border-r border-gray-200" data-testid="cell-course-survival">Personal Survival Technique</TableCell>
-                                                            {filteredRanks.map((rank: any, index: number) => (
-                                                                <TableCell 
-                                                                    key={rank.id || index}
-                                                                    className={`text-xs text-center ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
-                                                                    data-testid={`cell-survival-${index}`}
-                                                                >
-                                                                    <div className="flex items-center justify-center">
-                                                                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                                                                    </div>
-                                                                </TableCell>
-                                                            ))}
-                                                        </TableRow>
-
-                                                        {/* Category C: VALUE ADD COURSE */}
-                                                        <TableRow className="bg-blue-100 hover:bg-blue-100">
-                                                            <TableCell colSpan={2 + filteredRanks.length} className="text-xs font-semibold text-gray-900 sticky left-0 z-20 bg-blue-100">
-                                                                C - VALUE ADD COURSE
-                                                            </TableCell>
-                                                        </TableRow>
-                                                        <TableRow className="hover:bg-gray-50">
-                                                            <TableCell className="text-xs text-gray-700 sticky left-0 z-20 bg-white border-r border-gray-200" data-testid="cell-row-01-c">01</TableCell>
-                                                            <TableCell className="text-xs text-gray-700 sticky left-16 z-20 bg-white border-r border-gray-200" data-testid="cell-course-risk">Risk Assessment</TableCell>
-                                                            {filteredRanks.map((rank: any, index: number) => (
-                                                                <TableCell 
-                                                                    key={rank.id || index}
-                                                                    className={`text-xs text-center ${index % 2 === 0 ? 'bg-blue-50' : 'bg-white'}`}
-                                                                    data-testid={`cell-risk-assessment-${index}`}
-                                                                >
-                                                                    <div className="flex items-center justify-center">
-                                                                        {index < 3 ? (
-                                                                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                                                                        ) : (
-                                                                            <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-                                                                        )}
-                                                                    </div>
-                                                                </TableCell>
-                                                            ))}
-                                                        </TableRow>
+                                                        {groupedTrainingsForMatrix.map((group, groupIndex) => (
+                                                            <React.Fragment key={group.groupCode || `unassigned-${groupIndex}`}>
+                                                                {/* Group Header Row */}
+                                                                <TableRow className="bg-blue-100 hover:bg-blue-100">
+                                                                    <TableCell 
+                                                                        colSpan={2 + filteredRanks.length} 
+                                                                        className="text-xs font-semibold text-gray-900 sticky left-0 z-20 bg-blue-100"
+                                                                    >
+                                                                        {group.groupCode ? `${group.groupCode}. ${group.groupLabel}` : group.groupLabel}
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                                
+                                                                {/* Training Rows within Group */}
+                                                                {group.trainings.map((training: any, trainingIndex: number) => (
+                                                                    <TableRow key={training.id} className="hover:bg-gray-50">
+                                                                        <TableCell 
+                                                                            className="text-xs text-gray-700 sticky left-0 z-20 bg-white border-r border-gray-200" 
+                                                                            data-testid={`cell-company-id-${training.id}`}
+                                                                        >
+                                                                            {training.companyId}
+                                                                        </TableCell>
+                                                                        <TableCell 
+                                                                            className="text-xs text-gray-700 sticky left-24 z-20 bg-white border-r border-gray-200" 
+                                                                            data-testid={`cell-training-label-${training.id}`}
+                                                                        >
+                                                                            {training.trainingLabel}
+                                                                        </TableCell>
+                                                                        {filteredRanks.map((rank: any, rankIndex: number) => {
+                                                                            const rankName = rank.role || rank.rank;
+                                                                            const status = getTrainingRequirementStatus(training.id, rankName);
+                                                                            
+                                                                            // Determine background color based on M/R status
+                                                                            let bgColor = 'bg-white';
+                                                                            if (status === 'M') {
+                                                                                bgColor = 'bg-gray-200'; // Light grey for Mandatory
+                                                                            } else if (status === 'R') {
+                                                                                bgColor = 'bg-blue-100'; // Light blue for Recommended
+                                                                            }
+                                                                            
+                                                                            return (
+                                                                                <TableCell 
+                                                                                    key={rank.id || rankIndex}
+                                                                                    className={`text-xs text-center ${bgColor}`}
+                                                                                    data-testid={`cell-training-${training.id}-rank-${rankIndex}`}
+                                                                                >
+                                                                                    {/* Cell intentionally empty - background color indicates M/R status */}
+                                                                                </TableCell>
+                                                                            );
+                                                                        })}
+                                                                    </TableRow>
+                                                                ))}
+                                                            </React.Fragment>
+                                                        ))}
                                                     </>
                                                 )}
                                             </TableBody>
