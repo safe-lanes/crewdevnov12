@@ -48,6 +48,10 @@ The application uses a modern web stack with a module-first architecture.
 - **Rotation Module**: Manages crew rotation planning with "Due" and "Plan" sections and visual timelines.
 - **Promotion Hierarchy System**: Configurable promotion paths, integrated with a Promotions module.
 - **Forms Configuration - Company Rank Integration**: Uses company-specific rank labels for rank group creation and form matching.
+- **Training Matrix Module**: Manages training certifications and requirements.
+    - **Training Master**: Central repository of all training types with categories (S for Statutory, N for Non-Statutory).
+    - **Company Training**: Company-specific training configurations synced from Training Master when "Applicable to Company" is checked.
+    - **Company Training Groups**: Trainings can be organized into groups A-J with customizable labels (e.g., "A. Flag"). Sorted by group first (A-J), unassigned trainings appear last, then alphabetically within each group.
 - **Vessel Type Hierarchy System**: Centralized 3-level vessel type classification from Master Data 004, enabling efficient querying and analytics.
 - **Crew Appraisals Module**: Comprehensive appraisal management with a 3-stage workflow (Draft → Preliminary → Submitted → Reviewed) and AG Grid display.
 - **Drugs & Alcohol Testing Module**: Tracks six test types with filtering, AG Grid tables, and a Summary View.
