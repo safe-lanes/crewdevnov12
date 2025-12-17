@@ -1947,36 +1947,28 @@ export const VesselModule = (): JSX.Element => {
         return lookup;
     }, [companyTrainingRequirements]);
     
-    // Create a lookup from rank name to rankId (for looking up requirements)
-    const rankNameToIdLookup = useMemo(() => {
-        const lookup = new Map<string, number>();
-        availableRanks.forEach((rank: any) => {
-            if (rank.name && rank.id) {
-                lookup.set(rank.name, rank.id);
-                lookup.set(rank.name.toLowerCase(), rank.id);
-            }
-        });
-        return lookup;
-    }, [availableRanks]);
-    
-    // Helper function to get requirement status for a training and rank
-    const getTrainingRequirementStatus = (trainingId: number, rankName: string): string | null => {
-        // Normalize variant ranks (e.g., "3rd Officer_1" -> "Third Officer")
-        let lookupRank = rankName;
+    // Helper function to get requirement status for a training and vessel position
+    // Uses the numeric availableRanks.id from the vessel position data
+    const getTrainingRequirementStatus = (trainingId: number, vesselPosition: any): string | null => {
+        // For variant rows (like "3rd Officer_1"), use originalRankId to get the parent rank's requirements
+        // For regular positions, use the position's id (which is the availableRanks.id as string)
+        let lookupRankId: number | null = null;
         
-        // Check if it's a variant rank (contains _1, _2, etc.)
-        if (rankName.includes('_')) {
-            const baseRank = rankName.split('_')[0];
-            lookupRank = baseRank;
+        if (vesselPosition.isRoleRow && vesselPosition.originalRankId) {
+            // Variant row - use the original rank ID (which is the availableRanks.id)
+            lookupRankId = parseInt(vesselPosition.originalRankId, 10);
+        } else if (vesselPosition.id) {
+            // Regular position - the id field contains the availableRanks.id as a string
+            // For compound IDs like "4_role_1_...", extract just the numeric prefix
+            const idStr = String(vesselPosition.id);
+            const numericPart = idStr.split('_')[0]; // Get first part before any underscore
+            lookupRankId = parseInt(numericPart, 10);
         }
         
-        // Get the rankId for the lookup rank
-        const rankId = rankNameToIdLookup.get(lookupRank) || rankNameToIdLookup.get(lookupRank.toLowerCase());
+        if (!lookupRankId || isNaN(lookupRankId)) return null;
         
-        if (!rankId) return null;
-        
-        // Look up the requirement
-        return trainingRequirementsLookup.get(`${trainingId}-${rankId}`) || null;
+        // Look up the requirement using trainingId and the rank's availableRanks.id
+        return trainingRequirementsLookup.get(`${trainingId}-${lookupRankId}`) || null;
     };
 
     // Helper function to get the latest appraisal for a crew member
@@ -2646,8 +2638,8 @@ export const VesselModule = (): JSX.Element => {
                                                                             {training.trainingLabel}
                                                                         </TableCell>
                                                                         {filteredRanks.map((rank: any, rankIndex: number) => {
-                                                                            const rankName = rank.role || rank.rank;
-                                                                            const status = getTrainingRequirementStatus(training.id, rankName);
+                                                                            // Pass the entire rank object to get proper rankId lookup
+                                                                            const status = getTrainingRequirementStatus(training.id, rank);
                                                                             
                                                                             // Determine background color based on M/R status
                                                                             let bgColor = 'bg-white';
