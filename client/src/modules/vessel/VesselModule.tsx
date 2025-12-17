@@ -2531,7 +2531,7 @@ export const VesselModule = (): JSX.Element => {
                                 {/* Legend */}
                                 <div className="flex items-center gap-6 text-xs">
                                     <div className="flex items-center gap-2">
-                                        <div className="w-20 h-5 bg-gray-200 border border-gray-300 flex items-center justify-center">
+                                        <div className="w-20 h-5 bg-[#F0FDF4] border border-gray-300 flex items-center justify-center">
                                             Mandatory
                                         </div>
                                     </div>
@@ -2624,15 +2624,15 @@ export const VesselModule = (): JSX.Element => {
                                                                 
                                                                 {/* Training Rows within Group */}
                                                                 {group.trainings.map((training: any, trainingIndex: number) => (
-                                                                    <TableRow key={training.id} className="hover:bg-gray-50">
+                                                                    <TableRow key={training.id} className="hover:bg-gray-50 border-b border-gray-200">
                                                                         <TableCell 
-                                                                            className="text-xs text-gray-700 sticky left-0 z-20 bg-white border-r border-gray-200" 
+                                                                            className="text-xs text-gray-700 sticky left-0 z-20 bg-white border-r border-gray-200 border-b border-gray-200" 
                                                                             data-testid={`cell-company-id-${training.id}`}
                                                                         >
                                                                             {training.companyId}
                                                                         </TableCell>
                                                                         <TableCell 
-                                                                            className="text-xs text-gray-700 sticky left-24 z-20 bg-white border-r border-gray-200" 
+                                                                            className="text-xs text-gray-700 sticky left-24 z-20 bg-white border-r border-gray-200 border-b border-gray-200" 
                                                                             data-testid={`cell-training-label-${training.id}`}
                                                                         >
                                                                             {training.trainingLabel}
@@ -2644,7 +2644,7 @@ export const VesselModule = (): JSX.Element => {
                                                                             // Determine background color based on M/R status
                                                                             let bgColor = 'bg-white';
                                                                             if (status === 'M') {
-                                                                                bgColor = 'bg-gray-200'; // Light grey for Mandatory
+                                                                                bgColor = 'bg-[#F0FDF4]'; // Light green for Mandatory
                                                                             } else if (status === 'R') {
                                                                                 bgColor = 'bg-blue-100'; // Light blue for Recommended
                                                                             }
@@ -2652,7 +2652,7 @@ export const VesselModule = (): JSX.Element => {
                                                                             return (
                                                                                 <TableCell 
                                                                                     key={rank.id || rankIndex}
-                                                                                    className={`text-xs text-center ${bgColor}`}
+                                                                                    className={`text-xs text-center border-b border-gray-200 ${bgColor}`}
                                                                                     data-testid={`cell-training-${training.id}-rank-${rankIndex}`}
                                                                                 >
                                                                                     {/* Cell intentionally empty - background color indicates M/R status */}
