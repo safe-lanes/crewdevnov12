@@ -4139,18 +4139,13 @@ const AdminModuleInner = (): JSX.Element => {
                     {rankMasterData.map((rank, index) => (
                       <TableRow key={rank.id} className="bg-white" data-testid={`row-rank-master-${rank.id}`}>
                         <TableCell className="py-3 text-center border-r">
-                          {isRankMasterEditing ? (
-                            <input
-                              type="text"
-                              value={rank.rankId || ''}
-                              onChange={(e) => handleRankDataChange(rank.id, 'rankId', e.target.value)}
-                              placeholder="Enter rank ID"
-                              className="w-full h-8 px-2 text-sm border rounded"
-                              data-testid={`input-rank-id-${rank.id}`}
-                            />
-                          ) : (
-                            <span className="text-sm" data-testid={`text-rank-id-${rank.id}`}>{rank.rankId || ''}</span>
-                          )}
+                          <span 
+                            className={`text-sm ${rank.id.startsWith('new_') ? 'text-gray-400 italic' : ''}`} 
+                            data-testid={`text-rank-id-${rank.id}`}
+                            title={rank.id.startsWith('new_') ? 'Rank ID will be auto-generated when saved' : ''}
+                          >
+                            {rank.id.startsWith('new_') ? 'Auto' : (rank.rankId || '')}
+                          </span>
                         </TableCell>
                         
                         <TableCell className="py-3 text-center border-r">
