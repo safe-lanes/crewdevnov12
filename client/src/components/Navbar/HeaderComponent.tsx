@@ -21,15 +21,16 @@ import {
 } from "lucide-react";
 
 const navItems = [
-    {
-        label: "Dashboard",
-        href: "/dashboard",
-        icon: LayoutGrid,
-        activeBg: "#5DADE2",
-        activeText: "white",
-        inactiveBg: "#f1f1f1",
-        inactiveText: "#4f5863",
-    },
+    // Temporarily hidden - Dashboard
+    // {
+    //     label: "Dashboard",
+    //     href: "/dashboard",
+    //     icon: LayoutGrid,
+    //     activeBg: "#5DADE2",
+    //     activeText: "white",
+    //     inactiveBg: "#f1f1f1",
+    //     inactiveText: "#4f5863",
+    // },
     {
         label: "Recruitment",
         href: "/recruitment",
@@ -111,15 +112,16 @@ const navItems = [
         inactiveBg: "#f1f1f1",
         inactiveText: "#4f5863",
     },
-    {
-        label: "Account",
-        href: "/account",
-        icon: User,
-        activeBg: "#5DADE2",
-        activeText: "white",
-        inactiveBg: "#f1f1f1",
-        inactiveText: "#4f5863",
-    },
+    // Temporarily hidden - Account
+    // {
+    //     label: "Account",
+    //     href: "/account",
+    //     icon: User,
+    //     activeBg: "#5DADE2",
+    //     activeText: "white",
+    //     inactiveBg: "#f1f1f1",
+    //     inactiveText: "#4f5863",
+    // },
     {
         label: "Admin",
         href: "/admin",
