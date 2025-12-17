@@ -186,6 +186,7 @@ interface License {
 interface TrainingCourse {
   id: string;
   courseId?: string;  // Template ID for duplicate detection
+  companyId?: string; // Company ID from Admin > Training Matrix > Company (e.g., SA001)
   trainingCourse: string;
   abbr: string;
   requirement: string;
@@ -1218,6 +1219,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
       const newCourses: TrainingCourse[] = selectedTemplates.map((template, index) => ({
         id: `TRN-${maxId + index + 1}`,
         courseId: template.id,
+        companyId: template.companyId,
         trainingCourse: template.name,
         abbr: template.abbr,
         requirement: template.requirement,
@@ -3794,7 +3796,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">S.No.</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Company ID</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Training Course</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Abbr</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Requirement</TableHead>
@@ -3809,7 +3811,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             {formData.trainingCourses.map((course) => (
               <TableRow key={course.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  <div className="text-[#4f5863] text-[13px]">{course.id}</div>
+                  <div className="text-[#4f5863] text-[13px] font-mono">{course.companyId || '-'}</div>
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
