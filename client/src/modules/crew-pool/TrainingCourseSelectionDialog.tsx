@@ -161,8 +161,22 @@ export function TrainingCourseSelectionDialog({
         </div>
 
         <div className="border rounded-lg overflow-hidden flex-1">
-          <div className="bg-[#52baf3] grid grid-cols-12 gap-2 px-4 py-2 text-xs font-medium text-white">
-            <div className="col-span-1"></div>
+          <div className="bg-[#52baf3] grid grid-cols-12 gap-2 px-4 py-2 text-xs font-medium text-white items-center">
+            <div className="col-span-1">
+              <Checkbox
+                checked={selectedIds.size > 0 && selectedIds.size === availableCount}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    handleSelectAll();
+                  } else {
+                    handleClearAll();
+                  }
+                }}
+                disabled={availableCount === 0}
+                className="h-4 w-4 border-white data-[state=checked]:bg-white data-[state=checked]:text-[#52baf3]"
+                data-testid="checkbox-select-all-header"
+              />
+            </div>
             <div className="col-span-2">Company ID</div>
             <div className="col-span-5">Training Label</div>
             <div className="col-span-2">ABBR</div>
