@@ -19,6 +19,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
+import { TrainingCourseSelectionDialog } from '@/modules/crew-pool/TrainingCourseSelectionDialog';
+import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
 
 // Comprehensive list of world nationalities
 const NATIONALITIES = [
@@ -276,6 +278,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   const [trainingNeedsComments, setTrainingNeedsComments] = useState<{[key: string]: string}>({});
   const [recommendationComments, setRecommendationComments] = useState<{[key: string]: string}>({});
   const [trainingFollowupComments, setTrainingFollowupComments] = useState<{[key: string]: string}>({});
+  const [isTrainingNeedsDialogOpen, setIsTrainingNeedsDialogOpen] = useState(false);
+  const [isTrainingFollowupDialogOpen, setIsTrainingFollowupDialogOpen] = useState(false);
   const [editingAppraiserComment, setEditingAppraiserComment] = useState<string | null>(null);
   const [editingSeafarerComment, setEditingSeafarerComment] = useState<string | null>(null);
   const [nationalityOpen, setNationalityOpen] = useState(false);
@@ -956,6 +960,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
   // Training Needs management functions
   const addTrainingNeed = (type: 'database' | 'new') => {
+    if (type === 'database') {
+      setIsTrainingNeedsDialogOpen(true);
+      return;
+    }
     const newTrainingNeed = {
       id: Date.now().toString(),
       training: "",
@@ -963,6 +971,17 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     };
     const currentTrainingNeeds = form.getValues("trainingNeeds");
     form.setValue("trainingNeeds", [...currentTrainingNeeds, newTrainingNeed]);
+  };
+
+  const addTrainingNeedsFromDatabase = (selectedTemplates: TrainingCourseTemplate[]) => {
+    const newTrainingNeeds = selectedTemplates.map((template) => ({
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      training: template.name,
+      comment: "",
+    }));
+    const currentTrainingNeeds = form.getValues("trainingNeeds");
+    form.setValue("trainingNeeds", [...currentTrainingNeeds, ...newTrainingNeeds]);
+    setIsTrainingNeedsDialogOpen(false);
   };
 
   const deleteTrainingNeed = (id: string) => {
@@ -1083,6 +1102,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
   // Training Followup management
   const addTrainingFollowup = (type: 'database' | 'new') => {
+    if (type === 'database') {
+      setIsTrainingFollowupDialogOpen(true);
+      return;
+    }
     const newFollowup = {
       id: Date.now().toString(),
       training: "",
@@ -1094,6 +1117,21 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     };
     const currentFollowups = form.getValues("trainingFollowups");
     form.setValue("trainingFollowups", [...currentFollowups, newFollowup]);
+  };
+
+  const addTrainingFollowupsFromDatabase = (selectedTemplates: TrainingCourseTemplate[]) => {
+    const newFollowups = selectedTemplates.map((template) => ({
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      training: template.name,
+      correspondingInDB: template.id,
+      category: "Select Rating",
+      status: "Proposed" as const,
+      targetDate: "",
+      comment: "",
+    }));
+    const currentFollowups = form.getValues("trainingFollowups");
+    form.setValue("trainingFollowups", [...currentFollowups, ...newFollowups]);
+    setIsTrainingFollowupDialogOpen(false);
   };
 
   const updateTrainingFollowup = (id: string, field: string, value: string) => {
@@ -4491,6 +4529,22 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Training Needs Database Selection Dialog */}
+      <TrainingCourseSelectionDialog
+        open={isTrainingNeedsDialogOpen}
+        onClose={() => setIsTrainingNeedsDialogOpen(false)}
+        onConfirm={addTrainingNeedsFromDatabase}
+        existingCourseIds={form.getValues("trainingNeeds").map(t => t.training).filter(Boolean)}
+      />
+
+      {/* Training Followup Database Selection Dialog */}
+      <TrainingCourseSelectionDialog
+        open={isTrainingFollowupDialogOpen}
+        onClose={() => setIsTrainingFollowupDialogOpen(false)}
+        onConfirm={addTrainingFollowupsFromDatabase}
+        existingCourseIds={form.getValues("trainingFollowups").map(f => f.correspondingInDB).filter(Boolean)}
+      />
     </div>
   );
 };

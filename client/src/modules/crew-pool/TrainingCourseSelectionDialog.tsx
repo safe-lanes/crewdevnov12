@@ -12,11 +12,19 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Search, Database } from 'lucide-react';
-import { 
-  TRAINING_COURSE_TEMPLATES, 
-  mapApiResponseToTrainingCourseTemplates,
-  type TrainingCourseTemplate 
-} from '@/utils/data/trainingCourseTemplates';
+import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
+
+// Company Training type from /api/company-trainings
+interface CompanyTraining {
+  id: number;
+  trainingMasterId: number;
+  companyId: string;
+  trainingLabel: string;
+  abr: string | null;
+  requirement: string | null;
+  groupCode: string | null;
+  sortOrder: number | null;
+}
 
 interface TrainingCourseSelectionDialogProps {
   open: boolean;
@@ -34,23 +42,23 @@ export function TrainingCourseSelectionDialog({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
 
-  const { data: apiTemplates = [], isLoading, isError } = useQuery<Array<{
-    entryId: string;
-    name: string;
-    shortCode?: string;
-    description?: string;
-  }>>({
-    queryKey: ['/api/masters/017/data'],
+  // Fetch company trainings from Admin > Training Matrix > Company
+  const { data: companyTrainings = [], isLoading, isError } = useQuery<CompanyTraining[]>({
+    queryKey: ['/api/company-trainings'],
     enabled: open,
     retry: false,
   });
 
+  // Map company trainings to TrainingCourseTemplate format
   const templates = useMemo(() => {
-    if (apiTemplates.length > 0) {
-      return mapApiResponseToTrainingCourseTemplates(apiTemplates);
-    }
-    return TRAINING_COURSE_TEMPLATES;
-  }, [apiTemplates]);
+    return companyTrainings.map((training): TrainingCourseTemplate => ({
+      id: training.id.toString(),
+      companyId: training.companyId,
+      name: training.trainingLabel,
+      abbr: training.abr || '',
+      requirement: training.requirement || '',
+    }));
+  }, [companyTrainings]);
 
   const filteredTemplates = useMemo(() => {
     if (!searchTerm) return templates;
@@ -153,11 +161,12 @@ export function TrainingCourseSelectionDialog({
         </div>
 
         <div className="border rounded-lg overflow-hidden flex-1">
-          <div className="bg-gray-100 grid grid-cols-12 gap-2 px-4 py-2 text-xs font-medium text-gray-600">
+          <div className="bg-[#52baf3] grid grid-cols-12 gap-2 px-4 py-2 text-xs font-medium text-white">
             <div className="col-span-1"></div>
-            <div className="col-span-5">Training Course</div>
+            <div className="col-span-2">Company ID</div>
+            <div className="col-span-5">Training Label</div>
             <div className="col-span-2">ABBR</div>
-            <div className="col-span-4">Requirement</div>
+            <div className="col-span-2">Requirement</div>
           </div>
 
           <ScrollArea className="h-[300px]">
@@ -200,6 +209,9 @@ export function TrainingCourseSelectionDialog({
                           className="h-4 w-4"
                         />
                       </div>
+                      <div className="col-span-2 text-sm text-gray-600 font-mono">
+                        {template.companyId || '-'}
+                      </div>
                       <div className="col-span-5 text-sm text-gray-800">
                         {template.name}
                         {isAlreadyAdded && (
@@ -209,7 +221,7 @@ export function TrainingCourseSelectionDialog({
                       <div className="col-span-2 text-sm text-gray-600 font-mono">
                         {template.abbr}
                       </div>
-                      <div className="col-span-4 text-sm text-gray-600">
+                      <div className="col-span-2 text-sm text-gray-600">
                         {template.requirement}
                       </div>
                     </div>

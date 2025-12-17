@@ -10,6 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Eye, Edit, Trash2, Plus, Info, X, MessageSquare } from 'lucide-react';
 import { z } from 'zod';
 import { PromotionChecklistForm } from './PromotionChecklistForm';
+import { TrainingCourseSelectionDialog } from '@/modules/crew-pool/TrainingCourseSelectionDialog';
+import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
 
 interface PromotionReviewFormProps {
   promotionData: any;
@@ -108,6 +110,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     { id: '4', training: 'Training 4', correspondingInDB: '', category: '1. Competence', status: 'Declined', completionDate: '' },
     { id: '5', training: 'Training 5', correspondingInDB: '', category: '2. Soft Skills', status: 'Completed', completionDate: 'dd-mm-yy' },
   ]);
+  const [isTrainingDialogOpen, setIsTrainingDialogOpen] = useState(false);
 
   // A3 Training Comments state
   const [trainingComments, setTrainingComments] = useState<Record<string, Comment[]>>({});
@@ -217,6 +220,23 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       status: 'Proposed',
       completionDate: 'dd-mm-yy'
     }]);
+  };
+
+  const addTrainingsFromDatabase = (selectedTemplates: TrainingCourseTemplate[]) => {
+    const newTrainings = selectedTemplates.map((template) => {
+      const newId = nextTrainingIdRef.current.toString();
+      nextTrainingIdRef.current += 1;
+      return {
+        id: newId,
+        training: template.name,
+        correspondingInDB: template.id,
+        category: '1. Competence',
+        status: 'Proposed',
+        completionDate: 'dd-mm-yy'
+      };
+    });
+    setTrainingNeeds([...trainingNeeds, ...newTrainings]);
+    setIsTrainingDialogOpen(false);
   };
 
   const deleteTrainingRow = (id: string) => {
@@ -690,6 +710,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                       variant="outline" 
                       size="sm" 
                       className="text-xs"
+                      onClick={() => setIsTrainingDialogOpen(true)}
                       data-testid="button-add-training-from-db"
                     >
                       <Plus className="h-3 w-3 mr-1" />
@@ -1286,6 +1307,14 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
           onClose={() => setShowChecklistForm(false)}
         />
       )}
+
+      {/* Training Database Selection Dialog */}
+      <TrainingCourseSelectionDialog
+        open={isTrainingDialogOpen}
+        onClose={() => setIsTrainingDialogOpen(false)}
+        onConfirm={addTrainingsFromDatabase}
+        existingCourseIds={trainingNeeds.map(t => t.correspondingInDB).filter(Boolean)}
+      />
     </>
   );
 };
