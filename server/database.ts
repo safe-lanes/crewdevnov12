@@ -4316,12 +4316,12 @@ export class DatabaseStorage implements IStorage {
 
   // Company Training Methods
   async getCompanyTrainings(): Promise<CompanyTraining[]> {
-    // Sort by: 1) Group code (A-J first, NULL/unassigned last), 2) Alphabetically by training label within group
+    // Sort by: 1) Group code (A-J first, NULL/unassigned last), 2) Company ID within group
     return await this.db.select().from(companyTrainings)
       .orderBy(
         sql`CASE WHEN ${companyTrainings.groupCode} IS NULL THEN 1 ELSE 0 END`,
         asc(companyTrainings.groupCode),
-        asc(companyTrainings.trainingLabel)
+        asc(companyTrainings.companyId)
       );
   }
 
