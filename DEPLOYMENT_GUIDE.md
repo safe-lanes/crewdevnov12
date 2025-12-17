@@ -1,6 +1,37 @@
-# Crew Management System - Deployment Guide
+# Seafarer Performance Management System - Deployment Guide
 
 **Comprehensive deployment documentation for Windows, Linux, and macOS environments**
+
+> **Last Updated:** December 17, 2025  
+> **Database Tables:** 42  
+> **Migrations Applied:** 36  
+> **Latest Backup:** `crew-management-backup-2025-12-17.sql` (3.1 MB)  
+> **Auto-Migration:** ✅ Enabled on startup
+
+---
+
+## 📊 Current System Status (Dec 17, 2025)
+
+| Metric | Value |
+|--------|-------|
+| Total database tables | 42 |
+| Total migrations | 36 (all applied) |
+| Latest migration | `0033_sync_sc001_label_to_company.sql` |
+| Migration tracking table | `schema_migrations` |
+| Latest backup | `crew-management-backup-2025-12-17.sql` (3.1 MB) |
+| Auto-migration | Runs on `npm run dev` startup |
+
+### Quick Verification Commands
+```bash
+# Check table count (expected: 42)
+psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';"
+
+# Check migration count (expected: 36)
+psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM schema_migrations;"
+
+# View last 5 migrations
+psql "$DATABASE_URL" -c "SELECT filename, applied_at FROM schema_migrations ORDER BY applied_at DESC LIMIT 5;"
+```
 
 ---
 
@@ -20,6 +51,9 @@
 6. [Firewall Configuration](#6-firewall-configuration)
 7. [SSL/TLS Setup](#7-ssltls-setup)
 8. [Quick Reference Commands](#8-quick-reference-commands)
+9. [Drizzle Kit Schema Drift (False Positive)](#9-drizzle-kit-schema-drift-false-positive)
+10. [Migration Files Reference](#10-migration-files-reference)
+11. [Backup Files Reference](#11-backup-files-reference)
 
 ---
 
@@ -1729,6 +1763,145 @@ Vite automatically optimizes for production with:
 
 ---
 
-**Document Version:** 1.0  
-**Last Updated:** January 13, 2025  
+---
+
+## 9. DRIZZLE KIT SCHEMA DRIFT (FALSE POSITIVE)
+
+⚠️ **Important:** When running `npx drizzle-kit generate`, you may see prompts like:
+
+```
+Is uploaded_photo column in crew_members table created or renamed from another column?
+```
+
+**This is a FALSE POSITIVE.** The column already exists and the migration was applied.
+
+### Why This Happens
+
+1. The application uses a custom migration system (`schema_migrations` table)
+2. Drizzle Kit uses its own migration tracking (`drizzle.__drizzle_migrations`)
+3. Both systems are valid, but Drizzle Kit isn't aware of manually applied migrations
+
+### How to Verify Everything is Correct
+
+```bash
+# Verify column exists
+psql "$DATABASE_URL" -c "\d crew_members" | grep uploaded_photo
+# Expected: uploaded_photo | text | YES
+
+# Verify migration was applied
+psql "$DATABASE_URL" -c "SELECT * FROM schema_migrations WHERE filename LIKE '%uploaded_photo%';"
+# Expected: 0013_add_uploaded_photo_column.sql | 2025-12-05 ...
+
+# Verify unique constraint on company_trainings
+psql "$DATABASE_URL" -c "SELECT constraint_name FROM information_schema.table_constraints WHERE table_name = 'company_trainings' AND constraint_type = 'UNIQUE';"
+# Expected: company_trainings_training_master_id_key
+```
+
+### Resolution
+
+**Do NOT run `npx drizzle-kit push --force`** unless you understand the implications.
+
+The schema is correct. The warning is due to different migration tracking systems. Use the verification commands above to confirm the database is in sync.
+
+---
+
+## 10. MIGRATION FILES REFERENCE
+
+### Migration Folder Structure
+
+```
+migrations/
+├── 0000_stiff_archangel.sql        # Initial schema (18KB)
+├── 0001_add_is_delete_to_recruitment_candidates.sql
+├── 0002_add_handover_fields_to_vessel_planning.sql
+├── 0003_set_default_crew_status_primary.sql
+├── 0004_add_performance_indexes.sql
+├── 0005_add_rotation_archive_table.sql
+├── 0006_add_vessel_crew_archive_fields.sql
+├── 0007_add_vessel_type_hierarchy.sql
+├── 0008_add_crew_status_fields.sql
+├── 0009_add_sign_off_reason.sql
+├── 0010_add_oil_chemical_tanker.sql
+├── 0011_add_license_dce_master.sql
+├── 0012_add_dce_support_licenses.sql
+├── 0013_add_uploaded_photo_column.sql
+├── 0014_consolidate_sign_on_date.sql
+├── 0015_add_reliever_sign_on_date.sql
+├── 0016_backfill_crew_sign_on_date.sql
+├── 0017_allow_null_file_no.sql
+├── 0018_add_is_system_rank_column.sql
+├── 0019_starter_pack_ranks.sql
+├── 0020_sync_vessel_actual_manning.sql
+├── 0021_consolidate_vessel_planning_rank_ids.sql
+├── 0022_update_english_proficiency_values.sql
+├── 0023_add_oil_major_rules_table.sql
+├── 0024_training_master_seed.sql
+├── 0025_add_company_trainings_table.sql
+├── 0026_backfill_company_trainings.sql
+├── 0027_update_company_trainings_data.sql
+├── 0028_align_company_training_sort_order.sql
+├── 0029_fix_company_training_sort_order.sql
+├── 0030_add_company_training_groups.sql
+├── 0031_add_company_training_requirements.sql
+├── 0032_update_sc001_add_sc008.sql
+├── 0033_sync_sc001_label_to_company.sql
+├── AUTO_MIGRATION_GUIDE.md
+├── DEVELOPER_MIGRATION_GUIDE.md
+└── README.md
+```
+
+### Creating New Migrations
+
+Follow the naming convention: `NNNN_descriptive_name.sql`
+
+```sql
+-- Example: 0034_add_new_feature.sql
+
+-- Always use IF NOT EXISTS / IF EXISTS for idempotent migrations
+CREATE TABLE IF NOT EXISTS new_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL
+);
+
+ALTER TABLE existing_table 
+ADD COLUMN IF NOT EXISTS new_column TEXT;
+```
+
+---
+
+## 11. BACKUP FILES REFERENCE
+
+### Available Backups
+
+| File | Size | Date | Notes |
+|------|------|------|-------|
+| `crew-management-backup-2025-12-17.sql` | 3.1 MB | Dec 17, 2025 | ⭐ Latest (42 tables) |
+| `crew_management_backup_v2_phase2.sql` | 108 KB | Nov 17, 2025 | Phase 2 backup |
+| `crew-management-backup-2025-11-14.sql` | 103 KB | Nov 14, 2025 | Baseline (32 tables) |
+
+### Creating New Backups
+
+```bash
+# Run the backup script
+npx tsx server/backup-database.ts
+
+# Output: backups/crew-management-backup-YYYY-MM-DD.sql
+```
+
+### Restoring from Backup
+
+```bash
+# Linux/macOS
+dropdb seafarer_db && createdb seafarer_db
+psql "$DATABASE_URL" < backups/crew-management-backup-2025-12-17.sql
+
+# Windows (PowerShell)
+dropdb -U postgres seafarer_db; createdb -U postgres seafarer_db
+psql -U postgres -d seafarer_db -f backups\crew-management-backup-2025-12-17.sql
+```
+
+---
+
+**Document Version:** 2.0  
+**Last Updated:** December 17, 2025  
 **Maintainer:** Development Team
