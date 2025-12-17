@@ -1971,6 +1971,144 @@ export const VesselModule = (): JSX.Element => {
         return trainingRequirementsLookup.get(`${trainingId}-${lookupRankId}`) || null;
     };
 
+    // Helper function to determine training expiry status (dot color)
+    // Returns: 'green' (valid), 'yellow' (expiring in 2 months), 'red' (expired), or null (no training)
+    const getTrainingExpiryStatus = (expiryDateStr: string | null | undefined): 'green' | 'yellow' | 'red' | null => {
+        if (!expiryDateStr) return null;
+        
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Parse the expiry date (handle various formats)
+        let expiryDate: Date;
+        if (expiryDateStr.includes('/')) {
+            // dd/mm/yyyy format
+            const parts = expiryDateStr.split('/');
+            expiryDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+        } else {
+            // ISO or other standard format
+            expiryDate = new Date(expiryDateStr);
+        }
+        
+        if (isNaN(expiryDate.getTime())) return null;
+        
+        // Calculate 2 months from now
+        const twoMonthsFromNow = new Date(today);
+        twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
+        
+        if (expiryDate < today) {
+            return 'red'; // Expired
+        } else if (expiryDate <= twoMonthsFromNow) {
+            return 'yellow'; // Expiring within 2 months
+        } else {
+            return 'green'; // Valid
+        }
+    };
+
+    // Create a lookup from rank position to crew member's training courses
+    // Key: vessel position role (e.g., "Master", "Chief Officer", "3rd Officer_1")
+    // Value: Map of companyId to training expiry date
+    // Uses role as primary key - prioritizes primary crew over secondary
+    const crewTrainingLookupByRole = useMemo(() => {
+        const lookup = new Map<string, Map<string, string>>();
+        const primaryKeys = new Set<string>(); // Track which keys have primary crew
+        
+        // First pass: process primary crew only
+        vesselPlanning.forEach((planning: any) => {
+            const crewMemberId = planning.crewMemberId;
+            if (!crewMemberId) return;
+            
+            // Only process primary crew in first pass
+            const crewStatus = planning.crewStatus || '';
+            if (crewStatus !== 'primary' && crewStatus !== '') return;
+            
+            const crewMember = crewMemberLookup.get(crewMemberId);
+            if (!crewMember) return;
+            
+            const roleKey = planning.role || planning.rank || '';
+            if (!roleKey) return;
+            
+            // Parse training courses from crew member data
+            let trainingCourses: any[] = [];
+            if (crewMember.trainingCourses) {
+                if (typeof crewMember.trainingCourses === 'string') {
+                    try {
+                        trainingCourses = JSON.parse(crewMember.trainingCourses);
+                    } catch (e) {
+                        trainingCourses = [];
+                    }
+                } else if (Array.isArray(crewMember.trainingCourses)) {
+                    trainingCourses = crewMember.trainingCourses;
+                }
+            }
+            
+            const trainingMap = new Map<string, string>();
+            trainingCourses.forEach((training: any) => {
+                if (training.companyId && training.expiry) {
+                    trainingMap.set(training.companyId, training.expiry);
+                }
+            });
+            
+            lookup.set(roleKey, trainingMap);
+            primaryKeys.add(roleKey);
+        });
+        
+        // Second pass: add secondary crew only if no primary exists for that role
+        vesselPlanning.forEach((planning: any) => {
+            const crewMemberId = planning.crewMemberId;
+            if (!crewMemberId) return;
+            
+            const crewStatus = planning.crewStatus || '';
+            if (crewStatus === 'primary' || crewStatus === '') return; // Skip primary (already processed)
+            
+            const roleKey = planning.role || planning.rank || '';
+            if (!roleKey || primaryKeys.has(roleKey)) return; // Skip if primary already exists
+            
+            const crewMember = crewMemberLookup.get(crewMemberId);
+            if (!crewMember) return;
+            
+            let trainingCourses: any[] = [];
+            if (crewMember.trainingCourses) {
+                if (typeof crewMember.trainingCourses === 'string') {
+                    try {
+                        trainingCourses = JSON.parse(crewMember.trainingCourses);
+                    } catch (e) {
+                        trainingCourses = [];
+                    }
+                } else if (Array.isArray(crewMember.trainingCourses)) {
+                    trainingCourses = crewMember.trainingCourses;
+                }
+            }
+            
+            const trainingMap = new Map<string, string>();
+            trainingCourses.forEach((training: any) => {
+                if (training.companyId && training.expiry) {
+                    trainingMap.set(training.companyId, training.expiry);
+                }
+            });
+            
+            lookup.set(roleKey, trainingMap);
+        });
+        
+        return lookup;
+    }, [vesselPlanning, crewMemberLookup]);
+
+    // Helper function to get crew training compliance status for a cell
+    // Returns the dot color or null if no training/no requirement
+    const getCrewTrainingComplianceStatus = (trainingCompanyId: string, vesselPosition: any): 'green' | 'yellow' | 'red' | null => {
+        // Use role as primary key (matches how we store in crewTrainingLookupByRole)
+        const roleKey = vesselPosition.role || vesselPosition.rank || '';
+        if (!roleKey) return null;
+        
+        const crewTrainings = crewTrainingLookupByRole.get(roleKey);
+        if (!crewTrainings) return null;
+        
+        const expiryDate = crewTrainings.get(trainingCompanyId);
+        if (!expiryDate) return null;
+        
+        return getTrainingExpiryStatus(expiryDate);
+    };
+
     // Helper function to get the latest appraisal for a crew member
     const getLatestAppraisal = (crewId: string) => {
         const crewAppraisals = allAppraisals
@@ -2540,6 +2678,18 @@ export const VesselModule = (): JSX.Element => {
                                             Recommended
                                         </div>
                                     </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                        <span>Valid</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                        <span>Expiring in 2 months</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                                        <span>Expired</span>
+                                    </div>
                                 </div>
 
                                 {/* Training Matrix Table */}
@@ -2641,6 +2791,9 @@ export const VesselModule = (): JSX.Element => {
                                                                             // Pass the entire rank object to get proper rankId lookup
                                                                             const status = getTrainingRequirementStatus(training.id, rank);
                                                                             
+                                                                            // Get crew training compliance status
+                                                                            const complianceStatus = getCrewTrainingComplianceStatus(training.companyId, rank);
+                                                                            
                                                                             // Determine background color based on M/R status
                                                                             let bgColor = 'bg-white';
                                                                             if (status === 'M') {
@@ -2649,13 +2802,28 @@ export const VesselModule = (): JSX.Element => {
                                                                                 bgColor = 'bg-blue-100'; // Light blue for Recommended
                                                                             }
                                                                             
+                                                                            // Determine dot color based on compliance status
+                                                                            let dotColor = '';
+                                                                            if (complianceStatus === 'green') {
+                                                                                dotColor = 'bg-green-500';
+                                                                            } else if (complianceStatus === 'yellow') {
+                                                                                dotColor = 'bg-yellow-500';
+                                                                            } else if (complianceStatus === 'red') {
+                                                                                dotColor = 'bg-red-500';
+                                                                            }
+                                                                            
                                                                             return (
                                                                                 <TableCell 
                                                                                     key={rank.id || rankIndex}
                                                                                     className={`text-xs text-center border-b border-gray-200 ${bgColor}`}
                                                                                     data-testid={`cell-training-${training.id}-rank-${rankIndex}`}
                                                                                 >
-                                                                                    {/* Cell intentionally empty - background color indicates M/R status */}
+                                                                                    {/* Show compliance dot if crew has this training */}
+                                                                                    {complianceStatus && (
+                                                                                        <div className="flex items-center justify-center">
+                                                                                            <div className={`w-3 h-3 rounded-full ${dotColor}`}></div>
+                                                                                        </div>
+                                                                                    )}
                                                                                 </TableCell>
                                                                             );
                                                                         })}
