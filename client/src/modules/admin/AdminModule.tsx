@@ -113,6 +113,7 @@ import { useExternalVessels } from "@/hooks/useExternalVessels";
 import { useExternalNationalities } from "@/hooks/useExternalNationalities";
 import { useExternalFleetGroups } from "@/hooks/useExternalFleetGroups";
 import { useExternalAdditionalGroups } from "@/hooks/useExternalAdditionalGroups";
+import { useExternalPorts } from "@/hooks/useExternalPorts";
 
 const rankGroupSchema = z.object({
   name: z.string().min(1, "Rank group name is required"),
@@ -1294,6 +1295,21 @@ const AdminModuleInner = (): JSX.Element => {
   // Add debug logging (development only)
   if (import.meta.env.DEV) {
     console.log('🧩 [External Additional Groups] Processed Data:', additionalGroupsData);
+  }
+  
+  // NEW: External ports data from API (Master 018)
+  const {
+    data: externalPortsData,
+    isLoading: portsLoading,
+    error: portsError,
+  } = useExternalPorts();
+  
+  // Process response - some APIs return an object with `ports`, others return array directly
+  const portsData = (externalPortsData as any)?.ports || externalPortsData || [];
+  
+  // Add debug logging (development only)
+  if (import.meta.env.DEV) {
+    console.log('⚓ [External Ports] Processed Data:', portsData);
   }
   
   // Vessel Groups Data (for vessel group selection)
@@ -6877,6 +6893,55 @@ const AdminModuleInner = (): JSX.Element => {
                       ))
                     ) : (
                       <div className="p-3 text-xs text-gray-500">No additional groups found</div>
+                    )
+                  ) : selectedMaster === "018" ? (
+                    // Special handling for Ports Master (018) - Use external API data
+                    portsLoading ? (
+                      <div className="p-3 text-xs text-gray-500">Loading ports...</div>
+                    ) : portsError ? (
+                      <div className="p-3 text-xs text-red-500">Error loading ports: {(portsError as Error).message}</div>
+                    ) : portsData && portsData.length > 0 ? (
+                      portsData.map((item: any, index: number) => (
+                        <div
+                          key={item.pid || item.id || `port-${index}`}
+                          className="grid grid-cols-5 gap-0 border-b border-gray-100 hover:bg-gray-50"
+                        >
+                          {/* Column 1: Entry ID */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700">
+                              {item.puid || <em className="text-gray-400">No entry ID</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 2: Port Name */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700">
+                              {item.name || <em className="text-gray-400">No port name</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 3: Country */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700">
+                              {item.country || <em className="text-gray-400">No country</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 4: Port Code/UNLOCODE */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700">
+                              {item.portcode || <em className="text-gray-400">No port code</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 5: Actions - External data (read-only) */}
+                          <div className="p-3 flex justify-center">
+                            <span className="text-xs text-gray-400">External</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-3 text-xs text-gray-500">No ports found</div>
                     )
                   ) : (
                     (masterData as any[]).map((item: any) => {
