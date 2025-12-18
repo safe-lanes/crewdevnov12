@@ -114,6 +114,7 @@ import { useExternalNationalities } from "@/hooks/useExternalNationalities";
 import { useExternalFleetGroups } from "@/hooks/useExternalFleetGroups";
 import { useExternalAdditionalGroups } from "@/hooks/useExternalAdditionalGroups";
 import { useExternalPorts } from "@/hooks/useExternalPorts";
+import { useExternalLanguages } from "@/hooks/useExternalLanguages";
 
 const rankGroupSchema = z.object({
   name: z.string().min(1, "Rank group name is required"),
@@ -1310,6 +1311,21 @@ const AdminModuleInner = (): JSX.Element => {
   // Add debug logging (development only)
   if (import.meta.env.DEV) {
     console.log('⚓ [External Ports] Processed Data:', portsData);
+  }
+  
+  // NEW: External languages data from API (Master 019)
+  const {
+    data: externalLanguagesData,
+    isLoading: languagesLoading,
+    error: languagesError,
+  } = useExternalLanguages();
+  
+  // Process response - API returns { languages: [...] }
+  const languagesData = (externalLanguagesData as any)?.languages || externalLanguagesData || [];
+  
+  // Add debug logging (development only)
+  if (import.meta.env.DEV) {
+    console.log('🗣️ [External Languages] Processed Data:', languagesData);
   }
   
   // Vessel Groups Data (for vessel group selection)
@@ -6643,6 +6659,11 @@ const AdminModuleInner = (): JSX.Element => {
                         <div className="p-3 border-r border-blue-400">Country</div>
                         <div className="p-3 border-r border-blue-400">Port Code / UN/LOCODE</div>
                       </>
+                    ) : selectedMaster === "019" ? (
+                      <>
+                        <div className="p-3 border-r border-blue-400">Language Name</div>
+                        <div className="p-3 border-r border-blue-400">ISO Code</div>
+                      </>
                     ) : selectedMaster === "012" ? (
                       <>
                         <div className="p-3 border-r border-blue-400">Designation</div>
@@ -6943,6 +6964,48 @@ const AdminModuleInner = (): JSX.Element => {
                       ))
                     ) : (
                       <div className="p-3 text-xs text-gray-500">No ports found</div>
+                    )
+                  ) : selectedMaster === "019" ? (
+                    // Special handling for Languages Master (019) - Use external API data
+                    languagesLoading ? (
+                      <div className="p-3 text-xs text-gray-500">Loading languages...</div>
+                    ) : languagesError ? (
+                      <div className="p-3 text-xs text-red-500">Error loading languages: {(languagesError as Error).message}</div>
+                    ) : languagesData && languagesData.length > 0 ? (
+                      languagesData.map((item: any, index: number) => (
+                        <div
+                          key={item.luid || item.id || `language-${index}`}
+                          className="grid grid-cols-4 gap-0 border-b border-gray-100 hover:bg-gray-50"
+                        >
+                          {/* Column 1: Entry ID */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700">
+                              {item.luid || <em className="text-gray-400">No entry ID</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 2: Language Name */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700">
+                              {item.languageName || <em className="text-gray-400">No language name</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 3: ISO Code */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700">
+                              {item.isoCode || <em className="text-gray-400">No ISO code</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 4: Actions - External data (read-only) */}
+                          <div className="p-3 flex justify-center">
+                            <span className="text-xs text-gray-400">External</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-3 text-xs text-gray-500">No languages found</div>
                     )
                   ) : (
                     (masterData as any[]).map((item: any) => {
