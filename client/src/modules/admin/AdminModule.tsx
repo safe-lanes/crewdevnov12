@@ -112,6 +112,7 @@ import { useExternalVesselTypes } from "@/hooks/useExternalVesselTypes";
 import { useExternalVessels } from "@/hooks/useExternalVessels";
 import { useExternalNationalities } from "@/hooks/useExternalNationalities";
 import { useExternalFleetGroups } from "@/hooks/useExternalFleetGroups";
+import { useExternalAdditionalGroups } from "@/hooks/useExternalAdditionalGroups";
 
 const rankGroupSchema = z.object({
   name: z.string().min(1, "Rank group name is required"),
@@ -1278,6 +1279,21 @@ const AdminModuleInner = (): JSX.Element => {
   // Add debug logging
   if (import.meta.env.DEV) {
     console.log('🚢 [External Fleet Groups] Processed Data:', fleetGroupsData);
+  }
+  
+  // NEW: External additional groups data from API (Master 017)
+  const {
+    data: externalAdditionalGroupsData,
+    isLoading: additionalGroupsLoading,
+    error: additionalGroupsError,
+  } = useExternalAdditionalGroups();
+  
+  // Process response - some APIs return an object with `additionalGroups`, others return array directly
+  const additionalGroupsData = (externalAdditionalGroupsData as any)?.additionalGroups || externalAdditionalGroupsData || [];
+  
+  // Add debug logging (development only)
+  if (import.meta.env.DEV) {
+    console.log('🧩 [External Additional Groups] Processed Data:', additionalGroupsData);
   }
   
   // Vessel Groups Data (for vessel group selection)
@@ -6819,6 +6835,48 @@ const AdminModuleInner = (): JSX.Element => {
                       ))
                     ) : (
                       <div className="p-3 text-xs text-gray-500">No fleet groups found</div>
+                    )
+                  ) : selectedMaster === "017" ? (
+                    // Special handling for Additional Groups Master (017) - Use external API data
+                    additionalGroupsLoading ? (
+                      <div className="p-3 text-xs text-gray-500">Loading additional groups...</div>
+                    ) : additionalGroupsError ? (
+                      <div className="p-3 text-xs text-red-500">Error loading additional groups: {(additionalGroupsError as Error).message}</div>
+                    ) : additionalGroupsData && additionalGroupsData.length > 0 ? (
+                      additionalGroupsData.map((item: any, index: number) => (
+                        <div
+                          key={item.id || `additional-group-${index}`}
+                          className="grid grid-cols-4 gap-0 border-b border-gray-100 hover:bg-gray-50"
+                        >
+                          {/* Column 1: Entry ID */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700">
+                              {item.id || <em className="text-gray-400">No entry ID</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 2: Group Name */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700">
+                              {item.name || <em className="text-gray-400">No group name</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 3: Vessels */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700">
+                              {item.vessels || <em className="text-gray-400">No vessels</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 4: Actions - External data (read-only) */}
+                          <div className="p-3 flex justify-center">
+                            <span className="text-xs text-gray-400">External</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-3 text-xs text-gray-500">No additional groups found</div>
                     )
                   ) : (
                     (masterData as any[]).map((item: any) => {
