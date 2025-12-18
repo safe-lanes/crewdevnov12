@@ -6625,7 +6625,7 @@ const AdminModuleInner = (): JSX.Element => {
               {/* Right Table - Selected Master Data */}
               <div className={`${currentBreakpoint === 'mobile' ? 'w-full' : 'flex-1'}`}>
                 <div className="bg-[#52baf3] text-white text-xs font-medium p-0">
-                  <div className={`${selectedMaster === "013" ? USERS_MASTER_GRID_CLASSES : `grid ${selectedMaster === "014" || selectedMaster === "018" ? 'grid-cols-5' : 'grid-cols-4'} gap-0`} ${selectedMaster === "013" ? 'users-master-header-grid' : ''}`}>
+                  <div className={`${selectedMaster === "013" ? USERS_MASTER_GRID_CLASSES : `grid ${selectedMaster === "014" || selectedMaster === "018" || selectedMaster === "019" ? 'grid-cols-5' : 'grid-cols-4'} gap-0`} ${selectedMaster === "013" ? 'users-master-header-grid' : ''}`}>
                     <div className="p-3 border-r border-blue-400">Entry ID</div>
                     {selectedMaster === "001" ? (
                       <>
@@ -6662,6 +6662,7 @@ const AdminModuleInner = (): JSX.Element => {
                     ) : selectedMaster === "019" ? (
                       <>
                         <div className="p-3 border-r border-blue-400">Language Name</div>
+                        <div className="p-3 border-r border-blue-400">Native Name</div>
                         <div className="p-3 border-r border-blue-400">ISO Code</div>
                       </>
                     ) : selectedMaster === "012" ? (
@@ -6975,7 +6976,7 @@ const AdminModuleInner = (): JSX.Element => {
                       languagesData.map((item: any, index: number) => (
                         <div
                           key={item.luid || item.id || `language-${index}`}
-                          className="grid grid-cols-4 gap-0 border-b border-gray-100 hover:bg-gray-50"
+                          className="grid grid-cols-5 gap-0 border-b border-gray-100 hover:bg-gray-50"
                         >
                           {/* Column 1: Entry ID */}
                           <div className="p-3 border-r border-gray-200">
@@ -6991,14 +6992,21 @@ const AdminModuleInner = (): JSX.Element => {
                             </span>
                           </div>
 
-                          {/* Column 3: ISO Code */}
+                          {/* Column 3: Native Name */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700">
+                              {item.nativeName || <em className="text-gray-400">No native name</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 4: ISO Code */}
                           <div className="p-3 border-r border-gray-200">
                             <span className="text-xs text-gray-700">
                               {item.isoCode || <em className="text-gray-400">No ISO code</em>}
                             </span>
                           </div>
 
-                          {/* Column 4: Actions - External data (read-only) */}
+                          {/* Column 5: Actions - External data (read-only) */}
                           <div className="p-3 flex justify-center">
                             <span className="text-xs text-gray-400">External</span>
                           </div>
