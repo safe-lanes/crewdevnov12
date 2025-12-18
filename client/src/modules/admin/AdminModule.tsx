@@ -110,6 +110,7 @@ import {
 import type { TrainingMaster, InsertTrainingMaster, UpdateTrainingMaster, CompanyTraining, CompanyTrainingRequirement } from "@shared/schema";
 import { useExternalVesselTypes } from "@/hooks/useExternalVesselTypes";
 import { useExternalVessels } from "@/hooks/useExternalVessels";
+import { useExternalNationalities } from "@/hooks/useExternalNationalities";
 
 const rankGroupSchema = z.object({
   name: z.string().min(1, "Rank group name is required"),
@@ -1246,6 +1247,21 @@ const AdminModuleInner = (): JSX.Element => {
   // Add debug logging
   if (import.meta.env.DEV) {
     console.log('🚢 [External Vessels] Processed Data:', vesselMasterData);
+  }
+  
+  // NEW: External nationality data from API
+  const { 
+    data: externalNationalityData, 
+    isLoading: nationalityLoading,
+    error: nationalityError 
+  } = useExternalNationalities();
+  
+  // Process external API response structure (cast to any to handle dynamic API response)
+  const nationalityData = (externalNationalityData as any)?.nationalities || [];
+  
+  // Add debug logging
+  if (import.meta.env.DEV) {
+    console.log('🌍 [External Nationalities] Processed Data:', nationalityData);
   }
   
   // Vessel Groups Data (for vessel group selection)
@@ -6603,6 +6619,48 @@ const AdminModuleInner = (): JSX.Element => {
                     <div className="p-3 text-xs text-gray-500">Loading master data...</div>
                   ) : masterDataError ? (
                     <div className="p-3 text-xs text-red-500">Error loading master data</div>
+                  ) : selectedMaster === "001" ? (
+                    // Special handling for Nationality Master (001) - Use external API data
+                    nationalityLoading ? (
+                      <div className="p-3 text-xs text-gray-500">Loading nationalities...</div>
+                    ) : nationalityError ? (
+                      <div className="p-3 text-xs text-red-500">Error loading nationalities: {(nationalityError as Error).message}</div>
+                    ) : nationalityData && nationalityData.length > 0 ? (
+                      nationalityData.map((item: any, index: number) => (
+                        <div
+                          key={item.id || item.country || `nationality-${index}`}
+                          className="grid grid-cols-4 gap-0 border-b border-gray-100 hover:bg-gray-50"
+                        >
+                          {/* Column 1: Entry ID */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700">
+                              {item.cid || <em className="text-gray-400">No entry ID</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 2: Nationality Name */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700">
+                              {item.nationality || <em className="text-gray-400">No nationality</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 3: Country Name */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700">
+                              {item.countryName || <em className="text-gray-400">No country name</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 4: Actions - External data (read-only) */}
+                          <div className="p-3 flex justify-center">
+                            <span className="text-xs text-gray-400">External</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-3 text-xs text-gray-500">No nationalities found</div>
+                    )
                   ) : selectedMaster === "004" ? (
                     // Special handling for Vessel Type Master (004) - Use external API data
                     vesselTypeLoading ? (

@@ -1,4 +1,4 @@
-# External Vessels API Integration
+# External Master Data API Integration
 
 > **Last Updated:** December 18, 2025  
 > **Status:** ✅ Active  
@@ -8,9 +8,35 @@
 
 ## Overview
 
-This integration fetches vessel and vessel type master data from an external SAIL ERP API instead of the local database. This allows the crew management system to display real-time vessel data from the central ERP system.
+This integration fetches master data from an external SAIL ERP API instead of the local database. This allows the crew management system to display real-time data from the central ERP system.
+
+**Masters using external API:**
+- **001** - Nationality Master
+- **004** - Vessel Type Master  
+- **014** - Vessel Master
 
 ## Hooks
+
+### `useExternalNationalities`
+
+Fetches nationality master data (ID: 001) from the external API.
+
+**Location:** `client/src/hooks/useExternalNationalities.tsx`
+
+**Usage:**
+```typescript
+import { useExternalNationalities } from "@/hooks/useExternalNationalities";
+
+const { data, isLoading, error } = useExternalNationalities();
+
+// Access nationalities array
+const nationalities = data?.nationalities || [];
+```
+
+**API Endpoint:**
+```
+GET https://dev.sl-sail.com/b/api/v1/crewmasterdata/getallmasterdata/nationalities?domain={domain}
+```
 
 ### `useExternalVessels`
 
