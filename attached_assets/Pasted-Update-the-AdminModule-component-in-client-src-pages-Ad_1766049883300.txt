@@ -1,0 +1,201 @@
+Update the AdminModule component in client/src/pages/Admin/AdminModule.tsx to use external vessel and vessel type data instead of internal master data. Follow these steps precisely:
+
+## Step 1: Add Import Statements
+At the top of the file, after the existing hook imports , add:
+```typescript
+import { useExternalVesselTypes } from "@/hooks/useExternalVesselTypes";
+import { useExternalVessels } from "@/hooks/useExternalVessels";
+```
+
+## Step 2: Replace Vessel Type Data Fetching
+Find the vessel type data fetching section:
+
+COMMENT OUT this existing code:
+```typescript
+// const { data: vesselTypeData = [], isLoading: vesselTypeLoading } = useMasterDataEntries('004', { 
+//   enabled: selectedAdminPage === "masters" 
+// });
+```
+
+ADD this new code immediately after:
+```typescript
+// NEW: External vessel type data from API
+let { 
+  data: vesselTypeData = [], 
+  isLoading: vesselTypeLoading,
+  error: vesselTypeError 
+} = useExternalVesselTypes();
+
+// Process external API response structure
+vesselTypeData = vesselTypeData.vesseltypes || [];
+```
+
+## Step 3: Replace Vessel Master Data Fetching
+Find the vessel master data fetching section :
+
+COMMENT OUT this existing code:
+```typescript
+// const { data: vesselMasterData = [], isLoading: vesselMasterLoading } = useMasterDataEntries('014', { 
+//   enabled: selectedAdminPage === "masters" || selectedAdminPage === "rank-admin"
+// });
+```
+
+ADD this new code immediately after:
+```typescript
+// NEW: External vessel master data from API
+let { 
+  data: vesselMasterData = [], 
+  isLoading: vesselMasterLoading,
+  error: vesselMasterError 
+} = useExternalVessels();
+
+// Process external API response structure
+vesselMasterData = vesselMasterData.vessels || [];
+
+// Add debug logging
+console.log('🚢 [External Vessels] Processed Data:', vesselMasterData);
+```
+
+## Step 4: Update Vessel Type Rendering in renderDataMastersModule
+Find the renderDataMastersModule function (around line 2800). Locate this line:
+```typescript
+<div className="p-3 text-xs text-red-500">Error loading master data</div>
+```
+
+Immediately AFTER the closing ) : of the error condition, ADD this code block as the FIRST condition before the existing (masterData as any[]).map():
+```typescript
+) : selectedMaster === "004" ? (
+  // Special handling for Vessel Type Master (004) - Use external API data
+  vesselTypeLoading ? (
+    <div className="p-3 text-xs text-gray-500">Loading vessel types...</div>
+  ) : vesselTypeError ? (
+    <div className="p-3 text-xs text-red-500">Error loading vessel types: {vesselTypeError.message}</div>
+  ) : vesselTypeData && vesselTypeData.length > 0 ? (
+    vesselTypeData.map((item: any, index: number) => (
+      <div
+        key={item.vtuid || item.id || `vessel-type-${index}`}
+        className="grid grid-cols-4 gap-0 border-b border-gray-100 hover:bg-gray-50"
+      >
+        {/* Column 1: Entry ID */}
+        <div className="p-3 border-r border-gray-200">
+          <span className="text-xs text-gray-700">
+            {item.vtuid || item.entryId || item.id || <em className="text-gray-400">No entry ID</em>}
+          </span>
+        </div>
+
+        {/* Column 2: Vessel Type Name */}
+        <div className="p-3 border-r border-gray-200">
+          <span className="text-xs text-gray-700">
+            {item.vesselType || item.name || <em className="text-gray-400">No vessel type</em>}
+          </span>
+        </div>
+
+        {/* Column 3: Classification */}
+        <div className="p-3 border-r border-gray-200">
+          <span className="text-xs text-gray-700">
+            {(() => {
+              const classifications = [];
+              if (item.tanker === 1) classifications.push('Tanker');
+              if (item.oilTanker === 1) classifications.push('Oil');
+              if (item.gasTanker === 1) classifications.push('Gas');
+              if (item.chemicalTanker === 1) classifications.push('Chemical');
+              if (item.dry === 1) classifications.push(‘Dry’);
+              if (item.container === 1) classifications.push(‘Container’);
+
+              return classifications.length > 0 ? classifications.join(', ') : <em className="text-gray-400">No classification</em>;
+            })()}
+          </span>
+        </div>
+
+        {/* Column 4: Actions - External data (read-only) */}
+        <div className="p-3 flex justify-center">
+          <span className="text-xs text-gray-400">External</span>
+        </div>
+      </div>
+    ))
+  ) : (
+    <div className="p-3 text-xs text-gray-500">No vessel types found</div>
+  )
+) : selectedMaster === "014" ? (
+```
+
+## Step 5: Update Vessel Master Rendering
+Immediately after the vessel type code block from Step 4, ADD this code block (it should flow directly after the ") : selectedMaster === "014" ? (" line):
+```typescript
+  // Vessel Master (014) - Use external vessel master data
+  vesselMasterLoading ? (
+    <div className="p-3 text-xs text-gray-500">Loading vessels...</div>
+  ) : vesselMasterError ? (
+    <div className="p-3 text-xs text-red-500">Error loading vessels: {vesselMasterError.message}</div>
+  ) : vesselMasterData && vesselMasterData.length > 0 ? (
+    vesselMasterData.map((item: any, index: number) => (
+      <div
+        key={item.vesselId || item.id || `vessel-${index}`}
+        className="grid grid-cols-5 gap-0 border-b border-gray-100 hover:bg-gray-50"
+      >
+        {/* Column 1: Entry ID */}
+        <div className="p-3 border-r border-gray-200">
+          <span className="text-xs text-gray-700">
+            {item.vuid || <em className="text-gray-400">No entry ID</em>}
+          </span>
+        </div>
+
+        {/* Column 2: Vessel Name */}
+        <div className="p-3 border-r border-gray-200">
+          <span className="text-xs text-gray-700">
+            {item.vessel || <em className="text-gray-400">No vessel name</em>}
+          </span>
+        </div>
+
+        {/* Column 3: IMO Number */}
+        <div className="p-3 border-r border-gray-200">
+          <span className="text-xs text-gray-700">
+            {item.imoNumber || <em className="text-gray-400">No IMO number</em>}
+          </span>
+        </div>
+
+        {/* Column 4: Vessel Type */}
+        <div className="p-3 border-r border-gray-200">
+          <span className="text-xs text-gray-700">
+            {item.vesselType || item.vesselTypeId || <em className="text-gray-400">No vessel type</em>}
+          </span>
+        </div>
+
+        {/* Column 5: Actions - External data (read-only) */}
+        <div className="p-3 flex justify-center">
+          <span className="text-xs text-gray-400">External</span>
+        </div>
+      </div>
+    ))
+  ) : (
+    <div className="p-3 text-xs text-gray-500">No vessels found</div>
+  )
+) : (
+```
+
+Make sure the final ") : (" flows into the existing (masterData as any[]).map() code that handles all other master types.
+
+## Step 6: Verify Error Handling
+Ensure both vesselTypeError and vesselMasterError are properly displayed with descriptive error messages as shown in the code blocks above.
+
+## Step 7: Remove Unused Error Variable Declaration
+If there's an unused vesselMasterError variable declaration, add it to Step 3 as shown.
+
+## Important Notes:
+1. Keep ALL existing functionality for other master types (001, 002, 003, 012, 013, 018, etc.) completely unchanged
+2. Only modify the rendering logic for master IDs "004" (vessel types) and "014" (vessels)
+3. The external data is READ-ONLY - no edit/delete functionality
+4. Maintain the same grid layout and styling as other masters
+5. Test that switching between masters still works correctly
+6. Verify that the "External" label appears in the Actions column for both vessel types and vessels
+7. Check that error states display properly when API calls fail
+
+## Testing Checklist:
+- [ ] Vessel Type Master (004) loads and displays external data
+- [ ] Vessel Master (014) loads and displays external data
+- [ ] Classification flags display correctly for vessel types
+- [ ] Switching to other masters still works
+- [ ] Loading states show during data fetch
+- [ ] Error messages display when API fails
+- [ ] No edit/delete buttons appear for external data
+- [ ] Console logs show processed data structure
