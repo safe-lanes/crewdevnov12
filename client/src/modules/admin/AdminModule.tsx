@@ -6609,7 +6609,7 @@ const AdminModuleInner = (): JSX.Element => {
               {/* Right Table - Selected Master Data */}
               <div className={`${currentBreakpoint === 'mobile' ? 'w-full' : 'flex-1'}`}>
                 <div className="bg-[#52baf3] text-white text-xs font-medium p-0">
-                  <div className={`${selectedMaster === "013" ? USERS_MASTER_GRID_CLASSES : `grid ${selectedMaster === "014" ? 'grid-cols-5' : 'grid-cols-4'} gap-0`} ${selectedMaster === "013" ? 'users-master-header-grid' : ''}`}>
+                  <div className={`${selectedMaster === "013" ? USERS_MASTER_GRID_CLASSES : `grid ${selectedMaster === "014" || selectedMaster === "018" ? 'grid-cols-5' : 'grid-cols-4'} gap-0`} ${selectedMaster === "013" ? 'users-master-header-grid' : ''}`}>
                     <div className="p-3 border-r border-blue-400">Entry ID</div>
                     {selectedMaster === "001" ? (
                       <>
@@ -6640,6 +6640,7 @@ const AdminModuleInner = (): JSX.Element => {
                     ) : selectedMaster === "018" ? (
                       <>
                         <div className="p-3 border-r border-blue-400">Port Name</div>
+                        <div className="p-3 border-r border-blue-400">Country</div>
                         <div className="p-3 border-r border-blue-400">Port Code / UN/LOCODE</div>
                       </>
                     ) : selectedMaster === "012" ? (
