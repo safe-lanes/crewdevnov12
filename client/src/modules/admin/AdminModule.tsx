@@ -108,6 +108,8 @@ import {
   TRAINING_GROUPS
 } from "@/hooks/useTrainingMaster";
 import type { TrainingMaster, InsertTrainingMaster, UpdateTrainingMaster, CompanyTraining, CompanyTrainingRequirement } from "@shared/schema";
+import { useExternalVesselTypes } from "@/hooks/useExternalVesselTypes";
+import { useExternalVessels } from "@/hooks/useExternalVessels";
 
 const rankGroupSchema = z.object({
   name: z.string().min(1, "Rank group name is required"),
@@ -1199,10 +1201,25 @@ const AdminModuleInner = (): JSX.Element => {
   }, [rawMasterData, selectedMaster, selectedAdminPage]);
   
   // Vessel Type Master Data (for vessel master dropdown)
-  // PERFORMANCE: Only fetch when on masters tab
-  const { data: vesselTypeData = [], isLoading: vesselTypeLoading } = useMasterDataEntries('004', { 
-    enabled: selectedAdminPage === "masters" 
-  });
+  // COMMENTED OUT: Using external API instead
+  // const { data: vesselTypeData = [], isLoading: vesselTypeLoading } = useMasterDataEntries('004', { 
+  //   enabled: selectedAdminPage === "masters" 
+  // });
+  
+  // NEW: External vessel type data from API
+  const { 
+    data: externalVesselTypeData, 
+    isLoading: vesselTypeLoading,
+    error: vesselTypeError 
+  } = useExternalVesselTypes();
+  
+  // Process external API response structure (cast to any to handle dynamic API response)
+  const vesselTypeData = (externalVesselTypeData as any)?.vesseltypes || [];
+  
+  // Add debug logging
+  if (import.meta.env.DEV) {
+    console.log('🔧 [External Vessel Types] Processed Data:', vesselTypeData);
+  }
   
   // Designation Master Data (for users master dropdown)
   // PERFORMANCE: Only fetch when on masters tab
@@ -1211,10 +1228,25 @@ const AdminModuleInner = (): JSX.Element => {
   });
   
   // Vessels Master Data (for vessel selection dropdown - ID 014)
-  // PERFORMANCE: Only fetch when on masters or rank-admin tab (Rank Admin needs vessel dropdown)
-  const { data: vesselMasterData = [], isLoading: vesselMasterLoading } = useMasterDataEntries('014', { 
-    enabled: selectedAdminPage === "masters" || selectedAdminPage === "rank-admin"
-  });
+  // COMMENTED OUT: Using external API instead
+  // const { data: vesselMasterData = [], isLoading: vesselMasterLoading } = useMasterDataEntries('014', { 
+  //   enabled: selectedAdminPage === "masters" || selectedAdminPage === "rank-admin"
+  // });
+  
+  // NEW: External vessel master data from API
+  const { 
+    data: externalVesselMasterData, 
+    isLoading: vesselMasterLoading,
+    error: vesselMasterError 
+  } = useExternalVessels();
+  
+  // Process external API response structure (cast to any to handle dynamic API response)
+  const vesselMasterData = (externalVesselMasterData as any)?.vessels || [];
+  
+  // Add debug logging
+  if (import.meta.env.DEV) {
+    console.log('🚢 [External Vessels] Processed Data:', vesselMasterData);
+  }
   
   // Vessel Groups Data (for vessel group selection)
   // PERFORMANCE: Only fetch when on masters or rank-admin tab (Rank Admin needs vessel dropdown)
@@ -6571,6 +6603,107 @@ const AdminModuleInner = (): JSX.Element => {
                     <div className="p-3 text-xs text-gray-500">Loading master data...</div>
                   ) : masterDataError ? (
                     <div className="p-3 text-xs text-red-500">Error loading master data</div>
+                  ) : selectedMaster === "004" ? (
+                    // Special handling for Vessel Type Master (004) - Use external API data
+                    vesselTypeLoading ? (
+                      <div className="p-3 text-xs text-gray-500">Loading vessel types...</div>
+                    ) : vesselTypeError ? (
+                      <div className="p-3 text-xs text-red-500">Error loading vessel types: {(vesselTypeError as Error).message}</div>
+                    ) : vesselTypeData && vesselTypeData.length > 0 ? (
+                      vesselTypeData.map((item: any, index: number) => (
+                        <div
+                          key={item.vtuid || item.id || `vessel-type-${index}`}
+                          className="grid grid-cols-4 gap-0 border-b border-gray-100 hover:bg-gray-50"
+                        >
+                          {/* Column 1: Entry ID */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700">
+                              {item.vtuid || item.entryId || item.id || <em className="text-gray-400">No entry ID</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 2: Vessel Type Name */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700">
+                              {item.vesselType || item.name || <em className="text-gray-400">No vessel type</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 3: Classification */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700">
+                              {(() => {
+                                const classifications = [];
+                                if (item.tanker === 1) classifications.push('Tanker');
+                                if (item.oilTanker === 1) classifications.push('Oil');
+                                if (item.gasTanker === 1) classifications.push('Gas');
+                                if (item.chemicalTanker === 1) classifications.push('Chemical');
+                                if (item.dry === 1) classifications.push('Dry');
+                                if (item.container === 1) classifications.push('Container');
+
+                                return classifications.length > 0 ? classifications.join(', ') : <em className="text-gray-400">No classification</em>;
+                              })()}
+                            </span>
+                          </div>
+
+                          {/* Column 4: Actions - External data (read-only) */}
+                          <div className="p-3 flex justify-center">
+                            <span className="text-xs text-gray-400">External</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-3 text-xs text-gray-500">No vessel types found</div>
+                    )
+                  ) : selectedMaster === "014" ? (
+                    // Vessel Master (014) - Use external vessel master data
+                    vesselMasterLoading ? (
+                      <div className="p-3 text-xs text-gray-500">Loading vessels...</div>
+                    ) : vesselMasterError ? (
+                      <div className="p-3 text-xs text-red-500">Error loading vessels: {(vesselMasterError as Error).message}</div>
+                    ) : vesselMasterData && vesselMasterData.length > 0 ? (
+                      vesselMasterData.map((item: any, index: number) => (
+                        <div
+                          key={item.vesselId || item.id || `vessel-${index}`}
+                          className="grid grid-cols-5 gap-0 border-b border-gray-100 hover:bg-gray-50"
+                        >
+                          {/* Column 1: Entry ID */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700">
+                              {item.vuid || <em className="text-gray-400">No entry ID</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 2: Vessel Name */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700">
+                              {item.vessel || <em className="text-gray-400">No vessel name</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 3: IMO Number */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700">
+                              {item.imoNumber || <em className="text-gray-400">No IMO number</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 4: Vessel Type */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700">
+                              {item.vesselType || item.vesselTypeId || <em className="text-gray-400">No vessel type</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 5: Actions - External data (read-only) */}
+                          <div className="p-3 flex justify-center">
+                            <span className="text-xs text-gray-400">External</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-3 text-xs text-gray-500">No vessels found</div>
+                    )
                   ) : (
                     (masterData as any[]).map((item: any) => {
                       // Different logic for identifying new entries based on master type
