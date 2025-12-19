@@ -1531,10 +1531,10 @@ const AdminModuleInner = (): JSX.Element => {
       
       // CRITICAL FIX: Use canonical vessel ID (entryId/VSL-XXX format) for value
       // This ensures Rank Admin saves data with the correct vessel identifier
-      const vesselValue = vessel.entryId || vessel.entry_id || `VSL-${String(vessel.id).padStart(3, '0')}`;
+      const vesselValue = vessel.entryId || vessel.vuid || `VSL-${String(vessel.id).padStart(3, '0')}`;
       
       // Ensure we have a consistent label field for display
-      const vesselLabel = mappedVessel.vessel || vessel.name || vessel.label || `Vessel ${vesselValue}`;
+      const vesselLabel = mappedVessel.vessel || vessel.name || vessel.vessel || `Vessel ${vesselValue}`;
       
       return {
         value: String(vesselValue), // Use canonical vessel ID (VSL-XXX)
