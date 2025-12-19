@@ -27,6 +27,7 @@ import { useExternalVesselTypes } from '@/hooks/useExternalVesselTypes';
 import { useExternalVessels } from '@/hooks/useExternalVessels';
 import { useExternalFleetGroups } from '@/hooks/useExternalFleetGroups';
 import { useExternalLanguages } from '@/hooks/useExternalLanguages';
+import { useExternalCountries } from '@/hooks/useExternalCountries';
 import { LicenseSelectionDialog } from '@/modules/crew-pool/LicenseSelectionDialog';
 import { TrainingCourseSelectionDialog } from '@/modules/crew-pool/TrainingCourseSelectionDialog';
 import { TravelDocumentSelectionDialog } from '@/modules/crew-pool/TravelDocumentSelectionDialog';
@@ -1924,28 +1925,17 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     return [];
   }, [externalNationalitiesData]);
 
-  // Master data from #Country Master# (placeholder until Crew Admin integration)
-  const countryMasterData = [
-    "Afghanistan", "Albania", "Algeria", "United States", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia",
-    "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin",
-    "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Brazil", "United Kingdom", "Brunei", "Bulgaria", "Burkina Faso", "Myanmar", "Burundi",
-    "Cambodia", "Cameroon", "Canada", "Cape Verde", "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros",
-    "Congo", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominican Republic", "Netherlands",
-    "East Timor", "Ecuador", "Egypt", "United Arab Emirates", "Equatorial Guinea", "Eritrea", "Estonia", "Ethiopia", "Fiji", "Philippines",
-    "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada", "Guatemala",
-    "Guinea-Bissau", "Guinea", "Guyana", "Haiti", "Bosnia and Herzegovina", "Honduras", "Hungary", "Kiribati", "Iceland", "India",
-    "Indonesia", "Iran", "Iraq", "Ireland", "Israel", "Italy", "Ivory Coast", "Jamaica", "Japan", "Jordan",
-    "Kazakhstan", "Kenya", "Saint Kitts and Nevis", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Liberia", "Libya",
-    "Liechtenstein", "Lithuania", "Luxembourg", "North Macedonia", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta",
-    "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Morocco", "Lesotho",
-    "Botswana", "Mozambique", "Namibia", "Nauru", "Nepal", "New Zealand", "Nicaragua", "Nigeria", "Niger", "North Korea",
-    "Northern Ireland", "Norway", "Oman", "Pakistan", "Palau", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Poland",
-    "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Lucia", "El Salvador", "Samoa", "San Marino", "Sao Tome and Principe",
-    "Saudi Arabia", "Scotland", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands",
-    "Somalia", "South Africa", "South Korea", "Spain", "Sri Lanka", "Sudan", "Suriname", "Eswatini", "Sweden", "Switzerland",
-    "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey",
-    "Tuvalu", "Uganda", "Ukraine", "Uruguay", "Uzbekistan", "Venezuela", "Vietnam", "Wales", "Yemen", "Zambia", "Zimbabwe"
-  ];
+  // Fetch countries from external API (Master 020)
+  const { data: externalCountriesData } = useExternalCountries();
+  
+  // Extract country names from external API response
+  const countryMasterData: string[] = useMemo(() => {
+    const countries = (externalCountriesData as any)?.countries || externalCountriesData || [];
+    if (countries.length > 0) {
+      return countries.map((c: any) => c.countryName || c.name).filter(Boolean).sort();
+    }
+    return [];
+  }, [externalCountriesData]);
 
   // Fetch languages from external API (Master 019)
   const { data: externalLanguagesData } = useExternalLanguages();
