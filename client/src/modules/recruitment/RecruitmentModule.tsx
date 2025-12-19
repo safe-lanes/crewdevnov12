@@ -22,8 +22,8 @@ import { type RecruitmentCandidate } from '@shared/schema';
 import { useToast } from '@/hooks/use-toast';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
-import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
-import { NATIONALITIES } from '@/utils/data/nationalities';
+import { useExternalNationalities } from '@/hooks/useExternalNationalities';
+import { useExternalVesselTypes } from '@/hooks/useExternalVesselTypes';
 import { useViewport, getViewportConfig } from '@/hooks/useViewport';
 
 // Status mapping for filtering
@@ -51,39 +51,29 @@ export const RecruitmentModule = (): JSX.Element => {
   const isTablet = viewport === 'tablet';
   const isSmallScreen = isPhone || isTablet;
 
-  // Fetch vessel types from Master 004 API
-  const { data: vesselTypeMasterDataRaw = [], isLoading: vesselTypesLoading } = useQuery<Array<{ entryId: string; name: string; level?: number }>>({
-    queryKey: ["/api/masters/004/data"],
-  });
+  // Fetch vessel types from external API (Master 004)
+  const { data: externalVesselTypesData, isLoading: vesselTypesLoading } = useExternalVesselTypes();
   
-  // Filter to Level 2 and Level 3 types for dropdown (not Level 1 categories)
-  // Default level to 2 when undefined to ensure all vessel types are included
+  // Extract vessel type names from external API response
   const vesselTypeMasterData = useMemo(() => {
-    if (vesselTypeMasterDataRaw.length > 0) {
-      const filteredTypes = vesselTypeMasterDataRaw.filter(vt => {
-        const level = vt.level ?? 2; // Default to level 2 if undefined
-        return level >= 2;
-      });
-      if (filteredTypes.length > 0) return filteredTypes.map(vt => vt.name);
+    const vesselTypes = (externalVesselTypesData as any)?.vesselTypes || externalVesselTypesData || [];
+    if (vesselTypes.length > 0) {
+      return vesselTypes.map((vt: any) => vt.vesselType || vt.name).filter(Boolean);
     }
-    // Fallback to static data
-    return DEFAULT_DROPDOWN_VESSEL_TYPES;
-  }, [vesselTypeMasterDataRaw]);
+    return [];
+  }, [externalVesselTypesData]);
 
-  // Fetch nationalities from Master Data 001
-  const { data: nationalityMasterDataRaw = [], isLoading: nationalitiesLoading } = useQuery<Array<{ entryId: string; name: string }>>({
-    queryKey: ["/api/masters/001/data"],
-  });
+  // Fetch nationalities from external API (Master 001)
+  const { data: externalNationalitiesData, isLoading: nationalitiesLoading } = useExternalNationalities();
 
-  // Extract nationality names with fallback to static data
-  // Use static list if master data has fewer than 20 entries (incomplete data)
+  // Extract nationality names from external API response
   const nationalityMasterData = useMemo(() => {
-    if (nationalityMasterDataRaw.length >= 20) {
-      return nationalityMasterDataRaw.map(n => n.name);
+    const nationalities = (externalNationalitiesData as any)?.nationalities || externalNationalitiesData || [];
+    if (nationalities.length > 0) {
+      return nationalities.map((n: any) => n.nationality || n.countryName || n.name).filter(Boolean);
     }
-    // Fallback to comprehensive static NATIONALITIES list
-    return [...NATIONALITIES];
-  }, [nationalityMasterDataRaw]);
+    return [];
+  }, [externalNationalitiesData]);
 
   // Filter state (moved up to fix order)
   const [filters, setFilters] = useState({
@@ -490,7 +480,7 @@ export const RecruitmentModule = (): JSX.Element => {
                       {vesselTypesLoading ? (
                         <SelectItem value="loading" disabled>Loading...</SelectItem>
                       ) : (
-                        vesselTypeMasterData.map(vesselType => (
+                        vesselTypeMasterData.map((vesselType: string) => (
                           <SelectItem key={vesselType} value={vesselType} data-testid={`vessel-type-option-${vesselType}`}>{vesselType}</SelectItem>
                         ))
                       )}
@@ -507,7 +497,7 @@ export const RecruitmentModule = (): JSX.Element => {
                       {nationalitiesLoading ? (
                         <SelectItem value="loading" disabled>Loading...</SelectItem>
                       ) : (
-                        nationalityMasterData.map(nationality => (
+                        nationalityMasterData.map((nationality: string) => (
                           <SelectItem key={nationality} value={nationality} data-testid={`nationality-option-${nationality}`}>{nationality}</SelectItem>
                         ))
                       )}
@@ -576,7 +566,7 @@ export const RecruitmentModule = (): JSX.Element => {
                       {vesselTypesLoading ? (
                         <SelectItem value="loading" disabled>Loading...</SelectItem>
                       ) : (
-                        vesselTypeMasterData.map(vesselType => (
+                        vesselTypeMasterData.map((vesselType: string) => (
                           <SelectItem key={vesselType} value={vesselType} data-testid={`vessel-type-option-${vesselType}`}>{vesselType}</SelectItem>
                         ))
                       )}
@@ -591,7 +581,7 @@ export const RecruitmentModule = (): JSX.Element => {
                       {nationalitiesLoading ? (
                         <SelectItem value="loading" disabled>Loading...</SelectItem>
                       ) : (
-                        nationalityMasterData.map(nationality => (
+                        nationalityMasterData.map((nationality: string) => (
                           <SelectItem key={nationality} value={nationality} data-testid={`nationality-option-${nationality}`}>{nationality}</SelectItem>
                         ))
                       )}
@@ -659,7 +649,7 @@ export const RecruitmentModule = (): JSX.Element => {
                       {vesselTypesLoading ? (
                         <SelectItem value="loading" disabled>Loading...</SelectItem>
                       ) : (
-                        vesselTypeMasterData.map(vesselType => (
+                        vesselTypeMasterData.map((vesselType: string) => (
                           <SelectItem key={vesselType} value={vesselType} data-testid={`vessel-type-option-${vesselType}`}>{vesselType}</SelectItem>
                         ))
                       )}
@@ -674,7 +664,7 @@ export const RecruitmentModule = (): JSX.Element => {
                       {nationalitiesLoading ? (
                         <SelectItem value="loading" disabled>Loading...</SelectItem>
                       ) : (
-                        nationalityMasterData.map(nationality => (
+                        nationalityMasterData.map((nationality: string) => (
                           <SelectItem key={nationality} value={nationality} data-testid={`nationality-option-${nationality}`}>{nationality}</SelectItem>
                         ))
                       )}

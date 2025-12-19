@@ -22,7 +22,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { type RecruitmentCandidate, type InsertRecruitmentCandidate } from '@shared/schema';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
-import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
+import { useExternalNationalities } from '@/hooks/useExternalNationalities';
+import { useExternalVesselTypes } from '@/hooks/useExternalVesselTypes';
+import { useExternalVessels } from '@/hooks/useExternalVessels';
+import { useExternalFleetGroups } from '@/hooks/useExternalFleetGroups';
+import { useExternalLanguages } from '@/hooks/useExternalLanguages';
 import { LicenseSelectionDialog } from '@/modules/crew-pool/LicenseSelectionDialog';
 import { TrainingCourseSelectionDialog } from '@/modules/crew-pool/TrainingCourseSelectionDialog';
 import { TravelDocumentSelectionDialog } from '@/modules/crew-pool/TravelDocumentSelectionDialog';
@@ -1857,32 +1861,25 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     }));
   };
 
-  // Fetch vessel types from Master 004 API with fallback to static data
-  const { data: vesselTypeMasterDataRaw = [] } = useQuery<Array<{ entryId: string; name: string; level?: number }>>({
-    queryKey: ["/api/masters/004/data"],
-  });
+  // Fetch vessel types from external API (Master 004)
+  const { data: externalVesselTypesData } = useExternalVesselTypes();
   
-  // Filter to Level 2 and Level 3 types for dropdown (not Level 1 categories)
+  // Extract vessel type names from external API response
   const vesselTypeMasterData = useMemo(() => {
-    if (vesselTypeMasterDataRaw.length > 0) {
-      const filteredTypes = vesselTypeMasterDataRaw.filter(vt => vt.level && vt.level >= 2);
-      if (filteredTypes.length > 0) return filteredTypes.map(vt => vt.name);
+    const vesselTypes = (externalVesselTypesData as any)?.vesselTypes || externalVesselTypesData || [];
+    if (vesselTypes.length > 0) {
+      return vesselTypes.map((vt: any) => vt.vesselType || vt.name).filter(Boolean);
     }
-    // Fallback to static data
-    return DEFAULT_DROPDOWN_VESSEL_TYPES;
-  }, [vesselTypeMasterDataRaw]);
+    return [];
+  }, [externalVesselTypesData]);
 
-  // Fetch Vessels Master (014) for C2.2 and C3.2 dropdowns
-  const { data: vesselsMasterDataRaw = [], isLoading: isLoadingVessels } = useQuery<Array<{ entryId: string; name: string }>>({
-    queryKey: ["/api/masters/014/data"],
-  });
+  // Fetch Vessels from external API (Master 014)
+  const { data: externalVesselsData, isLoading: isLoadingVessels } = useExternalVessels();
 
-  // Fetch Fleet Groups Master (015) for C2.2 and C3.2 dropdowns
-  const { data: fleetGroupsMasterDataRaw = [], isLoading: isLoadingFleetGroups } = useQuery<Array<{ entryId: string; name: string }>>({
-    queryKey: ["/api/masters/015/data"],
-  });
+  // Fetch Fleet Groups from external API (Master 015)
+  const { data: externalFleetGroupsData, isLoading: isLoadingFleetGroups } = useExternalFleetGroups();
 
-  // Combined vessel/fleet options for C2.2 and C3.2 dropdowns (only Masters 014 and 015)
+  // Combined vessel/fleet options for C2.2 and C3.2 dropdowns
   const isLoadingVesselFleetData = isLoadingVessels || isLoadingFleetGroups;
   
   const vesselFleetOptions = useMemo(() => {
@@ -1898,41 +1895,33 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       }
     };
     
-    // Add vessels from Vessels Master (014) - no fallback
-    vesselsMasterDataRaw.forEach(v => {
-      if (v.name) addOption(v.name, 'vessel');
+    // Add vessels from external API (Master 014)
+    const vessels = (externalVesselsData as any)?.vessels || externalVesselsData || [];
+    vessels.forEach((v: any) => {
+      const vesselName = v.vessel || v.name;
+      if (vesselName) addOption(vesselName, 'vessel');
     });
     
-    // Add fleet groups from Fleet Groups Master (015) - no fallback
-    fleetGroupsMasterDataRaw.forEach(f => {
+    // Add fleet groups from external API (Master 015)
+    const fleetGroups = (externalFleetGroupsData as any)?.fleetGroups || externalFleetGroupsData || [];
+    fleetGroups.forEach((f: any) => {
       if (f.name) addOption(f.name, 'fleet');
     });
     
     return options;
-  }, [vesselsMasterDataRaw, fleetGroupsMasterDataRaw]);
+  }, [externalVesselsData, externalFleetGroupsData]);
 
-  // Comprehensive nationality list matching AppraisalForm standards
-  const NATIONALITIES = [
-    "Afghan", "Albanian", "Algerian", "American", "Andorran", "Angolan", "Antiguan", "Argentine", "Armenian", "Australian",
-    "Austrian", "Azerbaijani", "Bahamian", "Bahraini", "Bangladeshi", "Barbadian", "Belarusian", "Belgian", "Belizean", "Beninese",
-    "Bhutanese", "Bolivian", "Bosnian", "Brazilian", "British", "Bruneian", "Bulgarian", "Burkinabe", "Burmese", "Burundian",
-    "Cambodian", "Cameroonian", "Canadian", "Cape Verdean", "Central African", "Chadian", "Chilean", "Chinese", "Colombian", "Comoran",
-    "Congolese", "Costa Rican", "Croatian", "Cuban", "Cypriot", "Czech", "Danish", "Djibouti", "Dominican", "Dutch",
-    "East Timorese", "Ecuadorean", "Egyptian", "Emirian", "Equatorial Guinean", "Eritrean", "Estonian", "Ethiopian", "Fijian", "Filipino",
-    "Finnish", "French", "Gabonese", "Gambian", "Georgian", "German", "Ghanaian", "Greek", "Grenadian", "Guatemalan",
-    "Guinea-Bissauan", "Guinean", "Guyanese", "Haitian", "Herzegovinian", "Honduran", "Hungarian", "I-Kiribati", "Icelander", "Indian",
-    "Indonesian", "Iranian", "Iraqi", "Irish", "Israeli", "Italian", "Ivorian", "Jamaican", "Japanese", "Jordanian",
-    "Kazakhstani", "Kenyan", "Kittian and Nevisian", "Kuwaiti", "Kyrgyz", "Laotian", "Latvian", "Lebanese", "Liberian", "Libyan",
-    "Liechtensteiner", "Lithuanian", "Luxembourger", "Macedonian", "Malagasy", "Malawian", "Malaysian", "Maldivan", "Malian", "Maltese",
-    "Marshallese", "Mauritanian", "Mauritian", "Mexican", "Micronesian", "Moldovan", "Monacan", "Mongolian", "Moroccan", "Mosotho",
-    "Motswana", "Mozambican", "Namibian", "Nauruan", "Nepalese", "New Zealander", "Nicaraguan", "Nigerian", "Nigerien", "North Korean",
-    "Northern Irish", "Norwegian", "Omani", "Pakistani", "Palauan", "Panamanian", "Papua New Guinean", "Paraguayan", "Peruvian", "Polish",
-    "Portuguese", "Qatari", "Romanian", "Russian", "Rwandan", "Saint Lucian", "Salvadoran", "Samoan", "San Marinese", "Sao Tomean",
-    "Saudi", "Scottish", "Senegalese", "Serbian", "Seychellois", "Sierra Leonean", "Singaporean", "Slovakian", "Slovenian", "Solomon Islander",
-    "Somali", "South African", "South Korean", "Spanish", "Sri Lankan", "Sudanese", "Surinamer", "Swazi", "Swedish", "Swiss",
-    "Syrian", "Taiwanese", "Tajik", "Tanzanian", "Thai", "Togolese", "Tongan", "Trinidadian or Tobagonian", "Tunisian", "Turkish",
-    "Tuvaluan", "Ugandan", "Ukrainian", "Uruguayan", "Uzbekistani", "Venezuelan", "Vietnamese", "Welsh", "Yemenite", "Zambian", "Zimbabwean"
-  ];
+  // Fetch nationalities from external API (Master 001)
+  const { data: externalNationalitiesData } = useExternalNationalities();
+  
+  // Extract nationality names from external API response
+  const NATIONALITIES = useMemo(() => {
+    const nationalities = (externalNationalitiesData as any)?.nationalities || externalNationalitiesData || [];
+    if (nationalities.length > 0) {
+      return nationalities.map((n: any) => n.nationality || n.countryName || n.name).filter(Boolean);
+    }
+    return [];
+  }, [externalNationalitiesData]);
 
   // Master data from #Country Master# (placeholder until Crew Admin integration)
   const countryMasterData = [
@@ -1957,16 +1946,17 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     "Tuvalu", "Uganda", "Ukraine", "Uruguay", "Uzbekistan", "Venezuela", "Vietnam", "Wales", "Yemen", "Zambia", "Zimbabwe"
   ];
 
-  // Master data from #Language Master# (placeholder until Crew Admin integration)  
-  const languageMasterData = [
-    "English", "Mandarin Chinese", "Spanish", "Hindi", "Arabic", "Portuguese", "Bengali", "Russian", "Japanese", "French",
-    "German", "Korean", "Italian", "Vietnamese", "Turkish", "Polish", "Dutch", "Greek", "Czech", "Romanian",
-    "Hungarian", "Swedish", "Norwegian", "Danish", "Finnish", "Hebrew", "Thai", "Malay", "Indonesian", "Filipino",
-    "Urdu", "Persian", "Ukrainian", "Croatian", "Serbian", "Bulgarian", "Slovak", "Slovenian", "Lithuanian", "Latvian",
-    "Estonian", "Georgian", "Armenian", "Kazakh", "Uzbek", "Mongolian", "Nepali", "Sinhala", "Tamil", "Telugu",
-    "Marathi", "Gujarati", "Punjabi", "Malayalam", "Kannada", "Oriya", "Assamese", "Swahili", "Amharic", "Yoruba",
-    "Igbo", "Hausa", "Zulu", "Afrikaans", "Xhosa", "Sesotho", "Setswana", "Shona", "Ndebele", "Venda"
-  ];
+  // Fetch languages from external API (Master 019)
+  const { data: externalLanguagesData } = useExternalLanguages();
+  
+  // Extract language names from external API response
+  const languageMasterData = useMemo(() => {
+    const languages = (externalLanguagesData as any)?.languages || externalLanguagesData || [];
+    if (languages.length > 0) {
+      return languages.map((l: any) => l.languageName || l.name).filter(Boolean);
+    }
+    return [];
+  }, [externalLanguagesData]);
 
   // Master data from #City Master# (placeholder until Crew Admin integration)
   const cityMasterData = [
@@ -2315,7 +2305,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                     <SelectValue placeholder="Select nationality" />
                   </SelectTrigger>
                   <SelectContent className="max-h-[200px]">
-                    {NATIONALITIES.map(nationality => (
+                    {NATIONALITIES.map((nationality: string) => (
                       <SelectItem key={nationality} value={nationality}>{nationality}</SelectItem>
                     ))}
                   </SelectContent>
@@ -2450,7 +2440,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                     <SelectValue placeholder="Select native language" />
                   </SelectTrigger>
                   <SelectContent className="max-h-[200px]">
-                    {languageMasterData.map(language => (
+                    {languageMasterData.map((language: string) => (
                       <SelectItem key={language} value={language}>{language}</SelectItem>
                     ))}
                   </SelectContent>
@@ -2484,7 +2474,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent className="max-h-[200px]" onCloseAutoFocus={(e) => e.preventDefault()}>
-                      {languageMasterData.map(language => {
+                      {languageMasterData.map((language: string) => {
                         const isSelected = isLanguageSelected('foreignLanguages', language);
                         return (
                           <SelectItem 
@@ -3331,7 +3321,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                       <SelectValue placeholder="Select vessel type" />
                     </SelectTrigger>
                     <SelectContent>
-                      {vesselTypeMasterData.map((vesselType) => (
+                      {vesselTypeMasterData.map((vesselType: string) => (
                         <SelectItem key={vesselType} value={vesselType}>
                           {vesselType}
                         </SelectItem>
@@ -6900,7 +6890,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   <SelectValue placeholder="Add vessel type..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {vesselTypeMasterData.filter(type => !formData.c2VesselTypes.includes(type)).map((vesselType) => (
+                  {vesselTypeMasterData.filter((type: string) => !formData.c2VesselTypes.includes(type)).map((vesselType: string) => (
                     <SelectItem key={vesselType} value={vesselType}>
                       {vesselType}
                     </SelectItem>
