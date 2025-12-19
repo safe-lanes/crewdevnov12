@@ -115,6 +115,7 @@ import { useExternalFleetGroups } from "@/hooks/useExternalFleetGroups";
 import { useExternalAdditionalGroups } from "@/hooks/useExternalAdditionalGroups";
 import { useExternalPorts } from "@/hooks/useExternalPorts";
 import { useExternalLanguages } from "@/hooks/useExternalLanguages";
+import { useExternalCountries } from "@/hooks/useExternalCountries";
 
 const rankGroupSchema = z.object({
   name: z.string().min(1, "Rank group name is required"),
@@ -1326,6 +1327,21 @@ const AdminModuleInner = (): JSX.Element => {
   // Add debug logging (development only)
   if (import.meta.env.DEV) {
     console.log('🗣️ [External Languages] Processed Data:', languagesData);
+  }
+  
+  // NEW: External countries data from API (Master 020)
+  const {
+    data: externalCountriesData,
+    isLoading: countriesLoading,
+    error: countriesError,
+  } = useExternalCountries();
+  
+  // Process response - API returns { countries: [...] }
+  const countriesData = (externalCountriesData as any)?.countries || externalCountriesData || [];
+  
+  // Add debug logging (development only)
+  if (import.meta.env.DEV) {
+    console.log('🌍 [External Countries] Processed Data:', countriesData);
   }
   
   // Vessel Groups Data (for vessel group selection)
@@ -6625,7 +6641,7 @@ const AdminModuleInner = (): JSX.Element => {
               {/* Right Table - Selected Master Data */}
               <div className={`${currentBreakpoint === 'mobile' ? 'w-full' : 'flex-1'}`}>
                 <div className="bg-[#52baf3] text-white text-xs font-medium p-0">
-                  <div className={`${selectedMaster === "013" ? USERS_MASTER_GRID_CLASSES : `grid ${selectedMaster === "014" || selectedMaster === "018" || selectedMaster === "019" ? 'grid-cols-5' : 'grid-cols-4'} gap-0`} ${selectedMaster === "013" ? 'users-master-header-grid' : ''}`}>
+                  <div className={`${selectedMaster === "013" ? USERS_MASTER_GRID_CLASSES : `grid ${selectedMaster === "014" || selectedMaster === "018" || selectedMaster === "019" ? 'grid-cols-5' : selectedMaster === "020" ? 'grid-cols-3' : 'grid-cols-4'} gap-0`} ${selectedMaster === "013" ? 'users-master-header-grid' : ''}`}>
                     <div className="p-3 border-r border-blue-400">Entry ID</div>
                     {selectedMaster === "001" ? (
                       <>
@@ -6664,6 +6680,10 @@ const AdminModuleInner = (): JSX.Element => {
                         <div className="p-3 border-r border-blue-400">Language Name</div>
                         <div className="p-3 border-r border-blue-400">Native Name</div>
                         <div className="p-3 border-r border-blue-400">ISO Code</div>
+                      </>
+                    ) : selectedMaster === "020" ? (
+                      <>
+                        <div className="p-3 border-r border-blue-400">Country Name</div>
                       </>
                     ) : selectedMaster === "012" ? (
                       <>
@@ -7014,6 +7034,42 @@ const AdminModuleInner = (): JSX.Element => {
                       ))
                     ) : (
                       <div className="p-3 text-xs text-gray-500">No languages found</div>
+                    )
+                  ) : selectedMaster === "020" ? (
+                    // Special handling for Country Master (020) - Use external API data
+                    countriesLoading ? (
+                      <div className="p-3 text-xs text-gray-500">Loading countries...</div>
+                    ) : countriesError ? (
+                      <div className="p-3 text-xs text-red-500">Error loading countries: {(countriesError as Error).message}</div>
+                    ) : countriesData && countriesData.length > 0 ? (
+                      countriesData.map((item: any, index: number) => (
+                        <div
+                          key={item.cuid || item.id || `country-${index}`}
+                          className="grid grid-cols-3 gap-0 border-b border-gray-100 hover:bg-gray-50"
+                          data-testid={`country-row-${item.cuid || index}`}
+                        >
+                          {/* Column 1: Entry ID */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700" data-testid={`country-entry-id-${item.cuid || index}`}>
+                              {item.cuid || <em className="text-gray-400">No entry ID</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 2: Country Name */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700" data-testid={`country-name-${item.cuid || index}`}>
+                              {item.countryName || item.name || <em className="text-gray-400">No country name</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 3: Actions - External data (read-only) */}
+                          <div className="p-3 flex justify-center">
+                            <span className="text-xs text-gray-400" data-testid={`country-action-${item.cuid || index}`}>External</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-3 text-xs text-gray-500">No countries found</div>
                     )
                   ) : (
                     (masterData as any[]).map((item: any) => {
