@@ -1219,8 +1219,11 @@ const AdminModuleInner = (): JSX.Element => {
     error: vesselTypeError 
   } = useExternalVesselTypes();
   
-  // Process external API response structure (cast to any to handle dynamic API response)
-  const vesselTypeData = (externalVesselTypeData as any)?.vesseltypes || [];
+  // Process external API response structure - hooks now return arrays directly
+  // Also handle legacy wrapper format for backwards compatibility
+  const vesselTypeData = Array.isArray(externalVesselTypeData) 
+    ? externalVesselTypeData 
+    : (externalVesselTypeData as any)?.vesseltypes || [];
   
   // Add debug logging
   if (import.meta.env.DEV) {
@@ -1246,8 +1249,11 @@ const AdminModuleInner = (): JSX.Element => {
     error: vesselMasterError 
   } = useExternalVessels();
   
-  // Process external API response structure (cast to any to handle dynamic API response)
-  const vesselMasterData = (externalVesselMasterData as any)?.vessels || [];
+  // Process external API response structure - hooks now return arrays directly
+  // Also handle legacy wrapper format for backwards compatibility
+  const vesselMasterData = Array.isArray(externalVesselMasterData) 
+    ? externalVesselMasterData 
+    : (externalVesselMasterData as any)?.vessels || [];
   
   // Add debug logging
   if (import.meta.env.DEV) {
@@ -1261,8 +1267,11 @@ const AdminModuleInner = (): JSX.Element => {
     error: nationalityError 
   } = useExternalNationalities();
   
-  // Process external API response structure (cast to any to handle dynamic API response)
-  const nationalityData = (externalNationalityData as any)?.nationalities || [];
+  // Process external API response structure - hooks now return arrays directly
+  // Also handle legacy wrapper format for backwards compatibility
+  const nationalityData = Array.isArray(externalNationalityData) 
+    ? externalNationalityData 
+    : (externalNationalityData as any)?.nationalities || [];
   
   // Add debug logging
   if (import.meta.env.DEV) {
@@ -1321,8 +1330,11 @@ const AdminModuleInner = (): JSX.Element => {
     error: languagesError,
   } = useExternalLanguages();
   
-  // Process response - API returns { languages: [...] }
-  const languagesData = (externalLanguagesData as any)?.languages || externalLanguagesData || [];
+  // Process external API response structure - hooks now return arrays directly
+  // Also handle legacy wrapper format for backwards compatibility
+  const languagesData = Array.isArray(externalLanguagesData) 
+    ? externalLanguagesData 
+    : (externalLanguagesData as any)?.languages || [];
   
   // Add debug logging (development only)
   if (import.meta.env.DEV) {
@@ -1336,8 +1348,11 @@ const AdminModuleInner = (): JSX.Element => {
     error: countriesError,
   } = useExternalCountries();
   
-  // Process response - API returns { countries: [...] }
-  const countriesData = (externalCountriesData as any)?.countries || externalCountriesData || [];
+  // Process external API response structure - hooks now return arrays directly
+  // Also handle legacy wrapper format for backwards compatibility
+  const countriesData = Array.isArray(externalCountriesData) 
+    ? externalCountriesData 
+    : (externalCountriesData as any)?.countries || [];
   
   // Add debug logging (development only)
   if (import.meta.env.DEV) {
@@ -1526,15 +1541,18 @@ const AdminModuleInner = (): JSX.Element => {
   const vesselOptions = useMemo((): VesselOption[] => {
     // Individual vessels from master data
     const individualVessels = vesselMasterData.map((vessel: any): VesselOption => {
-      // Apply vessel field mapping if the data needs transformation
-      const mappedVessel = mapSafeFieldsToVesselData(vessel);
+      // Detect data source: external API has 'vessel' field, local DB has 'name' field
+      // Only apply mapSafeFieldsToVesselData for local DB data
+      const isExternalData = !!vessel.vessel || !!vessel.vuid;
+      const mappedVessel = isExternalData ? vessel : mapSafeFieldsToVesselData(vessel);
       
       // CRITICAL FIX: Use canonical vessel ID (entryId/VSL-XXX format) for value
       // This ensures Rank Admin saves data with the correct vessel identifier
       const vesselValue = vessel.entryId || vessel.vuid || `VSL-${String(vessel.id).padStart(3, '0')}`;
       
       // Ensure we have a consistent label field for display
-      const vesselLabel = mappedVessel.vessel || vessel.name || vessel.vessel || `Vessel ${vesselValue}`;
+      // External API uses 'vessel', local DB uses 'name' (mapped to 'vessel' by mapSafeFieldsToVesselData)
+      const vesselLabel = vessel.vessel || mappedVessel.vessel || vessel.name || `Vessel ${vesselValue}`;
       
       return {
         value: String(vesselValue), // Use canonical vessel ID (VSL-XXX)
