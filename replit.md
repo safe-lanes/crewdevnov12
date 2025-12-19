@@ -56,7 +56,18 @@ The application uses a modern web stack with a module-first architecture.
 - **Vessel Type Hierarchy System**: Centralized 3-level vessel type classification from Master Data 004, enabling efficient querying and analytics.
 - **Crew Appraisals Module**: Comprehensive appraisal management with a 3-stage workflow (Draft → Preliminary → Submitted → Reviewed) and AG Grid display.
 - **Drugs & Alcohol Testing Module**: Tracks six test types with filtering, AG Grid tables, and a Summary View.
-- **Recruitment Module**: Manages candidate applications with AG Grid display and soft delete functionality.
+- **Recruitment Module**: Manages candidate applications with AG Grid display and soft delete functionality. Uses external API for master data.
+- **Crew Pool Module**: Manages active crew database with comprehensive crew information forms. Uses external API for master data.
+- **External API Integration (SAIL ERP)**: Modules fetch master data from external SAIL ERP API (https://dev.sl-sail.com/b/api/v1/crewmasterdata/getallmasterdata/) for:
+    - Master 001: Nationalities
+    - Master 004: Vessel Types
+    - Master 014: Vessels
+    - Master 015: Fleet Groups
+    - Master 017: Additional Groups
+    - Master 018: Ports
+    - Master 019: Languages
+    - Master 020: Countries
+    - All hooks use 5-minute cache and 2 retry attempts with fallback to static data
 - **Rest Hours Module**: Manages seafarer work and rest hours compliance.
     - **Dashboard (Office)**: Fleet-wide overview with AG Charts, performance cards, and drill-down.
     - **Record**: Interactive RH Recording Form with real-time violation detection.
