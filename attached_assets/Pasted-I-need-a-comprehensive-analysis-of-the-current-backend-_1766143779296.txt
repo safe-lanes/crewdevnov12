@@ -1,0 +1,68 @@
+I need a comprehensive analysis of the current backend architecture for the crew application system. Please provide the following information:
+
+## 1. DATABASE SCHEMA
+- Show the complete PostgreSQL table structure for crew_applications (all columns, data types, constraints, indexes)
+- List all other related tables (if any) and their relationships
+- Show any existing views, triggers, or stored procedures
+- Provide the CREATE TABLE statements
+
+## 2. DATA FLOW - SAVING OPERATIONS
+- Show the complete code for how crew application data is saved to the database
+- Identify which endpoint/route handles the save operation
+- Show the exact INSERT/UPDATE query being used
+- Explain how the JSON data is being constructed before saving
+- Show any data validation or transformation logic
+
+## 3. MASTER DATA MANAGEMENT
+- List all master data entities being used (nationality, ranks, vessel types, etc.)
+- Show how master data is currently stored:
+  * Are they in separate tables?
+  * Are they fetched from external APIs?
+  * Are they hardcoded in frontend/backend?
+- Provide the code for how master data is accessed/fetched
+- Show the API endpoints or functions that serve master data to the frontend
+- Explain the caching strategy (if any) for master data
+
+## 4. EXTERNAL API INTEGRATION
+- List all external APIs being called for master data
+- Show the code for API calls (including endpoints, authentication, response handling)
+- Explain when these APIs are called (on-demand, cached, scheduled sync?)
+- Show error handling for API failures
+
+## 5. FRONTEND-BACKEND INTERACTION
+- Show how the form data is structured when sent from frontend to backend
+- Provide sample request body for creating a crew application
+- Show the response format sent back to frontend
+
+## 6. CURRENT CODE FILES
+Please share the complete code for:
+- Main server/app file (index.js, server.js, app.js, or main.py)
+- Database connection and configuration file
+- Crew application model/schema file
+- Crew application routes/controllers
+- Master data routes/controllers (if separate)
+- Any utility functions for data transformation
+
+## 7. PACKAGE/DEPENDENCIES
+- Show package.json (for Node.js) or requirements.txt (for Python)
+- List all database-related libraries being used (pg, sequelize, knex, etc.)
+
+## 8. ENVIRONMENT & CONFIGURATION
+- Show database connection string structure (hide credentials, just show format)
+- List environment variables being used
+- Explain the deployment setup (single instance, multiple replicas, etc.)
+
+## 9. SAMPLE DATA
+- Provide 2-3 sample rows from crew_applications table (anonymized)
+- Show a sample of the full JSON structure stored in the JSONB column
+- Provide sample data from any master data tables/sources
+
+## 10. SPECIFIC QUESTIONS
+- How is the application_no generated? (M2025-848 pattern)
+- What determines the 'status' field values?
+- Are there any background jobs or scheduled tasks?
+- Is there any data synchronization happening with ships/vessels?
+- How are updates handled vs new inserts?
+
+## OUTPUT FORMAT
+Please organize the information with clear code blocks, table structures, and explanations. Use markdown formatting for better readability.
