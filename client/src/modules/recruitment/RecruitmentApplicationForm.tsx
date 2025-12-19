@@ -1866,7 +1866,8 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   
   // Extract vessel type names from external API response
   const vesselTypeMasterData = useMemo(() => {
-    const vesselTypes = (externalVesselTypesData as any)?.vesselTypes || externalVesselTypesData || [];
+    // API returns 'vesseltypes' (lowercase) with vesselType field
+    const vesselTypes = (externalVesselTypesData as any)?.vesseltypes || (externalVesselTypesData as any)?.vesselTypes || externalVesselTypesData || [];
     if (vesselTypes.length > 0) {
       return vesselTypes.map((vt: any) => vt.vesselType || vt.name).filter(Boolean);
     }
