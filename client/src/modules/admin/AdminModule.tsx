@@ -7050,8 +7050,8 @@ const AdminModuleInner = (): JSX.Element => {
                         >
                           {/* Column 1: Entry ID */}
                           <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700" data-testid={`country-entry-id-${item.cuid || index}`}>
-                              {item.cuid || <em className="text-gray-400">No entry ID</em>}
+                            <span className="text-xs text-gray-700" data-testid={`country-entry-id-${item.nuid || index}`}>
+                              {item.nuid || <em className="text-gray-400">No entry ID</em>}
                             </span>
                           </div>
 
