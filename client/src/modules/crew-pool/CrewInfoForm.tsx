@@ -20,6 +20,12 @@ import { getReportingDate, formatDateToISO, calculatePeriodMonths } from '@share
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
+import { useExternalNationalities } from '@/hooks/useExternalNationalities';
+import { useExternalCountries } from '@/hooks/useExternalCountries';
+import { useExternalLanguages } from '@/hooks/useExternalLanguages';
+import { useExternalVesselTypes } from '@/hooks/useExternalVesselTypes';
+import { useExternalVessels } from '@/hooks/useExternalVessels';
+import { NATIONALITIES as STATIC_NATIONALITIES } from '@/utils/data/nationalities';
 import { LicenseSelectionDialog } from './LicenseSelectionDialog';
 import { TrainingCourseSelectionDialog } from './TrainingCourseSelectionDialog';
 import { TravelDocumentSelectionDialog } from './TravelDocumentSelectionDialog';
@@ -438,125 +444,15 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   const sectionERef = useRef<HTMLDivElement>(null);
   const sectionFRef = useRef<HTMLDivElement>(null);
 
-  // Fetch vessel types from Master 004 API with fallback to static data
-  // Include vtuid field which vessels in Master 014 use to link to vessel types
-  const { data: vesselTypeMasterDataRaw = [] } = useQuery<Array<{ entryId: string; name: string; level?: number; vtuid?: string | null }>>({
-    queryKey: ["/api/masters/004/data"],
-  });
-  
-  // Filter to Level 2 and Level 3 types for dropdown (not Level 1 categories)
-  // Sort in hierarchical order with Oil Chemical Tanker positioned after Chemical Tanker
-  const vesselTypeMasterData = useMemo(() => {
-    // Define the preferred order for vessel types in dropdown
-    const preferredOrder = [
-      'Oil Tanker',
-      'Chemical Tanker',
-      'Oil Chemical Tanker',
-      'Gas Tanker',
-      'Bitumen/Asphalt Carriers',
-      'Product Oil Tanker',
-      'Crude Oil Tanker',
-      'LNG Tanker',
-      'LPG Tanker',
-      'Bulk Carrier',
-      'General Cargo',
-      'Container',
-      'RoRo',
-      'Barges',
-      'Offshore Support Vessels',
-      'Shuttle Tankers'
-    ];
-    
-    if (vesselTypeMasterDataRaw.length > 0) {
-      const filteredTypes = vesselTypeMasterDataRaw.filter(vt => vt.level && vt.level >= 2);
-      if (filteredTypes.length > 0) {
-        // Sort by preferred order, with unknown types at the end
-        return filteredTypes
-          .map(vt => vt.name)
-          .sort((a, b) => {
-            const indexA = preferredOrder.indexOf(a);
-            const indexB = preferredOrder.indexOf(b);
-            // If both are in preferred order, sort by index
-            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-            // If only one is in preferred order, it comes first
-            if (indexA !== -1) return -1;
-            if (indexB !== -1) return 1;
-            // Both unknown, sort alphabetically
-            return a.localeCompare(b);
-          });
-      }
-    }
-    // Fallback to static data (already in correct order)
-    return DEFAULT_DROPDOWN_VESSEL_TYPES;
-  }, [vesselTypeMasterDataRaw]);
+  // External API hooks for master data with 5-minute cache and 2 retry attempts
+  const { data: externalVesselTypesData, isLoading: vesselTypesLoading } = useExternalVesselTypes();
+  const { data: externalVesselsData, isLoading: vesselsLoading } = useExternalVessels();
+  const { data: externalNationalitiesData, isLoading: nationalitiesLoading } = useExternalNationalities();
+  const { data: externalCountriesData, isLoading: countriesLoading } = useExternalCountries();
+  const { data: externalLanguagesData, isLoading: languagesLoading } = useExternalLanguages();
 
-  // Create a lookup map from vtuid (vessel type unique ID) to vessel type name
-  // Vessels in Master 014 store vtuid that matches the vtuid in Master 004, NOT the entryId
-  const vesselTypeIdToNameMap = useMemo(() => {
-    const map = new Map<string, string>();
-    vesselTypeMasterDataRaw.forEach(vt => {
-      // Use vtuid as the key (this is what vessels reference)
-      // Also add entryId as a fallback key for older data
-      if (vt.vtuid && vt.name) {
-        map.set(vt.vtuid, vt.name);
-      }
-      if (vt.entryId && vt.name) {
-        map.set(vt.entryId, vt.name);
-      }
-    });
-    return map;
-  }, [vesselTypeMasterDataRaw]);
-
-  // Fetch vessels from Master 014 API for E1 Sea Service dropdown
-  // Include vtuid to link to vessel type from Master 004
-  const { data: vesselMasterData = [], isLoading: vesselsLoading } = useQuery<Array<{ id: number; entryId?: string; nuid?: string | null; name: string; vtuid?: string | null }>>({
-    queryKey: ["/api/masters/014/data"],
-  });
-
-  // Transform vessel master data for dropdown (name display, code storage, vessel type link)
-  // Use nuid if available, otherwise fall back to id as string
-  const vesselOptions = useMemo(() => {
-    return vesselMasterData
-      .filter(v => v.name)
-      .map(v => ({
-        code: v.nuid || `VSL-${v.id}`,
-        name: v.name,
-        vtuid: v.vtuid || null
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [vesselMasterData]);
-
-  const NATIONALITIES = [
-    "Afghan", "Albanian", "Algerian", "American", "Andorran", "Angolan", "Antiguan", "Argentine", "Armenian", "Australian",
-    "Austrian", "Azerbaijani", "Bahamian", "Bahraini", "Bangladeshi", "Barbadian", "Belarusian", "Belgian", "Belizean", "Beninese",
-    "Bhutanese", "Bolivian", "Bosnian", "Brazilian", "British", "Bruneian", "Bulgarian", "Burkinabe", "Burmese", "Burundian",
-    "Cambodian", "Cameroonian", "Canadian", "Cape Verdean", "Central African", "Chadian", "Chilean", "Chinese", "Colombian", "Comoran",
-    "Congolese", "Costa Rican", "Croatian", "Cuban", "Cypriot", "Czech", "Danish", "Djibouti", "Dominican", "Dutch",
-    "East Timorese", "Ecuadorean", "Egyptian", "Emirian", "Equatorial Guinean", "Eritrean", "Estonian", "Ethiopian", "Fijian", "Filipino",
-    "Finnish", "French", "Gabonese", "Gambian", "Georgian", "German", "Ghanaian", "Greek", "Grenadian", "Guatemalan",
-    "Guinea-Bissauan", "Guinean", "Guyanese", "Haitian", "Herzegovinian", "Honduran", "Hungarian", "I-Kiribati", "Icelander", "Indian",
-    "Indonesian", "Iranian", "Iraqi", "Irish", "Israeli", "Italian", "Ivorian", "Jamaican", "Japanese", "Jordanian",
-    "Kazakhstani", "Kenyan", "Kittian and Nevisian", "Kuwaiti", "Kyrgyz", "Laotian", "Latvian", "Lebanese", "Liberian", "Libyan",
-    "Liechtensteiner", "Lithuanian", "Luxembourger", "Macedonian", "Malagasy", "Malawian", "Malaysian", "Maldivan", "Malian", "Maltese",
-    "Marshallese", "Mauritanian", "Mauritian", "Mexican", "Micronesian", "Moldovan", "Monacan", "Mongolian", "Moroccan", "Mosotho",
-    "Motswana", "Mozambican", "Namibian", "Nauruan", "Nepalese", "New Zealander", "Nicaraguan", "Nigerian", "Nigerien", "North Korean",
-    "Northern Irish", "Norwegian", "Omani", "Pakistani", "Palauan", "Panamanian", "Papua New Guinean", "Paraguayan", "Peruvian", "Polish",
-    "Portuguese", "Qatari", "Romanian", "Russian", "Rwandan", "Saint Lucian", "Salvadoran", "Samoan", "San Marinese", "Sao Tomean",
-    "Saudi", "Scottish", "Senegalese", "Serbian", "Seychellois", "Sierra Leonean", "Singaporean", "Slovakian", "Slovenian", "Solomon Islander",
-    "Somali", "South African", "South Korean", "Spanish", "Sri Lankan", "Sudanese", "Surinamer", "Swazi", "Swedish", "Swiss",
-    "Syrian", "Taiwanese", "Tajik", "Tanzanian", "Thai", "Togolese", "Tongan", "Trinidadian or Tobagonian", "Tunisian", "Turkish",
-    "Tuvaluan", "Ugandan", "Ukrainian", "Uruguayan", "Uzbekistani", "Venezuelan", "Vietnamese", "Welsh", "Yemenite", "Zambian", "Zimbabwean"
-  ];
-
-  const languageMasterData = [
-    "English", "Spanish", "French", "German", "Italian", "Portuguese", "Dutch", "Russian", "Chinese (Mandarin)", "Japanese",
-    "Korean", "Arabic", "Hindi", "Bengali", "Urdu", "Tamil", "Telugu", "Marathi", "Gujarati", "Kannada", "Malayalam",
-    "Punjabi", "Thai", "Vietnamese", "Indonesian", "Malay", "Tagalog", "Cebuano", "Polish", "Romanian", "Hungarian",
-    "Czech", "Slovak", "Bulgarian", "Croatian", "Serbian", "Slovenian", "Lithuanian", "Latvian", "Estonian",
-    "Finnish", "Swedish", "Norwegian", "Danish", "Greek", "Turkish", "Hebrew", "Persian (Farsi)", "Pashto", "Dari"
-  ];
-
-  const countryMasterData = [
+  // Static fallback data for countries (used when API is unavailable)
+  const STATIC_COUNTRIES = [
     "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia", "Austria",
     "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bhutan",
     "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi", "Cambodia", "Cameroon",
@@ -577,6 +473,121 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom",
     "United States", "Uruguay", "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
   ];
+
+  // Static fallback data for languages (used when API is unavailable)
+  const STATIC_LANGUAGES = [
+    "English", "Spanish", "French", "German", "Italian", "Portuguese", "Dutch", "Russian", "Chinese (Mandarin)", "Japanese",
+    "Korean", "Arabic", "Hindi", "Bengali", "Urdu", "Tamil", "Telugu", "Marathi", "Gujarati", "Kannada", "Malayalam",
+    "Punjabi", "Thai", "Vietnamese", "Indonesian", "Malay", "Tagalog", "Cebuano", "Polish", "Romanian", "Hungarian",
+    "Czech", "Slovak", "Bulgarian", "Croatian", "Serbian", "Slovenian", "Lithuanian", "Latvian", "Estonian",
+    "Finnish", "Swedish", "Norwegian", "Danish", "Greek", "Turkish", "Hebrew", "Persian (Farsi)", "Pashto", "Dari"
+  ];
+
+  // Process vessel types from external API with fallback to static data
+  const vesselTypeMasterDataRaw = useMemo(() => {
+    if (externalVesselTypesData && Array.isArray(externalVesselTypesData) && externalVesselTypesData.length > 0) {
+      return externalVesselTypesData;
+    }
+    return [];
+  }, [externalVesselTypesData]);
+  
+  // Filter to Level 2 and Level 3 types for dropdown (not Level 1 categories)
+  // Sort in hierarchical order with Oil Chemical Tanker positioned after Chemical Tanker
+  const vesselTypeMasterData = useMemo(() => {
+    const preferredOrder = [
+      'Oil Tanker',
+      'Chemical Tanker',
+      'Oil Chemical Tanker',
+      'Gas Tanker',
+      'Bitumen/Asphalt Carriers',
+      'Product Oil Tanker',
+      'Crude Oil Tanker',
+      'LNG Tanker',
+      'LPG Tanker',
+      'Bulk Carrier',
+      'General Cargo',
+      'Container',
+      'RoRo',
+      'Barges',
+      'Offshore Support Vessels',
+      'Shuttle Tankers'
+    ];
+    
+    if (vesselTypeMasterDataRaw.length > 0) {
+      const filteredTypes = vesselTypeMasterDataRaw.filter((vt: any) => vt.level && vt.level >= 2);
+      if (filteredTypes.length > 0) {
+        return filteredTypes
+          .map((vt: any) => vt.name)
+          .sort((a: string, b: string) => {
+            const indexA = preferredOrder.indexOf(a);
+            const indexB = preferredOrder.indexOf(b);
+            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+            if (indexA !== -1) return -1;
+            if (indexB !== -1) return 1;
+            return a.localeCompare(b);
+          });
+      }
+    }
+    return DEFAULT_DROPDOWN_VESSEL_TYPES;
+  }, [vesselTypeMasterDataRaw]);
+
+  // Create a lookup map from vtuid (vessel type unique ID) to vessel type name
+  const vesselTypeIdToNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    vesselTypeMasterDataRaw.forEach((vt: any) => {
+      if (vt.vtuid && vt.name) {
+        map.set(vt.vtuid, vt.name);
+      }
+      if (vt.entryId && vt.name) {
+        map.set(vt.entryId, vt.name);
+      }
+    });
+    return map;
+  }, [vesselTypeMasterDataRaw]);
+
+  // Process vessels from external API for E1 Sea Service dropdown
+  const vesselMasterData = useMemo(() => {
+    if (externalVesselsData && Array.isArray(externalVesselsData) && externalVesselsData.length > 0) {
+      return externalVesselsData;
+    }
+    return [];
+  }, [externalVesselsData]);
+
+  // Transform vessel master data for dropdown (name display, code storage, vessel type link)
+  const vesselOptions = useMemo(() => {
+    return vesselMasterData
+      .filter((v: any) => v.name)
+      .map((v: any) => ({
+        code: v.nuid || `VSL-${v.id}`,
+        name: v.name,
+        vtuid: v.vtuid || null
+      }))
+      .sort((a: any, b: any) => a.name.localeCompare(b.name));
+  }, [vesselMasterData]);
+
+  // Process nationalities from external API with fallback to static data
+  const NATIONALITIES = useMemo(() => {
+    if (externalNationalitiesData && Array.isArray(externalNationalitiesData) && externalNationalitiesData.length >= 20) {
+      return externalNationalitiesData.map((n: any) => n.name).filter(Boolean).sort();
+    }
+    return [...STATIC_NATIONALITIES];
+  }, [externalNationalitiesData]);
+
+  // Process languages from external API with fallback to static data
+  const languageMasterData = useMemo(() => {
+    if (externalLanguagesData && Array.isArray(externalLanguagesData) && externalLanguagesData.length >= 10) {
+      return externalLanguagesData.map((l: any) => l.name).filter(Boolean).sort();
+    }
+    return [...STATIC_LANGUAGES];
+  }, [externalLanguagesData]);
+
+  // Process countries from external API with fallback to static data
+  const countryMasterData = useMemo(() => {
+    if (externalCountriesData && Array.isArray(externalCountriesData) && externalCountriesData.length >= 20) {
+      return externalCountriesData.map((c: any) => c.name).filter(Boolean).sort();
+    }
+    return [...STATIC_COUNTRIES];
+  }, [externalCountriesData]);
 
   // Initialize form data with crew member data
   // Note: presentRank is normalized to convert positions (e.g., "OS_1") to actual ranks (e.g., "OS")

@@ -23,6 +23,8 @@ import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { NATIONALITIES } from '@/utils/data/nationalities';
+import { useExternalNationalities } from '@/hooks/useExternalNationalities';
+import { useExternalVessels } from '@/hooks/useExternalVessels';
 
 const formatCompactDate = (value: any): string => {
     if (!value) return '';
@@ -67,33 +69,31 @@ export const CrewPoolModule = (): JSX.Element => {
     // Rank normalization hook to convert positions (e.g., "OS_1") to actual ranks (e.g., "OS")
     const { normalizeRank } = useRankNormalization();
     
-    // Fetch nationalities from Master Data 001
-    const { data: nationalityMasterDataRaw = [], isLoading: nationalitiesLoading } = useQuery<Array<{ entryId: string; name: string }>>({
-        queryKey: ["/api/masters/001/data"],
-    });
+    // External API hooks for master data with 5-minute cache and 2 retry attempts
+    const { data: externalNationalitiesData, isLoading: nationalitiesLoading } = useExternalNationalities();
+    const { data: externalVesselsData, isLoading: vesselsLoading } = useExternalVessels();
     
     // Extract nationality names with fallback to static data
-    // Use static list if master data has fewer than 20 entries (incomplete data)
+    // Use static list if external API returns fewer than 20 entries (incomplete data)
     const nationalityMasterData = useMemo(() => {
-        if (nationalityMasterDataRaw.length >= 20) {
-            return nationalityMasterDataRaw.map(n => n.name);
+        if (externalNationalitiesData && Array.isArray(externalNationalitiesData) && externalNationalitiesData.length >= 20) {
+            return externalNationalitiesData.map((n: any) => n.name).filter(Boolean).sort();
         }
         // Fallback to comprehensive static NATIONALITIES list
         return [...NATIONALITIES];
-    }, [nationalityMasterDataRaw]);
-    
-    // Fetch vessel master data (Master 014) for vessel filter dropdown
-    const { data: vesselMasterDataRaw = [], isLoading: vesselsLoading } = useQuery<Array<{ entryId: string; name: string }>>({
-        queryKey: ["/api/masters/014/data"],
-    });
+    }, [externalNationalitiesData]);
     
     // Extract vessel entries (id and name) for dropdown - sorted by name
+    // Using external API (SAIL ERP) instead of local Master Data 014
     const vesselMasterData = useMemo(() => {
-        return vesselMasterDataRaw
-            .filter(v => v.name && v.entryId)
-            .map(v => ({ id: v.entryId, name: v.name }))
-            .sort((a, b) => a.name.localeCompare(b.name));
-    }, [vesselMasterDataRaw]);
+        if (externalVesselsData && Array.isArray(externalVesselsData) && externalVesselsData.length > 0) {
+            return externalVesselsData
+                .filter((v: any) => v.name && (v.nuid || v.id))
+                .map((v: any) => ({ id: v.nuid || `VSL-${v.id}`, name: v.name }))
+                .sort((a: any, b: any) => a.name.localeCompare(b.name));
+        }
+        return [];
+    }, [externalVesselsData]);
     
     // Define allowed pages for the crew pool module
     const allowedPages = ["crew-database"];
