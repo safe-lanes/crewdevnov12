@@ -17,7 +17,10 @@ export const useExternalCountries = () => {
         throw new Error(`Failed to fetch countries: ${response.status}`);
       }
 
-      return response.json();
+      const data = await response.json();
+      // Extract countries array from wrapper object { success: true, countries: [...] }
+      // Note: Country names are in the 'countryName' field
+      return data.countries || [];
     },
     staleTime: 5 * 60 * 1000,
     retry: 2,

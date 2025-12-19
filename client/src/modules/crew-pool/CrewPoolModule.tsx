@@ -75,9 +75,10 @@ export const CrewPoolModule = (): JSX.Element => {
     
     // Extract nationality names with fallback to static data
     // Use static list if external API returns fewer than 20 entries (incomplete data)
+    // External API uses 'nationality' field for name
     const nationalityMasterData = useMemo(() => {
         if (externalNationalitiesData && Array.isArray(externalNationalitiesData) && externalNationalitiesData.length >= 20) {
-            return externalNationalitiesData.map((n: any) => n.name).filter(Boolean).sort();
+            return externalNationalitiesData.map((n: any) => n.nationality || n.name).filter(Boolean).sort();
         }
         // Fallback to comprehensive static NATIONALITIES list
         return [...NATIONALITIES];
@@ -85,11 +86,12 @@ export const CrewPoolModule = (): JSX.Element => {
     
     // Extract vessel entries (id and name) for dropdown - sorted by name
     // Using external API (SAIL ERP) instead of local Master Data 014
+    // External API uses 'vessel' field for name and 'vuid' for ID
     const vesselMasterData = useMemo(() => {
         if (externalVesselsData && Array.isArray(externalVesselsData) && externalVesselsData.length > 0) {
             return externalVesselsData
-                .filter((v: any) => v.name && (v.nuid || v.id))
-                .map((v: any) => ({ id: v.nuid || `VSL-${v.id}`, name: v.name }))
+                .filter((v: any) => (v.vessel || v.name) && (v.vuid || v.nuid || v.id))
+                .map((v: any) => ({ id: v.vuid || v.nuid || `VSL-${v.id}`, name: v.vessel || v.name }))
                 .sort((a: any, b: any) => a.name.localeCompare(b.name));
         }
         return [];

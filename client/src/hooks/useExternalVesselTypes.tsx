@@ -18,7 +18,10 @@ export const useExternalVesselTypes = () => {
         throw new Error(`Failed to fetch vessel types: ${response.status}`);
       }
 
-      return response.json();
+      const data = await response.json();
+      // Extract vesseltypes array from wrapper object { success: true, vesseltypes: [...] }
+      // Note: Vessel type names are in the 'vesselType' field, ID is in 'vtuid'
+      return data.vesseltypes || [];
     },
     staleTime: 5 * 60 * 1000,
     retry: 2,

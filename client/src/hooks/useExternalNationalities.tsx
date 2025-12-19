@@ -17,7 +17,9 @@ export const useExternalNationalities = () => {
         throw new Error(`Failed to fetch nationalities: ${response.status}`);
       }
 
-      return response.json();
+      const data = await response.json();
+      // Extract nationalities array from wrapper object { success: true, nationalities: [...] }
+      return data.nationalities || [];
     },
     staleTime: 5 * 60 * 1000,
     retry: 2,

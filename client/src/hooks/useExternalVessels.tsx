@@ -17,7 +17,10 @@ export const useExternalVessels = () => {
         throw new Error(`Failed to fetch vessels: ${response.status}`);
       }
 
-      return response.json();
+      const data = await response.json();
+      // Extract vessels array from wrapper object { success: true, vessels: [...] }
+      // Note: Vessel names are in the 'vessel' field, ID is in 'vuid'
+      return data.vessels || [];
     },
     staleTime: 5 * 60 * 1000,
     retry: 2,

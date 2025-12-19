@@ -493,6 +493,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   
   // Filter to Level 2 and Level 3 types for dropdown (not Level 1 categories)
   // Sort in hierarchical order with Oil Chemical Tanker positioned after Chemical Tanker
+  // External API uses 'vesselType' field for name, 'vtuid' for ID
   const vesselTypeMasterData = useMemo(() => {
     const preferredOrder = [
       'Oil Tanker',
@@ -514,10 +515,17 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     ];
     
     if (vesselTypeMasterDataRaw.length > 0) {
-      const filteredTypes = vesselTypeMasterDataRaw.filter((vt: any) => vt.level && vt.level >= 2);
+      // External API doesn't have 'level' field, so include all types
+      // Support both external API format (vesselType) and local DB format (name)
+      const hasLevelField = vesselTypeMasterDataRaw.some((vt: any) => vt.level !== undefined);
+      const filteredTypes = hasLevelField 
+        ? vesselTypeMasterDataRaw.filter((vt: any) => vt.level && vt.level >= 2)
+        : vesselTypeMasterDataRaw;
+      
       if (filteredTypes.length > 0) {
         return filteredTypes
-          .map((vt: any) => vt.name)
+          .map((vt: any) => vt.vesselType || vt.name)
+          .filter(Boolean)
           .sort((a: string, b: string) => {
             const indexA = preferredOrder.indexOf(a);
             const indexB = preferredOrder.indexOf(b);
@@ -532,14 +540,16 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   }, [vesselTypeMasterDataRaw]);
 
   // Create a lookup map from vtuid (vessel type unique ID) to vessel type name
+  // Supports both external API format (vesselType) and local DB format (name)
   const vesselTypeIdToNameMap = useMemo(() => {
     const map = new Map<string, string>();
     vesselTypeMasterDataRaw.forEach((vt: any) => {
-      if (vt.vtuid && vt.name) {
-        map.set(vt.vtuid, vt.name);
+      const typeName = vt.vesselType || vt.name;
+      if (vt.vtuid && typeName) {
+        map.set(vt.vtuid, typeName);
       }
-      if (vt.entryId && vt.name) {
-        map.set(vt.entryId, vt.name);
+      if (vt.entryId && typeName) {
+        map.set(vt.entryId, typeName);
       }
     });
     return map;
@@ -554,37 +564,41 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   }, [externalVesselsData]);
 
   // Transform vessel master data for dropdown (name display, code storage, vessel type link)
+  // External API uses 'vessel' field for name and 'vuid' for ID
   const vesselOptions = useMemo(() => {
     return vesselMasterData
-      .filter((v: any) => v.name)
+      .filter((v: any) => v.vessel || v.name)
       .map((v: any) => ({
-        code: v.nuid || `VSL-${v.id}`,
-        name: v.name,
+        code: v.vuid || v.nuid || `VSL-${v.id}`,
+        name: v.vessel || v.name,
         vtuid: v.vtuid || null
       }))
       .sort((a: any, b: any) => a.name.localeCompare(b.name));
   }, [vesselMasterData]);
 
   // Process nationalities from external API with fallback to static data
+  // External API uses 'nationality' field for name
   const NATIONALITIES = useMemo(() => {
     if (externalNationalitiesData && Array.isArray(externalNationalitiesData) && externalNationalitiesData.length >= 20) {
-      return externalNationalitiesData.map((n: any) => n.name).filter(Boolean).sort();
+      return externalNationalitiesData.map((n: any) => n.nationality || n.name).filter(Boolean).sort();
     }
     return [...STATIC_NATIONALITIES];
   }, [externalNationalitiesData]);
 
   // Process languages from external API with fallback to static data
+  // External API uses 'languageName' field for name
   const languageMasterData = useMemo(() => {
     if (externalLanguagesData && Array.isArray(externalLanguagesData) && externalLanguagesData.length >= 10) {
-      return externalLanguagesData.map((l: any) => l.name).filter(Boolean).sort();
+      return externalLanguagesData.map((l: any) => l.languageName || l.name).filter(Boolean).sort();
     }
     return [...STATIC_LANGUAGES];
   }, [externalLanguagesData]);
 
   // Process countries from external API with fallback to static data
+  // External API uses 'countryName' field for name
   const countryMasterData = useMemo(() => {
     if (externalCountriesData && Array.isArray(externalCountriesData) && externalCountriesData.length >= 20) {
-      return externalCountriesData.map((c: any) => c.name).filter(Boolean).sort();
+      return externalCountriesData.map((c: any) => c.countryName || c.name).filter(Boolean).sort();
     }
     return [...STATIC_COUNTRIES];
   }, [externalCountriesData]);

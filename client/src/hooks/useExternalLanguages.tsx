@@ -17,7 +17,10 @@ export const useExternalLanguages = () => {
         throw new Error(`Failed to fetch languages: ${response.status}`);
       }
 
-      return response.json();
+      const data = await response.json();
+      // Extract languages array from wrapper object { success: true, languages: [...] }
+      // Note: Language names are in the 'languageName' field
+      return data.languages || [];
     },
     staleTime: 5 * 60 * 1000,
     retry: 2,
