@@ -2,6 +2,14 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { addMonths } from "date-fns";
 import { 
+  getReportingDate, 
+  safeParseDate, 
+  calculatePeriodMonths as calcPeriodMonths,
+  isActiveSeaService,
+  getSeaServiceFromDate,
+  getSeaServiceToDate
+} from "@shared/dateUtils";
+import { 
   users, 
   forms, 
   rankGroups, 
@@ -3170,13 +3178,13 @@ export class DatabaseStorage implements IStorage {
     let companyYears = 0;
     if (safeCompanySeaService.length > 0) {
       const fromDates = safeCompanySeaService
-        .map(s => s.from)
-        .filter(d => d && d.trim() !== '')
-        .map(d => new Date(d))
-        .filter(d => !isNaN(d.getTime()));
+        .map(s => getSeaServiceFromDate(s))
+        .filter((d: any) => d && typeof d === 'string' && d.trim() !== '')
+        .map((d: any) => new Date(d))
+        .filter((d: any) => !isNaN(d.getTime()));
       
       if (fromDates.length > 0) {
-        const earliestDate = new Date(Math.min(...fromDates.map(d => d.getTime())));
+        const earliestDate = new Date(Math.min(...fromDates.map((d: any) => d.getTime())));
         const today = new Date();
         const diffMs = today.getTime() - earliestDate.getTime();
         const diffYears = diffMs / (1000 * 60 * 60 * 24 * 365.25);
@@ -3186,14 +3194,40 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
+    // Helper function to get period in months for a service record
+    // Uses shared date utility with fallback to stored periodMonths for legacy records
+    const getServicePeriodMonths = (service: any): number => {
+      // Use helper to get start date - handles multiple key formats
+      const fromStr = getSeaServiceFromDate(service);
+      const from = safeParseDate(fromStr);
+      if (!from) return 0;
+      
+      const isActive = isActiveSeaService(service);
+      
+      if (isActive) {
+        // Active contracts: use shared reporting date (today)
+        return calcPeriodMonths(from, getReportingDate());
+      } else {
+        // Use helper to get end date - handles multiple key formats
+        const toStr = getSeaServiceToDate(service);
+        const to = safeParseDate(toStr);
+        if (to) {
+          // Completed contracts with valid 'to' date: calculate period
+          return calcPeriodMonths(from, to);
+        } else {
+          // Legacy completed records with no valid 'to' date: fallback to stored periodMonths
+          return parseFloat(service.periodMonths) || 0;
+        }
+      }
+    };
+
     // 2. Rank (Yrs) - Sum of Period(M) where rank = current rank / 12
     let rankMonths = 0;
     if (currentRank) {
       const normalizedCurrentRank = currentRank.trim().toLowerCase();
       for (const service of allSeaService) {
         if (service.rank && service.rank.trim().toLowerCase() === normalizedCurrentRank) {
-          const period = parseFloat(service.periodMonths) || 0;
-          rankMonths += period;
+          rankMonths += getServicePeriodMonths(service);
         }
       }
     }
@@ -3203,8 +3237,7 @@ export class DatabaseStorage implements IStorage {
     let tankerMonths = 0;
     for (const service of allSeaService) {
       if (this.isTankerVesselType(service.vesselType)) {
-        const period = parseFloat(service.periodMonths) || 0;
-        tankerMonths += period;
+        tankerMonths += getServicePeriodMonths(service);
       }
     }
     const tankerYears = Math.round((tankerMonths / 12) * 10) / 10;
@@ -3213,8 +3246,7 @@ export class DatabaseStorage implements IStorage {
     let oowMonths = 0;
     for (const service of allSeaService) {
       if (this.isOfficerRank(service.rank)) {
-        const period = parseFloat(service.periodMonths) || 0;
-        oowMonths += period;
+        oowMonths += getServicePeriodMonths(service);
       }
     }
     const oowYears = Math.round((oowMonths / 12) * 10) / 10;

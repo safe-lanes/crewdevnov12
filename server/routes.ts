@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage, isConnected, connectionError, calculateExperienceFromSeaService, calculateVesselTypeSpecificExperience } from "./storage";
+import { storage, isConnected, connectionError, calculateExperienceFromSeaService, calculateVesselTypeSpecificExperience, deriveEndorsementCode } from "./storage";
 import { type VesselPlanning, type InsertRecruitmentCandidate, insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertCompanyProcessingSchema, insertPromotionFormSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertOfficeViolationCommentSchema, insertNCReportSchema, insertVesselDateLineAdjustmentSchema, insertOilMajorRulesSchema, type OilMajorRulesConfig, insertTrainingMasterSchema, updateTrainingMasterSchema, trainingMaster, insertTrainingMatrixVesselDraftSchema, insertTrainingMatrixVesselRevisionSchema } from "@shared/schema";
 import { parseCSVContent, convertToStorageFormat } from "./oilMajorRulesParser";
 import { evaluateCompliance, convertCrewToExperience, type ComplianceCheckResult } from "./complianceEngine";
@@ -5536,167 +5536,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { rank } = req.params;
       const crewMembers = await storage.getCrewMembers();
       
-      // Helper function to calculate days between two dates with validation
-      const calculateDaysBetween = (startDate: string, endDate: string | null): number => {
-        if (!startDate) return 0;
-        const start = new Date(startDate);
-        if (isNaN(start.getTime())) return 0; // Invalid date
-        const end = endDate ? new Date(endDate) : new Date();
-        if (isNaN(end.getTime())) return 0; // Invalid end date
-        const diffTime = end.getTime() - start.getTime();
-        return Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
-      };
-      
-      // Helper function to convert days to years (rounded to 1 decimal)
-      const daysToYears = (days: number): number => {
-        return Math.round((days / 365) * 10) / 10;
-      };
-      
-      // Helper function to check if vessel type is a tanker
-      const isTankerType = (vesselType: string | undefined): boolean => {
-        if (!vesselType) return false;
-        const tankerKeywords = ['tanker', 'oil', 'chemical', 'lng', 'lpg', 'gas carrier', 'product carrier', 'crude'];
-        return tankerKeywords.some(keyword => vesselType.toLowerCase().includes(keyword));
-      };
+      // Get rank flags for endorsement derivation (same logic as dashboard)
+      const rankFlags = await storage.getCompanyRankByName(rank);
       
       // Filter by rank and add experience data
-      const filteredCrew = crewMembers
-        .filter(crew => crew.presentRank === rank)
-        .map(crew => {
-          // Parse sea service records - handle both string JSON and already-parsed arrays
-          let currentCompanySeaService: any[] = [];
-          let externalSeaService: any[] = [];
-          
-          if (crew.currentCompanySeaService) {
-            if (Array.isArray(crew.currentCompanySeaService)) {
-              currentCompanySeaService = crew.currentCompanySeaService;
-            } else if (typeof crew.currentCompanySeaService === 'string') {
-              try {
-                currentCompanySeaService = JSON.parse(crew.currentCompanySeaService);
-              } catch (e) {
-                currentCompanySeaService = [];
+      const crewMatchingRank = crewMembers.filter(crew => crew.presentRank === rank);
+      
+      // Process each crew member (async for endorsement derivation)
+      const filteredCrew = await Promise.all(crewMatchingRank.map(async (crew) => {
+        // Parse sea service records - handle both string JSON and already-parsed arrays
+        let currentCompanySeaService: any[] = [];
+        let externalSeaService: any[] = [];
+        
+        if (crew.currentCompanySeaService) {
+          if (Array.isArray(crew.currentCompanySeaService)) {
+            currentCompanySeaService = crew.currentCompanySeaService;
+          } else if (typeof crew.currentCompanySeaService === 'string') {
+            try {
+              currentCompanySeaService = JSON.parse(crew.currentCompanySeaService);
+            } catch (e) {
+              currentCompanySeaService = [];
+            }
+          }
+        }
+        
+        if (crew.externalSeaService) {
+          if (Array.isArray(crew.externalSeaService)) {
+            externalSeaService = crew.externalSeaService;
+          } else if (typeof crew.externalSeaService === 'string') {
+            try {
+              externalSeaService = JSON.parse(crew.externalSeaService);
+            } catch (e) {
+              externalSeaService = [];
+            }
+          }
+        }
+        
+        // Use the same experience calculation as the Crew Dashboard
+        const experienceMetrics = calculateExperienceFromSeaService(
+          currentCompanySeaService,
+          externalSeaService,
+          crew.presentRank || ''
+        );
+        
+        // Parse licenses for endorsement derivation - handle both string JSON and already-parsed arrays
+        let licensesArray: any[] = [];
+        
+        if (crew.licenses) {
+          if (Array.isArray(crew.licenses)) {
+            licensesArray = crew.licenses;
+          } else if (typeof crew.licenses === 'string') {
+            try {
+              const parsed = JSON.parse(crew.licenses);
+              if (Array.isArray(parsed)) {
+                licensesArray = parsed;
               }
+            } catch (e) {
+              licensesArray = [];
             }
           }
-          
-          if (crew.externalSeaService) {
-            if (Array.isArray(crew.externalSeaService)) {
-              externalSeaService = crew.externalSeaService;
-            } else if (typeof crew.externalSeaService === 'string') {
-              try {
-                externalSeaService = JSON.parse(crew.externalSeaService);
-              } catch (e) {
-                externalSeaService = [];
-              }
-            }
-          }
-          
-          // Calculate Time in Company (from currentCompanySeaService)
-          let companyDays = 0;
-          currentCompanySeaService.forEach((record: any) => {
-            if (record.signOnDate) {
-              companyDays += calculateDaysBetween(record.signOnDate, record.signOffDate || null);
-            }
-          });
-          const timeInCompany = daysToYears(companyDays);
-          
-          // Calculate Time in Rank (from all service records where rank matches current rank)
-          let rankDays = 0;
-          const allSeaService = [...currentCompanySeaService, ...externalSeaService];
-          allSeaService.forEach((record: any) => {
-            if (record.signOnDate && record.rank === crew.presentRank) {
-              rankDays += calculateDaysBetween(record.signOnDate, record.signOffDate || null);
-            }
-          });
-          const timeInRank = daysToYears(rankDays);
-          
-          // Calculate Time in Tankers (from all service records on tanker vessel types)
-          let tankerDays = 0;
-          allSeaService.forEach((record: any) => {
-            if (record.signOnDate && isTankerType(record.vesselType)) {
-              tankerDays += calculateDaysBetween(record.signOnDate, record.signOffDate || null);
-            }
-          });
-          const timeInTankers = daysToYears(tankerDays);
-          
-          // Calculate total OOW (Officer of the Watch) experience - all sea service time
-          let totalOowDays = 0;
-          allSeaService.forEach((record: any) => {
-            if (record.signOnDate) {
-              totalOowDays += calculateDaysBetween(record.signOnDate, record.signOffDate || null);
-            }
-          });
-          const timeAsOow = daysToYears(totalOowDays);
-          
-          // Get endorsements from licenses if available - handle both string JSON and already-parsed arrays
-          let endorsements = 'N/A';
-          let licensesArray: any[] = [];
-          
-          if (crew.licenses) {
-            if (Array.isArray(crew.licenses)) {
-              licensesArray = crew.licenses;
-            } else if (typeof crew.licenses === 'string') {
-              try {
-                const parsed = JSON.parse(crew.licenses);
-                if (Array.isArray(parsed)) {
-                  licensesArray = parsed;
-                }
-              } catch (e) {
-                licensesArray = [];
-              }
-            }
-          }
-          
-          if (Array.isArray(licensesArray) && licensesArray.length > 0) {
-            const endorsementTypes = licensesArray
-              .slice(0, 3)
-              .map((lic: any) => lic.type || lic.endorsement || lic.name)
-              .filter(Boolean);
-            if (endorsementTypes.length > 0) {
-              endorsements = endorsementTypes.join('/');
-            }
-          }
-          
-          const experience = {
-            company: timeInCompany,
-            rank: timeInRank,
-            tankers: timeInTankers,
-            oow: timeAsOow,
-            endorsements
-          };
-          
-          // Extract pool from status or use placeholder (will be connected later)
-          const pools = ['Pool A', 'Pool B', 'Pool C'];
-          const pool = pools[Math.floor(Math.random() * pools.length)];
-          
-          // Get ship type from vesselType (real data)
-          const shipType = crew.vesselType || undefined;
-          
-          // Placeholder data for travel status, higher cert, and performance (will be connected later)
-          const travelStatuses = ['Available', 'On Leave', 'Traveling'];
-          const travelStatus = travelStatuses[Math.floor(Math.random() * travelStatuses.length)];
-          
-          const higherCerts = ['Master Unlimited', 'Chief Engineer Unlimited', 'None'];
-          const higherCert = higherCerts[Math.floor(Math.random() * higherCerts.length)];
-          
-          const performances = ['Excellent', 'Good', 'Average'];
-          const performance = performances[Math.floor(Math.random() * performances.length)];
-          
-          return {
-            id: crew.id,
-            name: `${crew.firstName} ${crew.middleName || ''} ${crew.familyName || ''}`.trim(),
-            rank: crew.presentRank,
-            pool,
-            manningAgent: crew.manningAgent,
-            shipType,
-            nationality: crew.nationality,
-            travelStatus,
-            higherCert,
-            performance,
-            nextAvailability: crew.nextAvailability || null,
-            experience
-          };
-        });
+        }
+        
+        // Use the same endorsement derivation as the Crew Dashboard
+        const endorsements = deriveEndorsementCode(
+          {
+            seniorOfficer: rankFlags?.seniorOfficer,
+            officer: rankFlags?.officer,
+            rating: rankFlags?.rating
+          },
+          licensesArray
+        );
+        
+        const experience = {
+          company: experienceMetrics.company,
+          rank: experienceMetrics.rank,
+          tankers: experienceMetrics.tankers,
+          oow: experienceMetrics.oow,
+          endorsements
+        };
+        
+        // Extract pool from status or use placeholder (will be connected later)
+        const pools = ['Pool A', 'Pool B', 'Pool C'];
+        const pool = pools[Math.floor(Math.random() * pools.length)];
+        
+        // Get ship type from vesselType (real data)
+        const shipType = crew.vesselType || undefined;
+        
+        // Placeholder data for travel status, higher cert, and performance (will be connected later)
+        const travelStatuses = ['Available', 'On Leave', 'Traveling'];
+        const travelStatus = travelStatuses[Math.floor(Math.random() * travelStatuses.length)];
+        
+        const higherCerts = ['Master Unlimited', 'Chief Engineer Unlimited', 'None'];
+        const higherCert = higherCerts[Math.floor(Math.random() * higherCerts.length)];
+        
+        const performances = ['Excellent', 'Good', 'Average'];
+        const performance = performances[Math.floor(Math.random() * performances.length)];
+        
+        return {
+          id: crew.id,
+          name: `${crew.firstName} ${crew.middleName || ''} ${crew.familyName || ''}`.trim(),
+          rank: crew.presentRank,
+          pool,
+          manningAgent: crew.manningAgent,
+          shipType,
+          nationality: crew.nationality,
+          travelStatus,
+          higherCert,
+          performance,
+          nextAvailability: crew.nextAvailability || null,
+          experience
+        };
+      }));
       
       res.json(filteredCrew);
     } catch (error) {

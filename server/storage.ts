@@ -1968,21 +1968,32 @@ export class MemStorage implements IStorage {
     const reliefDueFormatted = formatDateForDashboard(crewMember.reliefDue);
 
     // Parse sea service data for experience calculations
+    // Handle both cases: data can be a JSON string or already an array
     let companySeaService: any[] = [];
     let externalSeaService: any[] = [];
-    try {
-      companySeaService = crewMember.currentCompanySeaService 
-        ? JSON.parse(crewMember.currentCompanySeaService as string) 
-        : [];
-    } catch (e) {
-      companySeaService = [];
+    
+    if (crewMember.currentCompanySeaService) {
+      if (Array.isArray(crewMember.currentCompanySeaService)) {
+        companySeaService = crewMember.currentCompanySeaService;
+      } else if (typeof crewMember.currentCompanySeaService === 'string') {
+        try {
+          companySeaService = JSON.parse(crewMember.currentCompanySeaService);
+        } catch (e) {
+          companySeaService = [];
+        }
+      }
     }
-    try {
-      externalSeaService = crewMember.externalSeaService 
-        ? JSON.parse(crewMember.externalSeaService as string) 
-        : [];
-    } catch (e) {
-      externalSeaService = [];
+    
+    if (crewMember.externalSeaService) {
+      if (Array.isArray(crewMember.externalSeaService)) {
+        externalSeaService = crewMember.externalSeaService;
+      } else if (typeof crewMember.externalSeaService === 'string') {
+        try {
+          externalSeaService = JSON.parse(crewMember.externalSeaService);
+        } catch (e) {
+          externalSeaService = [];
+        }
+      }
     }
     
     // Calculate experience from sea service
@@ -5646,21 +5657,32 @@ export class PersistentFileStorage implements IStorage {
     const appraisals = await this.getAppraisalResultsByCrewMember(crewId);
 
     // Parse sea service data for experience calculations
+    // Handle both cases: data can be a JSON string or already an array
     let companySeaService: any[] = [];
     let externalSeaService: any[] = [];
-    try {
-      companySeaService = crewMember.currentCompanySeaService 
-        ? JSON.parse(crewMember.currentCompanySeaService as string) 
-        : [];
-    } catch (e) {
-      companySeaService = [];
+    
+    if (crewMember.currentCompanySeaService) {
+      if (Array.isArray(crewMember.currentCompanySeaService)) {
+        companySeaService = crewMember.currentCompanySeaService;
+      } else if (typeof crewMember.currentCompanySeaService === 'string') {
+        try {
+          companySeaService = JSON.parse(crewMember.currentCompanySeaService);
+        } catch (e) {
+          companySeaService = [];
+        }
+      }
     }
-    try {
-      externalSeaService = crewMember.externalSeaService 
-        ? JSON.parse(crewMember.externalSeaService as string) 
-        : [];
-    } catch (e) {
-      externalSeaService = [];
+    
+    if (crewMember.externalSeaService) {
+      if (Array.isArray(crewMember.externalSeaService)) {
+        externalSeaService = crewMember.externalSeaService;
+      } else if (typeof crewMember.externalSeaService === 'string') {
+        try {
+          externalSeaService = JSON.parse(crewMember.externalSeaService);
+        } catch (e) {
+          externalSeaService = [];
+        }
+      }
     }
     
     // Calculate experience from sea service data
