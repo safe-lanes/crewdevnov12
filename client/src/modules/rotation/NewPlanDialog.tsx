@@ -1598,8 +1598,8 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] h-[90vh] p-0">
-        <DialogHeader className="p-6 pb-4">
-          <div className="flex items-center justify-between">
+        <DialogHeader className="p-6 pb-4 border-b">
+          <div className="flex items-center justify-between mb-4">
             <DialogTitle className="text-2xl font-bold">
               {editPlan ? "Edit Rotation Plan" : "New Rotation Plan"}
             </DialogTitle>
@@ -1629,10 +1629,9 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
               </Button>
             </div>
           </div>
-        </DialogHeader>
 
-        {/* Filter dropdowns */}
-        <div className="px-6 pb-4 flex gap-4">
+          {/* Filter dropdowns - now part of the header */}
+          <div className="flex gap-4 flex-wrap items-center">
           {/* Vessels multi-select */}
           <Popover>
             <PopoverTrigger asChild>
@@ -1807,7 +1806,8 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
               </div>
             </PopoverContent>
           </Popover>
-        </div>
+          </div>
+        </DialogHeader>
 
         {/* Main content area - split into left (crew) and right (vessels/timeline) sections */}
         <div className="flex-1 px-6 pb-6 overflow-hidden flex gap-4">
