@@ -5693,6 +5693,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             travelStatus,
             higherCert,
             performance,
+            nextAvailability: crew.nextAvailability || null,
             experience
           };
         });

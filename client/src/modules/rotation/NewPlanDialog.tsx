@@ -45,6 +45,7 @@ interface CrewMember {
   travelStatus?: string;
   higherCert?: string;
   performance?: string;
+  nextAvailability?: string | null;
   experience: {
     company: number;
     rank: number;
@@ -65,6 +66,7 @@ interface CrewFilters {
   travelStatus: string[];
   higherCert: string[];
   performance: string[];
+  availabilityDate: Date | null;
 }
 
 interface ExistingCrew {
@@ -140,21 +142,24 @@ function CrewFilterDialog({
       travelStatus: [],
       higherCert: [],
       performance: [],
+      availabilityDate: null,
     };
     setLocalFilters(emptyFilters);
   };
 
-  const toggleFilter = (category: keyof CrewFilters, value: string) => {
+  type ArrayFilterKeys = Exclude<keyof CrewFilters, 'availabilityDate'>;
+  
+  const toggleFilter = (category: ArrayFilterKeys, value: string) => {
     setLocalFilters(prev => {
       const current = prev[category];
       const updated = current.includes(value)
-        ? current.filter(v => v !== value)
+        ? current.filter((v: string) => v !== value)
         : [...current, value];
       return { ...prev, [category]: updated };
     });
   };
 
-  const FilterSection = ({ title, options, category }: { title: string; options: string[]; category: keyof CrewFilters }) => (
+  const FilterSection = ({ title, options, category }: { title: string; options: string[]; category: ArrayFilterKeys }) => (
     <div className="mb-3">
       <Popover>
         <PopoverTrigger asChild>
@@ -215,6 +220,52 @@ function CrewFilterDialog({
           <FilterSection title="Travel Status" options={availableOptions.travelStatuses} category="travelStatus" />
           <FilterSection title="Higher Cert." options={availableOptions.higherCerts} category="higherCert" />
           <FilterSection title="Performance" options={availableOptions.performances} category="performance" />
+          
+          <div className="mb-3">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-between",
+                    localFilters.availabilityDate ? "text-black dark:text-white" : "text-gray-500"
+                  )}
+                  data-testid="filter-availabilityDate"
+                >
+                  <span>
+                    {localFilters.availabilityDate 
+                      ? `Available by: ${format(localFilters.availabilityDate, 'dd-MMM-yyyy')}`
+                      : "Availability Date"
+                    }
+                  </span>
+                  <CalendarIcon className="h-4 w-4 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <div className="p-2 border-b">
+                  <p className="text-sm text-gray-500">Show crew available on or before this date</p>
+                </div>
+                <Calendar
+                  mode="single"
+                  selected={localFilters.availabilityDate || undefined}
+                  onSelect={(date) => setLocalFilters(prev => ({ ...prev, availabilityDate: date || null }))}
+                  initialFocus
+                />
+                {localFilters.availabilityDate && (
+                  <div className="p-2 border-t">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-red-500 hover:text-red-600"
+                      onClick={() => setLocalFilters(prev => ({ ...prev, availabilityDate: null }))}
+                    >
+                      Clear Date
+                    </Button>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
 
         <div className="flex justify-between pt-4 border-t">
@@ -271,6 +322,7 @@ function CrewColumn({
     travelStatus: [],
     higherCert: [],
     performance: [],
+    availabilityDate: null,
   });
 
   const { data: crewMembers = [], isLoading } = useQuery<CrewMember[]>({
@@ -368,6 +420,27 @@ function CrewColumn({
           return false;
         });
         if (!matchesRange) return false;
+      }
+      
+      // Availability date filter - show crew available on or before selected date
+      if (filters.availabilityDate) {
+        // If crew has no nextAvailability date set, they are considered available immediately
+        if (!crew.nextAvailability) {
+          // Crew with no availability date set is treated as available now
+          return true;
+        }
+        
+        try {
+          const crewAvailabilityDate = new Date(crew.nextAvailability);
+          const filterDate = filters.availabilityDate;
+          
+          // Only include crew whose availability date is on or before the filter date
+          if (crewAvailabilityDate > filterDate) {
+            return false;
+          }
+        } catch {
+          // If date parsing fails, include the crew member
+        }
       }
       
       return true;
