@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -546,9 +547,25 @@ function CrewColumn({
                   <div className={`font-medium text-sm ${getCrewNameColor(crew.id)}`}>
                     {crew.name}
                   </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {crew.experience.company} / {crew.experience.rank} / {crew.experience.tankers} / {crew.experience.oow} / {crew.experience.endorsements}{crew.nextAvailability ? ` / ${formatAvailabilityDate(crew.nextAvailability)}` : ' / —'}
-                  </div>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="text-xs text-gray-500 mt-1 cursor-help">
+                          {crew.experience.company} / {crew.experience.rank} / {crew.experience.tankers} / {crew.experience.oow} / {crew.experience.endorsements}{crew.nextAvailability ? ` / ${formatAvailabilityDate(crew.nextAvailability)}` : ' / —'}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-xs">
+                        <div className="text-xs space-y-1">
+                          <div><span className="font-medium">Company (Yrs):</span> {crew.experience.company}</div>
+                          <div><span className="font-medium">Rank (Yrs):</span> {crew.experience.rank}</div>
+                          <div><span className="font-medium">Tankers (Yrs):</span> {crew.experience.tankers}</div>
+                          <div><span className="font-medium">OOW (Yrs):</span> {crew.experience.oow}</div>
+                          <div><span className="font-medium">Endorsements:</span> {crew.experience.endorsements || '—'}</div>
+                          <div><span className="font-medium">Next Availability:</span> {crew.nextAvailability ? formatAvailabilityDate(crew.nextAvailability) : '—'}</div>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
               </div>
             ))
