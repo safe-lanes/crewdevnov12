@@ -5637,14 +5637,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
               licensesArray = crew.licenses;
             } else if (typeof crew.licenses === 'string') {
               try {
-                licensesArray = JSON.parse(crew.licenses);
+                const parsed = JSON.parse(crew.licenses);
+                if (Array.isArray(parsed)) {
+                  licensesArray = parsed;
+                }
               } catch (e) {
                 licensesArray = [];
               }
             }
           }
           
-          if (licensesArray.length > 0) {
+          if (Array.isArray(licensesArray) && licensesArray.length > 0) {
             const endorsementTypes = licensesArray
               .slice(0, 3)
               .map((lic: any) => lic.type || lic.endorsement || lic.name)
