@@ -474,7 +474,12 @@ function CrewColumn({
   };
   
   // Check if any filters are active
-  const hasActiveFilters = Object.values(filters).some(arr => arr.length > 0);
+  const hasActiveFilters = Object.entries(filters).some(([key, value]) => {
+    if (key === 'availabilityDate') {
+      return value !== null;
+    }
+    return Array.isArray(value) && value.length > 0;
+  });
 
   if (isLoading) {
     return (
