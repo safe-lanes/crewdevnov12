@@ -1714,7 +1714,7 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
             <DialogTitle className="text-2xl font-bold">
               {editPlan ? "Edit Rotation Plan" : "New Rotation Plan"}
             </DialogTitle>
-            <div className="flex gap-2">
+            <div className="flex gap-2 mr-8">
               <Button
                 variant="outline"
                 onClick={handleBack}
