@@ -15,6 +15,22 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 
+// Format date as DD-MMM-YY (e.g., "15 Dec 25")
+function formatAvailabilityDate(dateString: string | null | undefined): string {
+  if (!dateString) return '—';
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    const day = date.getDate();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[date.getMonth()];
+    const year = String(date.getFullYear()).slice(-2);
+    return `${day} ${month} ${year}`;
+  } catch {
+    return dateString || '—';
+  }
+}
+
 interface RotationPlan {
   id: number;
   draftId: string;
@@ -531,7 +547,7 @@ function CrewColumn({
                     {crew.name}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    {crew.experience.company} / {crew.experience.rank} / {crew.experience.tankers} / {crew.experience.oow} / {crew.experience.endorsements}
+                    {crew.experience.company} / {crew.experience.rank} / {crew.experience.tankers} / {crew.experience.oow} / {crew.experience.endorsements}{crew.nextAvailability ? ` / ${formatAvailabilityDate(crew.nextAvailability)}` : ' / —'}
                   </div>
                 </div>
               </div>
