@@ -604,14 +604,14 @@ export function RotationModule() {
                             </div>
                         )}
 
-                        {/* Tablet: Grid layout with stacked radio options */}
+                        {/* Tablet: Horizontal layout similar to desktop */}
                         {isTablet && (
-                            <div className="space-y-3">
-                                {/* Radio Group - stacked vertically */}
+                            <div className="flex flex-wrap items-center gap-3">
+                                {/* Radio Group - horizontal layout */}
                                 <RadioGroup 
                                     value={filterType} 
                                     onValueChange={(value: "vessel" | "fleet" | "addGroup") => setFilterType(value)}
-                                    className="space-y-2"
+                                    className="flex flex-wrap items-center gap-4"
                                 >
                                     {/* Vessel Radio + Multi-Select */}
                                     <div className="flex items-center gap-2">
@@ -728,8 +728,8 @@ export function RotationModule() {
                                     </div>
                                 </RadioGroup>
 
-                                {/* Additional filters in grid */}
-                                <div className="grid grid-cols-3 gap-3">
+                                {/* Due In Filter */}
+                                <div className="shrink-0 w-[120px]">
                                     <Select value={dueInValue} onValueChange={setDueInValue}>
                                         <SelectTrigger 
                                             className="h-8 w-full text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
@@ -745,7 +745,10 @@ export function RotationModule() {
                                             <SelectItem value="overdue">Overdue</SelectItem>
                                         </SelectContent>
                                     </Select>
+                                </div>
 
+                                {/* Rank Filter */}
+                                <div className="shrink-0 w-[160px]">
                                     <Select value={rankValue} onValueChange={setRankValue}>
                                         <SelectTrigger 
                                             className="h-8 w-full text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
@@ -762,16 +765,17 @@ export function RotationModule() {
                                             ))}
                                         </SelectContent>
                                     </Select>
-
-                                    <Button
-                                        variant="outline"
-                                        onClick={handleClearFilters}
-                                        className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed]"
-                                        data-testid="button-clear-filters"
-                                    >
-                                        Clear
-                                    </Button>
                                 </div>
+
+                                {/* Clear Button */}
+                                <Button
+                                    variant="outline"
+                                    onClick={handleClearFilters}
+                                    className="h-8 px-3 text-[#8798ad] text-[11px] border-[#e1e8ed] shrink-0"
+                                    data-testid="button-clear-filters"
+                                >
+                                    Clear
+                                </Button>
                             </div>
                         )}
 
