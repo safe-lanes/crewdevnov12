@@ -2546,6 +2546,16 @@ const AdminModuleInner = (): JSX.Element => {
         }
         
         return safeData as Omit<InsertMasterDataEntry, 'masterId'>;
+      } else if (selectedMaster === "021") {
+        // Manning Agents master - create entry with name, country, email fields
+        return {
+          entryId: newEntryId,
+          name: '',
+          country: '',
+          email: '',
+          isActive: true,
+          isDeleted: false
+        };
       } else {
         // Other masters - create entry with standard fields
         return {
@@ -6659,7 +6669,7 @@ const AdminModuleInner = (): JSX.Element => {
               {/* Right Table - Selected Master Data */}
               <div className={`${currentBreakpoint === 'mobile' ? 'w-full' : 'flex-1'}`}>
                 <div className="bg-[#52baf3] text-white text-xs font-medium p-0">
-                  <div className={`${selectedMaster === "013" ? USERS_MASTER_GRID_CLASSES : `grid ${selectedMaster === "014" || selectedMaster === "018" || selectedMaster === "019" ? 'grid-cols-5' : selectedMaster === "020" ? 'grid-cols-3' : 'grid-cols-4'} gap-0`} ${selectedMaster === "013" ? 'users-master-header-grid' : ''}`}>
+                  <div className={`${selectedMaster === "013" ? USERS_MASTER_GRID_CLASSES : `grid ${selectedMaster === "014" || selectedMaster === "018" || selectedMaster === "019" || selectedMaster === "021" ? 'grid-cols-5' : selectedMaster === "020" ? 'grid-cols-3' : 'grid-cols-4'} gap-0`} ${selectedMaster === "013" ? 'users-master-header-grid' : ''}`}>
                     <div className="p-3 border-r border-blue-400">Entry ID</div>
                     {selectedMaster === "001" ? (
                       <>
@@ -6702,6 +6712,12 @@ const AdminModuleInner = (): JSX.Element => {
                     ) : selectedMaster === "020" ? (
                       <>
                         <div className="p-3 border-r border-blue-400">Country Name</div>
+                      </>
+                    ) : selectedMaster === "021" ? (
+                      <>
+                        <div className="p-3 border-r border-blue-400">Name</div>
+                        <div className="p-3 border-r border-blue-400">Country</div>
+                        <div className="p-3 border-r border-blue-400">Email</div>
                       </>
                     ) : selectedMaster === "012" ? (
                       <>
@@ -7104,6 +7120,8 @@ const AdminModuleInner = (): JSX.Element => {
                         ? !item.vessel && !item.imoNumber && !item.vesselType    // For vessel master
                         : selectedMaster === "018"
                         ? !item.portName && !item.portcode     // For port master (port name and port code)
+                        : selectedMaster === "021"
+                        ? !item.name && !item.country && !item.email    // For manning agents master
                         : !item.name && !item.description;   // For other masters
                       
                       // Special handling for Users Master (013) - Always render exactly 5 columns
@@ -7200,6 +7218,84 @@ const AdminModuleInner = (): JSX.Element => {
                                 onClick={() => deleteMasterEntry(item.id)}
                                 disabled={!isMasterInEditMode}
                                 data-testid={`delete-button-${item.id}`}
+                              >
+                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // Special handling for Manning Agents Master (021) - 5 columns: Entry ID, Name, Country, Email, Actions
+                      if (selectedMaster === "021") {
+                        return (
+                          <div key={item.id} className={`grid grid-cols-5 gap-0 border-b border-gray-100 hover:bg-gray-50 ${
+                            isNewEntry && isMasterInEditMode ? 'bg-blue-50 border-blue-200' : ''
+                          }`}>
+                            {/* Column 1: Entry ID */}
+                            <div className="p-3 border-r border-gray-200">
+                              <span className="text-xs text-gray-700">{item.entryId || item.entry_id || <em className="text-gray-400">No entry ID</em>}</span>
+                            </div>
+                            
+                            {/* Column 2: Name */}
+                            <div className="p-3 border-r border-gray-200">
+                              {isMasterInEditMode ? (
+                                <Input
+                                  value={getEffectiveValue(item.id, 'name', item.name)}
+                                  onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
+                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                  placeholder={isNewEntry ? "Enter agent name..." : ""}
+                                  data-testid={`input-manning-agent-name-${item.id}`}
+                                  autoFocus={isNewEntry}
+                                />
+                              ) : (
+                                <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No name</em>}</span>
+                              )}
+                            </div>
+                            
+                            {/* Column 3: Country */}
+                            <div className="p-3 border-r border-gray-200">
+                              {isMasterInEditMode ? (
+                                <Input
+                                  value={getEffectiveValue(item.id, 'country', item.country)}
+                                  onChange={(e) => updateMasterField(item.id, 'country', e.target.value)}
+                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                  placeholder={isNewEntry ? "Enter country..." : ""}
+                                  data-testid={`input-manning-agent-country-${item.id}`}
+                                />
+                              ) : (
+                                <span className="text-xs text-gray-700">{item.country || <em className="text-gray-400">No country</em>}</span>
+                              )}
+                            </div>
+                            
+                            {/* Column 4: Email */}
+                            <div className="p-3 border-r border-gray-200">
+                              {isMasterInEditMode ? (
+                                <Input
+                                  value={getEffectiveValue(item.id, 'email', item.email)}
+                                  onChange={(e) => updateMasterField(item.id, 'email', e.target.value)}
+                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                  placeholder={isNewEntry ? "Enter email..." : ""}
+                                  data-testid={`input-manning-agent-email-${item.id}`}
+                                />
+                              ) : (
+                                <span className="text-xs text-gray-700">{item.email || <em className="text-gray-400">No email</em>}</span>
+                              )}
+                            </div>
+                            
+                            {/* Column 5: Actions */}
+                            <div className="p-3 flex justify-center">
+                              <button
+                                className={`transition-colors ${
+                                  isMasterInEditMode 
+                                    ? "text-gray-500 hover:text-red-500" 
+                                    : "text-gray-300 cursor-not-allowed"
+                                }`}
+                                onClick={() => deleteMasterEntry(item.id)}
+                                disabled={!isMasterInEditMode}
+                                data-testid={`delete-manning-agent-${item.id}`}
                               >
                                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
