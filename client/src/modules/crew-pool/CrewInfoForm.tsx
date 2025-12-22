@@ -603,6 +603,25 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     return [...STATIC_COUNTRIES];
   }, [externalCountriesData]);
 
+  // Fetch Manning Agents from Master 021
+  const { data: manningAgentsData } = useQuery<any[]>({
+    queryKey: ['/api/masters/021/entries'],
+  });
+  
+  // Extract manning agent names from master data
+  const manningAgentOptions = useMemo(() => {
+    const agents = manningAgentsData || [];
+    return agents
+      .filter((agent: any) => agent.name && agent.name.trim().length > 0)
+      .map((agent: any) => ({
+        id: agent.id,
+        name: agent.name,
+        country: agent.country || '',
+        email: agent.email || ''
+      }))
+      .sort((a: any, b: any) => a.name.localeCompare(b.name));
+  }, [manningAgentsData]);
+
   // Initialize form data with crew member data
   // Note: presentRank is normalized to convert positions (e.g., "OS_1") to actual ranks (e.g., "OS")
   const [formData, setFormData] = useState<FormData>({
@@ -2702,11 +2721,18 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
           <div>
             <Label className="text-xs text-gray-500 tracking-wide">Manning Agent</Label>
             {isEditing ? (
-              <Input
-                value={formData.manningAgent}
-                onChange={(e) => updateFormData('manningAgent', e.target.value)}
-                className="mt-1"
-              />
+              <Select value={formData.manningAgent} onValueChange={(value) => updateFormData('manningAgent', value)}>
+                <SelectTrigger className="mt-1" data-testid="select-manning-agent-crew">
+                  <SelectValue placeholder="Select manning agent" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[200px]">
+                  {manningAgentOptions.map((agent: any) => (
+                    <SelectItem key={agent.id} value={agent.name} data-testid={`manning-agent-crew-option-${agent.id}`}>
+                      {agent.name}{agent.country ? ` (${agent.country})` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             ) : (
               <div className="mt-1 text-sm text-gray-900">{formData.manningAgent}</div>
             )}
