@@ -1778,8 +1778,8 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                         </div>
                       )}
                       
-                      {/* Next Availability - only show when On Leave */}
-                      {statusData?.status === 'On Leave' && (
+                      {/* Next Availability - show for both On Leave and On Board (crew may take short leave and return) */}
+                      {(statusData?.status === 'On Leave' || statusData?.status === 'On Board') && (
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
                             <div className="text-gray-600 text-xs">Next Availability</div>
