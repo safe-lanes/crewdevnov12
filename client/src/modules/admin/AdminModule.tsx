@@ -117,6 +117,50 @@ import { useExternalPorts } from "@/hooks/useExternalPorts";
 import { useExternalLanguages } from "@/hooks/useExternalLanguages";
 import { useExternalCountries } from "@/hooks/useExternalCountries";
 
+// StableInput component - uses local state to prevent value loss during re-renders
+// This solves the issue where external API hook re-renders cause controlled inputs to lose their value
+interface StableInputProps {
+  value: string;
+  onChange: (value: string) => void;
+  className?: string;
+  placeholder?: string;
+  autoFocus?: boolean;
+  "data-testid"?: string;
+}
+
+function StableInput({ value, onChange, className, placeholder, autoFocus, "data-testid": dataTestId }: StableInputProps) {
+  // Use local state for immediate responsiveness
+  const [localValue, setLocalValue] = useState(value);
+  const isInternalChange = useRef(false);
+  
+  // Sync local state with external value changes (e.g., when switching entries or on mount)
+  // But only if the change came from outside (not from typing)
+  useEffect(() => {
+    if (!isInternalChange.current) {
+      setLocalValue(value);
+    }
+    isInternalChange.current = false;
+  }, [value]);
+  
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    isInternalChange.current = true;
+    setLocalValue(newValue);
+    onChange(newValue);
+  };
+  
+  return (
+    <Input
+      value={localValue}
+      onChange={handleChange}
+      className={className}
+      placeholder={placeholder}
+      autoFocus={autoFocus}
+      data-testid={dataTestId}
+    />
+  );
+}
+
 const rankGroupSchema = z.object({
   name: z.string().min(1, "Rank group name is required"),
   ranks: z.array(z.string()).min(1, "At least one rank must be selected"),
@@ -7240,12 +7284,12 @@ const AdminModuleInner = (): JSX.Element => {
                               <span className="text-xs text-gray-700">{item.entryId || item.entry_id || <em className="text-gray-400">No entry ID</em>}</span>
                             </div>
                             
-                            {/* Column 2: Name */}
+                            {/* Column 2: Name - Using StableInput to prevent value loss during re-renders */}
                             <div className="p-3 border-r border-gray-200">
                               {isMasterInEditMode ? (
-                                <Input
+                                <StableInput
                                   value={getEffectiveValue(item.id, 'name', item.name)}
-                                  onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
+                                  onChange={(value) => updateMasterField(item.id, 'name', value)}
                                   className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
                                   placeholder={isNewEntry ? "Enter agent name..." : ""}
                                   data-testid={`input-manning-agent-name-${item.id}`}
@@ -7256,12 +7300,12 @@ const AdminModuleInner = (): JSX.Element => {
                               )}
                             </div>
                             
-                            {/* Column 3: Country */}
+                            {/* Column 3: Country - Using StableInput to prevent value loss during re-renders */}
                             <div className="p-3 border-r border-gray-200">
                               {isMasterInEditMode ? (
-                                <Input
+                                <StableInput
                                   value={getEffectiveValue(item.id, 'country', item.country)}
-                                  onChange={(e) => updateMasterField(item.id, 'country', e.target.value)}
+                                  onChange={(value) => updateMasterField(item.id, 'country', value)}
                                   className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
                                   placeholder={isNewEntry ? "Enter country..." : ""}
                                   data-testid={`input-manning-agent-country-${item.id}`}
@@ -7271,12 +7315,12 @@ const AdminModuleInner = (): JSX.Element => {
                               )}
                             </div>
                             
-                            {/* Column 4: Email */}
+                            {/* Column 4: Email - Using StableInput to prevent value loss during re-renders */}
                             <div className="p-3 border-r border-gray-200">
                               {isMasterInEditMode ? (
-                                <Input
+                                <StableInput
                                   value={getEffectiveValue(item.id, 'email', item.email)}
-                                  onChange={(e) => updateMasterField(item.id, 'email', e.target.value)}
+                                  onChange={(value) => updateMasterField(item.id, 'email', value)}
                                   className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
                                   placeholder={isNewEntry ? "Enter email..." : ""}
                                   data-testid={`input-manning-agent-email-${item.id}`}
