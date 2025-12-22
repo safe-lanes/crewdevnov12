@@ -1,0 +1,92 @@
+# Task: Restore Database Backup on New Replit Project
+
+## Objective
+Restore the database backup `crew-management-backup-2025-12-22.sql` on this Replit project.
+
+## Steps to Execute
+
+### Step 1: Verify Backup File Exists
+```bash
+# Check if backup file is present
+ls -lh backups/crew-management-backup-2025-12-22.sql
+
+# If not present, please upload the backup file to the backups/ folder
+```
+
+### Step 2: Check Current Database Status
+```bash
+# Check if database is empty or has tables
+psql "$DATABASE_URL" -c "\dt"
+
+# Count current tables
+psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';"
+```
+
+### Step 3: Backup Current Database (If Any Data Exists)
+```bash
+# Create safety backup of current state
+npx tsx server/backup-database.ts
+```
+
+### Step 4: Restore from Backup File
+```bash
+# Method 1: Using psql directly
+psql "$DATABASE_URL" < backups/crew-management-backup-2025-12-22.sql
+
+# Method 2: Using restore script (if available)
+npx tsx server/restore-database.ts
+```
+
+### Step 5: Verify Restoration
+```bash
+# Check table count (should be 31 tables)
+psql "$DATABASE_URL" -c "SELECT COUNT(*) as total_tables FROM information_schema.tables WHERE table_schema = 'public';"
+
+# List all tables
+psql "$DATABASE_URL" -c "\dt"
+
+# Check crew members count (should be ~50)
+psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM crew_members;"
+
+# Check vessels count (should be 6)
+psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM vessels;"
+
+# Check if migrations table exists
+psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM schema_migrations;"
+```
+
+### Step 6: Start Application
+```bash
+# Start the application to verify everything works
+npm run dev
+```
+
+## Expected Results
+
+After successful restoration:
+- ✅ 31 tables in database
+- ✅ ~50 crew members
+- ✅ 6 vessels
+- ✅ All test data present
+- ✅ Application starts without errors
+
+## If Restore Script Doesn't Exist
+
+If you get an error about `server/restore-database.ts` not found, use this direct command:
+```bash
+# Clear existing database (if needed)
+psql "$DATABASE_URL" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+
+# Restore from backup
+psql "$DATABASE_URL" < backups/crew-management-backup-2025-12-22.sql
+```
+
+## Please Execute
+
+Run the steps above and confirm:
+1. Current database status (empty or has data?)
+2. Restoration successful (yes/no)
+3. Table count after restore (should be 31)
+4. Application starts successfully (yes/no)
+
+Report any errors encountered during the process.
