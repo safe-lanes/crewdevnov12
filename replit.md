@@ -58,6 +58,10 @@ The application uses a modern web stack with a module-first architecture.
 - **Drugs & Alcohol Testing Module**: Tracks six test types with filtering, AG Grid tables, and a Summary View.
 - **Recruitment Module**: Manages candidate applications with AG Grid display and soft delete functionality. Uses external API for master data.
 - **Crew Pool Module**: Manages active crew database with comprehensive crew information forms. Uses external API for master data.
+- **Manning Agents Data Master (021)**: Configurable list of manning agents with fields: ID, Name, Country, Email. Used by:
+    - Crew Recruitment Form: Dropdown selection for manning agent
+    - Crew Information Form: Dropdown selection for manning agent
+    - Admin > Masters: Full CRUD management with 5-column grid layout
 - **External API Integration (SAIL ERP)**: Modules fetch master data from external SAIL ERP API (https://dev.sl-sail.com/b/api/v1/crewmasterdata/getallmasterdata/) for:
     - Master 001: Nationalities
     - Master 004: Vessel Types
