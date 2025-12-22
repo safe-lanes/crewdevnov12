@@ -2437,7 +2437,7 @@ const AdminModuleInner = (): JSX.Element => {
     }
   };
 
-  const updateMasterField = (itemId: number, field: 'name' | 'description' | 'countryName' | 'country' | 'countryCode' | 'vesselType' | 'vtuid' | 'tanker' | 'oilTanker' | 'gasTanker' | 'chemicalTanker' | 'bulk' | 'vessel' | 'imoNumber' | 'cid' | 'firstname' | 'lastname' | 'designationId', value: string | boolean) => {
+  const updateMasterField = (itemId: number, field: 'name' | 'description' | 'countryName' | 'country' | 'countryCode' | 'vesselType' | 'vtuid' | 'tanker' | 'oilTanker' | 'gasTanker' | 'chemicalTanker' | 'bulk' | 'vessel' | 'imoNumber' | 'cid' | 'firstname' | 'lastname' | 'designationId' | 'email', value: string | boolean) => {
     if (import.meta.env.DEV) {
       console.log(`🎯 [INPUT_HANDLER] updateMasterField called - Entry ${itemId}, Field: ${field}, Value: ${JSON.stringify(value)}`);
       console.log(`🎯 [INPUT_HANDLER] Current edit state - isEditing: ${isEditing}, activemaster: ${isEditingMaster(selectedMaster)}`);
@@ -2583,13 +2583,14 @@ const AdminModuleInner = (): JSX.Element => {
             }
             
             // Refetch the query and get fresh data
+            // Use correct queryKey format matching useMasterDataEntries hook
             await rq.refetchQueries({ 
-              queryKey: ['/api/masters', selectedMaster, 'entries'],
+              queryKey: [`/api/masters/${selectedMaster}/data`],
               exact: true
             });
             
             // Get fresh data directly from the query cache
-            const freshRawData = (rq.getQueryData(['/api/masters', selectedMaster, 'entries']) as any[]) || [];
+            const freshRawData = (rq.getQueryData([`/api/masters/${selectedMaster}/data`]) as any[]) || [];
             
             // Apply field mapping if needed (same logic as masterData useMemo)
             const freshMasterData = (() => {
