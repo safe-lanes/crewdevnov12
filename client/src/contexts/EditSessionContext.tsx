@@ -226,27 +226,35 @@ export function EditSessionProvider({
   }, []);
 
   // PERFORMANCE FIX: Use functional setState to avoid Map dependencies
+  // FIX: Use Promise-based state capture to ensure values are captured before async operations
   const commitSave = useCallback(async () => {
-    // Use let to capture current state for async operation
-    let masterId: string = '';
-    let changes: Map<string | number, Record<string, any>> = new Map();
-    
-    setState(prev => {
-      if (!prev.activeMasterId || prev.pendingChanges.size === 0) {
-        if (import.meta.env.DEV) {
-          console.log('💾 [EDIT_SESSION] No changes to save - activeMasterId:', prev.activeMasterId, 'pendingChanges size:', prev.pendingChanges.size);
+    // Use a Promise to properly capture state values synchronously before the async operation
+    const capturedState = await new Promise<{ masterId: string; changes: Map<string | number, Record<string, any>> } | null>((resolve) => {
+      setState(prev => {
+        if (!prev.activeMasterId || prev.pendingChanges.size === 0) {
+          if (import.meta.env.DEV) {
+            console.log('💾 [EDIT_SESSION] No changes to save - activeMasterId:', prev.activeMasterId, 'pendingChanges size:', prev.pendingChanges.size);
+          }
+          resolve(null);
+          return prev; // No changes
         }
-        return prev; // No changes
-      }
-      
-      // Capture values for async operation
-      masterId = prev.activeMasterId;
-      changes = prev.pendingChanges;
-      
-      return { ...prev, saving: true };
+        
+        // Capture values and resolve the promise
+        const masterId = prev.activeMasterId;
+        const changes = new Map(prev.pendingChanges); // Clone to prevent mutations
+        
+        if (import.meta.env.DEV) {
+          console.log(`💾 [EDIT_SESSION] Captured ${changes.size} changes for master ${masterId}`);
+        }
+        
+        resolve({ masterId, changes });
+        return { ...prev, saving: true };
+      });
     });
 
-    if (!masterId || changes.size === 0) return; // Early exit if no changes
+    if (!capturedState) return; // Early exit if no changes
+    
+    const { masterId, changes } = capturedState;
 
     try {
       if (import.meta.env.DEV) {
