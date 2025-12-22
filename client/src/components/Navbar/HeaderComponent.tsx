@@ -114,7 +114,7 @@ const navItems = [
     },
     {
         label: "Account",
-        href: "/account",
+        href: "/accounts",
         icon: User,
         activeBg: "#5DADE2",
         activeText: "white",

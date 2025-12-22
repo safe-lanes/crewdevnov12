@@ -1,7 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError, calculateExperienceFromSeaService, calculateVesselTypeSpecificExperience, deriveEndorsementCode } from "./storage";
-import { type VesselPlanning, type InsertRecruitmentCandidate, insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertCompanyProcessingSchema, insertPromotionFormSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertOfficeViolationCommentSchema, insertNCReportSchema, insertVesselDateLineAdjustmentSchema, insertOilMajorRulesSchema, type OilMajorRulesConfig, insertTrainingMasterSchema, updateTrainingMasterSchema, trainingMaster, insertTrainingMatrixVesselDraftSchema, insertTrainingMatrixVesselRevisionSchema } from "@shared/schema";
+import { storageAccount } from "./storage-accounts";
+import { type VesselPlanning, type InsertRecruitmentCandidate, insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertCompanyProcessingSchema, insertPromotionFormSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertOfficeViolationCommentSchema, insertNCReportSchema, insertVesselDateLineAdjustmentSchema, insertOilMajorRulesSchema, type OilMajorRulesConfig, insertTrainingMasterSchema, updateTrainingMasterSchema, trainingMaster, insertTrainingMatrixVesselDraftSchema, insertTrainingMatrixVesselRevisionSchema, insertPayElementSchema, insertContractPayElementSchema, insertAllotmentSchema, insertAdvanceSchema, insertBondItemSchema } from "@shared/schema";
 import { parseCSVContent, convertToStorageFormat } from "./oilMajorRulesParser";
 import { evaluateCompliance, convertCrewToExperience, type ComplianceCheckResult } from "./complianceEngine";
 import { z } from "zod";
@@ -8182,6 +8183,263 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error upserting company training requirements:", error);
       res.status(500).json({ error: "Failed to update company training requirements" });
+    }
+  });
+
+  // Accounts Payable / Payroll Integration API Routes
+  // Pay Elements API routes (Rate Tables & Rules)
+  app.get("/api/pay-elements", async (req, res) => {
+    try {
+      const payElements = await storageAccount.getPayElements();
+      res.json(payElements);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch pay elements" });
+    }
+  });
+
+  app.post("/api/pay-elements", async (req, res) => {
+    try {
+      const result = insertPayElementSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid pay element data", details: result.error.issues });
+      }
+      const payElement = await storageAccount.createPayElement(result.data);
+      res.json(payElement);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create pay element" });
+    }
+  });
+
+  app.put("/api/pay-elements/:id", async (req, res) => {
+    try {
+      const id = req.params.id;
+      const result = insertPayElementSchema.partial().safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid pay element data", details: result.error.issues });
+      }
+      const payElement = await storageAccount.updatePayElement(id, result.data);
+      if (!payElement) {
+        return res.status(404).json({ error: "Pay element not found" });
+      }
+      res.json(payElement);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update pay element" });
+    }
+  });
+
+  app.put("/api/pay-elements/:id", async (req, res) => {
+    try {
+      const id = req.params.id;
+      const result = insertPayElementSchema.partial().safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid pay element data", details: result.error.issues });
+      }
+      const payElement = await storageAccount.updatePayElement(id, result.data);
+      if (!payElement) {
+        return res.status(404).json({ error: "Pay element not found" });
+      }
+      res.json(payElement);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update pay element" });
+    }
+  });
+
+  // Contract Data API routes
+  app.get("/api/contract-data/:crewMemberId", async (req, res) => {
+    try {
+      const crewMemberId = req.params.crewMemberId;
+      const vesselGroup = req.query.vesselGroup as string || "all-vessels";
+      
+      // Automatically inherit pay elements for the crew member
+      const contractData = await storageAccount.inheritPayElementsForCrewMember(crewMemberId, vesselGroup);
+      const contractPayElements = await storageAccount.getContractPayElements(contractData.id);
+      
+      // Organize pay elements by type
+      const earnings = contractPayElements.filter(cpe => cpe.type === "earning");
+      const deductions = contractPayElements.filter(cpe => cpe.type === "deduction");
+      
+      res.json({
+        contractData,
+        earnings,
+        deductions
+      });
+    } catch (error) {
+      console.error("Error fetching contract data:", error);
+      res.status(500).json({ error: "Failed to fetch contract data" });
+    }
+  });
+
+  // Update contract status
+  app.put("/api/contract-data/:contractId/status", async (req, res) => {
+    try {
+      const contractId = parseInt(req.params.contractId);
+      const { status } = req.body;
+      
+      if (!['draft', 'active'].includes(status)) {
+        return res.status(400).json({ error: "Invalid status. Must be 'draft' or 'active'" });
+      }
+      
+      const updatedContract = await storageAccount.updateContractStatus(contractId, status);
+      if (!updatedContract) {
+        return res.status(404).json({ error: "Contract not found" });
+      }
+      
+      res.json(updatedContract);
+    } catch (error) {
+      console.error("Error updating contract status:", error);
+      res.status(500).json({ error: "Failed to update contract status" });
+    }
+  });
+
+  // Update contract effective date
+  app.put("/api/contract-data/:contractId/effective-date", async (req, res) => {
+    try {
+      const contractId = parseInt(req.params.contractId);
+      const { effectiveDate } = req.body;
+      
+      if (!effectiveDate) {
+        return res.status(400).json({ error: "Effective date is required" });
+      }
+      
+      const updatedContract = await storageAccount.updateContractEffectiveDate(contractId, effectiveDate);
+      if (!updatedContract) {
+        return res.status(404).json({ error: "Contract not found" });
+      }
+      
+      res.json(updatedContract);
+    } catch (error) {
+      console.error("Error updating contract effective date:", error);
+      res.status(500).json({ error: "Failed to update contract effective date" });
+    }
+  });
+
+  // Contract Pay Elements API routes
+  app.put("/api/contract-pay-elements/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const result = insertContractPayElementSchema.partial().safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid contract pay element data", details: result.error.issues });
+      }
+      const contractPayElement = await storageAccount.updateContractPayElement(id, result.data);
+      if (!contractPayElement) {
+        return res.status(404).json({ error: "Contract pay element not found" });
+      }
+      res.json(contractPayElement);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update contract pay element" });
+    }
+  });
+
+  app.post("/api/contract-pay-elements", async (req, res) => {
+    try {
+      const result = insertContractPayElementSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid contract pay element data", details: result.error.issues });
+      }
+      const contractPayElement = await storageAccount.createContractPayElement(result.data);
+      res.json(contractPayElement);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create contract pay element" });
+    }
+  });
+
+  // Allotments API routes
+  app.get("/api/allotments", async (req, res) => {
+    try {
+      const allotments = await storageAccount.getAllotments();
+      res.json(allotments);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch allotments" });
+    }
+  });
+
+  app.get("/api/allotments/crew/:crewId", async (req, res) => {
+    try {
+      const crewId = req.params.crewId;
+      const allotments = await storageAccount.getAllotmentsByCrewId(crewId);
+      res.json(allotments);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch allotments for crew member" });
+    }
+  });
+
+  app.post("/api/allotments", async (req, res) => {
+    try {
+      const result = insertAllotmentSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid allotment data", details: result.error.issues });
+      }
+      const allotment = await storageAccount.createAllotment(result.data);
+      res.json(allotment);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create allotment" });
+    }
+  });
+
+  // Advances API routes
+  app.get("/api/advances", async (req, res) => {
+    try {
+      const advances = await storageAccount.getAdvances();
+      res.json(advances);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch advances" });
+    }
+  });
+
+  app.get("/api/advances/crew/:crewId", async (req, res) => {
+    try {
+      const crewId = req.params.crewId;
+      const advances = await storageAccount.getAdvancesByCrewId(crewId);
+      res.json(advances);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch advances for crew member" });
+    }
+  });
+
+  app.post("/api/advances", async (req, res) => {
+    try {
+      const result = insertAdvanceSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid advance data", details: result.error.issues });
+      }
+      const advance = await storageAccount.createAdvance(result.data);
+      res.json(advance);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create advance" });
+    }
+  });
+
+  // Bond Items API routes
+  app.get("/api/bond-items", async (req, res) => {
+    try {
+      const bondItems = await storageAccount.getBondItems();
+      res.json(bondItems);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch bond items" });
+    }
+  });
+
+  app.get("/api/bond-items/crew/:crewId", async (req, res) => {
+    try {
+      const crewId = req.params.crewId;
+      const bondItems = await storageAccount.getBondItemsByCrewId(crewId);
+      res.json(bondItems);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch bond items for crew member" });
+    }
+  });
+
+  app.post("/api/bond-items", async (req, res) => {
+    try {
+      const result = insertBondItemSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid bond item data", details: result.error.issues });
+      }
+      const bondItem = await storageAccount.createBondItem(result.data);
+      res.json(bondItem);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create bond item" });
     }
   });
 

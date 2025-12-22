@@ -1730,3 +1730,270 @@ export const oilMajorComplianceResultSchema = z.object({
 
 export type ComplianceRuleResult = z.infer<typeof complianceRuleResultSchema>;
 export type OilMajorComplianceResult = z.infer<typeof oilMajorComplianceResultSchema>;
+
+// CBA Tables - Collective Bargaining Agreement rate tables
+export const cbaTables = pgTable("cba_tables", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  tableData: text("table_data").notNull(), // JSON string for table structure and data
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const cbaTableEntries = pgTable("cba_table_entries", {
+  id: serial("id").primaryKey(),
+  tableId: integer("table_id").notNull().references(() => cbaTables.id),
+  rank: text("rank"),
+  vesselType: text("vessel_type"),
+  category: text("category"),
+  value: text("value").notNull(),
+  effectiveDate: text("effective_date"),
+  expiryDate: text("expiry_date"),
+  currency: text("currency").default("USD"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Pay Elements Master Library (Rate Tables & Rules)
+export const payElements = pgTable("pay_elements", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  code: text("code").notNull().unique(),
+  type: text("type").notNull(), // 'earning' | 'deduction' | 'contribution'
+  category: text("category").notNull(),
+  formula: text("formula").notNull(),
+  rounding: text("rounding").notNull(),
+  ceiling: integer("ceiling"),
+  floor: integer("floor"),
+  effectiveDate: text("effective_date").notNull(),
+  status: text("status").notNull().default("active"), // 'active' | 'inactive'
+  vesselGroups: text("vessel_groups"), // JSON array of vessel group IDs
+  reflectInContract: boolean("reflect_in_contract").default(true), // Controls if element appears in Contract Data
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Contract Data (per crew member)
+export const contractData = pgTable("contract_data", {
+  id: serial("id").primaryKey(),
+  crewMemberId: text("crew_member_id").notNull().references(() => crewMembers.id),
+  vessel: text("vessel").notNull(),
+  vesselGroup: text("vessel_group").notNull(),
+  applicableFrom: text("applicable_from").notNull(),
+  status: text("status").notNull().default("draft"), // 'draft' | 'active'
+  currency: text("currency").notNull().default("USD"),
+  lastModified: timestamp("last_modified").defaultNow(),
+  modifiedBy: text("modified_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Contract Pay Elements (inherited from master + custom)
+export const contractPayElements = pgTable("contract_pay_elements", {
+  id: serial("id").primaryKey(),
+  contractId: integer("contract_id").notNull().references(() => contractData.id),
+  payElementId: text("pay_element_id"), // null for custom elements
+  payElementCode: text("pay_element_code").notNull(),
+  payElementName: text("pay_element_name").notNull(),
+  category: text("category").notNull(),
+  type: text("type").notNull(), // 'earning' | 'deduction'
+  applicable: boolean("applicable").notNull().default(false),
+  formula: text("formula").notNull(),
+  value: text("value"), // Can be amount or formula like "USD / HR"
+  isCustom: boolean("is_custom").notNull().default(false), // True for user-added elements
+  isInherited: boolean("is_inherited").notNull().default(true), // True for inherited from master
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Allotments
+export const allotments = pgTable("allotments", {
+  id: text("id").primaryKey(),
+  crewId: text("crew_id").notNull().references(() => crewMembers.id),
+  crewName: text("crew_name").notNull(),
+  rank: text("rank").notNull(),
+  beneficiaryName: text("beneficiary_name").notNull(),
+  relationship: text("relationship").notNull(),
+  allotmentType: text("allotment_type").notNull(), // 'percentage' or 'fixed'
+  value: integer("value").notNull(), // percentage value or fixed amount
+  currency: text("currency").notNull().default("USD"),
+  bankName: text("bank_name").notNull(),
+  accountNumber: text("account_number").notNull(),
+  priority: integer("priority").notNull().default(1),
+  validFrom: text("valid_from").notNull(),
+  validTo: text("valid_to").notNull(),
+  status: text("status").notNull().default("active"), // 'active', 'pending', 'expired'
+  kycComplete: boolean("kyc_complete").notNull().default(false),
+  bankVerified: boolean("bank_verified").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Cash Advances
+export const advances = pgTable("advances", {
+  id: text("id").primaryKey(),
+  crewId: text("crew_id").notNull().references(() => crewMembers.id),
+  crewName: text("crew_name").notNull(),
+  rank: text("rank").notNull(),
+  amount: integer("amount").notNull(),
+  currency: text("currency").notNull().default("USD"),
+  reason: text("reason").notNull(),
+  requestDate: text("request_date").notNull(),
+  approver: text("approver"),
+  status: text("status").notNull().default("pending"), // 'pending', 'approved', 'rejected', 'disbursed', 'recovered'
+  capCheck: boolean("cap_check").notNull().default(true),
+  remainingCap: integer("remaining_cap").notNull().default(0),
+  recoveryAmount: integer("recovery_amount"), // Amount to deduct from payroll
+  ctmReference: text("ctm_reference"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Bond Purchases
+export const bondItems = pgTable("bond_items", {
+  id: text("id").primaryKey(),
+  crewId: text("crew_id").notNull().references(() => crewMembers.id),
+  crewName: text("crew_name").notNull(),
+  itemName: text("item_name").notNull(),
+  category: text("category").notNull(),
+  quantity: integer("quantity").notNull(),
+  unitPrice: integer("unit_price").notNull(),
+  totalPrice: integer("total_price").notNull(),
+  currency: text("currency").notNull().default("USD"),
+  saleDate: text("sale_date").notNull(),
+  autoDeduct: boolean("auto_deduct").notNull().default(true),
+  deductionAmount: integer("deduction_amount"), // Amount to deduct from payroll
+  status: text("status").notNull().default("pending"), // 'pending', 'deducted', 'cancelled'
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Zod validation schemas
+export const insertCbaTableSchema = createInsertSchema(cbaTables).pick({
+  name: true,
+  description: true,
+  tableData: true,
+});
+
+export const insertCbaTableEntrySchema = createInsertSchema(cbaTableEntries).pick({
+  tableId: true,
+  rank: true,
+  vesselType: true,
+  category: true,
+  value: true,
+  effectiveDate: true,
+  expiryDate: true,
+  currency: true,
+});
+
+export const insertPayElementSchema = createInsertSchema(payElements).pick({
+  id: true,
+  name: true,
+  code: true,
+  type: true,
+  category: true,
+  formula: true,
+  rounding: true,
+  ceiling: true,
+  floor: true,
+  effectiveDate: true,
+  status: true,
+  vesselGroups: true,
+  reflectInContract: true,
+});
+
+export const insertContractDataSchema = createInsertSchema(contractData).pick({
+  crewMemberId: true,
+  vessel: true,
+  vesselGroup: true,
+  applicableFrom: true,
+  status: true,
+  currency: true,
+  modifiedBy: true,
+});
+
+export const insertContractPayElementSchema = createInsertSchema(contractPayElements).pick({
+  contractId: true,
+  payElementId: true,
+  payElementCode: true,
+  payElementName: true,
+  category: true,
+  type: true,
+  applicable: true,
+  formula: true,
+  value: true,
+  isCustom: true,
+  isInherited: true,
+  sortOrder: true,
+});
+
+export const insertAllotmentSchema = createInsertSchema(allotments).pick({
+  id: true,
+  crewId: true,
+  crewName: true,
+  rank: true,
+  beneficiaryName: true,
+  relationship: true,
+  allotmentType: true,
+  value: true,
+  currency: true,
+  bankName: true,
+  accountNumber: true,
+  priority: true,
+  validFrom: true,
+  validTo: true,
+  status: true,
+  kycComplete: true,
+  bankVerified: true,
+});
+
+export const insertAdvanceSchema = createInsertSchema(advances).pick({
+  id: true,
+  crewId: true,
+  crewName: true,
+  rank: true,
+  amount: true,
+  currency: true,
+  reason: true,
+  requestDate: true,
+  approver: true,
+  status: true,
+  capCheck: true,
+  remainingCap: true,
+  recoveryAmount: true,
+  ctmReference: true,
+});
+
+export const insertBondItemSchema = createInsertSchema(bondItems).pick({
+  id: true,
+  crewId: true,
+  crewName: true,
+  itemName: true,
+  category: true,
+  quantity: true,
+  unitPrice: true,
+  totalPrice: true,
+  currency: true,
+  saleDate: true,
+  autoDeduct: true,
+  deductionAmount: true,
+  status: true,
+});
+
+// Type exports
+export type CbaTable = typeof cbaTables.$inferSelect;
+export type InsertCbaTable = z.infer<typeof insertCbaTableSchema>;
+export type CbaTableEntry = typeof cbaTableEntries.$inferSelect;
+export type InsertCbaTableEntry = z.infer<typeof insertCbaTableEntrySchema>;
+export type PayElement = typeof payElements.$inferSelect;
+export type InsertPayElement = z.infer<typeof insertPayElementSchema>;
+export type ContractData = typeof contractData.$inferSelect;
+export type InsertContractData = z.infer<typeof insertContractDataSchema>;
+export type ContractPayElement = typeof contractPayElements.$inferSelect;
+export type InsertContractPayElement = z.infer<typeof insertContractPayElementSchema>;
+export type Allotment = typeof allotments.$inferSelect;
+export type InsertAllotment = z.infer<typeof insertAllotmentSchema>;
+export type Advance = typeof advances.$inferSelect;
+export type InsertAdvance = z.infer<typeof insertAdvanceSchema>;
+export type BondItem = typeof bondItems.$inferSelect;
+export type InsertBondItem = z.infer<typeof insertBondItemSchema>;

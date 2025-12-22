@@ -17,7 +17,7 @@ import { RestHoursVesselOverview } from "./modules/rest-hours/RestHoursVesselOve
 import { DashboardPage } from "./pages/DashboardPage";
 import { ReportsComingSoon } from "./pages/ReportsComingSoon";
 import HeaderComponent from "./components/Navbar/HeaderComponent";
-
+import { AccountsModule } from "./modules/accounts/AccountsModule";
 
 function App() {
   return (
@@ -41,6 +41,8 @@ function App() {
               <Route path="/reports" component={ReportsComingSoon} />
               <Route path="/admin/*" component={AdminModule} />
               <Route path="/admin" component={AdminModule} />
+              <Route path="/accounts/:path*" component={AccountsModule} />
+              <Route path="/accounts" component={AccountsModule} />
               <Route component={NotFound} />
             </Switch>
           </div>
