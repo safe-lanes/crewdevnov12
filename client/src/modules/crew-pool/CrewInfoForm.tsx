@@ -2282,121 +2282,16 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             {/* Appraisals */}
             <div className="bg-white p-4 rounded-lg border border-gray-200 flex-1" data-testid="card-appraisals">
               <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }}>Appraisals</h3>
-              
-              {isDashboardLoading ? (
-                <div className="space-y-4 animate-pulse">
-                  <div className="grid grid-cols-2 gap-4 text-center">
-                    <div>
-                      <div className="h-3 bg-gray-200 rounded w-16 mx-auto mb-2"></div>
-                      <div className="h-7 bg-gray-200 rounded w-10 mx-auto"></div>
-                    </div>
-                    <div>
-                      <div className="h-3 bg-gray-200 rounded w-16 mx-auto mb-2"></div>
-                      <div className="h-7 bg-gray-200 rounded w-10 mx-auto"></div>
-                    </div>
-                  </div>
-                  <div className="h-16 flex items-end justify-between gap-1">
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <div key={i} className="flex-1 bg-gray-200 rounded-t" style={{ height: `${70 - i * 10}%` }}></div>
-                    ))}
-                  </div>
-                </div>
-              ) : appraisalsData && appraisalsData.length > 0 ? (
-                <>
-                  <div className="grid grid-cols-2 gap-4 text-center mb-4">
-                    <div>
-                      <div className="text-xs text-gray-500 mb-1">Current</div>
-                      <div className="font-medium text-2xl" data-testid="score-current">
-                        {appraisalsData[appraisalsData.length - 1].score}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-500 mb-1">Average</div>
-                      <div className="font-medium text-2xl" data-testid="score-average">
-                        {Math.round(appraisalsData.reduce((sum, point) => sum + point.score, 0) / appraisalsData.length)}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Simple trend visualization */}
-                  <div className="h-16 flex items-end justify-between gap-1 mb-2">
-                    {appraisalsData.map((point, index) => (
-                      <div key={index} className="flex-1 flex flex-col items-center">
-                        <div 
-                          className="bg-blue-500 w-full rounded-t"
-                          style={{ height: `${(point.score / 40) * 100}%` }}
-                          title={`${point.year}: ${point.score}`}
-                        ></div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  <div className="text-xs text-gray-500 text-center">
-                    Trend over {appraisalsData.length} appraisal{appraisalsData.length !== 1 ? 's' : ''}
-                  </div>
-                </>
-              ) : (
-                <div className="text-center text-gray-500 py-8">
-                  No appraisal data available
-                </div>
-              )}
+              <div className="text-gray-500 py-8">
+                Coming Soon
+              </div>
             </div>
 
             {/* Promotion */}
             <div className="bg-white p-4 rounded-lg border border-gray-200 flex-1" data-testid="card-promotion">
               <h3 className="text-lg font-medium mb-4" style={{ color: '#16569e' }} data-testid="text-promotion-title">Promotion</h3>
-              <div className="space-y-4">
-                {isDashboardLoading ? (
-                  <div className="space-y-3 animate-pulse">
-                    <div className="grid grid-cols-4 gap-2">
-                      {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="h-3 bg-gray-200 rounded"></div>
-                      ))}
-                    </div>
-                    {[1, 2].map((i) => (
-                      <div key={i} className="flex items-center justify-between">
-                        <div className="h-4 bg-gray-200 rounded w-24"></div>
-                        <div className="flex space-x-2">
-                          {[1, 2, 3, 4].map((j) => (
-                            <div key={j} className="w-3 h-3 bg-gray-200 rounded-full"></div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <>
-                    <div className="text-xs text-gray-500 grid grid-cols-4 gap-2 mb-2" data-testid="promotion-headers">
-                      <span>Recommended</span>
-                      <span>Seaborne</span>
-                      <span>Checklist</span>
-                      <span>Approved</span>
-                    </div>
-                    {careerProgressionData && careerProgressionData.length > 0 ? (
-                      careerProgressionData.map((step, index) => {
-                        const testId = step.position.toLowerCase().replace(/[\s\/]/g, '-');
-                        return (
-                          <div key={index} className="flex items-center justify-between" data-testid={`promotion-${testId}`}>
-                            <div className="flex items-center space-x-2">
-                              <span className="text-sm font-medium">{step.position}</span>
-                              {step.date && <span className="text-xs text-gray-500">{step.date}</span>}
-                            </div>
-                            <div className="flex items-center space-x-2" data-testid={`${testId}-status-indicators`}>
-                              <div className={`w-3 h-3 ${step.status?.recommend ? 'bg-green-500' : 'bg-gray-300'} rounded-full`}></div>
-                              <div className={`w-3 h-3 ${step.status?.advance ? 'bg-yellow-500' : 'bg-gray-300'} rounded-full`}></div>
-                              <div className={`w-3 h-3 ${step.status?.demote ? 'bg-yellow-500' : 'bg-gray-300'} rounded-full`}></div>
-                              <div className={`w-3 h-3 ${step.status?.approved ? 'bg-red-500' : 'bg-gray-300'} rounded-full`}></div>
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="text-center text-gray-500 py-8">
-                        No promotion data available
-                      </div>
-                    )}
-                  </>
-                )}
+              <div className="text-gray-500 py-8">
+                Coming Soon
               </div>
             </div>
           </div>
