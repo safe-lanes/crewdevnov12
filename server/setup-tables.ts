@@ -52,7 +52,12 @@ async function setupTables() {
       { id: '014', name: 'Vessels', description: 'Vessel names and registrations' },
       { id: '015', name: 'Fleet Groups', description: 'Fleet groupings and categories' },
       { id: '016', name: 'Additional Groups', description: 'Additional grouping categories' },
-      { id: '017', name: 'Vessel Owners', description: 'Vessel ownership information' }
+      { id: '017', name: 'Vessel Owners', description: 'Vessel ownership information' },
+      { id: '018', name: 'Ports', description: 'Ports and locations' },
+      { id: '019', name: 'Languages', description: 'Languages spoken by crew' },
+      { id: '020', name: 'Countries', description: 'Country list for addresses' },
+      { id: '021', name: 'Manning Agents', description: 'Manning agents and agencies' },
+      { id: '022', name: 'Crew Pool', description: 'Crew pool groupings' }
     ];
 
     for (const master of masterCategories) {

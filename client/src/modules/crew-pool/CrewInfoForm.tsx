@@ -79,6 +79,7 @@ interface FormData {
   rankAppliedFor: string;
   vesselType: string[];
   manningAgent: string;
+  crewPool: string;
   employeeId: string;
   nextAvailability: string;
   
@@ -608,6 +609,11 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     queryKey: ['/api/masters/021/data'],
   });
   
+  // Fetch Crew Pool from Master 022
+  const { data: crewPoolData } = useQuery<any[]>({
+    queryKey: ['/api/masters/022/data'],
+  });
+  
   // Extract manning agent names from master data
   const manningAgentOptions = useMemo(() => {
     const agents = manningAgentsData || [];
@@ -621,6 +627,18 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
       }))
       .sort((a: any, b: any) => a.name.localeCompare(b.name));
   }, [manningAgentsData]);
+
+  // Extract crew pool names from master data
+  const crewPoolOptions = useMemo(() => {
+    const pools = crewPoolData || [];
+    return pools
+      .filter((pool: any) => pool.name && pool.name.trim().length > 0)
+      .map((pool: any) => ({
+        id: pool.id,
+        name: pool.name
+      }))
+      .sort((a: any, b: any) => a.name.localeCompare(b.name));
+  }, [crewPoolData]);
 
   // Initialize form data with crew member data
   // Note: presentRank is normalized to convert positions (e.g., "OS_1") to actual ranks (e.g., "OS")
@@ -644,6 +662,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     rankAppliedFor: '',
     vesselType: [],
     manningAgent: '',
+    crewPool: '',
     employeeId: crewMember?.employeeId || '',
     nextAvailability: '',
     
@@ -816,6 +835,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             ? [detailedCrewData.vesselTypes] 
             : [],
         manningAgent: detailedCrewData.manningAgent || '',
+        crewPool: detailedCrewData.crewPool || '',
         employeeId: detailedCrewData.employeeId || '',
         
         // A1.2 Address & Contact Info
@@ -5174,6 +5194,25 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
           <aside className="hidden sm:block sticky top-0 self-start basis-20 md:basis-48 lg:basis-52 shrink-0 bg-gray-50 border-r overflow-y-auto">
             {/* Photo Upload Section */}
             {renderSidebarPhotoUpload()}
+            
+            {/* Crew Pool Dropdown */}
+            <div className="px-3 pt-3">
+              <Select 
+                value={formData.crewPool} 
+                onValueChange={(value) => updateFormData('crewPool', value)}
+              >
+                <SelectTrigger className="w-full text-xs" data-testid="select-sidebar-crew-pool">
+                  <SelectValue placeholder="Crew Pool" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[200px]">
+                  {crewPoolOptions.map((pool: any) => (
+                    <SelectItem key={pool.id} value={pool.name} data-testid={`crew-pool-option-${pool.id}`}>
+                      {pool.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             
             {/* Stepper Navigation */}
             <div className="p-3">

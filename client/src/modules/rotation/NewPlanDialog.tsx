@@ -56,6 +56,7 @@ interface CrewMember {
   name: string;
   rank: string;
   pool?: string;
+  crewPool?: string;
   manningAgent?: string;
   shipType?: string;
   nationality?: string;
@@ -369,9 +370,18 @@ function CrewColumn({
     queryKey: ['/api/masters/021/data'],
   });
 
+  // Fetch Crew Pools from Master 022
+  const { data: crewPoolsData } = useQuery<any[]>({
+    queryKey: ['/api/masters/022/data'],
+  });
+
   // Extract unique values for filter options
   const availableOptions = useMemo(() => {
-    const pools = Array.from(new Set(crewMembers.map(c => c.pool).filter(Boolean))).sort() as string[];
+    // Use Crew Pools from Master 022 instead of extracting from crew data
+    const pools = (crewPoolsData || [])
+      .filter((pool: any) => pool.name && !pool.isDeleted)
+      .map((pool: any) => pool.name)
+      .sort() as string[];
     
     // Use Manning Agents from Master 021 instead of extracting from crew data
     const manningAgents = (manningAgentsData || [])
@@ -402,13 +412,13 @@ function CrewColumn({
       higherCerts,
       performances,
     };
-  }, [crewMembers, manningAgentsData]);
+  }, [crewMembers, manningAgentsData, crewPoolsData]);
 
   // Apply filters to crew members
   const filteredCrewMembers = useMemo(() => {
     return crewMembers.filter(crew => {
-      // Pool filter
-      if (filters.pools.length > 0 && !filters.pools.includes(crew.pool || '')) return false;
+      // Pool filter - check both pool and crewPool fields for compatibility
+      if (filters.pools.length > 0 && !filters.pools.includes(crew.crewPool || crew.pool || '')) return false;
       
       // Manning agent filter - compare agent names (filter options are "Name (Country)" format)
       if (filters.manningAgents.length > 0) {

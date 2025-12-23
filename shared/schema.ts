@@ -159,6 +159,7 @@ export const crewMembers = pgTable("crew_members", {
   
   // Additional Information
   manningAgent: text("manning_agent"),
+  crewPool: text("crew_pool"), // Crew pool grouping from Data Master 022
   vesselTypes: text("vessel_types"), // JSON array of vessel types
   
   // Complex Data as JSON
@@ -984,6 +985,7 @@ export const insertCrewMemberSchema = createInsertSchema(crewMembers).pick({
   
   // Additional Information
   manningAgent: true,
+  crewPool: true,
   vesselTypes: true,
   
   // Complex Data as JSON

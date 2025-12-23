@@ -120,6 +120,7 @@ export interface CrewMemberDTO {
   
   // Additional Information
   manningAgent?: string | null;
+  crewPool?: string | null;
   vesselTypes?: string[] | null; // Parsed from JSON
   
   // Complex Data (parsed from JSON)
@@ -518,6 +519,7 @@ export function mapFormDataToStorage(formData: any): Partial<InsertCrewMember> {
     nokAddress: formData.nokAddress || null,
     nokRelationship: formData.nokRelationship || null,
     manningAgent: formData.manningAgent || null,
+    crewPool: formData.crewPool || null,
     
     // JSON fields - stringify arrays and objects (but avoid double-stringifying if already a string)
     vesselTypes: formData.vesselType ? (typeof formData.vesselType === 'string' ? formData.vesselType : JSON.stringify(formData.vesselType)) : null,
