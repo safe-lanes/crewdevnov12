@@ -176,17 +176,34 @@ function CrewFilterDialog({
     });
   };
 
-  const FilterSection = ({ title, options, category }: { title: string; options: string[]; category: ArrayFilterKeys }) => (
+  const FilterSection = ({ title, options, category }: { title: string; options: string[]; category: ArrayFilterKeys }) => {
+    const selectedCount = localFilters[category].length;
+    const hasSelection = selectedCount > 0;
+    const displayValue = selectedCount === 1 
+      ? localFilters[category][0] 
+      : selectedCount > 1 
+        ? "Multiple Selection" 
+        : title;
+    
+    return (
     <div className="mb-3">
       <Popover>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
-            className="w-full justify-between text-gray-500"
+            className={cn(
+              "w-full justify-between relative",
+              hasSelection ? "text-foreground pt-5 h-auto min-h-9" : "text-gray-500"
+            )}
             data-testid={`filter-${category}`}
           >
-            <span>{title}</span>
-            <ChevronDown className="h-4 w-4 opacity-50" />
+            {hasSelection && (
+              <span className="absolute top-1 left-3 text-[10px] text-muted-foreground">
+                {title}
+              </span>
+            )}
+            <span className={cn("truncate", hasSelection && "text-sm")}>{displayValue}</span>
+            <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-60 p-2" align="start">
@@ -218,6 +235,7 @@ function CrewFilterDialog({
       </Popover>
     </div>
   );
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -228,7 +246,7 @@ function CrewFilterDialog({
         
         <div className="max-h-[60vh] overflow-y-auto pr-2">
           <FilterSection title="Pool" options={availableOptions.pools} category="pools" />
-          <FilterSection title="Mann. Agent" options={availableOptions.manningAgents} category="manningAgents" />
+          <FilterSection title="Manning Agent" options={availableOptions.manningAgents} category="manningAgents" />
           <FilterSection title="Ship Type" options={availableOptions.shipTypes} category="shipTypes" />
           <FilterSection title="Nationality" options={availableOptions.nationalities} category="nationalities" />
           <FilterSection title="Time in Company" options={availableOptions.timeInCompanyOptions} category="timeInCompany" />
