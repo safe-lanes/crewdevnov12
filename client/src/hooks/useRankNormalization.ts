@@ -137,6 +137,9 @@ export function useRankNormalization() {
     items: T[],
     getRankName?: (item: T) => string
   ): T[] => {
+    if (!Array.isArray(items)) {
+      return [];
+    }
     const extractRank = getRankName || ((item: T) => item.role || item.rank || '');
     
     const variantBaseRanks = new Set<string>();
