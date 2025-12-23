@@ -346,10 +346,21 @@ function CrewColumn({
     queryKey: [`/api/crew-members/by-rank/${rank}`],
   });
 
+  // Fetch Manning Agents from Master 021
+  const { data: manningAgentsData } = useQuery<any[]>({
+    queryKey: ['/api/masters/021/data'],
+  });
+
   // Extract unique values for filter options
   const availableOptions = useMemo(() => {
     const pools = Array.from(new Set(crewMembers.map(c => c.pool).filter(Boolean))).sort() as string[];
-    const manningAgents = Array.from(new Set(crewMembers.map(c => c.manningAgent).filter(Boolean))).sort() as string[];
+    
+    // Use Manning Agents from Master 021 instead of extracting from crew data
+    const manningAgents = (manningAgentsData || [])
+      .filter((agent: any) => agent.name && !agent.isDeleted)
+      .map((agent: any) => agent.country ? `${agent.name} (${agent.country})` : agent.name)
+      .sort() as string[];
+    
     const shipTypes = Array.from(new Set(crewMembers.map(c => c.shipType).filter(Boolean))).sort() as string[];
     const nationalities = Array.from(new Set(crewMembers.map(c => c.nationality).filter(Boolean))).sort() as string[];
     const travelStatuses = Array.from(new Set(crewMembers.map(c => c.travelStatus).filter(Boolean))).sort() as string[];
@@ -373,7 +384,7 @@ function CrewColumn({
       higherCerts,
       performances,
     };
-  }, [crewMembers]);
+  }, [crewMembers, manningAgentsData]);
 
   // Apply filters to crew members
   const filteredCrewMembers = useMemo(() => {
@@ -381,8 +392,18 @@ function CrewColumn({
       // Pool filter
       if (filters.pools.length > 0 && !filters.pools.includes(crew.pool || '')) return false;
       
-      // Manning agent filter
-      if (filters.manningAgents.length > 0 && !filters.manningAgents.includes(crew.manningAgent || '')) return false;
+      // Manning agent filter - compare agent names (filter options are "Name (Country)" format)
+      if (filters.manningAgents.length > 0) {
+        const crewAgent = crew.manningAgent || '';
+        // Check if any selected filter matches the crew's manning agent
+        // Filter format is "Name (Country)", crew data might just be the name
+        const matches = filters.manningAgents.some(filterAgent => {
+          // Extract just the name from "Name (Country)" format if present
+          const agentName = filterAgent.replace(/\s*\([^)]*\)$/, '');
+          return crewAgent === filterAgent || crewAgent === agentName;
+        });
+        if (!matches) return false;
+      }
       
       // Ship type filter
       if (filters.shipTypes.length > 0 && !filters.shipTypes.includes(crew.shipType || '')) return false;
