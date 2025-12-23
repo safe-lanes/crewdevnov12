@@ -1951,7 +1951,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
 
   // Fetch Manning Agents from Master 021
   const { data: manningAgentsData } = useQuery<any[]>({
-    queryKey: ['/api/masters/021/entries'],
+    queryKey: ['/api/master-data/021/entries'],
   });
   
   // Extract manning agent names from master data
