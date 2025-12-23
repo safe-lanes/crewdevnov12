@@ -107,7 +107,20 @@ export const CrewPoolModule = (): JSX.Element => {
         rank: "",
         nationality: "",
         status: "",
-        reliefDue: ""
+        reliefDue: "",
+        pool: ""
+    });
+    
+    // Fetch Crew Pool master data (Master 022)
+    const { data: crewPoolMasterData = [], isLoading: poolLoading } = useQuery<any[]>({
+        queryKey: ['/api/masters/022/data'],
+        queryFn: async () => {
+            const response = await fetch('/api/masters/022/data');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        },
     });
 
     // Fetch crew members from API
@@ -142,6 +155,7 @@ export const CrewPoolModule = (): JSX.Element => {
             const matchesRank = filters.rank === "" || crew.presentRank === filters.rank;
             const matchesNationality = filters.nationality === "" || crew.nationality === filters.nationality;
             const matchesStatus = filters.status === "" || crew.status === filters.status;
+            const matchesPool = filters.pool === "" || crew.crewPool === filters.pool || crew.crew_pool === filters.pool;
             
             // Relief due filter logic
             let matchesReliefDue = true;
@@ -162,7 +176,7 @@ export const CrewPoolModule = (): JSX.Element => {
                 }
             }
             
-            return matchesName && matchesVessel && matchesRank && matchesNationality && matchesStatus && matchesReliefDue;
+            return matchesName && matchesVessel && matchesRank && matchesNationality && matchesStatus && matchesReliefDue && matchesPool;
         });
     }, [rawCrewData, normalizeRank, filters]);
 
@@ -626,6 +640,23 @@ export const CrewPoolModule = (): JSX.Element => {
                                     </Select>
                                 </div>
 
+                                <div className="shrink-0 w-[100px]">
+                                    <Select value={filters.pool} onValueChange={(value) => setFilters(prev => ({ ...prev, pool: value }))}>
+                                        <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-pool">
+                                            <SelectValue placeholder="Pool" />
+                                        </SelectTrigger>
+                                        <SelectContent className="max-h-[200px]">
+                                            {poolLoading ? (
+                                                <SelectItem value="loading" disabled>Loading...</SelectItem>
+                                            ) : (
+                                                crewPoolMasterData.map((pool: any) => (
+                                                    <SelectItem key={pool.id || pool.name} value={pool.name} data-testid={`pool-option-${pool.name}`}>{pool.name}</SelectItem>
+                                                ))
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
                                 <Button className="h-8 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px] px-4 shrink-0" data-testid="button-apply">
                                     Apply
                                 </Button>
@@ -633,7 +664,7 @@ export const CrewPoolModule = (): JSX.Element => {
                                 <Button 
                                     variant="outline" 
                                     className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3 shrink-0"
-                                    onClick={() => setFilters({ searchName: "", vessel: "", rank: "", nationality: "", status: "", reliefDue: "" })}
+                                    onClick={() => setFilters({ searchName: "", vessel: "", rank: "", nationality: "", status: "", reliefDue: "", pool: "" })}
                                     data-testid="button-clear"
                                 >
                                     Clear
@@ -721,6 +752,21 @@ export const CrewPoolModule = (): JSX.Element => {
                                             <SelectItem value="next-month">Next Month</SelectItem>
                                         </SelectContent>
                                     </Select>
+
+                                    <Select value={filters.pool} onValueChange={(value) => setFilters(prev => ({ ...prev, pool: value }))}>
+                                        <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-pool">
+                                            <SelectValue placeholder="Pool" />
+                                        </SelectTrigger>
+                                        <SelectContent className="max-h-[200px]">
+                                            {poolLoading ? (
+                                                <SelectItem value="loading" disabled>Loading...</SelectItem>
+                                            ) : (
+                                                crewPoolMasterData.map((pool: any) => (
+                                                    <SelectItem key={pool.id || pool.name} value={pool.name} data-testid={`pool-option-${pool.name}`}>{pool.name}</SelectItem>
+                                                ))
+                                            )}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
 
                                 <div className="flex gap-2">
@@ -730,7 +776,7 @@ export const CrewPoolModule = (): JSX.Element => {
                                     <Button 
                                         variant="outline" 
                                         className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] w-16"
-                                        onClick={() => setFilters({ searchName: "", vessel: "", rank: "", nationality: "", status: "", reliefDue: "" })}
+                                        onClick={() => setFilters({ searchName: "", vessel: "", rank: "", nationality: "", status: "", reliefDue: "", pool: "" })}
                                         data-testid="button-clear"
                                     >
                                         Clear
@@ -819,6 +865,21 @@ export const CrewPoolModule = (): JSX.Element => {
                                             <SelectItem value="next-month">Next Month</SelectItem>
                                         </SelectContent>
                                     </Select>
+
+                                    <Select value={filters.pool} onValueChange={(value) => setFilters(prev => ({ ...prev, pool: value }))}>
+                                        <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-pool">
+                                            <SelectValue placeholder="Pool" />
+                                        </SelectTrigger>
+                                        <SelectContent className="max-h-[200px]">
+                                            {poolLoading ? (
+                                                <SelectItem value="loading" disabled>Loading...</SelectItem>
+                                            ) : (
+                                                crewPoolMasterData.map((pool: any) => (
+                                                    <SelectItem key={pool.id || pool.name} value={pool.name} data-testid={`pool-option-${pool.name}`}>{pool.name}</SelectItem>
+                                                ))
+                                            )}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
 
                                 <div className="flex gap-2">
@@ -828,7 +889,7 @@ export const CrewPoolModule = (): JSX.Element => {
                                     <Button 
                                         variant="outline" 
                                         className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] flex-1"
-                                        onClick={() => setFilters({ searchName: "", vessel: "", rank: "", nationality: "", status: "", reliefDue: "" })}
+                                        onClick={() => setFilters({ searchName: "", vessel: "", rank: "", nationality: "", status: "", reliefDue: "", pool: "" })}
                                         data-testid="button-clear"
                                     >
                                         Clear
