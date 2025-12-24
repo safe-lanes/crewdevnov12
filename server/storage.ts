@@ -343,14 +343,17 @@ export function calculateVesselTypeSpecificExperience(
   if (!vesselTypeCode) return 0;
   
   // Vessel type code to keywords mapping
+  // These codes match external API vessel types (e.g., Product Oil Tanker → PRODUCT_OIL_TANKER)
   const vesselTypeKeywords: Record<string, string[]> = {
-    'OIL_TANKER': ['oil tanker', 'crude oil', 'product oil', 'product tanker'],
+    'OIL_TANKER': ['oil tanker'],
+    'PRODUCT_OIL_TANKER': ['product oil tanker', 'product tanker', 'product oil'],
+    'CRUDE_OIL_TANKER': ['crude oil tanker', 'crude tanker', 'crude oil'],
     'CHEMICAL_TANKER': ['chemical tanker', 'chem tanker'],
     'GAS_TANKER': ['gas tanker', 'lng', 'lpg'],
-    'LNG_TANKER': ['lng', 'lng tanker'],
-    'LPG_TANKER': ['lpg', 'lpg tanker'],
-    'OIL_CHEMICAL_TANKER': ['oil chemical', 'oil/chemical'],
-    'BULK_CARRIER': ['bulk', 'bulk carrier', 'dry bulk'],
+    'LNG_TANKER': ['lng tanker', 'lng'],
+    'LPG_TANKER': ['lpg tanker', 'lpg'],
+    'OIL_CHEMICAL_TANKER': ['oil chemical tanker', 'oil chemical', 'oil/chemical'],
+    'BULK_CARRIER': ['bulk carrier', 'bulk', 'dry bulk'],
     'CONTAINER': ['container'],
     'GENERAL_CARGO': ['general cargo', 'cargo'],
     'RORO': ['ro-ro', 'roro'],
