@@ -10,7 +10,7 @@ import {
     Calendar, 
     TrendingUp, 
     FileText, 
-    TestTube, 
+    FlaskConical, 
     Clock, 
     BarChart3, 
     User, 
@@ -88,7 +88,7 @@ const navItems = [
     {
         label: "Drugs Alcohol",
         href: "/drugs-alcohol",
-        icon: TestTube,
+        icon: FlaskConical,
         activeBg: "#5DADE2",
         activeText: "white",
         inactiveBg: "#f1f1f1",
