@@ -253,9 +253,11 @@ function CrewFilterDialog({
           <FilterSection title="Time in Company" options={availableOptions.timeInCompanyOptions} category="timeInCompany" />
           <FilterSection title="Time in Rank" options={availableOptions.timeInRankOptions} category="timeInRank" />
           <FilterSection title="Time in Tankers" options={availableOptions.timeInTankersOptions} category="timeInTankers" />
+          {/* Temporarily hidden filters
           <FilterSection title="Travel Status" options={availableOptions.travelStatuses} category="travelStatus" />
           <FilterSection title="Higher Cert." options={availableOptions.higherCerts} category="higherCert" />
           <FilterSection title="Performance" options={availableOptions.performances} category="performance" />
+          */}
           
           <div className="mb-3">
             <Popover>
