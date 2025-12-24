@@ -282,10 +282,21 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
     }
   }, [viewport]);
 
+  // Store rowData in a ref for use in handleGridReady
+  const rowDataRef = useRef(rowData);
+  useEffect(() => {
+    rowDataRef.current = rowData;
+  }, [rowData]);
+
   // Handle grid ready event with responsive setup
   const handleGridReady = useCallback((event: GridReadyEvent) => {
     gridApiRef.current = event.api;
     handleResponsiveGrid(event.api);
+    
+    // Ensure latest rowData is set when grid becomes ready
+    if (rowDataRef.current) {
+      event.api.setGridOption('rowData', rowDataRef.current);
+    }
     
     if (onGridReady) {
       onGridReady(event);
@@ -298,6 +309,13 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
       handleResponsiveGrid(gridApiRef.current);
     }
   }, [viewport, handleResponsiveGrid]);
+
+  // Force grid update when rowData changes - fixes issue where AG Grid doesn't auto-refresh
+  useEffect(() => {
+    if (gridApiRef.current && !gridApiRef.current.isDestroyed() && rowData) {
+      gridApiRef.current.setGridOption('rowData', rowData);
+    }
+  }, [rowData]);
 
   // Default column definitions with enterprise features
   const defaultColDef = useMemo(() => ({

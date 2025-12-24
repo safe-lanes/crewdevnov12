@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, addMonths, differenceInMonths, differenceInDays, parse } from 'date-fns';
 import { queryClient, apiRequest } from '@/lib/queryClient';
+import { useExternalVessels } from '@/hooks/useExternalVessels';
 
 interface TestRecord {
   date: string;
@@ -45,43 +46,6 @@ const useDrugAlcoholTests = (filters: any) => {
   });
 };
 
-const useVessels = () => {
-  return useQuery({
-    queryKey: ['/api/masters/014/data'],
-    queryFn: async () => {
-      const response = await fetch('/api/masters/014/data');
-      if (!response.ok) throw new Error('Failed to fetch vessels');
-      return response.json();
-    },
-    select: (data: any[]) => {
-      return data
-        .filter((vessel: any) => !vessel.isDeleted)
-        .reduce((acc: any, vessel: any) => {
-          acc[vessel.entryId] = vessel.name || vessel.vessel || 'Unknown Vessel';
-          return acc;
-        }, {});
-    }
-  });
-};
-
-const useVesselsList = () => {
-  return useQuery({
-    queryKey: ['/api/masters/014/data'],
-    queryFn: async () => {
-      const response = await fetch('/api/masters/014/data');
-      if (!response.ok) throw new Error('Failed to fetch vessels');
-      return response.json();
-    },
-    select: (data: any[]) => {
-      return data
-        .filter((vessel: any) => !vessel.isDeleted)
-        .map((vessel: any) => ({
-          vesselId: vessel.entryId || vessel.vuid || vessel.id,
-          vesselName: vessel.name || vessel.vessel || 'Unknown Vessel',
-        }));
-    }
-  });
-};
 
 // Calculate "Due In" status and color
 const calculateDueInStatus = (nextDueDate: string | undefined): { label: string; color: string; textColor: string } | null => {
@@ -393,8 +357,29 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
     addGroupValue,
   });
 
-  const { data: vesselLookup = {}, isLoading: vesselsLoading } = useVessels();
-  const { data: vesselsList = [] } = useVesselsList();
+  // Use external vessels API for complete vessel list (11 vessels)
+  const { data: externalVesselsData = [], isLoading: vesselsLoading } = useExternalVessels();
+  
+  // Process external API response - hooks return arrays directly
+  const externalVessels = Array.isArray(externalVesselsData) 
+    ? externalVesselsData 
+    : (externalVesselsData as any)?.vessels || [];
+  
+  // Create vessel lookup and list from external data
+  const vesselLookup = useMemo(() => {
+    return externalVessels.reduce((acc: Record<string, string>, vessel: any) => {
+      const vesselId = vessel.vuid || vessel.entryId || vessel.id;
+      acc[vesselId] = vessel.vessel || vessel.name || 'Unknown Vessel';
+      return acc;
+    }, {});
+  }, [externalVessels]);
+  
+  const vesselsList = useMemo(() => {
+    return externalVessels.map((vessel: any) => ({
+      vesselId: vessel.vuid || vessel.entryId || vessel.id,
+      vesselName: vessel.vessel || vessel.name || 'Unknown Vessel',
+    }));
+  }, [externalVessels]);
 
   const tableData: AnnualTestData[] = useMemo(() => {
     // Get annual test records indexed by vesselId for quick lookup
