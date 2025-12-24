@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useExternalVessels } from './useExternalVessels';
 
 interface VesselMasterEntry {
   id: number;
@@ -12,10 +12,21 @@ interface VesselMasterEntry {
 }
 
 export function useVesselLookup() {
-  // Fetch vessel master data (ID 014)
-  const { data: vessels = [], isLoading } = useQuery<VesselMasterEntry[]>({
-    queryKey: ['/api/masters/014/data'],
-  });
+  // Fetch vessels from external SAIL ERP API (all 11 vessels)
+  const { data: externalVessels = [], isLoading } = useExternalVessels();
+
+  // Normalize external vessels to match expected VesselMasterEntry format
+  const vessels: VesselMasterEntry[] = useMemo(() => {
+    return externalVessels.map((v: any, index: number) => ({
+      id: index + 1,
+      entryId: v.vuid || v.entryId || `VSL-${String(index + 1).padStart(3, '0')}`,
+      name: v.vessel || v.name || 'Unknown Vessel',
+      description: v.description,
+      vesselType: v.vesselType,
+      isActive: true,
+      isDeleted: false,
+    }));
+  }, [externalVessels]);
 
   // Create lookup maps for O(1) translation
   const { nameToId, idToName, vesselMap } = useMemo(() => {

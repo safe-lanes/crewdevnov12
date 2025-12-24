@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect, useMemo } from 'react';
 import MainLayout from '@/components/main/MainLayout';
 import DrugsAlcoholSideBar from './DrugsAlcoholSideBar';
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
@@ -18,22 +17,7 @@ import { OtherTestsTable } from './OtherTestsTable';
 import { SummaryTable } from './SummaryTable';
 import { DrugAlcoholTestForm } from './DrugAlcoholTestForm';
 import { useViewport } from '@/hooks/useViewport';
-
-// Hook to fetch vessels from Master Data (ID 014)
-const useVessels = () => {
-    return useQuery({
-        queryKey: ['/api/masters/014/data'],
-        select: (data: any[]) => {
-            return data
-                .filter((vessel: any) => !vessel.isDeleted)
-                .map((vessel: any) => ({
-                    id: vessel.id,
-                    vesselId: vessel.entryId,
-                    name: vessel.name || vessel.vessel || 'Unknown Vessel',
-                }));
-        }
-    });
-};
+import { useExternalVessels } from '@/hooks/useExternalVessels';
 
 export function DrugsAlcoholModule() {
     const [selectedDrugsAlcoholPage, setSelectedDrugsAlcoholPage] = useState<string>("annual");
@@ -60,8 +44,17 @@ export function DrugsAlcoholModule() {
     const [formTestType, setFormTestType] = useState<'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others'>();
     const [formVesselId, setFormVesselId] = useState<string>();
 
-    // Fetch vessels
-    const { data: vessels = [], isLoading: vesselsLoading } = useVessels();
+    // Fetch vessels from external SAIL ERP API (all 11 vessels)
+    const { data: externalVessels = [], isLoading: vesselsLoading } = useExternalVessels();
+    
+    // Normalize external vessels data to expected format
+    const vessels = useMemo(() => {
+        return externalVessels.map((v: any, index: number) => ({
+            id: index + 1,
+            vesselId: v.vuid || v.entryId || `VSL-${String(index + 1).padStart(3, '0')}`,
+            name: v.vessel || v.name || 'Unknown Vessel',
+        }));
+    }, [externalVessels]);
     
     // Auto-select first vessel for summary page
     useEffect(() => {
