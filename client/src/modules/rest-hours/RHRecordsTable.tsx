@@ -618,7 +618,7 @@ const OfficeReviewRenderer = (params: ICellRendererParams) => {
 export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode, opaMode }: RHRecordsTableProps) {
   const gridRef = useRef<AgGridReact>(null);
   const [, setLocation] = useLocation();
-  const { getVesselName } = useVesselLookup();
+  const { vessels: allVessels, getVesselName } = useVesselLookup();
   const [violationsDialogOpen, setViolationsDialogOpen] = useState(false);
   const [selectedViolationsRecord, setSelectedViolationsRecord] = useState<RestHoursVesselRecordWithName | null>(null);
   const [predictedViolationsDialogOpen, setPredictedViolationsDialogOpen] = useState(false);
@@ -656,13 +656,95 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
     },
   });
 
-  // Transform records to add computed vesselName from vesselId
+  // Merge ALL vessels from external API with fetched records
+  // Creates placeholder rows with zero values for vessels without existing records
   const recordsWithVesselName = useMemo(() => {
-    return records.map(r => ({
-      ...r,
-      vesselName: getVesselName(r.vesselId) || r.vesselId
-    }));
-  }, [records, getVesselName]);
+    // Skip placeholder generation for "older" filter - only show actual records
+    if (selectedMonth === 'older' || !selectedMonth) {
+      return records.map(r => ({
+        ...r,
+        vesselName: getVesselName(r.vesselId) || r.vesselId
+      }));
+    }
+
+    // Create a map of existing records by vesselId for O(1) lookup
+    const recordsByVesselId = new Map<string, RestHoursVesselRecord>();
+    const usedVesselIds = new Set<string>();
+    records.forEach(r => {
+      recordsByVesselId.set(r.vesselId, r);
+    });
+
+    // Generate month display format (e.g., "Dec-2025") from selectedMonth (e.g., "2025-12")
+    const monthDisplay = (() => {
+      try {
+        const [year, month] = selectedMonth.split('-');
+        const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+        return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).replace(' ', '-');
+      } catch {
+        return selectedMonth;
+      }
+    })();
+
+    // Generate row for each vessel from external API (all 11 vessels)
+    const vesselRows = allVessels.map((vessel, index) => {
+      // Use resilient vessel ID resolution
+      const vesselId = vessel.entryId || (vessel as any).vuid || (vessel as any).id || `VSL-${String(index + 1).padStart(3, '0')}`;
+      usedVesselIds.add(vesselId);
+      
+      const existingRecord = recordsByVesselId.get(vesselId);
+
+      if (existingRecord) {
+        // Use existing record with vessel name (preserve record's month data)
+        return {
+          ...existingRecord,
+          vesselName: vessel.name || vesselId
+        };
+      }
+
+      // Create placeholder row with zero/default values for vessels without records
+      const placeholderRecord: RestHoursVesselRecordWithName = {
+        id: -(index + 1),
+        vesselId: vesselId,
+        vesselName: vessel.name || vesselId,
+        month: monthDisplay,
+        monthValue: selectedMonth,
+        totalCrew: 0,
+        recordingStatusPercent: 0,
+        activityConflicting: false,
+        crewWithActivityConflicts: 0,
+        crewWithActivityConflictsDetails: null,
+        totalViolations: 0,
+        crewWithViolations: 0,
+        crewWithViolationsDetails: null,
+        totalNCs: 0,
+        crewWithNCs: 0,
+        crewWithNCsDetails: null,
+        predictedViolations: 0,
+        crewWithPredictedViolations: 0,
+        crewWithPredictedViolationsDetails: null,
+        predictedNCs: 0,
+        crewWithPredictedNCs: 0,
+        crewWithPredictedNCsDetails: null,
+        vesselReviewStatus: 'Due',
+        vesselReviewSubmittedDate: null,
+        officeReviewStatus: 'Due',
+        officeReviewSubmittedDate: null,
+        createdAt: null,
+        updatedAt: null,
+      };
+      return placeholderRecord;
+    });
+
+    // Append any remaining records not in the external vessel list (historical vessels)
+    const remainingRecords = records
+      .filter(r => !usedVesselIds.has(r.vesselId))
+      .map(r => ({
+        ...r,
+        vesselName: getVesselName(r.vesselId) || r.vesselId
+      }));
+
+    return [...vesselRows, ...remainingRecords];
+  }, [records, allVessels, selectedMonth, getVesselName]);
 
   const filteredRecords = useMemo(() => {
     let filtered = recordsWithVesselName;
