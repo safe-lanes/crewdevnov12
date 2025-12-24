@@ -1984,7 +1984,6 @@ export class DatabaseStorage implements IStorage {
         originalDraftId: plans[0].draftId || null,
         originalAssignmentIndex: assignmentIndex,
         vesselId: vesselCode,
-        vesselName: assignment.vessel || assignment.vesselName || null,
         rankId: assignment.rankId || null,
         rank: assignment.rank,
         crewId: crewMemberId,
@@ -2057,7 +2056,6 @@ export class DatabaseStorage implements IStorage {
         originalDraftId: plans[0].draftId || null,
         originalAssignmentIndex: assignmentIndex,
         vesselId: assignment.vesselId || assignment.vessel || null,
-        vesselName: assignment.vessel || assignment.vesselName || null,
         rankId: assignment.rankId || null,
         rank: assignment.rank,
         crewId: assignment.crewId,
@@ -2203,9 +2201,9 @@ export class DatabaseStorage implements IStorage {
   async getArchivedAssignments(filters?: { vessels?: string[]; ranks?: string[]; dateFrom?: string; dateTo?: string }): Promise<RotationArchiveEntry[]> {
     let conditions = [];
     
-    // Apply filters if provided
+    // Apply filters if provided - filter by vesselId (VSL-XXX format)
     if (filters?.vessels && filters.vessels.length > 0) {
-      conditions.push(inArray(rotationArchive.vesselName, filters.vessels));
+      conditions.push(inArray(rotationArchive.vesselId, filters.vessels));
     }
     if (filters?.ranks && filters.ranks.length > 0) {
       conditions.push(inArray(rotationArchive.rank, filters.ranks));

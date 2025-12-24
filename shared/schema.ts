@@ -546,7 +546,6 @@ export const rotationArchive = pgTable("rotation_archive", {
   originalAssignmentIndex: integer("original_assignment_index"), // Index in original plan's assignments array
   
   vesselId: text("vessel_id"), // Vessel code (VSL-XXX format) - nullable for historical fidelity
-  vesselName: text("vessel_name"), // nullable for historical fidelity
   rankId: text("rank_id"), // Rank ID if available
   rank: text("rank").notNull(),
   
@@ -629,7 +628,6 @@ export const drugAlcoholTestRecords = pgTable("drug_alcohol_test_records", {
 export const restHoursVesselRecords = pgTable("rest_hours_vessel_records", {
   id: serial("id").primaryKey(),
   vesselId: text("vessel_id").notNull(), // Vessel ID from master data
-  vesselName: text("vessel_name").notNull(), // Vessel name
   month: text("month").notNull(), // Format: "Feb-2025" (MMM-YYYY)
   monthValue: text("month_value").notNull(), // Format: "2025-02" (YYYY-MM) for filtering/sorting
   
@@ -663,7 +661,6 @@ export const restHoursVesselRecords = pgTable("rest_hours_vessel_records", {
 export const restHoursCrewRecords = pgTable("rest_hours_crew_records", {
   id: serial("id").primaryKey(),
   vesselId: text("vessel_id").notNull(), // Vessel ID from master data
-  vesselName: text("vessel_name").notNull(), // Vessel name
   crewMemberId: text("crew_member_id").notNull(), // Crew member ID
   rank: text("rank").notNull(), // Crew member rank
   name: text("name").notNull(), // Full name (First Middle Last)

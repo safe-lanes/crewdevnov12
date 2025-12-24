@@ -11,6 +11,7 @@ import { type ComplianceMode } from './violationFilters';
 import { ViolationsOverviewDialog } from './ViolationsOverviewDialog';
 import { NCOverviewDialog } from './NCOverviewDialog';
 import { VesselReviewDialog } from './VesselReviewDialog';
+import { useVesselLookup } from '@/hooks/useVesselLookup';
 
 interface RHRecordsTableProps {
   selectedVessels: string[];
@@ -18,6 +19,9 @@ interface RHRecordsTableProps {
   complianceMode: ComplianceMode;
   opaMode: boolean;
 }
+
+// Extended type with computed vesselName for display
+type RestHoursVesselRecordWithName = RestHoursVesselRecord & { vesselName: string };
 
 const ProgressBarRenderer = (params: ICellRendererParams) => {
   // Defensive guard for AG Grid initialization
@@ -614,18 +618,19 @@ const OfficeReviewRenderer = (params: ICellRendererParams) => {
 export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode, opaMode }: RHRecordsTableProps) {
   const gridRef = useRef<AgGridReact>(null);
   const [, setLocation] = useLocation();
+  const { getVesselName } = useVesselLookup();
   const [violationsDialogOpen, setViolationsDialogOpen] = useState(false);
-  const [selectedViolationsRecord, setSelectedViolationsRecord] = useState<RestHoursVesselRecord | null>(null);
+  const [selectedViolationsRecord, setSelectedViolationsRecord] = useState<RestHoursVesselRecordWithName | null>(null);
   const [predictedViolationsDialogOpen, setPredictedViolationsDialogOpen] = useState(false);
-  const [selectedPredictedViolationsRecord, setSelectedPredictedViolationsRecord] = useState<RestHoursVesselRecord | null>(null);
+  const [selectedPredictedViolationsRecord, setSelectedPredictedViolationsRecord] = useState<RestHoursVesselRecordWithName | null>(null);
   const [ncDialogOpen, setNcDialogOpen] = useState(false);
-  const [selectedNcRecord, setSelectedNcRecord] = useState<RestHoursVesselRecord | null>(null);
+  const [selectedNcRecord, setSelectedNcRecord] = useState<RestHoursVesselRecordWithName | null>(null);
   const [predictedNcDialogOpen, setPredictedNcDialogOpen] = useState(false);
-  const [selectedPredictedNcRecord, setSelectedPredictedNcRecord] = useState<RestHoursVesselRecord | null>(null);
+  const [selectedPredictedNcRecord, setSelectedPredictedNcRecord] = useState<RestHoursVesselRecordWithName | null>(null);
   const [vesselReviewDialogOpen, setVesselReviewDialogOpen] = useState(false);
-  const [selectedVesselReviewRecord, setSelectedVesselReviewRecord] = useState<RestHoursVesselRecord | null>(null);
+  const [selectedVesselReviewRecord, setSelectedVesselReviewRecord] = useState<RestHoursVesselRecordWithName | null>(null);
   const [officeReviewDialogOpen, setOfficeReviewDialogOpen] = useState(false);
-  const [selectedOfficeReviewRecord, setSelectedOfficeReviewRecord] = useState<RestHoursVesselRecord | null>(null);
+  const [selectedOfficeReviewRecord, setSelectedOfficeReviewRecord] = useState<RestHoursVesselRecordWithName | null>(null);
 
   // Build query params for backend
   const queryParams = useMemo(() => {
@@ -651,54 +656,62 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
     },
   });
 
-  const filteredRecords = useMemo(() => {
-    let filtered = records;
+  // Transform records to add computed vesselName from vesselId
+  const recordsWithVesselName = useMemo(() => {
+    return records.map(r => ({
+      ...r,
+      vesselName: getVesselName(r.vesselId) || r.vesselId
+    }));
+  }, [records, getVesselName]);
 
-    // Apply client-side vessel filter
+  const filteredRecords = useMemo(() => {
+    let filtered = recordsWithVesselName;
+
+    // Apply client-side vessel filter (selectedVessels are vessel names)
     if (selectedVessels.length > 0) {
       filtered = filtered.filter(r => selectedVessels.includes(r.vesselName));
     }
 
     return filtered;
-  }, [records, selectedVessels]);
+  }, [recordsWithVesselName, selectedVessels]);
 
   // Handle navigation to vessel overview
-  const handleEditRecord = (record: RestHoursVesselRecord) => {
+  const handleEditRecord = (record: RestHoursVesselRecordWithName) => {
     setLocation(`/rest-hours/vessel/${record.vesselId}/${record.monthValue}`);
   };
 
   // Handler for opening the violations detail dialog
-  const handleViewViolations = (record: RestHoursVesselRecord) => {
+  const handleViewViolations = (record: RestHoursVesselRecordWithName) => {
     setSelectedViolationsRecord(record);
     setViolationsDialogOpen(true);
   };
 
   // Handler for opening the predicted violations detail dialog
-  const handleViewPredictedViolations = (record: RestHoursVesselRecord) => {
+  const handleViewPredictedViolations = (record: RestHoursVesselRecordWithName) => {
     setSelectedPredictedViolationsRecord(record);
     setPredictedViolationsDialogOpen(true);
   };
 
   // Handler for opening the NCs detail dialog
-  const handleViewNCs = (record: RestHoursVesselRecord) => {
+  const handleViewNCs = (record: RestHoursVesselRecordWithName) => {
     setSelectedNcRecord(record);
     setNcDialogOpen(true);
   };
 
   // Handler for opening the predicted NCs detail dialog
-  const handleViewPredictedNCs = (record: RestHoursVesselRecord) => {
+  const handleViewPredictedNCs = (record: RestHoursVesselRecordWithName) => {
     setSelectedPredictedNcRecord(record);
     setPredictedNcDialogOpen(true);
   };
 
   // Handler for opening the vessel review dialog
-  const handleViewVesselReview = (record: RestHoursVesselRecord) => {
+  const handleViewVesselReview = (record: RestHoursVesselRecordWithName) => {
     setSelectedVesselReviewRecord(record);
     setVesselReviewDialogOpen(true);
   };
 
   // Handler for opening the office review dialog
-  const handleViewOfficeReview = (record: RestHoursVesselRecord) => {
+  const handleViewOfficeReview = (record: RestHoursVesselRecordWithName) => {
     setSelectedOfficeReviewRecord(record);
     setOfficeReviewDialogOpen(true);
   };
@@ -709,7 +722,7 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
     if (!params.colDef || !params.data) return null;
     
     const handleClick = () => {
-      const record = params.data as RestHoursVesselRecord;
+      const record = params.data as RestHoursVesselRecordWithName;
       if (record) {
         handleEditRecord(record);
       }

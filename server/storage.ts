@@ -2600,7 +2600,6 @@ export class MemStorage implements IStorage {
       originalDraftId: plan.draftId || null,
       originalAssignmentIndex: assignmentIndex,
       vesselId: vesselCode,
-      vesselName: assignment.vessel || assignment.vesselName || null,
       rankId: assignment.rankId || null,
       rank: assignment.rank,
       crewId: assignment.crewId,
@@ -2666,7 +2665,6 @@ export class MemStorage implements IStorage {
       originalDraftId: plan.draftId || null,
       originalAssignmentIndex: assignmentIndex,
       vesselId: vesselCode,
-      vesselName: assignment.vessel || assignment.vesselName || null,
       rankId: assignment.rankId || null,
       rank: assignment.rank,
       crewId: assignment.crewId,
@@ -4947,7 +4945,6 @@ export class PersistentFileStorage implements IStorage {
           createdAt: null,
           updatedAt: null,
           vesselId: vessel.id,
-          vesselName: vessel.name,
           month: monthLabel.replace(' ', '-'),
           monthValue: monthValue,
           totalCrew,
@@ -5872,7 +5869,6 @@ export class PersistentFileStorage implements IStorage {
           createdAt: null,
           updatedAt: null,
           vesselId: vessel.id,
-          vesselName: vessel.name,
           month: monthLabel.replace(' ', '-'),
           monthValue: monthValue,
           totalCrew,
@@ -6813,7 +6809,6 @@ export class PersistentFileStorage implements IStorage {
       originalDraftId: plan.draftId || null,
       originalAssignmentIndex: assignmentIndex,
       vesselId: vesselCode,
-      vesselName: assignment.vessel || assignment.vesselName || null,
       rankId: assignment.rankId || null,
       rank: assignment.rank,
       crewId: assignment.crewId,
@@ -6879,7 +6874,6 @@ export class PersistentFileStorage implements IStorage {
       originalDraftId: plan.draftId || null,
       originalAssignmentIndex: assignmentIndex,
       vesselId: vesselCode,
-      vesselName: assignment.vessel || assignment.vesselName || null,
       rankId: assignment.rankId || null,
       rank: assignment.rank,
       crewId: assignment.crewId,
@@ -6959,9 +6953,9 @@ export class PersistentFileStorage implements IStorage {
   async getArchivedAssignments(filters?: { vessels?: string[]; ranks?: string[]; dateFrom?: string; dateTo?: string }): Promise<RotationArchiveEntry[]> {
     let entries = Array.from(this.rotationArchive.values());
     
-    // Apply filters if provided
+    // Apply filters if provided - filter by vesselId (VSL-XXX format)
     if (filters?.vessels && filters.vessels.length > 0) {
-      entries = entries.filter(e => e.vesselName && filters.vessels!.includes(e.vesselName));
+      entries = entries.filter(e => e.vesselId && filters.vessels!.includes(e.vesselId));
     }
     if (filters?.ranks && filters.ranks.length > 0) {
       entries = entries.filter(e => filters.ranks!.includes(e.rank));
@@ -6987,7 +6981,6 @@ export class PersistentFileStorage implements IStorage {
       originalDraftId: entry.originalDraftId ?? null,
       originalAssignmentIndex: entry.originalAssignmentIndex ?? null,
       vesselId: entry.vesselId ?? null,
-      vesselName: entry.vesselName ?? null,
       rankId: entry.rankId ?? null,
       rank: entry.rank,
       crewId: entry.crewId,
@@ -7123,7 +7116,6 @@ export class PersistentFileStorage implements IStorage {
       createdAt: null,
       updatedAt: null,
       vesselId: insertRecord.vesselId,
-      vesselName: insertRecord.vesselName,
       month: insertRecord.month,
       monthValue: insertRecord.monthValue,
       totalCrew: insertRecord.totalCrew ?? 0,
@@ -7213,7 +7205,6 @@ export class PersistentFileStorage implements IStorage {
     const record: RestHoursCrewRecord = {
       id,
       vesselId: insertRecord.vesselId,
-      vesselName: insertRecord.vesselName,
       crewMemberId: insertRecord.crewMemberId,
       rank: insertRecord.rank,
       name: insertRecord.name,
