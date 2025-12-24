@@ -122,35 +122,40 @@ export const VesselStatusChart = ({
     enabled: !!monthValue,
   });
 
-  // Calculate vessel status metrics (deduplicate by vesselId)
+  // Calculate vessel status metrics using ALL vessels from external API
   const metrics = useMemo(() => {
-    if (!vesselRecords || vesselRecords.length === 0) {
-      return {
-        totalVessels: 0,
-        overdueVesselReview: 0,
-        overdueOfficeResponse: 0,
-        restHoursConflict: 0,
-        incompleteData: 0,
-        overdueVesselReviewVessels: new Set<string>(),
-        overdueOfficeVessels: new Set<string>(),
-        conflictVessels: new Set<string>(),
-        incompleteVessels: new Set<string>(),
-      };
-    }
+    // Get the complete vessel list - use filtered vesselIds if provided, otherwise all vessels
+    const completeVesselIdList = vesselIds && vesselIds.length > 0 
+      ? vesselIds 
+      : allVessels.map(v => v.entryId || (v as any).vuid || (v as any).id);
+    
+    const totalVesselCount = completeVesselIdList.length;
+
+    // Create a set of vessel IDs that have records
+    const vesselsWithRecords = new Set<string>();
+    vesselRecords.forEach(record => {
+      if (record.vesselId) {
+        vesselsWithRecords.add(record.vesselId);
+      }
+    });
 
     // Use Sets to track unique vessels for each metric
-    const allVesselIds = new Set<string>();
     const overdueVesselReviewVessels = new Set<string>();
     const overdueOfficeVessels = new Set<string>();
     const conflictVessels = new Set<string>();
     const incompleteVessels = new Set<string>();
 
+    // First, mark vessels WITHOUT records as incomplete
+    completeVesselIdList.forEach(vesselId => {
+      if (!vesselsWithRecords.has(vesselId)) {
+        incompleteVessels.add(vesselId);
+      }
+    });
+
+    // Then process vessels WITH records
     vesselRecords.forEach(record => {
       const vesselId = record.vesselId;
       if (!vesselId) return; // Skip records without vesselId
-
-      // Track all unique vessels in the dataset
-      allVesselIds.add(vesselId);
 
       // Track vessels with overdue vessel review
       if (record.vesselReviewStatus === 'Overdue') {
@@ -168,14 +173,14 @@ export const VesselStatusChart = ({
       }
 
       // Track vessels with incomplete data (recording status < 100%)
-      const recordingStatus = record.recordingStatus ?? 0;
-      if (recordingStatus < 100) {
+      const recordingStatusPercent = record.recordingStatusPercent ?? 0;
+      if (recordingStatusPercent < 100) {
         incompleteVessels.add(vesselId);
       }
     });
 
     return {
-      totalVessels: allVesselIds.size,
+      totalVessels: totalVesselCount,
       overdueVesselReview: overdueVesselReviewVessels.size,
       overdueOfficeResponse: overdueOfficeVessels.size,
       restHoursConflict: conflictVessels.size,
@@ -185,7 +190,7 @@ export const VesselStatusChart = ({
       conflictVessels,
       incompleteVessels,
     };
-  }, [vesselRecords]);
+  }, [vesselRecords, vesselIds, allVessels]);
 
   // Handler functions
   const handleVesselReviewClick = (vesselId: string, vesselName: string) => {
