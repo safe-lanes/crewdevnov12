@@ -201,19 +201,38 @@ const useAvailableRanks = () => {
     });
 };
 
-// Hook to fetch ports from Port Master (ID 005)
+// Hook to fetch ports from External SAIL ERP API (Master 018)
 const usePorts = () => {
     return useQuery({
-        queryKey: ['/api/masters/005/data'],
+        queryKey: ['/api/external/ports'],
+        queryFn: async () => {
+            const domain = localStorage.getItem('domain') || 'rsms';
+            const response = await fetch(
+                `https://dev.sl-sail.com/b/api/v1/crewmasterdata/getallmasterdata/ports?domain=${domain}`,
+                {
+                    method: 'GET',
+                    headers: { 'accept': '*/*' }
+                }
+            );
+            if (!response.ok) {
+                throw new Error(`Failed to fetch ports: ${response.status}`);
+            }
+            const data = await response.json();
+            return data.ports || [];
+        },
+        staleTime: 5 * 60 * 1000,
+        retry: 2,
         select: (data: any[]) => {
             return data
-                .filter((port: any) => !port.isDeleted)
+                .filter((port: any) => !port.isDeleted && port.isActive)
                 .map((port: any) => ({
                     id: port.id,
-                    name: port.name || port.portName || '',
-                    code: port.portcode || port.cid || port.entryId || '',
+                    puid: port.puid || '',           // UUID to store
+                    name: port.name || '',           // Display name
+                    country: port.country || '',     // Country
+                    code: port.portcode || '',       // Port code
                 }))
-                .filter((port: any) => port.name) // Only include ports with names
+                .filter((port: any) => port.name && port.puid) // Only include ports with names and puid
                 .sort((a: any, b: any) => a.name.localeCompare(b.name)); // Sort alphabetically
         }
     });
@@ -802,45 +821,46 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                             )}
                         />
 
-                        {/* Sign On Port */}
+                        {/* Sign On Port - stores puid (UUID) but displays port name */}
                         <FormField
                             control={form.control}
                             name="relieverSignOnPort"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <div className="grid grid-cols-3 items-center gap-4">
-                                        <FormLabel className="text-sm text-gray-700">Sign On Port:</FormLabel>
-                                        <FormControl>
-                                            <Select 
-                                                onValueChange={field.onChange} 
-                                                value={field.value as string} 
-                                                data-testid="select-joining-port"
-                                                disabled={!isRelieverAssigned}
-                                            >
-                                                <SelectTrigger className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}>
-                                                    <SelectValue placeholder="Select Port" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {ports.length > 0 ? (
-                                                        ports.map((port: any) => (
-                                                            <SelectItem key={port.id || port.name} value={port.name}>
-                                                                {port.name}
-                                                            </SelectItem>
-                                                        ))
-                                                    ) : (
-                                                        <>
-                                                            <SelectItem value="Singapore">Singapore</SelectItem>
-                                                            <SelectItem value="Rotterdam">Rotterdam</SelectItem>
-                                                            <SelectItem value="Dubai">Dubai</SelectItem>
-                                                            <SelectItem value="Hong Kong">Hong Kong</SelectItem>
-                                                        </>
-                                                    )}
-                                                </SelectContent>
-                                            </Select>
-                                        </FormControl>
-                                    </div>
-                                </FormItem>
-                            )}
+                            render={({ field }) => {
+                                // Find current port name for display
+                                const selectedPort = ports.find((p: any) => p.puid === field.value);
+                                return (
+                                    <FormItem>
+                                        <div className="grid grid-cols-3 items-center gap-4">
+                                            <FormLabel className="text-sm text-gray-700">Sign On Port:</FormLabel>
+                                            <FormControl>
+                                                <Select 
+                                                    onValueChange={field.onChange} 
+                                                    value={field.value as string} 
+                                                    data-testid="select-joining-port"
+                                                    disabled={!isRelieverAssigned}
+                                                >
+                                                    <SelectTrigger className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}>
+                                                        <SelectValue placeholder="Select Port">
+                                                            {selectedPort?.name || (field.value ? field.value : "Select Port")}
+                                                        </SelectValue>
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {ports.length > 0 ? (
+                                                            ports.map((port: any) => (
+                                                                <SelectItem key={port.puid} value={port.puid}>
+                                                                    {port.name}{port.country ? ` (${port.country})` : ''}
+                                                                </SelectItem>
+                                                            ))
+                                                        ) : (
+                                                            <SelectItem value="" disabled>Loading ports...</SelectItem>
+                                                        )}
+                                                    </SelectContent>
+                                                </Select>
+                                            </FormControl>
+                                        </div>
+                                    </FormItem>
+                                );
+                            }}
                         />
 
                         {/* Deployment Checklist Completed */}
@@ -981,6 +1001,17 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
     const { getVesselName } = useVesselLookup();
     const [signOffDateOpen, setSignOffDateOpen] = useState(false);
     const [takeOverDateOpen, setTakeOverDateOpen] = useState(false);
+    
+    // Create a lookup map from port puid (UUID) to port name for display
+    const portLookup = useMemo(() => {
+        const map = new Map<string, string>();
+        ports.forEach((port: any) => {
+            if (port.puid && port.name) {
+                map.set(port.puid, port.name);
+            }
+        });
+        return map;
+    }, [ports]);
     
     const form = useForm<OnBoardStatusFormData>({
         resolver: zodResolver(onBoardStatusFormSchema),
@@ -1380,7 +1411,7 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                         <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                             <span className="text-sm text-gray-700">Sign On Port:</span>
                             <div className="flex items-center border rounded-md px-3 py-2 bg-gray-50">
-                                <span className="text-sm text-gray-900">{planningData?.joiningPort || '-'}</span>
+                                <span className="text-sm text-gray-900">{planningData?.joiningPort ? (portLookup.get(planningData.joiningPort) || planningData.joiningPort) : '-'}</span>
                             </div>
                         </div>
 
@@ -1637,44 +1668,45 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                             )}
                         />
 
-                        {/* 13. Sign Off Port */}
+                        {/* 13. Sign Off Port - stores puid (UUID) but displays port name */}
                         <FormField
                             control={form.control}
                             name="signOffPort"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                                        <FormLabel className="text-sm text-gray-700">Sign Off Port</FormLabel>
-                                        <FormControl>
-                                            <Select 
-                                                onValueChange={field.onChange} 
-                                                value={field.value || undefined} 
-                                                data-testid="select-sign-off-port"
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select Port" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {ports.length > 0 ? (
-                                                        ports.map((port: any) => (
-                                                            <SelectItem key={port.id || port.name} value={port.name}>
-                                                                {port.name}
-                                                            </SelectItem>
-                                                        ))
-                                                    ) : (
-                                                        <>
-                                                            <SelectItem value="Singapore">Singapore</SelectItem>
-                                                            <SelectItem value="Rotterdam">Rotterdam</SelectItem>
-                                                            <SelectItem value="Dubai">Dubai</SelectItem>
-                                                            <SelectItem value="Hong Kong">Hong Kong</SelectItem>
-                                                        </>
-                                                    )}
-                                                </SelectContent>
-                                            </Select>
-                                        </FormControl>
-                                    </div>
-                                </FormItem>
-                            )}
+                            render={({ field }) => {
+                                // Find current port name for display
+                                const selectedPort = ports.find((p: any) => p.puid === field.value);
+                                return (
+                                    <FormItem>
+                                        <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                                            <FormLabel className="text-sm text-gray-700">Sign Off Port</FormLabel>
+                                            <FormControl>
+                                                <Select 
+                                                    onValueChange={field.onChange} 
+                                                    value={field.value || undefined} 
+                                                    data-testid="select-sign-off-port"
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select Port">
+                                                            {selectedPort?.name || (field.value ? field.value : "Select Port")}
+                                                        </SelectValue>
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {ports.length > 0 ? (
+                                                            ports.map((port: any) => (
+                                                                <SelectItem key={port.puid} value={port.puid}>
+                                                                    {port.name}{port.country ? ` (${port.country})` : ''}
+                                                                </SelectItem>
+                                                            ))
+                                                        ) : (
+                                                            <SelectItem value="" disabled>Loading ports...</SelectItem>
+                                                        )}
+                                                    </SelectContent>
+                                                </Select>
+                                            </FormControl>
+                                        </div>
+                                    </FormItem>
+                                );
+                            }}
                         />
 
                         {/* Action Buttons */}
@@ -1739,6 +1771,20 @@ export const VesselModule = (): JSX.Element => {
     // Fetch vessels and crew members
     const { data: vessels = [], isLoading: vesselsLoading } = useVessels();
     const { data: crewMembers = [], isLoading: crewLoading } = useCrewMembers();
+    
+    // Fetch ports from external SAIL ERP API for display lookups
+    const { data: ports = [] } = usePorts();
+    
+    // Create a lookup map from port puid (UUID) to port name for display
+    const portLookup = useMemo(() => {
+        const map = new Map<string, string>();
+        ports.forEach((port: any) => {
+            if (port.puid && port.name) {
+                map.set(port.puid, port.name);
+            }
+        });
+        return map;
+    }, [ports]);
     
     // Get rank normalization utilities for filtering variants
     const { filterCrewWithVariants, isVariantRank, getCanonicalRankName } = useRankNormalization();
@@ -3320,7 +3366,7 @@ export const VesselModule = (): JSX.Element => {
                                                                     {formatDateOnly(planningData?.signOffDate)}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-soff-port-${rowIndex + 1}`}>
-                                                                    {planningData?.signOffPort || ''}
+                                                                    {planningData?.signOffPort ? (portLookup.get(planningData.signOffPort) || planningData.signOffPort) : ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-relief-status-${rowIndex + 1}`}>
                                                                     {planningData?.reliefStatus || ''}
@@ -3352,7 +3398,7 @@ export const VesselModule = (): JSX.Element => {
                                                                     {planningData?.relieverCrewId ? formatDateOnly(planningData?.joiningDate) : ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-joining-port-${rowIndex + 1}`}>
-                                                                    {planningData?.relieverCrewId ? (planningData?.joiningPort || '') : ''}
+                                                                    {planningData?.relieverCrewId ? (planningData?.joiningPort ? (portLookup.get(planningData.joiningPort) || planningData.joiningPort) : '') : ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-joining-status-${rowIndex + 1}`}>
                                                                     {planningData?.relieverCrewId ? (planningData?.joiningStatus || '') : ''}
