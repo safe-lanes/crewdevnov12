@@ -59,19 +59,37 @@ const hasValidGmdss = (licenses: LicenseRecord[]): boolean => {
     }
 };
 
-// Hook to fetch vessels from Master Data (ID 014)
+// Hook to fetch vessels from External API (SAIL ERP)
+// This ensures vessel types match the Vessel Master (external API source of truth)
 const useVessels = () => {
     return useQuery({
-        queryKey: ['/api/masters/014/data'],
+        queryKey: ['/api/external/vessels'],
+        queryFn: async () => {
+            const domain = localStorage.getItem('domain') || 'rsms';
+            const response = await fetch(
+                `https://dev.sl-sail.com/b/api/v1/crewmasterdata/getallmasterdata/vessels?domain=${domain}`,
+                {
+                    method: 'GET',
+                    headers: { 'accept': '*/*' }
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch vessels: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data.vessels || [];
+        },
+        staleTime: 5 * 60 * 1000,
+        retry: 2,
         select: (data: any[]) => {
-            return data
-                .filter((vessel: any) => !vessel.isDeleted)
-                .map((vessel: any) => ({
-                    id: vessel.id,
-                    vesselId: vessel.entryId,
-                    name: vessel.name || vessel.vessel || 'Unknown Vessel',
-                    vesselType: vessel.vesselType || 'Unknown Type',
-                }));
+            return data.map((vessel: any) => ({
+                id: vessel.id,
+                vesselId: vessel.vuid, // UUID from external API
+                name: vessel.vessel || 'Unknown Vessel',
+                vesselType: vessel.vesselType || 'Unknown Type',
+            }));
         }
     });
 };
