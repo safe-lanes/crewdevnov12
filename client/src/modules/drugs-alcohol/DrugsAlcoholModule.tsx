@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Filter, ChevronDown } from 'lucide-react';
+import { Filter, ChevronDown, Plus } from 'lucide-react';
 import { AnnualTestTable } from './AnnualTestTable';
 import { PeriodicTestTable } from './PeriodicTestTable';
 import { MonthlyTestTable } from './MonthlyTestTable';
@@ -569,6 +569,16 @@ export function DrugsAlcoholModule() {
                         <SectionTitleComponents title="Post Incident Test">
                             <div className="flex gap-2">
                                 <Button
+                                    variant="default"
+                                    size="sm"
+                                    onClick={() => handleOpenForm('post-incident')}
+                                    className="h-8 gap-2"
+                                    data-testid="button-add-new-post-incident"
+                                >
+                                    <Plus className="h-4 w-4" />
+                                    Add New
+                                </Button>
+                                <Button
                                     variant="outline"
                                     size="sm"
                                     onClick={() => setShowFilters(!showFilters)}
@@ -595,6 +605,16 @@ export function DrugsAlcoholModule() {
                     <div className="flex flex-col h-full">
                         <SectionTitleComponents title="Other Tests">
                             <div className="flex gap-2">
+                                <Button
+                                    variant="default"
+                                    size="sm"
+                                    onClick={() => handleOpenForm('others')}
+                                    className="h-8 gap-2"
+                                    data-testid="button-add-new-others"
+                                >
+                                    <Plus className="h-4 w-4" />
+                                    Add New
+                                </Button>
                                 <Button
                                     variant="outline"
                                     size="sm"
