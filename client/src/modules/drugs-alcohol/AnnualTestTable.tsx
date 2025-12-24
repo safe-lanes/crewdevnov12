@@ -64,6 +64,25 @@ const useVessels = () => {
   });
 };
 
+const useVesselsList = () => {
+  return useQuery({
+    queryKey: ['/api/masters/014/data'],
+    queryFn: async () => {
+      const response = await fetch('/api/masters/014/data');
+      if (!response.ok) throw new Error('Failed to fetch vessels');
+      return response.json();
+    },
+    select: (data: any[]) => {
+      return data
+        .filter((vessel: any) => !vessel.isDeleted)
+        .map((vessel: any) => ({
+          vesselId: vessel.entryId || vessel.vuid || vessel.id,
+          vesselName: vessel.name || vessel.vessel || 'Unknown Vessel',
+        }));
+    }
+  });
+};
+
 // Calculate "Due In" status and color
 const calculateDueInStatus = (nextDueDate: string | undefined): { label: string; color: string; textColor: string } | null => {
   if (!nextDueDate) return null;
@@ -375,58 +394,80 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
   });
 
   const { data: vesselLookup = {}, isLoading: vesselsLoading } = useVessels();
+  const { data: vesselsList = [] } = useVesselsList();
 
   const tableData: AnnualTestData[] = useMemo(() => {
-    const annualTests = testRecords.filter((record: any) => record.testType === 'annual');
+    // Get annual test records indexed by vesselId for quick lookup
+    const annualTestsByVessel: Record<string, any> = {};
+    const orphanedVesselIds = new Set<string>();
+    
+    testRecords
+      .filter((record: any) => record.testType === 'annual')
+      .forEach((record: any) => {
+        annualTestsByVessel[record.vesselId] = record;
+        // Track vessels that have records but might not be in Master 014
+        orphanedVesselIds.add(record.vesselId);
+      });
 
-    // Apply vessel filtering based on filterType
-    const filteredTests = annualTests.filter((record: any) => {
-      const vesselName = vesselLookup[record.vesselId] || record.vesselId;
-
-      if (filterType === 'vessel') {
-        // If no vessels selected, show all
-        if (selectedVessels.length === 0) return true;
-        // Otherwise, show only selected vessels
-        return selectedVessels.includes(vesselName);
-      } else if (filterType === 'fleet') {
-        // Fleet filtering (placeholder - would need fleet group data)
-        return true;
-      } else if (filterType === 'addGroup') {
-        // Additional group filtering (placeholder - would need group data)
-        return true;
-      }
-
-      return true;
+    // Start with all vessels from the master list
+    const vesselIdSet = new Set<string>();
+    let allVessels = vesselsList.map((vessel: any) => {
+      vesselIdSet.add(vessel.vesselId);
+      return vessel;
     });
 
-    return filteredTests.map((record: any) => {
+    // Add orphaned vessels (have test records but not in Master 014)
+    orphanedVesselIds.forEach((vesselId) => {
+      if (!vesselIdSet.has(vesselId)) {
+        const record = annualTestsByVessel[vesselId];
+        allVessels.push({
+          vesselId,
+          vesselName: vesselLookup[vesselId] || vesselId,
+        });
+      }
+    });
+
+    // Apply vessel filtering based on filterType
+    if (filterType === 'vessel' && selectedVessels.length > 0) {
+      allVessels = allVessels.filter((vessel: any) => 
+        selectedVessels.includes(vessel.vesselName)
+      );
+    }
+    // Fleet and addGroup filtering can be added here when fleet/group data is available
+
+    // Map all vessels to table data, merging with test records if they exist
+    return allVessels.map((vessel: any) => {
+      const record = annualTestsByVessel[vessel.vesselId];
+      
       let testHistory: TestRecord[] = [];
-      try {
-        testHistory = record.testHistory ? JSON.parse(record.testHistory) : [];
-      } catch (e) {
-        testHistory = [];
+      if (record) {
+        try {
+          testHistory = record.testHistory ? JSON.parse(record.testHistory) : [];
+        } catch (e) {
+          testHistory = [];
+        }
       }
 
       // Calculate initial nextDue based on current frequency (global or vessel-specific)
       const lastTest = testHistory[0];
-      const currentFrequency = vesselFrequencies[record.vesselId] || record.frequencyMonths || globalFrequency;
+      const currentFrequency = vesselFrequencies[vessel.vesselId] || (record?.frequencyMonths) || globalFrequency;
       const nextDue = lastTest?.date
         ? format(addMonths(new Date(lastTest.date), currentFrequency), 'yyyy-MM-dd')
         : '';
 
       return {
-        id: record.id,
-        vesselId: record.vesselId,
-        vesselName: vesselLookup[record.vesselId] || record.vesselId,
+        id: record?.id || `vessel-${vessel.vesselId}`,
+        vesselId: vessel.vesselId,
+        vesselName: vessel.vesselName,
         testHistory: testHistory.slice(0, 3),
-        frequencyMonths: record.frequencyMonths || 12, // This might be the default from backend
-        nextDue, // This will be recalculated by NextDueCellRenderer
-        plannedPort: record.plannedPort || '',
-        plannedDate: record.plannedDate || '',
-        plannedComments: record.plannedComments || '',
+        frequencyMonths: record?.frequencyMonths || 12,
+        nextDue,
+        plannedPort: record?.plannedPort || '',
+        plannedDate: record?.plannedDate || '',
+        plannedComments: record?.plannedComments || '',
       };
     });
-  }, [testRecords, vesselLookup, filterType, selectedVessels, fleetValue, addGroupValue, globalFrequency, vesselFrequencies]); // Added globalFrequency and vesselFrequencies
+  }, [testRecords, vesselsList, vesselLookup, filterType, selectedVessels, fleetValue, addGroupValue, globalFrequency, vesselFrequencies]);
 
   const columnDefs: (ColDef | ColGroupDef)[] = useMemo(() => {
     const columns: (ColDef | ColGroupDef)[] = [

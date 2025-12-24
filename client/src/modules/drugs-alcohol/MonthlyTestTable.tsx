@@ -63,6 +63,25 @@ const useVessels = () => {
   });
 };
 
+const useVesselsList = () => {
+  return useQuery({
+    queryKey: ['/api/masters/014/data'],
+    queryFn: async () => {
+      const response = await fetch('/api/masters/014/data');
+      if (!response.ok) throw new Error('Failed to fetch vessels');
+      return response.json();
+    },
+    select: (data: any[]) => {
+      return data
+        .filter((vessel: any) => !vessel.isDeleted)
+        .map((vessel: any) => ({
+          vesselId: vessel.entryId || vessel.vuid || vessel.id,
+          vesselName: vessel.name || vessel.vessel || 'Unknown Vessel',
+        }));
+    }
+  });
+};
+
 // Calculate "Due In" status and color
 const calculateDueInStatus = (nextDueDate: string | undefined): { label: string; color: string; textColor: string } | null => {
   if (!nextDueDate) return null;
@@ -372,52 +391,75 @@ export const MonthlyTestTable: React.FC<MonthlyTestTableProps> = ({
   });
 
   const { data: vesselLookup = {}, isLoading: vesselsLoading } = useVessels();
+  const { data: vesselsList = [] } = useVesselsList();
 
   const tableData: MonthlyTestData[] = useMemo(() => {
-    const periodicTests = testRecords.filter((record: any) => record.testType === 'monthly');
+    // Get monthly test records indexed by vesselId for quick lookup
+    const monthlyTestsByVessel: Record<string, any> = {};
+    const orphanedVesselIds = new Set<string>();
+    
+    testRecords
+      .filter((record: any) => record.testType === 'monthly')
+      .forEach((record: any) => {
+        monthlyTestsByVessel[record.vesselId] = record;
+        orphanedVesselIds.add(record.vesselId);
+      });
 
-    // Apply vessel filtering based on filterType
-    const filteredTests = periodicTests.filter((record: any) => {
-      const vesselName = vesselLookup[record.vesselId] || record.vesselId;
-
-      if (filterType === 'vessel') {
-        if (selectedVessels.length === 0) return true;
-        return selectedVessels.includes(vesselName);
-      } else if (filterType === 'fleet') {
-        return true;
-      } else if (filterType === 'addGroup') {
-        return true;
-      }
-
-      return true;
+    // Start with all vessels from the master list
+    const vesselIdSet = new Set<string>();
+    let allVessels = vesselsList.map((vessel: any) => {
+      vesselIdSet.add(vessel.vesselId);
+      return vessel;
     });
 
-    return filteredTests.map((record: any) => {
+    // Add orphaned vessels (have test records but not in Master 014)
+    orphanedVesselIds.forEach((vesselId) => {
+      if (!vesselIdSet.has(vesselId)) {
+        allVessels.push({
+          vesselId,
+          vesselName: vesselLookup[vesselId] || vesselId,
+        });
+      }
+    });
+
+    // Apply vessel filtering based on filterType
+    if (filterType === 'vessel' && selectedVessels.length > 0) {
+      allVessels = allVessels.filter((vessel: any) => 
+        selectedVessels.includes(vessel.vesselName)
+      );
+    }
+
+    // Map all vessels to table data, merging with test records if they exist
+    return allVessels.map((vessel: any) => {
+      const record = monthlyTestsByVessel[vessel.vesselId];
+      
       let testHistory: TestRecord[] = [];
-      try {
-        testHistory = record.testHistory ? JSON.parse(record.testHistory) : [];
-      } catch (e) {
-        testHistory = [];
+      if (record) {
+        try {
+          testHistory = record.testHistory ? JSON.parse(record.testHistory) : [];
+        } catch (e) {
+          testHistory = [];
+        }
       }
 
       const lastTest = testHistory[0];
-      const currentFrequency = vesselFrequencies[record.vesselId] || record.frequencyMonths || globalFrequency;
+      const currentFrequency = vesselFrequencies[vessel.vesselId] || (record?.frequencyMonths) || globalFrequency;
       const nextDue = lastTest?.date
         ? format(addMonths(new Date(lastTest.date), currentFrequency), 'yyyy-MM-dd')
         : '';
 
       return {
-        id: record.id,
-        vesselId: record.vesselId,
-        vesselName: vesselLookup[record.vesselId] || record.vesselId,
+        id: record?.id || `vessel-${vessel.vesselId}`,
+        vesselId: vessel.vesselId,
+        vesselName: vessel.vesselName,
         testHistory: testHistory.slice(0, 3),
-        frequencyMonths: record.frequencyMonths || 1,
+        frequencyMonths: record?.frequencyMonths || 1,
         nextDue,
-        plannedDate: record.plannedDate || '',
-        plannedComments: record.plannedComments || '',
+        plannedDate: record?.plannedDate || '',
+        plannedComments: record?.plannedComments || '',
       };
     });
-  }, [testRecords, vesselLookup, filterType, selectedVessels, fleetValue, addGroupValue, globalFrequency, vesselFrequencies]);
+  }, [testRecords, vesselsList, vesselLookup, filterType, selectedVessels, fleetValue, addGroupValue, globalFrequency, vesselFrequencies]);
 
   const columnDefs: (ColDef | ColGroupDef)[] = useMemo(() => {
     const columns: (ColDef | ColGroupDef)[] = [
