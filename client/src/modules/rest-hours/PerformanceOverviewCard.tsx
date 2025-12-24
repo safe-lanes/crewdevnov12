@@ -6,6 +6,7 @@ import { ViolationsOverviewDialog } from './ViolationsOverviewDialog';
 import { NCOverviewDialog } from './NCOverviewDialog';
 import { VesselViolationsDialog } from './VesselViolationsDialog';
 import { VesselNCsDialog } from './VesselNCsDialog';
+import { useVesselLookup } from '@/hooks/useVesselLookup';
 
 interface PerformanceOverviewCardProps {
   vesselIds?: string[];
@@ -72,11 +73,8 @@ export const PerformanceOverviewCard = ({
     return months;
   }, [periodFilter, currentYear, currentMonth]);
 
-  // Fetch total vessels count from master data
-  const { data: allVessels = [] } = useQuery<Array<{ id: number; entryId: string; name: string }>>({
-    queryKey: ['/api/masters/014/data'],
-    enabled: true,
-  });
+  // Fetch total vessels count from external SAIL ERP API (all 11 vessels)
+  const { vessels: allVessels } = useVesselLookup();
 
   // Calculate total vessels based on filter
   const totalVesselsInFleet = useMemo(() => {

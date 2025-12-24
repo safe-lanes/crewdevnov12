@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { useVesselLookup } from '@/hooks/useVesselLookup';
 
 interface VesselListDialogProps {
   open: boolean;
@@ -38,11 +38,8 @@ export const VesselListDialog = ({
   onVesselReviewClick,
   onRecordsClick,
 }: VesselListDialogProps) => {
-  // Fetch vessel master data
-  const { data: allVessels = [] } = useQuery<Array<{ id: number; entryId: string; name: string }>>({
-    queryKey: ['/api/masters/014/data'],
-    enabled: open,
-  });
+  // Fetch vessel master data from external SAIL ERP API (all 11 vessels)
+  const { vessels: allVessels } = useVesselLookup();
 
   // Filter vessels to show only those in the provided set
   const vessels = useMemo(() => {

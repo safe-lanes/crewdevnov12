@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { NCReport, RestHoursCrewRecord, RestHoursDailyRecord, MasterDataEntry } from "@shared/schema";
 import { filterViolations } from './violationFilters';
+import { useVesselLookup } from '@/hooks/useVesselLookup';
 
 interface NCReportDialogProps {
   open: boolean;
@@ -73,14 +74,11 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
   const [submissionStatus, setSubmissionStatus] = useState<"draft" | "vessel-submitted" | "office-submitted">("draft");
   const [status, setStatus] = useState<"Open" | "Closed">("Open");
 
-  // Fetch vessel name from master data
-  const { data: masterData } = useQuery<MasterDataEntry[]>({
-    queryKey: ["/api/masters/014/data"],
-    enabled: open,
-  });
+  // Fetch vessel name from external SAIL ERP API (all 11 vessels)
+  const { vessels: masterData } = useVesselLookup();
 
   const vesselName = useMemo(() => {
-    if (!masterData) return crewRecord.vesselId;
+    if (!masterData || masterData.length === 0) return crewRecord.vesselId;
     const vessel = masterData.find(v => v.entryId === crewRecord.vesselId);
     return vessel?.name || crewRecord.vesselId;
   }, [masterData, crewRecord.vesselId]);

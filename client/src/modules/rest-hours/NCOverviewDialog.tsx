@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react';
 import { filterViolations } from './violationFilters';
 import { NCReportDialog } from './NCReportDialog';
 import type { RestHoursCrewRecord, NCReport } from '@shared/schema';
+import { useVesselLookup } from '@/hooks/useVesselLookup';
 
 // Violation code descriptions mapping
 const VIOLATION_CODE_DESCRIPTIONS: Record<number, string> = {
@@ -129,17 +130,14 @@ export function NCOverviewDialog({
     enabled: open,
   });
 
-  // Fetch vessel master data for vessel names
-  const { data: vesselMasterData = [] } = useQuery<any[]>({
-    queryKey: ['/api/masters/014/data'],
-    enabled: open,
-  });
+  // Fetch vessel master data from external SAIL ERP API (all 11 vessels)
+  const { vessels: vesselMasterData } = useVesselLookup();
 
   // Create vessel name map
   const vesselNameMap = useMemo(() => {
     const map = new Map<string, string>();
     vesselMasterData.forEach(vessel => {
-      map.set(vessel.entryId, vessel.vessel || vessel.name);
+      map.set(vessel.entryId, vessel.name);
     });
     return map;
   }, [vesselMasterData]);

@@ -6,6 +6,7 @@ import { ChartToolbar } from '@/components/charts/ChartToolbar';
 import type { PeriodFilterValue } from '@/components/filters/PeriodFilter';
 import { ViolationsOverviewDialog } from './ViolationsOverviewDialog';
 import { NCOverviewDialog } from './NCOverviewDialog';
+import { useVesselLookup } from '@/hooks/useVesselLookup';
 
 interface VesselAnalysisChartProps {
   vesselIds?: string[];
@@ -69,11 +70,8 @@ export const VesselAnalysisChart = ({
     return months;
   }, [selectedYear]);
 
-  // Fetch vessel master data
-  const { data: allVessels = [] } = useQuery<Array<{ id: number; entryId: string; name: string }>>({
-    queryKey: ['/api/masters/014/data'],
-    enabled: true,
-  });
+  // Fetch vessel master data from external SAIL ERP API (all 11 vessels)
+  const { vessels: allVessels } = useVesselLookup();
 
   // Create vessel ID to name map
   const vesselNameMap = useMemo(() => {
