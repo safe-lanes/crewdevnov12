@@ -432,6 +432,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
     }
     
     // Build shared config object for fields shared across all rank groups
+    // Pass as object - let API/storage handle serialization
     const sharedConfig = {
       appraisalTypeOptions: appraisalTypeOptions,
     };
@@ -440,7 +441,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
       ...data,
       formId: form.id,
       version: formVersion,
-      sharedConfig: JSON.stringify(sharedConfig),
+      sharedConfig: sharedConfig,
     });
     onClose();
   };
@@ -691,7 +692,10 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
   useEffect(() => {
     if (form.sharedConfig) {
       try {
-        const sharedConfig = JSON.parse(form.sharedConfig);
+        // Handle both object and string formats (API may return either)
+        const sharedConfig = typeof form.sharedConfig === 'string' 
+          ? JSON.parse(form.sharedConfig) 
+          : form.sharedConfig;
         if (sharedConfig.appraisalTypeOptions && Array.isArray(sharedConfig.appraisalTypeOptions)) {
           setAppraisalTypeOptions(sharedConfig.appraisalTypeOptions);
         }

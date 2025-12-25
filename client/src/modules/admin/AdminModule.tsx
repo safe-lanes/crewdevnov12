@@ -3839,10 +3839,11 @@ const AdminModuleInner = (): JSX.Element => {
   };
 
   const updateFormMutation = useMutation({
-    mutationFn: async ({formId, configuration, sharedConfig}: {formId: number; configuration?: string; sharedConfig?: string}) => {
-      const updateData: Record<string, string> = {};
+    mutationFn: async ({formId, configuration, sharedConfig}: {formId: number; configuration?: string; sharedConfig?: Record<string, unknown>}) => {
+      const updateData: Record<string, unknown> = {};
       if (configuration) updateData.configuration = configuration;
-      if (sharedConfig) updateData.sharedConfig = sharedConfig;
+      // Serialize sharedConfig to JSON string for storage
+      if (sharedConfig) updateData.sharedConfig = JSON.stringify(sharedConfig);
       return apiRequest('PUT', `/api/forms/${formId}`, updateData);
     },
     onSuccess: () => {
