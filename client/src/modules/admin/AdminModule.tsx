@@ -3,7 +3,8 @@ import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown, Trash2, ChevronUp, ChevronDown, Settings, Filter } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown, Trash2, ChevronUp, ChevronDown, Settings, Filter, Archive, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UnsavedChangesDialog } from "@/components/dialogs/UnsavedChangesDialog";
 import { PromotionHierarchyDialog } from "@/components/dialogs/PromotionHierarchyDialog";
@@ -543,6 +544,7 @@ const AdminModuleInner = (): JSX.Element => {
   const [editingRankGroup, setEditingRankGroup] = useState<string | null>(null);
   const [isAddRankGroupOpen, setIsAddRankGroupOpen] = useState(false);
   const [selectedFormForRankGroup, setSelectedFormForRankGroup] = useState<string | null>(null);
+  const [editingRankGroupData, setEditingRankGroupData] = useState<RankGroup | null>(null);
   const [showCreateFormDialog, setShowCreateFormDialog] = useState(false);
   const [newFormName, setNewFormName] = useState("");
   const [newFormCategory, setNewFormCategory] = useState<"appraisal" | "promotion">("appraisal");
@@ -3498,14 +3500,95 @@ const AdminModuleInner = (): JSX.Element => {
     },
   });
 
+  // Fetch all rank groups for forms tab
+  const { data: allRankGroups = [] } = useQuery<RankGroup[]>({
+    queryKey: ["/api/rank-groups", { includeArchived: true }],
+    queryFn: async () => {
+      const response = await fetch("/api/rank-groups?includeArchived=true");
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    },
+    enabled: selectedAdminPage === "forms",
+  });
+
   const createRankGroupMutation = useMutation({
     mutationFn: async (data: { formId: number; name: string; ranks: string[] }) => {
       return await apiRequest("POST", "/api/rank-groups", data);
     },
     onSuccess: () => {
       rq.invalidateQueries({ queryKey: ["/api/forms"] });
+      rq.invalidateQueries({ queryKey: ["/api/rank-groups"] });
       setIsAddRankGroupOpen(false);
       setSelectedFormForRankGroup(null);
+      setEditingRankGroupData(null);
+    },
+  });
+
+  const updateRankGroupMutation = useMutation({
+    mutationFn: async (data: { id: number; name: string; ranks: string[] }) => {
+      return await apiRequest("PUT", `/api/rank-groups/${data.id}`, { name: data.name, ranks: JSON.stringify(data.ranks) });
+    },
+    onSuccess: () => {
+      rq.invalidateQueries({ queryKey: ["/api/forms"] });
+      rq.invalidateQueries({ queryKey: ["/api/rank-groups"] });
+      setIsAddRankGroupOpen(false);
+      setSelectedFormForRankGroup(null);
+      setEditingRankGroupData(null);
+      toast({
+        title: "Success",
+        description: "Rank group updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: `Failed to update rank group: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const archiveRankGroupMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest("POST", `/api/rank-groups/${id}/archive`, {});
+    },
+    onSuccess: () => {
+      rq.invalidateQueries({ queryKey: ["/api/forms"] });
+      rq.invalidateQueries({ queryKey: ["/api/rank-groups"] });
+      toast({
+        title: "Success",
+        description: "Rank group archived successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: `Failed to archive rank group: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const unarchiveRankGroupMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest("POST", `/api/rank-groups/${id}/unarchive`, {});
+    },
+    onSuccess: () => {
+      rq.invalidateQueries({ queryKey: ["/api/forms"] });
+      rq.invalidateQueries({ queryKey: ["/api/rank-groups"] });
+      toast({
+        title: "Success",
+        description: "Rank group restored successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: `Failed to restore rank group: ${error.message}`,
+        variant: "destructive",
+      });
     },
   });
 
@@ -3590,10 +3673,56 @@ const AdminModuleInner = (): JSX.Element => {
 
   const handleAddRankGroup = (formName: string) => {
     setSelectedFormForRankGroup(formName);
+    setEditingRankGroupData(null); // Clear edit mode
     setIsAddRankGroupOpen(true);
   };
 
-  const getRankGroupRanks = (rankGroupName: string) => {
+  const handleEditRankGroup = (rankGroupName: string, formId: number) => {
+    // Find the rank group by name and formId from fetched data
+    const rankGroup = allRankGroups.find(rg => rg.name === rankGroupName && rg.formId === formId);
+    if (rankGroup) {
+      setEditingRankGroupData(rankGroup);
+      setSelectedFormForRankGroup(null); // Not adding to a specific form
+      setIsAddRankGroupOpen(true);
+    }
+  };
+
+  const handleArchiveRankGroup = (rankGroupName: string, formId: number) => {
+    const rankGroup = allRankGroups.find(rg => rg.name === rankGroupName && rg.formId === formId);
+    if (rankGroup) {
+      if (window.confirm(`Are you sure you want to archive the rank group "${rankGroupName}"? This will preserve historical data for older forms.`)) {
+        archiveRankGroupMutation.mutate(rankGroup.id);
+      }
+    }
+  };
+
+  const handleUnarchiveRankGroup = (rankGroupName: string, formId: number) => {
+    const rankGroup = allRankGroups.find(rg => rg.name === rankGroupName && rg.formId === formId);
+    if (rankGroup) {
+      unarchiveRankGroupMutation.mutate(rankGroup.id);
+    }
+  };
+
+  const getRankGroupRanks = (rankGroupName: string, formId?: number) => {
+    // Try to find in fetched rank groups first
+    const rankGroup = allRankGroups.find(rg => 
+      rg.name === rankGroupName && (!formId || rg.formId === formId)
+    );
+    
+    if (rankGroup) {
+      try {
+        const ranks = typeof rankGroup.ranks === 'string' 
+          ? JSON.parse(rankGroup.ranks) 
+          : rankGroup.ranks;
+        if (Array.isArray(ranks) && ranks.length > 0) {
+          return ranks.join(", ");
+        }
+      } catch (e) {
+        console.error('Error parsing ranks:', e);
+      }
+    }
+    
+    // Fallback for legacy hardcoded values
     switch (rankGroupName) {
       case "Senior Officers":
         return "Master, Chief Officer, Chief Engineer";
@@ -3604,6 +3733,11 @@ const AdminModuleInner = (): JSX.Element => {
       default:
         return "No ranks assigned";
     }
+  };
+
+  const isRankGroupArchived = (rankGroupName: string, formId: number) => {
+    const rankGroup = allRankGroups.find(rg => rg.name === rankGroupName && rg.formId === formId);
+    return rankGroup?.archivedAt ? true : false;
   };
 
   const handleCreateForm = () => {
@@ -7832,24 +7966,74 @@ const AdminModuleInner = (): JSX.Element => {
                       </TableCell>
                     )}
                     <TableCell className="text-[#4f5863] text-xs font-normal pl-6">
-                      <div className="flex items-center justify-between">
-                        <span>{form.rankGroup}</span>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0 ml-2"
-                              >
-                                <Eye className="h-4 w-4 text-gray-500" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Ranks: {getRankGroupRanks(form.rankGroup)}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className={isRankGroupArchived(form.rankGroup, form.originalFormId) ? "text-gray-400 line-through" : ""}>
+                            {form.rankGroup}
+                          </span>
+                          {isRankGroupArchived(form.rankGroup, form.originalFormId) && (
+                            <Badge variant="secondary" className="text-[10px] px-1 py-0">Archived</Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  onClick={() => handleEditRankGroup(form.rankGroup, form.originalFormId)}
+                                  data-testid={`button-view-rankgroup-${form.id}`}
+                                >
+                                  <Eye className="h-4 w-4 text-gray-500" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>View/Edit: {getRankGroupRanks(form.rankGroup, form.originalFormId)}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          {isRankGroupArchived(form.rankGroup, form.originalFormId) ? (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0"
+                                    onClick={() => handleUnarchiveRankGroup(form.rankGroup, form.originalFormId)}
+                                    data-testid={`button-unarchive-rankgroup-${form.id}`}
+                                  >
+                                    <RotateCcw className="h-4 w-4 text-green-500" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Restore Rank Group</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ) : (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0"
+                                    onClick={() => handleArchiveRankGroup(form.rankGroup, form.originalFormId)}
+                                    data-testid={`button-archive-rankgroup-${form.id}`}
+                                  >
+                                    <Archive className="h-4 w-4 text-gray-500" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Archive Rank Group</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="text-[#4f5863] text-xs font-normal">
@@ -7940,13 +8124,21 @@ const AdminModuleInner = (): JSX.Element => {
         />
       )}
 
-      {/* Add Rank Group Dialog */}
+      {/* Add/Edit Rank Group Dialog */}
       <AddRankGroupDialog 
         isOpen={isAddRankGroupOpen}
-        onOpenChange={setIsAddRankGroupOpen}
+        onOpenChange={(open) => {
+          setIsAddRankGroupOpen(open);
+          if (!open) {
+            setEditingRankGroupData(null);
+            setSelectedFormForRankGroup(null);
+          }
+        }}
         selectedFormForRankGroup={selectedFormForRankGroup}
         availableRanks={availableRanks}
         createRankGroupMutation={createRankGroupMutation}
+        updateRankGroupMutation={updateRankGroupMutation}
+        editingRankGroup={editingRankGroupData}
         forms={formsData || []}
       />
 
@@ -8202,13 +8394,15 @@ const AdminModuleInner = (): JSX.Element => {
   );
 };
 
-// Add Rank Group Dialog Component (moved outside to prevent re-creation on every render)
+// Add/Edit Rank Group Dialog Component (moved outside to prevent re-creation on every render)
 const AddRankGroupDialog = ({ 
   isOpen, 
   onOpenChange, 
   selectedFormForRankGroup, 
   availableRanks, 
   createRankGroupMutation,
+  updateRankGroupMutation,
+  editingRankGroup,
   forms
 }: {
   isOpen: boolean;
@@ -8216,22 +8410,56 @@ const AddRankGroupDialog = ({
   selectedFormForRankGroup: string | null;
   availableRanks: AvailableRank[];
   createRankGroupMutation: any;
+  updateRankGroupMutation: any;
+  editingRankGroup: RankGroup | null;
   forms: Form[];
 }) => {
+  const isEditMode = !!editingRankGroup;
+  
+  // Parse ranks from editing rank group
+  const getInitialRanks = (): string[] => {
+    if (!editingRankGroup) return [];
+    try {
+      const parsed = typeof editingRankGroup.ranks === 'string' 
+        ? JSON.parse(editingRankGroup.ranks) 
+        : editingRankGroup.ranks;
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  };
+
   const form = useForm({
     resolver: zodResolver(rankGroupSchema),
     defaultValues: {
-      name: "",
-      ranks: [],
+      name: editingRankGroup?.name || "",
+      ranks: getInitialRanks(),
     },
   });
+
+  // Reset form when editingRankGroup changes
+  useEffect(() => {
+    if (isOpen) {
+      form.reset({
+        name: editingRankGroup?.name || "",
+        ranks: getInitialRanks(),
+      });
+    }
+  }, [isOpen, editingRankGroup]);
 
   // Filter to only show ranks applicable to company, using company labels
   const companyApplicableRanks = availableRanks.filter(rank => rank.applicableToCompany);
 
   const onSubmit = (data: { name: string; ranks: string[] }) => {
-    if (selectedFormForRankGroup) {
-      // Find the form ID based on the form name
+    if (isEditMode && editingRankGroup) {
+      // Update existing rank group
+      updateRankGroupMutation.mutate({
+        id: editingRankGroup.id,
+        name: data.name,
+        ranks: data.ranks,
+      });
+    } else if (selectedFormForRankGroup) {
+      // Create new rank group
       const selectedForm = forms.find(f => f.name === selectedFormForRankGroup);
       if (!selectedForm) {
         form.setError("root", {
@@ -8243,18 +8471,32 @@ const AddRankGroupDialog = ({
       createRankGroupMutation.mutate({
         formId: selectedForm.id,
         name: data.name,
-        ranks: JSON.stringify(data.ranks), // Convert array to JSON string as expected by schema
+        ranks: JSON.stringify(data.ranks),
       });
     }
+  };
+
+  // Get form name for display in edit mode
+  const getFormNameForDisplay = () => {
+    if (isEditMode && editingRankGroup) {
+      const formForEdit = forms.find(f => f.id === editingRankGroup.formId);
+      return formForEdit?.name || "Unknown Form";
+    }
+    return selectedFormForRankGroup;
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Add Rank Group to {selectedFormForRankGroup}</DialogTitle>
+          <DialogTitle>
+            {isEditMode ? `Edit Rank Group: ${editingRankGroup?.name}` : `Add Rank Group to ${selectedFormForRankGroup}`}
+          </DialogTitle>
           <DialogDescription>
-            Create a new rank group configuration for different appraisal requirements.
+            {isEditMode 
+              ? `Modify the rank group configuration for ${getFormNameForDisplay()}.`
+              : "Create a new rank group configuration for different appraisal requirements."
+            }
           </DialogDescription>
         </DialogHeader>
         <FormComponent {...form}>
@@ -8266,7 +8508,7 @@ const AddRankGroupDialog = ({
                 <FormItem>
                   <FormLabel>Rank Group Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter rank group name" {...field} />
+                    <Input placeholder="Enter rank group name" {...field} data-testid="input-rankgroup-name" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -8287,7 +8529,7 @@ const AddRankGroupDialog = ({
                           checked={(field.value as string[])?.includes(rank.label || rank.name) || false}
                           onCheckedChange={(checked) => {
                             const currentValue = field.value || [];
-                            const rankLabel = rank.label || rank.name; // Use company label if available
+                            const rankLabel = rank.label || rank.name;
                             if (checked) {
                               field.onChange([...currentValue, rankLabel]);
                             } else {
@@ -8322,8 +8564,15 @@ const AddRankGroupDialog = ({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={createRankGroupMutation.isPending} data-testid="button-add-rank-group">
-                {createRankGroupMutation.isPending ? "Adding..." : "Add Rank Group"}
+              <Button 
+                type="submit" 
+                disabled={isEditMode ? updateRankGroupMutation.isPending : createRankGroupMutation.isPending} 
+                data-testid="button-save-rank-group"
+              >
+                {isEditMode 
+                  ? (updateRankGroupMutation.isPending ? "Saving..." : "Save Changes")
+                  : (createRankGroupMutation.isPending ? "Adding..." : "Add Rank Group")
+                }
               </Button>
             </div>
           </form>
