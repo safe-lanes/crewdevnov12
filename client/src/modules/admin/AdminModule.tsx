@@ -3416,9 +3416,29 @@ const AdminModuleInner = (): JSX.Element => {
     },
   });
 
+  // Fetch all rank groups for forms tab (must be before expandedFormsData useMemo)
+  const { data: allRankGroups = [] } = useQuery<RankGroup[]>({
+    queryKey: ["/api/rank-groups", { includeArchived: true }],
+    queryFn: async () => {
+      const response = await fetch("/api/rank-groups?includeArchived=true");
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    },
+    enabled: selectedAdminPage === "forms",
+  });
+
   // Transform forms data to create separate rows for each rank group with category grouping
+  // Filters out archived rank groups but keeps form rows visible even when all rank groups are archived
   const expandedFormsData = useMemo(() => {
     if (!formsData) return [];
+    
+    // Helper to check if a rank group is archived
+    const isRankGroupArchivedByName = (rankGroupName: string, formId: number) => {
+      const rankGroup = allRankGroups.find(rg => rg.name === rankGroupName && rg.formId === formId);
+      return rankGroup?.archivedAt != null;
+    };
     
     // Group forms by category first
     const formsByCategory = formsData.reduce((acc, form) => {
@@ -3437,6 +3457,7 @@ const AdminModuleInner = (): JSX.Element => {
       isCategoryHeader?: boolean;
       categoryRowSpan?: number;
       isFirstInCategory?: boolean;
+      isPlaceholderRow?: boolean;
     }> = [];
     
     // Process each category in order (appraisal first, then promotion)
@@ -3444,12 +3465,15 @@ const AdminModuleInner = (): JSX.Element => {
     categoryOrder.forEach(category => {
       const categoryForms = formsByCategory[category] || [];
       
-      // Calculate total row count for this category
+      // Calculate total row count for this category (excluding archived rank groups)
       let totalCategoryRows = 0;
       categoryForms.forEach(form => {
         if (form.rankGroup && form.rankGroup.trim()) {
           const rankGroups = form.rankGroup.split(',').map(rg => rg.trim()).filter(rg => rg.length > 0);
-          totalCategoryRows += rankGroups.length;
+          // Filter out archived rank groups
+          const activeRankGroups = rankGroups.filter(rg => !isRankGroupArchivedByName(rg, form.id));
+          // At least 1 row per form (placeholder if all archived)
+          totalCategoryRows += Math.max(activeRankGroups.length, 1);
         } else {
           totalCategoryRows += 1;
         }
@@ -3462,10 +3486,12 @@ const AdminModuleInner = (): JSX.Element => {
         if (form.rankGroup && form.rankGroup.trim()) {
           // Split the concatenated rank groups and create separate rows
           const rankGroups = form.rankGroup.split(',').map(rg => rg.trim()).filter(rg => rg.length > 0);
+          // Filter out archived rank groups
+          const activeRankGroups = rankGroups.filter(rg => !isRankGroupArchivedByName(rg, form.id));
           
-          if (rankGroups.length > 0) {
-            // Only add forms that have at least one rank group
-            rankGroups.forEach((rankGroup, index) => {
+          if (activeRankGroups.length > 0) {
+            // Add rows for active (non-archived) rank groups only
+            activeRankGroups.forEach((rankGroup, index) => {
               expanded.push({
                 ...form,
                 id: form.id * 1000 + index, // Create unique numeric ID for each expanded row
@@ -3473,21 +3499,53 @@ const AdminModuleInner = (): JSX.Element => {
                 expandedRankGroup: rankGroup,
                 rankGroup: rankGroup, // Override the concatenated rankGroup with individual group
                 isFirstInGroup: index === 0, // Mark first row for this form
-                groupSize: rankGroups.length, // Track how many rows this form spans
+                groupSize: activeRankGroups.length, // Track how many rows this form spans
                 category: form.category || 'appraisal',
                 isFirstInCategory: isFirstRowInCategory,
-                categoryRowSpan: totalCategoryRows
+                categoryRowSpan: totalCategoryRows,
+                isPlaceholderRow: false
               });
               isFirstRowInCategory = false;
             });
+          } else {
+            // All rank groups are archived - show a placeholder row so form remains visible
+            expanded.push({
+              ...form,
+              id: form.id * 1000, // Unique ID for placeholder row
+              originalFormId: form.id,
+              expandedRankGroup: '',
+              rankGroup: '',
+              isFirstInGroup: true,
+              groupSize: 1,
+              category: form.category || 'appraisal',
+              isFirstInCategory: isFirstRowInCategory,
+              categoryRowSpan: totalCategoryRows,
+              isPlaceholderRow: true
+            });
+            isFirstRowInCategory = false;
           }
+        } else {
+          // Form has no rank groups at all - show placeholder row
+          expanded.push({
+            ...form,
+            id: form.id * 1000,
+            originalFormId: form.id,
+            expandedRankGroup: '',
+            rankGroup: '',
+            isFirstInGroup: true,
+            groupSize: 1,
+            category: form.category || 'appraisal',
+            isFirstInCategory: isFirstRowInCategory,
+            categoryRowSpan: totalCategoryRows,
+            isPlaceholderRow: true
+          });
+          isFirstRowInCategory = false;
         }
-        // Skip forms without rank groups - they won't be displayed in the table
       });
     });
     
     return expanded;
-  }, [formsData]);
+  }, [formsData, allRankGroups]);
 
   const { data: availableRanks = [] } = useQuery<AvailableRank[]>({
     queryKey: ["/api/available-ranks"],
@@ -3498,19 +3556,6 @@ const AdminModuleInner = (): JSX.Element => {
       }
       return response.json();
     },
-  });
-
-  // Fetch all rank groups for forms tab
-  const { data: allRankGroups = [] } = useQuery<RankGroup[]>({
-    queryKey: ["/api/rank-groups", { includeArchived: true }],
-    queryFn: async () => {
-      const response = await fetch("/api/rank-groups?includeArchived=true");
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return response.json();
-    },
-    enabled: selectedAdminPage === "forms",
   });
 
   const createRankGroupMutation = useMutation({
@@ -7967,73 +8012,53 @@ const AdminModuleInner = (): JSX.Element => {
                     )}
                     <TableCell className="text-[#4f5863] text-xs font-normal pl-6">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className={isRankGroupArchived(form.rankGroup, form.originalFormId) ? "text-gray-400 line-through" : ""}>
-                            {form.rankGroup}
-                          </span>
-                          {isRankGroupArchived(form.rankGroup, form.originalFormId) && (
-                            <Badge variant="secondary" className="text-[10px] px-1 py-0">Archived</Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 w-6 p-0"
-                                  onClick={() => handleEditRankGroup(form.rankGroup, form.originalFormId)}
-                                  data-testid={`button-view-rankgroup-${form.id}`}
-                                >
-                                  <Eye className="h-4 w-4 text-gray-500" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>View/Edit: {getRankGroupRanks(form.rankGroup, form.originalFormId)}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                          {isRankGroupArchived(form.rankGroup, form.originalFormId) ? (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 w-6 p-0"
-                                    onClick={() => handleUnarchiveRankGroup(form.rankGroup, form.originalFormId)}
-                                    data-testid={`button-unarchive-rankgroup-${form.id}`}
-                                  >
-                                    <RotateCcw className="h-4 w-4 text-green-500" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Restore Rank Group</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          ) : (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 w-6 p-0"
-                                    onClick={() => handleArchiveRankGroup(form.rankGroup, form.originalFormId)}
-                                    data-testid={`button-archive-rankgroup-${form.id}`}
-                                  >
-                                    <Archive className="h-4 w-4 text-gray-500" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Archive Rank Group</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                        </div>
+                        {form.isPlaceholderRow ? (
+                          <span className="text-gray-400 text-xs italic">No active rank groups</span>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-2">
+                              <span>{form.rankGroup}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0"
+                                      onClick={() => handleEditRankGroup(form.rankGroup, form.originalFormId)}
+                                      data-testid={`button-view-rankgroup-${form.id}`}
+                                    >
+                                      <Eye className="h-4 w-4 text-gray-500" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>View/Edit: {getRankGroupRanks(form.rankGroup, form.originalFormId)}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0"
+                                      onClick={() => handleArchiveRankGroup(form.rankGroup, form.originalFormId)}
+                                      data-testid={`button-archive-rankgroup-${form.id}`}
+                                    >
+                                      <Archive className="h-4 w-4 text-gray-500" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Archive Rank Group</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-[#4f5863] text-xs font-normal">
@@ -8051,15 +8076,6 @@ const AdminModuleInner = (): JSX.Element => {
                           onClick={() => handleEditClick(form)}
                         >
                           <EditIcon className="h-[18px] w-[18px] text-gray-500" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => handleDeleteForm(form)}
-                          data-testid={`button-delete-form-${form.id}`}
-                        >
-                          <Trash2 className="h-[18px] w-[18px] text-gray-500" />
                         </Button>
                       </div>
                     </TableCell>
