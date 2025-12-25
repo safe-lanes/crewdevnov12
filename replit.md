@@ -48,6 +48,9 @@ The application uses a modern web stack with a module-first architecture.
 - **Rotation Module**: Manages crew rotation planning with "Due" and "Plan" sections and visual timelines.
 - **Promotion Hierarchy System**: Configurable promotion paths, integrated with a Promotions module.
 - **Forms Configuration - Company Rank Integration**: Uses company-specific rank labels for rank group creation and form matching.
+    - **Rank Group Uniqueness Validation**: Each rank can only belong to one active (non-archived) rank group per form. UI disables already-assigned ranks with "(assigned to 'GroupName')" message. Server-side validation prevents bypassing the constraint.
+    - **Appraisal Form Rank Validation**: Vessel Module validates rank group assignment before opening appraisal form. Shows alert "No Appraisal Rank Group assigned from Admin Module" if crew member's rank has no assigned rank group.
+    - **Archive/Unarchive Workflow**: Rank groups can be archived (soft delete) to preserve historical data. Unarchiving restores the group but may conflict with ranks reassigned during archive period.
 - **Training Matrix Module**: Manages training certifications and requirements.
     - **Training Master**: Central repository of all training types with categories (S for Statutory, N for Non-Statutory).
     - **Company Training**: Company-specific training configurations synced from Training Master when "Applicable to Company" is checked.

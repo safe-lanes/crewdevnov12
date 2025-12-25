@@ -1766,6 +1766,9 @@ export const VesselModule = (): JSX.Element => {
     const [isCrewInfoFormOpen, setIsCrewInfoFormOpen] = useState(false);
     const [selectedCrewMember, setSelectedCrewMember] = useState<any>(null);
 
+    // Toast for validation messages
+    const { toast } = useToast();
+
     const gridApiRef = useRef<GridApi | null>(null);
 
     // Fetch vessels and crew members
@@ -2231,7 +2234,32 @@ export const VesselModule = (): JSX.Element => {
         }
     };
 
-    const handleAppraisalClick = (crew: any, buttonConfig: { text: string; appraisalId?: number; status?: string }) => {
+    const handleAppraisalClick = async (crew: any, buttonConfig: { text: string; appraisalId?: number; status?: string }) => {
+        const crewRank = crew.presentRank || crew.rank || '';
+        
+        // Check if the crew member's rank has an assigned rank group for appraisal form
+        try {
+            const response = await fetch(`/api/rank-groups/check-assignment?rank=${encodeURIComponent(crewRank)}&formName=${encodeURIComponent('Crew Appraisal Form')}`);
+            const result = await response.json();
+            
+            if (!result.hasAssignment) {
+                toast({
+                    title: "Cannot Open Appraisal Form",
+                    description: `No Appraisal Rank Group assigned from Admin Module for rank "${crewRank}". Please configure rank groups in Admin > Forms Configuration.`,
+                    variant: "destructive",
+                });
+                return;
+            }
+        } catch (error) {
+            console.error("Error checking rank group assignment:", error);
+            toast({
+                title: "Error",
+                description: "Failed to validate rank group assignment. Please try again.",
+                variant: "destructive",
+            });
+            return;
+        }
+        
         // Transform crew data to match AppraisalForm expected structure
         const crewForAppraisal = {
             id: crew.id,
@@ -2241,7 +2269,7 @@ export const VesselModule = (): JSX.Element => {
                 middle: crew.middleName || '',
                 last: crew.familyName || crew.lastName || ''
             },
-            rank: crew.presentRank || crew.rank || '',
+            rank: crewRank,
             nationality: crew.nationality || '',
             vessel: selectedVessel?.name || crew.presentVessel || '',
             vesselType: selectedVessel?.vesselType || '',

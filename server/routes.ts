@@ -1513,11 +1513,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to check for rank conflicts in active rank groups
+  async function checkRankConflicts(formId: number, newRanks: string[], excludeGroupId?: number): Promise<{ hasConflict: boolean; conflictingRanks: { rank: string; groupName: string }[] }> {
+    const activeRankGroups = await storage.getRankGroups(formId, false);
+    const conflicts: { rank: string; groupName: string }[] = [];
+    
+    for (const group of activeRankGroups) {
+      if (excludeGroupId && group.id === excludeGroupId) continue;
+      
+      let groupRanks: string[] = [];
+      try {
+        groupRanks = typeof group.ranks === 'string' ? JSON.parse(group.ranks) : group.ranks;
+      } catch (e) {
+        groupRanks = [];
+      }
+      
+      for (const rank of newRanks) {
+        if (groupRanks.includes(rank)) {
+          conflicts.push({ rank, groupName: group.name });
+        }
+      }
+    }
+    
+    return { hasConflict: conflicts.length > 0, conflictingRanks: conflicts };
+  }
+
   app.post("/api/rank-groups", async (req, res) => {
     try {
       console.log('📥 [POST /api/rank-groups] Request body:', JSON.stringify(req.body, null, 2));
       const validatedData = insertRankGroupSchema.parse(req.body);
       console.log('✅ [POST /api/rank-groups] Validation passed:', JSON.stringify(validatedData, null, 2));
+      
+      // Parse ranks from the validated data
+      let newRanks: string[] = [];
+      try {
+        newRanks = typeof validatedData.ranks === 'string' ? JSON.parse(validatedData.ranks) : validatedData.ranks;
+      } catch (e) {
+        newRanks = [];
+      }
+      
+      // Check for rank conflicts with other active rank groups
+      const { hasConflict, conflictingRanks } = await checkRankConflicts(validatedData.formId, newRanks);
+      if (hasConflict) {
+        const conflictDetails = conflictingRanks.map(c => `"${c.rank}" is already assigned to "${c.groupName}"`).join(', ');
+        return res.status(400).json({ 
+          error: "Rank conflict detected", 
+          message: `The following ranks are already assigned to other active rank groups: ${conflictDetails}`,
+          conflictingRanks 
+        });
+      }
+      
       const rankGroup = await storage.createRankGroup(validatedData);
       console.log('✅ [POST /api/rank-groups] Created rank group:', JSON.stringify(rankGroup, null, 2));
       res.status(201).json(rankGroup);
@@ -1534,6 +1579,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertRankGroupSchema.partial().parse(req.body);
+      
+      // Get the existing rank group to know the formId
+      const existingGroup = await storage.getRankGroup(id);
+      if (!existingGroup) {
+        return res.status(404).json({ error: "Rank group not found" });
+      }
+      
+      // If ranks are being updated, check for conflicts
+      if (validatedData.ranks) {
+        let newRanks: string[] = [];
+        try {
+          newRanks = typeof validatedData.ranks === 'string' ? JSON.parse(validatedData.ranks) : validatedData.ranks;
+        } catch (e) {
+          newRanks = [];
+        }
+        
+        // Check for rank conflicts with other active rank groups (excluding this group)
+        const { hasConflict, conflictingRanks } = await checkRankConflicts(existingGroup.formId, newRanks, id);
+        if (hasConflict) {
+          const conflictDetails = conflictingRanks.map(c => `"${c.rank}" is already assigned to "${c.groupName}"`).join(', ');
+          return res.status(400).json({ 
+            error: "Rank conflict detected", 
+            message: `The following ranks are already assigned to other active rank groups: ${conflictDetails}`,
+            conflictingRanks 
+          });
+        }
+      }
+      
       const rankGroup = await storage.updateRankGroup(id, validatedData);
       if (!rankGroup) {
         return res.status(404).json({ error: "Rank group not found" });
@@ -1580,6 +1653,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete rank group" });
+    }
+  });
+
+  // Get rank conflicts for a form - returns which ranks are already assigned to active rank groups
+  // excludeGroupId can be passed when editing to exclude the current group from conflict check
+  app.get("/api/rank-groups/form/:formId/rank-conflicts", async (req, res) => {
+    try {
+      const formId = parseInt(req.params.formId);
+      const excludeGroupId = req.query.excludeGroupId ? parseInt(req.query.excludeGroupId as string) : undefined;
+      
+      // Get all active (non-archived) rank groups for this form
+      const activeRankGroups = await storage.getRankGroups(formId, false);
+      
+      // Build a map of rank -> group name for all active groups (excluding the one being edited)
+      const rankToGroupMap: Record<string, string> = {};
+      
+      for (const group of activeRankGroups) {
+        // Skip the group being edited
+        if (excludeGroupId && group.id === excludeGroupId) continue;
+        
+        // Parse ranks from the group
+        let ranks: string[] = [];
+        try {
+          ranks = typeof group.ranks === 'string' ? JSON.parse(group.ranks) : group.ranks;
+        } catch (e) {
+          ranks = [];
+        }
+        
+        // Add each rank to the map
+        for (const rank of ranks) {
+          rankToGroupMap[rank] = group.name;
+        }
+      }
+      
+      res.json(rankToGroupMap);
+    } catch (error) {
+      console.error("Error getting rank conflicts:", error);
+      res.status(500).json({ error: "Failed to get rank conflicts" });
+    }
+  });
+
+  // Helper function to normalize rank strings for comparison (case-insensitive, trimmed)
+  function normalizeRankForComparison(rank: string): string {
+    return rank.trim().toLowerCase();
+  }
+
+  // Check if a rank has an assigned rank group for a specific form type
+  // Used by Vessel Module to validate before opening appraisal form
+  app.get("/api/rank-groups/check-assignment", async (req, res) => {
+    try {
+      const { rank, formName } = req.query;
+      
+      if (!rank || !formName) {
+        return res.status(400).json({ error: "rank and formName are required" });
+      }
+      
+      const inputRank = (rank as string).trim();
+      const normalizedInputRank = normalizeRankForComparison(inputRank);
+      
+      // First find the form by name
+      const forms = await storage.getForms();
+      const form = forms.find(f => f.name === formName);
+      
+      if (!form) {
+        return res.json({ 
+          hasAssignment: false, 
+          message: `Form "${formName}" not found in system` 
+        });
+      }
+      
+      // Get active rank groups for this form
+      const activeRankGroups = await storage.getRankGroups(form.id, false);
+      
+      // Check if any active rank group contains this rank (case-insensitive matching)
+      for (const group of activeRankGroups) {
+        let ranks: string[] = [];
+        try {
+          ranks = typeof group.ranks === 'string' ? JSON.parse(group.ranks) : group.ranks;
+        } catch (e) {
+          ranks = [];
+        }
+        
+        // Check with case-insensitive comparison
+        const matchedRank = ranks.find(r => normalizeRankForComparison(r) === normalizedInputRank);
+        if (matchedRank) {
+          return res.json({ 
+            hasAssignment: true, 
+            rankGroupId: group.id,
+            rankGroupName: group.name,
+            formId: form.id,
+            matchedRank: matchedRank
+          });
+        }
+      }
+      
+      return res.json({ 
+        hasAssignment: false, 
+        message: `No Appraisal Rank Group assigned from Admin Module` 
+      });
+    } catch (error) {
+      console.error("Error checking rank assignment:", error);
+      res.status(500).json({ error: "Failed to check rank assignment" });
     }
   });
 

@@ -8507,6 +8507,35 @@ const AddRankGroupDialog = ({
     },
   });
 
+  // Determine the form ID for fetching conflicts
+  const getFormId = (): number | null => {
+    if (isEditMode && editingRankGroup) {
+      return editingRankGroup.formId;
+    }
+    if (selectedFormForRankGroup) {
+      const selectedForm = forms.find(f => f.name === selectedFormForRankGroup);
+      return selectedForm?.id || null;
+    }
+    return null;
+  };
+
+  const formId = getFormId();
+
+  // Fetch rank conflicts for this form
+  const { data: rankConflicts = {} } = useQuery<Record<string, string>>({
+    queryKey: ['/api/rank-groups/form', formId, 'rank-conflicts', editingRankGroup?.id],
+    queryFn: async () => {
+      if (!formId) return {};
+      const url = editingRankGroup?.id 
+        ? `/api/rank-groups/form/${formId}/rank-conflicts?excludeGroupId=${editingRankGroup.id}`
+        : `/api/rank-groups/form/${formId}/rank-conflicts`;
+      const response = await fetch(url);
+      if (!response.ok) return {};
+      return response.json();
+    },
+    enabled: isOpen && !!formId,
+  });
+
   // Reset form when editingRankGroup changes
   useEffect(() => {
     if (isOpen) {
@@ -8555,6 +8584,11 @@ const AddRankGroupDialog = ({
     return selectedFormForRankGroup;
   };
 
+  // Check if a rank is already assigned to another group
+  const isRankConflicting = (rankLabel: string): string | null => {
+    return rankConflicts[rankLabel] || null;
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
@@ -8591,28 +8625,42 @@ const AddRankGroupDialog = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Select Ranks</FormLabel>
-                  <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-                    {companyApplicableRanks.map((rank) => (
-                      <div key={rank.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`rank-${rank.id}`}
-                          checked={(field.value as string[])?.includes(rank.label || rank.name) || false}
-                          onCheckedChange={(checked) => {
-                            const currentValue = field.value || [];
-                            const rankLabel = rank.label || rank.name;
-                            if (checked) {
-                              field.onChange([...currentValue, rankLabel]);
-                            } else {
-                              field.onChange(currentValue.filter((r: string) => r !== rankLabel));
-                            }
-                          }}
-                          data-testid={`checkbox-rank-${rank.id}`}
-                        />
-                        <label htmlFor={`rank-${rank.id}`} className="text-sm">
-                          {rank.label || rank.name}
-                        </label>
-                      </div>
-                    ))}
+                  <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">
+                    {companyApplicableRanks.map((rank) => {
+                      const rankLabel = rank.label || rank.name;
+                      const conflictingGroup = isRankConflicting(rankLabel);
+                      const isDisabled = !!conflictingGroup;
+                      
+                      return (
+                        <div key={rank.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`rank-${rank.id}`}
+                            checked={(field.value as string[])?.includes(rankLabel) || false}
+                            disabled={isDisabled}
+                            onCheckedChange={(checked) => {
+                              const currentValue = field.value || [];
+                              if (checked) {
+                                field.onChange([...currentValue, rankLabel]);
+                              } else {
+                                field.onChange(currentValue.filter((r: string) => r !== rankLabel));
+                              }
+                            }}
+                            data-testid={`checkbox-rank-${rank.id}`}
+                          />
+                          <label 
+                            htmlFor={`rank-${rank.id}`} 
+                            className={`text-sm flex-1 ${isDisabled ? 'text-muted-foreground' : ''}`}
+                          >
+                            {rankLabel}
+                            {conflictingGroup && (
+                              <span className="text-xs text-amber-600 ml-2">
+                                (assigned to "{conflictingGroup}")
+                              </span>
+                            )}
+                          </label>
+                        </div>
+                      );
+                    })}
                   </div>
                   <FormMessage />
                 </FormItem>
