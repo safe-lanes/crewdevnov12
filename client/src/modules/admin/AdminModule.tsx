@@ -3585,7 +3585,7 @@ const AdminModuleInner = (): JSX.Element => {
 
   const updateRankGroupMutation = useMutation({
     mutationFn: async (data: { id: number; name: string; ranks: string[] }) => {
-      return await apiRequest("PUT", `/api/rank-groups/${data.id}`, { name: data.name, ranks: JSON.stringify(data.ranks) });
+      return await apiRequest("PUT", `/api/rank-groups/${data.id}`, { name: data.name, ranks: data.ranks });
     },
     onSuccess: () => {
       rq.invalidateQueries({ queryKey: ["/api/forms"] });
