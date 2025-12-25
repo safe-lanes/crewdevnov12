@@ -27,6 +27,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Form as FormComponent,
   FormControl,
   FormField,
@@ -545,6 +555,8 @@ const AdminModuleInner = (): JSX.Element => {
   const [isAddRankGroupOpen, setIsAddRankGroupOpen] = useState(false);
   const [selectedFormForRankGroup, setSelectedFormForRankGroup] = useState<string | null>(null);
   const [editingRankGroupData, setEditingRankGroupData] = useState<RankGroup | null>(null);
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
+  const [pendingArchiveRankGroup, setPendingArchiveRankGroup] = useState<{id: number; name: string} | null>(null);
   const [showCreateFormDialog, setShowCreateFormDialog] = useState(false);
   const [newFormName, setNewFormName] = useState("");
   const [newFormCategory, setNewFormCategory] = useState<"appraisal" | "promotion">("appraisal");
@@ -3601,7 +3613,13 @@ const AdminModuleInner = (): JSX.Element => {
     },
     onSuccess: () => {
       rq.invalidateQueries({ queryKey: ["/api/forms"] });
-      rq.invalidateQueries({ queryKey: ["/api/rank-groups"] });
+      // Invalidate all rank-groups queries (including those with includeArchived param)
+      rq.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey;
+          return Array.isArray(key) && key[0] === "/api/rank-groups";
+        }
+      });
       toast({
         title: "Success",
         description: "Rank group archived successfully",
@@ -3735,10 +3753,17 @@ const AdminModuleInner = (): JSX.Element => {
   const handleArchiveRankGroup = (rankGroupName: string, formId: number) => {
     const rankGroup = allRankGroups.find(rg => rg.name === rankGroupName && rg.formId === formId);
     if (rankGroup) {
-      if (window.confirm(`Are you sure you want to archive the rank group "${rankGroupName}"? This will preserve historical data for older forms.`)) {
-        archiveRankGroupMutation.mutate(rankGroup.id);
-      }
+      setPendingArchiveRankGroup({ id: rankGroup.id, name: rankGroupName });
+      setArchiveConfirmOpen(true);
     }
+  };
+
+  const confirmArchiveRankGroup = () => {
+    if (pendingArchiveRankGroup) {
+      archiveRankGroupMutation.mutate(pendingArchiveRankGroup.id);
+    }
+    setArchiveConfirmOpen(false);
+    setPendingArchiveRankGroup(null);
   };
 
   const handleUnarchiveRankGroup = (rankGroupName: string, formId: number) => {
@@ -8157,6 +8182,35 @@ const AdminModuleInner = (): JSX.Element => {
         editingRankGroup={editingRankGroupData}
         forms={formsData || []}
       />
+
+      {/* Archive Rank Group Confirmation Dialog */}
+      <AlertDialog 
+        open={archiveConfirmOpen} 
+        onOpenChange={(open) => {
+          setArchiveConfirmOpen(open);
+          if (!open) {
+            setPendingArchiveRankGroup(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive Rank Group</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to archive the rank group "{pendingArchiveRankGroup?.name}"? 
+              This will preserve historical data for older forms.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction type="button" onClick={confirmArchiveRankGroup}>
+              Archive
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Vessel Group Modal */}
       <Dialog open={isVesselGroupModalOpen} onOpenChange={(open) => {
