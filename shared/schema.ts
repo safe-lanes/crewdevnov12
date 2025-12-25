@@ -23,7 +23,8 @@ export const rankGroups = pgTable("rank_groups", {
   id: serial("id").primaryKey(),
   formId: integer("form_id").notNull().references(() => forms.id),
   name: text("name").notNull(),
-  ranks: text("ranks").notNull(), // JSON string
+  ranks: text("ranks").notNull(), // JSON string array of rank names
+  archivedAt: text("archived_at"), // ISO timestamp when archived, null if active
 });
 
 export const availableRanks = pgTable("available_ranks", {
@@ -817,7 +818,14 @@ export const insertRankGroupSchema = createInsertSchema(rankGroups).pick({
   formId: true,
   name: true,
   ranks: true,
+  archivedAt: true,
 });
+
+export const updateRankGroupSchema = createInsertSchema(rankGroups).pick({
+  name: true,
+  ranks: true,
+  archivedAt: true,
+}).partial();
 
 export const insertAvailableRankSchema = createInsertSchema(availableRanks).pick({
   name: true,
@@ -1410,6 +1418,7 @@ export type User = typeof users.$inferSelect;
 export type InsertForm = z.infer<typeof insertFormSchema>;
 export type Form = typeof forms.$inferSelect;
 export type InsertRankGroup = z.infer<typeof insertRankGroupSchema>;
+export type UpdateRankGroup = z.infer<typeof updateRankGroupSchema>;
 export type RankGroup = typeof rankGroups.$inferSelect;
 export type InsertAvailableRank = z.infer<typeof insertAvailableRankSchema>;
 export type UpdateAvailableRank = z.infer<typeof updateAvailableRankSchema>;

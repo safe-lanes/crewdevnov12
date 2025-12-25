@@ -773,9 +773,13 @@ export interface IStorage {
   createForm(form: InsertForm): Promise<Form>;
   updateForm(id: number, form: Partial<InsertForm>): Promise<Form | undefined>;
   deleteForm(id: number): Promise<boolean>;
-  getRankGroups(formId: number): Promise<RankGroup[]>;
+  getRankGroups(formId: number, includeArchived?: boolean): Promise<RankGroup[]>;
+  getAllRankGroups(includeArchived?: boolean): Promise<RankGroup[]>;
+  getRankGroup(id: number): Promise<RankGroup | undefined>;
   createRankGroup(rankGroup: InsertRankGroup): Promise<RankGroup>;
   updateRankGroup(id: number, rankGroup: Partial<InsertRankGroup>): Promise<RankGroup | undefined>;
+  archiveRankGroup(id: number): Promise<RankGroup | undefined>;
+  unarchiveRankGroup(id: number): Promise<RankGroup | undefined>;
   deleteRankGroup(id: number): Promise<boolean>;
   getFormForRank(rankLabel: string, category: string): Promise<Form | undefined>;
   getAvailableRanks(): Promise<AvailableRank[]>;
@@ -1533,19 +1537,34 @@ export class MemStorage implements IStorage {
     return this.forms.delete(id);
   }
 
-  async getRankGroups(formId: number): Promise<RankGroup[]> {
-    return Array.from(this.rankGroups.values()).filter(rg => rg.formId === formId);
+  async getRankGroups(formId: number, includeArchived: boolean = false): Promise<RankGroup[]> {
+    return Array.from(this.rankGroups.values()).filter(rg => {
+      if (rg.formId !== formId) return false;
+      if (!includeArchived && rg.archivedAt) return false;
+      return true;
+    });
+  }
+
+  async getAllRankGroups(includeArchived: boolean = false): Promise<RankGroup[]> {
+    return Array.from(this.rankGroups.values()).filter(rg => {
+      if (!includeArchived && rg.archivedAt) return false;
+      return true;
+    });
+  }
+
+  async getRankGroup(id: number): Promise<RankGroup | undefined> {
+    return this.rankGroups.get(id);
   }
 
   async createRankGroup(insertRankGroup: InsertRankGroup): Promise<RankGroup> {
     const id = this.currentRankGroupId++;
-    // Convert array to JSON string for MySQL compatibility
     const rankGroup: RankGroup = { 
       ...insertRankGroup, 
       id,
       ranks: typeof insertRankGroup.ranks === 'string' 
         ? insertRankGroup.ranks 
-        : JSON.stringify(insertRankGroup.ranks)
+        : JSON.stringify(insertRankGroup.ranks),
+      archivedAt: null
     };
     this.rankGroups.set(id, rankGroup);
     
@@ -1555,10 +1574,10 @@ export class MemStorage implements IStorage {
     return rankGroup;
   }
 
-  // Private helper to sync form's rankGroup field with associated rank groups
+  // Private helper to sync form's rankGroup field with associated rank groups (only active ones)
   private async syncFormRankGroup(formId: number): Promise<void> {
-    // Get all rank groups for this form
-    const formRankGroups = Array.from(this.rankGroups.values()).filter(rg => rg.formId === formId);
+    // Get all active (non-archived) rank groups for this form
+    const formRankGroups = Array.from(this.rankGroups.values()).filter(rg => rg.formId === formId && !rg.archivedAt);
     
     // Create display string from rank group names
     const rankGroupNames = formRankGroups.map(rg => rg.name).join(", ");
@@ -1585,7 +1604,43 @@ export class MemStorage implements IStorage {
         : existingRankGroup.ranks
     };
     this.rankGroups.set(id, updatedRankGroup);
+    
+    // Sync form's rankGroup field in case name changed
+    await this.syncFormRankGroup(existingRankGroup.formId);
+    
     return updatedRankGroup;
+  }
+
+  async archiveRankGroup(id: number): Promise<RankGroup | undefined> {
+    const existingRankGroup = this.rankGroups.get(id);
+    if (!existingRankGroup) return undefined;
+
+    const archivedRankGroup: RankGroup = { 
+      ...existingRankGroup, 
+      archivedAt: new Date().toISOString()
+    };
+    this.rankGroups.set(id, archivedRankGroup);
+    
+    // Sync form's rankGroup field to remove archived group from display
+    await this.syncFormRankGroup(existingRankGroup.formId);
+    
+    return archivedRankGroup;
+  }
+
+  async unarchiveRankGroup(id: number): Promise<RankGroup | undefined> {
+    const existingRankGroup = this.rankGroups.get(id);
+    if (!existingRankGroup) return undefined;
+
+    const unarchivedRankGroup: RankGroup = { 
+      ...existingRankGroup, 
+      archivedAt: null
+    };
+    this.rankGroups.set(id, unarchivedRankGroup);
+    
+    // Sync form's rankGroup field to add unarchived group back to display
+    await this.syncFormRankGroup(existingRankGroup.formId);
+    
+    return unarchivedRankGroup;
   }
 
   async deleteRankGroup(id: number): Promise<boolean> {
@@ -5036,12 +5091,34 @@ export class PersistentFileStorage implements IStorage {
   }
 
   // Rank Group methods (same as MemStorage)
-  async getRankGroups(formId: number): Promise<RankGroup[]> {
-    return Array.from(this.rankGroups.values()).filter(rg => rg.formId === formId);
+  async getRankGroups(formId: number, includeArchived: boolean = false): Promise<RankGroup[]> {
+    return Array.from(this.rankGroups.values()).filter(rg => {
+      if (rg.formId !== formId) return false;
+      if (!includeArchived && rg.archivedAt) return false;
+      return true;
+    });
+  }
+
+  async getAllRankGroups(includeArchived: boolean = false): Promise<RankGroup[]> {
+    return Array.from(this.rankGroups.values()).filter(rg => {
+      if (!includeArchived && rg.archivedAt) return false;
+      return true;
+    });
+  }
+
+  async getRankGroup(id: number): Promise<RankGroup | undefined> {
+    return this.rankGroups.get(id);
   }
 
   async createRankGroup(insertRankGroup: InsertRankGroup): Promise<RankGroup> {
-    const rankGroup: RankGroup = { ...insertRankGroup, id: this.currentRankGroupId++ };
+    const rankGroup: RankGroup = { 
+      ...insertRankGroup, 
+      id: this.currentRankGroupId++,
+      ranks: typeof insertRankGroup.ranks === 'string' 
+        ? insertRankGroup.ranks 
+        : JSON.stringify(insertRankGroup.ranks),
+      archivedAt: null
+    };
     this.rankGroups.set(rankGroup.id, rankGroup);
     
     // Sync the form's rankGroup field with all associated rank groups
@@ -5051,10 +5128,10 @@ export class PersistentFileStorage implements IStorage {
     return rankGroup;
   }
 
-  // Private helper to sync form's rankGroup field with associated rank groups
+  // Private helper to sync form's rankGroup field with associated rank groups (only active ones)
   private async syncFormRankGroup(formId: number): Promise<void> {
-    // Get all rank groups for this form
-    const formRankGroups = Array.from(this.rankGroups.values()).filter(rg => rg.formId === formId);
+    // Get all active (non-archived) rank groups for this form
+    const formRankGroups = Array.from(this.rankGroups.values()).filter(rg => rg.formId === formId && !rg.archivedAt);
     
     // Create display string from rank group names
     const rankGroupNames = formRankGroups.map(rg => rg.name).join(", ");
@@ -5071,10 +5148,56 @@ export class PersistentFileStorage implements IStorage {
     const existingRankGroup = this.rankGroups.get(id);
     if (!existingRankGroup) return undefined;
 
-    const updatedRankGroup: RankGroup = { ...existingRankGroup, ...rankGroupData };
+    const updatedRankGroup: RankGroup = { 
+      ...existingRankGroup, 
+      ...rankGroupData,
+      ranks: rankGroupData.ranks 
+        ? (typeof rankGroupData.ranks === 'string' 
+          ? rankGroupData.ranks 
+          : JSON.stringify(rankGroupData.ranks))
+        : existingRankGroup.ranks
+    };
     this.rankGroups.set(id, updatedRankGroup);
+    
+    // Sync form's rankGroup field in case name changed
+    await this.syncFormRankGroup(existingRankGroup.formId);
+    
     this.saveToFile();
     return updatedRankGroup;
+  }
+
+  async archiveRankGroup(id: number): Promise<RankGroup | undefined> {
+    const existingRankGroup = this.rankGroups.get(id);
+    if (!existingRankGroup) return undefined;
+
+    const archivedRankGroup: RankGroup = { 
+      ...existingRankGroup, 
+      archivedAt: new Date().toISOString()
+    };
+    this.rankGroups.set(id, archivedRankGroup);
+    
+    // Sync form's rankGroup field to remove archived group from display
+    await this.syncFormRankGroup(existingRankGroup.formId);
+    
+    this.saveToFile();
+    return archivedRankGroup;
+  }
+
+  async unarchiveRankGroup(id: number): Promise<RankGroup | undefined> {
+    const existingRankGroup = this.rankGroups.get(id);
+    if (!existingRankGroup) return undefined;
+
+    const unarchivedRankGroup: RankGroup = { 
+      ...existingRankGroup, 
+      archivedAt: null
+    };
+    this.rankGroups.set(id, unarchivedRankGroup);
+    
+    // Sync form's rankGroup field to add unarchived group back to display
+    await this.syncFormRankGroup(existingRankGroup.formId);
+    
+    this.saveToFile();
+    return unarchivedRankGroup;
   }
 
   async deleteRankGroup(id: number): Promise<boolean> {
@@ -7721,8 +7844,12 @@ if (databaseUrlForceDisabled) {
       async updateForm(): Promise<any> { this.throwConnectionError(); }
       async deleteForm(): Promise<any> { this.throwConnectionError(); }
       async getRankGroups(): Promise<any> { this.throwConnectionError(); }
+      async getAllRankGroups(): Promise<any> { this.throwConnectionError(); }
+      async getRankGroup(): Promise<any> { this.throwConnectionError(); }
       async createRankGroup(): Promise<any> { this.throwConnectionError(); }
       async updateRankGroup(): Promise<any> { this.throwConnectionError(); }
+      async archiveRankGroup(): Promise<any> { this.throwConnectionError(); }
+      async unarchiveRankGroup(): Promise<any> { this.throwConnectionError(); }
       async deleteRankGroup(): Promise<any> { this.throwConnectionError(); }
       async getAvailableRanks(): Promise<any> { this.throwConnectionError(); }
       async getAvailableRank(): Promise<any> { this.throwConnectionError(); }

@@ -1479,13 +1479,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Rank Groups API routes
-  app.get("/api/rank-groups/:formId", async (req, res) => {
+  app.get("/api/rank-groups", async (req, res) => {
     try {
-      const formId = parseInt(req.params.formId);
-      const rankGroups = await storage.getRankGroups(formId);
+      const includeArchived = req.query.includeArchived === 'true';
+      const rankGroups = await storage.getAllRankGroups(includeArchived);
       res.json(rankGroups);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch rank groups" });
+    }
+  });
+
+  app.get("/api/rank-groups/form/:formId", async (req, res) => {
+    try {
+      const formId = parseInt(req.params.formId);
+      const includeArchived = req.query.includeArchived === 'true';
+      const rankGroups = await storage.getRankGroups(formId, includeArchived);
+      res.json(rankGroups);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch rank groups" });
+    }
+  });
+
+  app.get("/api/rank-groups/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const rankGroup = await storage.getRankGroup(id);
+      if (!rankGroup) {
+        return res.status(404).json({ error: "Rank group not found" });
+      }
+      res.json(rankGroup);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch rank group" });
     }
   });
 
@@ -1517,6 +1541,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(rankGroup);
     } catch (error) {
       res.status(400).json({ error: "Invalid rank group data" });
+    }
+  });
+
+  app.post("/api/rank-groups/:id/archive", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const rankGroup = await storage.archiveRankGroup(id);
+      if (!rankGroup) {
+        return res.status(404).json({ error: "Rank group not found" });
+      }
+      res.json(rankGroup);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to archive rank group" });
+    }
+  });
+
+  app.post("/api/rank-groups/:id/unarchive", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const rankGroup = await storage.unarchiveRankGroup(id);
+      if (!rankGroup) {
+        return res.status(404).json({ error: "Rank group not found" });
+      }
+      res.json(rankGroup);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to unarchive rank group" });
     }
   });
 
