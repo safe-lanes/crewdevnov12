@@ -3839,8 +3839,11 @@ const AdminModuleInner = (): JSX.Element => {
   };
 
   const updateFormMutation = useMutation({
-    mutationFn: async ({formId, configuration}: {formId: number; configuration: string}) => {
-      return apiRequest('PUT', `/api/forms/${formId}`, { configuration });
+    mutationFn: async ({formId, configuration, sharedConfig}: {formId: number; configuration?: string; sharedConfig?: string}) => {
+      const updateData: Record<string, string> = {};
+      if (configuration) updateData.configuration = configuration;
+      if (sharedConfig) updateData.sharedConfig = sharedConfig;
+      return apiRequest('PUT', `/api/forms/${formId}`, updateData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/forms'] });
@@ -3861,10 +3864,11 @@ const AdminModuleInner = (): JSX.Element => {
 
   const handleFormSave = (formData: any) => {
     console.log("Saving form configuration:", formData);
-    if (formData.formId && formData.configuration) {
+    if (formData.formId) {
       updateFormMutation.mutate({
         formId: formData.formId,
         configuration: formData.configuration,
+        sharedConfig: formData.sharedConfig,
       });
     }
   };

@@ -431,10 +431,16 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
       }
     }
     
+    // Build shared config object for fields shared across all rank groups
+    const sharedConfig = {
+      appraisalTypeOptions: appraisalTypeOptions,
+    };
+    
     onSave({
       ...data,
       formId: form.id,
       version: formVersion,
+      sharedConfig: JSON.stringify(sharedConfig),
     });
     onClose();
   };
@@ -666,7 +672,10 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
   // State for tracking which recommendation fields are in edit mode
   const [editingRecommendations, setEditingRecommendations] = useState<Set<string>>(new Set());
 
-  // Appraisal Type configuration state
+  // Shared configuration color (orange - applies to all rank groups)
+  const SHARED_CONFIG_COLOR = '#f97316'; // tailwind orange-500
+  
+  // Appraisal Type configuration state (SHARED across all rank groups)
   const [appraisalTypeOptions, setAppraisalTypeOptions] = useState<string[]>([
     "End of Contract",
     "Mid Term", 
@@ -677,6 +686,20 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
   const [showAppraisalTypeDialog, setShowAppraisalTypeDialog] = useState(false);
   const [editingAppraisalType, setEditingAppraisalType] = useState<string>("");
   const [editingAppraisalTypeIndex, setEditingAppraisalTypeIndex] = useState<number>(-1);
+  
+  // Load shared config from form on mount
+  useEffect(() => {
+    if (form.sharedConfig) {
+      try {
+        const sharedConfig = JSON.parse(form.sharedConfig);
+        if (sharedConfig.appraisalTypeOptions && Array.isArray(sharedConfig.appraisalTypeOptions)) {
+          setAppraisalTypeOptions(sharedConfig.appraisalTypeOptions);
+        }
+      } catch (e) {
+        console.error("Failed to parse form sharedConfig:", e);
+      }
+    }
+  }, [form.sharedConfig]);
 
   // PI Category configuration state
   const [piCategoryOptions, setPiCategoryOptions] = useState<string[]>([
@@ -1298,7 +1321,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
           <Label 
             htmlFor="appraisalType" 
             className={`text-sm ${isConfigMode ? "cursor-pointer" : ""}`}
-            style={isConfigMode ? { color: '#52baf3' } : {}}
+            style={isConfigMode ? { color: SHARED_CONFIG_COLOR } : {}}
             onClick={isConfigMode ? () => setShowAppraisalTypeDialog(true) : undefined}
           >
             Appraisal Type
@@ -1314,7 +1337,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
           >
             <SelectTrigger 
               className={`text-sm ${isConfigMode ? "cursor-pointer" : ""}`}
-              style={isConfigMode ? { borderColor: '#52baf3', color: '#52baf3' } : {}}
+              style={isConfigMode ? { borderColor: SHARED_CONFIG_COLOR, color: SHARED_CONFIG_COLOR } : {}}
             >
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
