@@ -844,8 +844,36 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Rank Group methods
-  async getRankGroups(): Promise<RankGroup[]> {
-    return await this.db.select().from(rankGroups);
+  async getRankGroups(formId?: number, includeArchived: boolean = false): Promise<RankGroup[]> {
+    // Build conditions array
+    const conditions = [];
+    if (formId !== undefined) {
+      conditions.push(eq(rankGroups.formId, formId));
+    }
+    if (!includeArchived) {
+      conditions.push(isNull(rankGroups.archivedAt));
+    }
+    
+    // Execute query with proper condition handling
+    if (conditions.length === 0) {
+      return await this.db.select().from(rankGroups);
+    } else if (conditions.length === 1) {
+      return await this.db.select().from(rankGroups).where(conditions[0]);
+    } else {
+      return await this.db.select().from(rankGroups).where(and(...conditions));
+    }
+  }
+
+  async getAllRankGroups(includeArchived: boolean = false): Promise<RankGroup[]> {
+    if (includeArchived) {
+      return await this.db.select().from(rankGroups);
+    }
+    return await this.db.select().from(rankGroups).where(isNull(rankGroups.archivedAt));
+  }
+
+  async getRankGroup(id: number): Promise<RankGroup | undefined> {
+    const result = await this.db.select().from(rankGroups).where(eq(rankGroups.id, id));
+    return result[0] || undefined;
   }
 
   async createRankGroup(insertRankGroup: InsertRankGroup): Promise<RankGroup> {
@@ -861,6 +889,22 @@ export class DatabaseStorage implements IStorage {
   async deleteRankGroup(id: number): Promise<boolean> {
     const result = await this.db.delete(rankGroups).where(eq(rankGroups.id, id));
     return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async archiveRankGroup(id: number): Promise<RankGroup | undefined> {
+    const result = await this.db.update(rankGroups)
+      .set({ archivedAt: new Date() })
+      .where(eq(rankGroups.id, id))
+      .returning();
+    return result[0] || undefined;
+  }
+
+  async unarchiveRankGroup(id: number): Promise<RankGroup | undefined> {
+    const result = await this.db.update(rankGroups)
+      .set({ archivedAt: null })
+      .where(eq(rankGroups.id, id))
+      .returning();
+    return result[0] || undefined;
   }
 
   // Available Rank methods
