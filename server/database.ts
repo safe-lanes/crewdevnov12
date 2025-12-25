@@ -878,33 +878,61 @@ export class DatabaseStorage implements IStorage {
 
   async createRankGroup(insertRankGroup: InsertRankGroup): Promise<RankGroup> {
     const [created] = await this.db.insert(rankGroups).values(insertRankGroup).returning();
+    await this.syncFormRankGroup(insertRankGroup.formId);
     return created;
   }
 
   async updateRankGroup(id: number, rankGroupData: Partial<InsertRankGroup>): Promise<RankGroup | undefined> {
+    const existing = await this.getRankGroup(id);
     const result = await this.db.update(rankGroups).set(rankGroupData).where(eq(rankGroups.id, id)).returning();
+    if (result[0] && existing) {
+      await this.syncFormRankGroup(existing.formId);
+    }
     return result[0] || undefined;
   }
 
   async deleteRankGroup(id: number): Promise<boolean> {
+    const existing = await this.getRankGroup(id);
     const result = await this.db.delete(rankGroups).where(eq(rankGroups.id, id));
-    return result.rowCount !== null && result.rowCount > 0;
+    const deleted = result.rowCount !== null && result.rowCount > 0;
+    if (deleted && existing) {
+      await this.syncFormRankGroup(existing.formId);
+    }
+    return deleted;
   }
 
   async archiveRankGroup(id: number): Promise<RankGroup | undefined> {
+    const existing = await this.getRankGroup(id);
     const result = await this.db.update(rankGroups)
       .set({ archivedAt: new Date() })
       .where(eq(rankGroups.id, id))
       .returning();
+    if (result[0] && existing) {
+      await this.syncFormRankGroup(existing.formId);
+    }
     return result[0] || undefined;
   }
 
   async unarchiveRankGroup(id: number): Promise<RankGroup | undefined> {
+    const existing = await this.getRankGroup(id);
     const result = await this.db.update(rankGroups)
       .set({ archivedAt: null })
       .where(eq(rankGroups.id, id))
       .returning();
+    if (result[0] && existing) {
+      await this.syncFormRankGroup(existing.formId);
+    }
     return result[0] || undefined;
+  }
+
+  private async syncFormRankGroup(formId: number): Promise<void> {
+    const activeRankGroups = await this.db.select()
+      .from(rankGroups)
+      .where(and(eq(rankGroups.formId, formId), isNull(rankGroups.archivedAt)));
+    const rankGroupNames = activeRankGroups.map(rg => rg.name).join(", ");
+    await this.db.update(forms)
+      .set({ rankGroup: rankGroupNames || "" })
+      .where(eq(forms.id, formId));
   }
 
   // Available Rank methods
