@@ -17,6 +17,7 @@ export const forms = pgTable("forms", {
   versionNo: text("version_no").notNull(),
   versionDate: text("version_date").notNull(),
   configuration: text("configuration"), // JSON string for form configuration
+  sharedConfig: text("shared_config"), // JSON string for shared field configs (applies to all rank groups, e.g., appraisalTypeOptions)
 });
 
 export const rankGroups = pgTable("rank_groups", {
@@ -812,6 +813,7 @@ export const insertFormSchema = createInsertSchema(forms).pick({
   versionNo: true,
   versionDate: true,
   configuration: true,
+  sharedConfig: true,
 });
 
 export const insertRankGroupSchema = createInsertSchema(rankGroups).pick({
