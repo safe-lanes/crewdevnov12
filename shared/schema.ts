@@ -24,7 +24,7 @@ export const rankGroups = pgTable("rank_groups", {
   formId: integer("form_id").notNull().references(() => forms.id),
   name: text("name").notNull(),
   ranks: text("ranks").notNull(), // JSON string array of rank names
-  archivedAt: text("archived_at"), // ISO timestamp when archived, null if active
+  archivedAt: timestamp("archived_at"), // Timestamp when archived, null if active
 });
 
 export const availableRanks = pgTable("available_ranks", {

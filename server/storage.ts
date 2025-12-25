@@ -1617,7 +1617,7 @@ export class MemStorage implements IStorage {
 
     const archivedRankGroup: RankGroup = { 
       ...existingRankGroup, 
-      archivedAt: new Date().toISOString()
+      archivedAt: new Date()
     };
     this.rankGroups.set(id, archivedRankGroup);
     
@@ -4233,7 +4233,15 @@ export class PersistentFileStorage implements IStorage {
         // Convert arrays back to Maps
         this.users = new Map(data.users || []);
         this.forms = new Map(data.forms || []);
-        this.rankGroups = new Map(data.rankGroups || []);
+        // Load rank groups and convert archivedAt strings back to Date objects
+        const rawRankGroups: [number, RankGroup][] = data.rankGroups || [];
+        this.rankGroups = new Map(rawRankGroups.map(([id, rg]) => [
+          id,
+          {
+            ...rg,
+            archivedAt: rg.archivedAt ? new Date(rg.archivedAt) : null
+          }
+        ]));
         this.availableRanks = new Map(data.availableRanks || []);
         this.companyRanks = new Map(data.companyRanks || []);
         this.promotionHierarchies = new Map(data.promotionHierarchies || []);
@@ -5172,7 +5180,7 @@ export class PersistentFileStorage implements IStorage {
 
     const archivedRankGroup: RankGroup = { 
       ...existingRankGroup, 
-      archivedAt: new Date().toISOString()
+      archivedAt: new Date()
     };
     this.rankGroups.set(id, archivedRankGroup);
     

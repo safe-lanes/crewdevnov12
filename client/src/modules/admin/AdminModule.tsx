@@ -8456,7 +8456,7 @@ const AddRankGroupDialog = ({
       updateRankGroupMutation.mutate({
         id: editingRankGroup.id,
         name: data.name,
-        ranks: data.ranks,
+        ranks: JSON.stringify(data.ranks),
       });
     } else if (selectedFormForRankGroup) {
       // Create new rank group
