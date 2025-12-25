@@ -887,6 +887,9 @@ export class DatabaseStorage implements IStorage {
     const result = await this.db.update(rankGroups).set(rankGroupData).where(eq(rankGroups.id, id)).returning();
     if (result[0] && existing) {
       await this.syncFormRankGroup(existing.formId);
+      if (result[0].formId !== existing.formId) {
+        await this.syncFormRankGroup(result[0].formId);
+      }
     }
     return result[0] || undefined;
   }
