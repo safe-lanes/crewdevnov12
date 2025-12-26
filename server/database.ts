@@ -847,7 +847,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Form Version methods
-  async getFormVersions(formId: number): Promise<FormVersion[]> {
+  async getFormVersions(formId: number, rankGroupId?: number): Promise<FormVersion[]> {
+    if (rankGroupId !== undefined) {
+      // Return versions that either:
+      // 1. Match the specific rankGroupId (new versions)
+      // 2. Have NULL rankGroupId (legacy versions for this form)
+      // This ensures legacy data remains visible while new data is properly isolated
+      return await this.db.select().from(formVersions)
+        .where(and(
+          eq(formVersions.formId, formId), 
+          or(
+            eq(formVersions.rankGroupId, rankGroupId),
+            isNull(formVersions.rankGroupId)
+          )
+        ))
+        .orderBy(desc(formVersions.id));
+    }
+    // Legacy: return all versions for the form (no rank group filter)
     return await this.db.select().from(formVersions)
       .where(eq(formVersions.formId, formId))
       .orderBy(desc(formVersions.id));

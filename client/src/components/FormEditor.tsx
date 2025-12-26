@@ -380,13 +380,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
     });
   };
 
-  // Query to fetch form versions from API - use URL as first element for default fetcher
-  const versionsQueryKey = `/api/forms/${realFormId}/versions`;
-  const { data: versionsData } = useQuery<FormVersion[]>({
-    queryKey: [versionsQueryKey],
-  });
-  
-  // Query to fetch rank groups for this form
+  // Query to fetch rank groups for this form (must fetch first to get currentRankGroup for versions query)
   // Note: queryKey[0] is used as the URL by the default fetcher, so include full URL path
   const { data: rankGroupsData } = useQuery<RankGroup[]>({
     queryKey: [`/api/rank-groups/form/${realFormId}`],
@@ -407,6 +401,16 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
       return null;
     }
   }, [currentRankGroup]);
+  
+  // Query to fetch form versions from API - filtered by rank group for isolation
+  // Each rank group has its own independent version history
+  const versionsQueryKey = currentRankGroup?.id 
+    ? `/api/forms/${realFormId}/versions?rankGroupId=${currentRankGroup.id}`
+    : `/api/forms/${realFormId}/versions`;
+  const { data: versionsData } = useQuery<FormVersion[]>({
+    queryKey: [versionsQueryKey],
+    enabled: !!realFormId,
+  });
   
   // Derive hasSavedDraft from API data - check if a draft version exists
   const hasDraftVersion = React.useMemo(() => {
@@ -437,6 +441,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
       const response = await apiRequest('POST', `/api/forms/${realFormId}/versions`, {
         ...versionData,
         status: 'draft',
+        rankGroupId: currentRankGroup?.id, // Link version to specific rank group
       });
       return response.json();
     },
@@ -3302,7 +3307,8 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
               }}
               className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
               size="sm"
-              disabled={createDraftMutation.isPending}
+              disabled={createDraftMutation.isPending || !currentRankGroup}
+              title={!currentRankGroup ? "Please select a rank group first" : undefined}
               data-testid="button-save-draft"
             >
               <Save className="h-4 w-4" />

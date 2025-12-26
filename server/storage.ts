@@ -774,7 +774,7 @@ export interface IStorage {
   updateForm(id: number, form: Partial<InsertForm>): Promise<Form | undefined>;
   deleteForm(id: number): Promise<boolean>;
   // Form Versions
-  getFormVersions(formId: number): Promise<FormVersion[]>;
+  getFormVersions(formId: number, rankGroupId?: number): Promise<FormVersion[]>;
   getFormVersion(id: number): Promise<FormVersion | undefined>;
   createFormVersion(version: InsertFormVersion): Promise<FormVersion>;
   updateFormVersion(id: number, version: Partial<InsertFormVersion>): Promise<FormVersion | undefined>;

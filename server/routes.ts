@@ -1541,7 +1541,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/forms/:formId/versions", async (req, res) => {
     try {
       const formId = parseInt(req.params.formId);
-      const versions = await storage.getFormVersions(formId);
+      const rankGroupId = req.query.rankGroupId ? parseInt(req.query.rankGroupId as string) : undefined;
+      const versions = await storage.getFormVersions(formId, rankGroupId);
       res.json(versions);
     } catch (error) {
       console.error("Error fetching form versions:", error);
@@ -1570,7 +1571,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!result.success) {
         return res.status(400).json({ error: "Invalid form version data", details: result.error.issues });
       }
+      
+      // Require rankGroupId for proper version isolation
+      if (!result.data.rankGroupId) {
+        console.warn(`⚠️ [CREATE VERSION] Missing rankGroupId for form ${formId} - version will not be properly isolated`);
+        return res.status(400).json({ 
+          error: "rankGroupId is required to create a version. Please select a rank group first." 
+        });
+      }
+      
       const version = await storage.createFormVersion(result.data);
+      console.log(`✅ [CREATE VERSION] Created version ${version.versionNo} for form ${formId}, rankGroup ${result.data.rankGroupId}`);
       res.json(version);
     } catch (error) {
       console.error("Error creating form version:", error);

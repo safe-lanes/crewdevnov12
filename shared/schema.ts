@@ -20,10 +20,11 @@ export const forms = pgTable("forms", {
   sharedConfig: text("shared_config"), // JSON string for shared field configs (applies to all rank groups, e.g., appraisalTypeOptions)
 });
 
-// Form Versions - tracks draft and released versions for forms
+// Form Versions - tracks draft and released versions for forms (per rank group)
 export const formVersions = pgTable("form_versions", {
   id: serial("id").primaryKey(),
   formId: integer("form_id").notNull().references(() => forms.id, { onDelete: 'cascade' }),
+  rankGroupId: integer("rank_group_id").references(() => rankGroups.id, { onDelete: 'cascade' }), // Links version to specific rank group (nullable for legacy data)
   versionNo: text("version_no").notNull(), // "00", "01", "02", etc.
   versionDate: text("version_date").notNull(), // Date string in DD-MMM-YYYY format
   status: text("status").notNull().default("draft"), // "draft" or "released"
@@ -832,6 +833,7 @@ export const insertFormSchema = createInsertSchema(forms).pick({
 
 export const insertFormVersionSchema = createInsertSchema(formVersions).pick({
   formId: true,
+  rankGroupId: true,
   versionNo: true,
   versionDate: true,
   status: true,
