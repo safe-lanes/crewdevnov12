@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -326,6 +326,19 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     onConfirm: () => {}
   });
 
+  // Hidden fields/sections from rank group configuration
+  const [hiddenFields, setHiddenFields] = useState<string[]>([]);
+  const [hiddenSections, setHiddenSections] = useState<string[]>([]);
+
+  // Helper functions to check visibility based on rank group config
+  const isFieldVisible = useCallback((fieldName: string) => {
+    return !hiddenFields.includes(fieldName);
+  }, [hiddenFields]);
+  
+  const isSectionVisible = useCallback((sectionName: string) => {
+    return !hiddenSections.includes(sectionName);
+  }, [hiddenSections]);
+
   // Fetch vessels and ranks from persistent storage
   const { vessels } = useVesselLookup();
   const { data: availableRanks = [] } = useQuery<Array<{ id: number; name: string; category: string }>>({
@@ -354,46 +367,6 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       console.log('✅ Form configuration loaded for rank:', crewMember?.rank, formConfig);
     }
   }, [formConfig, crewMember?.rank]);
-
-  // Load rank-group-specific configuration when available
-  useEffect(() => {
-    const config = formConfig as any;
-    if (config?.rankGroupConfig) {
-      console.log('📋 Loading rank group configuration:', config.rankGroupName, config.rankGroupConfig);
-      
-      // Load competence assessments from rank group config
-      if (config.rankGroupConfig.competenceAssessments && config.rankGroupConfig.competenceAssessments.length > 0) {
-        form.setValue('competenceAssessments', config.rankGroupConfig.competenceAssessments.map((ca: any) => ({
-          id: ca.id,
-          assessmentCriteria: ca.assessmentCriteria,
-          weight: ca.weight,
-          effectiveness: ca.effectiveness || '',
-          comment: ca.comment || '',
-        })));
-      }
-      
-      // Load behavioural assessments from rank group config
-      if (config.rankGroupConfig.behaviouralAssessments && config.rankGroupConfig.behaviouralAssessments.length > 0) {
-        form.setValue('behaviouralAssessments', config.rankGroupConfig.behaviouralAssessments.map((ba: any) => ({
-          id: ba.id,
-          assessmentCriteria: ba.assessmentCriteria,
-          weight: ba.weight,
-          effectiveness: ba.effectiveness || '',
-          comment: ba.comment || '',
-        })));
-      }
-      
-      // Load recommendations from rank group config
-      if (config.rankGroupConfig.recommendations && config.rankGroupConfig.recommendations.length > 0) {
-        form.setValue('recommendations', config.rankGroupConfig.recommendations.map((rec: any) => ({
-          id: rec.id,
-          question: rec.recommendation || rec.question,
-          answer: rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : 'Yes',
-          comment: rec.comment || '',
-        })));
-      }
-    }
-  }, [formConfig, form]);
 
   // Fetch existing appraisal data when editing
   const { data: existingAppraisal } = useQuery<ExistingAppraisal | undefined>({
@@ -474,6 +447,57 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       ],
     },
   });
+
+  // Load rank-group-specific configuration when available
+  useEffect(() => {
+    const config = formConfig as any;
+    if (config?.rankGroupConfig) {
+      console.log('📋 Loading rank group configuration:', config.rankGroupName, config.rankGroupConfig);
+      
+      // Load competence assessments from rank group config
+      if (config.rankGroupConfig.competenceAssessments && config.rankGroupConfig.competenceAssessments.length > 0) {
+        form.setValue('competenceAssessments', config.rankGroupConfig.competenceAssessments.map((ca: any) => ({
+          id: ca.id,
+          assessmentCriteria: ca.assessmentCriteria,
+          weight: ca.weight,
+          effectiveness: ca.effectiveness || '',
+          comment: ca.comment || '',
+        })));
+      }
+      
+      // Load behavioural assessments from rank group config
+      if (config.rankGroupConfig.behaviouralAssessments && config.rankGroupConfig.behaviouralAssessments.length > 0) {
+        form.setValue('behaviouralAssessments', config.rankGroupConfig.behaviouralAssessments.map((ba: any) => ({
+          id: ba.id,
+          assessmentCriteria: ba.assessmentCriteria,
+          weight: ba.weight,
+          effectiveness: ba.effectiveness || '',
+          comment: ba.comment || '',
+        })));
+      }
+      
+      // Load recommendations from rank group config
+      if (config.rankGroupConfig.recommendations && config.rankGroupConfig.recommendations.length > 0) {
+        form.setValue('recommendations', config.rankGroupConfig.recommendations.map((rec: any) => ({
+          id: rec.id,
+          question: rec.recommendation || rec.question,
+          answer: rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : 'Yes',
+          comment: rec.comment || '',
+        })));
+      }
+      
+      // Load hidden fields/sections from rank group config
+      if (config.rankGroupConfig.hiddenFields && Array.isArray(config.rankGroupConfig.hiddenFields)) {
+        setHiddenFields(config.rankGroupConfig.hiddenFields);
+        console.log('📋 Hidden fields loaded:', config.rankGroupConfig.hiddenFields);
+      }
+      
+      if (config.rankGroupConfig.hiddenSections && Array.isArray(config.rankGroupConfig.hiddenSections)) {
+        setHiddenSections(config.rankGroupConfig.hiddenSections);
+        console.log('📋 Hidden sections loaded:', config.rankGroupConfig.hiddenSections);
+      }
+    }
+  }, [formConfig, form]);
 
   // Mutation for saving appraisal
   const saveAppraisalMutation = useMutation({
