@@ -36,10 +36,37 @@ import {
   DialogFooter 
 } from "@/components/ui/dialog";
 import { format } from "date-fns";
-import { Form, FormVersion } from "@shared/schema";
+import { Form, FormVersion, RankGroup } from "@shared/schema";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+
+interface RankGroupConfiguration {
+  competenceAssessments?: Array<{
+    id: string;
+    assessmentCriteria: string;
+    weight: number;
+    effectiveness: string;
+    comment?: string;
+  }>;
+  behaviouralAssessments?: Array<{
+    id: string;
+    assessmentCriteria: string;
+    weight: number;
+    effectiveness: string;
+    comment?: string;
+  }>;
+  recommendations?: Array<{
+    id: string;
+    recommendation: string;
+    yes?: boolean;
+    no?: boolean;
+    na?: boolean;
+    comment?: string;
+  }>;
+  hiddenFields?: string[];
+  hiddenSections?: string[];
+}
 
 // Training and Target schemas - matching AppraisalForm
 const trainingSchema = z.object({
@@ -356,6 +383,26 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
     queryKey: [versionsQueryKey],
   });
   
+  // Query to fetch rank groups for this form
+  const { data: rankGroupsData } = useQuery<RankGroup[]>({
+    queryKey: ['/api/rank-groups/form', realFormId],
+  });
+  
+  // Find the current rank group and parse its configuration
+  const currentRankGroup = React.useMemo(() => {
+    if (!rankGroupsData || !rankGroupName) return null;
+    return rankGroupsData.find(rg => rg.name === rankGroupName) || null;
+  }, [rankGroupsData, rankGroupName]);
+  
+  const rankGroupConfig = React.useMemo((): RankGroupConfiguration | null => {
+    if (!currentRankGroup?.configuration) return null;
+    try {
+      return JSON.parse(currentRankGroup.configuration) as RankGroupConfiguration;
+    } catch {
+      return null;
+    }
+  }, [currentRankGroup]);
+  
   // Derive hasSavedDraft from API data - check if a draft version exists
   const hasDraftVersion = React.useMemo(() => {
     return versionsData?.some(v => v.status === 'draft') ?? false;
@@ -514,6 +561,63 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
     },
   });
 
+  // Load rank group configuration when available
+  useEffect(() => {
+    if (rankGroupConfig) {
+      console.log('[FormEditor] Loading rank group configuration:', rankGroupConfig);
+      
+      // Load competence assessments from rank group config
+      if (rankGroupConfig.competenceAssessments && rankGroupConfig.competenceAssessments.length > 0) {
+        formMethods.setValue('competenceAssessments', rankGroupConfig.competenceAssessments.map(ca => ({
+          ...ca,
+          effectiveness: ca.effectiveness || '',
+          comment: ca.comment || '',
+        })));
+      }
+      
+      // Load behavioural assessments from rank group config
+      if (rankGroupConfig.behaviouralAssessments && rankGroupConfig.behaviouralAssessments.length > 0) {
+        formMethods.setValue('behaviouralAssessments', rankGroupConfig.behaviouralAssessments.map(ba => ({
+          ...ba,
+          effectiveness: ba.effectiveness || '',
+          comment: ba.comment || '',
+        })));
+      }
+      
+      // Load recommendations from rank group config
+      if (rankGroupConfig.recommendations && rankGroupConfig.recommendations.length > 0) {
+        formMethods.setValue('recommendations', rankGroupConfig.recommendations.map(rec => ({
+          id: rec.id,
+          question: rec.recommendation,
+          answer: (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : 'Yes') as 'Yes' | 'No' | 'NA',
+          comment: rec.comment || '',
+          isCustom: true,
+        })));
+      }
+      
+      // Load hidden fields/sections
+      if (rankGroupConfig.hiddenFields) {
+        const newFieldVisibility = { ...fieldVisibility };
+        rankGroupConfig.hiddenFields.forEach(field => {
+          if (field in newFieldVisibility) {
+            (newFieldVisibility as Record<string, boolean>)[field] = false;
+          }
+        });
+        setFieldVisibility(newFieldVisibility);
+      }
+      
+      if (rankGroupConfig.hiddenSections) {
+        const newSectionVisibility = { ...sectionVisibility };
+        rankGroupConfig.hiddenSections.forEach(section => {
+          if (section in newSectionVisibility) {
+            (newSectionVisibility as Record<string, boolean>)[section] = false;
+          }
+        });
+        setSectionVisibility(newSectionVisibility);
+      }
+    }
+  }, [rankGroupConfig]);
+
   const onSubmit = (data: AppraisalFormData) => {
     // Check if we're in config mode and need to validate weights
     if (isConfigMode) {
@@ -542,11 +646,22 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
       appraisalTypeOptions: appraisalTypeOptions,
     };
     
+    // Build hidden fields/sections arrays from visibility state
+    const hiddenFields = Object.entries(fieldVisibility)
+      .filter(([, visible]) => !visible)
+      .map(([field]) => field);
+    
+    const hiddenSections = Object.entries(sectionVisibility)
+      .filter(([, visible]) => !visible)
+      .map(([section]) => section);
+    
     onSave({
       ...data,
       formId: realFormId,
       version: formVersion,
       sharedConfig: sharedConfig,
+      hiddenFields,
+      hiddenSections,
     });
     onClose();
   };

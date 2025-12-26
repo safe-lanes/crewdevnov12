@@ -1704,6 +1704,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update rank group configuration (for form editor)
+  app.put("/api/rank-groups/:id/configuration", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { configuration } = req.body;
+      
+      if (configuration === undefined) {
+        return res.status(400).json({ error: "Configuration is required" });
+      }
+      
+      // Validate configuration is a valid JSON string or object
+      let configString: string;
+      if (typeof configuration === 'string') {
+        try {
+          JSON.parse(configuration);
+          configString = configuration;
+        } catch (e) {
+          return res.status(400).json({ error: "Invalid JSON configuration" });
+        }
+      } else {
+        configString = JSON.stringify(configuration);
+      }
+      
+      const rankGroup = await storage.updateRankGroup(id, { configuration: configString });
+      if (!rankGroup) {
+        return res.status(404).json({ error: "Rank group not found" });
+      }
+      
+      console.log(`✅ [PUT /api/rank-groups/${id}/configuration] Configuration updated successfully`);
+      res.json(rankGroup);
+    } catch (error) {
+      console.error(`❌ [PUT /api/rank-groups/:id/configuration] Error:`, error);
+      res.status(500).json({ error: "Failed to update rank group configuration" });
+    }
+  });
+
   app.post("/api/rank-groups/:id/archive", async (req, res) => {
     try {
       const id = parseInt(req.params.id);

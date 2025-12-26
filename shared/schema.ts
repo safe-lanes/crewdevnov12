@@ -852,12 +852,14 @@ export const insertRankGroupSchema = createInsertSchema(rankGroups).pick({
   name: true,
   ranks: true,
   archivedAt: true,
+  configuration: true,
 });
 
 export const updateRankGroupSchema = createInsertSchema(rankGroups).pick({
   name: true,
   ranks: true,
   archivedAt: true,
+  configuration: true,
 }).partial();
 
 export const insertAvailableRankSchema = createInsertSchema(availableRanks).pick({

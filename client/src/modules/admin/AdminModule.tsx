@@ -3850,7 +3850,6 @@ const AdminModuleInner = (): JSX.Element => {
     mutationFn: async ({formId, configuration, sharedConfig}: {formId: number; configuration?: string; sharedConfig?: Record<string, unknown>}) => {
       const updateData: Record<string, unknown> = {};
       if (configuration) updateData.configuration = configuration;
-      // Serialize sharedConfig to JSON string for storage
       if (sharedConfig) updateData.sharedConfig = JSON.stringify(sharedConfig);
       return apiRequest('PUT', `/api/forms/${formId}`, updateData);
     },
@@ -3871,12 +3870,56 @@ const AdminModuleInner = (): JSX.Element => {
     },
   });
 
+  const updateRankGroupConfigMutation = useMutation({
+    mutationFn: async ({rankGroupId, configuration}: {rankGroupId: number; configuration: string}) => {
+      return apiRequest('PUT', `/api/rank-groups/${rankGroupId}/configuration`, { configuration });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/rank-groups'] });
+      toast({
+        title: "Success",
+        description: "Rank group configuration saved successfully",
+      });
+      setEditingForm(null);
+      setEditingRankGroup(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: `Failed to save rank group configuration: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleFormSave = (formData: any) => {
     console.log("Saving form configuration:", formData);
-    if (formData.formId) {
+    
+    if (!formData.formId) return;
+    
+    const rankGroupConfig = {
+      competenceAssessments: formData.competenceAssessments || [],
+      behaviouralAssessments: formData.behaviouralAssessments || [],
+      recommendations: formData.recommendations || [],
+      hiddenFields: formData.hiddenFields || [],
+      hiddenSections: formData.hiddenSections || [],
+    };
+    
+    const rankGroup = allRankGroups.find(
+      rg => rg.name === editingRankGroup && rg.formId === formData.formId
+    );
+    
+    if (rankGroup) {
+      console.log("Saving rank-group-specific configuration to rank group:", rankGroup.id, rankGroupConfig);
+      updateRankGroupConfigMutation.mutate({
+        rankGroupId: rankGroup.id,
+        configuration: JSON.stringify(rankGroupConfig),
+      });
+    }
+    
+    if (formData.sharedConfig) {
       updateFormMutation.mutate({
         formId: formData.formId,
-        configuration: formData.configuration,
         sharedConfig: formData.sharedConfig,
       });
     }
