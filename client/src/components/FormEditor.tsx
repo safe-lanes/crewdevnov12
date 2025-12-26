@@ -341,9 +341,12 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
     return String.fromCharCode(65 + visibleIndex); // Convert to letter (A=65)
   };
   const [hasSavedDraft, setHasSavedDraft] = useState(false);
-  const [selectedVersionNo, setSelectedVersionNo] = useState<string>("");
-  const [selectedVersionDate, setSelectedVersionDate] = useState<Date | undefined>();
-  const [activeVersion, setActiveVersion] = useState<string>("00"); // Track which version is currently being viewed
+  // Initialize version state from form props to ensure consistency with list display
+  const [selectedVersionNo, setSelectedVersionNo] = useState<string>(form.versionNo || "");
+  const [selectedVersionDate, setSelectedVersionDate] = useState<Date | undefined>(
+    form.versionDate ? new Date(form.versionDate) : undefined
+  );
+  const [activeVersion, setActiveVersion] = useState<string>(form.versionNo || "00"); // Track which version is currently being viewed
   
   // Confirmation dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
