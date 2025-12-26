@@ -20,6 +20,19 @@ export const forms = pgTable("forms", {
   sharedConfig: text("shared_config"), // JSON string for shared field configs (applies to all rank groups, e.g., appraisalTypeOptions)
 });
 
+// Form Versions - tracks draft and released versions for forms
+export const formVersions = pgTable("form_versions", {
+  id: serial("id").primaryKey(),
+  formId: integer("form_id").notNull().references(() => forms.id, { onDelete: 'cascade' }),
+  versionNo: text("version_no").notNull(), // "00", "01", "02", etc.
+  versionDate: text("version_date").notNull(), // Date string in DD-MMM-YYYY format
+  status: text("status").notNull().default("draft"), // "draft" or "released"
+  configuration: text("configuration"), // JSON string for form configuration specific to this version
+  sharedConfig: text("shared_config"), // JSON string for shared field configs
+  createdAt: timestamp("created_at").defaultNow(),
+  releasedAt: timestamp("released_at"), // Timestamp when version was released
+});
+
 export const rankGroups = pgTable("rank_groups", {
   id: serial("id").primaryKey(),
   formId: integer("form_id").notNull().references(() => forms.id),
@@ -816,6 +829,23 @@ export const insertFormSchema = createInsertSchema(forms).pick({
   sharedConfig: true,
 });
 
+export const insertFormVersionSchema = createInsertSchema(formVersions).pick({
+  formId: true,
+  versionNo: true,
+  versionDate: true,
+  status: true,
+  configuration: true,
+  sharedConfig: true,
+});
+
+export const updateFormVersionSchema = createInsertSchema(formVersions).pick({
+  versionNo: true,
+  versionDate: true,
+  status: true,
+  configuration: true,
+  sharedConfig: true,
+}).partial();
+
 export const insertRankGroupSchema = createInsertSchema(rankGroups).pick({
   formId: true,
   name: true,
@@ -1419,6 +1449,9 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertForm = z.infer<typeof insertFormSchema>;
 export type Form = typeof forms.$inferSelect;
+export type InsertFormVersion = z.infer<typeof insertFormVersionSchema>;
+export type UpdateFormVersion = z.infer<typeof updateFormVersionSchema>;
+export type FormVersion = typeof formVersions.$inferSelect;
 export type InsertRankGroup = z.infer<typeof insertRankGroupSchema>;
 export type UpdateRankGroup = z.infer<typeof updateRankGroupSchema>;
 export type RankGroup = typeof rankGroups.$inferSelect;
