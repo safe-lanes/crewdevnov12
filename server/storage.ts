@@ -1586,6 +1586,19 @@ export class MemStorage implements IStorage {
     if (!existing) return undefined;
     const released: FormVersion = { ...existing, status: 'released', releasedAt: new Date() };
     this.formVersions.set(id, released);
+    
+    // Always apply the version's configuration to the main form upon release
+    const form = this.forms.get(existing.formId);
+    if (form) {
+      const updatedForm = {
+        ...form,
+        sharedConfig: existing.sharedConfig,
+        versionNo: existing.versionNo,
+        versionDate: existing.versionDate
+      };
+      this.forms.set(existing.formId, updatedForm);
+    }
+    
     return released;
   }
 
@@ -5198,6 +5211,19 @@ export class PersistentFileStorage implements IStorage {
     if (!existing) return undefined;
     const released: FormVersion = { ...existing, status: 'released', releasedAt: new Date() };
     this.formVersions.set(id, released);
+    
+    // Always apply the version's configuration to the main form upon release
+    const form = this.forms.get(existing.formId);
+    if (form) {
+      const updatedForm = {
+        ...form,
+        sharedConfig: existing.sharedConfig,
+        versionNo: existing.versionNo,
+        versionDate: existing.versionDate
+      };
+      this.forms.set(existing.formId, updatedForm);
+    }
+    
     this.saveToFile();
     return released;
   }

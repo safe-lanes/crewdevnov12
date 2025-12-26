@@ -869,6 +869,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async releaseFormVersion(id: number): Promise<FormVersion | undefined> {
+    // First get the version to access its configuration
+    const version = await this.getFormVersion(id);
+    if (!version) {
+      return undefined;
+    }
+    
+    // Update the version status to released
     const result = await this.db.update(formVersions)
       .set({ 
         status: 'released', 
@@ -876,7 +883,22 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(formVersions.id, id))
       .returning();
-    return result[0] || undefined;
+    
+    if (!result[0]) {
+      return undefined;
+    }
+    
+    // Always apply the version's configuration to the main form upon release
+    // This ensures shared configuration (like appraisalTypeOptions) and version metadata persist
+    await this.db.update(forms)
+      .set({ 
+        sharedConfig: version.sharedConfig,
+        versionNo: version.versionNo,
+        versionDate: version.versionDate
+      })
+      .where(eq(forms.id, version.formId));
+    
+    return result[0];
   }
 
   async deleteFormVersion(id: number): Promise<boolean> {
