@@ -1433,15 +1433,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "No form configured for this rank" });
       }
       
-      // Find the rank group that contains this rank to get its configuration
-      // CRITICAL: Prioritize rank groups that have configuration over those without
+      // Find the ACTIVE rank group that contains this rank
+      // The `false` parameter ensures archived groups are excluded
       const rankGroups = await storage.getRankGroups(form.id, false);
       let rankGroupConfig = null;
       let rankGroupName = null;
-      let fallbackRankGroupName = null;
       
-      // First pass: Find rank groups that match AND have configuration
-      const matchingGroups: Array<{id: number, name: string, configuration: string | null, ranks: string[]}> = [];
+      // Find all active rank groups containing this rank
+      const matchingGroups: Array<{id: number, name: string, configuration: string | null}> = [];
       
       for (const rg of rankGroups) {
         try {
@@ -1450,8 +1449,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             matchingGroups.push({
               id: rg.id,
               name: rg.name,
-              configuration: rg.configuration,
-              ranks
+              configuration: rg.configuration
             });
           }
         } catch (e) {
@@ -1459,29 +1457,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      console.log(`🔍 [/api/forms/for-rank/${rankLabel}] Found ${matchingGroups.length} matching rank groups:`, 
-        matchingGroups.map(g => ({ id: g.id, name: g.name, hasConfig: !!g.configuration })));
+      // Data integrity check: warn if multiple active groups found
+      if (matchingGroups.length > 1) {
+        console.warn(`⚠️ [DATA INTEGRITY] Rank "${rankLabel}" found in ${matchingGroups.length} ACTIVE rank groups. ` +
+          `Groups: ${matchingGroups.map(g => `"${g.name}" (id:${g.id}, hasConfig:${!!g.configuration})`).join(', ')}`);
+      }
       
       if (matchingGroups.length > 0) {
-        // Prioritize groups with configuration
+        // CRITICAL: Prioritize groups WITH configuration over those without
+        // This ensures saved configurations are always returned when available
         const groupsWithConfig = matchingGroups.filter(g => g.configuration);
         const groupsWithoutConfig = matchingGroups.filter(g => !g.configuration);
         
+        let selectedGroup;
         if (groupsWithConfig.length > 0) {
           // Use the first group with configuration (sorted by id for consistency)
-          const selectedGroup = groupsWithConfig.sort((a, b) => a.id - b.id)[0];
+          selectedGroup = groupsWithConfig.sort((a, b) => a.id - b.id)[0];
           rankGroupConfig = JSON.parse(selectedGroup.configuration!);
-          rankGroupName = selectedGroup.name;
-          console.log(`✅ [/api/forms/for-rank/${rankLabel}] Selected rank group with config: "${selectedGroup.name}" (id: ${selectedGroup.id})`);
+          console.log(`✅ [/api/forms/for-rank/${rankLabel}] Using rank group "${selectedGroup.name}" (id: ${selectedGroup.id}) with configuration`);
         } else {
           // No groups have configuration, use the first match by id
-          const selectedGroup = groupsWithoutConfig.sort((a, b) => a.id - b.id)[0];
-          fallbackRankGroupName = selectedGroup.name;
-          rankGroupName = selectedGroup.name;
-          console.log(`⚠️ [/api/forms/for-rank/${rankLabel}] No rank groups with config found. Using fallback: "${selectedGroup.name}" (id: ${selectedGroup.id})`);
+          selectedGroup = groupsWithoutConfig.sort((a, b) => a.id - b.id)[0];
+          console.log(`ℹ️ [/api/forms/for-rank/${rankLabel}] Using rank group "${selectedGroup.name}" (id: ${selectedGroup.id}) - no configuration saved yet`);
         }
+        rankGroupName = selectedGroup.name;
       } else {
-        console.log(`❌ [/api/forms/for-rank/${rankLabel}] No matching rank groups found for this rank`);
+        console.log(`❌ [/api/forms/for-rank/${rankLabel}] No active rank groups found for this rank`);
       }
       
       // Return form with rank group configuration
