@@ -51,6 +51,8 @@ The application uses a modern web stack with a module-first architecture.
     - **Rank Group Uniqueness Validation**: Each rank can only belong to one active (non-archived) rank group per form. UI disables already-assigned ranks with "(assigned to 'GroupName')" message. Server-side validation prevents bypassing the constraint.
     - **Appraisal Form Rank Validation**: Vessel Module validates rank group assignment before opening appraisal form. Shows alert "No Appraisal Rank Group assigned from Admin Module" if crew member's rank has no assigned rank group.
     - **Archive/Unarchive Workflow**: Rank groups can be archived (soft delete) to preserve historical data. Unarchiving restores the group but may conflict with ranks reassigned during archive period.
+    - **Appraisal Type Master (023)**: Centralized reference data for appraisal types (End of Contract, Mid Term, Special, Probation). AppraisalForm.tsx dynamically fetches types from this master instead of hardcoded options.
+    - **Form Versioning System**: Forms support draft/released versioning with version numbers and dates. Uses form_versions table to track version history per form. UI displays artificial IDs (form.id * 1000) but API calls use real database IDs via originalFormId property.
 - **Training Matrix Module**: Manages training certifications and requirements.
     - **Training Master**: Central repository of all training types with categories (S for Statutory, N for Non-Statutory).
     - **Company Training**: Company-specific training configurations synced from Training Master when "Applicable to Company" is checked.

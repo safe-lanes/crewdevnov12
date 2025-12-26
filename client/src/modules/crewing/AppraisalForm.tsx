@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
 import { TrainingCourseSelectionDialog } from '@/modules/crew-pool/TrainingCourseSelectionDialog';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
+import { useMasterDataEntries } from "@/hooks/useDataMasters";
 
 // Comprehensive list of world nationalities
 const NATIONALITIES = [
@@ -330,6 +331,16 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   const { data: availableRanks = [] } = useQuery<Array<{ id: number; name: string; category: string }>>({
     queryKey: ['/api/available-ranks'],
   });
+  
+  // Fetch appraisal types from Master 023
+  const { data: appraisalTypesRaw = [] } = useMasterDataEntries('023');
+  const appraisalTypes = useMemo(() => {
+    return appraisalTypesRaw.map((entry: any) => ({
+      id: entry.entryId || entry.entry_id,
+      name: entry.name,
+      value: entry.name.toLowerCase().replace(/\s+/g, '-')
+    }));
+  }, [appraisalTypesRaw]);
 
   // Fetch form configuration based on crew member's rank
   const { data: formConfig, isLoading: isLoadingFormConfig } = useQuery({
@@ -1430,12 +1441,20 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="draft">Draft</SelectItem>
-                            <SelectItem value="end-of-contract">End of Contract</SelectItem>
-                            <SelectItem value="mid-term">Mid Term</SelectItem>
-                            <SelectItem value="special">Special</SelectItem>
-                            <SelectItem value="probation">Probation</SelectItem>
-                            <SelectItem value="appraiser-s-off">Appraiser S/Off</SelectItem>
+                            {appraisalTypes.length > 0 ? (
+                              appraisalTypes.map((type: { id: string; name: string; value: string }) => (
+                                <SelectItem key={type.id} value={type.value}>
+                                  {type.name}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <>
+                                <SelectItem value="end-of-contract">End of Contract</SelectItem>
+                                <SelectItem value="mid-term">Mid Term</SelectItem>
+                                <SelectItem value="special">Special</SelectItem>
+                                <SelectItem value="probation">Probation</SelectItem>
+                              </>
+                            )}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -3136,12 +3155,20 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value="draft">Draft</SelectItem>
-                                  <SelectItem value="end-of-contract">End of Contract</SelectItem>
-                                  <SelectItem value="mid-term">Mid Term</SelectItem>
-                                  <SelectItem value="special">Special</SelectItem>
-                                  <SelectItem value="probation">Probation</SelectItem>
-                                  <SelectItem value="appraiser-s-off">Appraiser S/Off</SelectItem>
+                                  {appraisalTypes.length > 0 ? (
+                                    appraisalTypes.map((type: { id: string; name: string; value: string }) => (
+                                      <SelectItem key={type.id} value={type.value}>
+                                        {type.name}
+                                      </SelectItem>
+                                    ))
+                                  ) : (
+                                    <>
+                                      <SelectItem value="end-of-contract">End of Contract</SelectItem>
+                                      <SelectItem value="mid-term">Mid Term</SelectItem>
+                                      <SelectItem value="special">Special</SelectItem>
+                                      <SelectItem value="probation">Probation</SelectItem>
+                                    </>
+                                  )}
                                 </SelectContent>
                               </Select>
                               <FormMessage />

@@ -2622,6 +2622,14 @@ const AdminModuleInner = (): JSX.Element => {
           isActive: true,
           isDeleted: false
         };
+      } else if (selectedMaster === "023") {
+        // Appraisal Type master - create entry with just name field
+        return {
+          entryId: newEntryId,
+          name: '',
+          isActive: true,
+          isDeleted: false
+        };
       } else {
         // Other masters - create entry with standard fields
         return {
@@ -6931,7 +6939,7 @@ const AdminModuleInner = (): JSX.Element => {
               {/* Right Table - Selected Master Data */}
               <div className={`${currentBreakpoint === 'mobile' ? 'w-full' : 'flex-1'}`}>
                 <div className="bg-[#52baf3] text-white text-xs font-medium p-0">
-                  <div className={`${selectedMaster === "013" ? USERS_MASTER_GRID_CLASSES : `grid ${selectedMaster === "014" || selectedMaster === "018" || selectedMaster === "019" || selectedMaster === "021" ? 'grid-cols-5' : selectedMaster === "020" || selectedMaster === "022" ? 'grid-cols-3' : 'grid-cols-4'} gap-0`} ${selectedMaster === "013" ? 'users-master-header-grid' : ''}`}>
+                  <div className={`${selectedMaster === "013" ? USERS_MASTER_GRID_CLASSES : `grid ${selectedMaster === "014" || selectedMaster === "018" || selectedMaster === "019" || selectedMaster === "021" ? 'grid-cols-5' : selectedMaster === "020" || selectedMaster === "022" || selectedMaster === "023" ? 'grid-cols-3' : 'grid-cols-4'} gap-0`} ${selectedMaster === "013" ? 'users-master-header-grid' : ''}`}>
                     <div className="p-3 border-r border-blue-400">Entry ID</div>
                     {selectedMaster === "001" ? (
                       <>
@@ -6982,6 +6990,10 @@ const AdminModuleInner = (): JSX.Element => {
                         <div className="p-3 border-r border-blue-400">Email</div>
                       </>
                     ) : selectedMaster === "022" ? (
+                      <>
+                        <div className="p-3 border-r border-blue-400">Name</div>
+                      </>
+                    ) : selectedMaster === "023" ? (
                       <>
                         <div className="p-3 border-r border-blue-400">Name</div>
                       </>
@@ -7390,6 +7402,8 @@ const AdminModuleInner = (): JSX.Element => {
                         ? !item.name && !item.country && !item.email    // For manning agents master
                         : selectedMaster === "022"
                         ? !item.name    // For crew pool master (only name field)
+                        : selectedMaster === "023"
+                        ? !item.name    // For appraisal type master (only name field)
                         : !item.name && !item.description;   // For other masters
                       
                       // Special handling for Users Master (013) - Always render exactly 5 columns
@@ -7612,6 +7626,54 @@ const AdminModuleInner = (): JSX.Element => {
                                 onClick={() => deleteMasterEntry(item.id)}
                                 disabled={!isMasterInEditMode}
                                 data-testid={`delete-crew-pool-${item.id}`}
+                              >
+                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // Special handling for Appraisal Type Master (023) - 3 columns: Entry ID, Name, Actions
+                      if (selectedMaster === "023") {
+                        return (
+                          <div key={item.id} className={`grid grid-cols-3 gap-0 border-b border-gray-100 hover:bg-gray-50 ${
+                            isNewEntry && isMasterInEditMode ? 'bg-blue-50 border-blue-200' : ''
+                          }`}>
+                            {/* Column 1: Entry ID */}
+                            <div className="p-3 border-r border-gray-200">
+                              <span className="text-xs text-gray-700">{item.entryId || item.entry_id || <em className="text-gray-400">No entry ID</em>}</span>
+                            </div>
+                            
+                            {/* Column 2: Name - Using StableInput to prevent value loss during re-renders */}
+                            <div className="p-3 border-r border-gray-200">
+                              {isMasterInEditMode ? (
+                                <StableInput
+                                  value={getEffectiveValue(item.id, 'name', item.name)}
+                                  onChange={(value) => updateMasterField(item.id, 'name', value)}
+                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                  placeholder={isNewEntry ? "Enter appraisal type..." : ""}
+                                  data-testid={`input-appraisal-type-name-${item.id}`}
+                                  autoFocus={isNewEntry}
+                                />
+                              ) : (
+                                <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No name</em>}</span>
+                              )}
+                            </div>
+                            
+                            {/* Column 3: Actions */}
+                            <div className="p-3 flex justify-center">
+                              <button
+                                className={`transition-colors ${
+                                  isMasterInEditMode 
+                                    ? "text-gray-500 hover:text-red-500" 
+                                    : "text-gray-300 cursor-not-allowed"
+                                }`}
+                                onClick={() => deleteMasterEntry(item.id)}
+                                disabled={!isMasterInEditMode}
+                                data-testid={`delete-appraisal-type-${item.id}`}
                               >
                                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

@@ -3278,7 +3278,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
             // Outside configuration mode, show version history (both draft and released if draft exists)
             versions.map((version, index) => (
               <div
-                key={version.versionNo}
+                key={version.id ?? `${version.versionNo}-${version.status}-${index}`}
                 className={`px-3 sm:px-4 py-3 cursor-pointer transition-colors hover:bg-gray-100 ${
                   activeVersion === version.versionNo 
                     ? 'bg-blue-50 border-l-4 border-blue-500' 

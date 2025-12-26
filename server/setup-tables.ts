@@ -57,7 +57,8 @@ async function setupTables() {
       { id: '019', name: 'Languages', description: 'Languages spoken by crew' },
       { id: '020', name: 'Countries', description: 'Country list for addresses' },
       { id: '021', name: 'Manning Agents', description: 'Manning agents and agencies' },
-      { id: '022', name: 'Crew Pool', description: 'Crew pool groupings' }
+      { id: '022', name: 'Crew Pool', description: 'Crew pool groupings' },
+      { id: '023', name: 'Appraisal Type', description: 'Types of crew appraisals' }
     ];
 
     for (const master of masterCategories) {
