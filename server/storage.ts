@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, type Form, type InsertForm, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type CompanyProcessing, type InsertCompanyProcessing, type PromotionForm, type InsertPromotionForm, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type RotationArchiveEntry, type InsertRotationArchive, type DrugAlcoholTestRecord, type InsertDrugAlcoholTestRecord, type RestHoursVesselRecord, type InsertRestHoursVesselRecord, type RestHoursCrewRecord, type InsertRestHoursCrewRecord, type RestHoursDailyRecord, type InsertRestHoursDailyRecord, type FixedTask, type InsertFixedTask, type VariableTask, type InsertVariableTask, type VesselViolationComment, type InsertVesselViolationComment, type OfficeViolationComment, type InsertOfficeViolationComment, type NCReport, type InsertNCReport, type VesselDateLineAdjustment, type InsertVesselDateLineAdjustment, type CrewDashboardSummary, type OilMajorRules, type InsertOilMajorRules, type TrainingMaster, type InsertTrainingMaster, type UpdateTrainingMaster, type CompanyTrainingGroup, type UpdateCompanyTrainingGroup, type CompanyTraining, type InsertCompanyTraining, type UpdateCompanyTraining, type CompanyTrainingRequirement, type UpsertCompanyTrainingRequirement, type TrainingMatrixVesselDraft, type InsertTrainingMatrixVesselDraft, type TrainingMatrixVesselRevision, type InsertTrainingMatrixVesselRevision } from "@shared/schema";
+import { users, type User, type InsertUser, type Form, type InsertForm, type FormVersion, type InsertFormVersion, type RankGroup, type InsertRankGroup, type AvailableRank, type InsertAvailableRank, type UpdateAvailableRank, type CrewMember, type InsertCrewMember, type AppraisalResult, type InsertAppraisalResult, type RecruitmentCandidate, type InsertRecruitmentCandidate, type CompanyRank, type InsertCompanyRank, type PromotionHierarchy, type InsertPromotionHierarchy, type CompanyProcessing, type InsertCompanyProcessing, type PromotionForm, type InsertPromotionForm, type DataMaster, type InsertDataMaster, type MasterDataEntry, type InsertMasterDataEntry, type VesselGroup, type InsertVesselGroup, type VesselDraft, type InsertVesselDraft, type VesselRevision, type InsertVesselRevision, type VesselPlanning, type InsertVesselPlanning, type RotationPlan, type InsertRotationPlan, type RotationArchiveEntry, type InsertRotationArchive, type DrugAlcoholTestRecord, type InsertDrugAlcoholTestRecord, type RestHoursVesselRecord, type InsertRestHoursVesselRecord, type RestHoursCrewRecord, type InsertRestHoursCrewRecord, type RestHoursDailyRecord, type InsertRestHoursDailyRecord, type FixedTask, type InsertFixedTask, type VariableTask, type InsertVariableTask, type VesselViolationComment, type InsertVesselViolationComment, type OfficeViolationComment, type InsertOfficeViolationComment, type NCReport, type InsertNCReport, type VesselDateLineAdjustment, type InsertVesselDateLineAdjustment, type CrewDashboardSummary, type OilMajorRules, type InsertOilMajorRules, type TrainingMaster, type InsertTrainingMaster, type UpdateTrainingMaster, type CompanyTrainingGroup, type UpdateCompanyTrainingGroup, type CompanyTraining, type InsertCompanyTraining, type UpdateCompanyTraining, type CompanyTrainingRequirement, type UpsertCompanyTrainingRequirement, type TrainingMatrixVesselDraft, type InsertTrainingMatrixVesselDraft, type TrainingMatrixVesselRevision, type InsertTrainingMatrixVesselRevision } from "@shared/schema";
 import { 
   getReportingDate, 
   safeParseDate, 
@@ -773,6 +773,13 @@ export interface IStorage {
   createForm(form: InsertForm): Promise<Form>;
   updateForm(id: number, form: Partial<InsertForm>): Promise<Form | undefined>;
   deleteForm(id: number): Promise<boolean>;
+  // Form Versions
+  getFormVersions(formId: number): Promise<FormVersion[]>;
+  getFormVersion(id: number): Promise<FormVersion | undefined>;
+  createFormVersion(version: InsertFormVersion): Promise<FormVersion>;
+  updateFormVersion(id: number, version: Partial<InsertFormVersion>): Promise<FormVersion | undefined>;
+  releaseFormVersion(id: number): Promise<FormVersion | undefined>;
+  deleteFormVersion(id: number): Promise<boolean>;
   getRankGroups(formId: number, includeArchived?: boolean): Promise<RankGroup[]>;
   getAllRankGroups(includeArchived?: boolean): Promise<RankGroup[]>;
   getRankGroup(id: number): Promise<RankGroup | undefined>;
@@ -1535,6 +1542,55 @@ export class MemStorage implements IStorage {
 
   async deleteForm(id: number): Promise<boolean> {
     return this.forms.delete(id);
+  }
+
+  // Form Version methods (stub implementations for MemStorage)
+  private formVersions: Map<number, FormVersion> = new Map();
+  private currentFormVersionId = 1;
+
+  async getFormVersions(formId: number): Promise<FormVersion[]> {
+    return Array.from(this.formVersions.values())
+      .filter(v => v.formId === formId)
+      .sort((a, b) => b.id - a.id);
+  }
+
+  async getFormVersion(id: number): Promise<FormVersion | undefined> {
+    return this.formVersions.get(id);
+  }
+
+  async createFormVersion(version: InsertFormVersion): Promise<FormVersion> {
+    const id = this.currentFormVersionId++;
+    const formVersion: FormVersion = {
+      ...version,
+      id,
+      status: version.status || 'draft',
+      configuration: version.configuration || null,
+      sharedConfig: version.sharedConfig || null,
+      createdAt: new Date(),
+      releasedAt: null,
+    };
+    this.formVersions.set(id, formVersion);
+    return formVersion;
+  }
+
+  async updateFormVersion(id: number, versionData: Partial<InsertFormVersion>): Promise<FormVersion | undefined> {
+    const existing = this.formVersions.get(id);
+    if (!existing) return undefined;
+    const updated: FormVersion = { ...existing, ...versionData };
+    this.formVersions.set(id, updated);
+    return updated;
+  }
+
+  async releaseFormVersion(id: number): Promise<FormVersion | undefined> {
+    const existing = this.formVersions.get(id);
+    if (!existing) return undefined;
+    const released: FormVersion = { ...existing, status: 'released', releasedAt: new Date() };
+    this.formVersions.set(id, released);
+    return released;
+  }
+
+  async deleteFormVersion(id: number): Promise<boolean> {
+    return this.formVersions.delete(id);
   }
 
   async getRankGroups(formId: number, includeArchived: boolean = false): Promise<RankGroup[]> {
@@ -5094,6 +5150,60 @@ export class PersistentFileStorage implements IStorage {
 
   async deleteForm(id: number): Promise<boolean> {
     const result = this.forms.delete(id);
+    if (result) this.saveToFile();
+    return result;
+  }
+
+  // Form Version methods
+  private formVersions: Map<number, FormVersion> = new Map();
+  private currentFormVersionId = 1;
+
+  async getFormVersions(formId: number): Promise<FormVersion[]> {
+    return Array.from(this.formVersions.values())
+      .filter(v => v.formId === formId)
+      .sort((a, b) => b.id - a.id);
+  }
+
+  async getFormVersion(id: number): Promise<FormVersion | undefined> {
+    return this.formVersions.get(id);
+  }
+
+  async createFormVersion(version: InsertFormVersion): Promise<FormVersion> {
+    const id = this.currentFormVersionId++;
+    const formVersion: FormVersion = {
+      ...version,
+      id,
+      status: version.status || 'draft',
+      configuration: version.configuration || null,
+      sharedConfig: version.sharedConfig || null,
+      createdAt: new Date(),
+      releasedAt: null,
+    };
+    this.formVersions.set(id, formVersion);
+    this.saveToFile();
+    return formVersion;
+  }
+
+  async updateFormVersion(id: number, versionData: Partial<InsertFormVersion>): Promise<FormVersion | undefined> {
+    const existing = this.formVersions.get(id);
+    if (!existing) return undefined;
+    const updated: FormVersion = { ...existing, ...versionData };
+    this.formVersions.set(id, updated);
+    this.saveToFile();
+    return updated;
+  }
+
+  async releaseFormVersion(id: number): Promise<FormVersion | undefined> {
+    const existing = this.formVersions.get(id);
+    if (!existing) return undefined;
+    const released: FormVersion = { ...existing, status: 'released', releasedAt: new Date() };
+    this.formVersions.set(id, released);
+    this.saveToFile();
+    return released;
+  }
+
+  async deleteFormVersion(id: number): Promise<boolean> {
+    const result = this.formVersions.delete(id);
     if (result) this.saveToFile();
     return result;
   }

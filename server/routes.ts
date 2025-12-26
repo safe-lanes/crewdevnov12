@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, isConnected, connectionError, calculateExperienceFromSeaService, calculateVesselTypeSpecificExperience, deriveEndorsementCode } from "./storage";
 import { storageAccount } from "./storage-accounts";
-import { type VesselPlanning, type InsertRecruitmentCandidate, insertFormSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertCompanyProcessingSchema, insertPromotionFormSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertOfficeViolationCommentSchema, insertNCReportSchema, insertVesselDateLineAdjustmentSchema, insertOilMajorRulesSchema, type OilMajorRulesConfig, insertTrainingMasterSchema, updateTrainingMasterSchema, trainingMaster, insertTrainingMatrixVesselDraftSchema, insertTrainingMatrixVesselRevisionSchema, insertPayElementSchema, insertContractPayElementSchema, insertAllotmentSchema, insertAdvanceSchema, insertBondItemSchema } from "@shared/schema";
+import { type VesselPlanning, type InsertRecruitmentCandidate, insertFormSchema, insertFormVersionSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertCompanyProcessingSchema, insertPromotionFormSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertOfficeViolationCommentSchema, insertNCReportSchema, insertVesselDateLineAdjustmentSchema, insertOilMajorRulesSchema, type OilMajorRulesConfig, insertTrainingMasterSchema, updateTrainingMasterSchema, trainingMaster, insertTrainingMatrixVesselDraftSchema, insertTrainingMatrixVesselRevisionSchema, insertPayElementSchema, insertContractPayElementSchema, insertAllotmentSchema, insertAdvanceSchema, insertBondItemSchema } from "@shared/schema";
 import { parseCSVContent, convertToStorageFormat } from "./oilMajorRulesParser";
 import { evaluateCompliance, convertCrewToExperience, type ComplianceCheckResult } from "./complianceEngine";
 import { z } from "zod";
@@ -1475,6 +1475,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error cleaning up duplicate forms:", error);
       res.status(500).json({ error: "Failed to cleanup duplicate forms" });
+    }
+  });
+
+  // Form Versions API routes
+  app.get("/api/forms/:formId/versions", async (req, res) => {
+    try {
+      const formId = parseInt(req.params.formId);
+      const versions = await storage.getFormVersions(formId);
+      res.json(versions);
+    } catch (error) {
+      console.error("Error fetching form versions:", error);
+      res.status(500).json({ error: "Failed to fetch form versions" });
+    }
+  });
+
+  app.get("/api/form-versions/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const version = await storage.getFormVersion(id);
+      if (!version) {
+        return res.status(404).json({ error: "Form version not found" });
+      }
+      res.json(version);
+    } catch (error) {
+      console.error("Error fetching form version:", error);
+      res.status(500).json({ error: "Failed to fetch form version" });
+    }
+  });
+
+  app.post("/api/forms/:formId/versions", async (req, res) => {
+    try {
+      const formId = parseInt(req.params.formId);
+      const result = insertFormVersionSchema.safeParse({ ...req.body, formId });
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid form version data", details: result.error.issues });
+      }
+      const version = await storage.createFormVersion(result.data);
+      res.json(version);
+    } catch (error) {
+      console.error("Error creating form version:", error);
+      res.status(500).json({ error: "Failed to create form version" });
+    }
+  });
+
+  app.put("/api/form-versions/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const result = insertFormVersionSchema.partial().safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid form version data", details: result.error.issues });
+      }
+      const version = await storage.updateFormVersion(id, result.data);
+      if (!version) {
+        return res.status(404).json({ error: "Form version not found" });
+      }
+      res.json(version);
+    } catch (error) {
+      console.error("Error updating form version:", error);
+      res.status(500).json({ error: "Failed to update form version" });
+    }
+  });
+
+  app.post("/api/form-versions/:id/release", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const version = await storage.releaseFormVersion(id);
+      if (!version) {
+        return res.status(404).json({ error: "Form version not found" });
+      }
+      res.json(version);
+    } catch (error) {
+      console.error("Error releasing form version:", error);
+      res.status(500).json({ error: "Failed to release form version" });
+    }
+  });
+
+  app.delete("/api/form-versions/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteFormVersion(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Form version not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting form version:", error);
+      res.status(500).json({ error: "Failed to delete form version" });
     }
   });
 

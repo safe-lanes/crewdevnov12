@@ -11,7 +11,8 @@ import {
 } from "@shared/dateUtils";
 import { 
   users, 
-  forms, 
+  forms,
+  formVersions,
   rankGroups, 
   availableRanks, 
   companyRanks,
@@ -43,6 +44,8 @@ import {
   type InsertUser,
   type Form,
   type InsertForm,
+  type FormVersion,
+  type InsertFormVersion,
   type RankGroup,
   type InsertRankGroup,
   type AvailableRank,
@@ -840,6 +843,44 @@ export class DatabaseStorage implements IStorage {
 
   async deleteForm(id: number): Promise<boolean> {
     const result = await this.db.delete(forms).where(eq(forms.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Form Version methods
+  async getFormVersions(formId: number): Promise<FormVersion[]> {
+    return await this.db.select().from(formVersions)
+      .where(eq(formVersions.formId, formId))
+      .orderBy(desc(formVersions.id));
+  }
+
+  async getFormVersion(id: number): Promise<FormVersion | undefined> {
+    const result = await this.db.select().from(formVersions).where(eq(formVersions.id, id));
+    return result[0] || undefined;
+  }
+
+  async createFormVersion(version: InsertFormVersion): Promise<FormVersion> {
+    const [created] = await this.db.insert(formVersions).values(version).returning();
+    return created;
+  }
+
+  async updateFormVersion(id: number, versionData: Partial<InsertFormVersion>): Promise<FormVersion | undefined> {
+    const result = await this.db.update(formVersions).set(versionData).where(eq(formVersions.id, id)).returning();
+    return result[0] || undefined;
+  }
+
+  async releaseFormVersion(id: number): Promise<FormVersion | undefined> {
+    const result = await this.db.update(formVersions)
+      .set({ 
+        status: 'released', 
+        releasedAt: new Date() 
+      })
+      .where(eq(formVersions.id, id))
+      .returning();
+    return result[0] || undefined;
+  }
+
+  async deleteFormVersion(id: number): Promise<boolean> {
+    const result = await this.db.delete(formVersions).where(eq(formVersions.id, id));
     return result.rowCount !== null && result.rowCount > 0;
   }
 
