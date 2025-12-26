@@ -355,6 +355,46 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     }
   }, [formConfig, crewMember?.rank]);
 
+  // Load rank-group-specific configuration when available
+  useEffect(() => {
+    const config = formConfig as any;
+    if (config?.rankGroupConfig) {
+      console.log('📋 Loading rank group configuration:', config.rankGroupName, config.rankGroupConfig);
+      
+      // Load competence assessments from rank group config
+      if (config.rankGroupConfig.competenceAssessments && config.rankGroupConfig.competenceAssessments.length > 0) {
+        form.setValue('competenceAssessments', config.rankGroupConfig.competenceAssessments.map((ca: any) => ({
+          id: ca.id,
+          assessmentCriteria: ca.assessmentCriteria,
+          weight: ca.weight,
+          effectiveness: ca.effectiveness || '',
+          comment: ca.comment || '',
+        })));
+      }
+      
+      // Load behavioural assessments from rank group config
+      if (config.rankGroupConfig.behaviouralAssessments && config.rankGroupConfig.behaviouralAssessments.length > 0) {
+        form.setValue('behaviouralAssessments', config.rankGroupConfig.behaviouralAssessments.map((ba: any) => ({
+          id: ba.id,
+          assessmentCriteria: ba.assessmentCriteria,
+          weight: ba.weight,
+          effectiveness: ba.effectiveness || '',
+          comment: ba.comment || '',
+        })));
+      }
+      
+      // Load recommendations from rank group config
+      if (config.rankGroupConfig.recommendations && config.rankGroupConfig.recommendations.length > 0) {
+        form.setValue('recommendations', config.rankGroupConfig.recommendations.map((rec: any) => ({
+          id: rec.id,
+          question: rec.recommendation || rec.question,
+          answer: rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : 'Yes',
+          comment: rec.comment || '',
+        })));
+      }
+    }
+  }, [formConfig, form]);
+
   // Fetch existing appraisal data when editing
   const { data: existingAppraisal } = useQuery<ExistingAppraisal | undefined>({
     queryKey: ['/api/appraisals', appraisalId],

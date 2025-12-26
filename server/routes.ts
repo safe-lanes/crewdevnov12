@@ -1432,7 +1432,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!form) {
         return res.status(404).json({ error: "No form configured for this rank" });
       }
-      res.json(form);
+      
+      // Find the rank group that contains this rank to get its configuration
+      const rankGroups = await storage.getRankGroups(form.id, false);
+      let rankGroupConfig = null;
+      let rankGroupName = null;
+      
+      for (const rg of rankGroups) {
+        try {
+          const ranks = JSON.parse(rg.ranks);
+          if (Array.isArray(ranks) && ranks.includes(rankLabel)) {
+            rankGroupConfig = rg.configuration ? JSON.parse(rg.configuration) : null;
+            rankGroupName = rg.name;
+            break;
+          }
+        } catch (e) {
+          console.error(`Error parsing ranks for rank group ${rg.id}:`, e);
+        }
+      }
+      
+      // Return form with rank group configuration
+      res.json({
+        ...form,
+        rankGroupName,
+        rankGroupConfig,
+      });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch form for rank" });
     }
