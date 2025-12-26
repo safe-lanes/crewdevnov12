@@ -1429,25 +1429,15 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
         <div className="space-y-2">
           <Label 
             htmlFor="appraisalType" 
-            className={`text-sm ${isConfigMode ? "cursor-pointer" : ""}`}
-            style={isConfigMode ? { color: SHARED_CONFIG_COLOR } : {}}
-            onClick={isConfigMode ? () => setShowAppraisalTypeDialog(true) : undefined}
+            className="text-sm"
           >
             Appraisal Type
           </Label>
           <Select
             value={formMethods.watch("appraisalType") || ""}
             onValueChange={(value) => formMethods.setValue("appraisalType", value)}
-            onOpenChange={(open) => {
-              if (isConfigMode && open) {
-                setShowAppraisalTypeDialog(true);
-              }
-            }}
           >
-            <SelectTrigger 
-              className={`text-sm ${isConfigMode ? "cursor-pointer" : ""}`}
-              style={isConfigMode ? { borderColor: SHARED_CONFIG_COLOR, color: SHARED_CONFIG_COLOR } : {}}
-            >
+            <SelectTrigger className="text-sm">
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
             <SelectContent>
@@ -1505,9 +1495,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <Label 
               htmlFor="personalityIndexCategory"
-              className={`text-sm ${isConfigMode ? "cursor-pointer" : ""}`}
-              style={isConfigMode ? { color: '#52baf3' } : {}}
-              onClick={isConfigMode ? () => setShowPiCategoryDialog(true) : undefined}
+              className="text-sm"
             >
               Personality Index (PI) Category
             </Label>
@@ -1530,16 +1518,8 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
           <Select
             value={formMethods.watch("personalityIndexCategory") || ""}
             onValueChange={(value) => formMethods.setValue("personalityIndexCategory", value)}
-            onOpenChange={(open) => {
-              if (isConfigMode && open) {
-                setShowPiCategoryDialog(true);
-              }
-            }}
           >
-            <SelectTrigger 
-              className={`w-full text-sm ${isConfigMode ? "cursor-pointer" : ""}`}
-              style={isConfigMode ? { borderColor: '#52baf3', color: '#52baf3' } : {}}
-            >
+            <SelectTrigger className="w-full text-sm">
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent>
@@ -2756,17 +2736,8 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
                       </Select>
                     </td>
                     <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                      <Select
-                        onOpenChange={(open) => {
-                          if (open) {
-                            setShowTrainingCategoryDialog(true);
-                          }
-                        }}
-                      >
-                        <SelectTrigger 
-                          className="w-full cursor-pointer text-[13px] h-6"
-                          style={{ borderColor: '#52baf3', color: '#52baf3' }}
-                        >
+                      <Select disabled>
+                        <SelectTrigger className="w-full bg-gray-50 text-[13px] h-6">
                           <SelectValue placeholder="Select Rating" />
                         </SelectTrigger>
                         <SelectContent>
@@ -2779,17 +2750,8 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
                       </Select>
                     </td>
                     <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                      <Select
-                        onOpenChange={(open) => {
-                          if (open) {
-                            setShowTrainingStatusDialog(true);
-                          }
-                        }}
-                      >
-                        <SelectTrigger 
-                          className="w-full cursor-pointer text-[13px] h-6"
-                          style={{ borderColor: '#52baf3', color: '#52baf3' }}
-                        >
+                      <Select disabled>
+                        <SelectTrigger className="w-full bg-gray-50 text-[13px] h-6">
                           <SelectValue placeholder="Proposed" />
                         </SelectTrigger>
                         <SelectContent>
@@ -2884,16 +2846,8 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
                         <Select
                           value={followup.category}
                           onValueChange={(value) => updateTrainingFollowup(followup.id, 'category', value)}
-                          onOpenChange={(open) => {
-                            if (isConfigMode && open && index === 0) {
-                              setShowTrainingCategoryDialog(true);
-                            }
-                          }}
                         >
-                          <SelectTrigger 
-                            className={`w-full ${isConfigMode && index === 0 ? "cursor-pointer" : ""}`}
-                            style={isConfigMode && index === 0 ? { borderColor: '#52baf3', color: '#52baf3' } : {}}
-                          >
+                          <SelectTrigger className="w-full">
                             <SelectValue placeholder="Select Rating" />
                           </SelectTrigger>
                           <SelectContent>
@@ -2909,16 +2863,8 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
                         <Select
                           value={followup.status}
                           onValueChange={(value) => updateTrainingFollowup(followup.id, 'status', value)}
-                          onOpenChange={(open) => {
-                            if (isConfigMode && open && index === 0) {
-                              setShowTrainingStatusDialog(true);
-                            }
-                          }}
                         >
-                          <SelectTrigger 
-                            className={`w-full ${isConfigMode && index === 0 ? "cursor-pointer" : ""}`}
-                            style={isConfigMode && index === 0 ? { borderColor: '#52baf3', color: '#52baf3' } : {}}
-                          >
+                          <SelectTrigger className="w-full">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
