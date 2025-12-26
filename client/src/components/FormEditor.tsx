@@ -413,6 +413,24 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
     return versionsData?.some(v => v.status === 'draft') ?? false;
   }, [versionsData]);
   
+  // Compute next version number and available options dynamically
+  const { nextVersionNo, availableVersionOptions } = React.useMemo(() => {
+    const existingVersions = versionsData || [];
+    const maxVersionNo = existingVersions.reduce((max, v) => {
+      const vNo = parseInt(v.versionNo, 10);
+      return isNaN(vNo) ? max : Math.max(max, vNo);
+    }, 0);
+    const next = String(maxVersionNo + 1).padStart(2, '0');
+    
+    // Generate options from 01 to at least maxVersionNo + 2 (for flexibility)
+    const optionCount = Math.max(3, maxVersionNo + 2);
+    const options = Array.from({ length: optionCount }, (_, i) => 
+      String(i + 1).padStart(2, '0')
+    );
+    
+    return { nextVersionNo: next, availableVersionOptions: options };
+  }, [versionsData]);
+  
   // Create draft version mutation
   const createDraftMutation = useMutation({
     mutationFn: async (versionData: { versionNo: string; versionDate: string; configuration?: string; sharedConfig?: string }) => {
@@ -3210,8 +3228,14 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
                     setShowValidationDialog(true);
                     return;
                   }
+                  setIsConfigMode(false);
+                } else {
+                  // Entering config mode - use pre-computed next version number
+                  setSelectedVersionNo(nextVersionNo);
+                  setSelectedVersionDate(new Date());
+                  setActiveVersion(nextVersionNo);
+                  setIsConfigMode(true);
                 }
-                setIsConfigMode(!isConfigMode);
               }}
               className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
               size="sm"
@@ -3298,16 +3322,16 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
                   <div className="flex items-center gap-2">
                     <span className="text-xs sm:text-sm font-medium text-gray-700">Version No:</span>
                     <Select
-                      value={selectedVersionNo || "01"}
+                      value={selectedVersionNo || nextVersionNo}
                       onValueChange={setSelectedVersionNo}
                     >
                       <SelectTrigger className="w-20 sm:w-24 h-8 text-xs sm:text-sm">
-                        <SelectValue placeholder="01" />
+                        <SelectValue placeholder={nextVersionNo} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="01">01</SelectItem>
-                        <SelectItem value="02">02</SelectItem>
-                        <SelectItem value="03">03</SelectItem>
+                        {availableVersionOptions.map(option => (
+                          <SelectItem key={option} value={option}>{option}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
