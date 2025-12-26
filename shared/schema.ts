@@ -39,6 +39,7 @@ export const rankGroups = pgTable("rank_groups", {
   name: text("name").notNull(),
   ranks: text("ranks").notNull(), // JSON string array of rank names
   archivedAt: timestamp("archived_at"), // Timestamp when archived, null if active
+  configuration: text("configuration"), // JSON string for rank-group-specific configuration (criteria, recommendations, visibility)
 });
 
 export const availableRanks = pgTable("available_ranks", {
