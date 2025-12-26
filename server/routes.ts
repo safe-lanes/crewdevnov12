@@ -1434,21 +1434,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Find the rank group that contains this rank to get its configuration
+      // CRITICAL: Prioritize rank groups that have configuration over those without
       const rankGroups = await storage.getRankGroups(form.id, false);
       let rankGroupConfig = null;
       let rankGroupName = null;
+      let fallbackRankGroupName = null;
+      
+      // First pass: Find rank groups that match AND have configuration
+      const matchingGroups: Array<{id: number, name: string, configuration: string | null, ranks: string[]}> = [];
       
       for (const rg of rankGroups) {
         try {
           const ranks = JSON.parse(rg.ranks);
           if (Array.isArray(ranks) && ranks.includes(rankLabel)) {
-            rankGroupConfig = rg.configuration ? JSON.parse(rg.configuration) : null;
-            rankGroupName = rg.name;
-            break;
+            matchingGroups.push({
+              id: rg.id,
+              name: rg.name,
+              configuration: rg.configuration,
+              ranks
+            });
           }
         } catch (e) {
           console.error(`Error parsing ranks for rank group ${rg.id}:`, e);
         }
+      }
+      
+      console.log(`🔍 [/api/forms/for-rank/${rankLabel}] Found ${matchingGroups.length} matching rank groups:`, 
+        matchingGroups.map(g => ({ id: g.id, name: g.name, hasConfig: !!g.configuration })));
+      
+      if (matchingGroups.length > 0) {
+        // Prioritize groups with configuration
+        const groupsWithConfig = matchingGroups.filter(g => g.configuration);
+        const groupsWithoutConfig = matchingGroups.filter(g => !g.configuration);
+        
+        if (groupsWithConfig.length > 0) {
+          // Use the first group with configuration (sorted by id for consistency)
+          const selectedGroup = groupsWithConfig.sort((a, b) => a.id - b.id)[0];
+          rankGroupConfig = JSON.parse(selectedGroup.configuration!);
+          rankGroupName = selectedGroup.name;
+          console.log(`✅ [/api/forms/for-rank/${rankLabel}] Selected rank group with config: "${selectedGroup.name}" (id: ${selectedGroup.id})`);
+        } else {
+          // No groups have configuration, use the first match by id
+          const selectedGroup = groupsWithoutConfig.sort((a, b) => a.id - b.id)[0];
+          fallbackRankGroupName = selectedGroup.name;
+          rankGroupName = selectedGroup.name;
+          console.log(`⚠️ [/api/forms/for-rank/${rankLabel}] No rank groups with config found. Using fallback: "${selectedGroup.name}" (id: ${selectedGroup.id})`);
+        }
+      } else {
+        console.log(`❌ [/api/forms/for-rank/${rankLabel}] No matching rank groups found for this rank`);
       }
       
       // Return form with rank group configuration
@@ -1458,6 +1491,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         rankGroupConfig,
       });
     } catch (error) {
+      console.error(`❌ [/api/forms/for-rank/:rankLabel] Error:`, error);
       res.status(500).json({ error: "Failed to fetch form for rank" });
     }
   });
