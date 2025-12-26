@@ -36,7 +36,10 @@ import {
   DialogFooter 
 } from "@/components/ui/dialog";
 import { format } from "date-fns";
-import { Form } from "@shared/schema";
+import { Form, FormVersion } from "@shared/schema";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 // Training and Target schemas - matching AppraisalForm
 const trainingSchema = z.object({
@@ -146,6 +149,7 @@ interface FormEditorProps {
 }
 
 export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onClose, onSave }) => {
+  const { toast } = useToast();
   const [activeSection, setActiveSection] = useState("A");
   const [formVersion] = useState(0); // Starting version 0
   const [trainingComments, setTrainingComments] = useState<{[key: string]: string}>({});
@@ -338,19 +342,111 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
     });
   };
 
-  // Mock version data - in real implementation this would come from API
-  const versions = [
-    ...(hasSavedDraft ? [{
-      versionNo: "01",
-      versionDate: selectedVersionDate ? format(selectedVersionDate, "dd-MMM-yyyy") : "02-Jul-2025",
-      status: "Draft"
-    }] : []),
-    {
-      versionNo: "00",
-      versionDate: "01-Jan-2025",
-      status: "Released"
+  // Query to fetch form versions from API
+  const { data: versionsData } = useQuery<FormVersion[]>({
+    queryKey: ['/api/forms', form.id, 'versions'],
+  });
+  
+  // Derive hasSavedDraft from API data - check if a draft version exists
+  const hasDraftVersion = React.useMemo(() => {
+    return versionsData?.some(v => v.status === 'draft') ?? false;
+  }, [versionsData]);
+  
+  // Create draft version mutation
+  const createDraftMutation = useMutation({
+    mutationFn: async (versionData: { versionNo: string; versionDate: string; configuration?: string; sharedConfig?: string }) => {
+      const response = await apiRequest('POST', `/api/forms/${form.id}/versions`, {
+        ...versionData,
+        status: 'draft',
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/forms', form.id, 'versions'] });
+      setHasSavedDraft(true);
+      toast({ title: "Draft saved", description: "Your changes have been saved as a draft." });
+    },
+    onError: (error: Error) => {
+      setHasSavedDraft(false); // Reset on error
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     }
-  ];
+  });
+  
+  // Release version mutation
+  const releaseVersionMutation = useMutation({
+    mutationFn: async (versionId: number) => {
+      const response = await apiRequest('POST', `/api/form-versions/${versionId}/release`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/forms', form.id, 'versions'] });
+      setHasSavedDraft(false);
+      setActiveVersion("00");
+      toast({ title: "Version released", description: "The version has been released successfully." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  });
+  
+  // Build versions array from API data plus local draft if exists
+  const versions = React.useMemo(() => {
+    const apiVersions = versionsData || [];
+    const result: { versionNo: string; versionDate: string; status: string; id?: number }[] = [];
+    
+    // Add draft version from API (prioritize API data)
+    const draftFromApi = apiVersions.find(v => v.status === 'draft');
+    if (draftFromApi) {
+      result.push({
+        id: draftFromApi.id,
+        versionNo: draftFromApi.versionNo,
+        versionDate: draftFromApi.versionDate,
+        status: 'Draft'
+      });
+    } else if (hasSavedDraft && !hasDraftVersion) {
+      // Only show local draft if no API draft exists and we just saved one
+      result.push({
+        versionNo: selectedVersionNo || "01",
+        versionDate: selectedVersionDate ? format(selectedVersionDate, "dd-MMM-yyyy") : format(new Date(), "dd-MMM-yyyy"),
+        status: "Draft"
+      });
+    }
+    
+    // Add released versions from API
+    const releasedVersions = apiVersions.filter(v => v.status === 'released');
+    releasedVersions.forEach(v => {
+      result.push({
+        id: v.id,
+        versionNo: v.versionNo,
+        versionDate: v.versionDate,
+        status: 'Released'
+      });
+    });
+    
+    // If no versions exist, show a default released version placeholder
+    if (result.length === 0 || !result.some(v => v.status === 'Released')) {
+      result.push({
+        versionNo: "00",
+        versionDate: form.versionDate || "01-Jan-2025",
+        status: "Released"
+      });
+    }
+    
+    // Sort by version number descending (latest first)
+    result.sort((a, b) => b.versionNo.localeCompare(a.versionNo));
+    
+    return result;
+  }, [versionsData, hasSavedDraft, hasDraftVersion, selectedVersionNo, selectedVersionDate, form.versionDate]);
+  
+  // Handler to release the current draft version
+  const handleReleaseVersion = () => {
+    const draftVersion = versions.find(v => v.status === 'Draft' && v.id);
+    if (draftVersion && draftVersion.id) {
+      releaseVersionMutation.mutate(draftVersion.id);
+    } else {
+      toast({ title: "No draft to release", description: "Save a draft first before releasing.", variant: "destructive" });
+    }
+  };
 
   // Configuration helper functions
   const toggleFieldConfigurable = (fieldId: string) => {
@@ -2997,17 +3093,19 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             {!isConfigMode ? (
               <Button
-                variant={hasSavedDraft ? "default" : "outline"}
+                variant={(hasSavedDraft || hasDraftVersion) ? "default" : "outline"}
                 size="sm"
                 className={`flex items-center gap-1 sm:gap-2 text-xs sm:text-sm ${
-                  hasSavedDraft 
+                  (hasSavedDraft || hasDraftVersion)
                     ? 'bg-green-600 hover:bg-green-700 text-white' 
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }`}
-                disabled={!hasSavedDraft}
+                disabled={!(hasSavedDraft || hasDraftVersion) || releaseVersionMutation.isPending}
+                onClick={handleReleaseVersion}
+                data-testid="button-release-version"
               >
-                <span className="hidden sm:inline">Release Ver</span>
-                <span className="sm:hidden">Release</span>
+                <span className="hidden sm:inline">{releaseVersionMutation.isPending ? 'Releasing...' : 'Release Ver'}</span>
+                <span className="sm:hidden">{releaseVersionMutation.isPending ? '...' : 'Release'}</span>
               </Button>
             ) : (
               <Button
@@ -3080,16 +3178,37 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
                     }
                   }
                 }
+                // Create draft version via API
+                const versionNo = selectedVersionNo || "01";
+                const versionDate = selectedVersionDate 
+                  ? format(selectedVersionDate, "dd-MMM-yyyy") 
+                  : format(new Date(), "dd-MMM-yyyy");
+                
+                // Get the current form data for the version
+                const formData = formMethods.getValues();
+                const sharedConfig = {
+                  appraisalTypeOptions: appraisalTypeOptions,
+                };
+                
+                createDraftMutation.mutate({
+                  versionNo,
+                  versionDate,
+                  configuration: JSON.stringify(formData),
+                  sharedConfig: JSON.stringify(sharedConfig),
+                });
+                
                 setHasSavedDraft(true);
-                setActiveVersion("01"); // Switch to draft version when saving
+                setActiveVersion(versionNo);
                 formMethods.handleSubmit(onSubmit)();
               }}
               className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
               size="sm"
+              disabled={createDraftMutation.isPending}
+              data-testid="button-save-draft"
             >
               <Save className="h-4 w-4" />
-              <span className="hidden sm:inline">Save Draft</span>
-              <span className="sm:hidden">Save</span>
+              <span className="hidden sm:inline">{createDraftMutation.isPending ? 'Saving...' : 'Save Draft'}</span>
+              <span className="sm:hidden">{createDraftMutation.isPending ? '...' : 'Save'}</span>
             </Button>
           </div>
         </div>
