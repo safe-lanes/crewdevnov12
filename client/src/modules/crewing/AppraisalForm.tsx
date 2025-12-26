@@ -1257,7 +1257,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   );
 
   // Canonical sections array with proper Part IDs and refs
-  const sections = useMemo(() => [
+  // Mapping section IDs to hiddenSections keys
+  const sectionIdToHiddenKey: Record<string, string> = {
+    "B": "partB",
+    "D": "partD",
+  };
+  
+  const allSections = useMemo(() => [
     { id: "A", title: "Part A: Seafarer's Information", type: "continuous1", number: "A", ref: partARef },
     { id: "B", title: "Part B: Information at Start of Appraisal Period", type: "continuous1", number: "B", ref: partBRef },
     { id: "C", title: "Part C: Competence Assessment (Professional Knowledge & Skills)", type: "continuous2", number: "C", ref: partCRef },
@@ -1266,6 +1272,43 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     { id: "F", title: "Part F: Summary & Recommendations", type: "continuous2", number: "F", ref: partFRef },
     { id: "G", title: "Part G: Office Review & Followup", type: "stepper", number: "G", ref: partGRef },
   ], []); // Empty deps since refs are stable
+
+  // Filter sections based on visibility configuration
+  const sections = useMemo(() => {
+    return allSections.filter(section => {
+      const hiddenKey = sectionIdToHiddenKey[section.id];
+      if (hiddenKey) {
+        return isSectionVisible(hiddenKey);
+      }
+      return true; // Sections without a hiddenKey are always visible
+    });
+  }, [allSections, hiddenSections]);
+
+  // Synchronize activeSection state when sections are hidden
+  // If current active section is hidden, navigate to the first visible section
+  useEffect(() => {
+    if (sections.length === 0) return;
+    
+    const currentSectionVisible = sections.some(s => s.id === activeSection);
+    if (!currentSectionVisible) {
+      // Navigate to the first visible section
+      const firstVisibleSection = sections[0];
+      if (firstVisibleSection) {
+        setActiveSection(firstVisibleSection.id);
+      }
+    }
+    
+    // Also synchronize continuous section states
+    const continuous1Visible = sections.filter(s => s.type === 'continuous1');
+    if (activeContinuousSection1 && !continuous1Visible.some(s => s.id === activeContinuousSection1)) {
+      setActiveContinuousSection1(continuous1Visible[0]?.id || '');
+    }
+    
+    const continuous2Visible = sections.filter(s => s.type === 'continuous2');
+    if (activeContinuousSection2 && !continuous2Visible.some(s => s.id === activeContinuousSection2)) {
+      setActiveContinuousSection2(continuous2Visible[0]?.id || '');
+    }
+  }, [sections, activeSection, activeContinuousSection1, activeContinuousSection2]);
 
   // Intersection Observer for continuous group 1 (A&B)
   useEffect(() => {
@@ -1579,37 +1622,40 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="personalityIndexCategory"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs text-gray-500 tracking-wide">Personality Index (PI) Category</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="bg-[#ffffff]">
-                              <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="dominance">Dominance</SelectItem>
-                            <SelectItem value="influence">Influence</SelectItem>
-                            <SelectItem value="steadiness">Steadiness</SelectItem>
-                            <SelectItem value="compliance">Compliance</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                {isFieldVisible('personalityIndexCategory') && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="personalityIndexCategory"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs text-gray-500 tracking-wide">Personality Index (PI) Category</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger className="bg-[#ffffff]">
+                                <SelectValue placeholder="Select category" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="dominance">Dominance</SelectItem>
+                              <SelectItem value="influence">Influence</SelectItem>
+                              <SelectItem value="steadiness">Steadiness</SelectItem>
+                              <SelectItem value="compliance">Compliance</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Part B: Information at Start of Appraisal Period */}
+        {isSectionVisible('partB') && (
         <div ref={partBRef} data-section-id="B">
           <Card className="bg-white">
             <CardContent className="p-6">
@@ -1922,6 +1968,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
             </CardContent>
           </Card>
         </div>
+        )}
       </div>
     );
   };
@@ -2067,6 +2114,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         </div>
 
         {/* Part D: Behavioural Assessment */}
+        {isSectionVisible('partD') && (
         <div ref={partDRef} data-section-id="D">
           <Card className="bg-white">
             <CardContent className="p-6">
@@ -2200,6 +2248,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
             </CardContent>
           </Card>
         </div>
+        )}
 
         {/* Part E: Training Needs & Development */}
         <div ref={partERef} data-section-id="E">
@@ -3293,31 +3342,33 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                         />
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="personalityIndexCategory"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs text-gray-500 tracking-wide">Personality Index (PI) Category</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                  <SelectTrigger className="bg-[#ffffff]">
-                                    <SelectValue placeholder="Select category" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="dominance">Dominance</SelectItem>
-                                  <SelectItem value="influence">Influence</SelectItem>
-                                  <SelectItem value="steadiness">Steadiness</SelectItem>
-                                  <SelectItem value="compliance">Compliance</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
+                      {isFieldVisible('personalityIndexCategory') && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="personalityIndexCategory"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs text-gray-500 tracking-wide">Personality Index (PI) Category</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger className="bg-[#ffffff]">
+                                      <SelectValue placeholder="Select category" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="dominance">Dominance</SelectItem>
+                                    <SelectItem value="influence">Influence</SelectItem>
+                                    <SelectItem value="steadiness">Steadiness</SelectItem>
+                                    <SelectItem value="compliance">Compliance</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      )}
 
                       <div className="flex justify-end mt-6">
                         <Button className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8">
@@ -3330,7 +3381,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                 )}
 
                 {/* Part B: Information at Start of Appraisal Period */}
-                {activeSection === "information" && (
+                {activeSection === "information" && isSectionVisible('partB') && (
                   <Card className="bg-white">
                     <CardContent className="p-6">
                       <div className="pb-4 mb-6">
@@ -3779,7 +3830,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                 )}
 
                 {/* Part D: Behavioural Assessment */}
-                {activeSection === "behaviouralAssessment" && (
+                {activeSection === "behaviouralAssessment" && isSectionVisible('partD') && (
                   <Card className="bg-white">
                     <CardContent className="p-6">
                       <div className="pb-4 mb-6">
