@@ -387,8 +387,10 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
   });
   
   // Query to fetch rank groups for this form
+  // Note: queryKey[0] is used as the URL by the default fetcher, so include full URL path
   const { data: rankGroupsData } = useQuery<RankGroup[]>({
-    queryKey: ['/api/rank-groups/form', realFormId],
+    queryKey: [`/api/rank-groups/form/${realFormId}`],
+    enabled: !!realFormId,
   });
   
   // Find the current rank group and parse its configuration

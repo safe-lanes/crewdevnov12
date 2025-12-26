@@ -1611,6 +1611,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to normalize rank strings for comparison (case-insensitive, trimmed)
+  function normalizeRankForComparison(rank: string): string {
+    return rank.trim().toLowerCase();
+  }
+
+  // Check if a rank has an assigned rank group for a specific form type
+  // Used by Vessel Module to validate before opening appraisal form
+  // IMPORTANT: This route must be defined BEFORE /api/rank-groups/:id to avoid route conflicts
+  app.get("/api/rank-groups/check-assignment", async (req, res) => {
+    try {
+      const { rank, formName } = req.query;
+      
+      if (!rank || !formName) {
+        return res.status(400).json({ error: "rank and formName are required" });
+      }
+      
+      const inputRank = (rank as string).trim();
+      const normalizedInputRank = normalizeRankForComparison(inputRank);
+      
+      // First find the form by name
+      const forms = await storage.getForms();
+      const form = forms.find(f => f.name === formName);
+      
+      if (!form) {
+        return res.json({ 
+          hasAssignment: false, 
+          message: `Form "${formName}" not found in system` 
+        });
+      }
+      
+      // Get active rank groups for this form
+      const activeRankGroups = await storage.getRankGroups(form.id, false);
+      
+      // Check if any active rank group contains this rank (case-insensitive matching)
+      for (const group of activeRankGroups) {
+        let ranks: string[] = [];
+        try {
+          ranks = typeof group.ranks === 'string' ? JSON.parse(group.ranks) : group.ranks;
+        } catch (e) {
+          ranks = [];
+        }
+        
+        // Check with case-insensitive comparison
+        const matchedRank = ranks.find(r => normalizeRankForComparison(r) === normalizedInputRank);
+        if (matchedRank) {
+          return res.json({ 
+            hasAssignment: true, 
+            rankGroupId: group.id,
+            rankGroupName: group.name,
+            formId: form.id,
+            matchedRank: matchedRank
+          });
+        }
+      }
+      
+      return res.json({ 
+        hasAssignment: false, 
+        message: `No Appraisal Rank Group assigned from Admin Module` 
+      });
+    } catch (error) {
+      console.error("Error checking rank assignment:", error);
+      res.status(500).json({ error: "Failed to check rank assignment" });
+    }
+  });
+
   app.get("/api/rank-groups/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -1838,70 +1903,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error getting rank conflicts:", error);
       res.status(500).json({ error: "Failed to get rank conflicts" });
-    }
-  });
-
-  // Helper function to normalize rank strings for comparison (case-insensitive, trimmed)
-  function normalizeRankForComparison(rank: string): string {
-    return rank.trim().toLowerCase();
-  }
-
-  // Check if a rank has an assigned rank group for a specific form type
-  // Used by Vessel Module to validate before opening appraisal form
-  app.get("/api/rank-groups/check-assignment", async (req, res) => {
-    try {
-      const { rank, formName } = req.query;
-      
-      if (!rank || !formName) {
-        return res.status(400).json({ error: "rank and formName are required" });
-      }
-      
-      const inputRank = (rank as string).trim();
-      const normalizedInputRank = normalizeRankForComparison(inputRank);
-      
-      // First find the form by name
-      const forms = await storage.getForms();
-      const form = forms.find(f => f.name === formName);
-      
-      if (!form) {
-        return res.json({ 
-          hasAssignment: false, 
-          message: `Form "${formName}" not found in system` 
-        });
-      }
-      
-      // Get active rank groups for this form
-      const activeRankGroups = await storage.getRankGroups(form.id, false);
-      
-      // Check if any active rank group contains this rank (case-insensitive matching)
-      for (const group of activeRankGroups) {
-        let ranks: string[] = [];
-        try {
-          ranks = typeof group.ranks === 'string' ? JSON.parse(group.ranks) : group.ranks;
-        } catch (e) {
-          ranks = [];
-        }
-        
-        // Check with case-insensitive comparison
-        const matchedRank = ranks.find(r => normalizeRankForComparison(r) === normalizedInputRank);
-        if (matchedRank) {
-          return res.json({ 
-            hasAssignment: true, 
-            rankGroupId: group.id,
-            rankGroupName: group.name,
-            formId: form.id,
-            matchedRank: matchedRank
-          });
-        }
-      }
-      
-      return res.json({ 
-        hasAssignment: false, 
-        message: `No Appraisal Rank Group assigned from Admin Module` 
-      });
-    } catch (error) {
-      console.error("Error checking rank assignment:", error);
-      res.status(500).json({ error: "Failed to check rank assignment" });
     }
   });
 
