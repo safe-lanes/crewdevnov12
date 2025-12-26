@@ -141,8 +141,13 @@ const appraisalSchema = z.object({
 
 type AppraisalFormData = z.infer<typeof appraisalSchema>;
 
+// Extended form type that includes originalFormId from AdminModule expanded forms
+interface ExtendedForm extends Form {
+  originalFormId?: number;
+}
+
 interface FormEditorProps {
-  form: Form;
+  form: ExtendedForm;
   rankGroupName?: string;
   onClose: () => void;
   onSave: (data: any) => void;
@@ -150,6 +155,9 @@ interface FormEditorProps {
 
 export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onClose, onSave }) => {
   const { toast } = useToast();
+  
+  // Use originalFormId (real DB ID) when available, otherwise fall back to form.id
+  const realFormId = form.originalFormId ?? form.id;
   const [activeSection, setActiveSection] = useState("A");
   const [formVersion] = useState(0); // Starting version 0
   const [trainingComments, setTrainingComments] = useState<{[key: string]: string}>({});
@@ -344,7 +352,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
 
   // Query to fetch form versions from API
   const { data: versionsData } = useQuery<FormVersion[]>({
-    queryKey: ['/api/forms', form.id, 'versions'],
+    queryKey: ['/api/forms', realFormId, 'versions'],
   });
   
   // Derive hasSavedDraft from API data - check if a draft version exists
@@ -355,14 +363,14 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
   // Create draft version mutation
   const createDraftMutation = useMutation({
     mutationFn: async (versionData: { versionNo: string; versionDate: string; configuration?: string; sharedConfig?: string }) => {
-      const response = await apiRequest('POST', `/api/forms/${form.id}/versions`, {
+      const response = await apiRequest('POST', `/api/forms/${realFormId}/versions`, {
         ...versionData,
         status: 'draft',
       });
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/forms', form.id, 'versions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/forms', realFormId, 'versions'] });
       setHasSavedDraft(true);
       toast({ title: "Draft saved", description: "Your changes have been saved as a draft." });
     },
@@ -379,7 +387,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/forms', form.id, 'versions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/forms', realFormId, 'versions'] });
       setHasSavedDraft(false);
       setActiveVersion("00");
       toast({ title: "Version released", description: "The version has been released successfully." });
@@ -535,7 +543,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
     
     onSave({
       ...data,
-      formId: form.id,
+      formId: realFormId,
       version: formVersion,
       sharedConfig: sharedConfig,
     });
