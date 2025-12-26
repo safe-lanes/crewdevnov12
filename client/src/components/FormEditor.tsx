@@ -350,9 +350,10 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
     });
   };
 
-  // Query to fetch form versions from API
+  // Query to fetch form versions from API - use URL as first element for default fetcher
+  const versionsQueryKey = `/api/forms/${realFormId}/versions`;
   const { data: versionsData } = useQuery<FormVersion[]>({
-    queryKey: ['/api/forms', realFormId, 'versions'],
+    queryKey: [versionsQueryKey],
   });
   
   // Derive hasSavedDraft from API data - check if a draft version exists
@@ -370,7 +371,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/forms', realFormId, 'versions'] });
+      queryClient.invalidateQueries({ queryKey: [versionsQueryKey] });
       setHasSavedDraft(true);
       toast({ title: "Draft saved", description: "Your changes have been saved as a draft." });
     },
@@ -387,7 +388,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/forms', realFormId, 'versions'] });
+      queryClient.invalidateQueries({ queryKey: [versionsQueryKey] });
       setHasSavedDraft(false);
       setActiveVersion("00");
       toast({ title: "Version released", description: "The version has been released successfully." });
