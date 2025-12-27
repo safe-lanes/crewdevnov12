@@ -133,14 +133,14 @@ export interface FormSectionBaseProps {
 
 export interface PartAProps extends FormSectionBaseProps {
   fieldVisibility: FieldVisibility;
-  toggleFieldVisibility: (field: keyof FieldVisibility) => void;
+  toggleFieldVisibility: (field: string) => void;
   appraisalTypeOptions: string[];
   piCategoryOptions: string[];
 }
 
 export interface PartBProps extends FormSectionBaseProps {
   sectionVisibility: SectionVisibility;
-  toggleSectionVisibility: (section: keyof SectionVisibility) => void;
+  toggleSectionVisibility: (section: string) => void;
   effectivenessOptions: string[];
   getDynamicSectionLetter: (originalId: string) => string;
   trainings: Training[];
@@ -174,7 +174,7 @@ export interface PartCProps extends FormSectionBaseProps {
 
 export interface PartDProps extends FormSectionBaseProps {
   sectionVisibility: SectionVisibility;
-  toggleSectionVisibility: (section: keyof SectionVisibility) => void;
+  toggleSectionVisibility: (section: string) => void;
   effectivenessOptions: string[];
   getDynamicSectionLetter: (originalId: string) => string;
   behaviouralAssessments: BehaviouralAssessment[];

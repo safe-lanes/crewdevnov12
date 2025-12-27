@@ -91,6 +91,7 @@ The application uses a modern web stack with a module-first architecture.
     - **ComplianceMatrixDialog**: Interactive UI showing all oil majors and their rule-by-rule validation results.
 - **Rank Ordering System**: All crew-displaying modules use rank-based sorting.
 - **Performance Optimization**: Utilizes map-based lookups, TanStack Query, `useRef`, `useMemo`, and optimized `PersistentFileStorage`.
+    - **FormEditor Component Refactor (Dec 2024)**: Extracted 7 section components (PartA-PartG) into client/src/components/form-editor-parts/ wrapped with React.memo. FormEditor.tsx reduced from ~3800 to ~2550 lines. Parent-level useWatch hooks provide stable array references for trainings, targets, assessments, etc. Score calculations (competenceSectionScore, behaviouralSectionScore, overallScore) are memoized with useMemo. This pattern serves as a template for future complex forms.
 - **Data Storage**: `PersistentFileStorage` for development, PostgreSQL/Drizzle ORM for production.
 - **Crew Member Update Protection**: Vessel assignment fields are protected from accidental clearing during updates.
 - **Crew Dashboard Timeline Card**: Canvas-based visualization of 6-month vessel assignments with color coding and appraisal/handover badges.
