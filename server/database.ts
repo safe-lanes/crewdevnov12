@@ -914,6 +914,15 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(forms.id, version.formId));
     
+    // CRITICAL: Copy the version's configuration to the rank group upon release
+    // This ensures the appraisal form loads the correct criteria when opened
+    if (version.rankGroupId && version.configuration) {
+      console.log(`📋 [RELEASE] Copying configuration to rank group ${version.rankGroupId}`);
+      await this.db.update(rankGroups)
+        .set({ configuration: version.configuration })
+        .where(eq(rankGroups.id, version.rankGroupId));
+    }
+    
     return result[0];
   }
 
