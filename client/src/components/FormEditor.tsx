@@ -1,7 +1,9 @@
-import React, { useState, useRef, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+// Part components ready for integration - uncomment when replacing renderPartX functions:
+// import { PartA, PartB, PartC, PartD, PartE, PartF, PartG } from "./form-editor-parts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -589,6 +591,15 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
     },
   });
 
+  // useWatch hooks for stable array data - prevents re-renders from watch() in child components
+  const trainings = useWatch({ control: formMethods.control, name: "trainings" });
+  const targets = useWatch({ control: formMethods.control, name: "targets" });
+  const competenceAssessments = useWatch({ control: formMethods.control, name: "competenceAssessments" });
+  const behaviouralAssessments = useWatch({ control: formMethods.control, name: "behaviouralAssessments" });
+  const trainingNeeds = useWatch({ control: formMethods.control, name: "trainingNeeds" });
+  const recommendations = useWatch({ control: formMethods.control, name: "recommendations" });
+  const trainingFollowups = useWatch({ control: formMethods.control, name: "trainingFollowups" });
+
   // Load rank group configuration when available
   useEffect(() => {
     if (rankGroupConfig) {
@@ -799,13 +810,12 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
     }
   };
 
-  // Calculate section score based on weight and effectiveness
-  const calculateSectionScore = () => {
-    const assessments = formMethods.watch("competenceAssessments");
+  // Calculate section score using memoized watched data
+  const competenceSectionScore = useMemo(() => {
     let totalScore = 0;
     let totalWeight = 0;
     
-    assessments.forEach(assessment => {
+    competenceAssessments.forEach(assessment => {
       if (assessment.effectiveness && assessment.weight) {
         let rating = 0;
         switch (assessment.effectiveness) {
@@ -821,15 +831,14 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
     });
     
     return totalWeight > 0 ? (totalScore * 100 / totalWeight).toFixed(1) : "0.0";
-  };
+  }, [competenceAssessments]);
 
-  // Calculate behavioural section score
-  const calculateBehaviouralSectionScore = () => {
-    const assessments = formMethods.watch("behaviouralAssessments");
+  // Calculate behavioural section score using memoized watched data
+  const behaviouralSectionScore = useMemo(() => {
     let totalScore = 0;
     let totalWeight = 0;
     
-    assessments.forEach(assessment => {
+    behaviouralAssessments.forEach(assessment => {
       if (assessment.effectiveness && assessment.weight) {
         let rating = 0;
         switch (assessment.effectiveness) {
@@ -845,7 +854,11 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
     });
     
     return totalWeight > 0 ? (totalScore * 100 / totalWeight).toFixed(1) : "0.0";
-  };
+  }, [behaviouralAssessments]);
+
+  // Keep legacy functions for backward compatibility with existing code
+  const calculateSectionScore = useCallback(() => competenceSectionScore, [competenceSectionScore]);
+  const calculateBehaviouralSectionScore = useCallback(() => behaviouralSectionScore, [behaviouralSectionScore]);
 
   // Training Needs management functions
   const addTrainingNeed = (type: 'database' | 'new') => {
@@ -1444,12 +1457,15 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
     formMethods.setValue("behaviouralAssessments", updatedAssessments);
   };
 
-  // Calculate overall score (F1)
-  const calculateOverallScore = () => {
-    const competenceScore = parseFloat(calculateSectionScore());
-    const behaviouralScore = parseFloat(calculateBehaviouralSectionScore());
+  // Calculate overall score (F1) using memoized values
+  const overallScore = useMemo(() => {
+    const competenceScore = parseFloat(competenceSectionScore);
+    const behaviouralScore = parseFloat(behaviouralSectionScore);
     return ((competenceScore + behaviouralScore) / 2).toFixed(1);
-  };
+  }, [competenceSectionScore, behaviouralSectionScore]);
+
+  // Keep legacy function for backward compatibility
+  const calculateOverallScore = useCallback(() => overallScore, [overallScore]);
 
   const sections = [
     { id: "A", title: "Seafarer's Information", active: true, ref: partARef },
