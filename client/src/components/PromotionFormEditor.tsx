@@ -269,25 +269,33 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowLicenseDialog(true)}
-                          disabled={isPreviewMode}
-                          className="text-xs"
-                          data-testid="button-add-license"
-                        >
-                          <Plus className="h-3 w-3 mr-1" />
-                          ADD FROM DATABASE
-                        </Button>
-                        {selectedLicenseIds.length > 0 && (
-                          <span className="text-xs text-gray-500 truncate max-w-[200px]">
-                            {selectedLicenseIds.length} selected
-                          </span>
-                        )}
-                      </div>
+                      {isPreviewMode ? (
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          {selectedLicenseIds.length > 0 
+                            ? (getSelectedLicenseNames() || `${selectedLicenseIds.length} license(s)`)
+                            : <span className="text-gray-400 italic">Not configured</span>
+                          }
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowLicenseDialog(true)}
+                            className="text-xs"
+                            data-testid="button-add-license"
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            ADD FROM DATABASE
+                          </Button>
+                          {selectedLicenseIds.length > 0 && (
+                            <span className="text-xs text-gray-500 truncate max-w-[200px]">
+                              {selectedLicenseIds.length} selected
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
 
@@ -307,26 +315,35 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          placeholder="Min"
-                          className="h-8 w-20 text-xs"
-                          value={watch('ageMin') ?? ''}
-                          onChange={(e) => setValue('ageMin', e.target.value ? parseInt(e.target.value) : null)}
-                          disabled={isPreviewMode}
-                          data-testid="input-age-min"
-                        />
-                        <Input
-                          type="number"
-                          placeholder="Max"
-                          className="h-8 w-20 text-xs"
-                          value={watch('ageMax') ?? ''}
-                          onChange={(e) => setValue('ageMax', e.target.value ? parseInt(e.target.value) : null)}
-                          disabled={isPreviewMode}
-                          data-testid="input-age-max"
-                        />
-                      </div>
+                      {isPreviewMode ? (
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          {watch('ageMin') !== null || watch('ageMax') !== null
+                            ? `${watch('ageMin') ?? '—'} to ${watch('ageMax') ?? '—'} years`
+                            : <span className="text-gray-400 italic">Not configured</span>
+                          }
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            placeholder="Min"
+                            className="h-8 w-20 text-xs"
+                            value={watch('ageMin') ?? ''}
+                            onChange={(e) => setValue('ageMin', e.target.value ? parseInt(e.target.value) : null)}
+                            data-testid="input-age-min"
+                          />
+                          <span className="text-xs text-gray-500">to</span>
+                          <Input
+                            type="number"
+                            placeholder="Max"
+                            className="h-8 w-20 text-xs"
+                            value={watch('ageMax') ?? ''}
+                            onChange={(e) => setValue('ageMax', e.target.value ? parseInt(e.target.value) : null)}
+                            data-testid="input-age-max"
+                          />
+                          <span className="text-xs text-gray-500">years</span>
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
 
@@ -352,18 +369,26 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                   <TableRow className="bg-gray-50/50 dark:bg-gray-800/50">
                     <TableCell className="text-sm pl-8">A2.3a Minimum Rank Experience (Vessel)?</TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          placeholder="Months"
-                          className="h-8 w-24 text-xs"
-                          value={experienceMonths.rankVessel ?? ''}
-                          onChange={(e) => setValue('experienceMonths.rankVessel', e.target.value ? parseInt(e.target.value) : null)}
-                          disabled={isPreviewMode}
-                          data-testid="input-exp-rank-vessel"
-                        />
-                        <span className="text-xs text-gray-500">Months</span>
-                      </div>
+                      {isPreviewMode ? (
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          {experienceMonths.rankVessel !== null
+                            ? `${experienceMonths.rankVessel} months`
+                            : <span className="text-gray-400 italic">Not configured</span>
+                          }
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            placeholder="Months"
+                            className="h-8 w-24 text-xs"
+                            value={experienceMonths.rankVessel ?? ''}
+                            onChange={(e) => setValue('experienceMonths.rankVessel', e.target.value ? parseInt(e.target.value) : null)}
+                            data-testid="input-exp-rank-vessel"
+                          />
+                          <span className="text-xs text-gray-500">Months</span>
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
 
@@ -371,18 +396,26 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                   <TableRow className="bg-gray-50/50 dark:bg-gray-800/50">
                     <TableCell className="text-sm pl-8">A2.3b Minimum Rank Experience (Vessel Type)?</TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          placeholder="Months"
-                          className="h-8 w-24 text-xs"
-                          value={experienceMonths.rankVesselType ?? ''}
-                          onChange={(e) => setValue('experienceMonths.rankVesselType', e.target.value ? parseInt(e.target.value) : null)}
-                          disabled={isPreviewMode}
-                          data-testid="input-exp-rank-vessel-type"
-                        />
-                        <span className="text-xs text-gray-500">Months</span>
-                      </div>
+                      {isPreviewMode ? (
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          {experienceMonths.rankVesselType !== null
+                            ? `${experienceMonths.rankVesselType} months`
+                            : <span className="text-gray-400 italic">Not configured</span>
+                          }
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            placeholder="Months"
+                            className="h-8 w-24 text-xs"
+                            value={experienceMonths.rankVesselType ?? ''}
+                            onChange={(e) => setValue('experienceMonths.rankVesselType', e.target.value ? parseInt(e.target.value) : null)}
+                            data-testid="input-exp-rank-vessel-type"
+                          />
+                          <span className="text-xs text-gray-500">Months</span>
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
 
@@ -390,18 +423,26 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                   <TableRow className="bg-gray-50/50 dark:bg-gray-800/50">
                     <TableCell className="text-sm pl-8">A2.3c Minimum Company Service in previous rank?</TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          placeholder="Months"
-                          className="h-8 w-24 text-xs"
-                          value={experienceMonths.companyService ?? ''}
-                          onChange={(e) => setValue('experienceMonths.companyService', e.target.value ? parseInt(e.target.value) : null)}
-                          disabled={isPreviewMode}
-                          data-testid="input-exp-company"
-                        />
-                        <span className="text-xs text-gray-500">Months</span>
-                      </div>
+                      {isPreviewMode ? (
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          {experienceMonths.companyService !== null
+                            ? `${experienceMonths.companyService} months`
+                            : <span className="text-gray-400 italic">Not configured</span>
+                          }
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            placeholder="Months"
+                            className="h-8 w-24 text-xs"
+                            value={experienceMonths.companyService ?? ''}
+                            onChange={(e) => setValue('experienceMonths.companyService', e.target.value ? parseInt(e.target.value) : null)}
+                            data-testid="input-exp-company"
+                          />
+                          <span className="text-xs text-gray-500">Months</span>
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
 
@@ -409,18 +450,26 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                   <TableRow className="bg-gray-50/50 dark:bg-gray-800/50">
                     <TableCell className="text-sm pl-8">A2.3d Minimum Tanker Experience?</TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          placeholder="Months"
-                          className="h-8 w-24 text-xs"
-                          value={experienceMonths.tankerExperience ?? ''}
-                          onChange={(e) => setValue('experienceMonths.tankerExperience', e.target.value ? parseInt(e.target.value) : null)}
-                          disabled={isPreviewMode}
-                          data-testid="input-exp-tanker"
-                        />
-                        <span className="text-xs text-gray-500">Months</span>
-                      </div>
+                      {isPreviewMode ? (
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          {experienceMonths.tankerExperience !== null
+                            ? `${experienceMonths.tankerExperience} months`
+                            : <span className="text-gray-400 italic">Not configured</span>
+                          }
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            placeholder="Months"
+                            className="h-8 w-24 text-xs"
+                            value={experienceMonths.tankerExperience ?? ''}
+                            onChange={(e) => setValue('experienceMonths.tankerExperience', e.target.value ? parseInt(e.target.value) : null)}
+                            data-testid="input-exp-tanker"
+                          />
+                          <span className="text-xs text-gray-500">Months</span>
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
 
@@ -440,15 +489,23 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Input
-                        type="number"
-                        placeholder="Min Recommendations"
-                        className="h-8 w-40 text-xs"
-                        value={watch('minRecommendations') ?? ''}
-                        onChange={(e) => setValue('minRecommendations', e.target.value ? parseInt(e.target.value) : null)}
-                        disabled={isPreviewMode}
-                        data-testid="input-min-recommendations"
-                      />
+                      {isPreviewMode ? (
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          {watch('minRecommendations') !== null
+                            ? `${watch('minRecommendations')} recommendations`
+                            : <span className="text-gray-400 italic">Not configured</span>
+                          }
+                        </span>
+                      ) : (
+                        <Input
+                          type="number"
+                          placeholder="Min Recommendations"
+                          className="h-8 w-40 text-xs"
+                          value={watch('minRecommendations') ?? ''}
+                          onChange={(e) => setValue('minRecommendations', e.target.value ? parseInt(e.target.value) : null)}
+                          data-testid="input-min-recommendations"
+                        />
+                      )}
                     </TableCell>
                   </TableRow>
 
@@ -456,15 +513,23 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                   <TableRow>
                     <TableCell className="text-sm">A2.5 Promotion Checklist Progress</TableCell>
                     <TableCell>
-                      <Input
-                        type="number"
-                        placeholder="Min No. of Verifications"
-                        className="h-8 w-40 text-xs"
-                        value={watch('minChecklistVerifications') ?? ''}
-                        onChange={(e) => setValue('minChecklistVerifications', e.target.value ? parseInt(e.target.value) : null)}
-                        disabled={isPreviewMode}
-                        data-testid="input-min-verifications"
-                      />
+                      {isPreviewMode ? (
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          {watch('minChecklistVerifications') !== null
+                            ? `${watch('minChecklistVerifications')} verifications`
+                            : <span className="text-gray-400 italic">Not configured</span>
+                          }
+                        </span>
+                      ) : (
+                        <Input
+                          type="number"
+                          placeholder="Min No. of Verifications"
+                          className="h-8 w-40 text-xs"
+                          value={watch('minChecklistVerifications') ?? ''}
+                          onChange={(e) => setValue('minChecklistVerifications', e.target.value ? parseInt(e.target.value) : null)}
+                          data-testid="input-min-verifications"
+                        />
+                      )}
                     </TableCell>
                   </TableRow>
 
@@ -502,18 +567,26 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={addOtherCriteria}
-                        disabled={isPreviewMode}
-                        className="text-xs"
-                        data-testid="button-add-criteria"
-                      >
-                        <Plus className="h-3 w-3 mr-1" />
-                        Add Criteria
-                      </Button>
+                      {isPreviewMode ? (
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          {otherCriteria.length > 0 
+                            ? `${otherCriteria.length} criteria configured`
+                            : <span className="text-gray-400 italic">Not configured</span>
+                          }
+                        </span>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={addOtherCriteria}
+                          className="text-xs"
+                          data-testid="button-add-criteria"
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Add Criteria
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
 
@@ -522,28 +595,32 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                     <TableRow key={criteria.id} className="bg-gray-50/50 dark:bg-gray-800/50">
                       <TableCell className="text-sm pl-8">{criteria.id.toUpperCase()}</TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="text"
-                            placeholder="Enter criteria description"
-                            className="h-8 flex-1 text-xs"
-                            value={criteria.label}
-                            onChange={(e) => updateOtherCriteriaLabel(index, e.target.value)}
-                            disabled={isPreviewMode}
-                            data-testid={`input-other-criteria-${index}`}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeOtherCriteria(index)}
-                            disabled={isPreviewMode}
-                            className="h-8 w-8 p-0"
-                            data-testid={`button-remove-criteria-${index}`}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </div>
+                        {isPreviewMode ? (
+                          <span className="text-sm text-gray-700 dark:text-gray-300">
+                            {criteria.label || <span className="text-gray-400 italic">Not configured</span>}
+                          </span>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="text"
+                              placeholder="Enter criteria description"
+                              className="h-8 flex-1 text-xs"
+                              value={criteria.label}
+                              onChange={(e) => updateOtherCriteriaLabel(index, e.target.value)}
+                              data-testid={`input-other-criteria-${index}`}
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeOtherCriteria(index)}
+                              className="h-8 w-8 p-0"
+                              data-testid={`button-remove-criteria-${index}`}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -564,17 +641,26 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={addCesTest}
-                        disabled={isPreviewMode}
-                        className="h-8 w-8 p-0"
-                        data-testid="button-add-ces"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
+                      {isPreviewMode ? (
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          {cesTests.length > 0 
+                            ? `${cesTests.length} tests configured`
+                            : <span className="text-gray-400 italic">Not configured</span>
+                          }
+                        </span>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={addCesTest}
+                          className="text-xs"
+                          data-testid="button-add-ces"
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Add Test
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
 
@@ -583,28 +669,35 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                     <TableRow key={test.id} className="bg-gray-50/50 dark:bg-gray-800/50">
                       <TableCell className="text-sm pl-8">{test.id.toUpperCase()}</TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            placeholder="Min Score"
-                            className="h-8 w-24 text-xs"
-                            value={test.minScore ?? ''}
-                            onChange={(e) => updateCesTestScore(index, e.target.value ? parseInt(e.target.value) : null)}
-                            disabled={isPreviewMode}
-                            data-testid={`input-ces-minscore-${index}`}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeCesTest(index)}
-                            disabled={isPreviewMode}
-                            className="h-8 w-8 p-0"
-                            data-testid={`button-remove-ces-${index}`}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </div>
+                        {isPreviewMode ? (
+                          <span className="text-sm text-gray-700 dark:text-gray-300">
+                            {test.minScore !== null 
+                              ? `Min Score: ${test.minScore}`
+                              : <span className="text-gray-400 italic">Not configured</span>
+                            }
+                          </span>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              placeholder="Min Score"
+                              className="h-8 w-24 text-xs"
+                              value={test.minScore ?? ''}
+                              onChange={(e) => updateCesTestScore(index, e.target.value ? parseInt(e.target.value) : null)}
+                              data-testid={`input-ces-minscore-${index}`}
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeCesTest(index)}
+                              className="h-8 w-8 p-0"
+                              data-testid={`button-remove-ces-${index}`}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
