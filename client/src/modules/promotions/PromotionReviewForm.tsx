@@ -103,8 +103,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   });
 
   // Fetch dashboard summary for experience metrics
+  // Note: queryKey[0] is used as the fetch URL, so we need to include the full endpoint path
   const { data: dashboardData } = useQuery<CrewDashboardSummary>({
-    queryKey: ['/api/crew-members', promotionData?.crewMemberId, 'dashboard'],
+    queryKey: [`/api/crew-members/${promotionData?.crewMemberId}/dashboard`],
     enabled: !!promotionData?.crewMemberId,
   });
 
