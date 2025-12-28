@@ -96,7 +96,42 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   // Rank normalization - needed to match raw ranks (e.g., "3rd Officer_1") to parent ranks ("3rd Officer") in rank groups
   const { normalizeRank } = useRankNormalization();
 
-  // Find the rank group configuration based on the crew member's current rank
+  // Check if rank group lookup has been attempted and whether a match was found
+  const rankGroupLookupResult = useMemo<{ attempted: boolean; found: boolean; targetRank: string | null }>(() => {
+    if (!formsData || !rankGroupsData) {
+      return { attempted: false, found: false, targetRank: null };
+    }
+
+    const promotionForm = formsData.find(f => f.name === 'Promotion Review Form');
+    if (!promotionForm) {
+      return { attempted: true, found: false, targetRank: null };
+    }
+
+    const rawTargetRank = promotionData?.promotionToRank;
+    if (!rawTargetRank || rawTargetRank === '-') {
+      return { attempted: true, found: false, targetRank: null };
+    }
+
+    const targetRank = normalizeRank(rawTargetRank);
+
+    const matchingRankGroup = rankGroupsData.find(rg => {
+      if (rg.formId !== promotionForm.id || rg.archivedAt !== null) return false;
+      try {
+        const ranksArray = typeof rg.ranks === 'string' ? JSON.parse(rg.ranks) : rg.ranks;
+        return ranksArray && Array.isArray(ranksArray) && ranksArray.includes(targetRank);
+      } catch {
+        return false;
+      }
+    });
+
+    return { 
+      attempted: true, 
+      found: !!matchingRankGroup, 
+      targetRank 
+    };
+  }, [formsData, rankGroupsData, promotionData, normalizeRank]);
+
+  // Find the rank group configuration based on the target promotion rank
   const a2Config = useMemo<PromotionA2Config | null>(() => {
     if (!formsData || !rankGroupsData) return null;
 
@@ -104,16 +139,17 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     const promotionForm = formsData.find(f => f.name === 'Promotion Review Form');
     if (!promotionForm) return null;
 
-    // Get the crew member's current rank (from promotionData)
+    // Get the target promotion rank (the rank the crew member is being promoted TO)
     // PromotionsTable provides: currentRank, promotionToRank
-    const rawCrewRank = promotionData?.currentRank || promotionData?.rank || promotionData?.presentRank;
-    if (!rawCrewRank) {
+    // The rank group configuration should be based on the TARGET rank, not the current rank
+    const rawTargetRank = promotionData?.promotionToRank;
+    if (!rawTargetRank || rawTargetRank === '-') {
       return null;
     }
     
     // Normalize the rank to parent rank (e.g., "3rd Officer_1" → "3rd Officer")
     // This is needed because rank groups are configured with parent ranks only
-    const crewRank = normalizeRank(rawCrewRank);
+    const targetRank = normalizeRank(rawTargetRank);
 
     // Find the rank group that contains this rank and is for the promotion form
     const matchingRankGroup = rankGroupsData.find(rg => {
@@ -121,7 +157,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       // ranks is stored as a JSON string array in the RankGroup
       try {
         const ranksArray = typeof rg.ranks === 'string' ? JSON.parse(rg.ranks) : rg.ranks;
-        return ranksArray && Array.isArray(ranksArray) && ranksArray.includes(crewRank);
+        return ranksArray && Array.isArray(ranksArray) && ranksArray.includes(targetRank);
       } catch {
         return false;
       }
@@ -556,6 +592,20 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
           {activeSection === 'a' && (
             <div className="bg-white rounded-lg p-6">
               <div className="space-y-6">
+                {/* Alert if no rank group is configured for the target rank */}
+                {rankGroupLookupResult.attempted && !rankGroupLookupResult.found && rankGroupLookupResult.targetRank && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3" data-testid="alert-no-rank-group">
+                    <Info className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="font-medium text-yellow-800">No Promotion Rank Group Assigned</h4>
+                      <p className="text-sm text-yellow-700 mt-1">
+                        No Promotion Review Form rank group has been configured for the rank "{rankGroupLookupResult.targetRank}" in Admin Module. 
+                        Default criteria values will be used. Please configure a rank group in Admin &gt; Forms Configuration &gt; Promotion Review Form.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Header */}
                 <div className="border-b pb-4">
                   <h2 className="text-xl font-semibold text-[#16569e]">Part A Promotion Criteria Review</h2>
