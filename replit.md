@@ -47,6 +47,7 @@ The application uses a modern web stack with a module-first architecture.
     - **Crew Archive System**: Manages historical crew records with sign-off workflow.
 - **Rotation Module**: Manages crew rotation planning with "Due" and "Plan" sections and visual timelines.
 - **Promotion Hierarchy System**: Configurable promotion paths, integrated with a Promotions module.
+    - **Promotion Review Form Rank Lookup**: Runtime form dynamically loads A2 Minimum Promotion Criteria configuration based on the "Next Promotion Rank" (target rank), not the current rank. Uses normalizeRank() to convert rank variants (e.g., "3rd Officer_1") to parent ranks for matching. Shows alert when no rank group is configured for the target rank.
 - **Forms Configuration - Company Rank Integration**: Uses company-specific rank labels for rank group creation and form matching.
     - **Rank Group Uniqueness Validation**: Each rank can only belong to one active (non-archived) rank group per form. UI disables already-assigned ranks with "(assigned to 'GroupName')" message. Server-side validation prevents bypassing the constraint.
     - **Appraisal Form Rank Validation**: Vessel Module validates rank group assignment before opening appraisal form. Shows alert "No Appraisal Rank Group assigned from Admin Module" if crew member's rank has no assigned rank group.
