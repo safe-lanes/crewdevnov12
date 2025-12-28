@@ -144,7 +144,7 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
     const nextLetter = String.fromCharCode(97 + otherCriteria.length); // a, b, c...
     setValue('otherCriteria', [
       ...otherCriteria,
-      { id: `a2.6${nextLetter}`, label: '' }
+      { id: `a2.6${nextLetter}`, label: '', requirement: '' }
     ]);
   };
 
@@ -158,17 +158,29 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
     setValue('otherCriteria', updated);
   };
 
+  const updateOtherCriteriaRequirement = (index: number, requirement: string) => {
+    const updated = [...otherCriteria];
+    updated[index].requirement = requirement;
+    setValue('otherCriteria', updated);
+  };
+
   // Add dynamic CES Test sub-item
   const addCesTest = () => {
     const nextLetter = String.fromCharCode(97 + cesTests.length); // a, b, c...
     setValue('cesTests', [
       ...cesTests,
-      { id: `a2.7${nextLetter}`, minScore: null }
+      { id: `a2.7${nextLetter}`, description: '', minScore: null }
     ]);
   };
 
   const removeCesTest = (index: number) => {
     setValue('cesTests', cesTests.filter((_, i) => i !== index));
+  };
+
+  const updateCesTestDescription = (index: number, description: string) => {
+    const updated = [...cesTests];
+    updated[index].description = description;
+    setValue('cesTests', updated);
   };
 
   const updateCesTestScore = (index: number, score: number | null) => {
@@ -608,9 +620,16 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                       <TableCell className="text-sm pl-8">{criteria.id.toUpperCase()}</TableCell>
                       <TableCell>
                         {isPreviewMode ? (
-                          <span className="text-sm text-gray-700 dark:text-gray-300">
-                            {criteria.label || <span className="text-gray-400 italic">Not configured</span>}
-                          </span>
+                          <div className="flex items-center gap-4">
+                            <span className="text-sm text-gray-700 dark:text-gray-300">
+                              {criteria.label || <span className="text-gray-400 italic">Not configured</span>}
+                            </span>
+                            {criteria.requirement && (
+                              <span className="text-sm text-gray-500 dark:text-gray-400">
+                                Requirement: {criteria.requirement}
+                              </span>
+                            )}
+                          </div>
                         ) : (
                           <div className="flex items-center gap-2">
                             <Input
@@ -620,6 +639,14 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                               value={criteria.label}
                               onChange={(e) => updateOtherCriteriaLabel(index, e.target.value)}
                               data-testid={`input-other-criteria-${index}`}
+                            />
+                            <Input
+                              type="text"
+                              placeholder="Enter Requirement"
+                              className="h-8 w-40 text-xs"
+                              value={criteria.requirement || ''}
+                              onChange={(e) => updateOtherCriteriaRequirement(index, e.target.value)}
+                              data-testid={`input-other-criteria-req-${index}`}
                             />
                             <Button
                               type="button"
@@ -682,14 +709,27 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                       <TableCell className="text-sm pl-8">{test.id.toUpperCase()}</TableCell>
                       <TableCell>
                         {isPreviewMode ? (
-                          <span className="text-sm text-gray-700 dark:text-gray-300">
-                            {test.minScore !== null 
-                              ? `Min Score: ${test.minScore}`
-                              : <span className="text-gray-400 italic">Not configured</span>
-                            }
-                          </span>
+                          <div className="flex items-center gap-4">
+                            <span className="text-sm text-gray-700 dark:text-gray-300">
+                              {test.description || <span className="text-gray-400 italic">No description</span>}
+                            </span>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                              {test.minScore !== null 
+                                ? `Min Score: ${test.minScore}`
+                                : <span className="text-gray-400 italic">Not configured</span>
+                              }
+                            </span>
+                          </div>
                         ) : (
                           <div className="flex items-center gap-2">
+                            <Input
+                              type="text"
+                              placeholder="Enter CES / Language Test Description"
+                              className="h-8 flex-1 text-xs"
+                              value={test.description || ''}
+                              onChange={(e) => updateCesTestDescription(index, e.target.value)}
+                              data-testid={`input-ces-description-${index}`}
+                            />
                             <Input
                               type="number"
                               placeholder="Min Score"

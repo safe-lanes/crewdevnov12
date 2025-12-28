@@ -258,14 +258,14 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       { id: 'a2.6', criteria: 'A2.6 Other Criteria?', required: '', resultFromDb: '', verified: 'yes', hasInfo: true },
     ];
 
-    // Add dynamic other criteria sub-items (label is both the criteria name and the "required" value)
+    // Add dynamic other criteria sub-items (label is the description, requirement is the required value)
     if (a2Config?.otherCriteria?.length) {
       a2Config.otherCriteria.forEach((item, index) => {
         const letter = String.fromCharCode(97 + index); // a, b, c, ...
         baseCriteria.push({
           id: `a2.6${letter}`,
-          criteria: `A2.6${letter}  Other Criteria ${index + 1}?`,
-          required: item.label || '',
+          criteria: `A2.6${letter}  ${item.label || `Other Criteria ${index + 1}`}?`,
+          required: item.requirement || '',
           resultFromDb: '',
           verified: 'yes',
           hasInfo: false,
@@ -289,13 +289,14 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   }, [a2Config, requiredLicenseDisplay, requiredAgeDisplay]);
 
   // A2.7 CES/Language Tests state - initialize from config
-  const [cesTests, setCesTests] = useState<{ id: string; date: string; minScore: string; score: string; result: string }[]>([]);
+  const [cesTests, setCesTests] = useState<{ id: string; description: string; date: string; minScore: string; score: string; result: string }[]>([]);
 
   // Initialize CES tests from config (or preserve default empty row for backward compatibility)
   useEffect(() => {
     if (a2Config?.cesTests?.length) {
       setCesTests(a2Config.cesTests.map((test, index) => ({
         id: String(index + 1),
+        description: test.description || '',
         date: '',
         minScore: test.minScore ? String(test.minScore) : '',
         score: '',
@@ -303,7 +304,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       })));
     } else {
       // Preserve default empty row for backward compatibility
-      setCesTests([{ id: '1', date: '', minScore: '', score: '', result: '' }]);
+      setCesTests([{ id: '1', description: '', date: '', minScore: '', score: '', result: '' }]);
     }
   }, [a2Config]);
 
@@ -464,6 +465,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     nextCesTestIdRef.current += 1;
     setCesTests([...cesTests, {
       id: newId,
+      description: '',
       date: '',
       minScore: '',
       score: '',
@@ -816,7 +818,10 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                               {/* A2.7a CES/Language Tests Rows */}
                               {cesTests.map((test, index) => (
                                 <TableRow key={`ces-${test.id}`} className="bg-gray-50">
-                                  <TableCell className="text-sm">A2.7{String.fromCharCode(97 + index)}</TableCell>
+                                  <TableCell className="text-sm">
+                                    A2.7{String.fromCharCode(97 + index)}
+                                    {test.description && <span className="ml-2 text-gray-600">({test.description})</span>}
+                                  </TableCell>
                                   <TableCell>
                                     <Input 
                                       type="date" 

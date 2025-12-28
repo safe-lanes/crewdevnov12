@@ -2036,11 +2036,13 @@ export const insertBondItemSchema = createInsertSchema(bondItems).pick({
 
 export const promotionA2OtherCriteriaSchema = z.object({
   id: z.string(), // e.g., "a2.6a", "a2.6b"
-  label: z.string(), // Free text label for the criteria
+  label: z.string(), // Free text label for the criteria description
+  requirement: z.string().optional(), // Requirement value (right column)
 });
 
 export const promotionA2CesTestSchema = z.object({
   id: z.string(), // e.g., "a2.7a", "a2.7b"
+  description: z.string().optional(), // Test description (e.g., "IELTS", "Marlins")
   minScore: z.number().nullable(), // Minimum score required
 });
 
