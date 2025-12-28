@@ -94,7 +94,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
 
   // A2.7 CES/Language Tests state
   const [cesTests, setCesTests] = useState([
-    { id: '1', date: '', subject: '', score: '', result: '' },
+    { id: '1', date: '', minScore: '', score: '', result: '' },
   ]);
 
   // A2 Criteria Comments state
@@ -255,7 +255,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     setCesTests([...cesTests, {
       id: newId,
       date: '',
-      subject: '',
+      minScore: '',
       score: '',
       result: ''
     }]);
@@ -618,18 +618,13 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                                     />
                                   </TableCell>
                                   <TableCell>
-                                    <Select 
-                                      value={test.subject}
-                                      onValueChange={(value) => updateCesTest(test.id, 'subject', value)}
-                                    >
-                                      <SelectTrigger className="h-8 text-xs" data-testid={`select-ces-subject-${test.id}`}>
-                                        <SelectValue placeholder="Subject" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="english">English</SelectItem>
-                                        <SelectItem value="ces">CES</SelectItem>
-                                      </SelectContent>
-                                    </Select>
+                                    <Input 
+                                      className="h-8 text-xs" 
+                                      placeholder="Min Score"
+                                      value={test.minScore}
+                                      onChange={(e) => updateCesTest(test.id, 'minScore', e.target.value)}
+                                      data-testid={`input-ces-minscore-${test.id}`}
+                                    />
                                   </TableCell>
                                   <TableCell>
                                     <Input 
