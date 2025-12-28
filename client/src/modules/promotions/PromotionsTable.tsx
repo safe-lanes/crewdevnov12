@@ -222,6 +222,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         
         return {
           crewId: crew.employeeId || crew.id || '-',
+          crewMemberId: crew.id, // Database ID for API calls
           name: `${crew.firstName || 'Unknown'} ${crew.middleInitial || ''} ${crew.familyName || ''}`.trim(),
           dob: dobString,
           age: calculatedAge !== null ? calculatedAge : '-',
@@ -229,6 +230,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
           currentRank: currentRank,
           promotionToRank: nextRank || '-',
           vesselLeave: vesselLeave,
+          presentVessel: vesselId || null, // Vessel ID for vessel type lookup
           license: ['met', 'pending', 'met'][index % 3],
           sea: ['met', 'pending', 'met'][index % 3],
           reco: ['met', 'pending', 'met'][index % 3],

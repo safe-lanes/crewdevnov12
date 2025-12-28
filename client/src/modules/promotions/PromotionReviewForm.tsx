@@ -13,9 +13,12 @@ import { z } from 'zod';
 import { PromotionChecklistForm } from './PromotionChecklistForm';
 import { TrainingCourseSelectionDialog } from '@/modules/crew-pool/TrainingCourseSelectionDialog';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
-import type { Form, RankGroup } from '@shared/schema';
+import type { Form, RankGroup, CrewMember, CrewDashboardSummary } from '@shared/schema';
 import type { PromotionA2Config } from '@shared/schema';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
+import { useExternalVesselTypes } from '@/hooks/useExternalVesselTypes';
+import { getVesselTypesForDropdown, VESSEL_TYPE_HIERARCHY } from '@/utils/data/vesselTypes';
+import type { LicenseRecord } from '@/utils/data/licenseDceTemplates';
 
 interface PromotionReviewFormProps {
   promotionData: any;
@@ -93,8 +96,26 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     queryKey: ['/api/masters/016/data'],
   });
 
+  // Fetch crew member data for license and experience checks
+  const { data: crewMemberData } = useQuery<CrewMember>({
+    queryKey: ['/api/crew-members', promotionData?.crewMemberId],
+    enabled: !!promotionData?.crewMemberId,
+  });
+
+  // Fetch dashboard summary for experience metrics
+  const { data: dashboardData } = useQuery<CrewDashboardSummary>({
+    queryKey: ['/api/crew-members', promotionData?.crewMemberId, 'dashboard'],
+    enabled: !!promotionData?.crewMemberId,
+  });
+
+  // Fetch vessel types for vessel type dropdown (when crew is on leave)
+  const { data: externalVesselTypesData } = useExternalVesselTypes();
+
   // Rank normalization - needed to match raw ranks (e.g., "3rd Officer_1") to parent ranks ("3rd Officer") in rank groups
   const { normalizeRank } = useRankNormalization();
+
+  // State for selected vessel type (for A2.3b when crew is on leave / no vessel assigned)
+  const [selectedVesselTypeForA2_3b, setSelectedVesselTypeForA2_3b] = useState<string>('');
 
   // Check if rank group lookup has been attempted and whether a match was found
   const rankGroupLookupResult = useMemo<{ attempted: boolean; found: boolean; targetRank: string | null }>(() => {
@@ -224,6 +245,119 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     checklist: '',
   };
 
+  // ============ A2.1 - Higher License Check ============
+  // Check if crew member has ANY of the required licenses
+  const a2_1_licenseResult = useMemo(() => {
+    if (!a2Config?.higherLicenseIds?.length || !crewMemberData) return '';
+    
+    // Parse crew member licenses (JSON string or array)
+    let licenses: any[] = [];
+    if (crewMemberData.licenses) {
+      if (Array.isArray(crewMemberData.licenses)) {
+        licenses = crewMemberData.licenses;
+      } else if (typeof crewMemberData.licenses === 'string') {
+        try {
+          licenses = JSON.parse(crewMemberData.licenses);
+        } catch {
+          licenses = [];
+        }
+      }
+    }
+    
+    // Check if crew has any of the required licenses (not archived)
+    // The license ID might be stored as licenseId, entryId, or id depending on the source
+    const activeLicenses = licenses.filter(lic => !lic.archivedAt);
+    const hasRequiredLicense = a2Config.higherLicenseIds.some(requiredId => 
+      activeLicenses.some(lic => {
+        const licId = lic.licenseId || lic.entryId || lic.id;
+        return licId === requiredId;
+      })
+    );
+    
+    return hasRequiredLicense ? 'Yes' : 'No';
+  }, [a2Config, crewMemberData]);
+
+  // ============ A2.2 - Age Calculation ============
+  // Calculate age from DOB
+  const a2_2_ageResult = useMemo(() => {
+    const dobString = promotionData?.dob;
+    if (!dobString || dobString === '-') return '';
+    
+    let birthDate: Date | null = null;
+    
+    // Try parsing different date formats
+    // Format 1: "08-Jul-1991" or "17-Jan-1973"
+    if (dobString.includes('-') && /^\d{2}-[A-Za-z]{3}-\d{4}$/.test(dobString)) {
+      birthDate = new Date(dobString);
+    }
+    // Format 2: ISO format "1991-07-08"
+    else if (dobString.includes('-') && /^\d{4}-\d{2}-\d{2}/.test(dobString)) {
+      birthDate = new Date(dobString);
+    }
+    
+    if (!birthDate || isNaN(birthDate.getTime())) return '';
+    
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    return `${age} Years`;
+  }, [promotionData]);
+
+  // ============ A2.3a - Rank Experience (Total across all vessels) ============
+  // Uses dashboard experience.rank (in years, need to convert to months)
+  const a2_3a_rankExperienceResult = useMemo(() => {
+    if (!dashboardData?.experience?.rank) return '';
+    const rankYears = dashboardData.experience.rank;
+    const rankMonths = Math.round(rankYears * 12);
+    return `${rankMonths} Months`;
+  }, [dashboardData]);
+
+  // ============ A2.3b - Rank Experience (Vessel Type Specific) ============
+  // This requires vessel-type-specific calculation - we'll need to fetch or compute this
+  // For now, we'll show "Select Vessel Type" if crew is on leave
+  const isCrewOnLeave = !promotionData?.presentVessel;
+  
+  // Get vessel type options for dropdown
+  const vesselTypeOptions = useMemo(() => {
+    // Use external API data if available, otherwise fallback to static data
+    if (externalVesselTypesData?.length) {
+      return externalVesselTypesData.map((vt: any) => vt.vesselType || vt.name).filter(Boolean);
+    }
+    return getVesselTypesForDropdown([2, 3]); // Level 2 and 3 vessel types
+  }, [externalVesselTypesData]);
+
+  // A2.3b result - for now showing placeholder until we can calculate vessel-type-specific experience
+  const a2_3b_vesselTypeExperienceResult = useMemo(() => {
+    if (isCrewOnLeave && !selectedVesselTypeForA2_3b) {
+      return ''; // Will show dropdown in UI
+    }
+    // TODO: Calculate vessel-type-specific rank experience when we have the data
+    // For now return empty - this would need a backend endpoint to calculate
+    return '';
+  }, [isCrewOnLeave, selectedVesselTypeForA2_3b]);
+
+  // ============ A2.3c - Company Service ============
+  // Uses dashboard experience.company (in years, convert to months)
+  const a2_3c_companyServiceResult = useMemo(() => {
+    if (!dashboardData?.experience?.company) return '';
+    const companyYears = dashboardData.experience.company;
+    const companyMonths = Math.round(companyYears * 12);
+    return `${companyMonths} Months`;
+  }, [dashboardData]);
+
+  // ============ A2.3d - Tanker Experience ============
+  // Uses dashboard experience.tankers (in years, convert to months)
+  const a2_3d_tankerExperienceResult = useMemo(() => {
+    if (!dashboardData?.experience?.tankers) return '';
+    const tankerYears = dashboardData.experience.tankers;
+    const tankerMonths = Math.round(tankerYears * 12);
+    return `${tankerMonths} Months`;
+  }, [dashboardData]);
+
   // Initialize criteria data when config loads
   useEffect(() => {
     // Determine display values - use config if available, else use defaults
@@ -234,7 +368,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         id: 'a2.1', 
         criteria: 'A2.1 Higher License Criteria?', 
         required: requiredLicenseDisplay || (hasConfig ? '' : defaultCriteriaValues.higherLicense), 
-        resultFromDb: '', 
+        resultFromDb: a2_1_licenseResult, 
         verified: 'yes', 
         hasInfo: true 
       },
@@ -242,7 +376,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         id: 'a2.2', 
         criteria: 'A2.2 Age Criteria?', 
         required: requiredAgeDisplay || (hasConfig ? '' : defaultCriteriaValues.ageRange), 
-        resultFromDb: '', 
+        resultFromDb: a2_2_ageResult, 
         verified: 'yes', 
         hasInfo: true 
       },
@@ -251,7 +385,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         id: 'a2.3a', 
         criteria: 'A2.3a  Minimum Rank Experience (Vessel)?', 
         required: a2Config?.experienceMonths?.rankVessel ? `${a2Config.experienceMonths.rankVessel} Months` : (hasConfig ? '' : defaultCriteriaValues.rankVessel), 
-        resultFromDb: '', 
+        resultFromDb: a2_3a_rankExperienceResult, 
         verified: 'yes', 
         hasInfo: false 
       },
@@ -259,15 +393,15 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         id: 'a2.3b', 
         criteria: 'A2.3b  Minimum Rank Experience (Vessel Type)?', 
         required: a2Config?.experienceMonths?.rankVesselType ? `${a2Config.experienceMonths.rankVesselType} Months` : (hasConfig ? '' : defaultCriteriaValues.rankVesselType), 
-        resultFromDb: '', 
+        resultFromDb: a2_3b_vesselTypeExperienceResult, 
         verified: 'yes', 
         hasInfo: false 
       },
       { 
         id: 'a2.3c', 
-        criteria: 'A2.3c  Minimum Company Service in previous rank?', 
+        criteria: 'A2.3c  Company Service?', 
         required: a2Config?.experienceMonths?.companyService ? `${a2Config.experienceMonths.companyService} Months` : (hasConfig ? '' : defaultCriteriaValues.companyService), 
-        resultFromDb: '', 
+        resultFromDb: a2_3c_companyServiceResult, 
         verified: 'yes', 
         hasInfo: false 
       },
@@ -275,7 +409,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         id: 'a2.3d', 
         criteria: 'A2.3d  Minimum Tanker Experience?', 
         required: a2Config?.experienceMonths?.tankerExperience ? `${a2Config.experienceMonths.tankerExperience} Months` : (hasConfig ? '' : defaultCriteriaValues.tankerExperience), 
-        resultFromDb: '', 
+        resultFromDb: a2_3d_tankerExperienceResult, 
         verified: 'yes', 
         hasInfo: false 
       },
@@ -326,7 +460,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     );
 
     setCriteriaData(baseCriteria);
-  }, [a2Config, requiredLicenseDisplay, requiredAgeDisplay]);
+  }, [a2Config, requiredLicenseDisplay, requiredAgeDisplay, a2_1_licenseResult, a2_2_ageResult, a2_3a_rankExperienceResult, a2_3b_vesselTypeExperienceResult, a2_3c_companyServiceResult, a2_3d_tankerExperienceResult]);
 
   // A2.7 CES/Language Tests state - initialize from config
   const [cesTests, setCesTests] = useState<{ id: string; description: string; date: string; minScore: string; score: string; result: string }[]>([]);
@@ -744,7 +878,26 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                                 </div>
                               </TableCell>
                               <TableCell className="text-sm">{row.required}</TableCell>
-                              <TableCell className="text-sm">{row.resultFromDb}</TableCell>
+                              <TableCell className="text-sm">
+                                {/* A2.3b: Show vessel type dropdown if crew is on leave */}
+                                {row.id === 'a2.3b' && isCrewOnLeave ? (
+                                  <Select 
+                                    value={selectedVesselTypeForA2_3b} 
+                                    onValueChange={setSelectedVesselTypeForA2_3b}
+                                  >
+                                    <SelectTrigger className="h-8 text-xs" data-testid="select-vessel-type-a23b">
+                                      <SelectValue placeholder="Select Vessel Type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {vesselTypeOptions.map((vt: string) => (
+                                        <SelectItem key={vt} value={vt}>{vt}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  row.resultFromDb
+                                )}
+                              </TableCell>
                               <TableCell>
                                 {renderMeetsCriterionBadge(row.required, row.resultFromDb)}
                               </TableCell>
