@@ -88,9 +88,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     queryKey: ['/api/rank-groups'],
   });
 
-  // Fetch license data from Master 016
+  // Fetch license data from Master 016 (Licenses/DCE)
   const { data: licenseEntriesData } = useQuery<any[]>({
-    queryKey: ['/api/master-data-entries/by-code/016'],
+    queryKey: ['/api/masters/016/data'],
   });
 
   // Rank normalization - needed to match raw ranks (e.g., "3rd Officer_1") to parent ranks ("3rd Officer") in rank groups
@@ -173,12 +173,16 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   }, [formsData, rankGroupsData, promotionData, normalizeRank]);
 
   // Resolve license names from IDs
+  // Master 016 data structure: { entryId: 'LIC007', name: 'COC Master', ... }
   const licenseNamesById = useMemo(() => {
     const map: Record<string, string> = {};
     if (licenseEntriesData) {
       licenseEntriesData.forEach(entry => {
-        if (entry.entryId && entry.description) {
-          map[entry.entryId] = entry.description;
+        // API returns entryId (transformed from entry_id) and name
+        const id = entry.entryId || entry.entry_id || entry.id;
+        const name = entry.name || entry.description;
+        if (id && name) {
+          map[id] = name;
         }
       });
     }
