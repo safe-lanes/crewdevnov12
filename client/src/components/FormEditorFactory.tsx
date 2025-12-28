@@ -8,7 +8,6 @@ import { Form } from '@shared/schema';
 const formEditors: Record<string, React.ComponentType<any>> = {
   'Crew Appraisal Form': FormEditor,
   'Promotion Review Form': PromotionFormEditor,
-  'New Promotion Form': PromotionFormEditor,
 };
 
 interface FormEditorFactoryProps {
