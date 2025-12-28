@@ -500,6 +500,74 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     ));
   };
 
+  // Parent criteria that have children - these should not have Yes/NA/comment controls
+  // Their status is derived from children's verified status
+  const parentCriteriaIds = ['a2.3', 'a2.6', 'a2.7'];
+
+  // Get children IDs for a parent criteria
+  const getChildrenIds = (parentId: string): string[] => {
+    if (parentId === 'a2.7') {
+      // A2.7 children are CES tests (a2.7a, a2.7b, etc.)
+      return cesTests.map((_, index) => `a2.7${String.fromCharCode(97 + index)}`);
+    }
+    // For a2.3 and a2.6, find children by prefix matching (a2.3a, a2.3b, etc.)
+    return criteriaData
+      .filter(row => row.id.startsWith(parentId) && row.id.length > parentId.length)
+      .map(row => row.id);
+  };
+
+  // Compute derived status for parent criteria based on children's verified status
+  // Returns: 'yes' | 'na' | 'pending'
+  // Logic:
+  // - 'yes': At least one child is 'yes' AND all children are either 'yes' or 'na'
+  // - 'na': All children are 'na'
+  // - 'pending': Any child is blank/unselected or not all conditions met
+  const computeParentStatus = (parentId: string): 'yes' | 'na' | 'pending' => {
+    const childrenIds = getChildrenIds(parentId);
+    if (childrenIds.length === 0) return 'pending';
+
+    // Get verified values for children
+    const childVerifiedValues: string[] = [];
+    
+    if (parentId === 'a2.7') {
+      // A2.7 children status comes from cesTests result field
+      cesTests.forEach(test => {
+        // Map result to verified status: 'Pass' -> 'yes', 'NA' or empty -> check logic
+        if (test.result === 'Pass') {
+          childVerifiedValues.push('yes');
+        } else if (test.result === 'NA') {
+          childVerifiedValues.push('na');
+        } else {
+          childVerifiedValues.push(''); // blank/pending
+        }
+      });
+    } else {
+      // For a2.3 and a2.6, get verified from criteriaData
+      childrenIds.forEach(childId => {
+        const child = criteriaData.find(row => row.id === childId);
+        childVerifiedValues.push(child?.verified || '');
+      });
+    }
+
+    // Check if any child is blank (pending)
+    const hasBlank = childVerifiedValues.some(v => v === '' || v === undefined);
+    if (hasBlank) return 'pending';
+
+    // Check if all children are 'na'
+    const allNa = childVerifiedValues.every(v => v === 'na');
+    if (allNa) return 'na';
+
+    // Check if at least one is 'yes' and rest are 'yes' or 'na'
+    const hasYes = childVerifiedValues.some(v => v === 'yes');
+    const allYesOrNa = childVerifiedValues.every(v => v === 'yes' || v === 'na');
+    if (hasYes && allYesOrNa) return 'yes';
+
+    return 'pending';
+  };
+
+  // Check if a criteria ID is a parent (has children)
+  const isParentCriteria = (id: string): boolean => parentCriteriaIds.includes(id);
+
   const addCesTest = () => {
     const newId = nextCesTestIdRef.current.toString();
     nextCesTestIdRef.current += 1;
@@ -681,20 +749,37 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                                 {renderMeetsCriterionBadge(row.required, row.resultFromDb)}
                               </TableCell>
                               <TableCell>
-                                <RadioGroup 
-                                  value={row.verified} 
-                                  onValueChange={(value) => updateCriteriaVerified(row.id, value)}
-                                  className="flex gap-4"
-                                >
-                                  <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="yes" id={`${row.id}-yes`} data-testid={`radio-verified-yes-${row.id}`} />
-                                    <Label htmlFor={`${row.id}-yes`} className="text-sm cursor-pointer">Yes</Label>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="na" id={`${row.id}-na`} data-testid={`radio-verified-na-${row.id}`} />
-                                    <Label htmlFor={`${row.id}-na`} className="text-sm cursor-pointer">NA</Label>
-                                  </div>
-                                </RadioGroup>
+                                {isParentCriteria(row.id) ? (
+                                  // Parent criteria: show derived status (computed from children)
+                                  <span 
+                                    className={`px-2 py-1 text-xs rounded ${
+                                      computeParentStatus(row.id) === 'yes' 
+                                        ? 'bg-green-100 text-green-800' 
+                                        : computeParentStatus(row.id) === 'na'
+                                          ? 'bg-gray-100 text-gray-600'
+                                          : 'bg-yellow-100 text-yellow-800'
+                                    }`}
+                                    data-testid={`status-derived-${row.id}`}
+                                  >
+                                    {computeParentStatus(row.id) === 'yes' ? 'Yes' : computeParentStatus(row.id) === 'na' ? 'NA' : 'Pending'}
+                                  </span>
+                                ) : (
+                                  // Child/regular criteria: show Yes/NA radio controls
+                                  <RadioGroup 
+                                    value={row.verified} 
+                                    onValueChange={(value) => updateCriteriaVerified(row.id, value)}
+                                    className="flex gap-4"
+                                  >
+                                    <div className="flex items-center space-x-2">
+                                      <RadioGroupItem value="yes" id={`${row.id}-yes`} data-testid={`radio-verified-yes-${row.id}`} />
+                                      <Label htmlFor={`${row.id}-yes`} className="text-sm cursor-pointer">Yes</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                      <RadioGroupItem value="na" id={`${row.id}-na`} data-testid={`radio-verified-na-${row.id}`} />
+                                      <Label htmlFor={`${row.id}-na`} className="text-sm cursor-pointer">NA</Label>
+                                    </div>
+                                  </RadioGroup>
+                                )}
                               </TableCell>
                               <TableCell>
                                 <div className="flex gap-1">
@@ -707,19 +792,21 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                                   >
                                     <Eye className="h-4 w-4 text-gray-600" />
                                   </Button>
-                                  <Button 
-                                    type="button"
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-7 w-7 p-0"
-                                    onClick={() => setNewCriteriaComment(prev => ({
-                                      ...prev,
-                                      [row.id]: ""
-                                    }))}
-                                    data-testid={`button-criteria-comment-${row.id}`}
-                                  >
-                                    <MessageSquare className="h-4 w-4 text-gray-400" />
-                                  </Button>
+                                  {!isParentCriteria(row.id) && (
+                                    <Button 
+                                      type="button"
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="h-7 w-7 p-0"
+                                      onClick={() => setNewCriteriaComment(prev => ({
+                                        ...prev,
+                                        [row.id]: ""
+                                      }))}
+                                      data-testid={`button-criteria-comment-${row.id}`}
+                                    >
+                                      <MessageSquare className="h-4 w-4 text-gray-400" />
+                                    </Button>
+                                  )}
                                   {row.id === 'a2.7' && (
                                     <Button 
                                       type="button"
