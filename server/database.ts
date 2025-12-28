@@ -3264,16 +3264,32 @@ export class DatabaseStorage implements IStorage {
     const vesselTypeMonths: Record<string, number> = {};
     
     for (const service of allSeaService) {
-      const period = parseFloat(service.periodMonths) || 0;
+      // Calculate period - use provided periodMonths or calculate from dates for active entries
+      let period = parseFloat(service.periodMonths) || 0;
+      
+      // If periodMonths is empty/zero and this is an active entry (has from date), calculate dynamically
+      if (period <= 0 && service.from) {
+        const fromDate = new Date(service.from);
+        const toDate = service.to ? new Date(service.to) : new Date(); // Use current date if no end date
+        if (!isNaN(fromDate.getTime()) && !isNaN(toDate.getTime())) {
+          const diffMs = toDate.getTime() - fromDate.getTime();
+          period = Math.max(0, diffMs / (1000 * 60 * 60 * 24 * 30.44)); // Convert to months
+        }
+      }
+      
       if (period <= 0) continue;
       
       // Check if the service is for the current rank
       const serviceRank = normalizeRankForComparison(service.rank || '');
-      if (serviceRank !== normalizedCurrentRank) continue;
+      if (serviceRank !== normalizedCurrentRank) {
+        continue;
+      }
       
-      // Get vessel type
-      const vesselType = (service.vesselType || '').trim();
-      if (!vesselType) continue;
+      // Get vessel type - check multiple possible field names
+      const vesselType = (service.vesselType || service.shipType || service.vessel_type || '').trim();
+      if (!vesselType) {
+        continue;
+      }
       
       // Use original vessel type as key (not normalized, so frontend can match against dropdown values)
       vesselTypeMonths[vesselType] = (vesselTypeMonths[vesselType] || 0) + period;
