@@ -3251,10 +3251,15 @@ export class DatabaseStorage implements IStorage {
     const safeExternalSeaService = Array.isArray(externalSeaService) ? externalSeaService : [];
     const allSeaService = [...safeCompanySeaService, ...safeExternalSeaService];
     
-    // Normalize the current rank for comparison (handle variants like "3rd Officer_1")
+    // Normalize the current rank for comparison (handle variants like "3rd Officer_1", "Master(Temp)", etc.)
     const normalizeRankForComparison = (rank: string): string => {
       if (!rank) return '';
-      return rank.replace(/_\d+$/, '').trim().toLowerCase();
+      return rank
+        .replace(/_\d+$/, '')           // Remove numeric suffixes like "_1", "_2"
+        .replace(/\(.*?\)$/, '')        // Remove parenthetical suffixes like "(Temp)", "(Acting)"
+        .replace(/\s+/g, ' ')           // Normalize whitespace
+        .trim()
+        .toLowerCase();
     };
     
     const normalizedCurrentRank = normalizeRankForComparison(currentRank);
@@ -3270,7 +3275,9 @@ export class DatabaseStorage implements IStorage {
       // If periodMonths is empty/zero and this is an active entry (has from date), calculate dynamically
       if (period <= 0 && service.from) {
         const fromDate = new Date(service.from);
-        const toDate = service.to ? new Date(service.to) : new Date(); // Use current date if no end date
+        // Sanitize 'to' date - treat empty strings as undefined (ongoing service)
+        const toDateStr = (service.to || '').trim();
+        const toDate = toDateStr ? new Date(toDateStr) : new Date(); // Use current date if no/empty end date
         if (!isNaN(fromDate.getTime()) && !isNaN(toDate.getTime())) {
           const diffMs = toDate.getTime() - fromDate.getTime();
           period = Math.max(0, diffMs / (1000 * 60 * 60 * 24 * 30.44)); // Convert to months
@@ -3279,14 +3286,21 @@ export class DatabaseStorage implements IStorage {
       
       if (period <= 0) continue;
       
-      // Check if the service is for the current rank
+      // Check if the service is for the current rank (with improved normalization)
       const serviceRank = normalizeRankForComparison(service.rank || '');
       if (serviceRank !== normalizedCurrentRank) {
         continue;
       }
       
-      // Get vessel type - check multiple possible field names
-      const vesselType = (service.vesselType || service.shipType || service.vessel_type || '').trim();
+      // Get vessel type - check multiple possible field names used in various data feeds
+      const vesselType = (
+        service.vesselType || 
+        service.shipType || 
+        service.vessel_type || 
+        service.vesselTypeName ||
+        service.type ||
+        ''
+      ).trim();
       if (!vesselType) {
         continue;
       }
