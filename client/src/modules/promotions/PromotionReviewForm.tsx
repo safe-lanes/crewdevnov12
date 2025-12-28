@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { BaseSubmoduleForm, FormSection } from '@/components/BaseSubmoduleForm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +13,9 @@ import { z } from 'zod';
 import { PromotionChecklistForm } from './PromotionChecklistForm';
 import { TrainingCourseSelectionDialog } from '@/modules/crew-pool/TrainingCourseSelectionDialog';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
+import type { Form, RankGroup } from '@shared/schema';
+import type { PromotionA2Config } from '@shared/schema';
+import { useRankNormalization } from '@/hooks/useRankNormalization';
 
 interface PromotionReviewFormProps {
   promotionData: any;
@@ -74,28 +78,234 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     { id: 'c', title: 'Part C: Execution', letter: 'C' },
   ];
 
-  // A2 Criteria state
-  const [criteriaData, setCriteriaData] = useState<CriteriaRow[]>([
-    { id: 'a2.1', criteria: 'A2.1 Higher License Criteria?', required: 'Master COC', resultFromDb: 'Master COC', verified: 'yes', hasInfo: true },
-    { id: 'a2.2', criteria: 'A2.2 Age Criteria?', required: '34 Years', resultFromDb: '29-40 Years', verified: 'yes', hasInfo: true },
-    { id: 'a2.3', criteria: 'A2.3 Experience & Sea Service Criteria?', required: '', resultFromDb: '', verified: 'yes', hasInfo: true },
-    { id: 'a2.3a', criteria: 'A2.3a  Minimum Rank Experience (Vessel)?', required: '36 Months', resultFromDb: '38 Months', verified: 'yes', hasInfo: false },
-    { id: 'a2.3b', criteria: 'A2.3b  Minimum Rank Experience (Vessel Type)?', required: '18 Months', resultFromDb: '19 Months', verified: 'yes', hasInfo: false },
-    { id: 'a2.3c', criteria: 'A2.3c  Minimum Company Service in previous rank?', required: '12 Months', resultFromDb: '11 Months', verified: 'yes', hasInfo: false },
-    { id: 'a2.3d', criteria: 'A2.3d  Minimum Tanker Experience?', required: '48 Months', resultFromDb: '54 Months', verified: 'yes', hasInfo: false },
-    { id: 'a2.4', criteria: 'A2.4 Recommendations Criteria?', required: '2', resultFromDb: '2', verified: 'yes', hasInfo: true },
-    { id: 'a2.5a', criteria: 'A2.5a Promotion Checklist Completed?', required: '', resultFromDb: '', verified: 'yes', hasInfo: true },
-    { id: 'a2.6', criteria: 'A2.6 Other Criteria?', required: '', resultFromDb: '', verified: 'yes', hasInfo: true },
-    { id: 'a2.6a', criteria: 'A2.6a  Other Criteria 1?', required: 'Sample', resultFromDb: '', verified: 'yes', hasInfo: false },
-    { id: 'a2.6b', criteria: 'A2.6b  Other Criteria 2?', required: 'Sample', resultFromDb: '', verified: 'yes', hasInfo: false },
-    { id: 'a2.7', criteria: 'A2.7 CES / Language Tests Criteria?', required: '', resultFromDb: '', verified: 'yes', hasInfo: true },
-    { id: 'a2.8', criteria: 'A2.8 Training & Other Documents Verification?', required: '', resultFromDb: '', verified: 'yes', hasInfo: true },
-  ]);
+  // Fetch forms to find the Promotion Review Form
+  const { data: formsData } = useQuery<Form[]>({
+    queryKey: ['/api/forms'],
+  });
 
-  // A2.7 CES/Language Tests state
-  const [cesTests, setCesTests] = useState([
-    { id: '1', date: '', minScore: '', score: '', result: '' },
-  ]);
+  // Fetch rank groups
+  const { data: rankGroupsData } = useQuery<RankGroup[]>({
+    queryKey: ['/api/rank-groups'],
+  });
+
+  // Fetch license data from Master 016
+  const { data: licenseEntriesData } = useQuery<any[]>({
+    queryKey: ['/api/master-data-entries/by-code/016'],
+  });
+
+  // Rank normalization - needed to match raw ranks (e.g., "3rd Officer_1") to parent ranks ("3rd Officer") in rank groups
+  const { normalizeRank } = useRankNormalization();
+
+  // Find the rank group configuration based on the crew member's current rank
+  const a2Config = useMemo<PromotionA2Config | null>(() => {
+    if (!formsData || !rankGroupsData) return null;
+
+    // Find the Promotion Review Form
+    const promotionForm = formsData.find(f => f.name === 'Promotion Review Form');
+    if (!promotionForm) return null;
+
+    // Get the crew member's current rank (from promotionData)
+    // PromotionsTable provides: currentRank, promotionToRank
+    const rawCrewRank = promotionData?.currentRank || promotionData?.rank || promotionData?.presentRank;
+    if (!rawCrewRank) {
+      return null;
+    }
+    
+    // Normalize the rank to parent rank (e.g., "3rd Officer_1" → "3rd Officer")
+    // This is needed because rank groups are configured with parent ranks only
+    const crewRank = normalizeRank(rawCrewRank);
+
+    // Find the rank group that contains this rank and is for the promotion form
+    const matchingRankGroup = rankGroupsData.find(rg => {
+      if (rg.formId !== promotionForm.id || rg.archivedAt !== null) return false;
+      // ranks is stored as a JSON string array in the RankGroup
+      try {
+        const ranksArray = typeof rg.ranks === 'string' ? JSON.parse(rg.ranks) : rg.ranks;
+        return ranksArray && Array.isArray(ranksArray) && ranksArray.includes(crewRank);
+      } catch {
+        return false;
+      }
+    });
+
+    if (!matchingRankGroup?.configuration) return null;
+
+    try {
+      return JSON.parse(matchingRankGroup.configuration) as PromotionA2Config;
+    } catch {
+      return null;
+    }
+  }, [formsData, rankGroupsData, promotionData, normalizeRank]);
+
+  // Resolve license names from IDs
+  const licenseNamesById = useMemo(() => {
+    const map: Record<string, string> = {};
+    if (licenseEntriesData) {
+      licenseEntriesData.forEach(entry => {
+        if (entry.entryId && entry.description) {
+          map[entry.entryId] = entry.description;
+        }
+      });
+    }
+    return map;
+  }, [licenseEntriesData]);
+
+  // Build the required license display text
+  const requiredLicenseDisplay = useMemo(() => {
+    if (!a2Config?.higherLicenseIds?.length) return '';
+    return a2Config.higherLicenseIds
+      .map(id => licenseNamesById[id] || id)
+      .join(', ');
+  }, [a2Config, licenseNamesById]);
+
+  // Build the age display text
+  const requiredAgeDisplay = useMemo(() => {
+    if (!a2Config?.ageMin && !a2Config?.ageMax) return '';
+    if (a2Config.ageMin && a2Config.ageMax) {
+      return `${a2Config.ageMin}-${a2Config.ageMax} Years`;
+    }
+    if (a2Config.ageMin) return `Min ${a2Config.ageMin} Years`;
+    if (a2Config.ageMax) return `Max ${a2Config.ageMax} Years`;
+    return '';
+  }, [a2Config]);
+
+  // Build criteria data from configuration - use useState so we can allow edits
+  const [criteriaData, setCriteriaData] = useState<CriteriaRow[]>([]);
+
+  // Default fallback values when no rank group configuration is found
+  // These preserve the original hardcoded defaults for backward compatibility
+  const defaultCriteriaValues = {
+    higherLicense: 'Master COC',
+    ageRange: '34 Years',
+    rankVessel: '36 Months',
+    rankVesselType: '18 Months',
+    companyService: '12 Months',
+    tankerExperience: '48 Months',
+    recommendations: '2',
+    checklist: '',
+  };
+
+  // Initialize criteria data when config loads
+  useEffect(() => {
+    // Determine display values - use config if available, else use defaults
+    const hasConfig = a2Config !== null;
+    
+    const baseCriteria: CriteriaRow[] = [
+      { 
+        id: 'a2.1', 
+        criteria: 'A2.1 Higher License Criteria?', 
+        required: requiredLicenseDisplay || (hasConfig ? '' : defaultCriteriaValues.higherLicense), 
+        resultFromDb: '', 
+        verified: 'yes', 
+        hasInfo: true 
+      },
+      { 
+        id: 'a2.2', 
+        criteria: 'A2.2 Age Criteria?', 
+        required: requiredAgeDisplay || (hasConfig ? '' : defaultCriteriaValues.ageRange), 
+        resultFromDb: '', 
+        verified: 'yes', 
+        hasInfo: true 
+      },
+      { id: 'a2.3', criteria: 'A2.3 Experience & Sea Service Criteria?', required: '', resultFromDb: '', verified: 'yes', hasInfo: true },
+      { 
+        id: 'a2.3a', 
+        criteria: 'A2.3a  Minimum Rank Experience (Vessel)?', 
+        required: a2Config?.experienceMonths?.rankVessel ? `${a2Config.experienceMonths.rankVessel} Months` : (hasConfig ? '' : defaultCriteriaValues.rankVessel), 
+        resultFromDb: '', 
+        verified: 'yes', 
+        hasInfo: false 
+      },
+      { 
+        id: 'a2.3b', 
+        criteria: 'A2.3b  Minimum Rank Experience (Vessel Type)?', 
+        required: a2Config?.experienceMonths?.rankVesselType ? `${a2Config.experienceMonths.rankVesselType} Months` : (hasConfig ? '' : defaultCriteriaValues.rankVesselType), 
+        resultFromDb: '', 
+        verified: 'yes', 
+        hasInfo: false 
+      },
+      { 
+        id: 'a2.3c', 
+        criteria: 'A2.3c  Minimum Company Service in previous rank?', 
+        required: a2Config?.experienceMonths?.companyService ? `${a2Config.experienceMonths.companyService} Months` : (hasConfig ? '' : defaultCriteriaValues.companyService), 
+        resultFromDb: '', 
+        verified: 'yes', 
+        hasInfo: false 
+      },
+      { 
+        id: 'a2.3d', 
+        criteria: 'A2.3d  Minimum Tanker Experience?', 
+        required: a2Config?.experienceMonths?.tankerExperience ? `${a2Config.experienceMonths.tankerExperience} Months` : (hasConfig ? '' : defaultCriteriaValues.tankerExperience), 
+        resultFromDb: '', 
+        verified: 'yes', 
+        hasInfo: false 
+      },
+      { 
+        id: 'a2.4', 
+        criteria: 'A2.4 Recommendations Criteria?', 
+        required: a2Config?.minRecommendations ? String(a2Config.minRecommendations) : (hasConfig ? '' : defaultCriteriaValues.recommendations), 
+        resultFromDb: '', 
+        verified: 'yes', 
+        hasInfo: true 
+      },
+      { 
+        id: 'a2.5a', 
+        criteria: 'A2.5a Promotion Checklist Completed?', 
+        required: a2Config?.minChecklistVerifications ? String(a2Config.minChecklistVerifications) : (hasConfig ? '' : defaultCriteriaValues.checklist), 
+        resultFromDb: '', 
+        verified: 'yes', 
+        hasInfo: true 
+      },
+      { id: 'a2.6', criteria: 'A2.6 Other Criteria?', required: '', resultFromDb: '', verified: 'yes', hasInfo: true },
+    ];
+
+    // Add dynamic other criteria sub-items (label is both the criteria name and the "required" value)
+    if (a2Config?.otherCriteria?.length) {
+      a2Config.otherCriteria.forEach((item, index) => {
+        const letter = String.fromCharCode(97 + index); // a, b, c, ...
+        baseCriteria.push({
+          id: `a2.6${letter}`,
+          criteria: `A2.6${letter}  Other Criteria ${index + 1}?`,
+          required: item.label || '',
+          resultFromDb: '',
+          verified: 'yes',
+          hasInfo: false,
+        });
+      });
+    } else if (!hasConfig) {
+      // Preserve original hardcoded defaults for backward compatibility
+      baseCriteria.push(
+        { id: 'a2.6a', criteria: 'A2.6a  Other Criteria 1?', required: 'Sample', resultFromDb: '', verified: 'yes', hasInfo: false },
+        { id: 'a2.6b', criteria: 'A2.6b  Other Criteria 2?', required: 'Sample', resultFromDb: '', verified: 'yes', hasInfo: false }
+      );
+    }
+
+    // Add CES/Language tests header
+    baseCriteria.push(
+      { id: 'a2.7', criteria: 'A2.7 CES / Language Tests Criteria?', required: '', resultFromDb: '', verified: 'yes', hasInfo: true },
+      { id: 'a2.8', criteria: 'A2.8 Training & Other Documents Verification?', required: '', resultFromDb: '', verified: 'yes', hasInfo: true }
+    );
+
+    setCriteriaData(baseCriteria);
+  }, [a2Config, requiredLicenseDisplay, requiredAgeDisplay]);
+
+  // A2.7 CES/Language Tests state - initialize from config
+  const [cesTests, setCesTests] = useState<{ id: string; date: string; minScore: string; score: string; result: string }[]>([]);
+
+  // Initialize CES tests from config (or preserve default empty row for backward compatibility)
+  useEffect(() => {
+    if (a2Config?.cesTests?.length) {
+      setCesTests(a2Config.cesTests.map((test, index) => ({
+        id: String(index + 1),
+        date: '',
+        minScore: test.minScore ? String(test.minScore) : '',
+        score: '',
+        result: '',
+      })));
+    } else {
+      // Preserve default empty row for backward compatibility
+      setCesTests([{ id: '1', date: '', minScore: '', score: '', result: '' }]);
+    }
+  }, [a2Config]);
 
   // A2 Criteria Comments state
   const [criteriaComments, setCriteriaComments] = useState<Record<string, Comment[]>>({});
