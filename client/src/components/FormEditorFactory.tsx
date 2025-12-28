@@ -15,6 +15,7 @@ interface FormEditorFactoryProps {
   formName: string;
   form: Form;
   rankGroupName?: string;
+  rankGroupConfig?: any;
   onClose: () => void;
   onSave: (data: any) => void;
 }
@@ -23,6 +24,7 @@ export const FormEditorFactory: React.FC<FormEditorFactoryProps> = ({
   formName,
   form,
   rankGroupName,
+  rankGroupConfig,
   onClose,
   onSave
 }) => {
@@ -52,6 +54,7 @@ export const FormEditorFactory: React.FC<FormEditorFactoryProps> = ({
     <EditorComponent
       form={form}
       rankGroupName={rankGroupName}
+      rankGroupConfig={rankGroupConfig}
       onClose={onClose}
       onSave={onSave}
     />

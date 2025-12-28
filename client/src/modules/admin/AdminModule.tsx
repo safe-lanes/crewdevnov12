@@ -3897,6 +3897,30 @@ const AdminModuleInner = (): JSX.Element => {
     
     if (!formData.formId) return;
     
+    const rankGroup = allRankGroups.find(
+      rg => rg.name === editingRankGroup && rg.formId === formData.formId
+    );
+    
+    // Check if this is a Promotion form (has pre-serialized configuration)
+    if (formData.configuration && typeof formData.configuration === 'string') {
+      // Promotion form data - save directly to rank group
+      if (rankGroup) {
+        console.log("Saving Promotion A2 configuration to rank group:", rankGroup.id);
+        updateRankGroupConfigMutation.mutate({
+          rankGroupId: rankGroup.id,
+          configuration: formData.configuration,
+        });
+      } else {
+        console.log("No rank group found, saving to form directly");
+        updateFormMutation.mutate({
+          formId: formData.formId,
+          sharedConfig: formData.configuration,
+        });
+      }
+      return;
+    }
+    
+    // Appraisal form data - assemble rank group config
     const rankGroupConfig = {
       competenceAssessments: formData.competenceAssessments || [],
       behaviouralAssessments: formData.behaviouralAssessments || [],
@@ -3904,10 +3928,6 @@ const AdminModuleInner = (): JSX.Element => {
       hiddenFields: formData.hiddenFields || [],
       hiddenSections: formData.hiddenSections || [],
     };
-    
-    const rankGroup = allRankGroups.find(
-      rg => rg.name === editingRankGroup && rg.formId === formData.formId
-    );
     
     if (rankGroup) {
       console.log("Saving rank-group-specific configuration to rank group:", rankGroup.id, rankGroupConfig);
@@ -8270,6 +8290,20 @@ const AdminModuleInner = (): JSX.Element => {
           formName={editingForm.name}
           form={editingForm}
           rankGroupName={editingRankGroup || undefined}
+          rankGroupConfig={(() => {
+            // Find the rank group configuration for loading saved data
+            const rg = allRankGroups.find(
+              r => r.name === editingRankGroup && r.formId === ('originalFormId' in editingForm ? (editingForm as any).originalFormId : editingForm.id)
+            );
+            if (rg?.configuration) {
+              try {
+                return JSON.parse(rg.configuration);
+              } catch {
+                return null;
+              }
+            }
+            return null;
+          })()}
           onClose={handleCloseEditor}
           onSave={handleFormSave}
         />

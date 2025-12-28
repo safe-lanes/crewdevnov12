@@ -38,6 +38,7 @@ import {
 interface PromotionFormEditorProps {
   form: Form;
   rankGroupName?: string;
+  rankGroupConfig?: any;
   onClose: () => void;
   onSave: (data: any) => void;
 }
@@ -54,6 +55,7 @@ interface LicenseEntry {
 export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
   form,
   rankGroupName,
+  rankGroupConfig,
   onClose,
   onSave
 }) => {
@@ -88,13 +90,23 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
 
   const { handleSubmit, watch, setValue, reset } = formMethods;
 
-  // Load saved configuration on mount
+  // Load saved configuration on mount - prioritize rank group config over form config
   useEffect(() => {
+    // First try to load from rank group configuration (passed as prop)
+    if (rankGroupConfig && rankGroupConfig.higherLicenseIds !== undefined) {
+      console.log('[PromotionFormEditor] Loading from rank group configuration:', rankGroupConfig);
+      reset(rankGroupConfig);
+      setSelectedLicenseIds(rankGroupConfig.higherLicenseIds || []);
+      return;
+    }
+    
+    // Fallback to form.configuration for backward compatibility
     if (form.configuration) {
       try {
         const savedConfig = JSON.parse(form.configuration);
         // Check if it's the new A2 config format
         if (savedConfig.higherLicenseIds !== undefined) {
+          console.log('[PromotionFormEditor] Loading from form configuration:', savedConfig);
           reset(savedConfig);
           setSelectedLicenseIds(savedConfig.higherLicenseIds || []);
         }
@@ -102,7 +114,7 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
         console.error('Failed to parse form configuration:', error);
       }
     }
-  }, [form.configuration, reset]);
+  }, [rankGroupConfig, form.configuration, reset]);
 
   const otherCriteria = watch('otherCriteria');
   const cesTests = watch('cesTests');
