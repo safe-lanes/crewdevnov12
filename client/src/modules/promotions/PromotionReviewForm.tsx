@@ -331,15 +331,45 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     return getVesselTypesForDropdown([2, 3]); // Level 2 and 3 vessel types
   }, [externalVesselTypesData]);
 
-  // A2.3b result - for now showing placeholder until we can calculate vessel-type-specific experience
+  // A2.3b result - uses rankExperienceByVesselType from dashboard data
   const a2_3b_vesselTypeExperienceResult = useMemo(() => {
-    if (isCrewOnLeave && !selectedVesselTypeForA2_3b) {
-      return ''; // Will show dropdown in UI
+    // Determine which vessel type to use
+    let vesselTypeToCheck = '';
+    
+    if (isCrewOnLeave) {
+      // Crew is on leave - use selected vessel type from dropdown
+      if (!selectedVesselTypeForA2_3b) {
+        return ''; // Will show dropdown in UI
+      }
+      vesselTypeToCheck = selectedVesselTypeForA2_3b;
+    } else {
+      // Crew is on vessel - use the vessel's type from crew data
+      vesselTypeToCheck = promotionData?.vesselType || '';
     }
-    // TODO: Calculate vessel-type-specific rank experience when we have the data
-    // For now return empty - this would need a backend endpoint to calculate
-    return '';
-  }, [isCrewOnLeave, selectedVesselTypeForA2_3b]);
+    
+    if (!vesselTypeToCheck) return '';
+    
+    // Look up experience from dashboard data
+    const rankExperienceByVesselType = dashboardData?.rankExperienceByVesselType;
+    if (!rankExperienceByVesselType) return '';
+    
+    // Try exact match first
+    let months = rankExperienceByVesselType[vesselTypeToCheck];
+    
+    // If no exact match, try case-insensitive match
+    if (months === undefined) {
+      const normalizedType = vesselTypeToCheck.toLowerCase();
+      const matchingKey = Object.keys(rankExperienceByVesselType).find(
+        key => key.toLowerCase() === normalizedType
+      );
+      if (matchingKey) {
+        months = rankExperienceByVesselType[matchingKey];
+      }
+    }
+    
+    if (months === undefined || months === 0) return '0 Months';
+    return `${Math.round(months)} Months`;
+  }, [isCrewOnLeave, selectedVesselTypeForA2_3b, promotionData?.vesselType, dashboardData?.rankExperienceByVesselType]);
 
   // ============ A2.3c - Company Service ============
   // Uses dashboard experience.company (in years, convert to months)

@@ -3238,6 +3238,50 @@ export class DatabaseStorage implements IStorage {
     return { rankExperience, totalMonths };
   }
 
+  /**
+   * Calculates rank experience broken down by vessel type.
+   * Returns a map of vessel type -> months of experience in the current rank on that vessel type.
+   */
+  private calculateRankExperienceByVesselType(
+    companySeaService: any[],
+    externalSeaService: any[],
+    currentRank: string
+  ): Record<string, number> {
+    const safeCompanySeaService = Array.isArray(companySeaService) ? companySeaService : [];
+    const safeExternalSeaService = Array.isArray(externalSeaService) ? externalSeaService : [];
+    const allSeaService = [...safeCompanySeaService, ...safeExternalSeaService];
+    
+    // Normalize the current rank for comparison (handle variants like "3rd Officer_1")
+    const normalizeRankForComparison = (rank: string): string => {
+      if (!rank) return '';
+      return rank.replace(/_\d+$/, '').trim().toLowerCase();
+    };
+    
+    const normalizedCurrentRank = normalizeRankForComparison(currentRank);
+    if (!normalizedCurrentRank) return {};
+    
+    // Aggregate months by vessel type for entries matching the current rank
+    const vesselTypeMonths: Record<string, number> = {};
+    
+    for (const service of allSeaService) {
+      const period = parseFloat(service.periodMonths) || 0;
+      if (period <= 0) continue;
+      
+      // Check if the service is for the current rank
+      const serviceRank = normalizeRankForComparison(service.rank || '');
+      if (serviceRank !== normalizedCurrentRank) continue;
+      
+      // Get vessel type
+      const vesselType = (service.vesselType || '').trim();
+      if (!vesselType) continue;
+      
+      // Use original vessel type as key (not normalized, so frontend can match against dropdown values)
+      vesselTypeMonths[vesselType] = (vesselTypeMonths[vesselType] || 0) + period;
+    }
+    
+    return vesselTypeMonths;
+  }
+
   private calculateShipTypeExperience(
     companySeaService: any[],
     externalSeaService: any[]
@@ -3561,6 +3605,13 @@ export class DatabaseStorage implements IStorage {
     
     // Calculate rank experience (sorted by hierarchy order if available)
     const rankData = this.calculateRankExperience(companySeaService, externalSeaService, rankOrderMap);
+    
+    // Calculate rank experience by vessel type (for A2.3b promotion criteria)
+    const rankExperienceByVesselType = this.calculateRankExperienceByVesselType(
+      companySeaService,
+      externalSeaService,
+      currentRank
+    );
 
     // Parse licenses for endorsement calculation (handles double-stringified JSON)
     const licenses = this.parseLicenseData(crewMember.licenses);
@@ -3684,6 +3735,7 @@ export class DatabaseStorage implements IStorage {
         totalMonths: rankData.totalMonths,
         totalYears: Math.round((rankData.totalMonths / 12) * 10) / 10
       },
+      rankExperienceByVesselType,
       serviceTimeline,
       compliance: [
         { category: "Travel Docs", status: "compliant", details: "✓" },

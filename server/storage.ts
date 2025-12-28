@@ -5963,6 +5963,30 @@ export class PersistentFileStorage implements IStorage {
     // Calculate ship type experience
     const shipTypeData = calculateShipTypeExperience(companySeaService, externalSeaService);
 
+    // Calculate rank experience from sea service
+    const allSeaService = [...companySeaService, ...externalSeaService];
+    const rankExperienceMap = new Map<string, number>();
+    for (const entry of allSeaService) {
+      if (!entry.rank) continue;
+      const durationMonths = calculateSeaServiceDuration(entry);
+      const existingMonths = rankExperienceMap.get(entry.rank) || 0;
+      rankExperienceMap.set(entry.rank, existingMonths + durationMonths);
+    }
+    const rankExperienceItems = Array.from(rankExperienceMap.entries())
+      .map(([rank, months]) => ({ rank, months }))
+      .sort((a, b) => b.months - a.months);
+    const totalRankMonths = rankExperienceItems.reduce((sum, item) => sum + item.months, 0);
+    
+    // Calculate rank experience by vessel type (for A2.3b promotion criteria)
+    const rankExperienceByVesselType: Record<string, number> = {};
+    for (const entry of allSeaService) {
+      if (!entry.rank || entry.rank !== currentRank) continue;
+      const vesselType = entry.vesselType || entry.shipType || '';
+      if (!vesselType) continue;
+      const durationMonths = calculateSeaServiceDuration(entry);
+      rankExperienceByVesselType[vesselType] = (rankExperienceByVesselType[vesselType] || 0) + durationMonths;
+    }
+
     // Parse licenses for endorsement calculation
     // Handle both cases: licenses can be a JSON string or already an array
     let licenses: any[] = [];
@@ -6061,6 +6085,12 @@ export class PersistentFileStorage implements IStorage {
         totalMonths: shipTypeData.totalMonths,
         totalYears: Math.round((shipTypeData.totalMonths / 12) * 10) / 10
       },
+      rankExperience: {
+        items: rankExperienceItems,
+        totalMonths: totalRankMonths,
+        totalYears: Math.round((totalRankMonths / 12) * 10) / 10
+      },
+      rankExperienceByVesselType,
       serviceTimeline,
       compliance: [
         { category: "Travel Docs", status: "compliant", details: "✓" },

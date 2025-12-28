@@ -1613,6 +1613,7 @@ export const crewDashboardSummarySchema = z.object({
   experience: experienceMetricSchema,
   shipTypes: shipTypeExperienceSchema,
   rankExperience: rankExperienceSchema,
+  rankExperienceByVesselType: z.record(z.string(), z.number()).optional(),
   serviceTimeline: z.array(serviceAssignmentSchema),
   compliance: z.array(complianceItemSchema),
   careerProgression: z.array(careerStepSchema),
