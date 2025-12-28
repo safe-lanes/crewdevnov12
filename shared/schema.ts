@@ -2028,6 +2028,64 @@ export const insertBondItemSchema = createInsertSchema(bondItems).pick({
   status: true,
 });
 
+// ===============================================
+// Promotion A2 Configuration Schema
+// ===============================================
+// Schema for configuring A2 Minimum Promotion Criteria per rank group
+// Used by PromotionFormEditor to store "Required" field values
+
+export const promotionA2OtherCriteriaSchema = z.object({
+  id: z.string(), // e.g., "a2.6a", "a2.6b"
+  label: z.string(), // Free text label for the criteria
+});
+
+export const promotionA2CesTestSchema = z.object({
+  id: z.string(), // e.g., "a2.7a", "a2.7b"
+  minScore: z.number().nullable(), // Minimum score required
+});
+
+export const promotionA2ConfigSchema = z.object({
+  // A2.1 Higher License Criteria - selected license IDs from Master 016
+  higherLicenseIds: z.array(z.string()).default([]),
+  
+  // A2.2 Age Criteria - min/max age range
+  ageMin: z.number().nullable().default(null),
+  ageMax: z.number().nullable().default(null),
+  
+  // A2.3 Experience & Sea Service Criteria
+  experienceMonths: z.object({
+    rankVessel: z.number().nullable().default(null), // A2.3a Minimum Rank Experience (Vessel)
+    rankVesselType: z.number().nullable().default(null), // A2.3b Minimum Rank Experience (Vessel Type)
+    companyService: z.number().nullable().default(null), // A2.3c Minimum Company Service in previous rank
+    tankerExperience: z.number().nullable().default(null), // A2.3d Minimum Tanker Experience
+  }).default({
+    rankVessel: null,
+    rankVesselType: null,
+    companyService: null,
+    tankerExperience: null,
+  }),
+  
+  // A2.4 Recommendations Criteria - minimum number of recommendations
+  minRecommendations: z.number().nullable().default(null),
+  
+  // A2.5 Promotion Checklist - minimum number of verifications
+  minChecklistVerifications: z.number().nullable().default(null),
+  
+  // A2.6 Other Criteria - dynamic sub-items
+  otherCriteria: z.array(promotionA2OtherCriteriaSchema).default([]),
+  
+  // A2.7 CES / Language Tests Criteria - dynamic sub-items with min scores
+  cesTests: z.array(promotionA2CesTestSchema).default([]),
+  
+  // Metadata
+  savedAt: z.string().optional(),
+  savedBy: z.string().optional(),
+});
+
+export type PromotionA2Config = z.infer<typeof promotionA2ConfigSchema>;
+export type PromotionA2OtherCriteria = z.infer<typeof promotionA2OtherCriteriaSchema>;
+export type PromotionA2CesTest = z.infer<typeof promotionA2CesTestSchema>;
+
 // Type exports
 export type CbaTable = typeof cbaTables.$inferSelect;
 export type InsertCbaTable = z.infer<typeof insertCbaTableSchema>;
