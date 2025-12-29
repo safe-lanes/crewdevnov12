@@ -244,12 +244,29 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     return map;
   }, [promotionReviews]);
 
-  // Helper to compute criteria status from review data
+  // Helper to compute criteria status from review data using criteriaMeetsStatus
   // Returns: 'met' (Green), 'pending' (Yellow), 'not-met' (Yellow), 'no-info' (Grey)
   const computeCriteriaStatus = useCallback((review: any, criteriaId: string): 'met' | 'pending' | 'not-met' | 'no-info' => {
     if (!review) return 'no-info';
     
-    // Parse verified status JSON
+    // Parse the auto-computed "Meets Criteria" status
+    let meetsStatus: Record<string, string> = {};
+    try {
+      meetsStatus = review.criteriaMeetsStatus 
+        ? JSON.parse(review.criteriaMeetsStatus) 
+        : {};
+    } catch (e) {
+      meetsStatus = {};
+    }
+    
+    const meets = meetsStatus[criteriaId];
+    
+    // Map stored values to return status per user spec:
+    // 'yes' → met (Green), 'no' or 'pending' → pending (Yellow)
+    if (meets === 'yes') return 'met';
+    if (meets === 'no' || meets === 'pending') return 'pending';
+    
+    // Fallback: Check verifiedStatus if criteriaMeetsStatus not available
     let verifiedStatus: Record<string, string> = {};
     try {
       verifiedStatus = review.criteriaVerifiedStatus 
@@ -260,36 +277,35 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     }
     
     const verified = verifiedStatus[criteriaId];
-    
-    // If verified is 'yes', criteria is met (Green)
     if (verified === 'yes') return 'met';
-    // If verified is 'na', treat as met (the criterion doesn't apply)
     if (verified === 'na') return 'met';
-    // If verified is 'no' or explicitly negative, show not-met (Yellow)
-    if (verified === 'no' || verified === 'false') return 'not-met';
-    // If no value set for this criteria but review exists, check if there are any other values
-    // If verifiedStatus has other keys but not this one, it's pending
-    if (Object.keys(verifiedStatus).length > 0) return 'pending';
-    // If review exists but no criteria data at all, treat as no-info
+    if (Object.keys(verifiedStatus).length > 0 || Object.keys(meetsStatus).length > 0) return 'pending';
+    
     return 'no-info';
   }, []);
 
-  // Helper to compute parent criteria status (a2.3, a2.6, a2.7) from children
+  // Helper to compute parent criteria status (a2.3, a2.6, a2.7) from children using criteriaMeetsStatus
   const computeParentCriteriaStatus = useCallback((review: any, parentId: string): 'met' | 'pending' | 'not-met' | 'no-info' => {
     if (!review) return 'no-info';
     
-    // Parse verified status JSON
-    let verifiedStatus: Record<string, string> = {};
+    // Parse the auto-computed "Meets Criteria" status
+    let meetsStatus: Record<string, string> = {};
     try {
-      verifiedStatus = review.criteriaVerifiedStatus 
-        ? JSON.parse(review.criteriaVerifiedStatus) 
+      meetsStatus = review.criteriaMeetsStatus 
+        ? JSON.parse(review.criteriaMeetsStatus) 
         : {};
     } catch (e) {
-      verifiedStatus = {};
+      meetsStatus = {};
     }
     
-    // For CES tests (a2.7), check cesTestsData
+    // For CES tests (a2.7), check the computed status first
     if (parentId === 'a2.7') {
+      const cesStatus = meetsStatus['a2.7'];
+      if (cesStatus === 'yes') return 'met';
+      // Per user spec: 'No' or 'Pending' → Yellow dot, so both map to 'pending'
+      if (cesStatus === 'no' || cesStatus === 'pending') return 'pending';
+      
+      // Fallback: Check cesTestsData directly if no computed status
       let cesTests: any[] = [];
       try {
         cesTests = review.cesTestsData ? JSON.parse(review.cesTestsData) : [];
@@ -300,35 +316,32 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       if (cesTests.length === 0) return 'no-info';
       
       const results = cesTests.map(t => t.result || '');
-      // If any test has empty result, it's pending
-      if (results.some(r => r === '')) return 'pending';
-      // If all tests passed or NA, criteria is met
+      // All Pass/NA → met (Green), otherwise → pending (Yellow)
       if (results.every(r => r === 'Pass' || r === 'NA')) return 'met';
-      // If any test has Fail or Pending result, show as pending (Yellow per user's requirement)
-      // User's note: 'No' or 'Pending' → Yellow dot
       return 'pending';
     }
     
-    // For other parent criteria (a2.3, a2.6), check children
-    const childIds = Object.keys(verifiedStatus).filter(
+    // For other parent criteria (a2.3, a2.6), check children in meetsStatus
+    const childIds = Object.keys(meetsStatus).filter(
       id => id.startsWith(parentId) && id.length > parentId.length
     );
     
-    // If review exists but no children for this parent, check if parent itself is marked
+    // If no children in meetsStatus, check if parent itself has a value
     if (childIds.length === 0) {
-      const parentValue = verifiedStatus[parentId];
+      const parentValue = meetsStatus[parentId];
       if (parentValue === 'yes') return 'met';
-      if (parentValue === 'na') return 'met';
-      // Review exists but no criteria data for this parent
+      // Per user spec: 'No' or 'Pending' → Yellow dot
+      if (parentValue === 'no' || parentValue === 'pending') return 'pending';
+      
+      // Check if any data exists in the review
+      if (Object.keys(meetsStatus).length > 0) return 'pending';
       return 'no-info';
     }
     
-    const childValues = childIds.map(id => verifiedStatus[id] || '');
-    // If any child has empty value, it's pending verification
-    if (childValues.some(v => v === '')) return 'pending';
-    // If all children are verified as yes or na, criteria is met
-    if (childValues.every(v => v === 'yes' || v === 'na')) return 'met';
-    // Otherwise show as pending (Yellow) - per user's note 'No' or 'Pending' → Yellow
+    const childValues = childIds.map(id => meetsStatus[id] || '');
+    // If all children are 'yes', parent is met (Green)
+    if (childValues.every(v => v === 'yes')) return 'met';
+    // Otherwise → pending (Yellow) per user spec
     return 'pending';
   }, []);
 

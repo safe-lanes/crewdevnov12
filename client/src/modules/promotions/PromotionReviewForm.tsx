@@ -582,15 +582,72 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
 
   const collectFormData = useCallback((formData: PromotionReviewFormData) => {
     const criteriaVerifiedStatus: Record<string, string> = {};
+    const criteriaMeetsStatus: Record<string, string> = {};
+    
+    // Helper function to compute meets status (inlined to avoid dependency issues)
+    const computeMeetsStatus = (required: string, result: string): string => {
+      if (!required || !result) return 'pending';
+      
+      const rangeMatch = required.match(/(\d+)\s*-\s*(\d+)/);
+      if (rangeMatch) {
+        const min = parseFloat(rangeMatch[1]);
+        const max = parseFloat(rangeMatch[2]);
+        const actualValue = parseFloat(result);
+        if (!isNaN(min) && !isNaN(max) && !isNaN(actualValue)) {
+          return (actualValue >= min && actualValue <= max) ? 'yes' : 'no';
+        }
+      }
+      
+      const reqNum = parseFloat(required);
+      const resNum = parseFloat(result);
+      if (!isNaN(reqNum) && !isNaN(resNum)) {
+        return resNum >= reqNum ? 'yes' : 'no';
+      }
+      
+      return required.trim().toLowerCase() === result.trim().toLowerCase() ? 'yes' : 'no';
+    };
+    
     criteriaData.forEach(row => {
       criteriaVerifiedStatus[row.id] = row.verified;
+      criteriaMeetsStatus[row.id] = computeMeetsStatus(row.required, row.resultFromDb);
     });
+    
+    // Compute parent criteria aggregation (a2.3, a2.6)
+    // Parent is 'yes' if all children are 'yes', 'pending' if any child is 'pending' or 'no'
+    const parentIds = ['a2.3', 'a2.6'];
+    parentIds.forEach(parentId => {
+      const childIds = Object.keys(criteriaMeetsStatus).filter(
+        id => id.startsWith(parentId) && id.length > parentId.length
+      );
+      if (childIds.length > 0) {
+        const childValues = childIds.map(id => criteriaMeetsStatus[id]);
+        if (childValues.every(v => v === 'yes')) {
+          criteriaMeetsStatus[parentId] = 'yes';
+        } else {
+          // Per user spec: 'No' or 'Pending' → Yellow dot, so map both to 'pending'
+          criteriaMeetsStatus[parentId] = 'pending';
+        }
+      }
+    });
+    
+    // Compute CES tests meets status (a2.7)
+    // If all tests pass/NA → yes, if any fail/empty → pending (Yellow per user spec)
+    if (cesTests.length > 0) {
+      const results = cesTests.map(t => t.result || '');
+      if (results.every(r => r === 'Pass' || r === 'NA')) {
+        criteriaMeetsStatus['a2.7'] = 'yes';
+      } else {
+        // Any empty, Fail, or other result → pending (Yellow per user spec)
+        criteriaMeetsStatus['a2.7'] = 'pending';
+      }
+    }
 
     return {
       crewMemberId: promotionData?.crewMemberId,
       promotionToRank: promotionData?.promotionToRank,
       selectedVesselTypeForA2_3b: selectedVesselTypeForA2_3b || null,
       criteriaVerifiedStatus: JSON.stringify(criteriaVerifiedStatus),
+      criteriaMeetsStatus: JSON.stringify(criteriaMeetsStatus),
       cesTestsData: JSON.stringify(cesTests),
       criteriaComments: JSON.stringify(criteriaComments),
       trainingNeeds: JSON.stringify(trainingNeeds),
