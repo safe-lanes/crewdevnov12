@@ -628,26 +628,35 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     {
       headerName: 'Other',
       field: 'otherCriteria',
-      width: 110,
+      width: 55,
       cellRenderer: StatusIndicatorRenderer,
       sortable: true,
-      resizable: false
+      resizable: false,
+      wrapHeaderText: false,
+      autoHeaderHeight: false,
+      headerClass: 'vertical-header'
     },
     {
       headerName: 'CES',
       field: 'cesIndex',
-      width: 95,
+      width: 55,
       cellRenderer: StatusIndicatorRenderer,
       sortable: true,
-      resizable: false
+      resizable: false,
+      wrapHeaderText: false,
+      autoHeaderHeight: false,
+      headerClass: 'vertical-header'
     },
     {
       headerName: 'Train',
       field: 'trainDocs',
-      width: 120,
+      width: 55,
       cellRenderer: StatusIndicatorRenderer,
       sortable: true,
-      resizable: false
+      resizable: false,
+      wrapHeaderText: false,
+      autoHeaderHeight: false,
+      headerClass: 'vertical-header'
     },
     {
       headerName: 'Status',
