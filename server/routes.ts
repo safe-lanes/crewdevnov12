@@ -7258,6 +7258,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get count of promotion recommendations for a crew member at a specific rank
+  app.get("/api/appraisals/crew/:crewMemberId/promotion-recommendations", async (req, res) => {
+    try {
+      const crewMemberId = req.params.crewMemberId;
+      const rank = req.query.rank as string;
+      
+      if (!rank) {
+        return res.status(400).json({ error: "Rank query parameter is required" });
+      }
+      
+      const appraisals = await storage.getAppraisalResultsByCrewMember(crewMemberId);
+      
+      // Filter completed appraisals (submitted or reviewed) at the specified rank
+      // and count those where "Recommended for promotion?" is "Yes"
+      let count = 0;
+      
+      for (const appraisal of appraisals) {
+        // Only count completed appraisals (submitted or reviewed status)
+        // Status values may be capitalized (e.g., "Submitted", "Reviewed")
+        const statusLower = appraisal.status?.toLowerCase();
+        if (statusLower !== 'submitted' && statusLower !== 'reviewed') {
+          continue;
+        }
+        
+        try {
+          const appraisalData = typeof appraisal.appraisalData === 'string' 
+            ? JSON.parse(appraisal.appraisalData) 
+            : appraisal.appraisalData;
+          
+          // Check if the appraisal was done at the specified rank
+          const appraisalRank = appraisalData?.seafarersRank || '';
+          if (appraisalRank.toLowerCase().trim() !== rank.toLowerCase().trim()) {
+            continue;
+          }
+          
+          // Check recommendations array for "Recommended for promotion?" (id: "3")
+          const recommendations = appraisalData?.recommendations || [];
+          const promotionRecommendation = recommendations.find(
+            (rec: any) => rec.id === "3" || rec.question?.toLowerCase().includes("recommended for promotion")
+          );
+          
+          if (promotionRecommendation?.answer?.toLowerCase() === 'yes') {
+            count++;
+          }
+        } catch (parseError) {
+          console.error(`Failed to parse appraisal data for id ${appraisal.id}:`, parseError);
+        }
+      }
+      
+      res.json({ count, rank, crewMemberId });
+    } catch (error) {
+      console.error("Failed to count promotion recommendations:", error);
+      res.status(500).json({ error: "Failed to count promotion recommendations" });
+    }
+  });
+
   app.post("/api/appraisals", async (req, res) => {
     try {
       const result = insertAppraisalResultSchema.safeParse(req.body);

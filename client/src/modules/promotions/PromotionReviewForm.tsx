@@ -90,6 +90,24 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   const { data: externalVesselTypesData } = useExternalVesselTypes();
   const { normalizeRank } = useRankNormalization();
 
+  // Fetch promotion recommendations count from completed appraisals at current rank
+  const { data: promotionRecommendationsData } = useQuery<{ count: number; rank: string; crewMemberId: string }>({
+    queryKey: ['/api/appraisals/crew', promotionData?.crewMemberId, 'promotion-recommendations', crewMemberData?.presentRank],
+    queryFn: async () => {
+      const response = await fetch(`/api/appraisals/crew/${promotionData?.crewMemberId}/promotion-recommendations?rank=${encodeURIComponent(crewMemberData?.presentRank || '')}`);
+      if (!response.ok) throw new Error('Failed to fetch promotion recommendations');
+      return response.json();
+    },
+    enabled: !!promotionData?.crewMemberId && !!crewMemberData?.presentRank,
+  });
+
+  const a2_4_recommendationsResult = useMemo(() => {
+    if (promotionRecommendationsData?.count !== undefined) {
+      return String(promotionRecommendationsData.count);
+    }
+    return '';
+  }, [promotionRecommendationsData]);
+
   const [savedReviewId, setSavedReviewId] = useState<number | null>(null);
 
   const { data: existingReviewData, isLoading: isLoadingReview } = useQuery<PromotionReview>({
@@ -368,7 +386,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         id: 'a2.4', 
         criteria: 'A2.4 Recommendations Criteria?', 
         required: a2Config?.minRecommendations ? String(a2Config.minRecommendations) : (hasConfig ? '' : defaultCriteriaValues.recommendations), 
-        resultFromDb: '', 
+        resultFromDb: a2_4_recommendationsResult, 
         verified: '', 
         hasInfo: true 
       },
@@ -408,7 +426,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     );
 
     setCriteriaData(baseCriteria);
-  }, [a2Config, requiredLicenseDisplay, requiredAgeDisplay, a2_1_licenseResult, a2_2_ageResult, a2_3a_rankExperienceResult, a2_3b_vesselTypeExperienceResult, a2_3c_companyServiceResult, a2_3d_tankerExperienceResult]);
+  }, [a2Config, requiredLicenseDisplay, requiredAgeDisplay, a2_1_licenseResult, a2_2_ageResult, a2_3a_rankExperienceResult, a2_3b_vesselTypeExperienceResult, a2_3c_companyServiceResult, a2_3d_tankerExperienceResult, a2_4_recommendationsResult]);
 
   const [cesTests, setCesTests] = useState<CesTest[]>([]);
 
