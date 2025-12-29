@@ -93,7 +93,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   const [savedReviewId, setSavedReviewId] = useState<number | null>(null);
 
   const { data: existingReviewData, isLoading: isLoadingReview } = useQuery<PromotionReview>({
-    queryKey: ['/api/promotion-reviews/by-crew', promotionData?.crewMemberId, promotionData?.promotionToRank],
+    queryKey: [`/api/promotion-reviews/crew/${promotionData?.crewMemberId}/rank/${encodeURIComponent(promotionData?.promotionToRank || '')}`],
     enabled: !!promotionData?.crewMemberId && !!promotionData?.promotionToRank,
   });
 
