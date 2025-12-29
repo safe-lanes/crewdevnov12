@@ -393,7 +393,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       { 
         id: 'a2.5a', 
         criteria: 'A2.5a Promotion Checklist Completed?', 
-        required: a2Config?.minChecklistVerifications ? String(a2Config.minChecklistVerifications) : (hasConfig ? '' : defaultCriteriaValues.checklist), 
+        required: a2Config?.minChecklistCompletionPercent ? `${a2Config.minChecklistCompletionPercent}%` : (hasConfig ? '' : `${defaultCriteriaValues.checklist}%`), 
         resultFromDb: '', 
         verified: '', 
         hasInfo: true 

@@ -83,6 +83,7 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
       },
       minRecommendations: null,
       minChecklistVerifications: null,
+      minChecklistCompletionPercent: null,
       otherCriteria: [],
       cesTests: [],
     },
@@ -92,10 +93,16 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
 
   // Load saved configuration on mount - prioritize rank group config over form config
   useEffect(() => {
+    // Normalize legacy configs to ensure new fields have proper null values
+    const normalizeConfig = (config: any) => ({
+      ...config,
+      minChecklistCompletionPercent: config.minChecklistCompletionPercent ?? null,
+    });
+    
     // First try to load from rank group configuration (passed as prop)
     if (rankGroupConfig && rankGroupConfig.higherLicenseIds !== undefined) {
       console.log('[PromotionFormEditor] Loading from rank group configuration:', rankGroupConfig);
-      reset(rankGroupConfig);
+      reset(normalizeConfig(rankGroupConfig));
       setSelectedLicenseIds(rankGroupConfig.higherLicenseIds || []);
       return;
     }
@@ -107,7 +114,7 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
         // Check if it's the new A2 config format
         if (savedConfig.higherLicenseIds !== undefined) {
           console.log('[PromotionFormEditor] Loading from form configuration:', savedConfig);
-          reset(savedConfig);
+          reset(normalizeConfig(savedConfig));
           setSelectedLicenseIds(savedConfig.higherLicenseIds || []);
         }
       } catch (error) {
@@ -559,20 +566,33 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
 
                   {/* A2.5a Promotion Checklist Completed */}
                   <TableRow className="bg-gray-50/50 dark:bg-gray-800/50">
-                    <TableCell className="text-sm pl-8">
-                      <div className="flex items-center gap-2">
-                        A2.5a Promotion Checklist Completed?
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="h-4 w-4 text-gray-400 cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Auto-calculated based on checklist completion</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </div>
+                    <TableCell className="text-sm pl-8">A2.5a Promotion Checklist Completed?</TableCell>
+                    <TableCell>
+                      {isPreviewMode ? (
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          {watch('minChecklistCompletionPercent') != null
+                            ? `${watch('minChecklistCompletionPercent')}%`
+                            : <span className="text-gray-400 italic">Not configured</span>
+                          }
+                        </span>
+                      ) : (
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          placeholder="% Completion required"
+                          className="h-8 w-40 text-xs"
+                          value={watch('minChecklistCompletionPercent') ?? ''}
+                          onChange={(e) => {
+                            const value = e.target.value ? parseInt(e.target.value) : null;
+                            if (value === null || (value >= 0 && value <= 100)) {
+                              setValue('minChecklistCompletionPercent', value);
+                            }
+                          }}
+                          data-testid="input-min-checklist-completion-percent"
+                        />
+                      )}
                     </TableCell>
-                    <TableCell className="text-xs text-gray-500">(Auto-calculated)</TableCell>
                   </TableRow>
 
                   {/* A2.6 Other Criteria - Header */}

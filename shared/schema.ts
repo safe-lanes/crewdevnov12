@@ -2074,6 +2074,9 @@ export const promotionA2ConfigSchema = z.object({
   // A2.5 Promotion Checklist - minimum number of verifications
   minChecklistVerifications: z.number().nullable().default(null),
   
+  // A2.5a Promotion Checklist Completed - minimum completion percentage (0-100)
+  minChecklistCompletionPercent: z.number().nullable().default(null),
+  
   // A2.6 Other Criteria - dynamic sub-items
   otherCriteria: z.array(promotionA2OtherCriteriaSchema).default([]),
   
