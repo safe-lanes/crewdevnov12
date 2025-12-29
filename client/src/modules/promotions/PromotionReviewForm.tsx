@@ -884,7 +884,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                     </div>
                     <div>
                       <Label className="text-xs text-gray-500">DOB / Age</Label>
-                      <div className="text-sm font-medium mt-1">{promotionData?.dob || '08-Jul-1991'} / {promotionData?.age || 'N/A'}</div>
+                      <div className="text-sm font-medium mt-1">{promotionData?.dob || '08-Jul-1991'} / {promotionData?.ageValue || 'N/A'}</div>
                     </div>
                     <div>
                       <Label className="text-xs text-gray-500">Nationality</Label>

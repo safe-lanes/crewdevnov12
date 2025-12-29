@@ -178,6 +178,55 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     queryKey: ['/api/promotion-hierarchies'],
   });
 
+  // Fetch forms to find Promotion Review Form
+  const { data: formsData = [] } = useQuery<any[]>({
+    queryKey: ['/api/forms'],
+  });
+
+  // Fetch all rank groups for age criteria lookup
+  const { data: rankGroupsData = [] } = useQuery<any[]>({
+    queryKey: ['/api/rank-groups'],
+  });
+
+  // Build lookup map from promotion rank -> age criteria (ageMin, ageMax)
+  const ageRequirementsByRank = useMemo(() => {
+    const map = new Map<string, { ageMin?: number; ageMax?: number }>();
+    
+    const promotionReviewForm = formsData.find((f: any) => f.name === 'Promotion Review Form');
+    if (!promotionReviewForm) return map;
+    
+    const formRankGroups = rankGroupsData.filter((rg: any) => 
+      rg.formId === promotionReviewForm.id && !rg.archivedAt
+    );
+    
+    for (const rg of formRankGroups) {
+      let ranks: string[] = [];
+      try {
+        ranks = typeof rg.ranks === 'string' ? JSON.parse(rg.ranks) : rg.ranks || [];
+      } catch (e) {
+        ranks = [];
+      }
+      
+      let config: any = null;
+      try {
+        if (rg.configuration) {
+          const parsed = typeof rg.configuration === 'string' ? JSON.parse(rg.configuration) : rg.configuration;
+          config = parsed?.promotionA2 ?? parsed;
+        }
+      } catch (e) {
+        config = null;
+      }
+      
+      if (config && (config.ageMin || config.ageMax)) {
+        for (const rank of ranks) {
+          map.set(normalizeRank(rank), { ageMin: config.ageMin, ageMax: config.ageMax });
+        }
+      }
+    }
+    
+    return map;
+  }, [formsData, rankGroupsData, normalizeRank]);
+
   // Transform crew data to promotion table format with sample indicator data
   const promotionData = useMemo(() => {
     const members = Array.isArray(crewMembers) ? crewMembers : [];
@@ -220,12 +269,25 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         const dobString = crew.dateOfBirth || crew.dob || '-';
         const calculatedAge = calculateAge(dobString);
         
+        // Determine age status based on promotion rank requirements
+        let ageStatus: 'met' | 'pending' | 'not-met' = 'pending';
+        if (calculatedAge !== null && nextRank) {
+          const normalizedNextRank = normalizeRank(nextRank);
+          const ageReq = ageRequirementsByRank.get(normalizedNextRank);
+          if (ageReq) {
+            const meetsMin = !ageReq.ageMin || calculatedAge >= ageReq.ageMin;
+            const meetsMax = !ageReq.ageMax || calculatedAge <= ageReq.ageMax;
+            ageStatus = (meetsMin && meetsMax) ? 'met' : 'not-met';
+          }
+        }
+        
         return {
           crewId: crew.employeeId || crew.id || '-',
           crewMemberId: crew.id, // Database ID for API calls
           name: `${crew.firstName || 'Unknown'} ${crew.middleInitial || ''} ${crew.familyName || ''}`.trim(),
           dob: dobString,
-          age: calculatedAge !== null ? calculatedAge : '-',
+          ageValue: calculatedAge !== null ? calculatedAge : '-', // Numeric age for downstream use
+          age: ageStatus, // Status indicator for Age column ('met', 'pending', 'not-met')
           nationality: crew.nationality || 'Unknown',
           currentRank: currentRank,
           promotionToRank: nextRank || '-',
@@ -242,7 +304,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         };
       })
       .filter(item => item !== null); // Remove filtered out crew members
-  }, [crewMembers, hierarchies, getVesselName, normalizeRank]);
+  }, [crewMembers, hierarchies, getVesselName, normalizeRank, ageRequirementsByRank]);
 
   // Filter data based on filters
   const filteredData = useMemo(() => {
@@ -340,7 +402,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       headerName: 'Age',
       field: 'age',
       width: 90,
-      cellStyle: { fontSize: '13px', color: '#4f5863' },
+      cellRenderer: StatusIndicatorRenderer,
       sortable: true,
       resizable: false,
       wrapHeaderText: false,
