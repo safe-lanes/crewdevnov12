@@ -67,28 +67,28 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     queryKey: ['/api/masters/016/data'],
   });
 
+  const crewMemberId = promotionData?.crewMemberId ?? '';
+  const promotionToRank = promotionData?.promotionToRank ?? '';
+
   const { data: crewMemberData } = useQuery<CrewMember>({
-    queryKey: [`/api/crew-members/${promotionData?.crewMemberId}`],
-    enabled: !!promotionData?.crewMemberId,
+    queryKey: [`/api/crew-members/${crewMemberId}`],
+    enabled: !!crewMemberId,
   });
 
   const { data: dashboardData } = useQuery<CrewDashboardSummary>({
-    queryKey: [`/api/crew-members/${promotionData?.crewMemberId}/dashboard`],
-    enabled: !!promotionData?.crewMemberId,
+    queryKey: [`/api/crew-members/${crewMemberId}/dashboard`],
+    enabled: !!crewMemberId,
   });
 
   const { data: externalVesselTypesData } = useExternalVesselTypes();
   const { normalizeRank } = useRankNormalization();
 
+  const presentRank = crewMemberData?.presentRank ?? '';
+
   // Fetch promotion recommendations count from completed appraisals at current rank
   const { data: promotionRecommendationsData } = useQuery<{ count: number; rank: string; crewMemberId: string }>({
-    queryKey: ['/api/appraisals/crew', promotionData?.crewMemberId, 'promotion-recommendations', crewMemberData?.presentRank],
-    queryFn: async () => {
-      const response = await fetch(`/api/appraisals/crew/${promotionData?.crewMemberId}/promotion-recommendations?rank=${encodeURIComponent(crewMemberData?.presentRank || '')}`);
-      if (!response.ok) throw new Error('Failed to fetch promotion recommendations');
-      return response.json();
-    },
-    enabled: !!promotionData?.crewMemberId && !!crewMemberData?.presentRank,
+    queryKey: [`/api/appraisals/crew/${crewMemberId}/promotion-recommendations?rank=${encodeURIComponent(presentRank)}`],
+    enabled: !!crewMemberId && !!presentRank,
   });
 
   const a2_4_recommendationsResult = useMemo(() => {
@@ -101,8 +101,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   const [savedReviewId, setSavedReviewId] = useState<number | null>(null);
 
   const { data: existingReviewData, isLoading: isLoadingReview } = useQuery<PromotionReview>({
-    queryKey: [`/api/promotion-reviews/crew/${promotionData?.crewMemberId}/rank/${encodeURIComponent(promotionData?.promotionToRank || '')}`],
-    enabled: !!promotionData?.crewMemberId && !!promotionData?.promotionToRank,
+    queryKey: [`/api/promotion-reviews/crew/${crewMemberId}/rank/${encodeURIComponent(promotionToRank)}`],
+    enabled: !!crewMemberId && !!promotionToRank,
   });
 
   const saveMutation = useMutation({
