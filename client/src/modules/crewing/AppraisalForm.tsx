@@ -1611,10 +1611,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="captain">Captain</SelectItem>
+                            <SelectItem value="master">Master</SelectItem>
+                            <SelectItem value="chief-officer">Chief Officer</SelectItem>
                             <SelectItem value="chief-engineer">Chief Engineer</SelectItem>
-                            <SelectItem value="chief-mate">Chief Mate</SelectItem>
-                            <SelectItem value="shore-management">Shore Management</SelectItem>
+                            <SelectItem value="2nd-engineer">2nd Engineer</SelectItem>
+                            <SelectItem value="marine-superintendent">Marine Superintendent</SelectItem>
+                            <SelectItem value="technical-superintendent">Technical Superintendent</SelectItem>
+                            <SelectItem value="crew-manager">Crew Manager</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -3331,10 +3334,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value="captain">Captain</SelectItem>
+                                  <SelectItem value="master">Master</SelectItem>
+                                  <SelectItem value="chief-officer">Chief Officer</SelectItem>
                                   <SelectItem value="chief-engineer">Chief Engineer</SelectItem>
-                                  <SelectItem value="chief-mate">Chief Mate</SelectItem>
-                                  <SelectItem value="shore-management">Shore Management</SelectItem>
+                                  <SelectItem value="2nd-engineer">2nd Engineer</SelectItem>
+                                  <SelectItem value="marine-superintendent">Marine Superintendent</SelectItem>
+                                  <SelectItem value="technical-superintendent">Technical Superintendent</SelectItem>
+                                  <SelectItem value="crew-manager">Crew Manager</SelectItem>
                                 </SelectContent>
                               </Select>
                               <FormMessage />
