@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Filter, Search as SearchIcon } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
+import { useVesselLookup } from '@/hooks/useVesselLookup';
 
 export function PromotionsModule() {
     const [selectedPromotionsPage, setSelectedPromotionsPage] = useState('all');
@@ -17,10 +18,14 @@ export function PromotionsModule() {
     // Filter states
     const [searchName, setSearchName] = useState('');
     const [promotionToRank, setPromotionToRank] = useState('');
+    const [vessel, setVessel] = useState('');
     const [vesselType, setVesselType] = useState('');
     const [nationality, setNationality] = useState('');
     const [criteria, setCriteria] = useState('');
     const [status, setStatus] = useState('');
+    
+    // Fetch vessel options from vessel master
+    const { vessels: vesselOptions } = useVesselLookup();
     
     // Fetch vessel types from Master 004 API with fallback to static data
     const { data: vesselTypeMasterDataRaw = [] } = useQuery<Array<{ entryId: string; name: string; level?: number }>>({
@@ -40,6 +45,7 @@ export function PromotionsModule() {
     const handleClearFilters = () => {
         setSearchName('');
         setPromotionToRank('');
+        setVessel('');
         setVesselType('');
         setNationality('');
         setCriteria('');
@@ -106,6 +112,18 @@ export function PromotionsModule() {
                                 <SelectItem value="Able Seaman">Able Seaman</SelectItem>
                                 <SelectItem value="Bosun">Bosun</SelectItem>
                                 <SelectItem value="Electrician">Electrician</SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        {/* Vessel */}
+                        <Select value={vessel} onValueChange={setVessel}>
+                            <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-vessel">
+                                <SelectValue placeholder="Vessel" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {vesselOptions.map((v) => (
+                                    <SelectItem key={v.entryId} value={v.entryId}>{v.name}</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
 
@@ -177,6 +195,7 @@ export function PromotionsModule() {
                     <PromotionsTable
                         searchName={searchName}
                         promotionToRank={promotionToRank}
+                        vessel={vessel}
                         vesselType={vesselType}
                         nationality={nationality}
                         criteria={criteria}

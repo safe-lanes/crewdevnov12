@@ -147,6 +147,7 @@ const EditButtonRenderer = (params: ICellRendererParams & { onEdit?: (data: any)
 interface PromotionsTableProps {
   searchName: string;
   promotionToRank: string;
+  vessel: string;
   vesselType: string;
   nationality: string;
   criteria: string;
@@ -156,6 +157,7 @@ interface PromotionsTableProps {
 export const PromotionsTable: React.FC<PromotionsTableProps> = ({
   searchName,
   promotionToRank,
+  vessel,
   vesselType,
   nationality,
   criteria,
@@ -463,6 +465,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     return promotionData.filter(item => {
       const matchesName = !searchName || item.name.toLowerCase().includes(searchName.toLowerCase());
       const matchesRank = !promotionToRank || item.promotionToRank === promotionToRank;
+      const matchesVessel = !vessel || item.presentVessel === vessel;
       const matchesNationality = !nationality || item.nationality === nationality;
       const matchesStatus = !status || item.status === status;
       
@@ -479,9 +482,9 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         item.cesIndex === criteria || 
         item.trainDocs === criteria;
 
-      return matchesName && matchesRank && matchesVesselType && matchesNationality && matchesCriteria && matchesStatus;
+      return matchesName && matchesRank && matchesVessel && matchesVesselType && matchesNationality && matchesCriteria && matchesStatus;
     });
-  }, [promotionData, searchName, promotionToRank, vesselType, nationality, criteria, status]);
+  }, [promotionData, searchName, promotionToRank, vessel, vesselType, nationality, criteria, status]);
 
   const handleEditPromotion = useCallback((data: any) => {
     setSelectedPromotion(data);
