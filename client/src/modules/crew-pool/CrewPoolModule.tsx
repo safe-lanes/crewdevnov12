@@ -470,7 +470,11 @@ export const CrewPoolModule = (): JSX.Element => {
                     resizable: true,
                     wrapText: true,
                     autoHeight: true,
-                    headerClass: 'ag-header-cell-text-wrap'
+                    headerClass: 'ag-header-cell-text-wrap',
+                    valueFormatter: (params: any) => {
+                        if (!params.value) return '';
+                        return getVesselName(params.value) || params.value;
+                    }
                 },
                 {
                     headerName: 'S/O',
