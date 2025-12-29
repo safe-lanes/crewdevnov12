@@ -693,23 +693,15 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     return id.startsWith('a2.6') && id.length > 4;
   }, []);
 
-  const updateMeetsCriterion = useCallback((id: string, value: string) => {
-    setCriteriaData(prev => prev.map(row => 
-      row.id === id ? { ...row, meetsCriterion: value } : row
-    ));
-  }, []);
-
   const computeOtherCriteriaMeetsCriterion = useCallback((): 'yes' | 'pending' => {
     const otherCriteriaSubItems = criteriaData.filter(row => isOtherCriteriaSubItem(row.id));
     if (otherCriteriaSubItems.length === 0) return 'pending';
     
-    const meetsCriterionValues = otherCriteriaSubItems.map(row => row.meetsCriterion || '');
-    const hasBlank = meetsCriterionValues.some(v => v === '' || v === undefined);
+    const verifiedValues = otherCriteriaSubItems.map(row => row.verified || '');
+    const hasBlank = verifiedValues.some(v => v === '' || v === undefined);
     if (hasBlank) return 'pending';
     
-    const allYesOrNa = meetsCriterionValues.every(v => v === 'yes' || v === 'na');
-    const hasYes = meetsCriterionValues.some(v => v === 'yes');
-    if (hasYes && allYesOrNa) return 'yes';
+    const allYesOrNa = verifiedValues.every(v => v === 'yes' || v === 'na');
     if (allYesOrNa) return 'yes';
     
     return 'pending';
@@ -900,7 +892,6 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                   selectedVesselTypeForA2_3b={selectedVesselTypeForA2_3b}
                   onVesselTypeChange={setSelectedVesselTypeForA2_3b}
                   onUpdateVerified={updateCriteriaVerified}
-                  onUpdateMeetsCriterion={updateMeetsCriterion}
                   isParentCriteria={isParentCriteria}
                   isOtherCriteriaSubItem={isOtherCriteriaSubItem}
                   computeParentStatus={computeParentStatus}
