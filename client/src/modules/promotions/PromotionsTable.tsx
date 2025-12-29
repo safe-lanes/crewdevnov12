@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { ColDef, ICellRendererParams, GridReadyEvent, GridApi } from 'ag-grid-community';
+import { ColDef, ICellRendererParams, GridReadyEvent, GridApi, GridOptions } from 'ag-grid-community';
 import { useQuery } from '@tanstack/react-query';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,10 @@ import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { findNextPromotionRank, shouldShowInPromotionsTable } from './promotionUtils';
 import { PromotionHierarchy } from '@shared/schema';
 import { PromotionReviewForm } from './PromotionReviewForm';
+
+// Stale time constants for React Query caching (in milliseconds)
+const REFERENCE_DATA_STALE_TIME = 10 * 60 * 1000; // 10 minutes for slow-changing data
+const REVIEW_DATA_STALE_TIME = 2 * 60 * 1000; // 2 minutes for promotion reviews
 
 // Helper function to calculate age from DOB
 const calculateAge = (dob: string): number | null => {
@@ -136,7 +140,7 @@ const EditButtonRenderer = (params: ICellRendererParams & { onEdit?: (data: any)
         size="sm"
         className="h-7 w-7 p-0 hover:bg-gray-100"
         onClick={handleEditClick}
-        data-testid={`button-edit-${params.data.crewId}`}
+        data-testid={`button-edit-${params.data?.crewId}`}
       >
         <Edit className="h-4 w-4 text-gray-600" />
       </Button>
@@ -175,26 +179,31 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
   // Fetch crew members from crew pool API
   const { data: crewMembers = [], isLoading } = useQuery({
     queryKey: ['/api/crew-members'],
+    staleTime: REVIEW_DATA_STALE_TIME,
   });
 
-  // Fetch promotion hierarchies
+  // Fetch promotion hierarchies (reference data - slow changing)
   const { data: hierarchies = [], isLoading: isLoadingHierarchies } = useQuery<PromotionHierarchy[]>({
     queryKey: ['/api/promotion-hierarchies'],
+    staleTime: REFERENCE_DATA_STALE_TIME,
   });
 
-  // Fetch forms to find Promotion Review Form
+  // Fetch forms to find Promotion Review Form (reference data - slow changing)
   const { data: formsData = [] } = useQuery<any[]>({
     queryKey: ['/api/forms'],
+    staleTime: REFERENCE_DATA_STALE_TIME,
   });
 
-  // Fetch all rank groups for age criteria lookup
+  // Fetch all rank groups for age criteria lookup (reference data - slow changing)
   const { data: rankGroupsData = [] } = useQuery<any[]>({
     queryKey: ['/api/rank-groups'],
+    staleTime: REFERENCE_DATA_STALE_TIME,
   });
 
   // Fetch all promotion reviews to map criteria status to table columns
   const { data: promotionReviews = [] } = useQuery<any[]>({
     queryKey: ['/api/promotion-reviews'],
+    staleTime: REVIEW_DATA_STALE_TIME,
   });
 
   // Build lookup map from promotion rank -> age criteria (ageMin, ageMax)
@@ -667,6 +676,13 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     setSelectedPromotion(null);
   }, []);
 
+  // AG Grid performance options - memoized to prevent reference changes
+  const gridPerformanceOptions: Partial<GridOptions> = useMemo(() => ({
+    suppressAnimationFrame: true, // Reduces layout thrashing
+    rowBuffer: 10, // Reduced from default 20 for 30+ row tables
+    debounceVerticalScrollbar: true, // Smoother scrolling
+  }), []);
+
   return (
     <div className="flex flex-col flex-1">
       <AgGridTable
@@ -676,6 +692,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         loading={isLoading || isLoadingHierarchies}
         fillAvailableHeight={true}
         bottomPadding={60}
+        gridOptions={gridPerformanceOptions}
         data-testid="promotions-table"
       />
       
