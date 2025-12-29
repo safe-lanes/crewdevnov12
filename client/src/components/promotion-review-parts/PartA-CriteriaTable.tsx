@@ -106,11 +106,29 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
               className="flex gap-4"
             >
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="yes" id={`${row.id}-yes`} data-testid={`radio-verified-yes-${row.id}`} />
+                <RadioGroupItem 
+                  value="yes" 
+                  id={`${row.id}-yes`} 
+                  data-testid={`radio-verified-yes-${row.id}`}
+                  onClick={() => {
+                    if (row.verified === 'yes') {
+                      onUpdateVerified(row.id, '');
+                    }
+                  }}
+                />
                 <Label htmlFor={`${row.id}-yes`} className="text-sm cursor-pointer">Yes</Label>
               </div>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="na" id={`${row.id}-na`} data-testid={`radio-verified-na-${row.id}`} />
+                <RadioGroupItem 
+                  value="na" 
+                  id={`${row.id}-na`} 
+                  data-testid={`radio-verified-na-${row.id}`}
+                  onClick={() => {
+                    if (row.verified === 'na') {
+                      onUpdateVerified(row.id, '');
+                    }
+                  }}
+                />
                 <Label htmlFor={`${row.id}-na`} className="text-sm cursor-pointer">NA</Label>
               </div>
             </RadioGroup>
