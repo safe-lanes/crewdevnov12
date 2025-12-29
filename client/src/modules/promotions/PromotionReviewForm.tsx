@@ -43,16 +43,6 @@ const promotionReviewSchema = z.object({
 
 type PromotionReviewFormData = z.infer<typeof promotionReviewSchema>;
 
-const defaultCriteriaValues = {
-  higherLicense: 'COC Master',
-  ageRange: '30-50 Years',
-  rankVessel: '42 Months',
-  rankVesselType: '24 Months',
-  companyService: '18 Months',
-  tankerExperience: '60 Months',
-  recommendations: '2',
-  checklist: '80',
-};
 
 export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   promotionData,
@@ -340,13 +330,12 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   const [criteriaData, setCriteriaData] = useState<CriteriaRow[]>([]);
 
   useEffect(() => {
-    const hasConfig = a2Config !== null;
     
     const baseCriteria: CriteriaRow[] = [
       { 
         id: 'a2.1', 
         criteria: 'A2.1 Higher License Criteria?', 
-        required: requiredLicenseDisplay || (hasConfig ? '' : defaultCriteriaValues.higherLicense), 
+        required: requiredLicenseDisplay || '', 
         resultFromDb: a2_1_licenseResult, 
         verified: '', 
         hasInfo: true 
@@ -354,7 +343,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       { 
         id: 'a2.2', 
         criteria: 'A2.2 Age Criteria?', 
-        required: requiredAgeDisplay || (hasConfig ? '' : defaultCriteriaValues.ageRange), 
+        required: requiredAgeDisplay || '', 
         resultFromDb: a2_2_ageResult, 
         verified: '', 
         hasInfo: true 
@@ -363,7 +352,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       { 
         id: 'a2.3a', 
         criteria: 'A2.3a  Minimum Rank Experience (Vessel)?', 
-        required: a2Config?.experienceMonths?.rankVessel ? `${a2Config.experienceMonths.rankVessel} Months` : (hasConfig ? '' : defaultCriteriaValues.rankVessel), 
+        required: a2Config?.experienceMonths?.rankVessel ? `${a2Config.experienceMonths.rankVessel} Months` : '', 
         resultFromDb: a2_3a_rankExperienceResult, 
         verified: '', 
         hasInfo: false 
@@ -371,7 +360,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       { 
         id: 'a2.3b', 
         criteria: 'A2.3b  Minimum Rank Experience (Vessel Type)?', 
-        required: a2Config?.experienceMonths?.rankVesselType ? `${a2Config.experienceMonths.rankVesselType} Months` : (hasConfig ? '' : defaultCriteriaValues.rankVesselType), 
+        required: a2Config?.experienceMonths?.rankVesselType ? `${a2Config.experienceMonths.rankVesselType} Months` : '', 
         resultFromDb: a2_3b_vesselTypeExperienceResult, 
         verified: '', 
         hasInfo: false 
@@ -379,7 +368,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       { 
         id: 'a2.3c', 
         criteria: 'A2.3c  Company Service?', 
-        required: a2Config?.experienceMonths?.companyService ? `${a2Config.experienceMonths.companyService} Months` : (hasConfig ? '' : defaultCriteriaValues.companyService), 
+        required: a2Config?.experienceMonths?.companyService ? `${a2Config.experienceMonths.companyService} Months` : '', 
         resultFromDb: a2_3c_companyServiceResult, 
         verified: '', 
         hasInfo: false 
@@ -387,7 +376,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       { 
         id: 'a2.3d', 
         criteria: 'A2.3d  Minimum Tanker Experience?', 
-        required: a2Config?.experienceMonths?.tankerExperience ? `${a2Config.experienceMonths.tankerExperience} Months` : (hasConfig ? '' : defaultCriteriaValues.tankerExperience), 
+        required: a2Config?.experienceMonths?.tankerExperience ? `${a2Config.experienceMonths.tankerExperience} Months` : '', 
         resultFromDb: a2_3d_tankerExperienceResult, 
         verified: '', 
         hasInfo: false 
@@ -395,7 +384,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       { 
         id: 'a2.4', 
         criteria: 'A2.4 Recommendations Criteria?', 
-        required: a2Config?.minRecommendations ? String(a2Config.minRecommendations) : (hasConfig ? '' : defaultCriteriaValues.recommendations), 
+        required: a2Config?.minRecommendations ? String(a2Config.minRecommendations) : '', 
         resultFromDb: a2_4_recommendationsResult, 
         verified: '', 
         hasInfo: true 
@@ -403,7 +392,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       { 
         id: 'a2.5a', 
         criteria: 'A2.5a Promotion Checklist Completed?', 
-        required: a2Config?.minChecklistCompletionPercent ? `${a2Config.minChecklistCompletionPercent}%` : (hasConfig ? '' : `${defaultCriteriaValues.checklist}%`), 
+        required: a2Config?.minChecklistCompletionPercent != null ? `${a2Config.minChecklistCompletionPercent}%` : '', 
         resultFromDb: '', 
         verified: '', 
         hasInfo: true 
@@ -423,11 +412,6 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
           hasInfo: false,
         });
       });
-    } else if (!hasConfig) {
-      baseCriteria.push(
-        { id: 'a2.6a', criteria: 'A2.6a  Other Criteria 1?', required: 'Sample', resultFromDb: '', verified: '', hasInfo: false },
-        { id: 'a2.6b', criteria: 'A2.6b  Other Criteria 2?', required: 'Sample', resultFromDb: '', verified: '', hasInfo: false }
-      );
     }
 
     baseCriteria.push(
@@ -843,7 +827,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                       <h4 className="font-medium text-yellow-800">No Promotion Rank Group Assigned</h4>
                       <p className="text-sm text-yellow-700 mt-1">
                         No Promotion Review Form rank group has been configured for the rank "{rankGroupLookupResult.targetRank}" in Admin Module. 
-                        Default criteria values will be used. Please configure a rank group in Admin &gt; Forms Configuration &gt; Promotion Review Form.
+                        Required criteria values will be blank until configured. Please configure a rank group in Admin &gt; Forms Configuration &gt; Promotion Review Form.
                       </p>
                     </div>
                   </div>
