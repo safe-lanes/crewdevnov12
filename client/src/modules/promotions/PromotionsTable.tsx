@@ -56,15 +56,17 @@ const calculateAge = (dob: string): number | null => {
 };
 
 // Status indicator cell renderer (green/yellow/gray circles)
+// Green = 'met' (Yes in form), Yellow = 'pending' or 'not-met' (No/Pending in form), Grey = 'no-info' (no data)
 const StatusIndicatorRenderer = (params: ICellRendererParams) => {
-  const status = params.value; // 'met', 'pending', 'not-met'
+  const status = params.value;
   
   const getColorClass = () => {
     switch (status) {
-      case 'met': return 'bg-green-500';
-      case 'pending': return 'bg-yellow-500';
-      case 'not-met': return 'bg-gray-400';
-      default: return 'bg-gray-400';
+      case 'met': return 'bg-green-500';       // Green: Yes/Met
+      case 'pending': return 'bg-yellow-500';   // Yellow: Pending
+      case 'not-met': return 'bg-yellow-500';   // Yellow: No/Not Met
+      case 'no-info': return 'bg-gray-400';     // Grey: No information
+      default: return 'bg-gray-400';            // Grey: Default for missing data
     }
   };
 
@@ -188,6 +190,11 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     queryKey: ['/api/rank-groups'],
   });
 
+  // Fetch all promotion reviews to map criteria status to table columns
+  const { data: promotionReviews = [] } = useQuery<any[]>({
+    queryKey: ['/api/promotion-reviews'],
+  });
+
   // Build lookup map from promotion rank -> age criteria (ageMin, ageMax)
   const ageRequirementsByRank = useMemo(() => {
     const map = new Map<string, { ageMin?: number; ageMax?: number }>();
@@ -226,6 +233,104 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     
     return map;
   }, [formsData, rankGroupsData, normalizeRank]);
+
+  // Build lookup map from crewMemberId + promotionToRank -> promotion review
+  const reviewLookup = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const review of promotionReviews) {
+      const key = `${review.crewMemberId}__${review.promotionToRank}`;
+      map.set(key, review);
+    }
+    return map;
+  }, [promotionReviews]);
+
+  // Helper to compute criteria status from review data
+  // Returns: 'met' (Green), 'pending' (Yellow), 'not-met' (Yellow), 'no-info' (Grey)
+  const computeCriteriaStatus = useCallback((review: any, criteriaId: string): 'met' | 'pending' | 'not-met' | 'no-info' => {
+    if (!review) return 'no-info';
+    
+    // Parse verified status JSON
+    let verifiedStatus: Record<string, string> = {};
+    try {
+      verifiedStatus = review.criteriaVerifiedStatus 
+        ? JSON.parse(review.criteriaVerifiedStatus) 
+        : {};
+    } catch (e) {
+      verifiedStatus = {};
+    }
+    
+    const verified = verifiedStatus[criteriaId];
+    
+    // If verified is 'yes', criteria is met (Green)
+    if (verified === 'yes') return 'met';
+    // If verified is 'na', treat as met (the criterion doesn't apply)
+    if (verified === 'na') return 'met';
+    // If verified is 'no' or explicitly negative, show not-met (Yellow)
+    if (verified === 'no' || verified === 'false') return 'not-met';
+    // If no value set for this criteria but review exists, check if there are any other values
+    // If verifiedStatus has other keys but not this one, it's pending
+    if (Object.keys(verifiedStatus).length > 0) return 'pending';
+    // If review exists but no criteria data at all, treat as no-info
+    return 'no-info';
+  }, []);
+
+  // Helper to compute parent criteria status (a2.3, a2.6, a2.7) from children
+  const computeParentCriteriaStatus = useCallback((review: any, parentId: string): 'met' | 'pending' | 'not-met' | 'no-info' => {
+    if (!review) return 'no-info';
+    
+    // Parse verified status JSON
+    let verifiedStatus: Record<string, string> = {};
+    try {
+      verifiedStatus = review.criteriaVerifiedStatus 
+        ? JSON.parse(review.criteriaVerifiedStatus) 
+        : {};
+    } catch (e) {
+      verifiedStatus = {};
+    }
+    
+    // For CES tests (a2.7), check cesTestsData
+    if (parentId === 'a2.7') {
+      let cesTests: any[] = [];
+      try {
+        cesTests = review.cesTestsData ? JSON.parse(review.cesTestsData) : [];
+      } catch (e) {
+        cesTests = [];
+      }
+      
+      if (cesTests.length === 0) return 'no-info';
+      
+      const results = cesTests.map(t => t.result || '');
+      // If any test has empty result, it's pending
+      if (results.some(r => r === '')) return 'pending';
+      // If all tests passed or NA, criteria is met
+      if (results.every(r => r === 'Pass' || r === 'NA')) return 'met';
+      // If any test has Fail or Pending result, show as pending (Yellow per user's requirement)
+      // User's note: 'No' or 'Pending' → Yellow dot
+      return 'pending';
+    }
+    
+    // For other parent criteria (a2.3, a2.6), check children
+    const childIds = Object.keys(verifiedStatus).filter(
+      id => id.startsWith(parentId) && id.length > parentId.length
+    );
+    
+    // If review exists but no children for this parent, check if parent itself is marked
+    if (childIds.length === 0) {
+      const parentValue = verifiedStatus[parentId];
+      if (parentValue === 'yes') return 'met';
+      if (parentValue === 'na') return 'met';
+      // Review exists but no criteria data for this parent
+      return 'no-info';
+    }
+    
+    const childValues = childIds.map(id => verifiedStatus[id] || '');
+    // If any child has empty value, it's pending verification
+    if (childValues.some(v => v === '')) return 'pending';
+    // If all children are verified as yes or na, criteria is met
+    if (childValues.every(v => v === 'yes' || v === 'na')) return 'met';
+    // Otherwise show as pending (Yellow) - per user's note 'No' or 'Pending' → Yellow
+    return 'pending';
+  }, []);
 
   // Transform crew data to promotion table format with sample indicator data
   const promotionData = useMemo(() => {
@@ -281,6 +386,40 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
           }
         }
         
+        // Look up promotion review for this crew member and target rank
+        const reviewKey = `${crew.id}__${nextRank}`;
+        const review = reviewLookup.get(reviewKey);
+        
+        // Compute status for each criteria column from review data
+        // License (A2.1): Single criterion - check verified status
+        const licenseStatus = computeCriteriaStatus(review, 'a2.1');
+        
+        // Sea Experience (A2.3): Parent criterion - check all children (a2.3a, a2.3b, a2.3c, a2.3d)
+        const seaStatus = computeParentCriteriaStatus(review, 'a2.3');
+        
+        // Recommendations (A2.4): Single criterion - check verified status
+        const recoStatus = computeCriteriaStatus(review, 'a2.4');
+        
+        // Promotion Checklist (A2.5): Progress percentage from checklistProgress field
+        let checklistProgress = 0;
+        if (review?.checklistProgress !== undefined && review?.checklistProgress !== null) {
+          checklistProgress = typeof review.checklistProgress === 'number' 
+            ? review.checklistProgress 
+            : parseInt(review.checklistProgress) || 0;
+        }
+        
+        // Other Criteria (A2.6): Parent criterion - check all children (a2.6a, a2.6b)
+        const otherCriteriaStatus = computeParentCriteriaStatus(review, 'a2.6');
+        
+        // CES Index (A2.7): Check cesTestsData for test results
+        const cesIndexStatus = computeParentCriteriaStatus(review, 'a2.7');
+        
+        // Training & Docs (A2.8): Single criterion - check verified status
+        const trainDocsStatus = computeCriteriaStatus(review, 'a2.8');
+        
+        // Determine overall review status
+        const reviewStatus = review?.status || 'In Progress';
+        
         return {
           crewId: crew.employeeId || crew.id || '-',
           crewMemberId: crew.id, // Database ID for API calls
@@ -293,18 +432,18 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
           promotionToRank: nextRank || '-',
           vesselLeave: vesselLeave,
           presentVessel: vesselId || null, // Vessel ID for vessel type lookup
-          license: ['met', 'pending', 'met'][index % 3],
-          sea: ['met', 'pending', 'met'][index % 3],
-          reco: ['met', 'pending', 'met'][index % 3],
-          promotionChecklist: [40, 75, 80, 60, 45, 90, 85, 50][index % 8],
-          otherCriteria: ['met', 'pending', 'met'][index % 3],
-          cesIndex: ['met', 'pending', 'not-met'][index % 3],
-          trainDocs: ['met', 'pending', 'not-met'][index % 3],
-          status: ['In Progress', 'For Approval', 'Approved'][index % 3],
+          license: licenseStatus,
+          sea: seaStatus,
+          reco: recoStatus,
+          promotionChecklist: checklistProgress,
+          otherCriteria: otherCriteriaStatus,
+          cesIndex: cesIndexStatus,
+          trainDocs: trainDocsStatus,
+          status: reviewStatus,
         };
       })
       .filter(item => item !== null); // Remove filtered out crew members
-  }, [crewMembers, hierarchies, getVesselName, normalizeRank, ageRequirementsByRank]);
+  }, [crewMembers, hierarchies, getVesselName, normalizeRank, ageRequirementsByRank, reviewLookup, computeCriteriaStatus, computeParentCriteriaStatus]);
 
   // Filter data based on filters
   const filteredData = useMemo(() => {
