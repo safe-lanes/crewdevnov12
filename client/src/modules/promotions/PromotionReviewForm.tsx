@@ -203,7 +203,17 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       const config = matchingRankGroup.configuration;
       if (!config) return null;
       const parsed = typeof config === 'string' ? JSON.parse(config) : config;
-      return parsed?.promotionA2 || null;
+      // Support both nested format (promotionA2) and flat format (direct config)
+      const promotionConfig = parsed?.promotionA2 ?? parsed;
+      // Validate it's a PromotionA2Config by checking for any known schema field
+      if (promotionConfig && typeof promotionConfig === 'object') {
+        const knownFields = ['higherLicenseIds', 'ageMin', 'ageMax', 'experienceMonths', 
+          'minRecommendations', 'minChecklistVerifications', 'minChecklistCompletionPercent', 
+          'otherCriteria', 'cesTests'];
+        const hasKnownField = knownFields.some(field => field in promotionConfig);
+        if (hasKnownField) return promotionConfig;
+      }
+      return null;
     } catch {
       return null;
     }
