@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useExternalVessels } from './useExternalVessels';
 
 interface VesselMasterEntry {
@@ -45,22 +45,43 @@ export function useVesselLookup() {
     return { nameToId, idToName, vesselMap };
   }, [vessels]);
 
+  // Memoized lookup functions to prevent re-renders in consuming components
+  const getVesselId = useCallback(
+    (vesselName: string): string | undefined => nameToId.get(vesselName),
+    [nameToId]
+  );
+
+  const getVesselName = useCallback(
+    (vesselId: string): string | undefined => idToName.get(vesselId),
+    [idToName]
+  );
+
+  const getVessel = useCallback(
+    (vesselId: string): VesselMasterEntry | undefined => vesselMap.get(vesselId),
+    [vesselMap]
+  );
+
+  const getVesselIds = useCallback(
+    (vesselNames: string[]): string[] => {
+      return vesselNames.map(name => nameToId.get(name)).filter((id): id is string => id !== undefined);
+    },
+    [nameToId]
+  );
+
+  const getVesselNames = useCallback(
+    (vesselIds: string[]): string[] => {
+      return vesselIds.map(id => idToName.get(id)).filter((name): name is string => name !== undefined);
+    },
+    [idToName]
+  );
+
   return {
     vessels,
     isLoading,
-    // Translate vessel name → vessel ID
-    getVesselId: (vesselName: string): string | undefined => nameToId.get(vesselName),
-    // Translate vessel ID → vessel name
-    getVesselName: (vesselId: string): string | undefined => idToName.get(vesselId),
-    // Get full vessel entry by ID
-    getVessel: (vesselId: string): VesselMasterEntry | undefined => vesselMap.get(vesselId),
-    // Translate array of names to IDs
-    getVesselIds: (vesselNames: string[]): string[] => {
-      return vesselNames.map(name => nameToId.get(name)).filter((id): id is string => id !== undefined);
-    },
-    // Translate array of IDs to names
-    getVesselNames: (vesselIds: string[]): string[] => {
-      return vesselIds.map(id => idToName.get(id)).filter((name): name is string => name !== undefined);
-    },
+    getVesselId,
+    getVesselName,
+    getVessel,
+    getVesselIds,
+    getVesselNames,
   };
 }
