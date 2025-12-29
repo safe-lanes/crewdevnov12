@@ -318,9 +318,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   }, [dashboardData]);
 
   // ============ A2.3b - Rank Experience (Vessel Type Specific) ============
-  // This requires vessel-type-specific calculation - we'll need to fetch or compute this
-  // For now, we'll show "Select Vessel Type" if crew is on leave
-  const isCrewOnLeave = !promotionData?.presentVessel;
+  // User selects vessel type from dropdown to see rank experience for that type
+  // This allows evaluation for promotion to any vessel type (not just current assignment)
   
   // Get vessel type options for dropdown
   const vesselTypeOptions = useMemo(() => {
@@ -332,33 +331,23 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   }, [externalVesselTypesData]);
 
   // A2.3b result - uses rankExperienceByVesselType from dashboard data
+  // Always uses dropdown selection (user can select vessel type for promotion consideration)
   const a2_3b_vesselTypeExperienceResult = useMemo(() => {
-    // Determine which vessel type to use
-    let vesselTypeToCheck = '';
-    
-    if (isCrewOnLeave) {
-      // Crew is on leave - use selected vessel type from dropdown
-      if (!selectedVesselTypeForA2_3b) {
-        return ''; // Will show dropdown in UI
-      }
-      vesselTypeToCheck = selectedVesselTypeForA2_3b;
-    } else {
-      // Crew is on vessel - use the vessel's type from crew data
-      vesselTypeToCheck = promotionData?.vesselType || '';
+    // Always use the selected vessel type from dropdown
+    if (!selectedVesselTypeForA2_3b) {
+      return ''; // No vessel type selected yet - dropdown will prompt user
     }
-    
-    if (!vesselTypeToCheck) return '';
     
     // Look up experience from dashboard data
     const rankExperienceByVesselType = dashboardData?.rankExperienceByVesselType;
-    if (!rankExperienceByVesselType) return '';
+    if (!rankExperienceByVesselType) return '0 Months';
     
     // Try exact match first
-    let months = rankExperienceByVesselType[vesselTypeToCheck];
+    let months = rankExperienceByVesselType[selectedVesselTypeForA2_3b];
     
     // If no exact match, try case-insensitive match
     if (months === undefined) {
-      const normalizedType = vesselTypeToCheck.toLowerCase();
+      const normalizedType = selectedVesselTypeForA2_3b.toLowerCase();
       const matchingKey = Object.keys(rankExperienceByVesselType).find(
         key => key.toLowerCase() === normalizedType
       );
@@ -369,7 +358,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     
     if (months === undefined || months === 0) return '0 Months';
     return `${Math.round(months)} Months`;
-  }, [isCrewOnLeave, selectedVesselTypeForA2_3b, promotionData?.vesselType, dashboardData?.rankExperienceByVesselType]);
+  }, [selectedVesselTypeForA2_3b, dashboardData?.rankExperienceByVesselType]);
 
   // ============ A2.3c - Company Service ============
   // Uses dashboard experience.company (in years, convert to months)
@@ -910,21 +899,26 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                               </TableCell>
                               <TableCell className="text-sm">{row.required}</TableCell>
                               <TableCell className="text-sm">
-                                {/* A2.3b: Show vessel type dropdown if crew is on leave */}
-                                {row.id === 'a2.3b' && isCrewOnLeave ? (
-                                  <Select 
-                                    value={selectedVesselTypeForA2_3b} 
-                                    onValueChange={setSelectedVesselTypeForA2_3b}
-                                  >
-                                    <SelectTrigger className="h-8 text-xs" data-testid="select-vessel-type-a23b">
-                                      <SelectValue placeholder="Select Vessel Type" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {vesselTypeOptions.map((vt: string) => (
-                                        <SelectItem key={vt} value={vt}>{vt}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
+                                {/* A2.3b: Always show vessel type dropdown with calculated result */}
+                                {row.id === 'a2.3b' ? (
+                                  <div className="flex flex-col gap-2">
+                                    <Select 
+                                      value={selectedVesselTypeForA2_3b} 
+                                      onValueChange={setSelectedVesselTypeForA2_3b}
+                                    >
+                                      <SelectTrigger className="h-8 text-xs" data-testid="select-vessel-type-a23b">
+                                        <SelectValue placeholder="Select Vessel Type" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {vesselTypeOptions.map((vt: string) => (
+                                          <SelectItem key={vt} value={vt}>{vt}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    {selectedVesselTypeForA2_3b && row.resultFromDb && (
+                                      <span className="text-xs text-gray-600">{row.resultFromDb}</span>
+                                    )}
+                                  </div>
                                 ) : (
                                   row.resultFromDb
                                 )}
