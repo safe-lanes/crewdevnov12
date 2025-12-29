@@ -14,9 +14,12 @@ interface PartACriteriaTableProps extends React.HTMLAttributes<HTMLDivElement> {
   selectedVesselTypeForA2_3b: string;
   onVesselTypeChange: (value: string) => void;
   onUpdateVerified: (id: string, value: string) => void;
+  onUpdateMeetsCriterion: (id: string, value: string) => void;
   isParentCriteria: (id: string) => boolean;
+  isOtherCriteriaSubItem: (id: string) => boolean;
   computeParentStatus: (id: string) => 'yes' | 'na' | 'pending';
-  getMeetsCriterionBadge: (required: string, result: string) => React.ReactNode;
+  computeOtherCriteriaMeetsCriterion: () => 'yes' | 'pending';
+  getMeetsCriterionBadge: (required: string, result: string, row: CriteriaRow) => React.ReactNode;
   criteriaComments: Record<string, Comment[]>;
   newCriteriaComment: Record<string, string>;
   onSetNewCriteriaComment: React.Dispatch<React.SetStateAction<Record<string, string>>>;
@@ -34,8 +37,11 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
   selectedVesselTypeForA2_3b,
   onVesselTypeChange,
   onUpdateVerified,
+  onUpdateMeetsCriterion,
   isParentCriteria,
+  isOtherCriteriaSubItem,
   computeParentStatus,
+  computeOtherCriteriaMeetsCriterion,
   getMeetsCriterionBadge,
   criteriaComments,
   newCriteriaComment,
@@ -83,22 +89,55 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
           )}
         </TableCell>
         <TableCell>
-          {getMeetsCriterionBadge(row.required, row.resultFromDb)}
+          {row.id === 'a2.6' ? (
+            (() => {
+              const status = computeOtherCriteriaMeetsCriterion();
+              return status === 'yes' ? (
+                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded" data-testid="badge-a26-met">Yes</span>
+              ) : (
+                <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded" data-testid="badge-a26-pending">Pending</span>
+              );
+            })()
+          ) : isOtherCriteriaSubItem(row.id) ? (
+            <RadioGroup 
+              value={row.meetsCriterion || ''} 
+              onValueChange={(value) => onUpdateMeetsCriterion(row.id, value)}
+              className="flex gap-4"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem 
+                  value="yes" 
+                  id={`${row.id}-meets-yes`} 
+                  data-testid={`radio-meets-yes-${row.id}`}
+                  onClick={() => {
+                    if (row.meetsCriterion === 'yes') {
+                      onUpdateMeetsCriterion(row.id, '');
+                    }
+                  }}
+                />
+                <Label htmlFor={`${row.id}-meets-yes`} className="text-sm cursor-pointer">Yes</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem 
+                  value="na" 
+                  id={`${row.id}-meets-na`} 
+                  data-testid={`radio-meets-na-${row.id}`}
+                  onClick={() => {
+                    if (row.meetsCriterion === 'na') {
+                      onUpdateMeetsCriterion(row.id, '');
+                    }
+                  }}
+                />
+                <Label htmlFor={`${row.id}-meets-na`} className="text-sm cursor-pointer">NA</Label>
+              </div>
+            </RadioGroup>
+          ) : (
+            getMeetsCriterionBadge(row.required, row.resultFromDb, row)
+          )}
         </TableCell>
         <TableCell>
           {isParentCriteria(row.id) ? (
-            <span 
-              className={`px-2 py-1 text-xs rounded ${
-                computeParentStatus(row.id) === 'yes' 
-                  ? 'bg-green-100 text-green-800' 
-                  : computeParentStatus(row.id) === 'na'
-                    ? 'bg-gray-100 text-gray-600'
-                    : 'bg-yellow-100 text-yellow-800'
-              }`}
-              data-testid={`status-derived-${row.id}`}
-            >
-              {computeParentStatus(row.id) === 'yes' ? 'Yes' : computeParentStatus(row.id) === 'na' ? 'NA' : 'Pending'}
-            </span>
+            null
           ) : (
             <RadioGroup 
               value={row.verified} 

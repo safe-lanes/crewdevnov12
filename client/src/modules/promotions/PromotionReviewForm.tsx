@@ -623,7 +623,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     return required.trim().toLowerCase() === result.trim().toLowerCase() ? 'met' : 'not-met';
   }, []);
 
-  const renderMeetsCriterionBadge = useCallback((required: string, result: string) => {
+  const renderMeetsCriterionBadge = useCallback((required: string, result: string, row: CriteriaRow) => {
     const status = getMeetsCriterion(required, result);
     if (status === 'met') {
       return <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded" data-testid="badge-met">Yes</span>;
@@ -688,6 +688,32 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   }, [getChildrenIds, cesTests, criteriaData]);
 
   const isParentCriteria = useCallback((id: string): boolean => parentCriteriaIds.includes(id), []);
+
+  const isOtherCriteriaSubItem = useCallback((id: string): boolean => {
+    return id.startsWith('a2.6') && id.length > 4;
+  }, []);
+
+  const updateMeetsCriterion = useCallback((id: string, value: string) => {
+    setCriteriaData(prev => prev.map(row => 
+      row.id === id ? { ...row, meetsCriterion: value } : row
+    ));
+  }, []);
+
+  const computeOtherCriteriaMeetsCriterion = useCallback((): 'yes' | 'pending' => {
+    const otherCriteriaSubItems = criteriaData.filter(row => isOtherCriteriaSubItem(row.id));
+    if (otherCriteriaSubItems.length === 0) return 'pending';
+    
+    const meetsCriterionValues = otherCriteriaSubItems.map(row => row.meetsCriterion || '');
+    const hasBlank = meetsCriterionValues.some(v => v === '' || v === undefined);
+    if (hasBlank) return 'pending';
+    
+    const allYesOrNa = meetsCriterionValues.every(v => v === 'yes' || v === 'na');
+    const hasYes = meetsCriterionValues.some(v => v === 'yes');
+    if (hasYes && allYesOrNa) return 'yes';
+    if (allYesOrNa) return 'yes';
+    
+    return 'pending';
+  }, [criteriaData, isOtherCriteriaSubItem]);
 
   const addCesTest = useCallback(() => {
     const newId = nextCesTestIdRef.current.toString();
@@ -874,8 +900,11 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                   selectedVesselTypeForA2_3b={selectedVesselTypeForA2_3b}
                   onVesselTypeChange={setSelectedVesselTypeForA2_3b}
                   onUpdateVerified={updateCriteriaVerified}
+                  onUpdateMeetsCriterion={updateMeetsCriterion}
                   isParentCriteria={isParentCriteria}
+                  isOtherCriteriaSubItem={isOtherCriteriaSubItem}
                   computeParentStatus={computeParentStatus}
+                  computeOtherCriteriaMeetsCriterion={computeOtherCriteriaMeetsCriterion}
                   getMeetsCriterionBadge={renderMeetsCriterionBadge}
                   criteriaComments={criteriaComments}
                   newCriteriaComment={newCriteriaComment}

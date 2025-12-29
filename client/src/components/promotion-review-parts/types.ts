@@ -5,6 +5,7 @@ export interface CriteriaRow {
   resultFromDb: string;
   verified: string;
   hasInfo?: boolean;
+  meetsCriterion?: string;
 }
 
 export interface TrainingRow {
