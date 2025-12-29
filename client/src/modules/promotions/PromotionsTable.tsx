@@ -237,30 +237,66 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
   }, [formsData, rankGroupsData, normalizeRank]);
 
   // Build lookup map from crewMemberId + promotionToRank -> promotion review
+  // Pre-parse JSON fields once to avoid repeated parsing in cell renderers
   const reviewLookup = useMemo(() => {
     const map = new Map<string, any>();
     for (const review of promotionReviews) {
       const key = `${review.crewMemberId}__${review.promotionToRank}`;
-      map.set(key, review);
+      
+      // Pre-parse criteriaMeetsStatus
+      let parsedMeetsStatus: Record<string, string> = {};
+      try {
+        parsedMeetsStatus = review.criteriaMeetsStatus 
+          ? (typeof review.criteriaMeetsStatus === 'string' 
+              ? JSON.parse(review.criteriaMeetsStatus) 
+              : review.criteriaMeetsStatus)
+          : {};
+      } catch (e) {
+        parsedMeetsStatus = {};
+      }
+      
+      // Pre-parse criteriaVerifiedStatus
+      let parsedVerifiedStatus: Record<string, string> = {};
+      try {
+        parsedVerifiedStatus = review.criteriaVerifiedStatus 
+          ? (typeof review.criteriaVerifiedStatus === 'string' 
+              ? JSON.parse(review.criteriaVerifiedStatus) 
+              : review.criteriaVerifiedStatus)
+          : {};
+      } catch (e) {
+        parsedVerifiedStatus = {};
+      }
+      
+      // Pre-parse cesTestsData
+      let parsedCesTests: any[] = [];
+      try {
+        parsedCesTests = review.cesTestsData 
+          ? (typeof review.cesTestsData === 'string' 
+              ? JSON.parse(review.cesTestsData) 
+              : review.cesTestsData)
+          : [];
+      } catch (e) {
+        parsedCesTests = [];
+      }
+      
+      // Store review with pre-parsed fields
+      map.set(key, {
+        ...review,
+        _parsedMeetsStatus: parsedMeetsStatus,
+        _parsedVerifiedStatus: parsedVerifiedStatus,
+        _parsedCesTests: parsedCesTests,
+      });
     }
     return map;
   }, [promotionReviews]);
 
-  // Helper to compute criteria status from review data using criteriaMeetsStatus
+  // Helper to compute criteria status from review data using pre-parsed criteriaMeetsStatus
   // Returns: 'met' (Green), 'pending' (Yellow), 'not-met' (Yellow), 'no-info' (Grey)
   const computeCriteriaStatus = useCallback((review: any, criteriaId: string): 'met' | 'pending' | 'not-met' | 'no-info' => {
     if (!review) return 'no-info';
     
-    // Parse the auto-computed "Meets Criteria" status
-    let meetsStatus: Record<string, string> = {};
-    try {
-      meetsStatus = review.criteriaMeetsStatus 
-        ? JSON.parse(review.criteriaMeetsStatus) 
-        : {};
-    } catch (e) {
-      meetsStatus = {};
-    }
-    
+    // Use pre-parsed data (no JSON.parse per call)
+    const meetsStatus = review._parsedMeetsStatus || {};
     const meets = meetsStatus[criteriaId];
     
     // Map stored values to return status per user spec:
@@ -268,16 +304,8 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     if (meets === 'yes') return 'met';
     if (meets === 'no' || meets === 'pending') return 'pending';
     
-    // Fallback: Check verifiedStatus if criteriaMeetsStatus not available
-    let verifiedStatus: Record<string, string> = {};
-    try {
-      verifiedStatus = review.criteriaVerifiedStatus 
-        ? JSON.parse(review.criteriaVerifiedStatus) 
-        : {};
-    } catch (e) {
-      verifiedStatus = {};
-    }
-    
+    // Fallback: Check pre-parsed verifiedStatus if criteriaMeetsStatus not available
+    const verifiedStatus = review._parsedVerifiedStatus || {};
     const verified = verifiedStatus[criteriaId];
     if (verified === 'yes') return 'met';
     if (verified === 'na') return 'met';
@@ -286,19 +314,12 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     return 'no-info';
   }, []);
 
-  // Helper to compute parent criteria status (a2.3, a2.6, a2.7) from children using criteriaMeetsStatus
+  // Helper to compute parent criteria status (a2.3, a2.6, a2.7) from children using pre-parsed criteriaMeetsStatus
   const computeParentCriteriaStatus = useCallback((review: any, parentId: string): 'met' | 'pending' | 'not-met' | 'no-info' => {
     if (!review) return 'no-info';
     
-    // Parse the auto-computed "Meets Criteria" status
-    let meetsStatus: Record<string, string> = {};
-    try {
-      meetsStatus = review.criteriaMeetsStatus 
-        ? JSON.parse(review.criteriaMeetsStatus) 
-        : {};
-    } catch (e) {
-      meetsStatus = {};
-    }
+    // Use pre-parsed data (no JSON.parse per call)
+    const meetsStatus = review._parsedMeetsStatus || {};
     
     // For CES tests (a2.7), check the computed status first
     if (parentId === 'a2.7') {
@@ -307,19 +328,14 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       // Per user spec: 'No' or 'Pending' → Yellow dot, so both map to 'pending'
       if (cesStatus === 'no' || cesStatus === 'pending') return 'pending';
       
-      // Fallback: Check cesTestsData directly if no computed status
-      let cesTests: any[] = [];
-      try {
-        cesTests = review.cesTestsData ? JSON.parse(review.cesTestsData) : [];
-      } catch (e) {
-        cesTests = [];
-      }
+      // Fallback: Check pre-parsed cesTestsData directly if no computed status
+      const cesTests = review._parsedCesTests || [];
       
       if (cesTests.length === 0) return 'no-info';
       
-      const results = cesTests.map(t => t.result || '');
+      const results = cesTests.map((t: any) => t.result || '');
       // All Pass/NA → met (Green), otherwise → pending (Yellow)
-      if (results.every(r => r === 'Pass' || r === 'NA')) return 'met';
+      if (results.every((r: string) => r === 'Pass' || r === 'NA')) return 'met';
       return 'pending';
     }
     
