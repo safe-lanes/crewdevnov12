@@ -465,7 +465,11 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     return promotionData.filter(item => {
       const matchesName = !searchName || item.name.toLowerCase().includes(searchName.toLowerCase());
       const matchesRank = !promotionToRank || item.promotionToRank === promotionToRank;
-      const matchesVessel = !vessel || item.presentVessel === vessel;
+      // Match vessel by ID or by name (using getVesselName lookup)
+      const selectedVesselName = vessel ? getVesselName(vessel) : null;
+      const matchesVessel = !vessel || 
+        item.presentVessel === vessel || 
+        (selectedVesselName && item.vesselLeave === selectedVesselName);
       const matchesNationality = !nationality || item.nationality === nationality;
       const matchesStatus = !status || item.status === status;
       
@@ -484,7 +488,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
 
       return matchesName && matchesRank && matchesVessel && matchesVesselType && matchesNationality && matchesCriteria && matchesStatus;
     });
-  }, [promotionData, searchName, promotionToRank, vessel, vesselType, nationality, criteria, status]);
+  }, [promotionData, searchName, promotionToRank, vessel, vesselType, nationality, criteria, status, getVesselName]);
 
   const handleEditPromotion = useCallback((data: any) => {
     setSelectedPromotion(data);
