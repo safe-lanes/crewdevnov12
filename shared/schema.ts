@@ -2089,6 +2089,62 @@ export type PromotionA2Config = z.infer<typeof promotionA2ConfigSchema>;
 export type PromotionA2OtherCriteria = z.infer<typeof promotionA2OtherCriteriaSchema>;
 export type PromotionA2CesTest = z.infer<typeof promotionA2CesTestSchema>;
 
+// ===============================================
+// Promotion Reviews Table
+// ===============================================
+// Stores the form state for promotion review forms per crew member
+export const promotionReviews = pgTable("promotion_reviews", {
+  id: serial("id").primaryKey(),
+  crewMemberId: text("crew_member_id").notNull().references(() => crewMembers.id),
+  promotionToRank: text("promotion_to_rank").notNull(), // Target rank for this promotion review
+  
+  // A2 Criteria - Vessel Type Selection for A2.3b
+  selectedVesselTypeForA2_3b: text("selected_vessel_type_for_a2_3b"),
+  
+  // A2 Criteria Verified Status (JSON object mapping criteria ID to status)
+  // e.g., { "a2.1": "yes", "a2.2": "na", "a2.3a": "", ... }
+  criteriaVerifiedStatus: text("criteria_verified_status"), // JSON string
+  
+  // CES/Language Tests data (JSON array)
+  cesTestsData: text("ces_tests_data"), // JSON string
+  
+  // Comments for each criteria (JSON object)
+  criteriaComments: text("criteria_comments"), // JSON string
+  
+  // Training Needs (JSON array)
+  trainingNeeds: text("training_needs"), // JSON string
+  
+  // Part B - Approval data (JSON object)
+  approvalData: text("approval_data"), // JSON string
+  
+  // Part C - Execution data
+  promotionConfirmed: text("promotion_confirmed"), // 'yes', 'waitlist', 'rejected'
+  vesselAssigned: text("vessel_assigned"),
+  promotionDate: text("promotion_date"),
+  promotionTiming: text("promotion_timing"), // 'on-board', 'prior-joining'
+  
+  // Form notes
+  partANotes: text("part_a_notes"),
+  partBNotes: text("part_b_notes"),
+  partCNotes: text("part_c_notes"),
+  
+  // Form status
+  status: text("status").notNull().default("draft"), // 'draft', 'submitted', 'approved', 'rejected'
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertPromotionReviewSchema = createInsertSchema(promotionReviews).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type PromotionReview = typeof promotionReviews.$inferSelect;
+export type InsertPromotionReview = z.infer<typeof insertPromotionReviewSchema>;
+
 // Type exports
 export type CbaTable = typeof cbaTables.$inferSelect;
 export type InsertCbaTable = z.infer<typeof insertCbaTableSchema>;

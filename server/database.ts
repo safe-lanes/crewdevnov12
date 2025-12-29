@@ -40,6 +40,7 @@ import {
   vesselDateLineAdjustments,
   dataMasters,
   masterDataEntries,
+  promotionReviews,
   type User,
   type InsertUser,
   type Form,
@@ -122,7 +123,9 @@ import {
   type TrainingMatrixVesselDraft,
   type InsertTrainingMatrixVesselDraft,
   type TrainingMatrixVesselRevision,
-  type InsertTrainingMatrixVesselRevision
+  type InsertTrainingMatrixVesselRevision,
+  type PromotionReview,
+  type InsertPromotionReview
 } from "@shared/schema";
 import { eq, desc, asc, sql, and, inArray, or, like, ilike, isNull } from "drizzle-orm";
 import { type IStorage } from "./storage";
@@ -4838,5 +4841,49 @@ export class DatabaseStorage implements IStorage {
   async createTrainingMatrixVesselRevision(insertRevision: InsertTrainingMatrixVesselRevision): Promise<TrainingMatrixVesselRevision> {
     const result = await this.db.insert(trainingMatrixVesselRevisions).values(insertRevision).returning();
     return result[0];
+  }
+
+  // Promotion Reviews Methods
+  async getPromotionReviews(): Promise<PromotionReview[]> {
+    return await this.db.select().from(promotionReviews).orderBy(desc(promotionReviews.updatedAt));
+  }
+
+  async getPromotionReview(id: number): Promise<PromotionReview | undefined> {
+    const result = await this.db.select().from(promotionReviews)
+      .where(eq(promotionReviews.id, id));
+    return result[0];
+  }
+
+  async getPromotionReviewByCrewAndRank(crewMemberId: string, promotionToRank: string): Promise<PromotionReview | undefined> {
+    const result = await this.db.select().from(promotionReviews)
+      .where(and(
+        eq(promotionReviews.crewMemberId, crewMemberId),
+        eq(promotionReviews.promotionToRank, promotionToRank)
+      ));
+    return result[0];
+  }
+
+  async getPromotionReviewsByCrewMember(crewMemberId: string): Promise<PromotionReview[]> {
+    return await this.db.select().from(promotionReviews)
+      .where(eq(promotionReviews.crewMemberId, crewMemberId))
+      .orderBy(desc(promotionReviews.updatedAt));
+  }
+
+  async createPromotionReview(review: InsertPromotionReview): Promise<PromotionReview> {
+    const result = await this.db.insert(promotionReviews).values(review).returning();
+    return result[0];
+  }
+
+  async updatePromotionReview(id: number, review: Partial<InsertPromotionReview>): Promise<PromotionReview | undefined> {
+    const result = await this.db.update(promotionReviews)
+      .set({ ...review, updatedAt: new Date() })
+      .where(eq(promotionReviews.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deletePromotionReview(id: number): Promise<boolean> {
+    await this.db.delete(promotionReviews).where(eq(promotionReviews.id, id));
+    return true;
   }
 }

@@ -2399,6 +2399,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Promotion Reviews API routes
+  app.get("/api/promotion-reviews", async (req, res) => {
+    try {
+      const reviews = await storage.getPromotionReviews();
+      res.json(reviews);
+    } catch (error) {
+      console.error("❌ Failed to fetch promotion reviews:", error);
+      res.status(500).json({ error: "Failed to fetch promotion reviews" });
+    }
+  });
+
+  app.get("/api/promotion-reviews/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const review = await storage.getPromotionReview(id);
+      if (!review) {
+        return res.status(404).json({ error: "Promotion review not found" });
+      }
+      res.json(review);
+    } catch (error) {
+      console.error("❌ Failed to fetch promotion review:", error);
+      res.status(500).json({ error: "Failed to fetch promotion review" });
+    }
+  });
+
+  app.get("/api/promotion-reviews/crew/:crewMemberId", async (req, res) => {
+    try {
+      const { crewMemberId } = req.params;
+      const reviews = await storage.getPromotionReviewsByCrewMember(crewMemberId);
+      res.json(reviews);
+    } catch (error) {
+      console.error("❌ Failed to fetch promotion reviews for crew:", error);
+      res.status(500).json({ error: "Failed to fetch promotion reviews" });
+    }
+  });
+
+  app.get("/api/promotion-reviews/crew/:crewMemberId/rank/:promotionToRank", async (req, res) => {
+    try {
+      const { crewMemberId, promotionToRank } = req.params;
+      const review = await storage.getPromotionReviewByCrewAndRank(crewMemberId, decodeURIComponent(promotionToRank));
+      if (!review) {
+        return res.status(404).json({ error: "Promotion review not found" });
+      }
+      res.json(review);
+    } catch (error) {
+      console.error("❌ Failed to fetch promotion review:", error);
+      res.status(500).json({ error: "Failed to fetch promotion review" });
+    }
+  });
+
+  app.post("/api/promotion-reviews", async (req, res) => {
+    try {
+      const review = await storage.createPromotionReview(req.body);
+      console.log(`✅ [API] Created promotion review ID ${review.id} for crew ${review.crewMemberId}`);
+      res.status(201).json(review);
+    } catch (error) {
+      console.error("❌ Failed to create promotion review:", error);
+      res.status(500).json({ error: "Failed to create promotion review" });
+    }
+  });
+
+  app.patch("/api/promotion-reviews/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const review = await storage.updatePromotionReview(id, req.body);
+      if (!review) {
+        return res.status(404).json({ error: "Promotion review not found" });
+      }
+      console.log(`✅ [API] Updated promotion review ID ${id}`);
+      res.json(review);
+    } catch (error) {
+      console.error("❌ Failed to update promotion review:", error);
+      res.status(500).json({ error: "Failed to update promotion review" });
+    }
+  });
+
+  app.delete("/api/promotion-reviews/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deletePromotionReview(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Promotion review not found" });
+      }
+      console.log(`✅ [API] Deleted promotion review ID ${id}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("❌ Failed to delete promotion review:", error);
+      res.status(500).json({ error: "Failed to delete promotion review" });
+    }
+  });
+
   // Vessel Groups API routes
   app.get("/api/vessel-groups", async (req, res) => {
     try {

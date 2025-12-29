@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { BaseSubmoduleForm, FormSection } from '@/components/BaseSubmoduleForm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,17 +8,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { Eye, Edit, Trash2, Plus, Info, X, MessageSquare } from 'lucide-react';
+import { Eye, Edit, Trash2, Plus, Info, X, MessageSquare, Save, Loader2 } from 'lucide-react';
 import { z } from 'zod';
 import { PromotionChecklistForm } from './PromotionChecklistForm';
 import { TrainingCourseSelectionDialog } from '@/modules/crew-pool/TrainingCourseSelectionDialog';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
-import type { Form, RankGroup, CrewMember, CrewDashboardSummary } from '@shared/schema';
+import type { Form, RankGroup, CrewMember, CrewDashboardSummary, PromotionReview } from '@shared/schema';
 import type { PromotionA2Config } from '@shared/schema';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { useExternalVesselTypes } from '@/hooks/useExternalVesselTypes';
 import { getVesselTypesForDropdown, VESSEL_TYPE_HIERARCHY } from '@/utils/data/vesselTypes';
 import type { LicenseRecord } from '@/utils/data/licenseDceTemplates';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 
 interface PromotionReviewFormProps {
   promotionData: any;
@@ -114,6 +116,53 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
 
   // Rank normalization - needed to match raw ranks (e.g., "3rd Officer_1") to parent ranks ("3rd Officer") in rank groups
   const { normalizeRank } = useRankNormalization();
+
+  // Toast for notifications
+  const { toast } = useToast();
+
+  // Track the saved review ID for updates
+  const [savedReviewId, setSavedReviewId] = useState<number | null>(null);
+
+  // Query to load existing promotion review for this crew member and rank
+  const { data: existingReviewData, isLoading: isLoadingReview } = useQuery<PromotionReview>({
+    queryKey: ['/api/promotion-reviews/crew', promotionData?.crewMemberId, 'rank', promotionData?.promotionToRank],
+    queryFn: async () => {
+      const encodedRank = encodeURIComponent(promotionData?.promotionToRank || '');
+      const res = await fetch(`/api/promotion-reviews/crew/${promotionData?.crewMemberId}/rank/${encodedRank}`);
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error('Failed to fetch review');
+      return res.json();
+    },
+    enabled: !!promotionData?.crewMemberId && !!promotionData?.promotionToRank,
+    staleTime: 0,
+  });
+
+  // Save mutation
+  const saveMutation = useMutation({
+    mutationFn: async (reviewData: any) => {
+      if (savedReviewId) {
+        return apiRequest('PATCH', `/api/promotion-reviews/${savedReviewId}`, reviewData);
+      } else {
+        return apiRequest('POST', '/api/promotion-reviews', reviewData);
+      }
+    },
+    onSuccess: async (response) => {
+      const data = await response.json();
+      setSavedReviewId(data.id);
+      queryClient.invalidateQueries({ queryKey: ['/api/promotion-reviews'] });
+      toast({
+        title: 'Review Saved',
+        description: 'Your promotion review has been saved successfully.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Save Failed',
+        description: 'Failed to save promotion review. Please try again.',
+        variant: 'destructive',
+      });
+    },
+  });
 
   // State for selected vessel type (for A2.3b when crew is on leave / no vessel assigned)
   const [selectedVesselTypeForA2_3b, setSelectedVesselTypeForA2_3b] = useState<string>('');
@@ -389,7 +438,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         criteria: 'A2.1 Higher License Criteria?', 
         required: requiredLicenseDisplay || (hasConfig ? '' : defaultCriteriaValues.higherLicense), 
         resultFromDb: a2_1_licenseResult, 
-        verified: 'yes', 
+        verified: '', 
         hasInfo: true 
       },
       { 
@@ -397,16 +446,16 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         criteria: 'A2.2 Age Criteria?', 
         required: requiredAgeDisplay || (hasConfig ? '' : defaultCriteriaValues.ageRange), 
         resultFromDb: a2_2_ageResult, 
-        verified: 'yes', 
+        verified: '', 
         hasInfo: true 
       },
-      { id: 'a2.3', criteria: 'A2.3 Experience & Sea Service Criteria?', required: '', resultFromDb: '', verified: 'yes', hasInfo: true },
+      { id: 'a2.3', criteria: 'A2.3 Experience & Sea Service Criteria?', required: '', resultFromDb: '', verified: '', hasInfo: true },
       { 
         id: 'a2.3a', 
         criteria: 'A2.3a  Minimum Rank Experience (Vessel)?', 
         required: a2Config?.experienceMonths?.rankVessel ? `${a2Config.experienceMonths.rankVessel} Months` : (hasConfig ? '' : defaultCriteriaValues.rankVessel), 
         resultFromDb: a2_3a_rankExperienceResult, 
-        verified: 'yes', 
+        verified: '', 
         hasInfo: false 
       },
       { 
@@ -414,7 +463,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         criteria: 'A2.3b  Minimum Rank Experience (Vessel Type)?', 
         required: a2Config?.experienceMonths?.rankVesselType ? `${a2Config.experienceMonths.rankVesselType} Months` : (hasConfig ? '' : defaultCriteriaValues.rankVesselType), 
         resultFromDb: a2_3b_vesselTypeExperienceResult, 
-        verified: 'yes', 
+        verified: '', 
         hasInfo: false 
       },
       { 
@@ -422,7 +471,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         criteria: 'A2.3c  Company Service?', 
         required: a2Config?.experienceMonths?.companyService ? `${a2Config.experienceMonths.companyService} Months` : (hasConfig ? '' : defaultCriteriaValues.companyService), 
         resultFromDb: a2_3c_companyServiceResult, 
-        verified: 'yes', 
+        verified: '', 
         hasInfo: false 
       },
       { 
@@ -430,7 +479,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         criteria: 'A2.3d  Minimum Tanker Experience?', 
         required: a2Config?.experienceMonths?.tankerExperience ? `${a2Config.experienceMonths.tankerExperience} Months` : (hasConfig ? '' : defaultCriteriaValues.tankerExperience), 
         resultFromDb: a2_3d_tankerExperienceResult, 
-        verified: 'yes', 
+        verified: '', 
         hasInfo: false 
       },
       { 
@@ -438,7 +487,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         criteria: 'A2.4 Recommendations Criteria?', 
         required: a2Config?.minRecommendations ? String(a2Config.minRecommendations) : (hasConfig ? '' : defaultCriteriaValues.recommendations), 
         resultFromDb: '', 
-        verified: 'yes', 
+        verified: '', 
         hasInfo: true 
       },
       { 
@@ -446,10 +495,10 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         criteria: 'A2.5a Promotion Checklist Completed?', 
         required: a2Config?.minChecklistVerifications ? String(a2Config.minChecklistVerifications) : (hasConfig ? '' : defaultCriteriaValues.checklist), 
         resultFromDb: '', 
-        verified: 'yes', 
+        verified: '', 
         hasInfo: true 
       },
-      { id: 'a2.6', criteria: 'A2.6 Other Criteria?', required: '', resultFromDb: '', verified: 'yes', hasInfo: true },
+      { id: 'a2.6', criteria: 'A2.6 Other Criteria?', required: '', resultFromDb: '', verified: '', hasInfo: true },
     ];
 
     // Add dynamic other criteria sub-items (label is the description, requirement is the required value)
@@ -461,22 +510,22 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
           criteria: `A2.6${letter}  ${item.label || `Other Criteria ${index + 1}`}?`,
           required: item.requirement || '',
           resultFromDb: '',
-          verified: 'yes',
+          verified: '',
           hasInfo: false,
         });
       });
     } else if (!hasConfig) {
       // Preserve original hardcoded defaults for backward compatibility
       baseCriteria.push(
-        { id: 'a2.6a', criteria: 'A2.6a  Other Criteria 1?', required: 'Sample', resultFromDb: '', verified: 'yes', hasInfo: false },
-        { id: 'a2.6b', criteria: 'A2.6b  Other Criteria 2?', required: 'Sample', resultFromDb: '', verified: 'yes', hasInfo: false }
+        { id: 'a2.6a', criteria: 'A2.6a  Other Criteria 1?', required: 'Sample', resultFromDb: '', verified: '', hasInfo: false },
+        { id: 'a2.6b', criteria: 'A2.6b  Other Criteria 2?', required: 'Sample', resultFromDb: '', verified: '', hasInfo: false }
       );
     }
 
     // Add CES/Language tests header
     baseCriteria.push(
-      { id: 'a2.7', criteria: 'A2.7 CES / Language Tests Criteria?', required: '', resultFromDb: '', verified: 'yes', hasInfo: true },
-      { id: 'a2.8', criteria: 'A2.8 Training & Other Documents Verification?', required: '', resultFromDb: '', verified: 'yes', hasInfo: true }
+      { id: 'a2.7', criteria: 'A2.7 CES / Language Tests Criteria?', required: '', resultFromDb: '', verified: '', hasInfo: true },
+      { id: 'a2.8', criteria: 'A2.8 Training & Other Documents Verification?', required: '', resultFromDb: '', verified: '', hasInfo: true }
     );
 
     setCriteriaData(baseCriteria);
@@ -572,10 +621,134 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     partCNotes: '',
   };
 
+  // Load existing review data into state when available
+  useEffect(() => {
+    if (existingReviewData) {
+      setSavedReviewId(existingReviewData.id);
+      
+      // Restore A2.3b vessel type selection
+      if (existingReviewData.selectedVesselTypeForA2_3b) {
+        setSelectedVesselTypeForA2_3b(existingReviewData.selectedVesselTypeForA2_3b);
+      }
+      
+      // Restore criteria verified status
+      if (existingReviewData.criteriaVerifiedStatus) {
+        try {
+          const verifiedStatus = typeof existingReviewData.criteriaVerifiedStatus === 'string' 
+            ? JSON.parse(existingReviewData.criteriaVerifiedStatus) 
+            : existingReviewData.criteriaVerifiedStatus;
+          setCriteriaData(prev => prev.map(row => ({
+            ...row,
+            verified: verifiedStatus[row.id] || row.verified
+          })));
+        } catch (e) {}
+      }
+      
+      // Restore CES tests data
+      if (existingReviewData.cesTestsData) {
+        try {
+          const cesData = typeof existingReviewData.cesTestsData === 'string'
+            ? JSON.parse(existingReviewData.cesTestsData)
+            : existingReviewData.cesTestsData;
+          if (Array.isArray(cesData) && cesData.length > 0) {
+            setCesTests(cesData);
+          }
+        } catch (e) {}
+      }
+      
+      // Restore criteria comments
+      if (existingReviewData.criteriaComments) {
+        try {
+          const comments = typeof existingReviewData.criteriaComments === 'string'
+            ? JSON.parse(existingReviewData.criteriaComments)
+            : existingReviewData.criteriaComments;
+          setCriteriaComments(comments);
+        } catch (e) {}
+      }
+      
+      // Restore training needs
+      if (existingReviewData.trainingNeeds) {
+        try {
+          const training = typeof existingReviewData.trainingNeeds === 'string'
+            ? JSON.parse(existingReviewData.trainingNeeds)
+            : existingReviewData.trainingNeeds;
+          if (Array.isArray(training) && training.length > 0) {
+            setTrainingNeeds(training);
+          }
+        } catch (e) {}
+      }
+      
+      // Restore approval data
+      if (existingReviewData.approvalData) {
+        try {
+          const approvalData = typeof existingReviewData.approvalData === 'string'
+            ? JSON.parse(existingReviewData.approvalData)
+            : existingReviewData.approvalData;
+          if (Array.isArray(approvalData) && approvalData.length > 0) {
+            setApprovers(approvalData);
+          }
+        } catch (e) {}
+      }
+      
+      // Restore Part C execution data
+      if (existingReviewData.promotionConfirmed) {
+        setPromotionConfirmed(existingReviewData.promotionConfirmed);
+      }
+      if (existingReviewData.vesselAssigned) {
+        setVesselAssigned(existingReviewData.vesselAssigned);
+      }
+      if (existingReviewData.promotionDate) {
+        setPromotionDate(existingReviewData.promotionDate);
+      }
+      if (existingReviewData.promotionTiming) {
+        setPromotionTiming(existingReviewData.promotionTiming);
+      }
+    }
+  }, [existingReviewData]);
+
+  // Function to collect all form state for saving
+  const collectFormData = useCallback((formData: PromotionReviewFormData) => {
+    // Build criteria verified status map
+    const criteriaVerifiedStatus: Record<string, string> = {};
+    criteriaData.forEach(row => {
+      criteriaVerifiedStatus[row.id] = row.verified;
+    });
+
+    return {
+      crewMemberId: promotionData?.crewMemberId,
+      promotionToRank: promotionData?.promotionToRank,
+      selectedVesselTypeForA2_3b: selectedVesselTypeForA2_3b || null,
+      criteriaVerifiedStatus: JSON.stringify(criteriaVerifiedStatus),
+      cesTestsData: JSON.stringify(cesTests),
+      criteriaComments: JSON.stringify(criteriaComments),
+      trainingNeeds: JSON.stringify(trainingNeeds),
+      approvalData: JSON.stringify(approvers),
+      promotionConfirmed,
+      vesselAssigned,
+      promotionDate,
+      promotionTiming,
+      partANotes: formData.partANotes || null,
+      partBNotes: formData.partBNotes || null,
+      partCNotes: formData.partCNotes || null,
+      status: 'draft',
+    };
+  }, [criteriaData, cesTests, criteriaComments, trainingNeeds, approvers, promotionConfirmed, vesselAssigned, promotionDate, promotionTiming, selectedVesselTypeForA2_3b, promotionData]);
+
+  // Save draft handler
+  const handleSaveDraft = useCallback(() => {
+    const reviewData = collectFormData({
+      partANotes: '',
+      partBNotes: '',
+      partCNotes: '',
+    });
+    saveMutation.mutate(reviewData);
+  }, [collectFormData, saveMutation]);
+
   const handleSubmit = (data: PromotionReviewFormData) => {
-    console.log('Form submitted:', data);
-    // Will implement save logic later
-    onClose();
+    // Called by BaseSubmoduleForm's "Save Draft" button - saves as draft and keeps form open
+    const reviewData = collectFormData(data);
+    saveMutation.mutate(reviewData);
+    // Don't close form - user can continue editing and save multiple times
   };
 
   const getMeetsCriterion = (required: string, result: string) => {
