@@ -422,10 +422,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       
       // Part F: Comments & Recommendations
       recommendations: [
-        { id: "1", question: "Recommended for continued service on board?", answer: "Yes", comment: "" },
-        { id: "2", question: "Recommended for re-employment?", answer: "Yes", comment: "" },
-        { id: "3", question: "Recommended for promotion?", answer: "Yes", comment: "" },
-        { id: "4", question: "Career Development recommendations (If Any)?", answer: "Yes", comment: "" },
+        { id: "1", question: "Recommended for continued service on board?", answer: "", comment: "" },
+        { id: "2", question: "Recommended for re-employment?", answer: "", comment: "" },
+        { id: "3", question: "Recommended for promotion?", answer: "", comment: "" },
+        { id: "4", question: "Career Development recommendations (If Any)?", answer: "", comment: "" },
       ],
       appraiserComments: [
         { id: "primary", name: "", rank: "", comment: "" }
@@ -2448,7 +2448,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                   name={`recommendation-${recommendation.id}`}
                                   checked={recommendation.answer === "Yes"}
                                   onChange={() => updateRecommendation(recommendation.id, "answer", "Yes")}
-                                  className="w-4 h-4"
+                                  onClick={() => {
+                                    if (recommendation.answer === "Yes") {
+                                      updateRecommendation(recommendation.id, "answer", "");
+                                    }
+                                  }}
+                                  className="w-4 h-4 cursor-pointer"
                                 />
                               </td>
                               <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4 text-center">
@@ -2457,7 +2462,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                   name={`recommendation-${recommendation.id}`}
                                   checked={recommendation.answer === "No"}
                                   onChange={() => updateRecommendation(recommendation.id, "answer", "No")}
-                                  className="w-4 h-4"
+                                  onClick={() => {
+                                    if (recommendation.answer === "No") {
+                                      updateRecommendation(recommendation.id, "answer", "");
+                                    }
+                                  }}
+                                  className="w-4 h-4 cursor-pointer"
                                 />
                               </td>
                               <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4 text-center">
@@ -2466,7 +2476,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                   name={`recommendation-${recommendation.id}`}
                                   checked={recommendation.answer === "NA"}
                                   onChange={() => updateRecommendation(recommendation.id, "answer", "NA")}
-                                  className="w-4 h-4"
+                                  onClick={() => {
+                                    if (recommendation.answer === "NA") {
+                                      updateRecommendation(recommendation.id, "answer", "");
+                                    }
+                                  }}
+                                  className="w-4 h-4 cursor-pointer"
                                 />
                               </td>
                               <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
@@ -4177,7 +4192,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                           name={`recommendation-${recommendation.id}`}
                                           checked={recommendation.answer === "Yes"}
                                           onChange={() => updateRecommendation(recommendation.id, "answer", "Yes")}
-                                          className="w-4 h-4"
+                                          onClick={() => {
+                                            if (recommendation.answer === "Yes") {
+                                              updateRecommendation(recommendation.id, "answer", "");
+                                            }
+                                          }}
+                                          className="w-4 h-4 cursor-pointer"
                                         />
                                       </td>
                                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4 text-center">
@@ -4186,7 +4206,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                           name={`recommendation-${recommendation.id}`}
                                           checked={recommendation.answer === "No"}
                                           onChange={() => updateRecommendation(recommendation.id, "answer", "No")}
-                                          className="w-4 h-4"
+                                          onClick={() => {
+                                            if (recommendation.answer === "No") {
+                                              updateRecommendation(recommendation.id, "answer", "");
+                                            }
+                                          }}
+                                          className="w-4 h-4 cursor-pointer"
                                         />
                                       </td>
                                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4 text-center">
@@ -4195,7 +4220,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                           name={`recommendation-${recommendation.id}`}
                                           checked={recommendation.answer === "NA"}
                                           onChange={() => updateRecommendation(recommendation.id, "answer", "NA")}
-                                          className="w-4 h-4"
+                                          onClick={() => {
+                                            if (recommendation.answer === "NA") {
+                                              updateRecommendation(recommendation.id, "answer", "");
+                                            }
+                                          }}
+                                          className="w-4 h-4 cursor-pointer"
                                         />
                                       </td>
                                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
