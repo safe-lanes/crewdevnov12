@@ -225,6 +225,29 @@
   text-align: center !important;
 }
 
+/* Vertical text header for narrow columns */
+.ag-theme-alpine .vertical-header .ag-header-cell-label {
+  height: 100% !important;
+  padding: 4px 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.ag-theme-alpine .vertical-header .ag-header-cell-text {
+  writing-mode: vertical-rl !important;
+  -ms-writing-mode: tb-rl !important;
+  white-space: nowrap !important;
+  text-align: center !important;
+  line-height: 1.2 !important;
+  font-size: 11px !important;
+}
+
+/* Grid with vertical headers needs taller header row */
+.ag-theme-alpine.vertical-headers-grid {
+  --ag-header-height: 65px !important;
+}
+
 .ag-theme-alpine .ag-row {
   border-bottom: 1px solid #e5e7eb !important;
 }

@@ -576,46 +576,46 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     {
       headerName: 'License',
       field: 'license',
-      width: 100,
+      width: 55,
       cellRenderer: StatusIndicatorRenderer,
       sortable: true,
       resizable: false,
       wrapHeaderText: false,
       autoHeaderHeight: false,
-      headerClass: 'ag-header-cell-text'
+      headerClass: 'vertical-header'
     },
     {
       headerName: 'Age',
       field: 'age',
-      width: 90,
+      width: 55,
       cellRenderer: StatusIndicatorRenderer,
       sortable: true,
       resizable: false,
       wrapHeaderText: false,
       autoHeaderHeight: false,
-      headerClass: 'ag-header-cell-text'
+      headerClass: 'vertical-header'
     },
     {
       headerName: 'Sea',
       field: 'sea',
-      width: 90,
+      width: 55,
       cellRenderer: StatusIndicatorRenderer,
       sortable: true,
       resizable: false,
       wrapHeaderText: false,
       autoHeaderHeight: false,
-      headerClass: 'ag-header-cell-text'
+      headerClass: 'vertical-header'
     },
     {
       headerName: 'Reco',
       field: 'reco',
-      width: 90,
+      width: 55,
       cellRenderer: StatusIndicatorRenderer,
       sortable: true,
       resizable: false,
       wrapHeaderText: false,
       autoHeaderHeight: false,
-      headerClass: 'ag-header-cell-text'
+      headerClass: 'vertical-header'
     },
     {
       headerName: 'Promotion Checklist',
@@ -683,6 +683,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     suppressAnimationFrame: true, // Reduces layout thrashing
     rowBuffer: 10, // Reduced from default 20 for 30+ row tables
     debounceVerticalScrollbar: true, // Smoother scrolling
+    headerHeight: 60, // Taller header to accommodate vertical text columns
   }), []);
 
   return (
@@ -695,6 +696,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         fillAvailableHeight={true}
         bottomPadding={60}
         gridOptions={gridPerformanceOptions}
+        className="vertical-headers-grid"
         data-testid="promotions-table"
       />
       
