@@ -596,7 +596,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       headerClass: 'vertical-header'
     },
     {
-      headerName: 'Sea',
+      headerName: 'Service',
       field: 'sea',
       width: 55,
       cellRenderer: StatusIndicatorRenderer,
@@ -607,7 +607,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       headerClass: 'vertical-header'
     },
     {
-      headerName: 'Reco',
+      headerName: 'Recom.',
       field: 'reco',
       width: 55,
       cellRenderer: StatusIndicatorRenderer,
@@ -626,7 +626,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       resizable: false
     },
     {
-      headerName: 'Other Criteria',
+      headerName: 'Other',
       field: 'otherCriteria',
       width: 110,
       cellRenderer: StatusIndicatorRenderer,
@@ -634,7 +634,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       resizable: false
     },
     {
-      headerName: 'CES Index',
+      headerName: 'CES',
       field: 'cesIndex',
       width: 95,
       cellRenderer: StatusIndicatorRenderer,
@@ -642,7 +642,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       resizable: false
     },
     {
-      headerName: 'Train. & Docs.',
+      headerName: 'Train',
       field: 'trainDocs',
       width: 120,
       cellRenderer: StatusIndicatorRenderer,
