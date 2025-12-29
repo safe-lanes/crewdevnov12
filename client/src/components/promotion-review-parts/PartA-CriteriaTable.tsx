@@ -96,7 +96,7 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
                 <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded" data-testid="badge-a26-pending">Pending</span>
               );
             })()
-          ) : isOtherCriteriaSubItem(row.id) ? (
+          ) : isOtherCriteriaSubItem(row.id) || row.id === 'a2.8' ? (
             row.verified === 'yes' ? (
               <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded" data-testid={`badge-meets-yes-${row.id}`}>Yes</span>
             ) : row.verified === 'na' ? (
