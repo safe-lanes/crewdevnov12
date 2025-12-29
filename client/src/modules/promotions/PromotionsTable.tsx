@@ -526,7 +526,8 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       width: 110,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       sortable: true,
-      resizable: false
+      resizable: false,
+      hide: true
     },
     {
       headerName: 'Name',
@@ -542,7 +543,8 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       width: 110,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       sortable: true,
-      resizable: false
+      resizable: false,
+      hide: true
     },
     {
       headerName: 'Nationality',
