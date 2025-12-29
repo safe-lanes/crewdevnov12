@@ -419,7 +419,16 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       { id: 'a2.8', criteria: 'A2.8 Training & Other Documents Verification?', required: '', resultFromDb: '', verified: '', hasInfo: true }
     );
 
-    setCriteriaData(baseCriteria);
+    setCriteriaData(prev => {
+      if (prev.length === 0) {
+        return baseCriteria;
+      }
+      const existingVerifiedMap = new Map(prev.map(row => [row.id, row.verified]));
+      return baseCriteria.map(row => ({
+        ...row,
+        verified: existingVerifiedMap.get(row.id) || row.verified,
+      }));
+    });
   }, [a2Config, requiredLicenseDisplay, requiredAgeDisplay, a2_1_licenseResult, a2_2_ageResult, a2_3a_rankExperienceResult, a2_3b_vesselTypeExperienceResult, a2_3c_companyServiceResult, a2_3d_tankerExperienceResult, a2_4_recommendationsResult]);
 
   const [cesTests, setCesTests] = useState<CesTest[]>([]);
