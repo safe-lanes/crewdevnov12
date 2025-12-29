@@ -127,6 +127,19 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
 
   const [selectedVesselTypeForA2_3b, setSelectedVesselTypeForA2_3b] = useState<string>('');
 
+  const parseRanksArray = useCallback((ranks: unknown): string[] => {
+    if (Array.isArray(ranks)) return ranks;
+    if (typeof ranks === 'string') {
+      try {
+        const parsed = JSON.parse(ranks);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  }, []);
+
   const rankGroupLookupResult = useMemo<{ attempted: boolean; found: boolean; targetRank: string | null }>(() => {
     if (!promotionData?.promotionToRank || !formsData || !rankGroupsData) {
       return { attempted: false, found: false, targetRank: null };
@@ -141,7 +154,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     const targetRank = promotionData.promotionToRank;
     const normalizedTarget = normalizeRank(targetRank);
     const matchingRankGroup = formRankGroups.find(rg => {
-      const groupRanks = Array.isArray(rg.ranks) ? rg.ranks : [];
+      const groupRanks = parseRanksArray(rg.ranks);
       return groupRanks.some((rank: string) => {
         const normalizedGroupRank = normalizeRank(rank);
         return normalizedGroupRank === normalizedTarget;
@@ -152,7 +165,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       found: !!matchingRankGroup,
       targetRank,
     };
-  }, [promotionData?.promotionToRank, formsData, rankGroupsData, normalizeRank]);
+  }, [promotionData?.promotionToRank, formsData, rankGroupsData, normalizeRank, parseRanksArray]);
 
   const a2Config = useMemo<PromotionA2Config | null>(() => {
     if (!promotionData?.promotionToRank || !formsData || !rankGroupsData) return null;
@@ -164,7 +177,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     const targetRank = promotionData.promotionToRank;
     const normalizedTarget = normalizeRank(targetRank);
     const matchingRankGroup = formRankGroups.find(rg => {
-      const groupRanks = Array.isArray(rg.ranks) ? rg.ranks : [];
+      const groupRanks = parseRanksArray(rg.ranks);
       return groupRanks.some((rank: string) => normalizeRank(rank) === normalizedTarget);
     });
     if (!matchingRankGroup) return null;
@@ -176,7 +189,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     } catch {
       return null;
     }
-  }, [promotionData?.promotionToRank, formsData, rankGroupsData, normalizeRank]);
+  }, [promotionData?.promotionToRank, formsData, rankGroupsData, normalizeRank, parseRanksArray]);
 
   const licenseNamesById = useMemo(() => {
     if (!licenseEntriesData) return {};
