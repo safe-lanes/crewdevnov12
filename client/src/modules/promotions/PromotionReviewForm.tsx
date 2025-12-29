@@ -78,7 +78,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   });
 
   const { data: crewMemberData } = useQuery<CrewMember>({
-    queryKey: ['/api/crew-members', promotionData?.crewMemberId],
+    queryKey: [`/api/crew-members/${promotionData?.crewMemberId}`],
     enabled: !!promotionData?.crewMemberId,
   });
 
