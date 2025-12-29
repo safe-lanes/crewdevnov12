@@ -434,18 +434,28 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   const [cesTests, setCesTests] = useState<CesTest[]>([]);
 
   useEffect(() => {
-    if (a2Config?.cesTests?.length) {
-      setCesTests(a2Config.cesTests.map((test, index) => ({
-        id: String(index + 1),
-        description: test.description || '',
-        date: '',
-        minScore: test.minScore ? String(test.minScore) : '',
-        score: '',
-        result: '',
-      })));
-    } else {
-      setCesTests([{ id: '1', description: '', date: '', minScore: '', score: '', result: '' }]);
-    }
+    setCesTests(prev => {
+      if (a2Config?.cesTests?.length) {
+        const existingValuesMap = new Map(prev.map(test => [test.id, { date: test.date, score: test.score, result: test.result }]));
+        return a2Config.cesTests.map((test, index) => {
+          const id = String(index + 1);
+          const existing = existingValuesMap.get(id);
+          return {
+            id,
+            description: test.description || '',
+            date: existing?.date || '',
+            minScore: test.minScore ? String(test.minScore) : '',
+            score: existing?.score || '',
+            result: existing?.result || '',
+          };
+        });
+      } else {
+        if (prev.length === 0) {
+          return [{ id: '1', description: '', date: '', minScore: '', score: '', result: '' }];
+        }
+        return prev;
+      }
+    });
   }, [a2Config]);
 
   const [criteriaComments, setCriteriaComments] = useState<Record<string, Comment[]>>({});
