@@ -754,18 +754,20 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   const getMeetsCriterion = (required: string, result: string) => {
     if (!required || !result) return 'pending';
     
-    // Handle range values like "29-40 Years"
-    if (result.includes('-')) {
-      const reqNum = parseFloat(required);
-      const rangeParts = result.split('-');
-      const min = parseFloat(rangeParts[0]);
-      const max = parseFloat(rangeParts[1]);
-      if (!isNaN(reqNum) && !isNaN(min) && !isNaN(max)) {
-        return (reqNum >= min && reqNum <= max) ? 'met' : 'not-met';
+    // Handle range requirements like "30-50 Years" in the required field
+    // Check if required contains a range (e.g., "30-50 Years")
+    const rangeMatch = required.match(/(\d+)\s*-\s*(\d+)/);
+    if (rangeMatch) {
+      const min = parseFloat(rangeMatch[1]);
+      const max = parseFloat(rangeMatch[2]);
+      const actualValue = parseFloat(result);
+      if (!isNaN(min) && !isNaN(max) && !isNaN(actualValue)) {
+        // Check if actual value falls within the required range
+        return (actualValue >= min && actualValue <= max) ? 'met' : 'not-met';
       }
     }
     
-    // Handle numeric comparison
+    // Handle numeric comparison (e.g., minimum months required)
     const reqNum = parseFloat(required);
     const resNum = parseFloat(result);
     if (!isNaN(reqNum) && !isNaN(resNum)) {
