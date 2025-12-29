@@ -2558,7 +2558,19 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                         <div className="flex justify-between items-center">
                           <div>
                             <p className="font-medium text-[14px] text-[#3164f4]">
-                              {index === 0 ? form.watch("primaryAppraiser") || "Capt. John Leki, Master (Primary Appraiser)" : `${appraiser.name}, ${appraiser.rank}`}
+                              {index === 0 ? (() => {
+                                const appraiserValue = form.watch("primaryAppraiser");
+                                const appraiserLabels: Record<string, string> = {
+                                  "master": "Master",
+                                  "chief-officer": "Chief Officer",
+                                  "chief-engineer": "Chief Engineer",
+                                  "2nd-engineer": "2nd Engineer",
+                                  "marine-superintendent": "Marine Superintendent",
+                                  "technical-superintendent": "Technical Superintendent",
+                                  "crew-manager": "Crew Manager"
+                                };
+                                return appraiserValue ? `${appraiserLabels[appraiserValue] || appraiserValue} (Primary Appraiser)` : "Select Primary Appraiser";
+                              })() : `${appraiser.name}, ${appraiser.rank}`}
                             </p>
                           </div>
                           <div className="flex space-x-2">
@@ -4275,7 +4287,19 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                 <div className="flex justify-between items-center">
                                   <div>
                                     <p className="font-medium text-[14px] text-[#3164f4]">
-                                      {index === 0 ? form.watch("primaryAppraiser") || "Capt. John Leki, Master (Primary Appraiser)" : `${appraiser.name}, ${appraiser.rank}`}
+                                      {index === 0 ? (() => {
+                                        const appraiserValue = form.watch("primaryAppraiser");
+                                        const appraiserLabels: Record<string, string> = {
+                                          "master": "Master",
+                                          "chief-officer": "Chief Officer",
+                                          "chief-engineer": "Chief Engineer",
+                                          "2nd-engineer": "2nd Engineer",
+                                          "marine-superintendent": "Marine Superintendent",
+                                          "technical-superintendent": "Technical Superintendent",
+                                          "crew-manager": "Crew Manager"
+                                        };
+                                        return appraiserValue ? `${appraiserLabels[appraiserValue] || appraiserValue} (Primary Appraiser)` : "Select Primary Appraiser";
+                                      })() : `${appraiser.name}, ${appraiser.rank}`}
                                     </p>
                                   </div>
                                   <div className="flex space-x-2">
