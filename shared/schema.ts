@@ -2108,6 +2108,11 @@ export const promotionReviews = pgTable("promotion_reviews", {
   // e.g., { "a2.1": "yes", "a2.2": "na", "a2.3a": "", ... }
   criteriaVerifiedStatus: text("criteria_verified_status"), // JSON string
   
+  // A2 Criteria Meets Status (JSON object mapping criteria ID to computed meets status)
+  // Stores auto-computed "Meets Criteria" values: 'yes', 'no', 'pending'
+  // e.g., { "a2.1": "yes", "a2.3a": "no", "a2.3b": "pending", ... }
+  criteriaMeetsStatus: text("criteria_meets_status"), // JSON string
+  
   // CES/Language Tests data (JSON array)
   cesTestsData: text("ces_tests_data"), // JSON string
   
