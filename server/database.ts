@@ -2129,6 +2129,8 @@ export class DatabaseStorage implements IStorage {
           relieverCrewId: existingRecords[0].relieverCrewId, 
           relieverSignOnDate: existingRecords[0].relieverSignOnDate 
         });
+        // Note: Do NOT update contractPeriodMonths here - it belongs to the on-board crew
+        // The reliever's contract period is tracked via relieverSignOnDate + assignment.contractPeriod
         const [updated] = await this.db
           .update(vesselPlanning)
           .set({
@@ -2137,7 +2139,6 @@ export class DatabaseStorage implements IStorage {
             relieverSignOnDate: signOnDate,
             joiningPort: assignment.joiningPort || null,
             joiningStatus: 'Planned',
-            contractPeriodMonths: contractPeriodMonths,
             updatedAt: new Date(),
           })
           .where(eq(vesselPlanning.id, existingRecords[0].id))

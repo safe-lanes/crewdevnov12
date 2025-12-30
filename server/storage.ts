@@ -2701,17 +2701,19 @@ export class MemStorage implements IStorage {
 
     if (existingPlanningId !== null) {
       // Update existing record with reliever information
+      // Note: Do NOT update contractPeriodMonths here - it belongs to the on-board crew
+      // The reliever's contract period is tracked via relieverSignOnDate + assignment.contractPeriod
       await this.updateVesselPlanning(existingPlanningId, {
         relieverCrewId: assignment.crewId,
         relieverCrewName: assignment.crewName,
         relieverSignOnDate: assignment.signOnDate || assignment.joiningDate,
         joiningStatus: "Planned",
-        contractPeriodMonths: assignment.contractPeriod,
         deploymentChecklistCompleted: false,
         applicableDocsChecked: false,
       });
     } else {
       // Create new vessel planning entry if none exists
+      // For new positions (no on-board crew), contractPeriodMonths is for the incoming crew
       const vesselPlanningEntry = {
         vesselId: vesselCode,
         rankId: assignment.rankId,
@@ -7083,17 +7085,19 @@ export class PersistentFileStorage implements IStorage {
 
     if (existingPlanningId !== null) {
       // Update existing record with reliever information
+      // Note: Do NOT update contractPeriodMonths here - it belongs to the on-board crew
+      // The reliever's contract period is tracked via relieverSignOnDate + assignment.contractPeriod
       await this.updateVesselPlanning(existingPlanningId, {
         relieverCrewId: assignment.crewId,
         relieverCrewName: assignment.crewName,
         relieverSignOnDate: assignment.signOnDate || assignment.joiningDate,
         joiningStatus: "Planned",
-        contractPeriodMonths: assignment.contractPeriod,
         deploymentChecklistCompleted: false,
         applicableDocsChecked: false,
       });
     } else {
       // Create new vessel planning entry if none exists
+      // For new positions (no on-board crew), contractPeriodMonths is for the incoming crew
       const vesselPlanningEntry = {
         vesselId: vesselCode,
         rankId: assignment.rankId,
