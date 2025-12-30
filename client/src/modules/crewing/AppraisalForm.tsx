@@ -1812,7 +1812,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                   <PartG
                     form={form}
                     partRef={partGRef}
-                    appraisalStatus={appraisalData?.status || 'draft'}
+                    appraisalStatus={appraisalStatus}
                     isFieldVisible={isFieldVisible}
                     isSectionVisible={isSectionVisible}
                     trainingFollowupComments={trainingFollowupComments}
