@@ -43,6 +43,11 @@ const promotionReviewSchema = z.object({
 
 type PromotionReviewFormData = z.infer<typeof promotionReviewSchema>;
 
+const getCurrentUserDisplay = (): string => {
+  const userName = sessionStorage.getItem('crewUserName') || 'Current User';
+  const designation = sessionStorage.getItem('crewDesignation') || 'Staff';
+  return `${userName}, ${designation}`;
+};
 
 export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   promotionData,
@@ -476,6 +481,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     { id: '1', user: 'Roxanne, Crewing Executive', text: 'Shows good aptitude for senior roles. Candidate has the right credentials and experience.' },
     { id: '2', user: 'Roxanne, Crewing Executive', text: 'Pending completion of minimum rank experience and COC Master license.' },
   ]);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
 
   const [approvers, setApprovers] = useState<Approver[]>([
     { id: '1', date: '', approver: '', status: '', approval: 'yes', comments: '' },
@@ -880,15 +886,21 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   const addComment = useCallback(() => {
     const newId = nextCommentIdRef.current.toString();
     nextCommentIdRef.current += 1;
+    const currentUserDisplay = getCurrentUserDisplay();
     setComments(prev => [...prev, {
       id: newId,
-      user: 'New User',
+      user: currentUserDisplay,
       text: ''
     }]);
+    setEditingCommentId(newId);
   }, []);
 
   const deleteComment = useCallback((id: string) => {
     setComments(prev => prev.filter(c => c.id !== id));
+  }, []);
+
+  const updateCommentText = useCallback((id: string, text: string) => {
+    setComments(prev => prev.map(c => c.id === id ? { ...c, text } : c));
   }, []);
 
   const cesTestsSection = useMemo(() => (
@@ -1015,35 +1027,57 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                   </div>
 
                   <div className="space-y-3">
-                    {comments.map((comment) => (
-                      <div key={comment.id} className="bg-gray-50 p-3 rounded" data-testid={`comment-${comment.id}`}>
-                        <div className="flex justify-between items-start mb-2">
-                          <span className="text-sm font-medium text-blue-600" data-testid={`comment-user-${comment.id}`}>{comment.user}</span>
-                          <div className="flex gap-1">
-                            <Button 
-                              type="button"
-                              variant="ghost" 
-                              size="sm" 
-                              className="h-6 w-6 p-0"
-                              data-testid={`button-comment-edit-${comment.id}`}
-                            >
-                              <Edit className="h-3 w-3 text-gray-600" />
-                            </Button>
-                            <Button 
-                              type="button"
-                              variant="ghost" 
-                              size="sm" 
-                              className="h-6 w-6 p-0" 
-                              onClick={() => deleteComment(comment.id)}
-                              data-testid={`button-comment-delete-${comment.id}`}
-                            >
-                              <Trash2 className="h-3 w-3 text-gray-600" />
-                            </Button>
+                    {comments.map((comment) => {
+                      const isEditing = editingCommentId === comment.id || comment.text === '';
+                      return (
+                        <div key={comment.id} className="bg-gray-50 p-3 rounded" data-testid={`comment-${comment.id}`}>
+                          <div className="flex justify-between items-start mb-2">
+                            <span className="text-sm font-medium" data-testid={`comment-user-${comment.id}`}>{comment.user}</span>
+                            <div className="flex gap-1">
+                              {!isEditing && (
+                                <Button 
+                                  type="button"
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="h-6 w-6 p-0"
+                                  onClick={() => setEditingCommentId(comment.id)}
+                                  data-testid={`button-comment-edit-${comment.id}`}
+                                >
+                                  <Edit className="h-3 w-3 text-gray-600" />
+                                </Button>
+                              )}
+                              <Button 
+                                type="button"
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-6 w-6 p-0" 
+                                onClick={() => deleteComment(comment.id)}
+                                data-testid={`button-comment-delete-${comment.id}`}
+                              >
+                                <Trash2 className="h-3 w-3 text-gray-600" />
+                              </Button>
+                            </div>
                           </div>
+                          {isEditing ? (
+                            <textarea
+                              className="w-full min-h-[80px] p-2 border border-blue-200 rounded text-blue-600 italic text-sm resize-y"
+                              placeholder="Comment: Add your observations here..."
+                              value={comment.text}
+                              onChange={(e) => updateCommentText(comment.id, e.target.value)}
+                              onBlur={() => {
+                                if (comment.text.trim()) {
+                                  setEditingCommentId(null);
+                                }
+                              }}
+                              autoFocus
+                              data-testid={`textarea-comment-${comment.id}`}
+                            />
+                          ) : (
+                            <p className="text-sm text-gray-700 italic" data-testid={`comment-text-${comment.id}`}>{comment.text}</p>
+                          )}
                         </div>
-                        <p className="text-sm text-gray-700 italic" data-testid={`comment-text-${comment.id}`}>{comment.text}</p>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
