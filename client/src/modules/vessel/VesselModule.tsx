@@ -17,6 +17,16 @@ import AgGridTable from '@/components/AgGrid/AgGridTable';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ColDef, GridApi } from 'ag-grid-community';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -318,6 +328,8 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
     const { toast } = useToast();
     const { data: ports = [] } = usePorts();
     const [joiningDateOpen, setJoiningDateOpen] = React.useState(false);
+    const [unassignChecked, setUnassignChecked] = React.useState(false);
+    const [showUnassignConfirm, setShowUnassignConfirm] = React.useState(false);
     
     const form = useForm<ReliefStatusFormData>({
         resolver: zodResolver(reliefStatusFormSchema),
@@ -350,6 +362,7 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                 deploymentChecklistCompleted: planningData.deploymentChecklistCompleted || false,
                 applicableDocsChecked: planningData.applicableDocsChecked || false,
             });
+            setUnassignChecked(false);
         } else if (open && !planningData) {
             // Reset to empty form for new entry
             form.reset({
@@ -364,6 +377,7 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                 deploymentChecklistCompleted: false,
                 applicableDocsChecked: false,
             });
+            setUnassignChecked(false);
         }
     }, [open, planningData, form]);
 
@@ -530,6 +544,50 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
         }
     });
 
+    // Mutation for unassigning reliever from vessel
+    const unassignRelieverMutation = useMutation({
+        mutationFn: async () => {
+            if (!planningData?.id) {
+                throw new Error('No planning record ID');
+            }
+            // Clear all reliever fields from the planning record
+            // apiRequest throws on error, so we don't need to check response.ok
+            const response = await apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, {
+                relieverCrewId: null,
+                relieverCrewName: null,
+                relieverNationality: null,
+                joiningStatus: null,
+                relieverSignOnDate: null,
+                joiningDate: null,
+                relieverSignOnPort: null,
+                joiningPort: null,
+                contractPeriodMonths: null,
+                contractEndRangeStartMonths: null,
+                contractEndRangeEndMonths: null,
+                deploymentChecklistCompleted: null,
+                applicableDocsChecked: null,
+            });
+            return response.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['/api/vessel-planning/vessel', vesselId] });
+            toast({
+                title: "Reliever Unassigned",
+                description: "The reliever has been removed from this vessel assignment.",
+            });
+            setUnassignChecked(false);
+            setShowUnassignConfirm(false);
+            onOpenChange(false);
+        },
+        onError: (error: any) => {
+            toast({
+                title: "Error",
+                description: error.message || "Failed to unassign reliever",
+                variant: "destructive",
+            });
+        }
+    });
+
     // Helper to normalize date to ISO format (YYYY-MM-DD)
     const normalizeToIsoDate = (dateStr: string | undefined): string | undefined => {
         if (!dateStr) return undefined;
@@ -587,6 +645,12 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
     };
 
     const handleSubmit = form.handleSubmit((data) => {
+        // Priority: If unassign checkbox is checked, show confirmation dialog
+        if (unassignChecked) {
+            setShowUnassignConfirm(true);
+            return;
+        }
+        
         // Normalize relieverSignOnDate to ISO format before submitting
         if (data.relieverSignOnDate) {
             data.relieverSignOnDate = normalizeToIsoDate(data.relieverSignOnDate);
@@ -625,14 +689,20 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
             updatePlanningMutation.mutate(data);
         }
     });
+    
+    // Handle unassign confirmation
+    const handleUnassignConfirm = () => {
+        unassignRelieverMutation.mutate();
+    };
 
     // Track if a reliever crew member is assigned - disable fields if not
     const relieverName = form.watch('relieverCrewName');
     const isRelieverAssigned = relieverName && relieverName.trim() !== '';
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <>
+            <Dialog open={open} onOpenChange={onOpenChange}>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="text-lg font-medium text-[#16569e] border-b border-[#16569e] pb-2">
                         Rank: {rank}
@@ -932,21 +1002,64 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                             )}
                         />
 
+                        {/* Unassign from Vessel Checkbox - only shown when reliever is assigned */}
+                        {isRelieverAssigned && (
+                            <div className="flex items-center gap-2 pt-2 border-t">
+                                <Checkbox
+                                    id="unassign-reliever-checkbox"
+                                    checked={unassignChecked}
+                                    onCheckedChange={(checked) => setUnassignChecked(checked as boolean)}
+                                    data-testid="checkbox-unassign-reliever"
+                                />
+                                <label
+                                    htmlFor="unassign-reliever-checkbox"
+                                    className="text-sm font-medium text-red-600 cursor-pointer"
+                                >
+                                    Unassign from vessel
+                                </label>
+                            </div>
+                        )}
+
                         {/* Action Buttons */}
                         <div className="flex justify-end gap-2 pt-4">
                             <Button 
                                 type="submit"
-                                className="bg-[#14b8a6] hover:bg-[#14b8a6]/90"
-                                disabled={updatePlanningMutation.isPending}
+                                className={unassignChecked ? "bg-red-600 hover:bg-red-700" : "bg-[#14b8a6] hover:bg-[#14b8a6]/90"}
+                                disabled={updatePlanningMutation.isPending || unassignRelieverMutation.isPending}
                                 data-testid="button-submit-relief"
                             >
-                                Submit
+                                {unassignChecked ? "Unassign" : "Submit"}
                             </Button>
                         </div>
                     </form>
                 </Form>
             </DialogContent>
         </Dialog>
+        
+        {/* Unassign Confirmation Dialog */}
+        <AlertDialog open={showUnassignConfirm} onOpenChange={setShowUnassignConfirm}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Unassign Reliever from Vessel?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This will remove {form.watch('relieverCrewName')} from the planned vessel assignment.
+                        The crew member will be returned to the crew pool and their status will remain "On Leave".
+                        This action cannot be undone.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel data-testid="button-cancel-unassign">Cancel</AlertDialogCancel>
+                    <AlertDialogAction 
+                        onClick={handleUnassignConfirm}
+                        className="bg-red-600 hover:bg-red-700"
+                        data-testid="button-confirm-unassign"
+                    >
+                        Confirm Unassign
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    </>
     );
 };
 
