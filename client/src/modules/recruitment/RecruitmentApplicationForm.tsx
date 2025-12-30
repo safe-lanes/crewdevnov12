@@ -5719,7 +5719,6 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="english">English</SelectItem>
-                          <SelectItem value="mathematics">Mathematics</SelectItem>
                           <SelectItem value="navigation">Navigation</SelectItem>
                           <SelectItem value="seamanship">Seamanship</SelectItem>
                         </SelectContent>
