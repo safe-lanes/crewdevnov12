@@ -199,6 +199,7 @@ export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
             ? [`/api/compliance/matrix/${vesselId}/simulated`, JSON.stringify(simulatedCrew)]
             : [`/api/compliance/matrix/${vesselId}`],
         enabled: open && !!vesselId && oilMajorRules.length > 0,
+        staleTime: 0, // Always refetch compliance data to ensure fresh results
         queryFn: async () => {
             console.log('[ComplianceDialog] Fetching compliance data:', { isSimulatedMode, vesselId, simulatedCrew });
             if (isSimulatedMode) {
