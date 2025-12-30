@@ -190,6 +190,76 @@ const calculateTankerCertifications = (trainingCourses: TrainingCourse[]): Tanke
     };
 };
 
+// Interface for document expiry analysis
+interface DocExpiryIssue {
+    category: 'Travel Docs' | 'Visas' | 'License & DCE' | 'Training';
+    name: string;
+    expiry: string;
+    status: 'expired' | 'expiring';
+}
+
+interface DocExpiryAnalysis {
+    expiringCount: number;
+    expiredCount: number;
+    issues: DocExpiryIssue[];
+}
+
+// Helper function to analyze document expiry status across all 4 document types
+const analyzeDocumentExpiry = (crewData: any): DocExpiryAnalysis => {
+    const result: DocExpiryAnalysis = {
+        expiringCount: 0,
+        expiredCount: 0,
+        issues: []
+    };
+
+    if (!crewData) return result;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const twoMonthsFromNow = new Date(today);
+    twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
+
+    const analyzeItems = (
+        items: any[], 
+        category: DocExpiryIssue['category'], 
+        nameField: string
+    ) => {
+        if (!items || !Array.isArray(items)) return;
+
+        items.forEach(item => {
+            if (!item.expiry) return;
+            const expiryDate = new Date(item.expiry);
+            if (isNaN(expiryDate.getTime())) return;
+
+            if (expiryDate < today) {
+                result.expiredCount++;
+                result.issues.push({
+                    category,
+                    name: item[nameField] || 'Unknown',
+                    expiry: item.expiry,
+                    status: 'expired'
+                });
+            } else if (expiryDate <= twoMonthsFromNow) {
+                result.expiringCount++;
+                result.issues.push({
+                    category,
+                    name: item[nameField] || 'Unknown',
+                    expiry: item.expiry,
+                    status: 'expiring'
+                });
+            }
+        });
+    };
+
+    // Analyze all 4 document types
+    analyzeItems(crewData.documents, 'Travel Docs', 'document');
+    analyzeItems(crewData.visas, 'Visas', 'issuingCountry');
+    analyzeItems(crewData.licenses, 'License & DCE', 'certificateDocument');
+    analyzeItems(crewData.trainingCourses, 'Training', 'trainingCourse');
+
+    return result;
+};
+
 // Hook to fetch vessels from External API (SAIL ERP)
 // This ensures vessel types match the Vessel Master (external API source of truth)
 const useVessels = () => {
@@ -2000,6 +2070,13 @@ export const VesselModule = (): JSX.Element => {
     const [isCrewInfoFormOpen, setIsCrewInfoFormOpen] = useState(false);
     const [selectedCrewMember, setSelectedCrewMember] = useState<any>(null);
 
+    // Doc Expiry dialog state
+    const [docExpiryDialogOpen, setDocExpiryDialogOpen] = useState(false);
+    const [docExpiryDialogData, setDocExpiryDialogData] = useState<{
+        crewName: string;
+        issues: DocExpiryIssue[];
+    }>({ crewName: '', issues: [] });
+
     // Toast for validation messages
     const { toast } = useToast();
 
@@ -2913,7 +2990,36 @@ export const VesselModule = (): JSX.Element => {
                                                                         {formatDateOnly(planning.signOffDate)}
                                                                     </TableCell>
                                                                     <TableCell className="text-xs text-gray-700" data-testid={`cell-docexp-${index + 1}`}>
-                                                                        
+                                                                        {(() => {
+                                                                            const analysis = analyzeDocumentExpiry(crewData);
+                                                                            const totalIssues = analysis.expiringCount + analysis.expiredCount;
+                                                                            
+                                                                            if (totalIssues === 0) {
+                                                                                return <span className="text-gray-500">0/0</span>;
+                                                                            }
+                                                                            
+                                                                            const crewName = crewData ? 
+                                                                                `${crewData.familyName || crewData.lastName || ''}, ${crewData.firstName || ''}`.trim() : 
+                                                                                'Unknown';
+                                                                            
+                                                                            return (
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        setDocExpiryDialogData({
+                                                                                            crewName,
+                                                                                            issues: analysis.issues
+                                                                                        });
+                                                                                        setDocExpiryDialogOpen(true);
+                                                                                    }}
+                                                                                    className="hover:underline cursor-pointer"
+                                                                                    data-testid={`button-docexp-details-${index + 1}`}
+                                                                                >
+                                                                                    <span className={analysis.expiredCount > 0 ? 'text-red-600 font-medium' : 'text-orange-500 font-medium'}>
+                                                                                        {analysis.expiringCount}/{analysis.expiredCount}
+                                                                                    </span>
+                                                                                </button>
+                                                                            );
+                                                                        })()}
                                                                     </TableCell>
                                                                     <TableCell className="text-xs text-gray-700" data-testid={`cell-medical-${index + 1}`}>
                                                                         {(() => {
@@ -3930,6 +4036,49 @@ export const VesselModule = (): JSX.Element => {
                 }}
                 crewMember={selectedCrewMember}
             />
+
+            {/* Doc Expiry Issues Dialog */}
+            <Dialog open={docExpiryDialogOpen} onOpenChange={setDocExpiryDialogOpen}>
+                <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle style={{ color: '#16569e' }}>
+                            Document Expiry Issues - {docExpiryDialogData.crewName}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="mt-4">
+                        {docExpiryDialogData.issues.length > 0 ? (
+                            <div className="space-y-2">
+                                {docExpiryDialogData.issues.map((issue, idx) => (
+                                    <div 
+                                        key={idx} 
+                                        className="flex items-center justify-between p-2 rounded-md bg-gray-50 dark:bg-gray-800"
+                                        data-testid={`doc-expiry-issue-${idx}`}
+                                    >
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-medium">{issue.name}</span>
+                                            <span className="text-xs text-muted-foreground">{issue.category}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-gray-500">
+                                                {format(new Date(issue.expiry), 'dd-MMM-yyyy')}
+                                            </span>
+                                            <span className={`text-xs font-medium px-2 py-0.5 rounded ${
+                                                issue.status === 'expired' 
+                                                    ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' 
+                                                    : 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300'
+                                            }`}>
+                                                {issue.status === 'expired' ? 'Expired' : 'Expiring'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-muted-foreground">No document expiry issues found.</p>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </>
     );
 };

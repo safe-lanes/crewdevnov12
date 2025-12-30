@@ -3565,6 +3565,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 // Invalid JSON, skip medical expiry
               }
             }
+            // Parse document arrays for expiry tracking
+            const parseJsonArray = (data: any): any[] => {
+              if (!data) return [];
+              if (Array.isArray(data)) return data;
+              if (typeof data === 'string') {
+                try {
+                  let parsed = data;
+                  while (typeof parsed === 'string') {
+                    const trimmed = parsed.trim();
+                    if (trimmed.startsWith('[')) {
+                      parsed = JSON.parse(trimmed);
+                      break;
+                    }
+                    try {
+                      parsed = JSON.parse(trimmed);
+                    } catch {
+                      break;
+                    }
+                  }
+                  return Array.isArray(parsed) ? parsed : [];
+                } catch {
+                  return [];
+                }
+              }
+              return [];
+            };
+
             enriched.crewMemberData = {
               id: crew.id,
               employeeId: crew.employeeId,
@@ -3573,7 +3600,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               lastName: crew.familyName || crew.lastName || '',
               nationality: crew.nationality,
               presentRank: crew.presentRank,
-              latestMedicalExpiry
+              latestMedicalExpiry,
+              documents: parseJsonArray(crew.documents),
+              visas: parseJsonArray(crew.visas),
+              licenses: parseJsonArray(crew.licenses),
+              trainingCourses: parseJsonArray(crew.trainingCourses)
             };
           }
         }
