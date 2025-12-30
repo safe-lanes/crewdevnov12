@@ -2012,11 +2012,12 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const approverMasterData = useMemo(() => {
     const users = (externalUsersData as any)?.users || externalUsersData || [];
     if (users.length > 0) {
-      return users
+      const displayNames = users
         .filter((user: any) => user.userType?.toLowerCase() === 'office')
         .map((user: any) => user.displayName || `${user.fullname || user.userName}, ${user.designation || ''}`)
-        .filter(Boolean)
-        .sort();
+        .filter(Boolean);
+      // Deduplicate to prevent React key warnings
+      return Array.from(new Set(displayNames)).sort() as string[];
     }
     return [];
   }, [externalUsersData]);
@@ -6406,12 +6407,27 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                     />
                   </TableCell>
                   <TableCell className="p-3">
-                    <Input
+                    <Select
                       value={training.identifiedBy}
-                      onChange={(e) => updateB7TrainingNeed(training.id, 'identifiedBy', e.target.value)}
-                      className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
-                      placeholder="Enter identifier"
-                    />
+                      onValueChange={(value) => updateB7TrainingNeed(training.id, 'identifiedBy', value)}
+                    >
+                      <SelectTrigger className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto">
+                        <SelectValue placeholder="Select person" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {isLoadingUsers ? (
+                          <SelectItem value="_loading" disabled>Loading...</SelectItem>
+                        ) : approverMasterData.length === 0 ? (
+                          <SelectItem value="_empty" disabled>No users found</SelectItem>
+                        ) : (
+                          approverMasterData.map((name: string) => (
+                            <SelectItem key={name} value={name}>
+                              {name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
                   </TableCell>
                   <TableCell className="p-3">
                     <Select
