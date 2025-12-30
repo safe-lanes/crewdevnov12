@@ -127,6 +127,7 @@ import { useExternalAdditionalGroups } from "@/hooks/useExternalAdditionalGroups
 import { useExternalPorts } from "@/hooks/useExternalPorts";
 import { useExternalLanguages } from "@/hooks/useExternalLanguages";
 import { useExternalCountries } from "@/hooks/useExternalCountries";
+import { useExternalUsers } from "@/hooks/useExternalUsers";
 
 // StableInput component - uses local state to prevent value loss during re-renders
 // This solves the issue where external API hook re-renders cause controlled inputs to lose their value
@@ -1415,6 +1416,24 @@ const AdminModuleInner = (): JSX.Element => {
   // Add debug logging (development only)
   if (import.meta.env.DEV) {
     console.log('🌍 [External Countries] Processed Data:', countriesData);
+  }
+  
+  // NEW: External users data from API (Master 024)
+  const {
+    data: externalUsersData,
+    isLoading: externalUsersLoading,
+    error: externalUsersError,
+  } = useExternalUsers();
+  
+  // Process external API response structure - hooks now return arrays directly
+  // Also handle legacy wrapper format for backwards compatibility
+  const externalUsersApiData = Array.isArray(externalUsersData) 
+    ? externalUsersData 
+    : (externalUsersData as any)?.users || [];
+  
+  // Add debug logging (development only)
+  if (import.meta.env.DEV) {
+    console.log('👥 [External Users] Processed Data:', externalUsersApiData);
   }
   
   // Vessel Groups Data (for vessel group selection)
@@ -7002,7 +7021,7 @@ const AdminModuleInner = (): JSX.Element => {
               {/* Right Table - Selected Master Data */}
               <div className={`${currentBreakpoint === 'mobile' ? 'w-full' : 'flex-1'}`}>
                 <div className="bg-[#52baf3] text-white text-xs font-medium p-0">
-                  <div className={`${selectedMaster === "013" ? USERS_MASTER_GRID_CLASSES : `grid ${selectedMaster === "014" || selectedMaster === "018" || selectedMaster === "019" || selectedMaster === "021" ? 'grid-cols-5' : selectedMaster === "020" || selectedMaster === "022" || selectedMaster === "023" ? 'grid-cols-3' : 'grid-cols-4'} gap-0`} ${selectedMaster === "013" ? 'users-master-header-grid' : ''}`}>
+                  <div className={`${selectedMaster === "013" ? USERS_MASTER_GRID_CLASSES : `grid ${selectedMaster === "024" ? 'grid-cols-8' : selectedMaster === "014" || selectedMaster === "018" || selectedMaster === "019" || selectedMaster === "021" ? 'grid-cols-5' : selectedMaster === "020" || selectedMaster === "022" || selectedMaster === "023" ? 'grid-cols-3' : 'grid-cols-4'} gap-0`} ${selectedMaster === "013" ? 'users-master-header-grid' : ''}`}>
                     <div className="p-3 border-r border-blue-400">Entry ID</div>
                     {selectedMaster === "001" ? (
                       <>
@@ -7059,6 +7078,15 @@ const AdminModuleInner = (): JSX.Element => {
                     ) : selectedMaster === "023" ? (
                       <>
                         <div className="p-3 border-r border-blue-400">Name</div>
+                      </>
+                    ) : selectedMaster === "024" ? (
+                      <>
+                        <div className="p-3 border-r border-blue-400">User Name</div>
+                        <div className="p-3 border-r border-blue-400">Role</div>
+                        <div className="p-3 border-r border-blue-400">Designation</div>
+                        <div className="p-3 border-r border-blue-400">User Type</div>
+                        <div className="p-3 border-r border-blue-400">Department</div>
+                        <div className="p-3 border-r border-blue-400">Email</div>
                       </>
                     ) : selectedMaster === "012" ? (
                       <>
@@ -7445,6 +7473,77 @@ const AdminModuleInner = (): JSX.Element => {
                       ))
                     ) : (
                       <div className="p-3 text-xs text-gray-500">No countries found</div>
+                    )
+                  ) : selectedMaster === "024" ? (
+                    // Special handling for Users Master (024) - Use external API data from SAIL Audits
+                    externalUsersLoading ? (
+                      <div className="p-3 text-xs text-gray-500">Loading users...</div>
+                    ) : externalUsersError ? (
+                      <div className="p-3 text-xs text-red-500">Error loading users: {(externalUsersError as Error).message}</div>
+                    ) : externalUsersApiData && externalUsersApiData.length > 0 ? (
+                      externalUsersApiData.map((item: any, index: number) => (
+                        <div
+                          key={item.uuid || item.id || `user-${index}`}
+                          className="grid grid-cols-8 gap-0 border-b border-gray-100 hover:bg-gray-50"
+                          data-testid={`user-row-${item.uuid || index}`}
+                        >
+                          {/* Column 1: UUID */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700" data-testid={`user-uuid-${item.uuid || index}`}>
+                              {item.uuid || <em className="text-gray-400">No UUID</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 2: User Name */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700" data-testid={`user-name-${item.uuid || index}`}>
+                              {item.userName || item.username || item.name || <em className="text-gray-400">No user name</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 3: Role */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700" data-testid={`user-role-${item.uuid || index}`}>
+                              {item.role || <em className="text-gray-400">No role</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 4: Designation */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700" data-testid={`user-designation-${item.uuid || index}`}>
+                              {item.designation || <em className="text-gray-400">No designation</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 5: User Type */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700" data-testid={`user-type-${item.uuid || index}`}>
+                              {item.userType || item.type || <em className="text-gray-400">No user type</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 6: Department */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700" data-testid={`user-department-${item.uuid || index}`}>
+                              {item.department || <em className="text-gray-400">No department</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 7: Email */}
+                          <div className="p-3 border-r border-gray-200">
+                            <span className="text-xs text-gray-700" data-testid={`user-email-${item.uuid || index}`}>
+                              {item.email || <em className="text-gray-400">No email</em>}
+                            </span>
+                          </div>
+
+                          {/* Column 8: Actions - External data (read-only) */}
+                          <div className="p-3 flex justify-center">
+                            <span className="text-xs text-gray-400" data-testid={`user-action-${item.uuid || index}`}>External</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-3 text-xs text-gray-500">No users found</div>
                     )
                   ) : (
                     (masterData as any[]).map((item: any) => {

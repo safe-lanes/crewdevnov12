@@ -4098,13 +4098,13 @@ export class DatabaseStorage implements IStorage {
       
       // Check if data masters are already complete (18 categories)
       const existingMasters = await this.getDataMasters();
-      if (existingMasters.length >= 18) {
+      if (existingMasters.length >= 24) {
         console.log("Database already seeded, skipping...");
         return;
       }
       
       // If we have some but not all masters, only seed the missing ones
-      console.log(`Found ${existingMasters.length} existing master categories, ensuring all 18 are present...`);
+      console.log(`Found ${existingMasters.length} existing master categories, ensuring all 24 are present...`);
 
       // Seed available ranks
       const rankData: InsertAvailableRank[] = [
@@ -4144,7 +4144,13 @@ export class DatabaseStorage implements IStorage {
         { id: "015", name: "Fleet Groups", description: "Vessel fleet groupings" },
         { id: "016", name: "Additional Groups", description: "Manage additional vessel groupings and assignments" },
         { id: "017", name: "Vessel Owners", description: "Manage vessel ownership details, contact information and vessel assignments" },
-        { id: "018", name: "Port", description: "International ports and terminals for vessel operations" }
+        { id: "018", name: "Port", description: "International ports and terminals for vessel operations" },
+        { id: "019", name: "Language", description: "Languages for crew communication" },
+        { id: "020", name: "Country", description: "Countries reference data" },
+        { id: "021", name: "Manning Agents", description: "Manning agent companies and contacts" },
+        { id: "022", name: "Crew Pool", description: "Crew pool categories" },
+        { id: "023", name: "Appraisal Type", description: "Types of crew appraisals" },
+        { id: "024", name: "Users", description: "System users from SAIL Audits API" }
       ];
 
       // Only create missing master categories
