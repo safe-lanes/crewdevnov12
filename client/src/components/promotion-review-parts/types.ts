@@ -30,6 +30,7 @@ export interface Approver {
   status: string;
   approval: string;
   comments: string;
+  isFromPartA?: boolean;
 }
 
 export interface CesTest {

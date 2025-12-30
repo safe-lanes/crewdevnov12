@@ -532,10 +532,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   });
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
 
-  const [approvers, setApprovers] = useState<Approver[]>([
-    { id: '1', date: '', approver: '', status: '', approval: 'yes', comments: '' },
-    { id: '2', date: '', approver: '', status: '', approval: 'yes', comments: '' },
-  ]);
+  const [approvers, setApprovers] = useState<Approver[]>([]);
 
   const nextApproverIdRef = useRef(3);
   const nextCesTestIdRef = useRef(2);
@@ -615,7 +612,11 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
             ? JSON.parse(existingReviewData.approvalData)
             : existingReviewData.approvalData;
           if (Array.isArray(approvalData) && approvalData.length > 0) {
-            setApprovers(approvalData);
+            const approversWithFlag = approvalData.map((a: Approver) => ({
+              ...a,
+              isFromPartA: a.isFromPartA !== undefined ? a.isFromPartA : true
+            }));
+            setApprovers(approversWithFlag);
           }
         } catch {}
       }
@@ -916,13 +917,15 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   const addApprover = useCallback(() => {
     const newId = nextApproverIdRef.current.toString();
     nextApproverIdRef.current += 1;
+    const currentDate = new Date().toISOString().split('T')[0];
     setApprovers(prev => [...prev, {
       id: newId,
-      date: '',
+      date: currentDate,
       approver: '',
-      status: '',
+      status: 'pending',
       approval: 'yes',
-      comments: ''
+      comments: '',
+      isFromPartA: false
     }]);
   }, []);
 
@@ -995,6 +998,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       status: 'pending',
       approval: '',
       comments: '',
+      isFromPartA: true,
     }));
     
     setApprovers(newApprovers);

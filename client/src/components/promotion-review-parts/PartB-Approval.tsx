@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Plus, Info, X } from 'lucide-react';
 import type { Approver } from './types';
+import { useExternalUsers } from '@/hooks/useExternalUsers';
 
 interface PartBApprovalProps extends React.HTMLAttributes<HTMLDivElement> {
   approvers: Approver[];
@@ -29,6 +30,8 @@ export const PartBApproval = memo(function PartBApproval({
   onRemoveVesselClass,
   ...restProps
 }: PartBApprovalProps) {
+  const { data: externalUsers = [] } = useExternalUsers();
+
   return (
     <div className="bg-white rounded-lg p-6" {...restProps}>
       <div className="space-y-6">
@@ -67,20 +70,30 @@ export const PartBApproval = memo(function PartBApproval({
                   onChange={(e) => onUpdateApprover(approver.id, 'date', e.target.value)}
                   data-testid={`input-approver-date-${approver.id}`}
                 />
-                <Select 
-                  value={approver.approver}
-                  onValueChange={(value) => onUpdateApprover(approver.id, 'approver', value)}
-                >
-                  <SelectTrigger className="h-9 text-xs flex-1" data-testid={`select-approver-${approver.id}`}>
-                    <SelectValue placeholder="Approver" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="marine-superintendent">Marine Superintendent</SelectItem>
-                    <SelectItem value="technical-superintendent">Technical Superintendent</SelectItem>
-                    <SelectItem value="crew-manager">Crew Manager</SelectItem>
-                    <SelectItem value="fleet-manager">Fleet Manager</SelectItem>
-                  </SelectContent>
-                </Select>
+                {approver.isFromPartA ? (
+                  <div 
+                    className="h-9 text-xs flex-1 flex items-center px-3 border border-gray-200 rounded-md bg-gray-50 text-gray-700"
+                    data-testid={`text-approver-readonly-${approver.id}`}
+                  >
+                    {approver.approver}
+                  </div>
+                ) : (
+                  <Select 
+                    value={approver.approver}
+                    onValueChange={(value) => onUpdateApprover(approver.id, 'approver', value)}
+                  >
+                    <SelectTrigger className="h-9 text-xs flex-1" data-testid={`select-approver-${approver.id}`}>
+                      <SelectValue placeholder="Select Approver" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {externalUsers.map((user: any) => (
+                        <SelectItem key={user.uuid} value={user.userName}>
+                          {user.userName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
                 <Select 
                   value={approver.status}
                   onValueChange={(value) => onUpdateApprover(approver.id, 'status', value)}
