@@ -149,6 +149,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   }, [promotionRecommendationsData]);
 
   const [savedReviewId, setSavedReviewId] = useState<number | null>(null);
+  const [isSubmittingForApproval, setIsSubmittingForApproval] = useState(false);
 
   const { data: existingReviewData, isLoading: isLoadingReview } = useQuery<PromotionReview>({
     queryKey: [`/api/promotion-reviews/crew/${crewMemberId}/rank/${encodeURIComponent(promotionToRank)}`],
@@ -970,6 +971,10 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   }, []);
 
   const handleSubmitForApproval = useCallback(() => {
+    if (isSubmittingForApproval) {
+      return;
+    }
+    
     if (selectedApproversForSubmission.length === 0) {
       toast({
         title: "No Approvers Selected",
@@ -979,6 +984,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       return;
     }
 
+    setIsSubmittingForApproval(true);
+    
     const currentDate = new Date().toISOString().split('T')[0];
     
     const newApprovers: Approver[] = selectedApproversForSubmission.map((approverName, index) => ({
@@ -1003,10 +1010,11 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     
     const approverCount = selectedApproversForSubmission.length;
     
-    const endpoint = savedReviewId
-      ? `/api/promotion-reviews/${savedReviewId}`
+    const effectiveReviewId = savedReviewId ?? existingReviewData?.id;
+    const endpoint = effectiveReviewId
+      ? `/api/promotion-reviews/${effectiveReviewId}`
       : '/api/promotion-reviews';
-    const method = savedReviewId ? 'PATCH' : 'POST';
+    const method = effectiveReviewId ? 'PATCH' : 'POST';
     
     apiRequest(method, endpoint, reviewData)
       .then((data: any) => {
@@ -1025,8 +1033,11 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
           description: error.message || "Failed to submit for approval",
           variant: "destructive",
         });
+      })
+      .finally(() => {
+        setIsSubmittingForApproval(false);
       });
-  }, [selectedApproversForSubmission, toast, collectFormData, savedReviewId]);
+  }, [selectedApproversForSubmission, toast, collectFormData, savedReviewId, existingReviewData?.id, isSubmittingForApproval]);
 
   const updateCommentText = useCallback((id: string, text: string) => {
     setComments(prev => prev.map(c => c.id === id ? { ...c, text } : c));
@@ -1270,9 +1281,10 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                     <Button 
                       className="px-8 bg-green-600 hover:bg-green-700"
                       onClick={handleSubmitForApproval}
+                      disabled={isSubmittingForApproval}
                       data-testid="button-submit-part-a"
                     >
-                      Submit for Approval
+                      {isSubmittingForApproval ? 'Submitting...' : 'Submit for Approval'}
                     </Button>
                   </div>
                 </div>
