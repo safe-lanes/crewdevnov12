@@ -91,11 +91,11 @@ function ApprovalScreen() {
         });
     };
 
-    const toggleVessel = (vesselName: string) => {
+    const toggleVessel = (vesselId: string) => {
         setSelectedVessels(prev => 
-            prev.includes(vesselName) 
-                ? prev.filter(v => v !== vesselName)
-                : [...prev, vesselName]
+            prev.includes(vesselId) 
+                ? prev.filter(v => v !== vesselId)
+                : [...prev, vesselId]
         );
     };
 
@@ -144,14 +144,14 @@ function ApprovalScreen() {
                                     <PopoverContent className="w-56 p-2" align="start">
                                         <div className="space-y-2 max-h-60 overflow-y-auto">
                                             {vessels.map((vessel: any) => (
-                                                <div key={vessel.name} className="flex items-center space-x-2">
+                                                <div key={vessel.vesselId} className="flex items-center space-x-2">
                                                     <Checkbox
-                                                        id={`vessel-${vessel.name}`}
-                                                        checked={selectedVessels.includes(vessel.name)}
-                                                        onCheckedChange={() => toggleVessel(vessel.name)}
-                                                        data-testid={`checkbox-vessel-${vessel.name}`}
+                                                        id={`vessel-${vessel.vesselId}`}
+                                                        checked={selectedVessels.includes(vessel.vesselId)}
+                                                        onCheckedChange={() => toggleVessel(vessel.vesselId)}
+                                                        data-testid={`checkbox-vessel-${vessel.vesselId}`}
                                                     />
-                                                    <label htmlFor={`vessel-${vessel.name}`} className="text-sm font-normal cursor-pointer">
+                                                    <label htmlFor={`vessel-${vessel.vesselId}`} className="text-sm font-normal cursor-pointer">
                                                         {vessel.name}
                                                     </label>
                                                 </div>
@@ -256,9 +256,9 @@ function ApprovalScreen() {
                                     <PopoverContent className="w-56 p-2" align="start">
                                         <div className="space-y-2 max-h-60 overflow-y-auto">
                                             {vessels.map((vessel: any) => (
-                                                <div key={vessel.name} className="flex items-center space-x-2">
-                                                    <Checkbox id={`vessel-tablet-${vessel.name}`} checked={selectedVessels.includes(vessel.name)} onCheckedChange={() => toggleVessel(vessel.name)} data-testid={`checkbox-vessel-${vessel.name}`} />
-                                                    <label htmlFor={`vessel-tablet-${vessel.name}`} className="text-sm font-normal cursor-pointer">{vessel.name}</label>
+                                                <div key={vessel.vesselId} className="flex items-center space-x-2">
+                                                    <Checkbox id={`vessel-tablet-${vessel.vesselId}`} checked={selectedVessels.includes(vessel.vesselId)} onCheckedChange={() => toggleVessel(vessel.vesselId)} data-testid={`checkbox-vessel-${vessel.vesselId}`} />
+                                                    <label htmlFor={`vessel-tablet-${vessel.vesselId}`} className="text-sm font-normal cursor-pointer">{vessel.name}</label>
                                                 </div>
                                             ))}
                                         </div>
@@ -322,9 +322,9 @@ function ApprovalScreen() {
                                     <PopoverContent className="w-56 p-2" align="start">
                                         <div className="space-y-2 max-h-60 overflow-y-auto">
                                             {vessels.map((vessel: any) => (
-                                                <div key={vessel.name} className="flex items-center space-x-2">
-                                                    <Checkbox id={`vessel-phone-${vessel.name}`} checked={selectedVessels.includes(vessel.name)} onCheckedChange={() => toggleVessel(vessel.name)} data-testid={`checkbox-vessel-${vessel.name}`} />
-                                                    <label htmlFor={`vessel-phone-${vessel.name}`} className="text-sm font-normal cursor-pointer">{vessel.name}</label>
+                                                <div key={vessel.vesselId} className="flex items-center space-x-2">
+                                                    <Checkbox id={`vessel-phone-${vessel.vesselId}`} checked={selectedVessels.includes(vessel.vesselId)} onCheckedChange={() => toggleVessel(vessel.vesselId)} data-testid={`checkbox-vessel-${vessel.vesselId}`} />
+                                                    <label htmlFor={`vessel-phone-${vessel.vesselId}`} className="text-sm font-normal cursor-pointer">{vessel.name}</label>
                                                 </div>
                                             ))}
                                         </div>
@@ -418,11 +418,11 @@ export function RotationModule() {
         setRankValue("");
     };
 
-    const toggleVessel = (vesselName: string) => {
+    const toggleVessel = (vesselId: string) => {
         setSelectedVessels(prev => 
-            prev.includes(vesselName) 
-                ? prev.filter(v => v !== vesselName)
-                : [...prev, vesselName]
+            prev.includes(vesselId) 
+                ? prev.filter(v => v !== vesselId)
+                : [...prev, vesselId]
         );
     };
 
@@ -494,13 +494,13 @@ export function RotationModule() {
                                                             className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
                                                         >
                                                             <Checkbox 
-                                                                checked={selectedVessels.includes(vessel.name)}
-                                                                onCheckedChange={() => toggleVessel(vessel.name)}
+                                                                checked={selectedVessels.includes(vessel.vesselId)}
+                                                                onCheckedChange={() => toggleVessel(vessel.vesselId)}
                                                                 data-testid={`checkbox-vessel-${vessel.id}`}
                                                             />
                                                             <label 
                                                                 className="text-sm cursor-pointer flex-1"
-                                                                onClick={() => toggleVessel(vessel.name)}
+                                                                onClick={() => toggleVessel(vessel.vesselId)}
                                                             >
                                                                 {vessel.name}
                                                             </label>
@@ -669,13 +669,13 @@ export function RotationModule() {
                                                             className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
                                                         >
                                                             <Checkbox 
-                                                                checked={selectedVessels.includes(vessel.name)}
-                                                                onCheckedChange={() => toggleVessel(vessel.name)}
+                                                                checked={selectedVessels.includes(vessel.vesselId)}
+                                                                onCheckedChange={() => toggleVessel(vessel.vesselId)}
                                                                 data-testid={`checkbox-vessel-${vessel.id}`}
                                                             />
                                                             <label 
                                                                 className="text-sm cursor-pointer flex-1"
-                                                                onClick={() => toggleVessel(vessel.name)}
+                                                                onClick={() => toggleVessel(vessel.vesselId)}
                                                             >
                                                                 {vessel.name}
                                                             </label>
@@ -844,13 +844,13 @@ export function RotationModule() {
                                                             className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
                                                         >
                                                             <Checkbox 
-                                                                checked={selectedVessels.includes(vessel.name)}
-                                                                onCheckedChange={() => toggleVessel(vessel.name)}
+                                                                checked={selectedVessels.includes(vessel.vesselId)}
+                                                                onCheckedChange={() => toggleVessel(vessel.vesselId)}
                                                                 data-testid={`checkbox-vessel-${vessel.id}`}
                                                             />
                                                             <label 
                                                                 className="text-sm cursor-pointer flex-1"
-                                                                onClick={() => toggleVessel(vessel.name)}
+                                                                onClick={() => toggleVessel(vessel.vesselId)}
                                                             >
                                                                 {vessel.name}
                                                             </label>
