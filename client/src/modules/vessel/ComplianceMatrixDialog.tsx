@@ -11,6 +11,7 @@ interface SimulatedCrewMember {
     crewMemberId: string;
     crewName?: string;
     joiningDate?: string;
+    planId?: number; // vesselPlanning.id for precise slot matching
 }
 
 interface ComplianceMatrixDialogProps {

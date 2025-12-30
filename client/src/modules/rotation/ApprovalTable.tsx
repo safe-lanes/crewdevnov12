@@ -456,7 +456,7 @@ export function ApprovalTable({ selectedVessels, selectedRanks, draftIdFilter, d
   
   // Get selected crew data for simulated compliance check
   const selectedCrewForCompliance = useMemo(() => {
-    const selected: Array<{ rank: string; crewMemberId: string; crewName: string; joiningDate?: string }> = [];
+    const selected: Array<{ rank: string; crewMemberId: string; crewName: string; joiningDate?: string; planId?: number }> = [];
     selectedAssignments.forEach(key => {
       const [planId, assignmentIndex] = key.split('-').map(Number);
       const proposal = proposals.find(
@@ -468,6 +468,7 @@ export function ApprovalTable({ selectedVessels, selectedRanks, draftIdFilter, d
           crewMemberId: proposal.crewId,
           crewName: proposal.crewName,
           joiningDate: proposal.joiningDate,
+          planId: proposal.planId, // Include planId for precise slot matching
         });
       }
     });

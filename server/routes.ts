@@ -8410,14 +8410,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const vesselPlanning = await storage.getVesselPlanningByVessel(vesselId);
       const crewExperienceData: any[] = [];
       
-      // Build a map of simulated replacements by rank (includes crewMemberId and joiningDate)
-      const simulatedReplacementMap = new Map<string, { crewMemberId: string; joiningDate?: string }>();
+      // Build a map of simulated replacements by planId (vesselPlanning.id) for precise slot matching
+      // Falls back to rank-based matching for backward compatibility
+      const simulatedByPlanId = new Map<number, { crewMemberId: string; joiningDate?: string }>();
+      const simulatedByRank = new Map<string, { crewMemberId: string; joiningDate?: string }>();
       for (const sim of simulatedCrew) {
-        if (sim.rank && sim.crewMemberId) {
-          simulatedReplacementMap.set(sim.rank, { 
-            crewMemberId: sim.crewMemberId, 
-            joiningDate: sim.joiningDate 
-          });
+        if (sim.crewMemberId) {
+          if (sim.planId) {
+            // Prefer planId-based matching for precise slot identification
+            simulatedByPlanId.set(sim.planId, { 
+              crewMemberId: sim.crewMemberId, 
+              joiningDate: sim.joiningDate 
+            });
+          } else if (sim.rank) {
+            // Fallback to rank-based matching
+            simulatedByRank.set(sim.rank, { 
+              crewMemberId: sim.crewMemberId, 
+              joiningDate: sim.joiningDate 
+            });
+          }
         }
       }
       
@@ -8425,8 +8436,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const position of vesselPlanning) {
           const positionRank = position.rank || '';
           
-          // Check if this rank has a simulated replacement
-          const simulatedReplacement = simulatedReplacementMap.get(positionRank);
+          // Check if this position has a simulated replacement (prefer planId, fallback to rank)
+          const simulatedReplacement = simulatedByPlanId.get(position.id) || simulatedByRank.get(positionRank);
           const simulatedCrewId = simulatedReplacement?.crewMemberId;
           const simulatedJoiningDate = simulatedReplacement?.joiningDate;
           const crewIdToUse = simulatedCrewId || position.onBoardCrewId || position.crewMemberId;
