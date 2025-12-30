@@ -201,10 +201,8 @@ export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
         enabled: open && !!vesselId && oilMajorRules.length > 0,
         staleTime: 0, // Always refetch compliance data to ensure fresh results
         queryFn: async () => {
-            console.log('[ComplianceDialog] Fetching compliance data:', { isSimulatedMode, vesselId, simulatedCrew });
             if (isSimulatedMode) {
                 // Use POST for simulated compliance check
-                console.log('[ComplianceDialog] Making POST request to simulated endpoint');
                 const response = await fetch(`/api/compliance/matrix/${vesselId}/simulated`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -213,9 +211,7 @@ export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
                 if (!response.ok) {
                     throw new Error('Failed to fetch simulated compliance data');
                 }
-                const data = await response.json();
-                console.log('[ComplianceDialog] Simulated compliance response:', data);
-                return data;
+                return response.json();
             } else {
                 // Use GET for normal compliance check
                 const response = await fetch(`/api/compliance/matrix/${vesselId}`);

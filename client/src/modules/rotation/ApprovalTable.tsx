@@ -476,11 +476,11 @@ export function ApprovalTable({ selectedVessels, selectedRanks, draftIdFilter, d
   }, [selectedAssignments, proposals]);
 
   // Get the vesselId for the selected vessel (when exactly 1 is selected)
+  // Note: selectedVessels already contains vessel IDs (UUIDs), not names
   const selectedVesselId = useMemo(() => {
     if (selectedVessels.length !== 1) return null;
-    const vesselIds = getVesselIds(selectedVessels);
-    return vesselIds.length === 1 ? vesselIds[0] : null;
-  }, [selectedVessels, getVesselIds]);
+    return selectedVessels[0]; // Already a vessel ID (UUID)
+  }, [selectedVessels]);
 
   const handleCheckCompliance = () => {
     if (!isOneVesselSelected) {
