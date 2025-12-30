@@ -19,6 +19,12 @@ interface PartATrainingNeedsProps extends React.HTMLAttributes<HTMLDivElement> {
   onSetTrainingComments: React.Dispatch<React.SetStateAction<Record<string, Comment[]>>>;
 }
 
+const getCurrentUserDisplay = (): string => {
+  const userName = sessionStorage.getItem('crewUserName') || 'Current User';
+  const designation = sessionStorage.getItem('crewDesignation') || 'Staff';
+  return `${userName}, ${designation}`;
+};
+
 export const PartATrainingNeeds = memo(function PartATrainingNeeds({
   trainingNeeds,
   onUpdateTraining,
@@ -33,6 +39,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
   onSetTrainingComments,
   ...restProps
 }: PartATrainingNeedsProps) {
+  const currentUserDisplay = getCurrentUserDisplay();
   return (
     <div className="border border-[#EAEBEF] rounded-lg p-4" {...restProps}>
       <div className="flex justify-between items-center mb-4">
@@ -191,7 +198,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                       
                       {editingTrainingComment === training.id && (
                         <div className="mt-2">
-                          <div className="text-xs font-medium text-gray-700 mb-1">Roxanne, Crewing Executive</div>
+                          <div className="text-xs font-medium text-gray-700 mb-1">{currentUserDisplay}</div>
                           <textarea
                             className="w-full h-20 p-2 border rounded text-xs"
                             placeholder="Comment: Add your observations here..."
@@ -202,7 +209,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                               if (commentText) {
                                 const newComment: Comment = {
                                   id: `training-comment-${Date.now()}`,
-                                  user: 'Roxanne, Crewing Executive',
+                                  user: currentUserDisplay,
                                   text: commentText
                                 };
                                 onSetTrainingComments(prev => ({

@@ -30,6 +30,12 @@ interface PartACriteriaTableProps extends React.HTMLAttributes<HTMLDivElement> {
   cesTestsSection: React.ReactNode;
 }
 
+const getCurrentUserDisplay = (): string => {
+  const userName = sessionStorage.getItem('crewUserName') || 'Current User';
+  const designation = sessionStorage.getItem('crewDesignation') || 'Staff';
+  return `${userName}, ${designation}`;
+};
+
 export const PartACriteriaTable = memo(function PartACriteriaTable({
   criteriaData,
   vesselTypeOptions,
@@ -52,6 +58,7 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
   cesTestsSection,
   ...restProps
 }: PartACriteriaTableProps) {
+  const currentUserDisplay = getCurrentUserDisplay();
   const renderCriteriaRow = (row: CriteriaRow) => (
     <React.Fragment key={row.id}>
       <TableRow className={row.id.includes('.') && row.id.split('.').length > 2 ? 'bg-gray-50' : ''}>
@@ -242,7 +249,7 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
               
               {newCriteriaComment[row.id] !== undefined && (
                 <div>
-                  <div className="text-sm font-medium text-gray-600 mb-2">Roxanne, Crewing Executive</div>
+                  <div className="text-sm font-medium text-gray-600 mb-2">{currentUserDisplay}</div>
                   <Textarea
                     value={newCriteriaComment[row.id]}
                     onChange={(e) => {
@@ -260,7 +267,7 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
                             ...(prev[row.id] || []),
                             {
                               id: commentId,
-                              user: "Roxanne, Crewing Executive",
+                              user: currentUserDisplay,
                               text: newCriteriaComment[row.id]
                             }
                           ]
