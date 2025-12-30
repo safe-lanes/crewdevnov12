@@ -2735,8 +2735,10 @@ export const VesselModule = (): JSX.Element => {
                                                         </>
                                                     ) : (
                                                         <>
+                                                            {/* Temporarily hidden: Doc Check and Famil. columns
                                                             <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Doc Check</TableHead>
                                                             <TableHead className="text-white text-xs font-normal w-20 sticky top-0 z-30 bg-[#52baf3]">Famil.</TableHead>
+                                                            */}
                                                             <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Relief Date</TableHead>
                                                             <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Planned S/Off</TableHead>
                                                             <TableHead className="text-white text-xs font-normal w-40 sticky top-0 z-30 bg-[#52baf3]">Doc. Expiring (2m)/Expired</TableHead>
@@ -2896,12 +2898,14 @@ export const VesselModule = (): JSX.Element => {
                                                                 </>
                                                             ) : (
                                                                 <>
+                                                                    {/* Temporarily hidden: Doc Check and Famil. columns
                                                                     <TableCell className="text-xs text-gray-700" data-testid={`cell-doccheck-${index + 1}`}>
                                                                         
                                                                     </TableCell>
                                                                     <TableCell className="text-xs text-gray-700" data-testid={`cell-famil-${index + 1}`}>
                                                                         
                                                                     </TableCell>
+                                                                    */}
                                                                     <TableCell className="text-xs text-gray-700" data-testid={`cell-relief-${index + 1}`}>
                                                                         {formatDateOnly(planning.reliefDue || planning.signOffDate)}
                                                                     </TableCell>
