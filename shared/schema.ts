@@ -2128,6 +2128,9 @@ export const promotionReviews = pgTable("promotion_reviews", {
   // Part B - Approval data (JSON object)
   approvalData: text("approval_data"), // JSON string
   
+  // A4 - Selected approvers for submission (JSON array of approver names)
+  selectedApproversForSubmission: text("selected_approvers_for_submission"), // JSON string
+  
   // Part C - Execution data
   promotionConfirmed: text("promotion_confirmed"), // 'yes', 'waitlist', 'rejected'
   vesselAssigned: text("vessel_assigned"),
