@@ -1917,10 +1917,13 @@ export class DatabaseStorage implements IStorage {
         const assignment = assignments[i];
         
         // Skip deployed or rejected assignments - they are now in the archive
-        if (assignment.status === 'Deployed' || assignment.status === 'Rejected') continue;
+        // Note: proposalStatus uses lowercase values ("deployed", "rejected", "proposed")
+        if (assignment.proposalStatus === 'deployed' || assignment.proposalStatus === 'rejected') continue;
         
-        // Apply vessel filter
-        if (filters?.vessels && !filters.vessels.includes(assignment.vesselName)) continue;
+        // Apply vessel filter - compare vesselId (which is in VSL-XXX format) against the filter
+        // Filter passes vessel IDs from frontend (e.g., ["VSL-001", "VSL-002"])
+        const assignmentVesselId = assignment.vesselId || assignment.vessel;
+        if (filters?.vessels && filters.vessels.length > 0 && !filters.vessels.includes(assignmentVesselId)) continue;
         
         // Apply rank filter
         if (filters?.ranks && !filters.ranks.includes(assignment.rank)) continue;
