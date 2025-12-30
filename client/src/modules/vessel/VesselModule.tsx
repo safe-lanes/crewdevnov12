@@ -81,8 +81,8 @@ const TANKER_TRAINING_IDS = {
 
 interface TrainingCourse {
     id?: string;
-    courseId?: string;  // Links to Training Master ID
-    companyId?: string;
+    courseId?: string;  // Numeric database row ID
+    companyId?: string; // Training Master ID (e.g., SC001, SC002) - this is what we match on
     trainingCourse?: string;
     expiry?: string;
 }
@@ -110,8 +110,8 @@ const calculateTankerCertifications = (trainingCourses: TrainingCourse[]): Tanke
 
     // Check each training course
     trainingCourses.forEach(course => {
-        // Get the Training Master ID (courseId links to Training Master)
-        const trainingId = course.courseId;
+        // Get the Training Master ID (companyId contains the SC001, SC002, etc. IDs)
+        const trainingId = course.companyId;
         if (!trainingId) return;
 
         // Check validity (valid if no expiry date OR expiry date is in the future)
