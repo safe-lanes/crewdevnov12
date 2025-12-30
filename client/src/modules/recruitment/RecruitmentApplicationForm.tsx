@@ -790,13 +790,6 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     itemName: string;
   }>({ open: false, type: null, itemId: null, itemName: '' });
 
-  // Mapping for interviewer values to display names
-  const interviewerDisplayNames: {[key: string]: string} = {
-    'capt-nick': 'Capt. Nick, Marine Superintendent',
-    'john-doe': 'John Doe, HR Manager', 
-    'sarah-smith': 'Sarah Smith, Technical Manager'
-  };
-
   // Parse saved application data if editing existing candidate
   const savedData = candidate?.applicationData ? (() => {
     try {
@@ -6075,10 +6068,18 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                             <SelectValue placeholder="Interviewer" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="capt-nick">Capt. Nick, Marine Superintendent</SelectItem>
-                            <SelectItem value="john-doe">John Doe, HR Manager</SelectItem>
-                            <SelectItem value="sarah-smith">Sarah Smith, Technical Manager</SelectItem>
-                          </SelectContent>
+                          {isLoadingUsers ? (
+                            <SelectItem value="_loading" disabled>Loading interviewers...</SelectItem>
+                          ) : approverMasterData.length === 0 ? (
+                            <SelectItem value="_empty" disabled>No office users found</SelectItem>
+                          ) : (
+                            approverMasterData.map((interviewer: string) => (
+                              <SelectItem key={interviewer} value={interviewer}>
+                                {interviewer}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
                         </Select>
                       </div>
                       <div>
@@ -6188,7 +6189,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                     {interview.interviewer && (
                       <div className="ml-4">
                         <div className="text-blue-600 italic text-[13px] mb-2">
-                          {interviewerDisplayNames[interview.interviewer] || interview.interviewer}:
+                          {interview.interviewer}:
                         </div>
                         {editingB6InterviewComment === interview.id ? (
                           <Textarea
