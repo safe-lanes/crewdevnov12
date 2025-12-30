@@ -2253,10 +2253,11 @@ export class DatabaseStorage implements IStorage {
       const assignment = assignments[assignmentIndex];
       
       // Preserve exact rejectedBy value - use null if not available
+      // Use 'proposalStatus' and lowercase 'rejected' to match getProposedAssignments filter
       assignments[assignmentIndex] = {
         ...assignment,
-        status: 'Rejected',
-        rejectedAt: new Date().toISOString(),
+        proposalStatus: 'rejected',
+        rejectedDate: new Date().toISOString().split('T')[0],
         rejectedBy: rejectedBy || null
       };
       
