@@ -4065,6 +4065,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Handover Attachments API routes
+  app.get("/api/vessel-planning/:id/handover-attachments", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid planning ID - must be a number" });
+      }
+      
+      const planning = await storage.getVesselPlanningById(id);
+      if (!planning) {
+        return res.status(404).json({ error: "Vessel planning not found" });
+      }
+      
+      let attachments: any[] = [];
+      if (planning.handoverAttachments) {
+        try {
+          attachments = typeof planning.handoverAttachments === 'string' 
+            ? JSON.parse(planning.handoverAttachments)
+            : planning.handoverAttachments;
+          if (!Array.isArray(attachments)) attachments = [];
+        } catch (e) {
+          attachments = [];
+        }
+      }
+      
+      res.json(attachments);
+    } catch (error) {
+      console.error("Failed to fetch handover attachments:", error);
+      res.status(500).json({ error: "Failed to fetch handover attachments" });
+    }
+  });
+
+  app.post("/api/vessel-planning/:id/handover-attachments", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid planning ID - must be a number" });
+      }
+      
+      const planning = await storage.getVesselPlanningById(id);
+      if (!planning) {
+        return res.status(404).json({ error: "Vessel planning not found" });
+      }
+      
+      const { filename, fileType, fileData, fileSize, uploadedBy } = req.body;
+      if (!filename || !fileData) {
+        return res.status(400).json({ error: "filename and fileData are required" });
+      }
+      
+      let attachments: any[] = [];
+      if (planning.handoverAttachments) {
+        try {
+          attachments = typeof planning.handoverAttachments === 'string' 
+            ? JSON.parse(planning.handoverAttachments)
+            : planning.handoverAttachments;
+          if (!Array.isArray(attachments)) attachments = [];
+        } catch (e) {
+          attachments = [];
+        }
+      }
+      
+      const newAttachment = {
+        id: Date.now().toString(),
+        filename,
+        fileType: fileType || 'application/octet-stream',
+        fileData,
+        fileSize: fileSize || 0,
+        uploadedBy: uploadedBy || 'System',
+        uploadDate: new Date().toISOString()
+      };
+      
+      attachments.push(newAttachment);
+      
+      await storage.updateVesselPlanning(id, {
+        handoverAttachments: JSON.stringify(attachments)
+      });
+      
+      res.status(201).json(newAttachment);
+    } catch (error) {
+      console.error("Failed to upload handover attachment:", error);
+      res.status(500).json({ error: "Failed to upload handover attachment" });
+    }
+  });
+
+  app.delete("/api/vessel-planning/:id/handover-attachments/:attachmentId", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const attachmentId = req.params.attachmentId;
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid planning ID - must be a number" });
+      }
+      
+      const planning = await storage.getVesselPlanningById(id);
+      if (!planning) {
+        return res.status(404).json({ error: "Vessel planning not found" });
+      }
+      
+      let attachments: any[] = [];
+      if (planning.handoverAttachments) {
+        try {
+          attachments = typeof planning.handoverAttachments === 'string' 
+            ? JSON.parse(planning.handoverAttachments)
+            : planning.handoverAttachments;
+          if (!Array.isArray(attachments)) attachments = [];
+        } catch (e) {
+          attachments = [];
+        }
+      }
+      
+      const originalLength = attachments.length;
+      attachments = attachments.filter((a: any) => a.id !== attachmentId);
+      
+      if (attachments.length === originalLength) {
+        return res.status(404).json({ error: "Attachment not found" });
+      }
+      
+      await storage.updateVesselPlanning(id, {
+        handoverAttachments: JSON.stringify(attachments)
+      });
+      
+      res.json({ success: true, remainingCount: attachments.length });
+    } catch (error) {
+      console.error("Failed to delete handover attachment:", error);
+      res.status(500).json({ error: "Failed to delete handover attachment" });
+    }
+  });
+
   // Rotation Plans API routes
   app.get("/api/rotation-plans", async (req, res) => {
     try {

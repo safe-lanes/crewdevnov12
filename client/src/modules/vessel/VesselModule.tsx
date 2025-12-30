@@ -42,6 +42,7 @@ import { format, addMonths, parseISO } from "date-fns";
 import { ComplianceMatrixDialog } from './ComplianceMatrixDialog';
 import { AppraisalForm } from '@/modules/crewing/AppraisalForm';
 import { CrewInfoForm } from '@/modules/crew-pool/CrewInfoForm';
+import { HandoverAttachmentsDialog, getHandoverAttachmentCount } from '@/components/HandoverAttachmentsDialog';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { findHighestActiveCoc, inferDepartmentFromRank, LicenseRecord } from '@/utils/data/licenseDceTemplates';
 import { useRankNormalization, addRankAliasesToMap } from '@/hooks/useRankNormalization';
@@ -2077,6 +2078,15 @@ export const VesselModule = (): JSX.Element => {
         issues: DocExpiryIssue[];
     }>({ crewName: '', issues: [] });
 
+    // Handover Attachments dialog state
+    const [handoverDialogOpen, setHandoverDialogOpen] = useState(false);
+    const [handoverDialogData, setHandoverDialogData] = useState<{
+        planningId: number;
+        vesselId: string;
+        crewName: string;
+        rank: string;
+    }>({ planningId: 0, vesselId: '', crewName: '', rank: '' });
+
     // Toast for validation messages
     const { toast } = useToast();
 
@@ -2970,7 +2980,35 @@ export const VesselModule = (): JSX.Element => {
                                                                         })()}
                                                                     </TableCell>
                                                                     <TableCell className="text-xs text-gray-700" data-testid={`cell-handover-${index + 1}`}>
-                                                                        {formatDateOnly(planning.handOverDate)}
+                                                                        {(() => {
+                                                                            const attachmentCount = getHandoverAttachmentCount(planning.handoverAttachments);
+                                                                            const hasAttachments = attachmentCount > 0;
+                                                                            const crewName = crewData ? 
+                                                                                `${crewData.familyName || crewData.lastName || ''}, ${crewData.firstName || ''}`.trim() : 
+                                                                                'Unknown';
+                                                                            const handoverDate = formatDateOnly(planning.handOverDate);
+                                                                            
+                                                                            return (
+                                                                                <div className="flex flex-col gap-0.5">
+                                                                                    {handoverDate && <span className="text-gray-600">{handoverDate}</span>}
+                                                                                    <button
+                                                                                        onClick={() => {
+                                                                                            setHandoverDialogData({
+                                                                                                planningId: planning.id,
+                                                                                                vesselId: vesselId,
+                                                                                                crewName,
+                                                                                                rank: planning.rank
+                                                                                            });
+                                                                                            setHandoverDialogOpen(true);
+                                                                                        }}
+                                                                                        className={`hover:underline cursor-pointer font-medium text-left ${hasAttachments ? 'text-green-600' : 'text-blue-600'}`}
+                                                                                        data-testid={`button-handover-${index + 1}`}
+                                                                                    >
+                                                                                        {hasAttachments ? 'View' : 'Add'}
+                                                                                    </button>
+                                                                                </div>
+                                                                            );
+                                                                        })()}
                                                                     </TableCell>
                                                                 </>
                                                             ) : (
@@ -3070,7 +3108,31 @@ export const VesselModule = (): JSX.Element => {
                                                                         })()}
                                                                     </TableCell>
                                                                     <TableCell className="text-xs text-gray-700" data-testid={`cell-handover-${index + 1}`}>
-                                                                        
+                                                                        {(() => {
+                                                                            const attachmentCount = getHandoverAttachmentCount(planning.handoverAttachments);
+                                                                            const hasAttachments = attachmentCount > 0;
+                                                                            const crewName = crewData ? 
+                                                                                `${crewData.familyName || crewData.lastName || ''}, ${crewData.firstName || ''}`.trim() : 
+                                                                                'Unknown';
+                                                                            
+                                                                            return (
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        setHandoverDialogData({
+                                                                                            planningId: planning.id,
+                                                                                            vesselId: vesselId,
+                                                                                            crewName,
+                                                                                            rank: planning.rank
+                                                                                        });
+                                                                                        setHandoverDialogOpen(true);
+                                                                                    }}
+                                                                                    className={`hover:underline cursor-pointer font-medium ${hasAttachments ? 'text-green-600' : 'text-blue-600'}`}
+                                                                                    data-testid={`button-handover-${index + 1}`}
+                                                                                >
+                                                                                    {hasAttachments ? 'View' : 'Add'}
+                                                                                </button>
+                                                                            );
+                                                                        })()}
                                                                     </TableCell>
                                                                     <TableCell className="text-xs" data-testid={`cell-actions-${index + 1}`}>
                                                                         <Button 
@@ -4079,6 +4141,19 @@ export const VesselModule = (): JSX.Element => {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Handover Attachments Dialog */}
+            <HandoverAttachmentsDialog
+                open={handoverDialogOpen}
+                onOpenChange={setHandoverDialogOpen}
+                planningId={handoverDialogData.planningId}
+                vesselId={handoverDialogData.vesselId}
+                crewName={handoverDialogData.crewName}
+                rank={handoverDialogData.rank}
+                onAttachmentsChanged={() => {
+                    queryClient.invalidateQueries({ queryKey: ['/api/vessel-planning/vessel', handoverDialogData.vesselId] });
+                }}
+            />
         </>
     );
 };

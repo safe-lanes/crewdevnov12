@@ -535,6 +535,9 @@ export const vesselPlanning = pgTable("vessel_planning", {
   isArchived: boolean("is_archived").default(false), // true when crew signs off from vessel
   archivedDate: text("archived_date"), // Date when record was archived (sign-off date)
   
+  // Handover Attachments - JSON array: [{filename, fileType, uploadDate, uploadedBy, fileSize, fileData}, ...]
+  handoverAttachments: text("handover_attachments"),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
