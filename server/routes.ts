@@ -6928,8 +6928,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Process crew members with contract date calculations
       // Only include active crew members who are "On Board" (exclude "On Leave" and "Inactive")
+      // NOTE: We filter by isActive + presentVessel instead of status field because:
+      // - Database stores raw status values (e.g., "Active")
+      // - API endpoints use calculateCrewStatus() which derives "On Board" from isActive + vessel assignment
+      // - Crew is considered "On Board" if isActive !== false AND has a vessel assignment in planning
+      
       const processedCrew = crewMembers
-        .filter(crew => crew.presentRank && crew.presentVessel && crew.status === 'On Board')
+        .filter(crew => {
+          // Must have rank and vessel assignment
+          if (!crew.presentRank || !crew.presentVessel) return false;
+          
+          // Check if crew is active (isActive !== false means active)
+          const isActive = crew.isActive !== false;
+          if (!isActive) return false;
+          
+          // Crew with vessel assignment and active status = "On Board"
+          return true;
+        })
         .map(crew => {
           const vesselPlanning = planningMap.get(crew.presentVessel || '') || [];
           
@@ -6938,6 +6953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const matchingPlan = vesselPlanning.find(p => 
             p.rank === crew.presentRank && p.crewMemberId === crew.id && !p.isArchived
           );
+          
           
           // ADDITIONAL SAFEGUARD: If no active planning record exists for this crew member,
           // they should not appear in rotation (handles edge case where crew status wasn't updated)
