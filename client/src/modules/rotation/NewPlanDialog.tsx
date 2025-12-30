@@ -1247,6 +1247,16 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
   const prevSelectedVesselsRef = useRef<string[]>([]);
   const isInitialLoadRef = useRef(false);
   
+  // Track saved plan ID for new plans - allows subsequent saves to use PATCH instead of POST
+  const [savedPlanId, setSavedPlanId] = useState<number | null>(null);
+  
+  // Reset savedPlanId when dialog closes to prevent stale state
+  useEffect(() => {
+    if (!open) {
+      setSavedPlanId(null);
+    }
+  }, [open]);
+  
   // Date range state - default is Today - 2 months to Today + 5 months
   const today = useMemo(() => new Date(), []);
   const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>({
@@ -1367,38 +1377,44 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
     return new Set(existingCrew.map(crew => crew.id));
   }, [existingCrew]);
 
+  // Determine if we're updating an existing plan (either from prop or from previous save)
+  const existingPlanId = editPlan?.id ?? savedPlanId;
+  
   // Save rotation plan mutation (handles both create and update)
+  // Note: Dialog stays open after save - user can continue editing or close manually
+  // Returns parsed JSON so it can be used by both onSuccess and mutateAsync callers
   const saveRotationPlanMutation = useMutation({
     mutationFn: async (planData: any) => {
-      if (editPlan) {
+      let response;
+      if (existingPlanId) {
         // Update existing plan using PATCH
-        return await apiRequest('PATCH', `/api/rotation-plans/${editPlan.id}`, planData);
+        response = await apiRequest('PATCH', `/api/rotation-plans/${existingPlanId}`, planData);
       } else {
         // Create new plan using POST
-        return await apiRequest('POST', '/api/rotation-plans', planData);
+        response = await apiRequest('POST', '/api/rotation-plans', planData);
       }
+      // Parse and return the JSON so it's not consumed twice
+      return await response.json();
     },
-    onSuccess: () => {
+    onSuccess: (savedPlan) => {
       // Invalidate and refetch rotation plans to update the table
       queryClient.invalidateQueries({ queryKey: ['/api/rotation-plans'] });
       
+      // Capture the plan ID from new saves so subsequent saves use PATCH
+      if (!existingPlanId && savedPlan?.id) {
+        setSavedPlanId(savedPlan.id);
+      }
+      
       toast({
         title: "Success",
-        description: editPlan ? "Rotation plan updated successfully" : "Rotation plan saved as draft successfully",
+        description: existingPlanId ? "Rotation plan updated successfully" : "Rotation plan saved as draft successfully",
       });
-      onOpenChange(false);
-      // Reset form
-      setSelectedVessels([]);
-      setSelectedRanks([]);
-      setSelectedRoleVariantsState([]);
-      setHasManualVariants(false);
-      setSelectedVessel('');
-      setAssignments([]);
+      // Dialog stays open - do NOT close or reset form here
     },
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || (editPlan ? "Failed to update rotation plan" : "Failed to save rotation plan"),
+        description: error.message || (existingPlanId ? "Failed to update rotation plan" : "Failed to save rotation plan"),
         variant: "destructive",
       });
     },
@@ -1503,6 +1519,7 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
         setHasManualVariants(false);
         setSelectedVessel('');
         setAssignments([]);
+        setSavedPlanId(null); // Reset saved plan ID for new plans
       }
       
       // Clear the flag after initial load
@@ -1732,8 +1749,8 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
       assignments: JSON.stringify(assignments),
     };
 
-    // Only include these fields when creating a new plan
-    if (!editPlan) {
+    // Only include these fields when creating a new plan (no editPlan AND no savedPlanId)
+    if (!existingPlanId) {
       planData.draftId = `DRAFT-${Date.now()}`;
       planData.lastEdited = new Date().toISOString();
       planData.createdBy = 'Current User'; // TODO: Get from auth context
@@ -1743,19 +1760,89 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
     saveRotationPlanMutation.mutate(planData);
   };
 
-  const handlePropose = () => {
-    // Only validate that the plan is saved (has an ID)
-    if (!editPlan?.id) {
+  const handlePropose = async () => {
+    // Validate form data first (same validations as save)
+    if (selectedVessels.length === 0) {
       toast({
         title: "Validation Error",
-        description: "Please save the plan as draft first before proposing",
+        description: "Please select at least one vessel",
         variant: "destructive",
       });
       return;
     }
 
-    // Call propose mutation with the plan ID - backend will validate plan content
-    proposePlanMutation.mutate(editPlan.id);
+    if (selectedRanks.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please select at least one rank",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (assignments.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please create at least one crew assignment",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Calculate plan date range from assignments
+    const joiningDates = assignments.map(a => new Date(a.joiningDate));
+    const planFromDate = new Date(Math.min(...joiningDates.map(d => d.getTime())));
+    
+    // Calculate planToDate as the latest contract end date
+    const contractEndDates = assignments.map(a => {
+      const joiningDate = new Date(a.joiningDate);
+      return addMonths(joiningDate, a.contractPeriod);
+    });
+    const planToDate = new Date(Math.max(...contractEndDates.map(d => d.getTime())));
+
+    // Format crew roles as comma-separated string (use role variants)
+    const crewRoles = Array.from(new Set(selectedRoleVariants)).join(', ');
+
+    // Prepare plan data
+    const planData: any = {
+      vessels: JSON.stringify(selectedVessels),
+      crew: crewRoles,
+      planFromDate: format(planFromDate, 'yyyy-MM-dd'),
+      planToDate: format(planToDate, 'yyyy-MM-dd'),
+      assignments: JSON.stringify(assignments),
+    };
+
+    // Only include these fields when creating a new plan (no editPlan AND no savedPlanId)
+    if (!existingPlanId) {
+      planData.draftId = `DRAFT-${Date.now()}`;
+      planData.lastEdited = new Date().toISOString();
+      planData.createdBy = 'Current User';
+      planData.planStatus = 'In Draft';
+    }
+
+    try {
+      // First save the plan - mutateAsync returns the parsed JSON (not Response)
+      const savedPlan = await saveRotationPlanMutation.mutateAsync(planData);
+      
+      // Get the plan ID - either from existing plan or from the newly saved plan
+      // For existing plans, use existingPlanId; for new plans, use the ID from the save response
+      const planId = existingPlanId ?? savedPlan?.id;
+
+      if (!planId) {
+        toast({
+          title: "Error",
+          description: "Failed to get plan ID after save",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Then propose the saved plan
+      proposePlanMutation.mutate(planId);
+    } catch (error: any) {
+      // Save failed - error toast is already shown by the mutation's onError
+      console.error('Save failed before propose:', error);
+    }
   };
 
   return (
@@ -1778,17 +1865,18 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
               <Button
                 onClick={handleSave}
                 className="bg-blue-600 hover:bg-blue-700"
+                disabled={saveRotationPlanMutation.isPending}
                 data-testid="button-save"
               >
-                {editPlan ? "Update" : "Save"}
+                {saveRotationPlanMutation.isPending ? "Saving..." : (editPlan ? "Update" : "Save")}
               </Button>
               <Button
                 onClick={handlePropose}
                 className="bg-green-600 hover:bg-green-700"
-                disabled={proposePlanMutation.isPending}
+                disabled={saveRotationPlanMutation.isPending || proposePlanMutation.isPending}
                 data-testid="button-propose"
               >
-                {proposePlanMutation.isPending ? "Proposing..." : "Propose"}
+                {saveRotationPlanMutation.isPending ? "Saving..." : (proposePlanMutation.isPending ? "Proposing..." : "Propose")}
               </Button>
             </div>
           </div>
