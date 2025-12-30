@@ -50,11 +50,16 @@ const useVessels = () => {
     });
 };
 
-// Hook to fetch company ranks
+// Hook to fetch company ranks - filter to only parent ranks (not role variants)
 const useCompanyRanks = () => {
     return useQuery({
         queryKey: ['/api/company-ranks'],
-        select: (data: any[]) => data
+        select: (data: any[]) => {
+            // Filter to only show parent ranks (isRoleRow === false or undefined)
+            // Role variants have isRoleRow: true and should not appear in the dropdown
+            // Handle both camelCase (isRoleRow) and snake_case (is_role_row) from API
+            return data.filter((rank: any) => !rank.isRoleRow && !rank.is_role_row);
+        }
     });
 };
 
