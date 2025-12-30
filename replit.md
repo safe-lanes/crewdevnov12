@@ -80,6 +80,7 @@ The application uses a modern web stack with a module-first architecture.
     - Master 019: Languages
     - Master 020: Countries
     - All hooks use 5-minute cache and 2 retry attempts with fallback to static data
+- **Users Master (024)**: External data source from SAIL Audits API. Displays 7 columns: UUID, User Name, Role, Designation, User Type, Department, Email. Uses useExternalUsers.tsx hook with placeholder endpoint (to be updated with actual SAIL Audits endpoint). Read-only display following the same pattern as other external masters.
 - **Rest Hours Module**: Manages seafarer work and rest hours compliance.
     - **Dashboard (Office)**: Fleet-wide overview with AG Charts, performance cards, and drill-down.
     - **Record**: Interactive RH Recording Form with real-time violation detection.
