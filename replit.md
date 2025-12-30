@@ -93,7 +93,9 @@ The application uses a modern web stack with a module-first architecture.
     - **ComplianceMatrixDialog**: Interactive UI showing all oil majors and their rule-by-rule validation results.
 - **Rank Ordering System**: All crew-displaying modules use rank-based sorting.
 - **Performance Optimization**: Utilizes map-based lookups, TanStack Query, `useRef`, `useMemo`, and optimized `PersistentFileStorage`.
+    - **Route-Level Code Splitting (Dec 2024)**: All 13 route modules in App.tsx use React.lazy() for dynamic imports, reducing initial bundle size. Suspense boundaries with PageLoader fallback provide smooth loading UX. Large modules like AdminModule (~118K tokens) and AppraisalForm (~71K tokens) are now lazy-loaded on demand.
     - **FormEditor Component Refactor (Dec 2024)**: Extracted 7 section components (PartA-PartG) into client/src/components/form-editor-parts/ wrapped with React.memo. FormEditor.tsx reduced from ~3800 to ~2550 lines. Parent-level useWatch hooks provide stable array references for trainings, targets, assessments, etc. Score calculations (competenceSectionScore, behaviouralSectionScore, overallScore) are memoized with useMemo. This pattern serves as a template for future complex forms.
+    - **AppraisalForm Dual Schema Validation (Dec 2024)**: Uses lenient Zod schemas (allowing empty strings) for draft saves, strict schemas (requiring Yes/No/NA enum) for stage submissions. Stage 2 validation enforces recommendation answers via stage2Schema.parse() before mutation execution.
 - **Data Storage**: `PersistentFileStorage` for development, PostgreSQL/Drizzle ORM for production.
 - **Crew Member Update Protection**: Vessel assignment fields are protected from accidental clearing during updates.
 - **Crew Dashboard Timeline Card**: Canvas-based visualization of 6-month vessel assignments with color coding and appraisal/handover badges.
