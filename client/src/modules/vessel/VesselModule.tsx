@@ -2995,7 +2995,7 @@ export const VesselModule = (): JSX.Element => {
                                                                                         onClick={() => {
                                                                                             setHandoverDialogData({
                                                                                                 planningId: planning.id,
-                                                                                                vesselId: vesselId,
+                                                                                                vesselId: selectedVessel?.vesselId || '',
                                                                                                 crewName,
                                                                                                 rank: planning.rank
                                                                                             });
@@ -3120,7 +3120,7 @@ export const VesselModule = (): JSX.Element => {
                                                                                     onClick={() => {
                                                                                         setHandoverDialogData({
                                                                                             planningId: planning.id,
-                                                                                            vesselId: vesselId,
+                                                                                            vesselId: selectedVessel?.vesselId || '',
                                                                                             crewName,
                                                                                             rank: planning.rank
                                                                                         });
