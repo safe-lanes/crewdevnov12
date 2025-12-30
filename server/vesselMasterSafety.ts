@@ -74,10 +74,6 @@ export function isVesselMaster(masterId: string): boolean {
     const isOwners = masterId === "017";
     cached = { isVessel, isGroups, isOwners };
     masterTypeCache.set(masterId, cached);
-    // Only log cache creation in development mode for performance
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`🔧 [MASTER CACHE] Cached types for masterId "${masterId}": vessel=${isVessel}, groups=${isGroups}, owners=${isOwners}`);
-    }
   }
   return cached.isVessel;
 }
@@ -91,9 +87,6 @@ export function filterVesselMasterData(data: any, masterId: string): Partial<Ins
     return data; // No filtering needed for non-vessel masters
   }
 
-  console.log(`🚢 [SERVER FILTER] Filtering vessel master data for masterId: ${masterId}`);
-  console.log(`🚢 [SERVER FILTER] Original data:`, data);
-
   // Create safe object with only fields that are being updated (partial updates)
   const safeData: any = {};
   
@@ -105,14 +98,12 @@ export function filterVesselMasterData(data: any, masterId: string): Partial<Ins
   // Apply vessel-specific field mappings ONLY for fields that are provided
   if (data.vessel !== undefined) {
     safeData.name = data.vessel;
-    console.log(`🚢 [SERVER FILTER] Mapping vessel "${data.vessel}" to name field`);
   } else if (data.name !== undefined) {
     safeData.name = data.name;
   }
 
   if (data.imoNumber !== undefined) {
     safeData.description = data.imoNumber;
-    console.log(`🚢 [SERVER FILTER] Mapping imoNumber "${data.imoNumber}" to description field`);
   } else if (data.description !== undefined) {
     safeData.description = data.description;
   }
@@ -135,7 +126,6 @@ export function filterVesselMasterData(data: any, masterId: string): Partial<Ins
     safeData.isDeleted = data.isDeleted;
   }
 
-  console.log(`🚢 [SERVER FILTER] Filtered safe data (partial update):`, safeData);
   return safeData;
 }
 
@@ -221,10 +211,6 @@ export function isAdditionalGroupsMaster(masterId: string): boolean {
     const isOwners = masterId === "017";
     cached = { isVessel, isGroups, isOwners };
     masterTypeCache.set(masterId, cached);
-    // Only log cache creation in development mode for performance
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`🔧 [MASTER CACHE] Cached types for masterId "${masterId}": vessel=${isVessel}, groups=${isGroups}, owners=${isOwners}`);
-    }
   }
   return cached.isGroups;
 }
@@ -403,10 +389,6 @@ export function isVesselOwnersMaster(masterId: string): boolean {
     const isOwners = masterId === "017";
     cached = { isVessel, isGroups, isOwners };
     masterTypeCache.set(masterId, cached);
-    // Only log cache creation in development mode for performance
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`🔧 [MASTER CACHE] Cached types for masterId "${masterId}": vessel=${isVessel}, groups=${isGroups}, owners=${isOwners}`);
-    }
   }
   return cached.isOwners;
 }
@@ -420,19 +402,14 @@ export function filterVesselOwnersData(data: any, masterId: string): Partial<Ins
     return data; // No filtering needed for non-vessel-owners masters
   }
 
-  console.log(`🏢 [OWNERS FILTER] Filtering vessel owners data for masterId: ${masterId}`);
-  console.log(`🏢 [OWNERS FILTER] Original data:`, data);
-
   // Apply vouid→entryId normalization first
   let preprocessedData = { ...data };
   if (data.vouid && !data.entryId) {
     preprocessedData.entryId = data.vouid;
-    console.log(`🏢 [OWNERS FILTER] Normalized vouid "${data.vouid}" to entryId field`);
   }
 
   // Apply vesselIds transformation (reusing Additional Groups logic)
   const transformedData = transformVesselIds(preprocessedData, 'toDatabase');
-  console.log(`🏢 [OWNERS FILTER] After vesselIds transformation:`, transformedData);
 
   // Handle field naming consistency - accept both "VesselIDs" and "vesselIds"
   const normalizedData = {
@@ -443,7 +420,6 @@ export function filterVesselOwnersData(data: any, masterId: string): Partial<Ins
     VesselIDs: undefined
   };
 
-  console.log(`🏢 [OWNERS FILTER] After field normalization:`, normalizedData);
   return normalizedData;
 }
 
@@ -453,8 +429,6 @@ export function filterVesselOwnersData(data: any, masterId: string): Partial<Ins
  */
 export function mapDatabaseToOwnersDisplay(dbEntry: any): any {
   if (!dbEntry) return dbEntry;
-
-  console.log(`🏢 [OWNERS MAP] Mapping database entry to display format:`, dbEntry);
   
   // First apply basic field transformation (snake_case to camelCase)
   const basicTransformed = { ...dbEntry };
@@ -482,7 +456,6 @@ export function mapDatabaseToOwnersDisplay(dbEntry: any): any {
   
   // Apply vesselIds transformation from database (reusing Additional Groups logic)
   const transformedEntry = transformVesselIds(basicTransformed, 'fromDatabase');
-  console.log(`🏢 [OWNERS MAP] After vesselIds transformation:`, transformedEntry);
 
   return transformedEntry;
 }
@@ -491,45 +464,34 @@ export function mapDatabaseToOwnersDisplay(dbEntry: any): any {
  * Validates vessel owners entry has required fields
  */
 export function validateVesselOwnersEntry(data: any): { isValid: boolean; error?: string } {
-  console.log('🏢 [OWNERS VALIDATION] Validating vessel owners entry:', data);
-  
   // Allow empty names for initial entry creation (consistent with other masters)
   // Only validate name format if provided and not empty
   if (data.name && typeof data.name !== 'string') {
-    console.log('🏢 [OWNERS VALIDATION] Name validation failed - not a string:', data.name);
     return {
       isValid: false,
       error: "Vessel Owners name must be a string"
     };
   }
-  
-  console.log('🏢 [OWNERS VALIDATION] Name validation passed:', data.name);
 
   // Validate vesselIds if present (reusing Additional Groups validation logic)
-  console.log('🏢 [OWNERS VALIDATION] Checking vesselIds:', data.vesselIds);
   if (data.vesselIds) {
-    console.log('🏢 [OWNERS VALIDATION] vesselIds is present, validating format...');
     // If it's a string, try to parse it to validate JSON format
     if (typeof data.vesselIds === 'string') {
-      console.log('🏢 [OWNERS VALIDATION] vesselIds is a string, parsing JSON...');
       try {
         const parsed = JSON.parse(data.vesselIds);
         if (!Array.isArray(parsed)) {
-          console.log('🏢 [OWNERS VALIDATION] vesselIds JSON is not an array:', parsed);
           return {
             isValid: false,
             error: "vesselIds must be a JSON array string or an array"
           };
         }
       } catch (error) {
-        console.log('🏢 [OWNERS VALIDATION] vesselIds JSON parse failed:', error);
         return {
           isValid: false,
           error: "vesselIds must be valid JSON array string"
         };
       }
     } else if (!Array.isArray(data.vesselIds)) {
-      console.log('🏢 [OWNERS VALIDATION] vesselIds is not an array:', data.vesselIds);
       return {
         isValid: false,
         error: "vesselIds must be an array or JSON array string"
@@ -537,7 +499,6 @@ export function validateVesselOwnersEntry(data: any): { isValid: boolean; error?
     }
   }
 
-  console.log('🏢 [OWNERS VALIDATION] All validation passed - returning success');
   return { isValid: true };
 }
 

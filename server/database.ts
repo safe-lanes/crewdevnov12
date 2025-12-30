@@ -1032,10 +1032,8 @@ export class DatabaseStorage implements IStorage {
   // Available Rank methods
   async getAvailableRanks(): Promise<AvailableRank[]> {
     const results = await this.db.select().from(availableRanks);
-    console.log(`🔍 [DB] Before sort - first 3 ranks:`, results.slice(0, 3).map(r => `${r.id}:${r.name}(${r.sortOrder})`));
     // Sort manually to ensure correct order by sortOrder
     const sorted = results.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-    console.log(`🔍 [DB] After sort - first 3 ranks:`, sorted.slice(0, 3).map(r => `${r.id}:${r.name}(${r.sortOrder})`));
     return sorted;
   }
 

@@ -8006,17 +8006,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let responseEntries = entries;
       if (needsSpecialHandling(masterId) && entries) {
         responseEntries = entries.map((entry: any) => applyMasterSpecificMapping(entry, masterId));
-        // Only log in development mode for performance
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`🔧 [GET_LIST] Applied transformations for master ${masterId}, entries count: ${responseEntries.length}`);
-        }
       } else if (entries) {
         // Apply basic field transformation for regular masters (snake_case to camelCase)
         responseEntries = entries.map((entry: any) => applyBasicFieldTransformation(entry));
-        // Only log in development mode for performance
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`🔧 [GET_LIST] Applied basic field transformation for master ${masterId}, entries count: ${responseEntries.length}`);
-        }
       }
       
       res.json(responseEntries);
@@ -8038,11 +8030,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const masterId = (entry as any).master_id || (entry as any).masterId;
       if (needsSpecialHandling(masterId)) {
         responseEntry = applyMasterSpecificMapping(entry, masterId);
-        console.log(`🔧 [GET_SINGLE] Applied transformations for master ${masterId}:`, responseEntry);
       } else {
         // Apply basic field transformation for regular masters (snake_case to camelCase)
         responseEntry = applyBasicFieldTransformation(entry);
-        console.log(`🔧 [GET_SINGLE] Applied basic field transformation for master ${masterId}`);
       }
       
       res.json(responseEntry);
@@ -8054,16 +8044,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/masters/:id/data", async (req, res) => {
     try {
       const masterId = req.params.id;
-      console.log(`🔍 [DEBUG CREATE] Storage type: ${storage.constructor.name}, Master ID: ${masterId}, Payload:`, req.body);
       
       // Apply master-specific filtering and transformation BEFORE validation
       let requestData = { ...req.body, masterId };
       if (needsSpecialHandling(masterId)) {
-        console.log(`🔧 [CREATE] Special master detected (${masterId}) - applying transformations BEFORE validation`);
-        
         // Apply appropriate filtering/transformation based on master type
         requestData = applyMasterSpecificFiltering(requestData, masterId);
-        console.log(`🔧 [CREATE] Filtered request data for validation:`, requestData);
         
         // Validate entry after transformation
         const validation = validateMasterSpecificEntry(requestData, masterId);
@@ -8077,34 +8063,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const result = insertMasterDataEntrySchema.safeParse(requestData);
       if (!result.success) {
-        console.log(`❌ [DEBUG CREATE] Validation failed:`, result.error.issues);
         return res.status(400).json({ error: "Invalid master data entry", details: result.error.issues });
       }
       
-      console.log(`📤 [DEBUG CREATE] Calling storage.createMasterDataEntry with:`, result.data);
       const entry = await storage.createMasterDataEntry(result.data);
-      console.log(`✅ [DEBUG CREATE] Created entry:`, entry);
       
       // Apply master-specific response mapping if needed
       let responseEntry = entry;
       if (needsSpecialHandling(masterId) && entry) {
         responseEntry = applyMasterSpecificMapping(entry, masterId);
-        console.log(`🔧 [CREATE] Mapped response for master ${masterId}:`, responseEntry);
-      }
-      
-      // Verify persistence by immediately fetching the entry
-      if (entry && entry.id) {
-        try {
-          const fetchedEntry = await storage.getMasterDataEntry(entry.id);
-          console.log(`🔎 [DEBUG CREATE] Immediate fetch result:`, fetchedEntry);
-        } catch (fetchError) {
-          console.log(`❌ [DEBUG CREATE] Immediate fetch failed:`, fetchError);
-        }
       }
       
       res.status(201).json(responseEntry);
     } catch (error) {
-      console.log(`💥 [DEBUG CREATE] Exception:`, error);
+      console.error(`Failed to create master data entry:`, error);
       res.status(500).json({ error: "Failed to create master data entry" });
     }
   });
@@ -8129,12 +8101,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         Object.keys(req.body).filter(key => key !== 'masterId' && key !== 'description').length === 0;
       
       if (needsSpecialHandling(masterId) && !isDescriptionOnlyUpdate) {
-        console.log(`🔧 [UPDATE] Special master detected (${masterId}) for entry ${id} - applying transformations BEFORE validation`);
-        
         // Apply appropriate filtering/transformation based on master type
         requestData = applyMasterSpecificFiltering(req.body, masterId);
-        console.log(`🔧 [UPDATE] Original update data:`, req.body);
-        console.log(`🔧 [UPDATE] Filtered update data for validation:`, requestData);
         
         // Validate entry after transformation
         if (req.body.vessel || req.body.name || req.body.vesselIds || req.body.VesselIDs) {
@@ -8146,8 +8114,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
         }
-      } else if (isDescriptionOnlyUpdate) {
-        console.log(`📝 [UPDATE] Description-only update detected for entry ${id} - bypassing special transformations`);
       }
       
       const result = insertMasterDataEntrySchema.partial().safeParse(requestData);
@@ -8164,12 +8130,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let responseEntry = entry;
       if (needsSpecialHandling(masterId)) {
         responseEntry = applyMasterSpecificMapping(entry, masterId);
-        console.log(`🔧 [UPDATE] Mapped response for master ${masterId}:`, responseEntry);
       }
       
       res.json(responseEntry);
     } catch (error) {
-      console.error(`💥 [UPDATE] Exception:`, error);
+      console.error(`Failed to update master data entry:`, error);
       res.status(500).json({ error: "Failed to update master data entry" });
     }
   });
@@ -8177,27 +8142,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/master-data/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      console.log(`🔍 [DEBUG DELETE] Storage type: ${storage.constructor.name}, Entry ID: ${id}`);
-      
-      // First check if entry exists
-      try {
-        const existingEntry = await storage.getMasterDataEntry(id);
-        console.log(`🔎 [DEBUG DELETE] Pre-delete fetch result:`, existingEntry);
-      } catch (fetchError) {
-        console.log(`❌ [DEBUG DELETE] Pre-delete fetch failed:`, fetchError);
-      }
-      
-      console.log(`📤 [DEBUG DELETE] Calling storage.deleteMasterDataEntry with ID: ${id}`);
       const deleted = await storage.deleteMasterDataEntry(id);
-      console.log(`✅ [DEBUG DELETE] Delete result: ${deleted}`);
       
       if (!deleted) {
-        console.log(`❌ [DEBUG DELETE] Entry not found in storage for ID: ${id}`);
         return res.status(404).json({ error: "Master data entry not found" });
       }
       res.json({ success: true });
     } catch (error) {
-      console.log(`💥 [DEBUG DELETE] Exception:`, error);
+      console.error(`Failed to delete master data entry:`, error);
       res.status(500).json({ error: "Failed to delete master data entry" });
     }
   });
