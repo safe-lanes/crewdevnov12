@@ -103,10 +103,19 @@ const trainingNeedsSchema = z.object({
 });
 
 // Part F schemas
+// For draft saves, answer can be empty; for stage2 validation, a valid answer is required
 const recommendationSchema = z.object({
   id: z.string(),
   question: z.string(),
-  answer: z.enum(["Yes", "No", "NA"]),
+  answer: z.union([z.enum(["Yes", "No", "NA"]), z.literal("")]),
+  comment: z.string().optional(),
+});
+
+// Strict version for Stage 2 validation - requires Yes/No/NA answer
+const recommendationStage2Schema = z.object({
+  id: z.string(),
+  question: z.string(),
+  answer: z.enum(["Yes", "No", "NA"], { errorMap: () => ({ message: "Please select Yes, No, or NA" }) }),
   comment: z.string().optional(),
 });
 
@@ -183,9 +192,16 @@ const partESchema = z.object({
   trainingNeeds: z.array(trainingNeedsSchema).default([]),
 });
 
-// Part F schema
+// Part F schema (for draft saves - allows empty answers)
 const partFSchema = z.object({
   recommendations: z.array(recommendationSchema).default([]),
+  appraiserComments: z.array(appraiserCommentSchema).default([]),
+  seafarerComments: z.array(seafarerCommentSchema).default([]),
+});
+
+// Part F schema for Stage 2 validation (requires Yes/No/NA answers)
+const partFStage2Schema = z.object({
+  recommendations: z.array(recommendationStage2Schema).default([]),
   appraiserComments: z.array(appraiserCommentSchema).default([]),
   seafarerComments: z.array(seafarerCommentSchema).default([]),
 });
@@ -200,8 +216,8 @@ const partGSchema = z.object({
 // Stage 1: Parts A & B (Target Setting) - evaluation optional, empty arrays allowed
 const stage1Schema = partASchema.merge(partBStage1Schema);
 
-// Stage 2: Parts C, D, E, F (Performance Assessment)
-const stage2Schema = partCSchema.merge(partDSchema).merge(partESchema).merge(partFSchema);
+// Stage 2: Parts C, D, E, F (Performance Assessment) - requires recommendation answers
+const stage2Schema = partCSchema.merge(partDSchema).merge(partESchema).merge(partFStage2Schema);
 
 // Stage 3: Part G (Office Review)
 const stage3Schema = partGSchema;
