@@ -6,6 +6,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Plus, Info } from 'lucide-react';
 
+interface VesselOption {
+  id: string;
+  name: string;
+}
+
 interface PartCExecutionProps extends React.HTMLAttributes<HTMLDivElement> {
   promotionConfirmed: string;
   onSetPromotionConfirmed: (value: string) => void;
@@ -15,6 +20,8 @@ interface PartCExecutionProps extends React.HTMLAttributes<HTMLDivElement> {
   onSetPromotionDate: (value: string) => void;
   promotionTiming: string;
   onSetPromotionTiming: (value: string) => void;
+  vessels?: VesselOption[];
+  currentUserDisplay?: string;
 }
 
 export const PartCExecution = memo(function PartCExecution({
@@ -26,6 +33,8 @@ export const PartCExecution = memo(function PartCExecution({
   onSetPromotionDate,
   promotionTiming,
   onSetPromotionTiming,
+  vessels = [],
+  currentUserDisplay = 'Current User, Staff',
   ...restProps
 }: PartCExecutionProps) {
   return (
@@ -83,10 +92,15 @@ export const PartCExecution = memo(function PartCExecution({
                 <SelectValue placeholder="Select vessel" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="mt-liberty-gas">MT Liberty Gas</SelectItem>
-                <SelectItem value="mt-nordic-star">MT Nordic Star</SelectItem>
-                <SelectItem value="mt-ocean-breeze">MT Ocean Breeze</SelectItem>
-                <SelectItem value="mt-pacific-dawn">MT Pacific Dawn</SelectItem>
+                {vessels.length > 0 ? (
+                  vessels.map((vessel) => (
+                    <SelectItem key={vessel.id} value={vessel.id}>
+                      {vessel.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="no-vessels" disabled>No vessels available</SelectItem>
+                )}
               </SelectContent>
             </Select>
             <Button 
@@ -137,7 +151,7 @@ export const PartCExecution = memo(function PartCExecution({
         </div>
 
         <div className="flex justify-between items-center pt-4">
-          <p className="text-sm italic text-[#60a5fa]">Submitted by: Roxanne, Crewing Executive</p>
+          <p className="text-sm italic text-[#60a5fa]">Submitted by: {currentUserDisplay}</p>
           <div className="flex gap-3">
             <Button 
               type="button"

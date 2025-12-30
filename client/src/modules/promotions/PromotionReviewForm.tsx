@@ -75,6 +75,32 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     queryKey: ['/api/masters/016/data'],
   });
 
+  const { data: vesselMasterData } = useQuery<any[]>({
+    queryKey: ['/api/masters/014/data'],
+  });
+
+  const vesselOptions = useMemo(() => {
+    if (!vesselMasterData) return [];
+    return vesselMasterData.map((vessel: any) => ({
+      id: String(vessel.id || vessel.vesselId || vessel.nuid),
+      name: vessel.name || vessel.vesselName || 'Unknown Vessel',
+    }));
+  }, [vesselMasterData]);
+
+  const [currentUserDisplay, setCurrentUserDisplay] = useState(() => getCurrentUserDisplay());
+
+  useEffect(() => {
+    const updateCurrentUser = () => {
+      setCurrentUserDisplay(getCurrentUserDisplay());
+    };
+    window.addEventListener('storage', updateCurrentUser);
+    const intervalId = setInterval(updateCurrentUser, 1000);
+    return () => {
+      window.removeEventListener('storage', updateCurrentUser);
+      clearInterval(intervalId);
+    };
+  }, []);
+
   const crewMemberId = promotionData?.crewMemberId ?? '';
   const promotionToRank = promotionData?.promotionToRank ?? '';
 
@@ -496,10 +522,13 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   const [newTrainingComment, setNewTrainingComment] = useState<Record<string, string>>({});
   const [editingTrainingComment, setEditingTrainingComment] = useState<string | null>(null);
 
-  const [comments, setComments] = useState<Comment[]>([
-    { id: '1', user: 'Roxanne, Crewing Executive', text: 'Shows good aptitude for senior roles. Candidate has the right credentials and experience.' },
-    { id: '2', user: 'Roxanne, Crewing Executive', text: 'Pending completion of minimum rank experience and COC Master license.' },
-  ]);
+  const [comments, setComments] = useState<Comment[]>(() => {
+    const user = getCurrentUserDisplay();
+    return [
+      { id: '1', user, text: 'Shows good aptitude for senior roles. Candidate has the right credentials and experience.' },
+      { id: '2', user, text: 'Pending completion of minimum rank experience and COC Master license.' },
+    ];
+  });
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
 
   const [approvers, setApprovers] = useState<Approver[]>([
@@ -1274,6 +1303,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
               onSetPromotionDate={setPromotionDate}
               promotionTiming={promotionTiming}
               onSetPromotionTiming={setPromotionTiming}
+              vessels={vesselOptions}
+              currentUserDisplay={currentUserDisplay}
             />
           )}
         </>
