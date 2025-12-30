@@ -125,8 +125,9 @@ export interface RankItem {
 }
 
 export interface AppraisalTypeItem {
-  id: number;
+  id: string;
   name: string;
+  value: string;
 }
 
 export interface AppraisalFormSectionBaseProps {
@@ -141,8 +142,6 @@ export interface PartAProps extends AppraisalFormSectionBaseProps {
   vessels: VesselLookupItem[];
   availableRanks: RankItem[];
   appraisalTypes: AppraisalTypeItem[];
-  nationalityOpen: boolean;
-  setNationalityOpen: (open: boolean) => void;
 }
 
 export interface PartBProps extends AppraisalFormSectionBaseProps {

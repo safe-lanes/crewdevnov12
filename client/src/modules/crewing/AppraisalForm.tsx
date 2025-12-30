@@ -23,6 +23,9 @@ import { TrainingCourseSelectionDialog } from '@/modules/crew-pool/TrainingCours
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
 import { useMasterDataEntries } from "@/hooks/useDataMasters";
 
+// Import extracted Part components for code splitting
+import { PartA, PartB } from "@/components/appraisal-form-parts";
+
 // Comprehensive list of world nationalities
 const NATIONALITIES = [
   "Afghan", "Albanian", "Algerian", "American", "Andorran", "Angolan", "Antiguan", "Argentine", "Armenian", "Australian",
@@ -1453,547 +1456,64 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     }
   };
 
-  // Function to render continuous sections 1 (A&B) 
+  // Function to render continuous sections 1 (A&B) - Using extracted components
   const renderContinuousSections1 = () => {
     return (
       <div className="space-y-4 sm:space-y-6">
-        {/* Part A: Seafarer's Information */}
-        <div ref={partARef} data-section-id="A">
-          <Card className="bg-white">
-            <CardContent className="p-6">
-              <div className="pb-4 mb-6">
-                <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A: Seafarer's Information</h3>
-                <div style={{ color: '#16569e' }} className="text-sm">Enter details as applicable</div>
-                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
-              </div>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="seafarersName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs text-gray-500 tracking-wide">Seafarer's Name</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Enter seafarer's name" className="bg-[#ffffff]" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="seafarersRank"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs text-gray-500 tracking-wide">Seafarer's Rank</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="bg-[#ffffff]">
-                              <SelectValue placeholder="Select rank" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {availableRanks.map((rank) => (
-                              <SelectItem key={rank.id} value={rank.name}>
-                                {rank.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="nationality"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs text-gray-500 tracking-wide">Nationality</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Enter nationality" className="bg-[#ffffff]" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="vessel"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs text-gray-500 tracking-wide">Vessel</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="bg-[#ffffff]">
-                              <SelectValue placeholder="Select vessel" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {vessels.map((vessel) => (
-                              <SelectItem key={vessel.entryId} value={vessel.name}>
-                                {vessel.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="signOn"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs text-gray-500 tracking-wide">Sign On Date</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="dd/mm/yyyy" type="date" className="bg-[#ffffff]" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="appraisalType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Type</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="bg-[#ffffff]">
-                              <SelectValue placeholder="Select type" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {appraisalTypes.length > 0 ? (
-                              appraisalTypes.map((type: { id: string; name: string; value: string }) => (
-                                <SelectItem key={type.id} value={type.value}>
-                                  {type.name}
-                                </SelectItem>
-                              ))
-                            ) : (
-                              <>
-                                <SelectItem value="end-of-contract">End of Contract</SelectItem>
-                                <SelectItem value="mid-term">Mid Term</SelectItem>
-                                <SelectItem value="special">Special</SelectItem>
-                                <SelectItem value="probation">Probation</SelectItem>
-                              </>
-                            )}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+        {/* Part A: Seafarer's Information - Extracted Component */}
+        <PartA
+          form={form}
+          partRef={partARef}
+          vessels={vessels}
+          availableRanks={availableRanks}
+          appraisalTypes={appraisalTypes}
+          appraisalStatus={appraisalStatus}
+          isFieldVisible={isFieldVisible}
+          isSectionVisible={isSectionVisible}
+        />
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="appraisalPeriodFrom"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Period From</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="dd.mm.yyyy" type="date" className="bg-[#ffffff]" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="appraisalPeriodTo"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Period To</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="dd.mm.yyyy" type="date" className="bg-[#ffffff]" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="primaryAppraiser"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs text-gray-500 tracking-wide">Primary Appraiser</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="bg-[#ffffff]">
-                              <SelectValue placeholder="Select appraiser" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="master">Master</SelectItem>
-                            <SelectItem value="chief-officer">Chief Officer</SelectItem>
-                            <SelectItem value="chief-engineer">Chief Engineer</SelectItem>
-                            <SelectItem value="2nd-engineer">2nd Engineer</SelectItem>
-                            <SelectItem value="marine-superintendent">Marine Superintendent</SelectItem>
-                            <SelectItem value="technical-superintendent">Technical Superintendent</SelectItem>
-                            <SelectItem value="crew-manager">Crew Manager</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+        {/* Part B: Information at Start of Appraisal Period - Extracted Component */}
+        <PartB
+          form={form}
+          partRef={partBRef}
+          appraisalStatus={appraisalStatus}
+          isFieldVisible={isFieldVisible}
+          isSectionVisible={isSectionVisible}
+          showEvaluation={showEvaluation}
+          editingTraining={editingTraining}
+          setEditingTraining={setEditingTraining}
+          editingTarget={editingTarget}
+          setEditingTarget={setEditingTarget}
+          trainingComments={trainingComments}
+          setTrainingComments={setTrainingComments}
+          targetComments={targetComments}
+          setTargetComments={setTargetComments}
+          editingTrainingComment={editingTrainingComment}
+          setEditingTrainingComment={setEditingTrainingComment}
+          editingTargetComment={editingTargetComment}
+          setEditingTargetComment={setEditingTargetComment}
+          addTraining={addTraining}
+          updateTraining={updateTraining}
+          deleteTraining={deleteTraining}
+          addTarget={addTarget}
+          updateTarget={updateTarget}
+          deleteTarget={deleteTarget}
+        />
 
-                {isFieldVisible('personalityIndexCategory') && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="personalityIndexCategory"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs text-gray-500 tracking-wide">Personality Index (PI) Category</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger className="bg-[#ffffff]">
-                                <SelectValue placeholder="Select category" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="dominance">Dominance</SelectItem>
-                              <SelectItem value="influence">Influence</SelectItem>
-                              <SelectItem value="steadiness">Steadiness</SelectItem>
-                              <SelectItem value="compliance">Compliance</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Part B: Information at Start of Appraisal Period */}
+        {/* Stage 1 Action Buttons - kept in parent for form-level control */}
         {isSectionVisible('partB') && (
-        <div ref={partBRef} data-section-id="B">
-          <Card className="bg-white">
-            <CardContent className="p-6">
-              <div className="pb-4 mb-6">
-                <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part B: Information at Start of Appraisal Period</h3>
-                <div style={{ color: '#16569e' }} className="text-sm">Add below at the start of the Appraisal Period except the Evaluation which must be completed at the end of the Appraisal Period</div>
-                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
-              </div>
-              <div className="space-y-8">
-                {/* B1. Trainings conducted prior joining vessel */}
-                <div>
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>B1. Trainings conducted prior joining vessel (To Assess Effectiveness)</h3>
-                    <Button
-                      type="button"
-                      onClick={addTraining}
-                      variant="outline"
-                      size="sm"
-                      className="text-gray-600 border-gray-300"
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add Training
-                    </Button>
-                  </div>
-                  
-                  <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="w-full min-w-[600px]">
-                        <thead className="bg-gray-100">
-                          <tr>
-                            <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
-                            <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
-                            {showEvaluation && <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>}
-                            <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white">
-                        {form.watch("trainings").map((training, index) => (
-                          <React.Fragment key={training.id}>
-                            <tr className="border-b border-gray-200 bg-white hover:bg-gray-50">
-                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
-                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                <Input
-                                  value={training.training}
-                                  onChange={(e) => updateTraining(training.id, "training", e.target.value)}
-                                  placeholder={`Training ${index + 1}`}
-                                  className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                                />
-                              </td>
-                              {showEvaluation && (
-                                <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                  <Select
-                                    value={training.evaluation}
-                                    onValueChange={(value) => updateTraining(training.id, "evaluation", value)}
-                                  >
-                                    <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
-                                      <SelectValue placeholder="Select Rating" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="5-exceeded-expectations">5- Exceeded Expectations</SelectItem>
-                                      <SelectItem value="4-meets-expectations">4- Meets Expectations</SelectItem>
-                                      <SelectItem value="3-somewhat-meets-expectations">3- Somewhat Meets Expectations</SelectItem>
-                                      <SelectItem value="2-below-expectations">2- Below Expectations</SelectItem>
-                                      <SelectItem value="1-significantly-below-expectations">1- Significantly Below Expectations</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </td>
-                              )}
-                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                <div className="flex gap-2 justify-center">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6"
-                                    onClick={() => setTrainingComments(prev => ({
-                                      ...prev,
-                                      [training.id]: prev[training.id] || ""
-                                    }))}
-                                  >
-                                    <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
-                                  </Button>
-
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6"
-                                    onClick={() => deleteTraining(training.id)}
-                                  >
-                                    <Trash2 className="h-[18px] w-[18px] text-gray-500" />
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                            {trainingComments[training.id] !== undefined && (
-                              <tr>
-                                <td></td>
-                                <td colSpan={3} className="p-3">
-                                  {editingTrainingComment === training.id ? (
-                                    <Textarea
-                                      value={trainingComments[training.id]}
-                                      onChange={(e) => {
-                                        setTrainingComments(prev => ({
-                                          ...prev,
-                                          [training.id]: e.target.value
-                                        }));
-                                        updateTraining(training.id, "comment", e.target.value);
-                                      }}
-                                      onBlur={() => setEditingTrainingComment(null)}
-                                      placeholder="Comment: Add your observations here..."
-                                      className="text-blue-600 italic border-blue-200"
-                                      rows={2}
-                                      autoFocus
-                                    />
-                                  ) : (
-                                    <div className="flex justify-between items-start">
-                                      <div 
-                                        className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px]"
-                                        onClick={() => setEditingTrainingComment(training.id)}
-                                      >
-                                        {trainingComments[training.id] || "Click to add comment..."}
-                                      </div>
-                                      <div className="ml-2">
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => deleteTrainingComment(training.id)}
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  )}
-                                </td>
-                              </tr>
-                            )}
-                          </React.Fragment>
-                        ))}
-                        {form.watch("trainings").length === 0 && (
-                          <tr>
-                            <td colSpan={4} className="p-8 text-center text-gray-500">
-                              No trainings added yet. Click "Add Training" to get started.
-                            </td>
-                          </tr>
-                        )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-
-                {/* B2. Target Setting */}
-                <div>
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>B2. Target Setting</h3>
-                    <Button
-                      type="button"
-                      onClick={addTarget}
-                      variant="outline"
-                      size="sm"
-                      className="text-gray-600 border-gray-300"
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add Target
-                    </Button>
-                  </div>
-                  
-                  <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-gray-100">
-                        <tr>
-                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
-                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Target Setting</th>
-                          {showEvaluation && <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>}
-                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white">
-                        {form.watch("targets").map((target, index) => (
-                          <React.Fragment key={target.id}>
-                            <tr className="border-b border-gray-200 bg-white hover:bg-gray-50">
-                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
-                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                <Input
-                                  value={target.targetSetting}
-                                  onChange={(e) => updateTarget(target.id, "targetSetting", e.target.value)}
-                                  placeholder={`Target ${index + 1}`}
-                                  className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                                />
-                              </td>
-                              {showEvaluation && (
-                                <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                  <Select
-                                    value={target.evaluation}
-                                    onValueChange={(value) => updateTarget(target.id, "evaluation", value)}
-                                  >
-                                    <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
-                                      <SelectValue placeholder="Select Rating" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="5-exceeded-set-target">5- Exceeded Set Target</SelectItem>
-                                      <SelectItem value="4-fully-met-target">4- Fully Met Target</SelectItem>
-                                      <SelectItem value="3-missed-target-small-margin">3- Missed Target by a Small Margin</SelectItem>
-                                      <SelectItem value="2-missed-target-significant-margin">2- Missed Target by a Significant Margin</SelectItem>
-                                      <SelectItem value="1-failed-to-achieve-target">1- Failed to Achieve Target</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </td>
-                              )}
-                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                <div className="flex gap-2 justify-center">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6"
-                                    onClick={() => setTargetComments(prev => ({
-                                      ...prev,
-                                      [target.id]: prev[target.id] || ""
-                                    }))}
-                                  >
-                                    <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
-                                  </Button>
-
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6"
-                                    onClick={() => deleteTarget(target.id)}
-                                  >
-                                    <Trash2 className="h-[18px] w-[18px] text-gray-500" />
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                            {targetComments[target.id] !== undefined && (
-                              <tr>
-                                <td></td>
-                                <td colSpan={3} className="p-3">
-                                  {editingTargetComment === target.id ? (
-                                    <Textarea
-                                      value={targetComments[target.id]}
-                                      onChange={(e) => {
-                                        setTargetComments(prev => ({
-                                          ...prev,
-                                          [target.id]: e.target.value
-                                        }));
-                                        updateTarget(target.id, "comment", e.target.value);
-                                      }}
-                                      onBlur={() => setEditingTargetComment(null)}
-                                      placeholder="Comment: Add your observations here..."
-                                      className="text-blue-600 italic border-blue-200"
-                                      rows={2}
-                                      autoFocus
-                                    />
-                                  ) : (
-                                    <div className="flex justify-between items-start">
-                                      <div 
-                                        className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px]"
-                                        onClick={() => setEditingTargetComment(target.id)}
-                                      >
-                                        {targetComments[target.id] || "Click to add comment..."}
-                                      </div>
-                                      <div className="ml-2">
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => deleteTargetComment(target.id)}
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  )}
-                                </td>
-                              </tr>
-                            )}
-                          </React.Fragment>
-                        ))}
-                        {form.watch("targets").length === 0 && (
-                          <tr>
-                            <td colSpan={4} className="p-8 text-center text-gray-500">
-                              No targets added yet. Click "Add Target" to get started.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Action buttons */}
-                <div className="flex justify-end gap-4 mt-6">
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={() => form.handleSubmit(onSubmit)()}>
-                    Save Draft
-                  </Button>
-                  <Button 
-                    className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
-                    onClick={() => handleStageSubmission('stage1')}
-                    disabled={stage1Mutation.isPending || saveAppraisalMutation.isPending}
-                  >
-                    {stage1Mutation.isPending ? 'Submitting...' : 'Submit Stage 1'}
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+          <div className="flex justify-end gap-4">
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={() => form.handleSubmit(onSubmit)()}>
+              Save Draft
+            </Button>
+            <Button 
+              className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
+              onClick={() => handleStageSubmission('stage1')}
+              disabled={stage1Mutation.isPending || saveAppraisalMutation.isPending}
+            >
+              {stage1Mutation.isPending ? 'Submitting...' : 'Submit Stage 1'}
+            </Button>
+          </div>
         )}
       </div>
     );

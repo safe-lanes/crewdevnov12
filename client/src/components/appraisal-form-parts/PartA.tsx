@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PartAProps, NATIONALITIES } from "./types";
+import { PartAProps } from "./types";
 
 const PartAComponent: React.FC<PartAProps> = ({
   form,
@@ -147,10 +147,10 @@ const PartAComponent: React.FC<PartAProps> = ({
                           ))
                         ) : (
                           <>
-                            <SelectItem value="end-of-contract">End of Contract</SelectItem>
-                            <SelectItem value="mid-term">Mid Term</SelectItem>
-                            <SelectItem value="special">Special</SelectItem>
-                            <SelectItem value="probation">Probation</SelectItem>
+                            <SelectItem value="End of Contract">End of Contract</SelectItem>
+                            <SelectItem value="Mid Term">Mid Term</SelectItem>
+                            <SelectItem value="Special">Special</SelectItem>
+                            <SelectItem value="Probation">Probation</SelectItem>
                           </>
                         )}
                       </SelectContent>
