@@ -762,10 +762,11 @@ function DatePeriodDialog({
                 <SelectValue placeholder="Select period" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="3">3 Months</SelectItem>
-                <SelectItem value="6">6 Months</SelectItem>
-                <SelectItem value="9">9 Months</SelectItem>
-                <SelectItem value="12">12 Months</SelectItem>
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((month) => (
+                  <SelectItem key={month} value={String(month)}>
+                    {month} {month === 1 ? 'Month' : 'Months'}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
