@@ -7494,10 +7494,10 @@ const AdminModuleInner = (): JSX.Element => {
                             </span>
                           </div>
 
-                          {/* Column 2: User Name */}
+                          {/* Column 2: User Name - binds to fullname field */}
                           <div className="p-3 border-r border-gray-200">
                             <span className="text-xs text-gray-700" data-testid={`user-name-${item.uuid || index}`}>
-                              {item.userName || item.username || item.name || <em className="text-gray-400">No user name</em>}
+                              {item.fullname || <em className="text-gray-400">No user name</em>}
                             </span>
                           </div>
 
