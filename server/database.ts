@@ -1893,6 +1893,20 @@ export class DatabaseStorage implements IStorage {
     // Fetch all vessel planning data to look up current crew on board
     const allVesselPlanning = await this.db.select().from(vesselPlanning);
     
+    // Fetch all crew members to look up names by ID
+    const allCrewMembers = await this.db.select().from(crewMembers);
+    const crewMemberNameMap = new Map<string, string>();
+    for (const crew of allCrewMembers) {
+      if (crew.id) {
+        // Construct full name from firstName, middleName, familyName
+        const nameParts = [crew.firstName, crew.middleName, crew.familyName].filter(Boolean);
+        const fullName = nameParts.join(' ').trim();
+        if (fullName) {
+          crewMemberNameMap.set(crew.id, fullName);
+        }
+      }
+    }
+    
     // Create a lookup map: vesselId+rank -> current crew data
     const currentCrewMap = new Map<string, any>();
     for (const vp of allVesselPlanning) {
@@ -1909,9 +1923,12 @@ export class DatabaseStorage implements IStorage {
             rangeEndDate = rangeEnd.toISOString().split('T')[0];
           }
           
+          // Look up crew name from crew members table, fallback to onBoardCrewName, then ID
+          const crewName = crewMemberNameMap.get(vp.crewMemberId) || vp.onBoardCrewName || vp.crewMemberId;
+          
           currentCrewMap.set(key, {
             id: vp.crewMemberId,
-            name: vp.onBoardCrewName || vp.crewMemberId,
+            name: crewName,
             contractStartDate: vp.signOnDate,
             contractEndDate: vp.reliefDue || vp.signOnDate,
             rangeStartDate: vp.signOnDate,
