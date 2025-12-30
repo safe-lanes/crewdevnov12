@@ -2015,29 +2015,37 @@ export class DatabaseStorage implements IStorage {
       
       const assignment = assignments[assignmentIndex];
       
-      // Translate vessel name to vessel code
-      // assignment.vessel contains vessel NAME (e.g., "MT Nordic Star")
-      // assignment.vesselId contains vessel CODE (e.g., "VSL-003") - already canonical
-      // We need to get the canonical vessel CODE
+      // Translate vessel name/id to vessel code
+      // assignment.vessel contains vessel NAME (e.g., "MT Nordic Star" or "Vessel 5")
+      // assignment.vesselId contains vessel CODE - could be UUID or VSL-XXX format
       const vesselMasterData = await this.getMasterDataEntries('014');
       
-      // Strict validation: only accept canonical vessel codes in VSL-XXX format
-      // Note: Master data stores codes in entry_id field (snake_case from database), not nuid
+      // Build lookup maps for vessel translation
+      // Support both VSL-XXX format and UUID format entry_ids
       const vesselNameToCodeMap = new Map<string, string>();
+      const vesselUuidToCodeMap = new Map<string, string>();
       for (const v of vesselMasterData) {
         const entryId = (v as any).entry_id; // Type assertion needed for snake_case field
-        if (v.name && entryId && entryId.match(/^VSL-\d+$/)) {
+        if (v.name && entryId) {
           vesselNameToCodeMap.set(v.name, entryId);
+          // Also map the entry_id to itself for UUID lookups
+          vesselUuidToCodeMap.set(entryId, entryId);
         }
       }
       
-      // Check if assignment already has canonical code, otherwise translate from name
+      // Determine vessel code - check multiple sources
       let vesselCode: string | undefined;
-      if (assignment.vesselId && assignment.vesselId.match(/^VSL-\d+$/)) {
-        // Already have canonical code
+      
+      // 1. Check if vesselId is already a valid entry_id (UUID or VSL-XXX)
+      if (assignment.vesselId && vesselUuidToCodeMap.has(assignment.vesselId)) {
         vesselCode = assignment.vesselId;
-      } else if (assignment.vessel) {
-        // Translate from vessel name
+      }
+      // 2. Check if vesselId matches VSL-XXX format
+      else if (assignment.vesselId && assignment.vesselId.match(/^VSL-\d+$/)) {
+        vesselCode = assignment.vesselId;
+      }
+      // 3. Translate from vessel name
+      else if (assignment.vessel) {
         vesselCode = vesselNameToCodeMap.get(assignment.vessel);
       }
       
@@ -2046,7 +2054,7 @@ export class DatabaseStorage implements IStorage {
         throw new Error(
           `Cannot determine canonical vessel code from assignment. ` +
           `Assignment data: vesselId="${assignment.vesselId}", vessel="${assignment.vessel}". ` +
-          `Vessel must exist in master data (master_id='014') with valid VSL-XXX format entry_id. ` +
+          `Vessel must exist in master data (master_id='014'). ` +
           `Available vessels: ${Array.from(vesselNameToCodeMap.keys()).join(', ')}`
         );
       }
