@@ -6723,20 +6723,26 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   </PopoverTrigger>
                   <PopoverContent className="w-[350px] p-0" align="start">
                     <div className="max-h-[300px] overflow-y-auto">
-                      {approverMasterData.map((approverName) => (
-                        <div
-                          key={approverName}
-                          className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-100"
-                          onClick={() => toggleApproverSelection(approverName)}
-                          data-testid={`checkbox-approver-${approverName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`}
-                        >
-                          <Checkbox
-                            checked={formData.selectedApproversForSubmission.includes(approverName)}
-                            className="mr-3"
-                          />
-                          <span className="text-sm">{approverName}</span>
-                        </div>
-                      ))}
+                      {isLoadingUsers ? (
+                        <div className="px-3 py-4 text-sm text-gray-500 text-center">Loading approvers...</div>
+                      ) : approverMasterData.length === 0 ? (
+                        <div className="px-3 py-4 text-sm text-gray-500 text-center">No office users found</div>
+                      ) : (
+                        approverMasterData.map((approverName: string) => (
+                          <div
+                            key={approverName}
+                            className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-100"
+                            onClick={() => toggleApproverSelection(approverName)}
+                            data-testid={`checkbox-approver-${approverName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`}
+                          >
+                            <Checkbox
+                              checked={formData.selectedApproversForSubmission.includes(approverName)}
+                              className="mr-3"
+                            />
+                            <span className="text-sm">{approverName}</span>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </PopoverContent>
                 </Popover>
@@ -6809,11 +6815,17 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                           <SelectValue placeholder="Approver" />
                         </SelectTrigger>
                         <SelectContent>
-                          {approverMasterData.map((approverName) => (
-                            <SelectItem key={approverName} value={approverName}>
-                              {approverName}
-                            </SelectItem>
-                          ))}
+                          {isLoadingUsers ? (
+                            <SelectItem value="_loading" disabled>Loading approvers...</SelectItem>
+                          ) : approverMasterData.length === 0 ? (
+                            <SelectItem value="_empty" disabled>No office users found</SelectItem>
+                          ) : (
+                            approverMasterData.map((approverName: string) => (
+                              <SelectItem key={approverName} value={approverName}>
+                                {approverName}
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
