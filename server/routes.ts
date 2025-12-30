@@ -2451,15 +2451,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/promotion-reviews", async (req, res) => {
     try {
-      console.log("📝 [API] Creating promotion review with body:", JSON.stringify(req.body, null, 2));
       const review = await storage.createPromotionReview(req.body);
       console.log(`✅ [API] Created promotion review ID ${review.id} for crew ${review.crewMemberId}`);
       res.status(201).json(review);
-    } catch (error: any) {
+    } catch (error) {
       console.error("❌ Failed to create promotion review:", error);
-      console.error("❌ Error message:", error?.message);
-      console.error("❌ Error stack:", error?.stack);
-      res.status(500).json({ error: "Failed to create promotion review", details: error?.message });
+      res.status(500).json({ error: "Failed to create promotion review" });
     }
   });
 
