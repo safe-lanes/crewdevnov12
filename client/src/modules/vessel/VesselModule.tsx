@@ -69,6 +69,127 @@ const hasValidGmdss = (licenses: LicenseRecord[]): boolean => {
     }
 };
 
+// Training Master IDs for tanker certifications
+const TANKER_TRAINING_IDS = {
+    OIL_BASIC: 'SC001',      // Basic Training for Oil Tanker Cargo operations
+    GAS_BASIC: 'SC002',      // Basic Training for Liquefied Gas Tanker Cargo Operations
+    OIL_ADVANCED: 'SC003',   // Advanced Training for Oil Tanker Cargo Operations
+    CHEMICAL_ADVANCED: 'SC004', // Advanced Training for Chemical Tanker Cargo Operations
+    GAS_ADVANCED: 'SC005',   // Advanced Training for Liquefied Gas Tanker Cargo Operations
+    CHEMICAL_BASIC: 'SC008', // Basic Training for Chemical Tanker Cargo operations
+};
+
+interface TrainingCourse {
+    id?: string;
+    courseId?: string;  // Links to Training Master ID
+    companyId?: string;
+    trainingCourse?: string;
+    expiry?: string;
+}
+
+interface TankerCertResult {
+    tankerCert: string;      // e.g., "O, C, G"
+    splTankerTraining: string; // e.g., "O(A), C(A), G(B)"
+}
+
+// Helper function to calculate tanker certifications from training courses
+const calculateTankerCertifications = (trainingCourses: TrainingCourse[]): TankerCertResult => {
+    if (!trainingCourses || !Array.isArray(trainingCourses) || trainingCourses.length === 0) {
+        return { tankerCert: '', splTankerTraining: '' };
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Track which trainings are valid (by tanker type and level)
+    const validTrainings = {
+        oil: { basic: false, advanced: false },
+        gas: { basic: false, advanced: false },
+        chemical: { basic: false, advanced: false }
+    };
+
+    // Check each training course
+    trainingCourses.forEach(course => {
+        // Get the Training Master ID (courseId links to Training Master)
+        const trainingId = course.courseId;
+        if (!trainingId) return;
+
+        // Check validity (valid if no expiry date OR expiry date is in the future)
+        let isValid = true;
+        if (course.expiry) {
+            try {
+                const expiryDate = new Date(course.expiry);
+                isValid = expiryDate >= today;
+            } catch {
+                isValid = true; // If parsing fails, consider valid
+            }
+        }
+
+        if (!isValid) return;
+
+        // Map training ID to tanker type and level
+        switch (trainingId) {
+            case TANKER_TRAINING_IDS.OIL_BASIC:
+                validTrainings.oil.basic = true;
+                break;
+            case TANKER_TRAINING_IDS.OIL_ADVANCED:
+                validTrainings.oil.advanced = true;
+                break;
+            case TANKER_TRAINING_IDS.GAS_BASIC:
+                validTrainings.gas.basic = true;
+                break;
+            case TANKER_TRAINING_IDS.GAS_ADVANCED:
+                validTrainings.gas.advanced = true;
+                break;
+            case TANKER_TRAINING_IDS.CHEMICAL_BASIC:
+                validTrainings.chemical.basic = true;
+                break;
+            case TANKER_TRAINING_IDS.CHEMICAL_ADVANCED:
+                validTrainings.chemical.advanced = true;
+                break;
+        }
+    });
+
+    // Build display strings
+    const tankerCertParts: string[] = [];
+    const splTrainingParts: string[] = [];
+
+    // Oil - Advanced overrides Basic
+    if (validTrainings.oil.advanced || validTrainings.oil.basic) {
+        tankerCertParts.push('O');
+        if (validTrainings.oil.advanced) {
+            splTrainingParts.push('O(A)');
+        } else {
+            splTrainingParts.push('O(B)');
+        }
+    }
+
+    // Chemical - Advanced overrides Basic
+    if (validTrainings.chemical.advanced || validTrainings.chemical.basic) {
+        tankerCertParts.push('C');
+        if (validTrainings.chemical.advanced) {
+            splTrainingParts.push('C(A)');
+        } else {
+            splTrainingParts.push('C(B)');
+        }
+    }
+
+    // Gas - Advanced overrides Basic
+    if (validTrainings.gas.advanced || validTrainings.gas.basic) {
+        tankerCertParts.push('G');
+        if (validTrainings.gas.advanced) {
+            splTrainingParts.push('G(A)');
+        } else {
+            splTrainingParts.push('G(B)');
+        }
+    }
+
+    return {
+        tankerCert: tankerCertParts.join(', '),
+        splTankerTraining: splTrainingParts.join(', ')
+    };
+};
+
 // Hook to fetch vessels from External API (SAIL ERP)
 // This ensures vessel types match the Vessel Master (external API source of truth)
 const useVessels = () => {
@@ -3187,6 +3308,19 @@ export const VesselModule = (): JSX.Element => {
                                                             const rankDepartment = inferDepartmentFromRank(fullRankName);
                                                             const highestCoc = findHighestActiveCoc(licenses, rankDepartment);
                                                             
+                                                            // Parse training courses for tanker certifications
+                                                            let trainingCourses: TrainingCourse[] = [];
+                                                            if (crewMemberData?.trainingCourses) {
+                                                                try {
+                                                                    trainingCourses = typeof crewMemberData.trainingCourses === 'string' 
+                                                                        ? JSON.parse(crewMemberData.trainingCourses) 
+                                                                        : crewMemberData.trainingCourses;
+                                                                } catch (e) {
+                                                                    trainingCourses = [];
+                                                                }
+                                                            }
+                                                            const tankerCerts = calculateTankerCertifications(trainingCourses);
+                                                            
                                                             // Calculate company years from currentCompanySeaService
                                                             let companyYears = 0;
                                                             if (crewMemberData?.currentCompanySeaService) {
@@ -3243,10 +3377,10 @@ export const VesselModule = (): JSX.Element => {
                                                                     {/* Will be populated with qualification data */}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-tanker-${index + 1}`}>
-                                                                    {/* Will be populated with qualification data */}
+                                                                    {tankerCerts.tankerCert}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-spl-tanker-${index + 1}`}>
-                                                                    {/* Will be populated with qualification data */}
+                                                                    {tankerCerts.splTankerTraining}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700 border-r-2 border-gray-200" data-testid={`cell-officer-radio-${index + 1}`}>
                                                                     {rankDepartment === 'deck' && hasValidGmdss(licenses) ? 'Yes' : ''}
